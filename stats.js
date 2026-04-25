@@ -30,9 +30,10 @@
     }
 
     // ── State ──────────────────────────────────────────────────────────────────
-    var currentWeek    = getWeekStart();
-    var allWeeks       = [];
+    var currentWeek     = getWeekStart();
+    var allWeeks        = [];
     var leaderboardData = [];
+    var currentMode     = 'global'; // 'global', 'SvS', 'GvG'
 
     // ── Public API ──────────────────────────────────────────────────────────────
     window.RAD_STATS = { load: loadStats };
@@ -42,7 +43,15 @@
         if (!db) return;
         await fetchAllWeeks();
         renderControls();
-        await loadLeaderboard(currentWeek);
+        await refreshData();
+    }
+
+    async function refreshData() {
+        if (currentMode === 'global') {
+            await loadLeaderboard(currentWeek);
+        } else {
+            await loadEventRanking(currentMode, currentWeek);
+        }
     }
 
     // ── Fetch all weeks that have data ───────────────────────────────────────────
@@ -64,6 +73,27 @@
         } else {
             await computeAndSave(week);
         }
+    }
+
+    // ── Load individual event ranking (SvS, GvG) ───────────────────────────────
+    async function loadEventRanking(eventName, week) {
+        var res = await db.from('event_participants')
+            .select('*')
+            .eq('event_name', eventName)
+            .eq('week_start', week)
+            .not('score', 'is', null)
+            .order('score', { ascending: false })
+            .order('pseudo', { ascending: true });
+
+        leaderboardData = (res.data || []).map(function(r) {
+            return {
+                pseudo: r.pseudo,
+                score_20: r.score, // We'll treat this as the main score for rendering
+                events_done: r.participated,
+                is_event_mode: true
+            };
+        });
+        renderLeaderboard();
     }
 
     // ── Compute /20 scores and persist ──────────────────────────────────────────
@@ -113,27 +143,50 @@
         renderLeaderboard();
     }
 
-    // ── Render week selector + compute button ────────────────────────────────────
+    // ── Render week selector + mode selector + compute button ────────────────────
     function renderControls() {
         document.querySelectorAll('.stats-controls').forEach(function (el) {
             var optHtml = allWeeks.map(function (w) {
                 return '<option value="' + w + '"' + (w === currentWeek ? ' selected' : '') + '>' + formatWeek(w) + '</option>';
             }).join('');
+
+            var modes = ['global', 'SvS', 'GvG'];
+            var modeHtml = '<div class="lang-switcher stats-mode-switcher">' +
+                modes.map(function(m) {
+                    return '<button class="lang-btn' + (currentMode === m ? ' active' : '') + '" data-mode="' + m + '">' + t('stats_mode_' + m.toLowerCase()) + '</button>';
+                }).join('') +
+            '</div>';
+
             el.innerHTML =
                 '<div class="stats-controls-inner">' +
-                    '<select class="week-select">' + optHtml + '</select>' +
-                    '<button class="btn-compute">' +
+                    '<div class="stats-left-controls">' +
+                        '<select class="week-select">' + optHtml + '</select>' +
+                        modeHtml +
+                    '</div>' +
+                    '<button class="btn-compute' + (currentMode !== 'global' ? ' hidden' : '') + '">' +
                         '<i class="ph ph-arrows-clockwise"></i> ' + t('stats_compute') +
                     '</button>' +
                 '</div>';
 
             el.querySelector('.week-select').addEventListener('change', function () {
                 currentWeek = this.value;
-                loadLeaderboard(currentWeek);
+                refreshData();
             });
-            el.querySelector('.btn-compute').addEventListener('click', function () {
-                computeAndSave(currentWeek);
+
+            el.querySelectorAll('.lang-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    currentMode = this.getAttribute('data-mode');
+                    renderControls(); // Re-render to update active class
+                    refreshData();
+                });
             });
+
+            var btnCompute = el.querySelector('.btn-compute');
+            if (btnCompute) {
+                btnCompute.addEventListener('click', function () {
+                    computeAndSave(currentWeek);
+                });
+            }
         });
     }
 
@@ -144,6 +197,8 @@
                 container.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-chart-bar"></i><p>' + t('stats_no_data') + '</p></div>';
                 return;
             }
+
+            var isEvent = leaderboardData[0] && leaderboardData[0].is_event_mode;
 
             /* ── Podium ── */
             var top = leaderboardData.slice(0, Math.min(3, leaderboardData.length));
@@ -157,11 +212,12 @@
             var podHtml = '<div class="stats-podium">';
             podOrder.forEach(function (m, i) {
                 var orig = leaderboardData.indexOf(m); // 0-based rank
+                var scoreDisplay = isEvent ? m.score_20 : parseFloat(m.score_20).toFixed(1) + '/20';
                 podHtml +=
                     '<div class="podium-slot rank-' + (orig + 1) + '" data-pseudo="' + esc(m.pseudo) + '">' +
                         '<div class="podium-medal">' + (medals[orig] || '') + '</div>' +
                         '<div class="podium-name">' + esc(m.pseudo) + '</div>' +
-                        '<div class="podium-score-val">' + parseFloat(m.score_20).toFixed(1) + '/20</div>' +
+                        '<div class="podium-score-val">' + scoreDisplay + '</div>' +
                         '<div class="podium-bar" style="height:' + heights[i] + 'px">' +
                             '<div class="podium-bar-fill" style="height:' + heights[i] + 'px"></div>' +
                         '</div>' +
@@ -175,9 +231,9 @@
                 '<table class="leaderboard-table"><thead><tr>' +
                     '<th>#</th>' +
                     '<th>' + t('col_member') + '</th>' +
-                    '<th class="center">' + t('stats_score') + '</th>' +
-                    '<th class="center">' + t('stats_events') + '</th>' +
-                    '<th class="center">Glory</th>' +
+                    '<th class="center">' + (isEvent ? t('col_score') : t('stats_score')) + '</th>' +
+                    (!isEvent ? '<th class="center">' + t('stats_events') + '</th>' : '') +
+                    (!isEvent ? '<th class="center">Glory</th>' : '') +
                     '<th class="center">' + t('stats_profile') + '</th>' +
                 '</tr></thead><tbody>';
 
@@ -185,14 +241,16 @@
                 var rank = i + 1;
                 var badge = rank <= 3 ? medals[i] : '#' + rank;
                 var s = parseFloat(m.score_20);
-                var cls = s >= 16 ? 'score-high' : s >= 10 ? 'score-mid' : 'score-low';
+                var cls = isEvent ? 'score-event' : (s >= 16 ? 'score-high' : s >= 10 ? 'score-mid' : 'score-low');
+                var scoreDisplay = isEvent ? m.score_20 : s.toFixed(1) + '/20';
+
                 tableHtml +=
                     '<tr class="lb-row">' +
                         '<td class="rank-cell">' + badge + '</td>' +
                         '<td class="pseudo-cell"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(m.pseudo) + '</td>' +
-                        '<td class="center"><span class="score-badge ' + cls + '">' + s.toFixed(1) + '/20</span></td>' +
-                        '<td class="center">' + m.events_done + '/' + m.events_total + '</td>' +
-                        '<td class="center">' + (m.glory_score || 0) + '</td>' +
+                        '<td class="center"><span class="score-badge ' + cls + '">' + scoreDisplay + '</span></td>' +
+                        (!isEvent ? '<td class="center">' + m.events_done + '/' + m.events_total + '</td>' : '') +
+                        (!isEvent ? '<td class="center">' + (m.glory_score || 0) + '</td>' : '') +
                         '<td class="center">' +
                             '<button class="profile-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('stats_see_profile') + '">' +
                                 '<i class="ph ph-chart-line-up"></i>' +

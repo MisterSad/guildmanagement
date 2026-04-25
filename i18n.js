@@ -148,6 +148,9 @@
             stats_profile:         'Profil',
             stats_see_profile:     'Voir le profil',
             stats_week:            'Semaine',
+            stats_mode_global:     'Global',
+            stats_mode_svs:        'SvS',
+            stats_mode_gvg:        'GvG',
             
             /* ── Sanctions ────────────────── */
             nav_sanctions:         'Sanctions',
@@ -307,6 +310,9 @@
             stats_profile:         'Profile',
             stats_see_profile:     'View profile',
             stats_week:            'Week',
+            stats_mode_global:     'Global',
+            stats_mode_svs:        'SvS',
+            stats_mode_gvg:        'GvG',
 
             /* ── Sanctions ────────────────── */
             nav_sanctions:         'Sanctions',
