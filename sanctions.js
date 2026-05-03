@@ -36,29 +36,33 @@
         if (count) count.textContent = sanctions.length;
 
         if (sanctions.length === 0) {
-            list.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
+            list.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
             return;
         }
 
-        var html = '';
-        sanctions.forEach(function (s, i) {
+        var html = '<div class="gm-sanction-list">';
+        sanctions.forEach(function (s) {
             var dateStr = new Date(s.created_at).toLocaleDateString('fr-FR', {
                 day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
             });
             var author = s.created_by || '—';
+            var initial = window.RAD.avatarInit(s.pseudo);
             html +=
-                '<div class="list-row sanction-row" style="animation-delay:' + (i * 0.02) + 's">' +
-                    '<span class="list-pseudo"><i class="ph-fill ph-user-focus text-error"></i> ' + esc(s.pseudo) + '</span>' +
-                    '<div class="list-meta">' +
-                        '<span class="list-meta-item sanction-comment"><i class="ph ph-chat-text"></i> ' + esc(s.comment) + '</span>' +
-                        '<span class="list-meta-item"><i class="ph ph-calendar"></i> ' + dateStr + '</span>' +
-                        '<span class="list-meta-item"><i class="ph ph-gavel"></i> ' + t('sanction_by') + ' <span class="sanction-author">' + esc(author) + '</span></span>' +
+                '<div class="gm-sanction-row">' +
+                    '<div class="gm-row" style="gap:.5rem;">' +
+                        '<div class="gm-avatar">' + esc(initial) + '</div>' +
+                        '<strong>' + esc(s.pseudo) + '</strong>' +
                     '</div>' +
-                    '<div class="list-actions">' +
-                        '<button class="delete-btn sanction-delete-btn" data-id="' + s.id + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>' +
+                    '<div class="gm-sanction-comment">"' + esc(s.comment) + '"</div>' +
+                    '<div class="gm-sanction-meta">' +
+                        t('sanction_by') + ' <strong style="color: var(--accent);">' + esc(author) + '</strong> · ' + dateStr +
                     '</div>' +
+                    '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm sanction-delete-btn" data-id="' + s.id + '" title="' + t('delete_title') + '" style="color: var(--danger);">' +
+                        '<i class="ph ph-trash"></i>' +
+                    '</button>' +
                 '</div>';
         });
+        html += '</div>';
         list.innerHTML = html;
 
         list.querySelectorAll('.sanction-delete-btn').forEach(function (btn) {

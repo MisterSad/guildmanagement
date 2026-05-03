@@ -351,6 +351,118 @@
 .gm-table th.gm-center, .gm-table td.gm-center { text-align: center; }
 .gm-table th.gm-right,  .gm-table td.gm-right  { text-align: right; }
 
+/* ─── Member rows (Members page) ─── */
+.gm-member-list {
+    display: flex; flex-direction: column;
+    gap: .5rem;
+}
+.gm-member-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 1rem;
+    align-items: center;
+    padding: .75rem 1rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    transition: border-color .15s, background .15s;
+}
+.gm-member-row:hover { border-color: var(--border); }
+.gm-member-id {
+    display: flex; align-items: center; gap: .75rem;
+    min-width: 0;
+}
+.gm-member-pseudo {
+    font-weight: 600;
+    font-size: .92rem;
+    color: var(--fg);
+}
+.gm-member-actions {
+    display: flex; gap: .25rem;
+}
+@media (max-width: 900px) {
+    .gm-member-row {
+        grid-template-columns: 1fr auto;
+        row-gap: .5rem;
+    }
+    .gm-member-row > .gm-row.gm-dim {
+        grid-column: 1 / -1;
+        flex-wrap: wrap;
+    }
+}
+
+/* ─── Cred cards (Accounts page) ─── */
+.gm-cred-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+.gm-cred-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    display: flex; flex-direction: column;
+    gap: .65rem;
+}
+.gm-cred-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--fg);
+}
+.gm-cred-pass {
+    display: flex; align-items: center; gap: .35rem;
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: 7px;
+    padding: .35rem .55rem;
+}
+.gm-cred-pass .gm-pwd-text {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: .85rem;
+    letter-spacing: .05em;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--fg);
+}
+.gm-cred-pass.gm-masked .gm-pwd-text { letter-spacing: .15em; }
+
+/* ─── Sanction rows (Sanctions page) ─── */
+.gm-sanction-list {
+    display: flex; flex-direction: column;
+    gap: .5rem;
+}
+.gm-sanction-row {
+    display: grid;
+    grid-template-columns: minmax(120px, auto) 1fr auto auto;
+    gap: 1rem;
+    align-items: center;
+    padding: .75rem 1rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--danger);
+}
+.gm-sanction-comment {
+    font-style: italic;
+    color: var(--fg-muted);
+    font-size: .9rem;
+}
+.gm-sanction-meta {
+    font-size: .78rem;
+    color: var(--fg-dim);
+}
+@media (max-width: 900px) {
+    .gm-sanction-row {
+        grid-template-columns: auto 1fr;
+        row-gap: .5rem;
+    }
+    .gm-sanction-row .gm-sanction-meta {
+        grid-column: 1 / -1;
+    }
+}
+
 /* Responsive table → cards */
 @media (max-width: 900px) {
     .gm-resp-table thead { display: none; }

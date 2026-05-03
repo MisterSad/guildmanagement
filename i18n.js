@@ -37,6 +37,8 @@
             empty_accounts:        'Aucun compte généré',
             copy_title:            'Copier le mot de passe',
             delete_title:          'Supprimer',
+            show_pwd:              'Afficher / Masquer',
+            cred_created:          'Créé le',
 
             /* ── Guild Members page ────────────── */
             members_title:         'Membres de la Guilde',
@@ -258,6 +260,8 @@
             empty_accounts:        'No accounts generated',
             copy_title:            'Copy password',
             delete_title:          'Delete',
+            show_pwd:              'Show / Hide',
+            cred_created:          'Created',
 
             /* ── Guild Members page ────────────── */
             members_title:         'Guild Members',

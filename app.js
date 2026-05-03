@@ -247,37 +247,70 @@
         if (!accountList) return;
         if (accountCount) accountCount.textContent = accounts.length;
         if (accounts.length === 0) {
-            accountList.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_accounts') + '</p></div>';
+            accountList.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_accounts') + '</div></div>';
             return;
         }
-        var html = '';
+        // Cred-grid layout (auto-fill 280px min)
+        var html = '<div class="gm-cred-grid">';
         accounts.forEach(function (acc) {
+            // Détermine le rôle pour le chip — si 'role' est dispo, sinon défaut R4
+            var role = acc.role || 'R4';
+            var chipCls = role === 'R5' ? 'gm-chip-accent' : 'gm-chip-info';
+            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
             html +=
-                '<div class="account-item">' +
-                    '<div class="account-info">' +
-                        '<span class="account-name"><i class="ph-fill ph-user-circle text-accent"></i> ' + esc(acc.id) + '</span>' +
-                        '<span class="account-pass">••••••••</span>' +
+                '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
+                    '<div class="gm-row" style="justify-content:space-between;">' +
+                        '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
+                        '<span class="gm-chip ' + chipCls + '">' + esc(role) + '</span>' +
                     '</div>' +
-                    '<div class="account-actions">' +
-                        '<button class="copy-btn" data-pass="' + esc(acc.password) + '" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
-                        '<button class="delete-btn" data-id="' + esc(acc.id) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>' +
+                    '<div class="gm-cred-pass gm-masked" data-acc-pass="' + esc(acc.password) + '">' +
+                        '<span class="gm-pwd-text">••••••••••••</span>' +
+                        '<button class="gm-mini-btn gm-cred-toggle" title="' + t('show_pwd') + '"><i class="ph ph-eye"></i></button>' +
+                        '<button class="gm-mini-btn gm-cred-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
+                    '</div>' +
+                    '<div class="gm-row gm-dim" style="font-size:.75rem;">' +
+                        '<i class="ph ph-calendar-blank"></i>' +
+                        '<span>' + t('cred_created') + ' ' + dateStr + '</span>' +
+                        '<button class="gm-mini-btn gm-danger gm-cred-delete" data-id="' + esc(acc.id) + '" title="' + t('delete_title') + '" style="margin-left:auto;">' +
+                            '<i class="ph ph-trash"></i>' +
+                        '</button>' +
                     '</div>' +
                 '</div>';
         });
+        html += '</div>';
         accountList.innerHTML = html;
 
-        accountList.querySelectorAll('.copy-btn').forEach(function (btn) {
+        accountList.querySelectorAll('.gm-cred-toggle').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                navigator.clipboard.writeText(btn.getAttribute('data-pass')).then(function () {
+                var wrap = btn.closest('.gm-cred-pass');
+                var pass = wrap.getAttribute('data-acc-pass');
+                var pwdSpan = wrap.querySelector('.gm-pwd-text');
+                var icon = btn.querySelector('i');
+                if (wrap.classList.contains('gm-masked')) {
+                    wrap.classList.remove('gm-masked');
+                    pwdSpan.textContent = pass;
+                    icon.className = 'ph ph-eye-slash';
+                } else {
+                    wrap.classList.add('gm-masked');
+                    pwdSpan.textContent = '••••••••••••';
+                    icon.className = 'ph ph-eye';
+                }
+            });
+        });
+
+        accountList.querySelectorAll('.gm-cred-copy').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pass = btn.closest('.gm-cred-pass').getAttribute('data-acc-pass');
+                navigator.clipboard.writeText(pass).then(function () {
                     var icon = btn.querySelector('i');
-                    icon.className = 'ph ph-check text-success';
+                    icon.className = 'ph ph-check';
                     showToast(t('toast_copied'), 'success');
                     setTimeout(function () { icon.className = 'ph ph-copy'; }, 2000);
                 });
             });
         });
 
-        accountList.querySelectorAll('.delete-btn').forEach(function (btn) {
+        accountList.querySelectorAll('.gm-cred-delete').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var id = btn.getAttribute('data-id');
                 showConfirm(
@@ -419,13 +452,13 @@
 
         if (guildMemberList) {
             guildMemberList.innerHTML = filteredAdmin.length
-                ? filteredAdmin.map(function (m, i) { return memberTileHtml(m, i, true); }).join('')
-                : '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
+                ? '<div class="gm-member-list">' + filteredAdmin.map(function (m, i) { return memberTileHtml(m, i, true); }).join('') + '</div>'
+                : '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
         }
         if (guildMemberListM) {
             guildMemberListM.innerHTML = filteredMember.length
-                ? filteredMember.map(function (m, i) { return memberTileHtml(m, i, false); }).join('')
-                : '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
+                ? '<div class="gm-member-list">' + filteredMember.map(function (m, i) { return memberTileHtml(m, i, false); }).join('') + '</div>'
+                : '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
         }
 
         document.querySelectorAll('.guild-edit-btn').forEach(function (btn) {
@@ -451,14 +484,26 @@
 
     function memberTileHtml(m, i, withActions) {
         var uidVal = m.uid || '—';
-        return '<div class="list-row" style="animation-delay:' + (i * 0.02) + 's">' +
-                '<span class="list-pseudo"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(m.pseudo) + '</span>' +
-                '<div class="list-meta">' +
-                    '<span class="list-meta-item"><i class="ph ph-identification-badge"></i> UID: ' + esc(uidVal) + '</span>' +
+        var dateStr = m.created_at
+            ? new Date(m.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' })
+            : '—';
+        var initial = window.RAD.avatarInit(m.pseudo);
+        return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
+                '<div class="gm-member-id">' +
+                    '<div class="gm-avatar">' + esc(initial) + '</div>' +
+                    '<div class="gm-grow gm-truncate">' +
+                        '<div class="gm-member-pseudo gm-truncate">' + esc(m.pseudo) + '</div>' +
+                        '<div class="gm-row" style="gap:.5rem; margin-top:2px;">' +
+                            '<span class="gm-dim gm-mono" style="font-size:.78rem;">UID ' + esc(uidVal) + '</span>' +
+                        '</div>' +
+                    '</div>' +
                 '</div>' +
-                (withActions ? '<div class="list-actions">' +
-                    '<button class="icon-btn guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('edit_title') + '"><i class="ph ph-pencil-simple"></i></button>' +
-                    '<button class="delete-btn guild-delete-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>' +
+                '<div class="gm-row gm-dim" style="gap:.75rem; font-size:.8rem;">' +
+                    '<span class="gm-row" style="gap:.3rem;"><i class="ph ph-calendar-blank"></i> ' + dateStr + '</span>' +
+                '</div>' +
+                (withActions ? '<div class="gm-member-actions">' +
+                    '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('edit_title') + '"><i class="ph ph-pencil-simple"></i></button>' +
+                    '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-delete-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('delete_title') + '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
                 '</div>' : '') +
             '</div>';
     }

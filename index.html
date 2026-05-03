@@ -134,49 +134,47 @@
                 </div>
             </header>
 
-            <!-- Tab: Admin Home -->
+            <!-- Tab: Admin Home (Comptes & accès) -->
             <main class="dashboard-content tab-panel active" id="admin-home">
-                <header class="dashboard-header slide-up">
-                    <h1 data-i18n="admin_title">Command Center</h1>
-                    <p data-i18n="admin_subtitle">Gérez les accès et comptes de la guilde</p>
-                </header>
-                <div class="admin-home-layout">
-                    <!-- Horizontal Banner for account creation -->
-                    <div class="glass-card action-card horizontal-banner slide-up" style="animation-delay:0.1s">
-                        <div class="banner-header">
-                            <i class="ph-fill ph-user-plus text-accent"></i>
-                            <h3 data-i18n="card_create_account">Créer un compte</h3>
+                <div class="gm-page">
+                    <header class="gm-page-header">
+                        <div>
+                            <h1 class="gm-page-title" data-i18n="admin_title">Comptes &amp; accès</h1>
+                            <p class="gm-page-subtitle" data-i18n="admin_subtitle">Créez et gérez les accès au tableau de bord</p>
                         </div>
-                        <form id="create-account-form" class="horizontal-form">
-                            <div class="input-group">
-                                <label for="account-id" data-i18n="label_account_id">Identifiant du compte</label>
-                                <div class="input-wrapper">
-                                    <i class="ph ph-identification-card"></i>
-                                    <input type="text" id="account-id" required
-                                        data-i18n-placeholder="placeholder_account_id"
-                                        placeholder="ex. NomDuMembre">
-                                </div>
+                    </header>
+
+                    <div class="gm-card gm-card-padded gm-section">
+                        <div class="gm-section-title" style="margin-bottom: 1rem;">
+                            <i class="ph ph-key"></i>
+                            <span data-i18n="card_create_account">Nouveau compte</span>
+                        </div>
+                        <form id="create-account-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 220px;">
+                                <i class="ph ph-identification-card gm-icon"></i>
+                                <input type="text" id="account-id" class="gm-input" required
+                                    data-i18n-placeholder="placeholder_account_id"
+                                    placeholder="Identifiant du compte">
                             </div>
-                            <button type="submit" class="primary-btn">
-                                <span data-i18n="btn_generate">Générer l'accès</span>
+                            <button type="submit" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-magic-wand"></i>
+                                <span data-i18n="btn_generate">Générer l'accès</span>
                             </button>
                         </form>
                     </div>
 
-                    <!-- Account Tiles Grid -->
-                    <div class="accounts-section slide-up" style="animation-delay:0.2s">
-                        <div class="section-header">
-                            <div class="flex-align">
-                                <i class="ph-fill ph-users text-accent"></i>
-                                <h3 data-i18n="card_active_accounts">Comptes actifs</h3>
-                                <span class="count-badge" id="account-count">0</span>
+                    <div class="gm-section">
+                        <div class="gm-section-head">
+                            <div class="gm-section-title">
+                                <i class="ph ph-users-three"></i>
+                                <span data-i18n="card_active_accounts">Comptes actifs</span>
+                                <span class="gm-count" id="account-count">0</span>
                             </div>
                         </div>
-                        <div class="account-grid" id="account-list">
-                            <div class="empty-state">
-                                <i class="ph-duotone ph-ghost"></i>
-                                <p data-i18n="empty_accounts">Aucun compte généré</p>
+                        <div id="account-list">
+                            <div class="gm-empty">
+                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <div class="gm-empty-title" data-i18n="empty_accounts">Aucun compte généré</div>
                             </div>
                         </div>
                     </div>
@@ -185,61 +183,53 @@
 
             <!-- Tab: Admin Members -->
             <main class="dashboard-content tab-panel" id="admin-members">
-                <header class="dashboard-header slide-up">
-                    <h1 data-i18n="members_title">Membres de la Guilde</h1>
-                    <p data-i18n="members_subtitle">Gérez les membres in-game de Foundation Galactic Frontier</p>
-                </header>
-                <div class="admin-home-layout">
-                    <!-- Horizontal Banner for adding member -->
-                    <div class="glass-card action-card horizontal-banner slide-up" style="animation-delay:0.1s">
-                        <div class="banner-header">
-                            <i class="ph-fill ph-user-plus text-accent"></i>
-                            <h3 data-i18n="card_add_member">Ajouter un membre</h3>
+                <div class="gm-page">
+                    <header class="gm-page-header">
+                        <div>
+                            <h1 class="gm-page-title" data-i18n="members_title">Membres de la guilde</h1>
+                            <p class="gm-page-subtitle" data-i18n="members_subtitle">Gérez les pseudos in-game et les UID</p>
                         </div>
-                        <form id="add-member-form" class="horizontal-form">
-                            <div class="input-group">
-                                <label for="member-pseudo" data-i18n="label_pseudo">Pseudo in-game</label>
-                                <div class="input-wrapper">
-                                    <i class="ph ph-game-controller"></i>
-                                    <input type="text" id="member-pseudo" required
-                                        data-i18n-placeholder="placeholder_pseudo"
-                                        placeholder="ex. StarWarrior99">
-                                </div>
+                    </header>
+
+                    <div class="gm-card gm-card-padded gm-section">
+                        <div class="gm-section-title" style="margin-bottom: .75rem;">
+                            <i class="ph ph-user-plus"></i>
+                            <span data-i18n="card_add_member">Ajouter un membre</span>
+                        </div>
+                        <form id="add-member-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
+                                <i class="ph ph-game-controller gm-icon"></i>
+                                <input type="text" id="member-pseudo" class="gm-input" required
+                                    data-i18n-placeholder="placeholder_pseudo"
+                                    placeholder="Pseudo in-game">
                             </div>
-                            <div class="input-group">
-                                <label for="member-uid">Player UID</label>
-                                <div class="input-wrapper">
-                                    <i class="ph ph-identification-badge"></i>
-                                    <input type="text" id="member-uid" placeholder="ex. 12345678" required>
-                                </div>
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
+                                <i class="ph ph-identification-badge gm-icon"></i>
+                                <input type="text" id="member-uid" class="gm-input" placeholder="Player UID" required>
                             </div>
-                            <button type="submit" class="primary-btn">
+                            <button type="submit" class="gm-btn gm-btn-primary">
+                                <i class="ph ph-plus"></i>
                                 <span data-i18n="btn_add">Ajouter</span>
-                                <i class="ph ph-plus-circle"></i>
                             </button>
                         </form>
                     </div>
 
-                    <!-- Member Tiles Grid -->
-                    <div class="accounts-section slide-up" style="animation-delay:0.2s">
-                        <div class="section-header">
-                            <div class="flex-align">
-                                <i class="ph-fill ph-users text-accent"></i>
-                                <h3 data-i18n="card_member_list">Liste des membres</h3>
-                                <span class="count-badge" id="guild-member-count">0</span>
+                    <div class="gm-section">
+                        <div class="gm-section-head">
+                            <div class="gm-section-title">
+                                <i class="ph ph-users"></i>
+                                <span data-i18n="card_member_list">Liste des membres</span>
+                                <span class="gm-count" id="guild-member-count">0</span>
+                            </div>
+                            <div class="gm-input-with-icon" style="min-width: 220px; max-width: 360px; flex: 1;">
+                                <i class="ph ph-magnifying-glass gm-icon"></i>
+                                <input type="text" id="member-search-admin" class="gm-input" data-i18n-placeholder="search_placeholder" placeholder="Rechercher pseudo, UID…">
                             </div>
                         </div>
-
-                        <div class="search-bar-row slide-up">
-                            <div class="input-wrapper search-wrapper full-width">
-                                <i class="ph ph-magnifying-glass"></i>
-                                <input type="text" id="member-search-admin" data-i18n-placeholder="search_placeholder" placeholder="Rechercher...">
-                            </div>
-                        </div>
-                        <div class="account-grid list-view" id="guild-member-list">
-                            <div class="empty-state">
-                                <i class="ph-duotone ph-ghost"></i>
-                                <p data-i18n="empty_members">Aucun membre enregistré</p>
+                        <div id="guild-member-list">
+                            <div class="gm-empty">
+                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <div class="gm-empty-title" data-i18n="empty_members">Aucun membre enregistré</div>
                             </div>
                         </div>
                     </div>
@@ -265,56 +255,51 @@
 
             <!-- ─ Sanctions tab ──────────────────────────────────── -->
             <main class="dashboard-content tab-panel" id="tab-sanctions">
-                <header class="dashboard-header slide-up">
-                    <h1 data-i18n="sanctions_title">Suivi des Sanctions</h1>
-                    <p data-i18n="sanctions_subtitle">Gérez et historisez les manquements des membres</p>
-                </header>
-                <div class="admin-home-layout">
-                    <!-- Form for new sanction -->
-                    <div class="glass-card action-card horizontal-banner slide-up" style="animation-delay:0.1s">
-                        <div class="banner-header">
-                            <i class="ph-fill ph-warning text-error"></i>
-                            <h3 data-i18n="btn_apply_sanction">Appliquer la sanction</h3>
+                <div class="gm-page">
+                    <header class="gm-page-header">
+                        <div>
+                            <h1 class="gm-page-title" data-i18n="sanctions_title">Sanctions</h1>
+                            <p class="gm-page-subtitle" data-i18n="sanctions_subtitle">Suivez les manquements et leur historique</p>
                         </div>
-                        <form id="apply-sanction-form" class="horizontal-form">
-                            <div class="input-group">
-                                <label for="sanction-player" data-i18n="label_target_player">Membre concerné</label>
-                                <div class="input-wrapper">
-                                    <i class="ph ph-user-focus"></i>
-                                    <input type="text" id="sanction-player" required list="member-list-datalist"
-                                        data-i18n-placeholder="placeholder_target_player"
-                                        placeholder="Rechercher un membre...">
-                                    <datalist id="member-list-datalist"></datalist>
-                                </div>
+                    </header>
+
+                    <div class="gm-card gm-card-padded gm-section">
+                        <div class="gm-section-title" style="margin-bottom: .75rem;">
+                            <i class="ph ph-warning"></i>
+                            <span data-i18n="btn_apply_sanction">Appliquer une sanction</span>
+                        </div>
+                        <form id="apply-sanction-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
+                                <i class="ph ph-user-focus gm-icon"></i>
+                                <input type="text" id="sanction-player" class="gm-input" required list="member-list-datalist"
+                                    data-i18n-placeholder="placeholder_target_player"
+                                    placeholder="Membre concerné">
+                                <datalist id="member-list-datalist"></datalist>
                             </div>
-                            <div class="input-group">
-                                <label for="sanction-comment" data-i18n="label_comment">Commentaire / Motif</label>
-                                <div class="input-wrapper">
-                                    <i class="ph ph-chat-text"></i>
-                                    <input type="text" id="sanction-comment" required
-                                        placeholder="...">
-                                </div>
+                            <div class="gm-input-with-icon" style="flex:2; min-width: 220px;">
+                                <i class="ph ph-chat-text gm-icon"></i>
+                                <input type="text" id="sanction-comment" class="gm-input" required
+                                    placeholder="Motif…">
                             </div>
-                            <button type="submit" class="primary-btn btn-danger-gradient">
-                                <span data-i18n="btn_apply_sanction">Appliquer</span>
+                            <button type="submit" class="gm-btn gm-btn-danger">
                                 <i class="ph ph-gavel"></i>
+                                <span data-i18n="btn_apply_sanction">Appliquer</span>
                             </button>
                         </form>
                     </div>
 
-                    <!-- Sanctions History -->
-                    <div class="accounts-section slide-up" style="animation-delay:0.2s">
-                        <div class="section-header">
-                            <div class="flex-align">
-                                <i class="ph-fill ph-clock-counter-clockwise text-accent"></i>
-                                <h3 data-i18n="sanctions_history">Historique</h3>
-                                <span class="count-badge" id="sanctions-count">0</span>
+                    <div class="gm-section">
+                        <div class="gm-section-head">
+                            <div class="gm-section-title">
+                                <i class="ph ph-clock-counter-clockwise"></i>
+                                <span data-i18n="sanctions_history">Historique</span>
+                                <span class="gm-count" id="sanctions-count">0</span>
                             </div>
                         </div>
-                        <div class="account-grid list-view" id="sanctions-list">
-                            <div class="empty-state">
-                                <i class="ph-duotone ph-ghost"></i>
-                                <p data-i18n="empty_members">Aucun historique</p>
+                        <div id="sanctions-list">
+                            <div class="gm-empty">
+                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <div class="gm-empty-title" data-i18n="empty_members">Aucun historique</div>
                             </div>
                         </div>
                     </div>
