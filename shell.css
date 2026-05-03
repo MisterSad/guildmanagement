@@ -5,6 +5,25 @@
  * Préfixe .gm- pour zéro collision avec l'existant.
  */
 
+/* ─── Legacy token remap ───────────────────────────────────────────────────
+ * Charge en dernier après styles.css : ces définitions remplacent celles de
+ * styles.css pour que le code legacy non-encore-migré (les .glass-card, les
+ * .primary-btn, etc.) utilise la nouvelle palette galactic gold/cosmic.
+ */
+:root {
+    --bg-color:      var(--bg-0);
+    --card-bg:       var(--bg-elev);
+    --card-border:   var(--border-soft);
+    --text-main:     var(--fg);
+    --text-muted:    var(--fg-muted);
+    --font-family:   var(--font);
+    --primary:       var(--accent);
+    --primary-hover: var(--accent-2);
+    --error:         var(--danger);
+    /* On garde --success, --radius-md, --transition tels que définis par styles.css
+       — ils sont consommés par des composants legacy qui supposent ces valeurs. */
+}
+
 /* ─── Reset léger pour le shell ─── */
 .gm-shell {
     display: flex;
@@ -34,6 +53,27 @@
 #dashboard-view > .app-header { display: none !important; }
 /* Cache aussi l'ancien header de member-view (s'il est encore utilisé) */
 #member-view > .app-header { display: none !important; }
+/* Cache l'ancien fond animated-bg (orbs) — le shell a son propre gradient */
+#dashboard-view ~ .animated-bg, .gm-shell ~ .animated-bg { display: none; }
+
+/* Neutralise les styles legacy de .dashboard-content quand wrapée par le shell */
+.gm-shell .dashboard-content {
+    padding: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    flex: none !important;
+}
+.gm-shell .dashboard-content.tab-panel.active {
+    display: block !important;
+}
+
+/* Fond global cohérent avec les nouveaux tokens */
+html, body {
+    background: var(--bg-0);
+    color: var(--fg);
+    font-family: var(--font);
+}
 
 /* ─── Sidebar (desktop ≥901px) ─── */
 .gm-sidebar {
@@ -431,4 +471,47 @@
 }
 @media (max-width: 480px) {
     .gm-login-card { padding: 1.5rem 1.25rem; }
+}
+
+/* Toast au-dessus du bottom-nav mobile */
+@media (max-width: 900px) {
+    #toast-container {
+        bottom: calc(var(--bottom-nav-h) + 1rem) !important;
+        right: 1rem !important;
+        left: 1rem !important;
+    }
+    #toast-container .toast { width: 100%; }
+}
+
+/* Stat grid : 2 cols sur mobile, 1 col en très petit */
+@media (max-width: 900px) {
+    .gm-stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: .75rem;
+    }
+    .gm-stat-tile { padding: .85rem .9rem; }
+    .gm-stat-tile-value { font-size: 1.4rem; }
+}
+@media (max-width: 480px) {
+    .gm-stat-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Event banner s'empile en mobile */
+@media (max-width: 900px) {
+    .gm-event-banner { padding: 1rem; }
+    .gm-event-actions { width: 100%; }
+    .gm-event-actions .gm-btn { flex: 1; justify-content: center; }
+}
+
+/* Podium : full width sur mobile */
+@media (max-width: 480px) {
+    .gm-podium { max-width: 100%; }
+}
+
+/* Réduit les animations si l'utilisateur le demande */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
 }
