@@ -1073,8 +1073,28 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .check-toggle input:checked ~ .check-slider::after { transform: translateX(18px); background: var(--success); }
 
 /* ─── Score Input ────────────────────────────────────────────────────────── */
-.score-input, .sf-score-input { width: 140px; padding: 0.4rem 0.6rem; background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: var(--radius-sm); color: var(--text-main); font-family: var(--font-family); font-size: 0.875rem; text-align: center; outline: none; transition: var(--transition); }
+.score-input, .sf-score-input {
+    width: 180px;
+    min-width: 180px;
+    padding: 0.45rem 0.7rem;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-family: var(--font-family);
+    font-size: 0.95rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    outline: none;
+    transition: var(--transition);
+}
 .score-input:focus, .sf-score-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+/* Numeric display cells share the same tabular-nums alignment */
+.glory-prev-val, .glory-curr-val, .total-glory-val,
+.score-badge, .leaderboard-table td.center {
+    font-variant-numeric: tabular-nums;
+}
 
 /* ─── Shadowfront Sub Tabs ─────────────────────────────────────────────────── */
 .sf-sub-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--card-border); padding-bottom: 0.5rem; }
@@ -1440,6 +1460,66 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     font-size: 0.9rem;
 }
 .stats-prince-banner i { font-size: 1.2rem; }
+
+.stats-formula-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    margin-bottom: 1rem;
+    background: rgba(99, 102, 241, 0.06);
+    border: 1px dashed rgba(99, 102, 241, 0.25);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+.stats-formula-note strong { color: var(--text-main); font-variant-numeric: tabular-nums; }
+
+.consistency-yes {
+    display: inline-block;
+    padding: 0.18rem 0.55rem;
+    border-radius: 12px;
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: help;
+}
+.consistency-no {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: help;
+}
+
+.profile-breakdown {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+}
+.profile-breakdown h4,
+.profile-history h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.breakdown-bonus td {
+    background: rgba(99, 102, 241, 0.05);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+.breakdown-bonus td strong { color: var(--accent); }
+.breakdown-total td {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--text-main);
+    font-size: 0.95rem;
+    border-top: 2px solid var(--primary);
+}
+.breakdown-total td strong { color: var(--primary); }
 
 /* ─── Arms Race stage badge in header ──────────────────────────────────── */
 .arms-stage-badge {

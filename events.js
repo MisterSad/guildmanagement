@@ -5,9 +5,10 @@
  */
 (function () {
 
-    var db = window.RAD ? window.RAD.db : null;
-    var t  = window.RAD ? window.RAD.t  : function (k) { return k; };
-    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
+    var db   = window.RAD ? window.RAD.db : null;
+    var t    = window.RAD ? window.RAD.t  : function (k) { return k; };
+    var esc  = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
+    var fmt  = window.RAD ? window.RAD.formatNumber : function (n) { return String(n); };
 
     // event_name "logique" → event_name côté DB (Arms Race a 2 stages)
     var STANDARD_EVENTS = ['SvS', 'GvG', 'Defend Trade Route', 'ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
@@ -181,7 +182,8 @@
     async function saveScore(tabKey, pseudo, value) {
         if (!db) return;
         var s = state[tabKey];
-        await db.from('event_participants').update({ score: value === '' ? null : parseInt(value, 10) })
+        var num = window.RAD.parseNumber(value);
+        await db.from('event_participants').update({ score: num })
             .eq('event_name', s.activeEventName)
             .eq('session_id', s.sessionId)
             .eq('pseudo', pseudo);
@@ -252,7 +254,7 @@
                 '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
                 '<span class="stat-chip success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
                 '<span class="stat-chip muted"><i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent') + '</span>' +
-                (hasScore ? '<span class="stat-chip accent"><i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + totalScore + '</span>' : '') +
+                (hasScore ? '<span class="stat-chip accent"><i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore) + '</span>' : '') +
             '</div>' +
             '<div class="input-wrapper" style="margin-bottom: 1rem;">' +
                 '<i class="ph ph-magnifying-glass"></i>' +
@@ -278,7 +280,7 @@
                         '</label>' +
                     '</td>' +
                     (hasScore ? '<td class="score-cell">' +
-                        '<input type="number" min="0" class="score-input" value="' + (p.score != null ? p.score : '') + '" placeholder="—"' +
+                        '<input type="text" inputmode="numeric" class="score-input" value="' + (p.score != null ? fmt(p.score) : '') + '" placeholder="—"' +
                             ' data-pseudo="' + esc(p.pseudo) + '">' +
                     '</td>' : '') +
                 '</tr>';
@@ -303,6 +305,7 @@
         });
 
         el.querySelectorAll('.score-input').forEach(function (inp) {
+            window.RAD.attachNumberFormatter(inp);
             var timer;
             inp.addEventListener('input', function () {
                 clearTimeout(timer);
@@ -310,7 +313,7 @@
                     var pseudo = inp.getAttribute('data-pseudo');
                     saveScore(tabKey, pseudo, inp.value).then(function () {
                         var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
-                        if (pp) pp.score = inp.value === '' ? null : parseInt(inp.value, 10);
+                        if (pp) pp.score = window.RAD.parseNumber(inp.value);
                         refreshStats(el, tabKey);
                     });
                 }, 700);
@@ -337,7 +340,7 @@
         var chips = el.querySelectorAll('.event-stats .stat-chip');
         if (chips[1]) chips[1].innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated');
         if (chips[2]) chips[2].innerHTML = '<i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent');
-        if (chips[3]) chips[3].innerHTML = '<i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + totalScore;
+        if (chips[3]) chips[3].innerHTML = '<i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore);
     }
 
     // ── Stage selector modal pour Arms Race ───────────────────────────────

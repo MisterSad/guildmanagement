@@ -75,6 +75,56 @@
         return null;
     }
 
+    // ── Formatage numérique avec séparateur de milliers ──────────────────────
+    // Limite max : 9 999 999 999 (10 chiffres)
+    var MAX_NUMERIC = 9999999999;
+
+    function formatNumber(n) {
+        if (n === null || n === undefined || n === '') return '';
+        var num = typeof n === 'number' ? n : parseInt(String(n).replace(/\D/g, ''), 10);
+        if (isNaN(num)) return '';
+        if (num > MAX_NUMERIC) num = MAX_NUMERIC;
+        return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    }
+
+    function parseNumber(s) {
+        if (s === null || s === undefined || s === '') return null;
+        var digits = String(s).replace(/\D/g, '');
+        if (digits === '') return null;
+        var num = parseInt(digits, 10);
+        if (isNaN(num)) return null;
+        return Math.min(num, MAX_NUMERIC);
+    }
+
+    // Branche un input texte pour reformater à chaque frappe en préservant le curseur.
+    function attachNumberFormatter(input) {
+        if (!input || input.dataset.numFormatted === '1') return;
+        input.dataset.numFormatted = '1';
+        input.setAttribute('inputmode', 'numeric');
+        input.setAttribute('autocomplete', 'off');
+        input.setAttribute('maxlength', '13'); // "9 999 999 999"
+
+        // Format initial
+        if (input.value) input.value = formatNumber(input.value);
+
+        input.addEventListener('input', function () {
+            var raw = input.value;
+            var cursorPos = input.selectionStart || 0;
+            var digitsBefore = raw.substring(0, cursorPos).replace(/\D/g, '').length;
+
+            var formatted = formatNumber(raw);
+            input.value = formatted;
+
+            // Restaurer le curseur après le même nombre de chiffres
+            var newPos = formatted.length, count = 0;
+            for (var i = 0; i < formatted.length; i++) {
+                if (count >= digitsBefore) { newPos = i; break; }
+                if (/\d/.test(formatted[i])) count++;
+            }
+            try { input.setSelectionRange(newPos, newPos); } catch (_) {}
+        });
+    }
+
     function showToast(message, type) {
         if (window.RAD_APP && window.RAD_APP.showToast) {
             window.RAD_APP.showToast(message, type);
@@ -112,7 +162,11 @@
         newSessionId: newSessionId,
         showToast: showToast,
         validatePseudo: validatePseudo,
-        validateUid: validateUid
+        validateUid: validateUid,
+        formatNumber: formatNumber,
+        parseNumber: parseNumber,
+        attachNumberFormatter: attachNumberFormatter,
+        MAX_NUMERIC: MAX_NUMERIC
     };
 
 })();

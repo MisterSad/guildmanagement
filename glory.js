@@ -7,6 +7,7 @@
     var db  = window.RAD ? window.RAD.db : null;
     var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
     var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
+    var fmt = window.RAD ? window.RAD.formatNumber : function (n) { return String(n); };
 
     window.RAD_GLORY = { load: loadGlory };
 
@@ -55,7 +56,7 @@
         var html =
             '<div class="event-stats">' +
                 '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + members.length + ' ' + t('event_total') + '</span>' +
-                '<span class="stat-chip accent"><i class="ph-fill ph-trophy"></i> ' + t('glory_total') + ' <span class="total-glory-val">' + totalGlory + '</span></span>' +
+                '<span class="stat-chip accent"><i class="ph-fill ph-trophy"></i> ' + t('glory_total') + ' <span class="total-glory-val">' + fmt(totalGlory) + '</span></span>' +
                 (hasPrev ? '<span class="stat-chip muted"><i class="ph-fill ph-clock-counter-clockwise"></i> ' + t('glory_vs_prev') + '</span>' : '') +
             '</div>' +
             '<div class="event-search-bar">' +
@@ -78,15 +79,15 @@
                 '<tr class="participant-row" data-pseudo="' + esc(pseudo) + '">' +
                     '<td class="pseudo-cell"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(pseudo) + '</td>' +
                     '<td class="center glory-prev-val">' +
-                        (prev !== null ? '<span class="glory-prev">' + prev + '</span>' : '<span class="glory-na">—</span>') +
+                        (prev !== null ? '<span class="glory-prev">' + fmt(prev) + '</span>' : '<span class="glory-na">—</span>') +
                     '</td>' +
                     '<td class="center glory-curr-val">' +
-                        (curr !== '' ? '<span>' + curr + '</span>' : '<span class="glory-na">—</span>') +
+                        (curr !== '' ? '<span>' + fmt(curr) + '</span>' : '<span class="glory-na">—</span>') +
                     '</td>' +
                     '<td class="score-cell">' +
                         '<div class="glory-input-wrapper">' +
-                            '<input type="number" min="0" class="score-input glory-input"' +
-                                ' value="' + curr + '" placeholder="0"' +
+                            '<input type="text" inputmode="numeric" class="score-input glory-input"' +
+                                ' value="' + (curr !== '' ? fmt(curr) : '') + '" placeholder="0"' +
                                 ' data-pseudo="' + esc(pseudo) + '"' +
                                 ' data-prev="' + (prev !== null ? prev : '') + '">' +
                             '<i class="ph ph-circle-notch ph-spin saving-icon hidden"></i>' +
@@ -113,15 +114,16 @@
         }
 
         area.querySelectorAll('.glory-input').forEach(function (inp) {
+            window.RAD.attachNumberFormatter(inp);
             var timer;
             inp.addEventListener('input', function () {
                 var prev = inp.getAttribute('data-prev');
-                var curr = inp.value;
+                var curr = window.RAD.parseNumber(inp.value);
                 var row  = inp.closest('tr');
 
                 var currCell = row.querySelector('.glory-curr-val');
                 if (currCell) {
-                    currCell.innerHTML = curr !== '' ? '<span>' + curr + '</span>' : '<span class="glory-na">—</span>';
+                    currCell.innerHTML = curr !== null ? '<span>' + fmt(curr) + '</span>' : '<span class="glory-na">—</span>';
                 }
 
                 var pctCell = row.querySelector('.glory-pct-cell');
@@ -136,16 +138,17 @@
 
                 clearTimeout(timer);
                 timer = setTimeout(function () {
-                    saveGlory(inp.getAttribute('data-pseudo'), inp.value, week, icon);
+                    saveGlory(inp.getAttribute('data-pseudo'), curr, week, icon);
                 }, 700);
             });
         });
     }
 
     function buildEvolutionPctBadge(curr, prev) {
-        if (curr === '' || prev === null || prev === 0) return '<span class="glory-na">—</span>';
-        var c = parseInt(curr, 10);
-        var p = parseInt(prev, 10);
+        if (curr === null || curr === '' || prev === null || prev === 0) return '<span class="glory-na">—</span>';
+        var c = typeof curr === 'number' ? curr : window.RAD.parseNumber(curr);
+        var p = typeof prev === 'number' ? prev : parseInt(prev, 10);
+        if (c === null || isNaN(p) || p === 0) return '<span class="glory-na">—</span>';
         var diff = c - p;
         var pct = (diff / p) * 100;
 
@@ -157,16 +160,17 @@
     function updateTotal(area) {
         var total = 0;
         area.querySelectorAll('.glory-input').forEach(function (inp) {
-            total += (parseInt(inp.value, 10) || 0);
+            var n = window.RAD.parseNumber(inp.value);
+            total += (n || 0);
         });
         var valSpan = area.querySelector('.total-glory-val');
-        if (valSpan) valSpan.textContent = total;
+        if (valSpan) valSpan.textContent = fmt(total);
     }
 
     async function saveGlory(pseudo, value, week, icon) {
         if (!db) return;
         try {
-            var scoreVal = value === '' ? null : parseInt(value, 10);
+            var scoreVal = (value === null || value === '') ? null : (typeof value === 'number' ? value : window.RAD.parseNumber(value));
             var res = await db.from('event_participants')
                 .update({ score: scoreVal, participated: 1 })
                 .eq('event_name', 'Glory').eq('week_start', week).eq('pseudo', pseudo);
