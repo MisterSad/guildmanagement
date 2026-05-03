@@ -1,0 +1,61 @@
+/**
+ * tokens.css — Design system Guild Manager v2
+ * Inspired by the design_handoff. Cosmic-night palette + galactic gold accent.
+ *
+ * Loaded BEFORE styles.css so existing rules can override during transition,
+ * and so :root variables are available everywhere.
+ */
+:root {
+  /* ─── Backgrounds ─── */
+  --bg-0:     oklch(0.16 0.018 270);  /* App background */
+  --bg-1:     oklch(0.20 0.022 270);  /* Cards / inputs */
+  --bg-2:     oklch(0.24 0.025 270);  /* Elevated cards / hover */
+  --bg-3:     oklch(0.28 0.028 270);  /* Active tabs */
+  --bg-elev:  oklch(0.22 0.024 270);  /* Main containers */
+
+  /* ─── Foregrounds ─── */
+  --fg:       oklch(0.96 0.005 270);
+  --fg-muted: oklch(0.78 0.012 270);
+  --fg-dim:   oklch(0.62 0.015 270);
+
+  /* ─── Borders ─── */
+  --border:      oklch(0.32 0.022 270);
+  --border-soft: oklch(0.28 0.020 270);
+
+  /* ─── Accent (galactic gold) ─── */
+  --accent:      oklch(0.78 0.13 75);
+  --accent-2:    oklch(0.68 0.15 60);
+  --accent-soft: oklch(0.32 0.05 75);
+  --accent-fg:   oklch(0.18 0.02 75);
+
+  /* ─── Status palette ─── */
+  --info:         oklch(0.72 0.13 230);
+  --info-soft:    oklch(0.30 0.05 230);
+  --success:      oklch(0.74 0.15 150);
+  --success-soft: oklch(0.30 0.05 150);
+  --warning:      oklch(0.80 0.14 80);
+  --warning-soft: oklch(0.32 0.05 80);
+  --danger:       oklch(0.68 0.18 25);
+  --danger-soft:  oklch(0.30 0.06 25);
+
+  /* ─── Radii ─── */
+  --radius-sm: 6px;
+  --radius:    10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* ─── Shadows ─── */
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.20);
+  --shadow:    0 4px 14px oklch(0 0 0 / 0.30);
+  --shadow-lg: 0 12px 40px oklch(0 0 0 / 0.40);
+
+  /* ─── Typography ─── */
+  --font:         "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+
+  /* ─── Layout ─── */
+  --sidebar-w:    232px;
+  --topbar-h:     60px;
+  --bottom-nav-h: 64px;
+}
