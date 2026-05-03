@@ -24,48 +24,51 @@
     <div id="app">
 
         <!-- ─── Login View ──────────────────────────────────────── -->
-        <div id="login-view" class="view active">
-            <div class="glass-card login-card fade-in">
-                <div class="login-header">
-                    <div class="icon-container">
-                        <i class="ph ph-shield-star icon-large"></i>
-                    </div>
-                    <h1 data-i18n="login_title">RAD MANAGEMENT</h1>
-                    <p data-i18n="login_subtitle">Foundation Galactic Frontier</p>
+        <div id="login-view" class="view active gm-login-wrap">
+            <div class="gm-login-lang-pos">
+                <div class="gm-lang-toggle">
+                    <button class="lang-btn gm-active" data-lang="fr">FR</button>
+                    <button class="lang-btn" data-lang="en">EN</button>
                 </div>
-                <form id="login-form">
-                    <div class="lang-switcher login-lang-switcher">
-                        <button class="lang-btn active" data-lang="fr">🇫🇷 FR</button>
-                        <button class="lang-btn" data-lang="en">🇬🇧 EN</button>
-                    </div>
-                    <div class="input-group">
+            </div>
+            <form id="login-form" class="gm-login-card">
+                <div class="gm-login-brand-row">
+                    <div class="gm-avatar-xl">R</div>
+                    <div class="gm-login-title" data-i18n="login_title">RAD MANAGEMENT</div>
+                    <div class="gm-login-sub" data-i18n="login_subtitle">Foundation Galactic Frontier</div>
+                </div>
+                <div class="gm-login-form">
+                    <div class="gm-login-field">
                         <label for="username" data-i18n="login_label_id">Identifiant</label>
-                        <div class="input-wrapper">
-                            <i class="ph ph-user"></i>
-                            <input type="text" id="username" required
+                        <div class="gm-input-with-icon">
+                            <i class="ph ph-user gm-icon"></i>
+                            <input type="text" id="username" class="gm-input" required
                                 data-i18n-placeholder="login_placeholder_id"
-                                placeholder="Votre identifiant">
+                                placeholder="Votre identifiant" autocomplete="username">
                         </div>
                     </div>
-                    <div class="input-group">
+                    <div class="gm-login-field">
                         <label for="password" data-i18n="login_label_pass">Mot de passe</label>
-                        <div class="input-wrapper">
-                            <i class="ph ph-lock"></i>
-                            <input type="password" id="password" required
+                        <div class="gm-input-with-icon gm-login-pwd-wrap">
+                            <i class="ph ph-lock gm-icon"></i>
+                            <input type="password" id="password" class="gm-input" required
                                 data-i18n-placeholder="login_placeholder_pass"
-                                placeholder="Votre mot de passe">
+                                placeholder="Votre mot de passe" autocomplete="current-password">
+                            <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Afficher / masquer le mot de passe">
+                                <i class="ph ph-eye"></i>
+                            </button>
                         </div>
                     </div>
-                    <div id="login-error" class="error-message hidden">
+                    <div id="login-error" class="gm-login-error hidden">
                         <i class="ph ph-warning-circle"></i>
                         <span data-i18n="login_error">Identifiants invalides.</span>
                     </div>
-                    <button type="submit" id="login-btn" class="primary-btn">
-                        <span data-i18n="login_btn">Accéder</span>
-                        <i class="ph ph-arrow-right"></i>
+                    <button type="submit" id="login-btn" class="gm-btn gm-btn-primary gm-login-submit">
+                        <i class="ph ph-sign-in"></i>
+                        <span data-i18n="login_btn">Se connecter</span>
                     </button>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
 
         <!-- ─── Admin Dashboard View ────────────────────────────── -->

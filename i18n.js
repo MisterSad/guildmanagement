@@ -204,7 +204,7 @@
             sanction_by:           'par',
 
             /* ── Shell v2 ────────────────── */
-            gm_brand:              'Guild Manager',
+            gm_brand:              'RAD MANAGEMENT',
             gm_brand_sub:          'Foundation Galactic Frontier',
             gm_nav_play:           'Activité',
             gm_nav_admin:          'Admin',
@@ -425,7 +425,7 @@
             sanction_by:           'by',
 
             /* ── Shell v2 ────────────────── */
-            gm_brand:              'Guild Manager',
+            gm_brand:              'RAD MANAGEMENT',
             gm_brand_sub:          'Foundation Galactic Frontier',
             gm_nav_play:           'Activity',
             gm_nav_admin:          'Admin',

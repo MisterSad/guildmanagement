@@ -44,7 +44,21 @@
         renderShell();
         observeActiveTab();
         observeViewport();
+        wireLoginPasswordToggle();
     });
+
+    // ── Login : œil show/hide pour le password ──────────────────────────────
+    function wireLoginPasswordToggle() {
+        var btn = document.querySelector('[data-gm-pwd-toggle]');
+        var input = document.getElementById('password');
+        if (!btn || !input) return;
+        btn.addEventListener('click', function () {
+            var isPwd = input.type === 'password';
+            input.type = isPwd ? 'text' : 'password';
+            var icon = btn.querySelector('i');
+            if (icon) icon.className = isPwd ? 'ph ph-eye-slash' : 'ph ph-eye';
+        });
+    }
 
     // ── Wrap des panels existants dans la structure shell ───────────────────
     function wrapDashboardInShell() {
@@ -137,7 +151,7 @@
 
         var html =
             '<div class="gm-sidebar-brand">' +
-                '<div class="gm-brand-mark">G</div>' +
+                '<div class="gm-brand-mark">R</div>' +
                 '<div>' +
                     '<div class="gm-brand-text">' + t('gm_brand') + '</div>' +
                     '<div class="gm-brand-sub">' + t('gm_brand_sub') + '</div>' +
@@ -181,7 +195,7 @@
 
         var brandHtml = state.mobile
             ? '<div class="gm-topbar-mobile-brand">' +
-                '<div class="gm-brand-mark">G</div>' +
+                '<div class="gm-brand-mark">R</div>' +
                 '<div class="gm-topbar-title">' + title + '</div>' +
               '</div>'
             : '<div class="gm-topbar-title">' + title + '</div>';
