@@ -463,6 +463,105 @@
     }
 }
 
+/* ─── Podium (Stats top 3) ─── */
+.gm-podium {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: .75rem;
+    align-items: end;
+    margin-bottom: 1.5rem;
+    max-width: 600px;
+}
+.gm-podium-slot {
+    display: flex; flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1rem .5rem 0;
+    cursor: pointer;
+    transition: transform .15s;
+}
+.gm-podium-slot:hover { transform: translateY(-2px); }
+.gm-podium-name {
+    font-weight: 600;
+    font-size: .9rem;
+    margin-top: .5rem;
+    color: var(--fg);
+}
+.gm-podium-score {
+    font-size: .78rem;
+    color: var(--fg-dim);
+    margin-bottom: .5rem;
+    font-variant-numeric: tabular-nums;
+}
+.gm-podium-bar {
+    width: 100%;
+    min-height: 50px;
+    border-radius: 8px 8px 0 0;
+    display: flex; align-items: flex-start; justify-content: center;
+}
+.gm-podium-rank {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: white;
+    padding-top: 8px;
+}
+.gm-podium-slot.gm-gold .gm-podium-bar {
+    background: linear-gradient(180deg, oklch(0.78 0.16 75), oklch(0.58 0.14 60));
+    height: 90px;
+}
+.gm-podium-slot.gm-silver .gm-podium-bar {
+    background: linear-gradient(180deg, oklch(0.75 0.02 270), oklch(0.55 0.02 270));
+    height: 70px;
+}
+.gm-podium-slot.gm-bronze .gm-podium-bar {
+    background: linear-gradient(180deg, oklch(0.65 0.10 50), oklch(0.45 0.08 40));
+    height: 55px;
+}
+
+/* ─── Stats banners ─── */
+.gm-prince-banner {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .85rem 1.1rem;
+    margin-bottom: 1.25rem;
+    background: linear-gradient(135deg, oklch(0.30 0.06 75 / 0.18), oklch(0.30 0.06 270 / 0.18));
+    border: 1px solid oklch(0.78 0.13 75 / 0.25);
+    border-radius: var(--radius);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: .9rem;
+}
+.gm-prince-banner i { font-size: 1.2rem; }
+
+.gm-formula-note {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .6rem 1rem;
+    margin-bottom: 1rem;
+    background: oklch(0.20 0.022 270 / 0.5);
+    border: 1px dashed var(--border-soft);
+    border-radius: var(--radius);
+    color: var(--fg-dim);
+    font-size: .85rem;
+}
+.gm-formula-note strong {
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── Profile modal (Stats) ─── */
+.gm-profile-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    max-width: 700px;
+    width: 95vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+    gap: 1.25rem;
+}
+
 /* Responsive table → cards */
 @media (max-width: 900px) {
     .gm-resp-table thead { display: none; }

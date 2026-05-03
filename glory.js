@@ -51,55 +51,59 @@
         }
 
         var totalGlory = Object.values(currMap).reduce(function (s, v) { return s + (v || 0); }, 0);
-        var hasPrev    = Object.keys(prevMap).length > 0;
 
         var html =
-            '<div class="event-stats">' +
-                '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + members.length + ' ' + t('event_total') + '</span>' +
-                '<span class="stat-chip accent"><i class="ph-fill ph-trophy"></i> ' + t('glory_total') + ' <span class="total-glory-val">' + fmt(totalGlory) + '</span></span>' +
-                (hasPrev ? '<span class="stat-chip muted"><i class="ph-fill ph-clock-counter-clockwise"></i> ' + t('glory_vs_prev') + '</span>' : '') +
+            '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between;">' +
+                '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap;">' +
+                    '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + members.length + ' ' + t('event_total') + '</span>' +
+                    '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-trophy"></i> ' + t('glory_total') + ' <span class="gm-mono total-glory-val">' + fmt(totalGlory) + '</span></span>' +
+                '</div>' +
+                '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
+                    '<i class="ph ph-magnifying-glass gm-icon"></i>' +
+                    '<input type="text" class="gm-input glory-search-input" placeholder="' + t('search_placeholder') + '">' +
+                '</div>' +
             '</div>' +
-            '<div class="event-search-bar">' +
-                '<input type="text" class="glory-search-input" placeholder="' + t('search_placeholder') + '">' +
-            '</div>' +
-            '<div class="participants-table-wrap">' +
-            '<table class="participants-table"><thead><tr>' +
+            '<div class="gm-table-wrap">' +
+            '<div class="gm-table-scroll">' +
+            '<table class="gm-table gm-resp-table"><thead><tr>' +
                 '<th>' + t('col_member') + '</th>' +
-                '<th class="center">' + t('glory_prev_week') + '</th>' +
-                '<th class="center">' + t('glory_this_week') + '</th>' +
-                '<th class="center">' + t('glory_input') + '</th>' +
-                '<th class="center">' + t('glory_evolution_pct') + '</th>' +
+                '<th class="gm-right">' + t('glory_prev_week') + '</th>' +
+                '<th class="gm-right">' + t('glory_input') + '</th>' +
+                '<th class="gm-right">' + t('glory_evolution_pct') + '</th>' +
             '</tr></thead><tbody>';
 
         members.forEach(function (pseudo) {
             var curr = currMap[pseudo] != null ? currMap[pseudo] : '';
             var prev = prevMap[pseudo] != null ? prevMap[pseudo] : null;
+            var initial = window.RAD.avatarInit(pseudo);
 
             html +=
                 '<tr class="participant-row" data-pseudo="' + esc(pseudo) + '">' +
-                    '<td class="pseudo-cell"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(pseudo) + '</td>' +
-                    '<td class="center glory-prev-val">' +
-                        (prev !== null ? '<span class="glory-prev">' + fmt(prev) + '</span>' : '<span class="glory-na">—</span>') +
+                    '<td data-label="' + t('col_member') + '">' +
+                        '<div class="gm-row" style="gap:.6rem;">' +
+                            '<div class="gm-avatar">' + esc(initial) + '</div>' +
+                            '<strong>' + esc(pseudo) + '</strong>' +
+                        '</div>' +
                     '</td>' +
-                    '<td class="center glory-curr-val">' +
-                        (curr !== '' ? '<span>' + fmt(curr) + '</span>' : '<span class="glory-na">—</span>') +
+                    '<td class="gm-right gm-num gm-dim glory-prev-val" data-label="' + t('glory_prev_week') + '">' +
+                        (prev !== null ? fmt(prev) : '—') +
                     '</td>' +
-                    '<td class="score-cell">' +
-                        '<div class="glory-input-wrapper">' +
-                            '<input type="text" inputmode="numeric" class="score-input glory-input"' +
+                    '<td class="gm-right" data-label="' + t('glory_input') + '">' +
+                        '<div class="glory-input-wrapper" style="position:relative; display:inline-flex; align-items:center;">' +
+                            '<input type="text" inputmode="numeric" class="gm-glory-input glory-input"' +
                                 ' value="' + (curr !== '' ? fmt(curr) : '') + '" placeholder="0"' +
                                 ' data-pseudo="' + esc(pseudo) + '"' +
                                 ' data-prev="' + (prev !== null ? prev : '') + '">' +
-                            '<i class="ph ph-circle-notch ph-spin saving-icon hidden"></i>' +
+                            '<i class="ph ph-circle-notch ph-spin saving-icon hidden" style="position:absolute; right:.6rem;"></i>' +
                         '</div>' +
                     '</td>' +
-                    '<td class="center glory-pct-cell">' +
+                    '<td class="gm-right glory-pct-cell" data-label="' + t('glory_evolution_pct') + '">' +
                         buildEvolutionPctBadge(curr, prev) +
                     '</td>' +
                 '</tr>';
         });
 
-        html += '</tbody></table></div>';
+        html += '</tbody></table></div></div>';
         area.innerHTML = html;
 
         var searchInput = area.querySelector('.glory-search-input');
@@ -145,16 +149,16 @@
     }
 
     function buildEvolutionPctBadge(curr, prev) {
-        if (curr === null || curr === '' || prev === null || prev === 0) return '<span class="glory-na">—</span>';
+        if (curr === null || curr === '' || prev === null || prev === 0) return '<span class="gm-dim">—</span>';
         var c = typeof curr === 'number' ? curr : window.RAD.parseNumber(curr);
         var p = typeof prev === 'number' ? prev : parseInt(prev, 10);
-        if (c === null || isNaN(p) || p === 0) return '<span class="glory-na">—</span>';
+        if (c === null || isNaN(p) || p === 0) return '<span class="gm-dim">—</span>';
         var diff = c - p;
         var pct = (diff / p) * 100;
 
-        var cls = pct > 0 ? 'positive' : pct < 0 ? 'negative' : 'neutral';
+        var cls = pct > 0 ? 'gm-chip-success' : pct < 0 ? 'gm-chip-danger' : '';
         var sign = pct > 0 ? '+' : '';
-        return '<span class="glory-delta ' + cls + '">' + sign + pct.toFixed(1) + '%</span>';
+        return '<span class="gm-chip ' + cls + '">' + sign + pct.toFixed(1) + '%</span>';
     }
 
     function updateTotal(area) {

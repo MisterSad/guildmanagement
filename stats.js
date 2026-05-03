@@ -271,40 +271,24 @@
                 return '<option value="' + w + '"' + (w === currentWeek ? ' selected' : '') + '>' + window.RAD.formatWeek(w) + '</option>';
             }).join('');
 
-            var modes = [
-                { key: 'global', label: t('stats_tab_global'),  icon: 'ph-globe' },
-                { key: 'SvS',    label: t('stats_tab_svs'),     icon: 'ph-sword' },
-                { key: 'GvG',    label: t('stats_tab_gvg'),     icon: 'ph-flag-banner' },
-                { key: 'prince', label: t('stats_tab_prince'),  icon: 'ph-crown' }
-            ];
-
-            var tabsHtml = '<div class="stats-mode-tabs">' +
-                modes.map(function (m) {
-                    return '<button class="stats-mode-tab' + (currentMode === m.key ? ' active' : '') + '" data-mode="' + m.key + '">' +
-                        '<i class="ph ' + m.icon + '"></i> ' + m.label + '</button>';
-                }).join('') +
-            '</div>';
-
             el.innerHTML =
-                '<div class="stats-controls-inner">' +
-                    '<div class="stats-left-controls">' +
-                        '<select class="week-select">' + optHtml + '</select>' +
-                    '</div>' +
-                '</div>' +
-                tabsHtml;
+                '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap;">' +
+                    '<select class="gm-select week-select" style="width:auto; min-width:180px;">' + optHtml + '</select>' +
+                '</div>';
 
             el.querySelector('.week-select').addEventListener('change', function () {
                 currentWeek = this.value;
                 refreshData();
             });
+        });
 
-            el.querySelectorAll('.stats-mode-tab').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    currentMode = btn.getAttribute('data-mode');
-                    renderControls();
-                    refreshData();
-                });
-            });
+        // Tabs-pill rendu dans la zone leaderboard (au-dessus du leaderboard)
+        renderModeTabs();
+    }
+
+    function renderModeTabs() {
+        document.querySelectorAll('.stats-leaderboard-area').forEach(function (container) {
+            // Sera ajouté au début du innerHTML au prochain renderLeaderboard
         });
     }
 
@@ -312,19 +296,34 @@
     function renderLeaderboard(opts) {
         var mode = opts && opts.mode;
         var maxPossible = (opts && opts.maxPossible) || 1;
+        var modes = [
+            { key: 'global', label: t('stats_tab_global'),  icon: 'ph-globe' },
+            { key: 'SvS',    label: t('stats_tab_svs'),     icon: 'ph-sword' },
+            { key: 'GvG',    label: t('stats_tab_gvg'),     icon: 'ph-flag-banner' },
+            { key: 'prince', label: t('stats_tab_prince'),  icon: 'ph-crown' }
+        ];
+
         document.querySelectorAll('.stats-leaderboard-area').forEach(function (container) {
+            var tabsHtml = '<div class="gm-tabs-pill" style="margin-bottom:1rem;">' +
+                modes.map(function (m) {
+                    return '<button class="gm-tab-pill' + (currentMode === m.key ? ' gm-active' : '') + '" data-gm-mode="' + m.key + '">' +
+                        '<i class="ph ' + m.icon + '"></i> ' + m.label + '</button>';
+                }).join('') +
+            '</div>';
+
             if (!leaderboardData.length) {
-                container.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-chart-bar"></i><p>' + t('stats_no_data') + '</p></div>';
+                container.innerHTML = tabsHtml +
+                    '<div class="gm-empty"><i class="ph-duotone ph-chart-bar gm-icon"></i><div class="gm-empty-title">' + t('stats_no_data') + '</div></div>';
+                wireStatsTabs(container);
                 return;
             }
 
             var isEvent = mode === 'event';
 
-            // Banner Prince Rewards + résumé formule
             var bannerHtml = '';
             if (mode === 'prince' && opts.range) {
                 bannerHtml =
-                    '<div class="stats-prince-banner">' +
+                    '<div class="gm-prince-banner">' +
                         '<i class="ph-fill ph-crown"></i> ' +
                         '<span>' + t('stats_prince_banner') + ' : ' +
                             window.RAD.formatWeek(opts.range.from) + ' → ' + window.RAD.formatWeek(opts.range.to) +
@@ -332,82 +331,98 @@
                     '</div>';
             }
             if (!isEvent) {
-                bannerHtml += '<div class="stats-formula-note">' +
+                bannerHtml += '<div class="gm-formula-note">' +
                     '<i class="ph ph-info"></i> ' + t('stats_max_possible') + ' : <strong>' + fmt(maxPossible) + '</strong> ' + t('stats_points') +
                 '</div>';
             }
 
-            // Podium
+            // Podium top 3 — silver(2), gold(1), bronze(3)
             var top = leaderboardData.slice(0, Math.min(3, leaderboardData.length));
-            var podOrder = top.length >= 3 ? [top[1], top[0], top[2]]
-                         : top.length === 2 ? [top[1], top[0]]
-                         : [top[0]];
-            var medals = { 0: '🥇', 1: '🥈', 2: '🥉' };
-            var heights = { 0: 90, 1: 120, 2: 70 };
+            var podOrder = top.length >= 3 ? [
+                { item: top[1], rank: 2, cls: 'gm-silver' },
+                { item: top[0], rank: 1, cls: 'gm-gold' },
+                { item: top[2], rank: 3, cls: 'gm-bronze' }
+            ] : top.length === 2 ? [
+                { item: top[1], rank: 2, cls: 'gm-silver' },
+                { item: top[0], rank: 1, cls: 'gm-gold' }
+            ] : [{ item: top[0], rank: 1, cls: 'gm-gold' }];
 
-            var podHtml = '<div class="stats-podium">';
-            podOrder.forEach(function (m, i) {
-                var orig = leaderboardData.indexOf(m);
-                var scoreDisplay = isEvent ? fmt(m.score) : fmt(m.score) + ' ' + t('stats_pts');
+            var podHtml = '<div class="gm-podium">';
+            podOrder.forEach(function (slot) {
+                var m = slot.item;
+                var initial = window.RAD.avatarInit(m.pseudo);
+                var scoreDisplay = fmt(m.score) + ' ' + t('stats_pts');
                 podHtml +=
-                    '<div class="podium-slot rank-' + (orig + 1) + '" data-pseudo="' + esc(m.pseudo) + '">' +
-                        '<div class="podium-medal">' + (medals[orig] || '') + '</div>' +
-                        '<div class="podium-name">' + esc(m.pseudo) + '</div>' +
-                        '<div class="podium-score-val">' + scoreDisplay + '</div>' +
-                        '<div class="podium-bar" style="height:' + heights[i] + 'px">' +
-                            '<div class="podium-bar-fill" style="height:' + heights[i] + 'px"></div>' +
-                        '</div>' +
+                    '<div class="gm-podium-slot ' + slot.cls + '" data-pseudo="' + esc(m.pseudo) + '">' +
+                        '<div class="gm-avatar gm-avatar-lg">' + esc(initial) + '</div>' +
+                        '<div class="gm-podium-name">' + esc(m.pseudo) + '</div>' +
+                        '<div class="gm-podium-score">' + scoreDisplay + '</div>' +
+                        '<div class="gm-podium-bar"><div class="gm-podium-rank">' + slot.rank + '</div></div>' +
                     '</div>';
             });
             podHtml += '</div>';
 
-            // Table
             var tableHtml =
-                '<div class="leaderboard-wrap">' +
-                '<table class="leaderboard-table"><thead><tr>' +
-                    '<th>#</th>' +
+                '<div class="gm-table-wrap"><div class="gm-table-scroll">' +
+                '<table class="gm-table gm-resp-table"><thead><tr>' +
+                    '<th class="gm-center">#</th>' +
                     '<th>' + t('col_member') + '</th>' +
-                    '<th class="center">' + (isEvent ? t('col_score') : t('stats_score_pts')) + '</th>' +
-                    (!isEvent ? '<th class="center">' + t('stats_events') + '</th>' : '') +
-                    (!isEvent ? '<th class="center">' + t('stats_glory_delta') + '</th>' : '') +
-                    (!isEvent ? '<th class="center">' + t('stats_consistency') + '</th>' : '') +
-                    '<th class="center">' + t('stats_profile') + '</th>' +
+                    (!isEvent ? '<th class="gm-center">' + t('stats_events') + '</th>' : '') +
+                    (!isEvent ? '<th class="gm-center">' + t('stats_glory_delta') + '</th>' : '') +
+                    (!isEvent ? '<th class="gm-center">' + t('stats_consistency') + '</th>' : '') +
+                    '<th class="gm-right">' + (isEvent ? t('col_score') : t('stats_score_pts')) + '</th>' +
+                    '<th class="gm-center">' + t('stats_profile') + '</th>' +
                 '</tr></thead><tbody>';
 
             leaderboardData.forEach(function (m, i) {
                 var rank = i + 1;
-                var badge = rank <= 3 ? medals[i] : '#' + rank;
-                var ratio = isEvent ? (m.score / maxPossible) : (m.score / maxPossible);
-                var cls = isEvent ? 'score-event' : (ratio >= 0.7 ? 'score-high' : ratio >= 0.4 ? 'score-mid' : 'score-low');
-                var scoreDisplay = fmt(m.score);
+                var initial = window.RAD.avatarInit(m.pseudo);
+                var rankCell = rank <= 3
+                    ? '<i class="ph-fill ph-medal" style="color:' + (rank === 1 ? 'oklch(0.78 0.16 75)' : rank === 2 ? 'var(--fg-muted)' : 'oklch(0.65 0.10 50)') + ';"></i>'
+                    : rank;
 
                 var consistencyCell = !isEvent
                     ? (m.consistency_bonus > 0
-                        ? '<span class="consistency-yes" title="' + Math.round(m.attendance_rate * 100) + '%">+' + m.consistency_bonus + '</span>'
-                        : '<span class="consistency-no" title="' + Math.round(m.attendance_rate * 100) + '%">—</span>')
+                        ? '<span class="gm-chip gm-chip-success" title="' + Math.round(m.attendance_rate * 100) + '%">+' + m.consistency_bonus + '</span>'
+                        : '<span class="gm-dim" title="' + Math.round(m.attendance_rate * 100) + '%">—</span>')
                     : '';
 
                 tableHtml +=
-                    '<tr class="lb-row">' +
-                        '<td class="rank-cell">' + badge + '</td>' +
-                        '<td class="pseudo-cell"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(m.pseudo) + '</td>' +
-                        '<td class="center"><span class="score-badge ' + cls + '">' + scoreDisplay + '</span></td>' +
-                        (!isEvent ? '<td class="center">' + m.events_done + '/' + m.events_total + '</td>' : '') +
-                        (!isEvent ? '<td class="center">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '—') + '</td>' : '') +
-                        (!isEvent ? '<td class="center">' + consistencyCell + '</td>' : '') +
-                        '<td class="center">' +
-                            '<button class="profile-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('stats_see_profile') + '">' +
+                    '<tr>' +
+                        '<td class="gm-center gm-num" data-label="#">' + rankCell + '</td>' +
+                        '<td data-label="' + t('col_member') + '">' +
+                            '<div class="gm-row" style="gap:.6rem;">' +
+                                '<div class="gm-avatar">' + esc(initial) + '</div>' +
+                                '<strong>' + esc(m.pseudo) + '</strong>' +
+                            '</div>' +
+                        '</td>' +
+                        (!isEvent ? '<td class="gm-center gm-num" data-label="' + t('stats_events') + '">' + m.events_done + '/' + m.events_total + '</td>' : '') +
+                        (!isEvent ? '<td class="gm-center gm-num gm-dim" data-label="' + t('stats_glory_delta') + '">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '—') + '</td>' : '') +
+                        (!isEvent ? '<td class="gm-center" data-label="' + t('stats_consistency') + '">' + consistencyCell + '</td>' : '') +
+                        '<td class="gm-right gm-num" data-label="' + (isEvent ? t('col_score') : t('stats_score_pts')) + '"><strong>' + fmt(m.score) + '</strong></td>' +
+                        '<td class="gm-center" data-label="">' +
+                            '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm profile-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('stats_see_profile') + '">' +
                                 '<i class="ph ph-chart-line-up"></i>' +
                             '</button>' +
                         '</td>' +
                     '</tr>';
             });
-            tableHtml += '</tbody></table></div>';
+            tableHtml += '</tbody></table></div></div>';
 
-            container.innerHTML = bannerHtml + podHtml + tableHtml;
+            container.innerHTML = tabsHtml + bannerHtml + podHtml + tableHtml;
 
-            container.querySelectorAll('.profile-btn, .podium-slot').forEach(function (btn) {
+            wireStatsTabs(container);
+            container.querySelectorAll('.profile-btn, .gm-podium-slot').forEach(function (btn) {
                 btn.addEventListener('click', function () { openProfile(btn.getAttribute('data-pseudo')); });
+            });
+        });
+    }
+
+    function wireStatsTabs(container) {
+        container.querySelectorAll('[data-gm-mode]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                currentMode = btn.getAttribute('data-gm-mode');
+                refreshData();
             });
         });
     }
