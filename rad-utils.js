@@ -98,6 +98,18 @@
         return Math.min(num, MAX_NUMERIC);
     }
 
+    // Initiales 2 lettres pour avatars (camelCase-aware)
+    // "HakwTuah" → "HT", "StarWarrior99" → "SW", "lower_case" → "LC", "ab" → "AB".
+    function avatarInit(pseudo) {
+        if (!pseudo) return '?';
+        var s = String(pseudo).trim();
+        var parts = s.split(/(?=[A-Z])|[\s_\-.]+/).filter(Boolean);
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return s.slice(0, 2).toUpperCase();
+    }
+
     // Branche un input texte pour reformater à chaque frappe en préservant le curseur.
     function attachNumberFormatter(input) {
         if (!input || input.dataset.numFormatted === '1') return;
@@ -168,6 +180,7 @@
         formatNumber: formatNumber,
         parseNumber: parseNumber,
         attachNumberFormatter: attachNumberFormatter,
+        avatarInit: avatarInit,
         MAX_NUMERIC: MAX_NUMERIC
     };
 
