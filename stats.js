@@ -1,39 +1,23 @@
 /**
- * stats.js — Weekly leaderboard, /20 score computation, member profile history
- * Score formula:  participation (16pts) + glory normalized (4pts) = /20
+ * stats.js — Classements et profils :
+ *   • Global (semaine)        — note /20, comme avant
+ *   • SvS                     — classement par score SvS de la semaine
+ *   • GvG                     — classement par score GvG de la semaine
+ *   • Prince Rewards (2 sem.) — note /20 cumulée sur les 2 dernières semaines
+ *
+ * Formule /20 :  participation (16 pts) + glory normalisée (4 pts)
  */
 (function () {
 
-    var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
-    var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
-    var db;
-    try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error('stats.js init', e); }
-
-    function t(k) { return window.RAD_I18N ? window.RAD_I18N.t(k) : k; }
-    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g, '&#39;').replace(/`/g, '&#96;'); }
-
-    function getWeekStart() {
-        var d = new Date();
-        var day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-        var diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday-based
-        var monday = new Date(d.getFullYear(), d.getMonth(), diff);
-        var mm = String(monday.getMonth() + 1).padStart(2, '0');
-        var dd = String(monday.getDate()).padStart(2, '0');
-        return monday.getFullYear() + '-' + mm + '-' + dd;
-    }
-
-    function formatWeek(ws) {
-        var d = new Date(ws + 'T12:00:00');
-        var end = new Date(d); end.setDate(end.getDate() + 6);
-        var fmt = { day: '2-digit', month: '2-digit' };
-        return d.toLocaleDateString('fr-FR', fmt) + ' → ' + end.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
+    var db  = window.RAD ? window.RAD.db : null;
+    var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
+    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
 
     // ── State ──────────────────────────────────────────────────────────────────
-    var currentWeek     = getWeekStart();
+    var currentWeek     = window.RAD ? window.RAD.getWeekStart() : '';
     var allWeeks        = [];
     var leaderboardData = [];
-    var currentMode     = 'global'; // 'global', 'SvS', 'GvG'
+    var currentMode     = 'global'; // 'global' | 'SvS' | 'GvG' | 'prince'
 
     // ── Public API ──────────────────────────────────────────────────────────────
     window.RAD_STATS = { load: loadStats };
@@ -48,13 +32,15 @@
 
     async function refreshData() {
         if (currentMode === 'global') {
-            await loadLeaderboard(currentWeek);
-        } else {
+            await loadGlobalWeek(currentWeek);
+        } else if (currentMode === 'SvS' || currentMode === 'GvG') {
             await loadEventRanking(currentMode, currentWeek);
+        } else if (currentMode === 'prince') {
+            await loadPrinceRewards();
         }
     }
 
-    // ── Fetch all weeks that have data ───────────────────────────────────────────
+    // ── Liste des semaines disponibles ───────────────────────────────────────────
     async function fetchAllWeeks() {
         var res = await db.from('event_participants').select('week_start');
         var weeks = [];
@@ -64,96 +50,135 @@
         allWeeks = weeks;
     }
 
-    // ── Load leaderboard (from cache or compute) ─────────────────────────────────
-    async function loadLeaderboard(week) {
-        var cached = await db.from('weekly_scores').select('*').eq('week_start', week).order('score_20', { ascending: false }).order('pseudo', { ascending: true });
-        if (cached.data && cached.data.length > 0) {
-            leaderboardData = cached.data;
-            renderLeaderboard();
-        } else {
-            await computeAndSave(week);
-        }
-    }
-
-    // ── Load individual event ranking (SvS, GvG) ───────────────────────────────
-    async function loadEventRanking(eventName, week) {
-        var res = await db.from('event_participants')
-            .select('*')
-            .eq('event_name', eventName)
-            .eq('week_start', week)
-            .not('score', 'is', null)
-            .order('score', { ascending: false })
-            .order('pseudo', { ascending: true });
-
-        leaderboardData = (res.data || []).map(function(r) {
-            return {
-                pseudo: r.pseudo,
-                score_20: r.score, // We'll treat this as the main score for rendering
-                events_done: r.participated,
-                is_event_mode: true
-            };
-        });
-        renderLeaderboard();
-    }
-
-    // ── Compute /20 scores and persist ──────────────────────────────────────────
-    async function computeAndSave(week) {
-        if (!db) return;
-
+    // ── Global week : /20 calculé en agrégeant toutes les sessions ─────────────
+    async function loadGlobalWeek(week) {
         var [membersRes, partsRes] = await Promise.all([
             db.from('guild_members').select('pseudo'),
             db.from('event_participants').select('*').eq('week_start', week)
         ]);
 
-        var members     = (membersRes.data || []).map(function (m) { return m.pseudo; });
+        var members      = (membersRes.data || []).map(function (m) { return m.pseudo; });
         var participants = partsRes.data || [];
+        if (members.length === 0) { renderEmpty(); return; }
 
-        if (members.length === 0) { renderEmptyStats(); return; }
+        var scores = computeWeeklyScores(members, participants);
+        scores.forEach(function (s) { s.week_start = week; });
+        leaderboardData = scores;
+        renderLeaderboard({ mode: 'global' });
+    }
 
-        // Non-Glory events that were active (i.e. have at least one participant row)
-        var nonGloryEvents = Array.from(new Set(
-            participants.filter(function (p) { return p.event_name !== 'Glory'; }).map(function (p) { return p.event_name; })
-        ));
+    // ── SvS / GvG : classement par score de la semaine (toutes sessions cumulées)
+    async function loadEventRanking(eventName, week) {
+        var res = await db.from('event_participants')
+            .select('pseudo, score, participated')
+            .eq('event_name', eventName)
+            .eq('week_start', week);
+
+        var agg = {};
+        (res.data || []).forEach(function (r) {
+            if (!agg[r.pseudo]) agg[r.pseudo] = { pseudo: r.pseudo, score: 0, participated: 0 };
+            agg[r.pseudo].score        += (r.score        || 0);
+            agg[r.pseudo].participated += (r.participated || 0);
+        });
+
+        leaderboardData = Object.values(agg)
+            .filter(function (r) { return r.score > 0 || r.participated > 0; })
+            .map(function (r) {
+                return {
+                    pseudo: r.pseudo,
+                    score_20: r.score,
+                    events_done: r.participated,
+                    is_event_mode: true
+                };
+            })
+            .sort(function (a, b) {
+                if (b.score_20 !== a.score_20) return b.score_20 - a.score_20;
+                return a.pseudo.localeCompare(b.pseudo);
+            });
+
+        renderLeaderboard({ mode: 'event' });
+    }
+
+    // ── Prince Rewards : /20 sur les 2 dernières semaines ───────────────────────
+    async function loadPrinceRewards() {
+        var w1 = currentWeek;
+        var w0 = window.RAD.getPrevWeekStart(w1);
+
+        var [membersRes, partsRes] = await Promise.all([
+            db.from('guild_members').select('pseudo'),
+            db.from('event_participants').select('*').in('week_start', [w0, w1])
+        ]);
+        var members = (membersRes.data || []).map(function (m) { return m.pseudo; });
+        var participants = partsRes.data || [];
+        if (members.length === 0) { renderEmpty(); return; }
+
+        var scores = computeWeeklyScores(members, participants);
+        scores.forEach(function (s) { s.week_range = w0 + ' → ' + w1; });
+        leaderboardData = scores;
+        renderLeaderboard({ mode: 'prince', range: { from: w0, to: w1 } });
+    }
+
+    // ── Calcul commun /20 ───────────────────────────────────────────────────────
+    function computeWeeklyScores(members, participants) {
+        // Glory rows séparés
+        var gloryRows = participants.filter(function (p) { return p.event_name === 'Glory'; });
+        var nonGlory  = participants.filter(function (p) { return p.event_name !== 'Glory'; });
+
+        // Distinct event names (hors Glory) → events_total
+        var nonGloryEvents = Array.from(new Set(nonGlory.map(function (p) { return p.event_name; })));
         var eventsTotal = nonGloryEvents.length;
 
-        // Glory data
-        var gloryRows  = participants.filter(function (p) { return p.event_name === 'Glory'; });
-        var maxGlory   = gloryRows.reduce(function (mx, r) { return Math.max(mx, r.score || 0); }, 0);
+        // Glory max sur la période
+        var maxGlory = gloryRows.reduce(function (mx, r) { return Math.max(mx, r.score || 0); }, 0);
 
-        var scores = members.map(function (pseudo) {
-            // Participation score
-            var memberNonGlory = participants.filter(function (p) { return p.pseudo === pseudo && p.event_name !== 'Glory'; });
-            var eventsDone = memberNonGlory.reduce(function (s, p) { return s + (p.participated || 0); }, 0);
+        return members.map(function (pseudo) {
+            // Pour chaque event_name distinct, compter le total de participations
+            var memberParts = nonGlory.filter(function (p) { return p.pseudo === pseudo; });
+            var doneByEvent = {};
+            memberParts.forEach(function (p) {
+                doneByEvent[p.event_name] = (doneByEvent[p.event_name] || 0) + (p.participated || 0);
+            });
+            var eventsDone = Object.values(doneByEvent).filter(function (v) { return v > 0; }).length;
             var participationScore = eventsTotal > 0 ? (eventsDone / eventsTotal) * 16 : 0;
 
-            // Glory score
-            var gloryRow   = gloryRows.find(function (r) { return r.pseudo === pseudo; });
-            var gloryScore = gloryRow ? (gloryRow.score || 0) : 0;
+            // Glory : somme sur la période
+            var gloryScore = gloryRows
+                .filter(function (r) { return r.pseudo === pseudo; })
+                .reduce(function (s, r) { return s + (r.score || 0); }, 0);
             var gloryNorm  = maxGlory > 0 ? (gloryScore / maxGlory) * 4 : 0;
 
             var total = Math.round((participationScore + gloryNorm) * 10) / 10;
-            return { week_start: week, pseudo: pseudo, score_20: total, events_done: eventsDone, events_total: eventsTotal, glory_score: gloryScore, computed_at: new Date().toISOString() };
-        });
-
-        await db.from('weekly_scores').upsert(scores, { onConflict: 'week_start,pseudo' });
-        leaderboardData = scores.slice().sort(function (a, b) {
+            return {
+                pseudo: pseudo,
+                score_20: total,
+                events_done: eventsDone,
+                events_total: eventsTotal,
+                glory_score: gloryScore
+            };
+        }).sort(function (a, b) {
             if (b.score_20 !== a.score_20) return b.score_20 - a.score_20;
             return a.pseudo.localeCompare(b.pseudo);
         });
-        renderLeaderboard();
     }
 
-    // ── Render week selector + mode selector + compute button ────────────────────
+    // ── Render contrôles : sélecteur de semaine + onglets de mode ──────────────
     function renderControls() {
         document.querySelectorAll('.stats-controls').forEach(function (el) {
             var optHtml = allWeeks.map(function (w) {
-                return '<option value="' + w + '"' + (w === currentWeek ? ' selected' : '') + '>' + formatWeek(w) + '</option>';
+                return '<option value="' + w + '"' + (w === currentWeek ? ' selected' : '') + '>' + window.RAD.formatWeek(w) + '</option>';
             }).join('');
 
-            var modes = ['global', 'SvS', 'GvG'];
-            var modeHtml = '<div class="lang-switcher stats-mode-switcher">' +
-                modes.map(function(m) {
-                    return '<button class="lang-btn' + (currentMode === m ? ' active' : '') + '" data-mode="' + m + '">' + t('stats_mode_' + m.toLowerCase()) + '</button>';
+            var modes = [
+                { key: 'global', label: t('stats_tab_global'),  icon: 'ph-globe' },
+                { key: 'SvS',    label: t('stats_tab_svs'),     icon: 'ph-sword' },
+                { key: 'GvG',    label: t('stats_tab_gvg'),     icon: 'ph-flag-banner' },
+                { key: 'prince', label: t('stats_tab_prince'),  icon: 'ph-crown' }
+            ];
+
+            var tabsHtml = '<div class="stats-mode-tabs">' +
+                modes.map(function (m) {
+                    return '<button class="stats-mode-tab' + (currentMode === m.key ? ' active' : '') + '" data-mode="' + m.key + '">' +
+                        '<i class="ph ' + m.icon + '"></i> ' + m.label + '</button>';
                 }).join('') +
             '</div>';
 
@@ -161,57 +186,58 @@
                 '<div class="stats-controls-inner">' +
                     '<div class="stats-left-controls">' +
                         '<select class="week-select">' + optHtml + '</select>' +
-                        modeHtml +
                     '</div>' +
-                    '<button class="btn-compute' + (currentMode !== 'global' ? ' hidden' : '') + '">' +
-                        '<i class="ph ph-arrows-clockwise"></i> ' + t('stats_compute') +
-                    '</button>' +
-                '</div>';
+                '</div>' +
+                tabsHtml;
 
             el.querySelector('.week-select').addEventListener('change', function () {
                 currentWeek = this.value;
                 refreshData();
             });
 
-            el.querySelectorAll('.lang-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    currentMode = this.getAttribute('data-mode');
-                    renderControls(); // Re-render to update active class
+            el.querySelectorAll('.stats-mode-tab').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    currentMode = btn.getAttribute('data-mode');
+                    renderControls();
                     refreshData();
                 });
             });
-
-            var btnCompute = el.querySelector('.btn-compute');
-            if (btnCompute) {
-                btnCompute.addEventListener('click', function () {
-                    computeAndSave(currentWeek);
-                });
-            }
         });
     }
 
-    // ── Render leaderboard ───────────────────────────────────────────────────────
-    function renderLeaderboard() {
+    // ── Render leaderboard ──────────────────────────────────────────────────────
+    function renderLeaderboard(opts) {
+        var mode = opts && opts.mode;
         document.querySelectorAll('.stats-leaderboard-area').forEach(function (container) {
             if (!leaderboardData.length) {
                 container.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-chart-bar"></i><p>' + t('stats_no_data') + '</p></div>';
                 return;
             }
 
-            var isEvent = leaderboardData[0] && leaderboardData[0].is_event_mode;
+            var isEvent = mode === 'event';
 
-            /* ── Podium ── */
+            var bannerHtml = '';
+            if (mode === 'prince' && opts.range) {
+                bannerHtml =
+                    '<div class="stats-prince-banner">' +
+                        '<i class="ph-fill ph-crown"></i> ' +
+                        '<span>' + t('stats_prince_banner') + ' : ' +
+                            window.RAD.formatWeek(opts.range.from) + ' → ' + window.RAD.formatWeek(opts.range.to) +
+                        '</span>' +
+                    '</div>';
+            }
+
+            // Podium
             var top = leaderboardData.slice(0, Math.min(3, leaderboardData.length));
-            // Reorder: 2nd, 1st, 3rd for visual podium
             var podOrder = top.length >= 3 ? [top[1], top[0], top[2]]
                          : top.length === 2 ? [top[1], top[0]]
                          : [top[0]];
             var medals = { 0: '🥇', 1: '🥈', 2: '🥉' };
-            var heights = { 0: 90, 1: 120, 2: 70 }; // bar height px
+            var heights = { 0: 90, 1: 120, 2: 70 };
 
             var podHtml = '<div class="stats-podium">';
             podOrder.forEach(function (m, i) {
-                var orig = leaderboardData.indexOf(m); // 0-based rank
+                var orig = leaderboardData.indexOf(m);
                 var scoreDisplay = isEvent ? m.score_20 : parseFloat(m.score_20).toFixed(1) + '/20';
                 podHtml +=
                     '<div class="podium-slot rank-' + (orig + 1) + '" data-pseudo="' + esc(m.pseudo) + '">' +
@@ -225,7 +251,7 @@
             });
             podHtml += '</div>';
 
-            /* ── Full Table ── */
+            // Table
             var tableHtml =
                 '<div class="leaderboard-wrap">' +
                 '<table class="leaderboard-table"><thead><tr>' +
@@ -260,7 +286,7 @@
             });
             tableHtml += '</tbody></table></div>';
 
-            container.innerHTML = podHtml + tableHtml;
+            container.innerHTML = bannerHtml + podHtml + tableHtml;
 
             container.querySelectorAll('.profile-btn, .podium-slot').forEach(function (btn) {
                 btn.addEventListener('click', function () { openProfile(btn.getAttribute('data-pseudo')); });
@@ -268,24 +294,48 @@
         });
     }
 
-    function renderEmptyStats() {
+    function renderEmpty() {
         document.querySelectorAll('.stats-leaderboard-area').forEach(function (el) {
             el.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-chart-bar"></i><p>' + t('stats_no_data') + '</p></div>';
         });
     }
 
-    // ── Member Profile Modal ─────────────────────────────────────────────────────
+    // ── Profil : historique calculé à la volée par semaine ──────────────────────
     async function openProfile(pseudo) {
-        var res = await db.from('weekly_scores').select('*').eq('pseudo', pseudo).order('week_start', { ascending: true });
-        var history = res.data || [];
+        // Récupérer toutes les rows de ce membre
+        var [membersRes, partsRes] = await Promise.all([
+            db.from('guild_members').select('pseudo'),
+            db.from('event_participants').select('*')
+        ]);
+        var allMembers = (membersRes.data || []).map(function (m) { return m.pseudo; });
+        var allParts   = partsRes.data || [];
 
+        var weeks = Array.from(new Set(allParts.map(function (r) { return r.week_start; }))).sort();
+
+        var history = weeks.map(function (w) {
+            var weekParts = allParts.filter(function (r) { return r.week_start === w; });
+            var scoresOfWeek = computeWeeklyScores(allMembers, weekParts);
+            var found = scoresOfWeek.find(function (s) { return s.pseudo === pseudo; });
+            return {
+                week_start:   w,
+                score_20:     found ? found.score_20     : 0,
+                events_done:  found ? found.events_done  : 0,
+                events_total: found ? found.events_total : 0,
+                glory_score:  found ? found.glory_score  : 0
+            };
+        }).filter(function (r) { return r.events_total > 0 || r.glory_score > 0; });
+
+        renderProfileModal(pseudo, history);
+    }
+
+    function renderProfileModal(pseudo, history) {
         var existing = document.getElementById('profile-modal');
         if (existing) existing.remove();
 
         var avg  = history.length ? (history.reduce(function (s, r) { return s + parseFloat(r.score_20); }, 0) / history.length).toFixed(1) : '—';
         var best = history.length ? Math.max.apply(null, history.map(function (r) { return parseFloat(r.score_20); })).toFixed(1) : '—';
         var trend = history.length >= 2
-            ? (parseFloat(history[history.length-1].score_20) - parseFloat(history[history.length-2].score_20)).toFixed(1)
+            ? (parseFloat(history[history.length - 1].score_20) - parseFloat(history[history.length - 2].score_20)).toFixed(1)
             : null;
         var trendHtml = trend !== null
             ? '<span class="stat-chip ' + (parseFloat(trend) >= 0 ? 'success' : 'muted') + '">' +
@@ -312,12 +362,13 @@
                     '<button class="icon-btn profile-close" title="Fermer"><i class="ph ph-x"></i></button>' +
                 '</div>';
 
-        // Sparkline chart
         if (history.length >= 2) {
-            html += '<div class="profile-sparkline">' + buildSparkline(history.map(function (r) { return parseFloat(r.score_20); }), history.map(function (r) { return r.week_start; })) + '</div>';
+            html += '<div class="profile-sparkline">' + buildSparkline(
+                history.map(function (r) { return parseFloat(r.score_20); }),
+                history.map(function (r) { return r.week_start; })
+            ) + '</div>';
         }
 
-        // History table
         html +=
             '<div class="profile-history">' +
             '<table class="leaderboard-table"><thead><tr>' +
@@ -331,7 +382,7 @@
             var s = parseFloat(row.score_20);
             var cls = s >= 16 ? 'score-high' : s >= 10 ? 'score-mid' : 'score-low';
             html +=
-                '<tr><td class="week-cell">' + formatWeek(row.week_start) + '</td>' +
+                '<tr><td class="week-cell">' + window.RAD.formatWeek(row.week_start) + '</td>' +
                 '<td class="center"><span class="score-badge ' + cls + '">' + s.toFixed(1) + '/20</span></td>' +
                 '<td class="center">' + row.events_done + '/' + row.events_total + '</td>' +
                 '<td class="center">' + (row.glory_score || 0) + '</td></tr>';
@@ -356,26 +407,24 @@
         var W = 500, H = 100, px = 16, py = 12;
         var n = scores.length;
         var pts = scores.map(function (s, i) {
-            var x = px + (i / (n - 1)) * (W - px * 2);
+            var x = px + (n === 1 ? (W - px * 2) / 2 : (i / (n - 1)) * (W - px * 2));
             var y = H - py - (s / 20) * (H - py * 2);
             return [x.toFixed(1), y.toFixed(1)];
         });
 
-        var line  = pts.map(function (p) { return p.join(','); }).join(' ');
-        var area  = (px + ',' + (H - py) + ' ') + line + (' ' + (W - px) + ',' + (H - py));
-        var dots  = pts.map(function (p, i) {
+        var line = pts.map(function (p) { return p.join(','); }).join(' ');
+        var area = (px + ',' + (H - py) + ' ') + line + (' ' + (W - px) + ',' + (H - py));
+        var dots = pts.map(function (p, i) {
             var cls = i === n - 1 ? 'sp-dot sp-dot-last' : 'sp-dot';
             return '<circle class="' + cls + '" cx="' + p[0] + '" cy="' + p[1] + '" r="4"/>';
         }).join('');
 
-        // Y-axis labels (0, 10, 20)
         var yLines = [0, 10, 20].map(function (v) {
             var y = H - py - (v / 20) * (H - py * 2);
             return '<line x1="' + px + '" x2="' + (W - px) + '" y1="' + y + '" y2="' + y + '" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4"/>' +
                    '<text x="' + (px - 4) + '" y="' + (y + 4) + '" text-anchor="end" font-size="9" fill="#64748b">' + v + '</text>';
         }).join('');
 
-        // Week labels (bottom, max 6)
         var step = Math.max(1, Math.floor(n / 6));
         var xLabels = pts.filter(function (_, i) { return i % step === 0 || i === n - 1; }).map(function (p, idx) {
             var wi = idx * step;

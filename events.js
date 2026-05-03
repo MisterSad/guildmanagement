@@ -1,160 +1,228 @@
 /**
- * events.js — Standard events: SvS, GvG, Defend Trade Route, Glory
+ * events.js — SvS, GvG, DTR, Arms Race (A & B fusionnés).
+ * Chaque START crée une nouvelle session (timestamp). END termine la session courante.
+ * Le DTR n'a pas de score, seulement une participation.
  */
 (function () {
 
-    var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
-    var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
-    var db;
-    try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error('events.js: supabase init', e); }
+    var db = window.RAD ? window.RAD.db : null;
+    var t  = window.RAD ? window.RAD.t  : function (k) { return k; };
+    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
 
+    // event_name "logique" → event_name côté DB (Arms Race a 2 stages)
     var STANDARD_EVENTS = ['SvS', 'GvG', 'Defend Trade Route', 'ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
+
+    // Onglet UI → liste d'event_names DB qu'il pilote
+    var TAB_TO_DB_EVENTS = {
+        'SvS':                ['SvS'],
+        'GvG':                ['GvG'],
+        'Defend Trade Route': ['Defend Trade Route'],
+        'ARMS RACE':          ['ARMS RACE STAGE A', 'ARMS RACE STAGE B']
+    };
+
     var PANEL_MAP = {
         'SvS':                'event-svs',
         'GvG':                'event-gvg',
         'Defend Trade Route': 'event-dtr',
-        'ARMS RACE STAGE A':  'event-arms-a',
-        'ARMS RACE STAGE B':  'event-arms-b'
+        'ARMS RACE':          'event-arms-race'
     };
 
-    function t(k) { return window.RAD_I18N ? window.RAD_I18N.t(k) : k; }
-
-    function getWeekStart() {
-        var d = new Date();
-        var day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-        var diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday-based
-        var monday = new Date(d.getFullYear(), d.getMonth(), diff);
-        var mm = String(monday.getMonth() + 1).padStart(2, '0');
-        var dd = String(monday.getDate()).padStart(2, '0');
-        return monday.getFullYear() + '-' + mm + '-' + dd;
-    }
-
-    function escapeHTML(s) {
-        return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;')
-            .replace(/`/g, '&#96;');
-    }
+    var EVENTS_WITHOUT_SCORE = ['ARMS RACE STAGE A', 'ARMS RACE STAGE B', 'Defend Trade Route'];
 
     // ── State ────────────────────────────────────────────────────────────────
+    // tabKey → { activeEventName, sessionId, stage, isActive, participants[] }
     var state = {};
-    STANDARD_EVENTS.forEach(function (n) { state[n] = { isActive: false, participants: [] }; });
+    Object.keys(TAB_TO_DB_EVENTS).forEach(function (k) {
+        state[k] = { activeEventName: null, sessionId: null, stage: null, isActive: false, participants: [] };
+    });
     var uidMap = {};
 
     // ── Public API ────────────────────────────────────────────────────────────
-    window.RAD_EVENTS = {
-        loadEvent:      loadEvent,
-        setEventActive: setEventActive
-    };
+    window.RAD_EVENTS = { loadEvent: loadEvent };
 
     // ── Load event (called when tab is clicked) ────────────────────────────
-    async function loadEvent(eventName) {
-        if (!db) return;
+    async function loadEvent(tabKey) {
+        if (!db || !TAB_TO_DB_EVENTS[tabKey]) return;
         try {
-            var res = await db.from('event_status').select('is_active').eq('event_name', eventName).single();
-            var isActive = res.data ? res.data.is_active : false;
-            state[eventName].isActive = isActive;
-            renderStatus(eventName, isActive);
-            if (isActive) {
-                await fetchParticipants(eventName);
+            var dbEvents = TAB_TO_DB_EVENTS[tabKey];
+            var res = await db.from('event_status').select('event_name, is_active, session_id, stage')
+                .in('event_name', dbEvents);
+
+            var active = (res.data || []).find(function (r) { return r.is_active; });
+            var s = state[tabKey];
+            if (active) {
+                s.activeEventName = active.event_name;
+                s.sessionId       = active.session_id;
+                s.stage           = active.stage;
+                s.isActive        = true;
+                renderStatus(tabKey);
+                await fetchParticipants(tabKey);
             } else {
-                renderInactive(eventName);
+                s.activeEventName = null;
+                s.sessionId       = null;
+                s.stage           = null;
+                s.isActive        = false;
+                renderStatus(tabKey);
+                renderInactive(tabKey);
             }
         } catch (err) { console.error('loadEvent', err); }
     }
 
-    // ── Set event active / inactive ───────────────────────────────────────
-    async function setEventActive(eventName, newState) {
+    // ── Démarrage d'une nouvelle session ──────────────────────────────────
+    async function startEvent(tabKey, dbEventName, stage) {
         if (!db) return;
+        var sessionId = window.RAD.newSessionId();
         try {
+            // S'il y a une session précédente active du même event, la désactiver d'abord
             await db.from('event_status').upsert(
-                { event_name: eventName, is_active: newState, updated_at: new Date().toISOString() },
+                {
+                    event_name: dbEventName,
+                    is_active:  true,
+                    session_id: sessionId,
+                    stage:      stage || null,
+                    updated_at: new Date().toISOString()
+                },
                 { onConflict: 'event_name' }
             );
-            state[eventName].isActive = newState;
-            renderStatus(eventName, newState);
-            if (newState) {
-                await populateParticipants(eventName);
-            } else {
-                renderInactive(eventName);
-                if (window.RAD_APP) window.RAD_APP.showToast('Événement sauvegardé et terminé avec succès !', 'success');
-            }
-        } catch (err) { console.error('setEventActive', err); }
+            state[tabKey].activeEventName = dbEventName;
+            state[tabKey].sessionId       = sessionId;
+            state[tabKey].stage           = stage || null;
+            state[tabKey].isActive        = true;
+            renderStatus(tabKey);
+            await populateParticipants(tabKey);
+            window.RAD.showToast('Nouvelle session démarrée.', 'success');
+        } catch (err) {
+            console.error('startEvent', err);
+            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        }
     }
 
-    // ── Auto-populate members when event is activated ─────────────────────
-    async function populateParticipants(eventName) {
+    // ── Arrêt de la session courante ──────────────────────────────────────
+    async function endEvent(tabKey) {
         if (!db) return;
-        var week = getWeekStart();
+        var s = state[tabKey];
+        if (!s.activeEventName) return;
+        try {
+            await db.from('event_status').upsert(
+                {
+                    event_name: s.activeEventName,
+                    is_active:  false,
+                    session_id: s.sessionId, // on garde la dernière, pour info
+                    stage:      s.stage,
+                    updated_at: new Date().toISOString()
+                },
+                { onConflict: 'event_name' }
+            );
+            s.activeEventName = null;
+            s.sessionId       = null;
+            s.stage           = null;
+            s.isActive        = false;
+            renderStatus(tabKey);
+            renderInactive(tabKey);
+            window.RAD.showToast('Événement sauvegardé et terminé.', 'success');
+        } catch (err) {
+            console.error('endEvent', err);
+            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        }
+    }
+
+    // ── Auto-populate members pour une nouvelle session ──────────────────
+    async function populateParticipants(tabKey) {
+        if (!db) return;
+        var s = state[tabKey];
         var membersRes = await db.from('guild_members').select('pseudo');
         if (!membersRes.data) return;
 
-        var existingRes = await db.from('event_participants').select('pseudo')
-            .eq('event_name', eventName).eq('week_start', week);
-        var existing = new Set((existingRes.data || []).map(function (r) { return r.pseudo; }));
-
-        var toInsert = membersRes.data
-            .filter(function (m) { return !existing.has(m.pseudo); })
-            .map(function (m) { return { event_name: eventName, week_start: week, pseudo: m.pseudo, participated: 0, score: null }; });
-
+        var week = window.RAD.getWeekStart();
+        var toInsert = membersRes.data.map(function (m) {
+            return {
+                event_name: s.activeEventName,
+                week_start: week,
+                session_id: s.sessionId,
+                pseudo:     m.pseudo,
+                participated: 0,
+                score: null
+            };
+        });
         if (toInsert.length > 0) {
             await db.from('event_participants').insert(toInsert);
         }
-        await fetchParticipants(eventName);
+        await fetchParticipants(tabKey);
     }
 
-    // ── Fetch participants ────────────────────────────────────────────────
-    async function fetchParticipants(eventName) {
+    // ── Fetch participants de la session active ──────────────────────────
+    async function fetchParticipants(tabKey) {
         if (!db) return;
+        var s = state[tabKey];
+        if (!s.activeEventName || !s.sessionId) return;
         var [partRes, memRes] = await Promise.all([
-            db.from('event_participants').select('*').eq('event_name', eventName).eq('week_start', getWeekStart()).order('pseudo', { ascending: true }),
+            db.from('event_participants').select('*')
+                .eq('event_name', s.activeEventName)
+                .eq('session_id', s.sessionId)
+                .order('pseudo', { ascending: true }),
             db.from('guild_members').select('pseudo, uid')
         ]);
         if (partRes.error) return;
-        (memRes.data || []).forEach(function(m) { uidMap[m.pseudo] = m.uid; });
-        state[eventName].participants = partRes.data || [];
-        renderParticipants(eventName, state[eventName].participants);
+        (memRes.data || []).forEach(function (m) { uidMap[m.pseudo] = m.uid; });
+        s.participants = partRes.data || [];
+        renderParticipants(tabKey);
     }
 
-    // ── Save participation checkbox ───────────────────────────────────────
-    async function saveParticipation(eventName, pseudo, participated) {
+    // ── Save participation / score ────────────────────────────────────────
+    async function saveParticipation(tabKey, pseudo, value) {
         if (!db) return;
-        await db.from('event_participants').update({ participated: participated })
-            .eq('event_name', eventName).eq('week_start', getWeekStart()).eq('pseudo', pseudo);
+        var s = state[tabKey];
+        await db.from('event_participants').update({ participated: value })
+            .eq('event_name', s.activeEventName)
+            .eq('session_id', s.sessionId)
+            .eq('pseudo', pseudo);
     }
 
-    // ── Save score (debounced 600ms) ──────────────────────────────────────
-    async function saveScore(eventName, pseudo, value) {
+    async function saveScore(tabKey, pseudo, value) {
         if (!db) return;
+        var s = state[tabKey];
         await db.from('event_participants').update({ score: value === '' ? null : parseInt(value, 10) })
-            .eq('event_name', eventName).eq('week_start', getWeekStart()).eq('pseudo', pseudo);
+            .eq('event_name', s.activeEventName)
+            .eq('session_id', s.sessionId)
+            .eq('pseudo', pseudo);
     }
 
     // ── Render helpers ────────────────────────────────────────────────────
-    function getContentEl(eventName) {
-        var panel = document.getElementById(PANEL_MAP[eventName]);
-        return panel ? panel.querySelector('.event-participants-area') : null;
+    function getPanel(tabKey)   { return document.getElementById(PANEL_MAP[tabKey]); }
+    function getContentEl(tabKey) {
+        var p = getPanel(tabKey);
+        return p ? p.querySelector('.event-participants-area') : null;
     }
 
-    function renderStatus(eventName, isActive) {
-        var panel = document.getElementById(PANEL_MAP[eventName]);
+    function renderStatus(tabKey) {
+        var panel = getPanel(tabKey);
         if (!panel) return;
+        var s = state[tabKey];
         var badge    = panel.querySelector('.event-status-badge');
         var startBtn = panel.querySelector('.event-start-btn');
         var endBtn   = panel.querySelector('.event-end-btn');
+        var stageBadge = panel.querySelector('.arms-stage-badge');
+
         if (badge) {
-            badge.className   = 'event-status-badge ' + (isActive ? 'active' : 'inactive');
-            badge.textContent = isActive ? t('event_active') : t('event_inactive');
+            badge.className   = 'event-status-badge ' + (s.isActive ? 'active' : 'inactive');
+            badge.textContent = s.isActive ? t('event_active') : t('event_inactive');
         }
-        if (startBtn) startBtn.disabled = isActive;
-        if (endBtn)   endBtn.disabled   = !isActive;
+        if (startBtn) startBtn.disabled = s.isActive;
+        if (endBtn)   endBtn.disabled   = !s.isActive;
+
+        if (stageBadge) {
+            if (tabKey === 'ARMS RACE' && s.isActive && s.stage) {
+                stageBadge.textContent = '— Stage ' + s.stage;
+                stageBadge.classList.remove('hidden');
+            } else {
+                stageBadge.classList.add('hidden');
+                stageBadge.textContent = '';
+            }
+        }
     }
 
-    function renderInactive(eventName) {
-        var el = getContentEl(eventName);
+    function renderInactive(tabKey) {
+        var el = getContentEl(tabKey);
         if (!el) return;
         el.innerHTML =
             '<div class="empty-state">' +
@@ -163,17 +231,21 @@
             '</div>';
     }
 
-    function renderParticipants(eventName, participants) {
-        var el = getContentEl(eventName);
+    function renderParticipants(tabKey) {
+        var el = getContentEl(tabKey);
         if (!el) return;
+        var s = state[tabKey];
+        var participants = s.participants;
+        var dbEventName  = s.activeEventName;
+
         if (!participants.length) {
             el.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
             return;
         }
 
-        var done = participants.reduce(function (s, p) { return s + (p.participated || 0); }, 0);
-        var totalScore = participants.reduce(function (s, p) { return s + (p.score || 0); }, 0);
-        var hasScore = (eventName !== 'ARMS RACE STAGE A' && eventName !== 'ARMS RACE STAGE B');
+        var done = participants.reduce(function (a, p) { return a + (p.participated || 0); }, 0);
+        var totalScore = participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
+        var hasScore = EVENTS_WITHOUT_SCORE.indexOf(dbEventName) === -1;
 
         var html =
             '<div class="event-stats">' +
@@ -195,19 +267,19 @@
                 '</tr></thead><tbody>';
 
         participants.forEach(function (p) {
+            var isChecked = p.participated > 0;
             html +=
-                '<tr class="participant-row' + (p.participated ? ' participated' : '') + '" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
-                    '<td class="pseudo-cell"><i class="ph-fill ph-game-controller text-accent"></i> ' + escapeHTML(p.pseudo) + '</td>' +
+                '<tr class="participant-row' + (isChecked ? ' participated' : '') + '" data-pseudo="' + esc(p.pseudo) + '">' +
+                    '<td class="pseudo-cell"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(p.pseudo) + '</td>' +
                     '<td class="check-cell">' +
-                        '<div class="counter-input">' +
-                            '<button class="counter-btn minus" data-event="' + escapeHTML(eventName) + '" data-pseudo="' + escapeHTML(p.pseudo) + '"><i class="ph ph-minus"></i></button>' +
-                            '<span class="counter-val">' + (p.participated || 0) + '</span>' +
-                            '<button class="counter-btn plus" data-event="' + escapeHTML(eventName) + '" data-pseudo="' + escapeHTML(p.pseudo) + '"><i class="ph ph-plus"></i></button>' +
-                        '</div>' +
+                        '<label class="participation-check">' +
+                            '<input type="checkbox" class="participation-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
+                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                        '</label>' +
                     '</td>' +
                     (hasScore ? '<td class="score-cell">' +
                         '<input type="number" min="0" class="score-input" value="' + (p.score != null ? p.score : '') + '" placeholder="—"' +
-                            ' data-event="' + escapeHTML(eventName) + '" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
+                            ' data-pseudo="' + esc(p.pseudo) + '">' +
                     '</td>' : '') +
                 '</tr>';
         });
@@ -215,66 +287,112 @@
         html += '</tbody></table></div>';
         el.innerHTML = html;
 
-        // Participation counter
-        el.querySelectorAll('.counter-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var isPlus = btn.classList.contains('plus');
-                var valEl = btn.parentElement.querySelector('.counter-val');
-                var currentVal = parseInt(valEl.textContent, 10) || 0;
-                var newVal = isPlus ? currentVal + 1 : Math.max(0, currentVal - 1);
-                if (currentVal === newVal) return;
-                
-                valEl.textContent = newVal;
-                var row = btn.closest('.participant-row');
-                if (row) row.classList.toggle('participated', newVal > 0);
-                
-                // Update live
-                saveParticipation(btn.getAttribute('data-event'), btn.getAttribute('data-pseudo'), newVal)
-                    .then(function () { fetchParticipants(eventName); });
+        el.querySelectorAll('.participation-checkbox').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var next = cb.checked ? 1 : 0;
+                var row  = cb.closest('.participant-row');
+                if (row) row.classList.toggle('participated', cb.checked);
+
+                var pseudo = cb.getAttribute('data-pseudo');
+                saveParticipation(tabKey, pseudo, next).then(function () {
+                    var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
+                    if (pp) pp.participated = next;
+                    refreshStats(el, tabKey);
+                });
             });
         });
 
-        // Score input (debounced)
         el.querySelectorAll('.score-input').forEach(function (inp) {
             var timer;
             inp.addEventListener('input', function () {
                 clearTimeout(timer);
                 timer = setTimeout(function () {
-                    saveScore(inp.getAttribute('data-event'), inp.getAttribute('data-pseudo'), inp.value);
+                    var pseudo = inp.getAttribute('data-pseudo');
+                    saveScore(tabKey, pseudo, inp.value).then(function () {
+                        var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
+                        if (pp) pp.score = inp.value === '' ? null : parseInt(inp.value, 10);
+                        refreshStats(el, tabKey);
+                    });
                 }, 700);
             });
         });
 
-        // Search filter
         var searchInput = el.querySelector('.event-search-input');
         if (searchInput) {
-            searchInput.addEventListener('input', function(e) {
+            searchInput.addEventListener('input', function (e) {
                 var q = e.target.value.toLowerCase();
-                el.querySelectorAll('.participant-row').forEach(function(row) {
+                el.querySelectorAll('.participant-row').forEach(function (row) {
                     var pseudo = row.getAttribute('data-pseudo').toLowerCase();
                     var uid = (uidMap[row.getAttribute('data-pseudo')] || '').toLowerCase();
-                    if ((pseudo + ' ' + uid).indexOf(q) !== -1) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
+                    row.style.display = (pseudo + ' ' + uid).indexOf(q) !== -1 ? '' : 'none';
                 });
             });
         }
     }
 
+    function refreshStats(el, tabKey) {
+        var participants = state[tabKey].participants;
+        var done = participants.reduce(function (a, p) { return a + (p.participated || 0); }, 0);
+        var totalScore = participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
+        var chips = el.querySelectorAll('.event-stats .stat-chip');
+        if (chips[1]) chips[1].innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated');
+        if (chips[2]) chips[2].innerHTML = '<i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent');
+        if (chips[3]) chips[3].innerHTML = '<i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + totalScore;
+    }
+
+    // ── Stage selector modal pour Arms Race ───────────────────────────────
+    function pickArmsRaceStage(callback) {
+        var existing = document.getElementById('stage-overlay');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'stage-overlay';
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML =
+            '<div class="confirm-card glass-card">' +
+                '<div class="confirm-icon"><i class="ph-fill ph-target text-accent"></i></div>' +
+                '<h3>Arms Race — Choix du Stage</h3>' +
+                '<p>Quel stage démarrez-vous ?</p>' +
+                '<div class="confirm-actions" style="gap: 1rem;">' +
+                    '<button id="stage-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
+                    '<button id="stage-a" class="primary-btn">Stage A</button>' +
+                    '<button id="stage-b" class="primary-btn">Stage B</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function close() {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 300);
+        }
+        document.getElementById('stage-cancel').addEventListener('click', close);
+        document.getElementById('stage-a').addEventListener('click', function () { close(); callback('A'); });
+        document.getElementById('stage-b').addEventListener('click', function () { close(); callback('B'); });
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+    }
+
     // ── Wire START / END buttons ──────────────────────────────────────────
     document.querySelectorAll('.event-start-btn[data-event]').forEach(function (btn) {
         var ev = btn.getAttribute('data-event');
-        if (STANDARD_EVENTS.indexOf(ev) !== -1) {
-            btn.addEventListener('click', function () { setEventActive(ev, true); });
-        }
+        if (!TAB_TO_DB_EVENTS[ev]) return;
+
+        btn.addEventListener('click', function () {
+            if (ev === 'ARMS RACE') {
+                pickArmsRaceStage(function (stage) {
+                    var dbEventName = stage === 'A' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
+                    startEvent('ARMS RACE', dbEventName, stage);
+                });
+            } else {
+                startEvent(ev, ev, null);
+            }
+        });
     });
+
     document.querySelectorAll('.event-end-btn[data-event]').forEach(function (btn) {
         var ev = btn.getAttribute('data-event');
-        if (STANDARD_EVENTS.indexOf(ev) !== -1) {
-            btn.addEventListener('click', function () { setEventActive(ev, false); });
-        }
+        if (!TAB_TO_DB_EVENTS[ev]) return;
+        btn.addEventListener('click', function () { endEvent(ev); });
     });
 
 })();

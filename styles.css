@@ -1022,13 +1022,48 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .pseudo-cell { padding: 0.875rem 1rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 500; }
 .check-cell, .score-cell { padding: 0.875rem 1rem; text-align: center; }
 
-/* ─── Counter Input (Participation) ──────────────────────────────────────── */
-.counter-input { display: inline-flex; align-items: center; background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 20px; overflow: hidden; }
-.counter-btn { background: transparent; border: none; color: var(--text-muted); padding: 0.3rem 0.6rem; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; }
-.counter-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
-.counter-btn.minus:hover { color: var(--error); }
-.counter-btn.plus:hover { color: var(--success); }
-.counter-val { min-width: 24px; text-align: center; font-weight: 600; font-size: 0.9rem; padding: 0 0.2rem; }
+/* ─── Participation Checkbox ─────────────────────────────────────────────── */
+.participation-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+}
+.participation-checkbox {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+.participation-check .check-mark {
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--card-border);
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+.participation-check:hover .check-mark {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+.participation-checkbox:checked ~ .check-mark {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+}
+.participation-checkbox:focus-visible ~ .check-mark {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
 /* ─── Toggle Switch ──────────────────────────────────────────────────────── */
 .check-toggle { display: inline-flex; align-items: center; cursor: pointer; position: relative; }
 .check-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -1355,4 +1390,192 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     .btn-compute {
         width: 100%;
     }
+}
+
+/* ─── Stats mode tabs (Global / SvS / GvG / Prince Rewards) ─────────────── */
+.stats-mode-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+.stats-mode-tab {
+    padding: 0.55rem 1.1rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.stats-mode-tab:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.05);
+}
+.stats-mode-tab.active {
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.stats-prince-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1.25rem;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(99, 102, 241, 0.12));
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    border-radius: var(--radius-md);
+    color: #fbbf24;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.stats-prince-banner i { font-size: 1.2rem; }
+
+/* ─── Arms Race stage badge in header ──────────────────────────────────── */
+.arms-stage-badge {
+    margin-left: 0.5rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    vertical-align: middle;
+}
+
+/* ─── Edit Member dialog overrides ─────────────────────────────────────── */
+#edit-member-overlay .input-group { text-align: left; }
+#edit-member-overlay label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+#edit-member-overlay .confirm-actions {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+/* Stage selector buttons */
+#stage-overlay .confirm-actions { flex-wrap: wrap; }
+#stage-overlay .primary-btn {
+    flex: 1;
+    min-width: 100px;
+    justify-content: center;
+}
+
+/* Edit button (icon only) in member tile actions */
+.account-actions .icon-btn.guild-edit-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: rgba(99, 102, 241, 0.1);
+    color: #a5b4fc;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+.account-actions .icon-btn.guild-edit-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* ─── List view (membres + sanctions) ──────────────────────────────────── */
+.account-grid.list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.account-grid.list-view .list-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.7rem 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    flex-wrap: wrap;
+}
+.account-grid.list-view .list-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--primary);
+    transform: none;
+    box-shadow: none;
+}
+.account-grid.list-view .list-row::before { display: none; }
+
+.list-row .list-pseudo {
+    flex: 0 0 auto;
+    min-width: 180px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.list-row .list-meta {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.list-row .list-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+}
+.list-row .list-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+.list-row .list-actions .delete-btn,
+.list-row .list-actions .icon-btn {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+}
+
+/* Sanction row variant */
+.list-row.sanction-row { border-left: 3px solid var(--error); }
+.list-row .sanction-comment {
+    color: var(--text-main);
+    font-style: italic;
+    background: rgba(239, 68, 68, 0.06);
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+}
+.list-row .sanction-author {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+@media (max-width: 600px) {
+    .list-row .list-pseudo { min-width: 100%; }
+    .list-row .list-meta { width: 100%; }
 }

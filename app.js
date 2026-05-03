@@ -1,17 +1,8 @@
 (function () {
 
-    // ─── Shorthand for translations ────────────────────────────────────────────
     function t(key) { return window.RAD_I18N.t(key); }
-
-    // ─── Config ────────────────────────────────────────────────────────────────
-    var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
-    var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
-    var supabase;
-    try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    } catch (err) {
-        console.error('Supabase init error:', err);
-    }
+    var supabase = window.RAD ? window.RAD.db : null;
+    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
 
     // ─── CSS Injections ───────────────────────────────────────────────────────
     var style = document.createElement('style');
@@ -54,17 +45,13 @@
 
     // ─── Boot ─────────────────────────────────────────────────────────────────
     window.RAD_I18N.applyTranslations();
-    // Sync language button state on load
     document.querySelectorAll('.lang-btn').forEach(function (btn) {
         btn.classList.toggle('active', btn.getAttribute('data-lang') === window.RAD_I18N.getLang());
     });
 
     var savedRole = sessionStorage.getItem('rad_role');
-    var savedUser = sessionStorage.getItem('rad_user');
-    if (savedRole === 'admin') {
-        showAdminDashboard('admin');
-    } else if (savedRole === 'member') {
-        showAdminDashboard('member');
+    if (savedRole === 'admin' || savedRole === 'member') {
+        showAdminDashboard(savedRole);
     }
 
     // ─── Auth ─────────────────────────────────────────────────────────────────
@@ -73,7 +60,6 @@
         var user = document.getElementById('username').value.trim();
         var pass = document.getElementById('password').value;
 
-        // Authentication check via Supabase for everyone
         var btn = e.target.querySelector('button[type="submit"]');
         btn.disabled = true;
         var span = btn.querySelector('span');
@@ -81,28 +67,18 @@
 
         try {
             if (!supabase) throw new Error('Supabase not initialized');
-            var res = await supabase
-                .from('accounts')
-                .select('*')
-                .eq('id', user)
-                .eq('password', pass)
-                .single();
+            var res = await supabase.from('accounts').select('*').eq('id', user).eq('password', pass).single();
 
             if (res.data) {
                 loginError.classList.add('hidden');
                 document.getElementById('password').value = '';
-                
-                // Assign role based on DB value (R5 = admin, R4 = member)
+
                 var role = (res.data.role === 'R5') ? 'admin' : 'member';
                 sessionStorage.setItem('rad_role', role);
                 sessionStorage.setItem('rad_user', user);
-                
+
                 showAdminDashboard(role);
-                if (role === 'admin') {
-                    showToast(t('toast_login_ok'), 'success');
-                } else {
-                    showToast(t('toast_welcome') + ' ' + user + ' !', 'success');
-                }
+                showToast(role === 'admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
             } else {
                 throw new Error('invalid');
             }
@@ -135,42 +111,25 @@
         if (memberView) memberView.classList.add('hidden');
         dashboardView.classList.remove('hidden');
         dashboardView.classList.add('active');
-        
+
         var adminHomeBtn = document.querySelector('.nav-tab[data-tab="admin-home"]');
         var roleLabel = document.getElementById('nav-user-role');
         var nameLabel = document.getElementById('nav-user-name');
-        
+
         if (role === 'member') {
             if (roleLabel) roleLabel.textContent = 'R4 :';
             if (nameLabel) nameLabel.textContent = sessionStorage.getItem('rad_user') || 'Officier';
-            
             if (adminHomeBtn) adminHomeBtn.style.display = 'none';
-            // Default to SvS tab instead of Command Center
             var svsTab = document.querySelector('.nav-tab[data-tab="event-svs"]');
             if (svsTab) svsTab.click();
         } else {
             if (roleLabel) roleLabel.textContent = 'R5 :';
-            // NOTE: Security depends on Supabase RLS policies. Client-side role is for UI only.
             if (nameLabel) nameLabel.textContent = sessionStorage.getItem('rad_user') || 'Admin';
-            
             if (adminHomeBtn) adminHomeBtn.style.display = '';
             var adminTab = document.querySelector('.nav-tab[data-tab="admin-home"]');
             if (adminTab) adminTab.click();
             fetchAccounts();
         }
-    }
-
-    function showMemberDashboard(username) {
-        loginView.classList.add('hidden');
-        dashboardView.classList.add('hidden');
-        if (memberView) {
-            memberView.classList.remove('hidden');
-            memberView.classList.add('active');
-        }
-        var n1 = document.getElementById('member-name');
-        var n2 = document.getElementById('member-name-display');
-        if (n1) n1.textContent = username || 'Membre';
-        if (n2) n2.textContent = username || 'Membre';
     }
 
     function showLogin() {
@@ -188,35 +147,29 @@
             var viewId = tabBtn.getAttribute('data-view');
             var viewEl = document.getElementById(viewId);
 
-            viewEl.querySelectorAll('.nav-tab').forEach(function (t) { t.classList.remove('active'); });
+            viewEl.querySelectorAll('.nav-tab').forEach(function (b) { b.classList.remove('active'); });
             tabBtn.classList.add('active');
 
             viewEl.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
             var panel = document.getElementById(tabId);
             if (panel) panel.classList.add('active');
 
-            // Load guild members pages
             if (tabId === 'admin-members' || tabId === 'member-members') {
                 fetchGuildMembers();
             }
-            // Load event tabs (standard events)
             var eventName = tabBtn.getAttribute('data-event-tab');
-            if (eventName && eventName !== 'Shadowfront' && eventName !== 'stats' && eventName !== 'glory' && window.RAD_EVENTS) {
+            if (eventName && ['SvS', 'GvG', 'Defend Trade Route', 'ARMS RACE'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
                 window.RAD_EVENTS.loadEvent(eventName);
             }
-            // Load Shadowfront
             if (eventName === 'Shadowfront' && window.RAD_SHADOWFRONT) {
                 window.RAD_SHADOWFRONT.load();
             }
-            // Load Stats
             if (eventName === 'stats' && window.RAD_STATS) {
                 window.RAD_STATS.load();
             }
-            // Load Glory tracker
             if (eventName === 'glory' && window.RAD_GLORY) {
                 window.RAD_GLORY.load();
             }
-            // Load Sanctions
             if (tabId === 'tab-sanctions' && window.RAD_SANCTIONS) {
                 window.RAD_SANCTIONS.load();
             }
@@ -227,9 +180,7 @@
     function generatePassword(length) {
         var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
         var pwd = '';
-        for (var i = 0; i < length; i++) {
-            pwd += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
+        for (var i = 0; i < length; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
         return pwd;
     }
 
@@ -237,10 +188,7 @@
     async function fetchAccounts() {
         if (!supabase) return;
         try {
-            var res = await supabase
-                .from('accounts')
-                .select('*')
-                .order('id', { ascending: true });
+            var res = await supabase.from('accounts').select('*').order('id', { ascending: true });
             if (res.error) throw res.error;
             accounts = res.data || [];
             renderAccounts();
@@ -299,8 +247,7 @@
         if (!accountList) return;
         if (accountCount) accountCount.textContent = accounts.length;
         if (accounts.length === 0) {
-            accountList.innerHTML =
-                '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_accounts') + '</p></div>';
+            accountList.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_accounts') + '</p></div>';
             return;
         }
         var html = '';
@@ -308,12 +255,12 @@
             html +=
                 '<div class="account-item">' +
                     '<div class="account-info">' +
-                        '<span class="account-name"><i class="ph-fill ph-user-circle text-accent"></i> ' + escapeHTML(acc.id) + '</span>' +
+                        '<span class="account-name"><i class="ph-fill ph-user-circle text-accent"></i> ' + esc(acc.id) + '</span>' +
                         '<span class="account-pass">••••••••</span>' +
                     '</div>' +
                     '<div class="account-actions">' +
-                        '<button class="copy-btn" data-pass="' + escapeHTML(acc.password) + '" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
-                        '<button class="delete-btn" data-id="' + escapeHTML(acc.id) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>' +
+                        '<button class="copy-btn" data-pass="' + esc(acc.password) + '" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
+                        '<button class="delete-btn" data-id="' + esc(acc.id) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>' +
                     '</div>' +
                 '</div>';
         });
@@ -335,7 +282,7 @@
                 var id = btn.getAttribute('data-id');
                 showConfirm(
                     t('confirm_delete_account_title'),
-                    t('confirm_delete_account_body') + ' <strong>' + escapeHTML(id) + '</strong>' + t('confirm_delete_account_body2'),
+                    t('confirm_delete_account_body') + ' <strong>' + esc(id) + '</strong>' + t('confirm_delete_account_body2'),
                     function () { deleteAccount(id); }
                 );
             });
@@ -346,10 +293,7 @@
     async function fetchGuildMembers() {
         if (!supabase) return;
         try {
-            var res = await supabase
-                .from('guild_members')
-                .select('*')
-                .order('pseudo', { ascending: true });
+            var res = await supabase.from('guild_members').select('*').order('pseudo', { ascending: true });
             if (res.error) throw res.error;
             guildMembers = res.data || [];
             renderGuildMembers();
@@ -365,18 +309,21 @@
         var uidVal = uidInput ? uidInput.value.trim() : null;
         if (!pseudo || !uidVal) return;
 
+        var pseudoErr = window.RAD.validatePseudo(pseudo);
+        if (pseudoErr) { showToast(t(pseudoErr), 'error'); return; }
+        var uidErr = window.RAD.validateUid(uidVal);
+        if (uidErr) { showToast(t(uidErr), 'error'); return; }
+
         if (guildMembers.some(function (m) { return m.pseudo.toLowerCase() === pseudo.toLowerCase(); })) {
             showToast(t('toast_duplicate_member'), 'error');
             return;
         }
         if (guildMembers.some(function (m) { return m.uid && String(m.uid).trim() === String(uidVal).trim(); })) {
-            showToast('Cet UID est déjà utilisé par un autre membre.', 'error');
+            showToast(t('toast_duplicate_uid'), 'error');
             return;
         }
         try {
-            var payload = { pseudo: pseudo };
-            if (uidVal) payload.uid = uidVal;
-            var res = await supabase.from('guild_members').insert([payload]);
+            var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal }]);
             if (res.error) throw res.error;
             guildMembers.push({ pseudo: pseudo, uid: uidVal, created_at: new Date().toISOString() });
             if (input) input.value = '';
@@ -398,6 +345,8 @@
 
     async function deleteGuildMember(pseudo) {
         try {
+            // ON DELETE CASCADE fait le ménage côté DB sur :
+            //   event_participants, shadowfront_squads, weekly_scores, sanctions
             var res = await supabase.from('guild_members').delete().eq('pseudo', pseudo);
             if (res.error) throw res.error;
             guildMembers = guildMembers.filter(function (m) { return m.pseudo !== pseudo; });
@@ -408,68 +357,164 @@
         }
     }
 
-    function renderGuildMembers() {
-        var searchAdmin = document.getElementById('member-search-admin');
-        var searchMember = document.getElementById('member-search-member');
-        var qAdmin = searchAdmin ? searchAdmin.value.toLowerCase() : '';
-        var qMember = searchMember ? searchMember.value.toLowerCase() : '';
+    async function renameGuildMember(oldPseudo, newPseudo, newUid) {
+        newPseudo = (newPseudo || '').trim();
+        newUid    = (newUid || '').trim();
 
-        var filteredAdmin = guildMembers.filter(function(m) {
+        var pseudoErr = window.RAD.validatePseudo(newPseudo);
+        if (pseudoErr) { showToast(t(pseudoErr), 'error'); return false; }
+        var uidErr = window.RAD.validateUid(newUid);
+        if (uidErr) { showToast(t(uidErr), 'error'); return false; }
+
+        var pseudoChanged = newPseudo.toLowerCase() !== oldPseudo.toLowerCase();
+        var uidChanged    = (function () {
+            var current = guildMembers.find(function (m) { return m.pseudo === oldPseudo; });
+            return current && (current.uid || '') !== newUid;
+        })();
+
+        if (!pseudoChanged && !uidChanged) return true;
+
+        if (pseudoChanged && guildMembers.some(function (m) { return m.pseudo.toLowerCase() === newPseudo.toLowerCase(); })) {
+            showToast(t('toast_duplicate_member'), 'error');
+            return false;
+        }
+        if (uidChanged && newUid && guildMembers.some(function (m) { return m.pseudo !== oldPseudo && (m.uid || '') === newUid; })) {
+            showToast(t('toast_duplicate_uid'), 'error');
+            return false;
+        }
+
+        try {
+            // ON UPDATE CASCADE propagera le nouveau pseudo dans toutes les FK
+            var update = {};
+            if (pseudoChanged) update.pseudo = newPseudo;
+            if (uidChanged)    update.uid = newUid || null;
+
+            var res = await supabase.from('guild_members').update(update).eq('pseudo', oldPseudo);
+            if (res.error) throw res.error;
+
+            await fetchGuildMembers();
+            showToast(t('toast_member_updated'), 'success');
+            return true;
+        } catch (err) {
+            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            return false;
+        }
+    }
+
+    function renderGuildMembers() {
+        var qAdminInput  = document.getElementById('member-search-admin');
+        var qMemberInput = document.getElementById('member-search-member');
+        var qAdmin  = qAdminInput  ? qAdminInput.value.toLowerCase()  : '';
+        var qMember = qMemberInput ? qMemberInput.value.toLowerCase() : '';
+
+        var filteredAdmin = guildMembers.filter(function (m) {
             return (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qAdmin) !== -1;
         });
-        var filteredMember = guildMembers.filter(function(m) {
+        var filteredMember = guildMembers.filter(function (m) {
             return (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qMember) !== -1;
         });
 
         if (guildMemberCount)  guildMemberCount.textContent  = filteredAdmin.length;
         if (guildMemberCountM) guildMemberCountM.textContent = filteredMember.length;
 
-        var htmlAdmin = '';
-        if (filteredAdmin.length === 0) {
-            htmlAdmin = '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
-        } else {
-            filteredAdmin.forEach(function (m, i) {
-                var uidVal = m.uid || '—';
-                htmlAdmin +=
-                    '<div class="account-item member-tile" style="animation-delay:' + (i * 0.03) + 's">' +
-                        '<div class="account-info">' +
-                            '<span class="account-name"><i class="ph-fill ph-game-controller text-accent"></i> ' + escapeHTML(m.pseudo) + '</span>' +
-                            '<span class="account-pass"><i class="ph ph-identification-badge"></i> UID: ' + escapeHTML(uidVal) + '</span>' +
-                        '</div>' +
-                        '<div class="account-actions">' +
-                            '<button class="delete-btn guild-delete-btn" data-pseudo="' + escapeHTML(m.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>' +
-                        '</div>' +
-                    '</div>';
-            });
+        if (guildMemberList) {
+            guildMemberList.innerHTML = filteredAdmin.length
+                ? filteredAdmin.map(function (m, i) { return memberTileHtml(m, i, true); }).join('')
+                : '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
         }
-        if (guildMemberList) guildMemberList.innerHTML = htmlAdmin;
+        if (guildMemberListM) {
+            guildMemberListM.innerHTML = filteredMember.length
+                ? filteredMember.map(function (m, i) { return memberTileHtml(m, i, false); }).join('')
+                : '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
+        }
 
-        var htmlMember = '';
-        if (filteredMember.length === 0) {
-            htmlMember = '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
-        } else {
-            filteredMember.forEach(function (m, i) {
-                var uidVal = m.uid || '—';
-                htmlMember +=
-                    '<div class="account-item member-tile" style="animation-delay:' + (i * 0.03) + 's">' +
-                        '<div class="account-info">' +
-                            '<span class="account-name"><i class="ph-fill ph-game-controller text-accent"></i> ' + escapeHTML(m.pseudo) + '</span>' +
-                            '<span class="account-pass"><i class="ph ph-identification-badge"></i> UID: ' + escapeHTML(uidVal) + '</span>' +
-                        '</div>' +
-                    '</div>';
+        document.querySelectorAll('.guild-edit-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pseudo = btn.getAttribute('data-pseudo');
+                var member = guildMembers.find(function (m) { return m.pseudo === pseudo; });
+                if (member) showEditMemberDialog(member);
             });
-        }
-        if (guildMemberListM) guildMemberListM.innerHTML = htmlMember;
+        });
 
         document.querySelectorAll('.guild-delete-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var pseudo = btn.getAttribute('data-pseudo');
                 showConfirm(
                     t('confirm_remove_member_title'),
-                    t('confirm_remove_member_body') + ' <strong>' + escapeHTML(pseudo) + '</strong> ' + t('confirm_remove_member_body2'),
+                    t('confirm_remove_member_body') + ' <strong>' + esc(pseudo) + '</strong> ' + t('confirm_remove_member_body2') +
+                    '<br><span class="text-muted-sm">' + t('confirm_remove_member_cascade') + '</span>',
                     function () { deleteGuildMember(pseudo); }
                 );
             });
+        });
+    }
+
+    function memberTileHtml(m, i, withActions) {
+        var uidVal = m.uid || '—';
+        return '<div class="list-row" style="animation-delay:' + (i * 0.02) + 's">' +
+                '<span class="list-pseudo"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(m.pseudo) + '</span>' +
+                '<div class="list-meta">' +
+                    '<span class="list-meta-item"><i class="ph ph-identification-badge"></i> UID: ' + esc(uidVal) + '</span>' +
+                '</div>' +
+                (withActions ? '<div class="list-actions">' +
+                    '<button class="icon-btn guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('edit_title') + '"><i class="ph ph-pencil-simple"></i></button>' +
+                    '<button class="delete-btn guild-delete-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>' +
+                '</div>' : '') +
+            '</div>';
+    }
+
+    // ─── Edit Member Dialog ───────────────────────────────────────────────────
+    function showEditMemberDialog(member) {
+        var existing = document.getElementById('edit-member-overlay');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'edit-member-overlay';
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML =
+            '<div class="confirm-card glass-card" style="max-width: 480px;">' +
+                '<div class="confirm-icon"><i class="ph-fill ph-pencil-simple text-accent"></i></div>' +
+                '<h3>' + t('edit_member_title') + '</h3>' +
+                '<p>' + t('edit_member_body') + '</p>' +
+                '<form id="edit-member-form" style="display:flex; flex-direction:column; gap: 1rem; margin-top: 1rem;">' +
+                    '<div class="input-group">' +
+                        '<label for="edit-pseudo">' + t('label_pseudo') + '</label>' +
+                        '<div class="input-wrapper">' +
+                            '<i class="ph ph-game-controller"></i>' +
+                            '<input type="text" id="edit-pseudo" required value="' + esc(member.pseudo) + '">' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="input-group">' +
+                        '<label for="edit-uid">UID</label>' +
+                        '<div class="input-wrapper">' +
+                            '<i class="ph ph-identification-badge"></i>' +
+                            '<input type="text" id="edit-uid" value="' + esc(member.uid || '') + '">' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="confirm-actions">' +
+                        '<button type="button" id="edit-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
+                        '<button type="submit" class="primary-btn">' + t('confirm_ok') + '</button>' +
+                    '</div>' +
+                '</form>' +
+            '</div>';
+
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function close() {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 300);
+        }
+
+        document.getElementById('edit-cancel').addEventListener('click', close);
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+
+        document.getElementById('edit-member-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var newPseudo = document.getElementById('edit-pseudo').value;
+            var newUid    = document.getElementById('edit-uid').value;
+            var ok = await renameGuildMember(member.pseudo, newPseudo, newUid);
+            if (ok) close();
         });
     }
 
@@ -484,7 +529,7 @@
         overlay.innerHTML =
             '<div class="confirm-card glass-card">' +
                 '<div class="confirm-icon"><i class="ph-fill ph-warning text-error"></i></div>' +
-                '<h3>' + escapeHTML(title) + '</h3>' +
+                '<h3>' + esc(title) + '</h3>' +
                 '<p>' + message + '</p>' +
                 '<div class="confirm-actions">' +
                     '<button id="confirm-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
@@ -510,7 +555,16 @@
         var icons = { success: 'ph-check-circle', error: 'ph-warning-circle', info: 'ph-info' };
         var toast = document.createElement('div');
         toast.className = 'toast ' + type;
-        toast.innerHTML = '<i class="ph-fill ' + (icons[type] || 'ph-info') + '"></i> <span>' + message + '</span>';
+
+        // Safe DOM construction : aucun innerHTML utilisateur
+        var icon = document.createElement('i');
+        icon.className = 'ph-fill ' + (icons[type] || 'ph-info');
+        var span = document.createElement('span');
+        span.textContent = String(message);
+        toast.appendChild(icon);
+        toast.appendChild(document.createTextNode(' '));
+        toast.appendChild(span);
+
         toastContainer.appendChild(toast);
         setTimeout(function () {
             toast.classList.add('fade-out');
@@ -518,20 +572,6 @@
         }, 3500);
     }
 
-    // ─── Utility ──────────────────────────────────────────────────────────────
-    function escapeHTML(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;')
-            .replace(/`/g, '&#96;');
-    }
-
-    // ─── Public API ───────────────────────────────────────────────────────────
-    window.RAD_APP = {
-        showToast: showToast
-    };
+    window.RAD_APP = { showToast: showToast };
 
 })();
