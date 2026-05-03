@@ -173,6 +173,9 @@
             if (tabId === 'tab-sanctions' && window.RAD_SANCTIONS) {
                 window.RAD_SANCTIONS.load();
             }
+            if (tabId === 'gm-overview' && window.RAD_OVERVIEW) {
+                window.RAD_OVERVIEW.load();
+            }
         });
     });
 
