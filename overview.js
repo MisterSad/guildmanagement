@@ -131,22 +131,9 @@
                     '<div class="gm-section-title"><i class="ph ph-pulse"></i> ' + t('overview_recent_activity') + '</div>' +
                 '</div>' +
                 renderActivityCard(activity) +
-            '</div>' +
-            '<div class="gm-section">' +
-                '<div class="gm-section-head">' +
-                    '<div class="gm-section-title"><i class="ph ph-sparkle"></i> ' + t('overview_quick_actions') + '</div>' +
-                '</div>' +
-                renderQuickActions() +
             '</div>';
 
         content.innerHTML = html;
-
-        content.querySelectorAll('[data-gm-action]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var action = btn.getAttribute('data-gm-action');
-                handleQuickAction(action);
-            });
-        });
     }
 
     function statTile(label, value, trend, icon, accent, meta) {
@@ -188,43 +175,6 @@
         });
         html += '</div>';
         return html;
-    }
-
-    function renderQuickActions() {
-        var actions = [
-            { id: 'add-member',  icon: 'ph-user-plus',  label: t('overview_qa_add_member') },
-            { id: 'start-svs',   icon: 'ph-sword',      label: t('overview_qa_start_svs') },
-            { id: 'update-glory',icon: 'ph-trophy',     label: t('overview_qa_update_glory') },
-            { id: 'create-acc',  icon: 'ph-key',        label: t('overview_qa_create_account') }
-        ];
-        return '<div class="gm-stat-grid">' +
-            actions.map(function (a) {
-                return '<button class="gm-card gm-card-padded gm-row" data-gm-action="' + a.id + '" style="cursor:pointer; gap:.75rem; background: var(--bg-1); text-align:left; color: var(--fg); font: inherit; border: 1px solid var(--border-soft); width:100%;">' +
-                    '<div style="width:36px; height:36px; border-radius:9px; background: var(--accent-soft); color: var(--accent); display:flex; align-items:center; justify-content:center;">' +
-                        '<i class="ph ' + a.icon + '"></i>' +
-                    '</div>' +
-                    '<div style="font-weight:500; font-size:.9rem;">' + esc(a.label) + '</div>' +
-                    '<i class="ph ph-arrow-right" style="margin-left:auto; color: var(--fg-dim);"></i>' +
-                '</button>';
-            }).join('') +
-        '</div>';
-    }
-
-    function handleQuickAction(action) {
-        var clickAndFocus = function (tabId, focusId) {
-            var tab = document.querySelector('.nav-tab[data-tab="' + tabId + '"]');
-            if (tab) tab.click();
-            if (focusId) {
-                setTimeout(function () {
-                    var inp = document.getElementById(focusId);
-                    if (inp) { inp.focus(); inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-                }, 200);
-            }
-        };
-        if (action === 'add-member')   clickAndFocus('admin-members', 'member-pseudo');
-        if (action === 'start-svs')    clickAndFocus('event-svs');
-        if (action === 'update-glory') clickAndFocus('event-glory');
-        if (action === 'create-acc')   clickAndFocus('admin-home', 'account-id');
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
