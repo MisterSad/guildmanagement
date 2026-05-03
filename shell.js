@@ -147,9 +147,9 @@
             content.appendChild(ov);
         }
 
-        // On crée aussi un bouton .nav-tab caché pour gm-overview pour que app.js
-        // le détecte. Sinon le click programmatique de la sidebar n'aurait rien à
-        // déclencher.
+        // On crée un bouton .nav-tab caché pour gm-overview ET on attache son
+        // handler ici (app.js a déjà attaché ses handlers à load — il ne nous
+        // verra pas si on l'ajoute après).
         var legacyNav = dashboard.querySelector('.app-header .nav-tabs');
         if (legacyNav && !legacyNav.querySelector('[data-tab="gm-overview"]')) {
             var btn = document.createElement('button');
@@ -158,6 +158,16 @@
             btn.setAttribute('data-view', 'dashboard-view');
             btn.style.display = 'none';
             legacyNav.insertBefore(btn, legacyNav.firstChild);
+
+            btn.addEventListener('click', function () {
+                // Remove .active from all sibling nav-tabs and tab-panels
+                dashboard.querySelectorAll('.nav-tab').forEach(function (b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                dashboard.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+                var panel = document.getElementById('gm-overview');
+                if (panel) panel.classList.add('active');
+                if (window.RAD_OVERVIEW) window.RAD_OVERVIEW.load();
+            });
         }
     }
 
