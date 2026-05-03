@@ -58,6 +58,10 @@
                 s.isActive        = true;
                 renderStatus(tabKey);
                 await fetchParticipants(tabKey);
+                // Self-heal : session active mais aucun participant ⇒ repopuler
+                if (s.sessionId && s.participants.length === 0) {
+                    await populateParticipants(tabKey);
+                }
             } else {
                 s.activeEventName = null;
                 s.sessionId       = null;
@@ -74,8 +78,7 @@
         if (!db) return;
         var sessionId = window.RAD.newSessionId();
         try {
-            // S'il y a une session précédente active du même event, la désactiver d'abord
-            await db.from('event_status').upsert(
+            var statusRes = await db.from('event_status').upsert(
                 {
                     event_name: dbEventName,
                     is_active:  true,
@@ -85,13 +88,14 @@
                 },
                 { onConflict: 'event_name' }
             );
+            if (statusRes.error) throw statusRes.error;
+
             state[tabKey].activeEventName = dbEventName;
             state[tabKey].sessionId       = sessionId;
             state[tabKey].stage           = stage || null;
             state[tabKey].isActive        = true;
             renderStatus(tabKey);
             await populateParticipants(tabKey);
-            window.RAD.showToast('Nouvelle session démarrée.', 'success');
         } catch (err) {
             console.error('startEvent', err);
             window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -131,22 +135,49 @@
     async function populateParticipants(tabKey) {
         if (!db) return;
         var s = state[tabKey];
-        var membersRes = await db.from('guild_members').select('pseudo');
-        if (!membersRes.data) return;
+        if (!s.activeEventName || !s.sessionId) return;
+
+        var membersRes = await db.from('guild_members').select('pseudo').order('pseudo', { ascending: true });
+        if (membersRes.error) {
+            console.error('populateParticipants: members fetch', membersRes.error);
+            window.RAD.showToast(t('toast_err_fetch_members') + ' ' + membersRes.error.message, 'error');
+            return;
+        }
+        var members = membersRes.data || [];
+        if (members.length === 0) {
+            window.RAD.showToast(t('toast_no_members_to_import'), 'error');
+            return;
+        }
+
+        // Skip rows déjà présentes pour cette session (idempotence sans contrainte unique)
+        var existingRes = await db.from('event_participants')
+            .select('pseudo')
+            .eq('event_name', s.activeEventName)
+            .eq('session_id', s.sessionId);
+        var existing = new Set((existingRes.data || []).map(function (r) { return r.pseudo; }));
 
         var week = window.RAD.getWeekStart();
-        var toInsert = membersRes.data.map(function (m) {
-            return {
-                event_name: s.activeEventName,
-                week_start: week,
-                session_id: s.sessionId,
-                pseudo:     m.pseudo,
-                participated: 0,
-                score: null
-            };
-        });
+        var toInsert = members
+            .filter(function (m) { return !existing.has(m.pseudo); })
+            .map(function (m) {
+                return {
+                    event_name:   s.activeEventName,
+                    week_start:   week,
+                    session_id:   s.sessionId,
+                    pseudo:       m.pseudo,
+                    participated: 0,
+                    score:        null
+                };
+            });
+
         if (toInsert.length > 0) {
-            await db.from('event_participants').insert(toInsert);
+            var insertRes = await db.from('event_participants').insert(toInsert);
+            if (insertRes.error) {
+                console.error('populateParticipants: insert error', insertRes.error);
+                window.RAD.showToast(t('toast_err_import_participants') + ' ' + insertRes.error.message, 'error');
+                return;
+            }
+            window.RAD.showToast(toInsert.length + ' ' + t('toast_members_imported'), 'success');
         }
         await fetchParticipants(tabKey);
     }
