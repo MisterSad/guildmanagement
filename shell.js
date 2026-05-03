@@ -19,15 +19,20 @@
     // Mapping panel-actif → item courant : on utilise `panels` pour savoir si
     // une .nav-tab.active appartient à cet item.
     var NAV_ITEMS = [
-        { id: 'overview',  tabId: 'gm-overview', icon: 'ph-squares-four',    labelKey: 'gm_nav_overview',  section: 'play', panels: ['gm-overview'] },
-        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'play', panels: ['admin-home'] },
-        { id: 'members',   tabId: 'admin-members', icon: 'ph-users',         labelKey: 'gm_nav_members',   section: 'play', panels: ['admin-members'] },
+        { id: 'overview',  tabId: 'gm-overview', icon: 'ph-squares-four',    labelKey: 'gm_nav_overview',  section: 'play',  panels: ['gm-overview'] },
+        { id: 'members',   tabId: 'admin-members', icon: 'ph-users',         labelKey: 'gm_nav_members',   section: 'play',  panels: ['admin-members'] },
         { id: 'events',    tabId: 'event-svs',   icon: 'ph-sword',           labelKey: 'gm_nav_events',    section: 'play',
           panels: ['event-svs', 'event-gvg', 'event-shadowfront', 'event-dtr', 'event-arms-race'] },
-        { id: 'glory',     tabId: 'event-glory', icon: 'ph-trophy',          labelKey: 'gm_nav_glory',     section: 'play', panels: ['event-glory'] },
-        { id: 'stats',     tabId: 'stats-admin', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play', panels: ['stats-admin'] },
+        { id: 'glory',     tabId: 'event-glory', icon: 'ph-trophy',          labelKey: 'gm_nav_glory',     section: 'play',  panels: ['event-glory'] },
+        { id: 'stats',     tabId: 'stats-admin', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
+        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'], r5Only: true },
         { id: 'sanctions', tabId: 'tab-sanctions', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] }
     ];
+
+    function visibleNavItems() {
+        var role = getUserRole();
+        return NAV_ITEMS.filter(function (i) { return !i.r5Only || role === 'R5'; });
+    }
 
     var BREAKPOINT_MOBILE = 900;
 
@@ -179,8 +184,9 @@
     function renderSidebar() {
         var el = document.querySelector('[data-gm-sidebar]');
         if (!el) return;
-        var playItems = NAV_ITEMS.filter(function (i) { return i.section === 'play'; });
-        var adminItems = NAV_ITEMS.filter(function (i) { return i.section === 'admin'; });
+        var visible = visibleNavItems();
+        var playItems = visible.filter(function (i) { return i.section === 'play'; });
+        var adminItems = visible.filter(function (i) { return i.section === 'admin'; });
 
         var html =
             '<div class="gm-sidebar-brand">' +
@@ -296,7 +302,7 @@
         if (!drawer || !backdrop) return;
 
         var html = '<div class="gm-drawer-handle"></div><div class="gm-drawer-grid">';
-        NAV_ITEMS.forEach(function (item) {
+        visibleNavItems().forEach(function (item) {
             var isActive = state.active === item.id;
             html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
                         '<i class="ph ' + item.icon + ' gm-icon"></i>' +
