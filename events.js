@@ -132,52 +132,29 @@
     }
 
     // ── Auto-populate members pour une nouvelle session ──────────────────
+    // Utilise la RPC populate_event_participants pour contourner les problèmes
+    // de schema cache PostgREST et garantir l'exécution atomique côté DB.
     async function populateParticipants(tabKey) {
         if (!db) return;
         var s = state[tabKey];
         if (!s.activeEventName || !s.sessionId) return;
 
-        var membersRes = await db.from('guild_members').select('pseudo').order('pseudo', { ascending: true });
-        if (membersRes.error) {
-            console.error('populateParticipants: members fetch', membersRes.error);
-            window.RAD.showToast(t('toast_err_fetch_members') + ' ' + membersRes.error.message, 'error');
-            return;
-        }
-        var members = membersRes.data || [];
-        if (members.length === 0) {
-            window.RAD.showToast(t('toast_no_members_to_import'), 'error');
-            return;
-        }
-
-        // Skip rows déjà présentes pour cette session (idempotence sans contrainte unique)
-        var existingRes = await db.from('event_participants')
-            .select('pseudo')
-            .eq('event_name', s.activeEventName)
-            .eq('session_id', s.sessionId);
-        var existing = new Set((existingRes.data || []).map(function (r) { return r.pseudo; }));
-
         var week = window.RAD.getWeekStart();
-        var toInsert = members
-            .filter(function (m) { return !existing.has(m.pseudo); })
-            .map(function (m) {
-                return {
-                    event_name:   s.activeEventName,
-                    week_start:   week,
-                    session_id:   s.sessionId,
-                    pseudo:       m.pseudo,
-                    participated: 0,
-                    score:        null
-                };
-            });
+        var rpcRes = await db.rpc('populate_event_participants', {
+            p_event_name: s.activeEventName,
+            p_session_id: s.sessionId,
+            p_week_start: week
+        });
 
-        if (toInsert.length > 0) {
-            var insertRes = await db.from('event_participants').insert(toInsert);
-            if (insertRes.error) {
-                console.error('populateParticipants: insert error', insertRes.error);
-                window.RAD.showToast(t('toast_err_import_participants') + ' ' + insertRes.error.message, 'error');
-                return;
-            }
-            window.RAD.showToast(toInsert.length + ' ' + t('toast_members_imported'), 'success');
+        if (rpcRes.error) {
+            console.error('populateParticipants: rpc error', rpcRes.error);
+            window.RAD.showToast(t('toast_err_import_participants') + ' ' + rpcRes.error.message, 'error');
+            return;
+        }
+
+        var inserted = (typeof rpcRes.data === 'number') ? rpcRes.data : 0;
+        if (inserted > 0) {
+            window.RAD.showToast(inserted + ' ' + t('toast_members_imported'), 'success');
         }
         await fetchParticipants(tabKey);
     }
