@@ -98,7 +98,7 @@
             );
             sfState.isActive  = true;
             sfState.sessionId = sessionId;
-            window.RAD.showToast('Nouvelle session Shadowfront démarrée.', 'success');
+            window.RAD.showToast(t('event_session_started_sf'), 'success');
         } else {
             await db.from('event_status').upsert(
                 {
@@ -110,7 +110,7 @@
                 { onConflict: 'event_name' }
             );
             sfState.isActive = false;
-            window.RAD.showToast('Événement sauvegardé et terminé.', 'success');
+            window.RAD.showToast(t('event_session_ended'), 'success');
         }
         await loadShadowfront();
     }

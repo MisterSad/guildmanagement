@@ -497,7 +497,7 @@
                             trendHtml +
                         '</div>' +
                     '</div>' +
-                    '<button class="icon-btn profile-close" title="Fermer"><i class="ph ph-x"></i></button>' +
+                    '<button class="icon-btn profile-close" title="' + t('close_title') + '"><i class="ph ph-x"></i></button>' +
                 '</div>';
 
         if (history.length >= 2) {

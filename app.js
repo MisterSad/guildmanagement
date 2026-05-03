@@ -120,16 +120,23 @@
             if (roleLabel) roleLabel.textContent = 'R4 :';
             if (nameLabel) nameLabel.textContent = sessionStorage.getItem('rad_user') || 'Officier';
             if (adminHomeBtn) adminHomeBtn.style.display = 'none';
-            var svsTab = document.querySelector('.nav-tab[data-tab="event-svs"]');
-            if (svsTab) svsTab.click();
         } else {
             if (roleLabel) roleLabel.textContent = 'R5 :';
             if (nameLabel) nameLabel.textContent = sessionStorage.getItem('rad_user') || 'Admin';
             if (adminHomeBtn) adminHomeBtn.style.display = '';
-            var adminTab = document.querySelector('.nav-tab[data-tab="admin-home"]');
-            if (adminTab) adminTab.click();
             fetchAccounts();
         }
+        // Default landing : Overview (R4 et R5)
+        // Retry car gm-overview nav-tab est créé par shell.js après notre code.
+        clickWhenReady('.nav-tab[data-tab="gm-overview"]');
+    }
+
+    function clickWhenReady(selector, attempts) {
+        attempts = attempts == null ? 30 : attempts;
+        var el = document.querySelector(selector);
+        if (el) { el.click(); return; }
+        if (attempts <= 0) return;
+        requestAnimationFrame(function () { clickWhenReady(selector, attempts - 1); });
     }
 
     function showLogin() {

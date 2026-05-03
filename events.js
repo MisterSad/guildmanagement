@@ -124,7 +124,7 @@
             s.isActive        = false;
             renderStatus(tabKey);
             renderInactive(tabKey);
-            window.RAD.showToast('Événement sauvegardé et terminé.', 'success');
+            window.RAD.showToast(t('event_session_ended'), 'success');
         } catch (err) {
             console.error('endEvent', err);
             window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -372,8 +372,8 @@
         overlay.innerHTML =
             '<div class="confirm-card glass-card">' +
                 '<div class="confirm-icon"><i class="ph-fill ph-target text-accent"></i></div>' +
-                '<h3>Arms Race — Choix du Stage</h3>' +
-                '<p>Quel stage démarrez-vous ?</p>' +
+                '<h3>' + t('arms_pick_stage_title') + '</h3>' +
+                '<p>' + t('arms_pick_stage_body') + '</p>' +
                 '<div class="confirm-actions" style="gap: 1rem;">' +
                     '<button id="stage-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
                     '<button id="stage-a" class="primary-btn">Stage A</button>' +
