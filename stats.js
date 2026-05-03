@@ -601,8 +601,8 @@
         var xLabels = pts.filter(function (_, i) { return i % step === 0 || i === n - 1; }).map(function (p, idx) {
             var wi = idx * step;
             if (wi >= n) wi = n - 1;
-            var d = new Date(weeks[wi] + 'T12:00:00');
-            var label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+            var d = new Date(weeks[wi] + 'T12:00:00Z');
+            var label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
             return '<text x="' + p[0] + '" y="' + (H + 2) + '" text-anchor="middle" font-size="9" fill="#64748b">' + label + '</text>';
         }).join('');
 

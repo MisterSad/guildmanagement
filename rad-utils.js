@@ -27,25 +27,27 @@
 
     function pad2(n) { return String(n).padStart(2, '0'); }
 
+    // La semaine commence à 00:00 UTC le lundi (rollover dimanche → lundi en UTC).
     function getWeekStart(date) {
         var d = date ? new Date(date) : new Date();
-        var day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-        var diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        var monday = new Date(d.getFullYear(), d.getMonth(), diff);
-        return monday.getFullYear() + '-' + pad2(monday.getMonth() + 1) + '-' + pad2(monday.getDate());
+        var day  = d.getUTCDay(); // 0=Dim, 1=Lun, ..., 6=Sam (UTC)
+        var diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+        var monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
+        return monday.getUTCFullYear() + '-' + pad2(monday.getUTCMonth() + 1) + '-' + pad2(monday.getUTCDate());
     }
 
     function getPrevWeekStart(weekStr) {
-        var base = weekStr ? new Date(weekStr + 'T12:00:00') : new Date(getWeekStart() + 'T12:00:00');
-        base.setDate(base.getDate() - 7);
-        return base.getFullYear() + '-' + pad2(base.getMonth() + 1) + '-' + pad2(base.getDate());
+        var base = weekStr ? new Date(weekStr + 'T12:00:00Z') : new Date(getWeekStart() + 'T12:00:00Z');
+        base.setUTCDate(base.getUTCDate() - 7);
+        return base.getUTCFullYear() + '-' + pad2(base.getUTCMonth() + 1) + '-' + pad2(base.getUTCDate());
     }
 
     function formatWeek(ws) {
-        var d = new Date(ws + 'T12:00:00');
-        var end = new Date(d); end.setDate(end.getDate() + 6);
-        return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) +
-            ' → ' + end.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        var d = new Date(ws + 'T12:00:00Z');
+        var end = new Date(d); end.setUTCDate(end.getUTCDate() + 6);
+        var opts = { day: '2-digit', month: '2-digit', timeZone: 'UTC' };
+        var endOpts = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' };
+        return d.toLocaleDateString('fr-FR', opts) + ' → ' + end.toLocaleDateString('fr-FR', endOpts);
     }
 
     function newSessionId() {
