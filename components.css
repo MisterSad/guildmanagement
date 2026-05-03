@@ -548,6 +548,59 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* ─── Event banner (Events page) ─── */
+.gm-event-banner {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1.25rem 1.4rem;
+    background: linear-gradient(135deg, var(--bg-elev), oklch(0.22 0.030 270));
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+.gm-event-meta {
+    display: flex; align-items: center; gap: 1rem;
+    flex: 1; min-width: 0;
+}
+.gm-event-icon {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+.gm-event-name {
+    font-family: var(--font-display);
+    font-weight: 600; font-size: 1.15rem;
+    color: var(--fg);
+}
+.gm-event-status-line {
+    display: flex; gap: .5rem; align-items: center;
+    flex-wrap: wrap;
+    font-size: .82rem;
+    color: var(--fg-dim);
+    margin-top: .25rem;
+}
+.gm-event-actions {
+    display: flex; gap: .5rem;
+}
+
+/* Status badge — variantes selon état (alimenté par events.js renderStatus) */
+.event-status-badge.gm-chip { /* chip neutre par défaut (inactif) */ }
+.event-status-badge.active.gm-chip,
+.event-status-badge.gm-chip.gm-chip-success {
+    background: var(--success-soft);
+    color: var(--success);
+    border-color: transparent;
+}
+.event-status-badge.active.gm-chip .gm-dot,
+.event-status-badge.gm-chip.gm-chip-success .gm-dot {
+    background: var(--success);
+    animation: gm-pulse 1.4s ease-in-out infinite;
+}
+
 /* ─── Profile modal (Stats) ─── */
 .gm-profile-card {
     background: var(--bg-elev);

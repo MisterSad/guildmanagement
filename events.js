@@ -214,15 +214,16 @@
         var stageBadge = panel.querySelector('.arms-stage-badge');
 
         if (badge) {
-            badge.className   = 'event-status-badge ' + (s.isActive ? 'active' : 'inactive');
-            badge.textContent = s.isActive ? t('event_active') : t('event_inactive');
+            badge.className = 'event-status-badge gm-chip' + (s.isActive ? ' gm-chip-success active' : '');
+            badge.innerHTML = '<span class="gm-dot"></span> ' +
+                (s.isActive ? t('event_active') : t('event_inactive'));
         }
         if (startBtn) startBtn.disabled = s.isActive;
         if (endBtn)   endBtn.disabled   = !s.isActive;
 
         if (stageBadge) {
             if (tabKey === 'ARMS RACE' && s.isActive && s.stage) {
-                stageBadge.textContent = '— Stage ' + s.stage;
+                stageBadge.textContent = 'Stage ' + s.stage;
                 stageBadge.classList.remove('hidden');
             } else {
                 stageBadge.classList.add('hidden');
@@ -235,9 +236,10 @@
         var el = getContentEl(tabKey);
         if (!el) return;
         el.innerHTML =
-            '<div class="empty-state">' +
-                '<i class="ph-duotone ph-calendar-slash"></i>' +
-                '<p>' + t('event_not_active') + '</p>' +
+            '<div class="gm-empty">' +
+                '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
+                '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
+                '<div class="gm-empty-hint">' + t('event_not_active_hint') + '</div>' +
             '</div>';
     }
 
@@ -249,7 +251,7 @@
         var dbEventName  = s.activeEventName;
 
         if (!participants.length) {
-            el.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
+            el.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
             return;
         }
 
@@ -258,43 +260,51 @@
         var hasScore = EVENTS_WITHOUT_SCORE.indexOf(dbEventName) === -1;
 
         var html =
-            '<div class="event-stats">' +
-                '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
-                '<span class="stat-chip success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
-                '<span class="stat-chip muted"><i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent') + '</span>' +
-                (hasScore ? '<span class="stat-chip accent"><i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore) + '</span>' : '') +
+            '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between;">' +
+                '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap;">' +
+                    '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
+                    '<span class="gm-chip gm-chip-success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
+                    '<span class="gm-chip"><i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent') + '</span>' +
+                    (hasScore ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore) + '</span>' : '') +
+                '</div>' +
+                '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
+                    '<i class="ph ph-magnifying-glass gm-icon"></i>' +
+                    '<input type="text" class="gm-input event-search-input" placeholder="' + t('search_placeholder') + '">' +
+                '</div>' +
             '</div>' +
-            '<div class="input-wrapper" style="margin-bottom: 1rem;">' +
-                '<i class="ph ph-magnifying-glass"></i>' +
-                '<input type="text" class="event-search-input" placeholder="' + t('search_placeholder') + '">' +
-            '</div>' +
-            '<div class="participants-table-wrap">' +
-            '<table class="participants-table">' +
+            '<div class="gm-table-wrap"><div class="gm-table-scroll">' +
+            '<table class="gm-table gm-resp-table">' +
                 '<thead><tr>' +
                     '<th>' + t('col_member') + '</th>' +
-                    '<th class="center">' + t('col_participated') + '</th>' +
-                    (hasScore ? '<th class="center">' + t('col_score') + '</th>' : '') +
+                    '<th class="gm-center">' + t('col_participated') + '</th>' +
+                    (hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : '') +
                 '</tr></thead><tbody>';
 
         participants.forEach(function (p) {
             var isChecked = p.participated > 0;
+            var initial = window.RAD.avatarInit(p.pseudo);
             html +=
                 '<tr class="participant-row' + (isChecked ? ' participated' : '') + '" data-pseudo="' + esc(p.pseudo) + '">' +
-                    '<td class="pseudo-cell"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(p.pseudo) + '</td>' +
-                    '<td class="check-cell">' +
+                    '<td data-label="' + t('col_member') + '">' +
+                        '<div class="gm-row" style="gap:.6rem;">' +
+                            '<div class="gm-avatar">' + esc(initial) + '</div>' +
+                            '<strong>' + esc(p.pseudo) + '</strong>' +
+                        '</div>' +
+                    '</td>' +
+                    '<td class="gm-center" data-label="' + t('col_participated') + '">' +
                         '<label class="participation-check">' +
                             '<input type="checkbox" class="participation-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
                             '<span class="check-mark"><i class="ph ph-check"></i></span>' +
                         '</label>' +
                     '</td>' +
-                    (hasScore ? '<td class="score-cell">' +
-                        '<input type="text" inputmode="numeric" class="score-input" value="' + (p.score != null ? fmt(p.score) : '') + '" placeholder="—"' +
+                    (hasScore ? '<td class="gm-right" data-label="' + t('col_score') + '">' +
+                        '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? fmt(p.score) : '') + '" placeholder="—"' +
                             ' data-pseudo="' + esc(p.pseudo) + '">' +
                     '</td>' : '') +
                 '</tr>';
         });
 
-        html += '</tbody></table></div>';
+        html += '</tbody></table></div></div>';
         el.innerHTML = html;
 
         el.querySelectorAll('.participation-checkbox').forEach(function (cb) {
@@ -345,7 +355,7 @@
         var participants = state[tabKey].participants;
         var done = participants.reduce(function (a, p) { return a + (p.participated || 0); }, 0);
         var totalScore = participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
-        var chips = el.querySelectorAll('.event-stats .stat-chip');
+        var chips = el.querySelectorAll('.event-stats .gm-chip');
         if (chips[1]) chips[1].innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated');
         if (chips[2]) chips[2].innerHTML = '<i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent');
         if (chips[3]) chips[3].innerHTML = '<i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore);

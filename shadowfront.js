@@ -200,8 +200,9 @@
         var startBtn = panel.querySelector('.event-start-btn');
         var endBtn   = panel.querySelector('.event-end-btn');
         if (badge) {
-            badge.className   = 'event-status-badge ' + (sfState.isActive ? 'active' : 'inactive');
-            badge.textContent = sfState.isActive ? t('event_active') : t('event_inactive');
+            badge.className = 'event-status-badge gm-chip' + (sfState.isActive ? ' gm-chip-success active' : '');
+            badge.innerHTML = '<span class="gm-dot"></span> ' +
+                (sfState.isActive ? t('event_active') : t('event_inactive'));
         }
         if (startBtn) startBtn.disabled = sfState.isActive;
         if (endBtn)   endBtn.disabled   = !sfState.isActive;
@@ -214,8 +215,11 @@
 
         if (!sfState.isActive) {
             area.innerHTML =
-                '<div class="empty-state"><i class="ph-duotone ph-calendar-slash"></i>' +
-                '<p>' + t('event_not_active') + '</p></div>';
+                '<div class="gm-empty">' +
+                    '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
+                    '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
+                    '<div class="gm-empty-hint">' + t('event_not_active_hint') + '</div>' +
+                '</div>';
             return;
         }
 

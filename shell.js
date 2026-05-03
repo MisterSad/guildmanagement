@@ -42,10 +42,43 @@
     document.addEventListener('DOMContentLoaded', function () {
         wrapDashboardInShell();
         renderShell();
+        renderEventsTabs();
         observeActiveTab();
         observeViewport();
         wireLoginPasswordToggle();
     });
+
+    // ── Events tabs-pill : injectée dans chaque event panel ─────────────────
+    var EVENT_TABS = [
+        { id: 'event-svs',          icon: 'ph-sword',        label: 'SvS' },
+        { id: 'event-gvg',          icon: 'ph-flag-banner',  label: 'GvG' },
+        { id: 'event-shadowfront',  icon: 'ph-ghost',        label: 'Shadowfront' },
+        { id: 'event-dtr',          icon: 'ph-rocket',       label: 'DTR' },
+        { id: 'event-arms-race',    icon: 'ph-target',       label: 'Arms Race' }
+    ];
+
+    function renderEventsTabs() {
+        document.querySelectorAll('[data-gm-events-tabs]').forEach(function (slot) {
+            var ownerPanel = slot.closest('.tab-panel');
+            var ownerId = ownerPanel ? ownerPanel.id : '';
+            var html = '<div class="gm-tabs-pill" style="margin-bottom:1rem; flex-wrap:nowrap; overflow-x:auto;">';
+            EVENT_TABS.forEach(function (e) {
+                var active = e.id === ownerId;
+                html += '<button class="gm-tab-pill' + (active ? ' gm-active' : '') + '" data-gm-event-tab="' + e.id + '">' +
+                    '<i class="ph ' + e.icon + '"></i> ' + e.label +
+                '</button>';
+            });
+            html += '</div>';
+            slot.innerHTML = html;
+            slot.querySelectorAll('[data-gm-event-tab]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var tabId = btn.getAttribute('data-gm-event-tab');
+                    var legacy = document.querySelector('.nav-tab[data-tab="' + tabId + '"]');
+                    if (legacy) legacy.click();
+                });
+            });
+        });
+    }
 
     // ── Login : œil show/hide pour le password ──────────────────────────────
     function wireLoginPasswordToggle() {
