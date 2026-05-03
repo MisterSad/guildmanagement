@@ -2,8 +2,10 @@
  * tokens.css — Design system Guild Manager v2
  * Inspired by the design_handoff. Cosmic-night palette + galactic gold accent.
  *
- * Loaded BEFORE styles.css so existing rules can override during transition,
- * and so :root variables are available everywhere.
+ * Chargé APRÈS styles.css : ces oklch écrasent les hex legacy de styles.css
+ * (--accent #8b5cf6 violet → oklch or, --success #10b981 → oklch vert,
+ * --radius-sm/lg/etc.) pour que TOUT le code (legacy + nouveaux composants)
+ * consomme la nouvelle palette galactic gold/cosmic-night.
  */
 :root {
   /* ─── Backgrounds ─── */
