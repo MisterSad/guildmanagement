@@ -37,8 +37,8 @@
             var [statusRes, membersRes, histSquads, histParts] = await Promise.all([
                 db.from('event_status').select('is_active, session_id').eq('event_name', EVENT_NAME).maybeSingle(),
                 db.from('guild_members').select('pseudo, uid').order('pseudo', { ascending: true }),
-                db.from('shadowfront_squads').select('pseudo, session_id'),
-                db.from('event_participants').select('pseudo, participated, session_id').eq('event_name', EVENT_NAME)
+                db.from('shadowfront_squads').select('pseudo, session_id').limit(100000),
+                db.from('event_participants').select('pseudo, participated, session_id').eq('event_name', EVENT_NAME).limit(100000)
             ]);
 
             sfState.isActive  = statusRes.data ? statusRes.data.is_active : false;
