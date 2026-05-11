@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=3">
     <link rel="stylesheet" href="tokens.css?v=3">
-    <link rel="stylesheet" href="components.css?v=3">
+    <link rel="stylesheet" href="components.css?v=4">
     <link rel="stylesheet" href="shell.css?v=3">
     <link rel="icon" type="image/png" href="favicon.png">
 </head>
@@ -121,6 +121,10 @@
                         </button>
                         <button class="nav-tab" data-tab="event-glory" data-view="dashboard-view" data-event-tab="glory">
                             <i class="ph ph-trophy"></i> Glory
+                        </button>
+                        <button class="nav-tab" data-tab="event-history" data-view="dashboard-view" data-event-tab="history">
+                            <i class="ph ph-clock-counter-clockwise"></i>
+                            <span data-i18n="nav_history">Historique</span>
                         </button>
                         <button class="nav-tab" data-tab="stats-admin" data-view="dashboard-view" data-event-tab="stats">
                             <i class="ph ph-chart-bar"></i>
@@ -447,6 +451,19 @@
                 </div>
             </main>
 
+            <!-- Event history (toutes sessions) -->
+            <main class="dashboard-content tab-panel" id="event-history">
+                <div class="gm-page">
+                    <header class="gm-page-header">
+                        <div>
+                            <h1 class="gm-page-title" data-i18n="history_title">Historique des événements</h1>
+                            <p class="gm-page-subtitle" data-i18n="history_subtitle">Toutes les sessions passées — clique sur une session pour le détail</p>
+                        </div>
+                    </header>
+                    <div class="history-area"></div>
+                </div>
+            </main>
+
             <!-- Stats panel (admin) -->
             <main class="dashboard-content tab-panel" id="stats-admin">
                 <div class="gm-page">
@@ -615,14 +632,15 @@
     <div id="toast-container"></div>
 
     <!-- Scripts: i18n first, then Supabase, then icons, then utils, then app logic -->
-    <script src="i18n.js?v=13"></script>
+    <script src="i18n.js?v=14"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="rad-utils.js?v=5"></script>
-    <script src="app.js?v=10"></script>
+    <script src="app.js?v=11"></script>
     <script src="events.js?v=13"></script>
     <script src="shadowfront.js?v=9"></script>
     <script src="glory.js?v=7"></script>
+    <script src="history.js?v=1"></script>
     <script src="stats.js?v=12"></script>
     <script src="sanctions.js?v=7"></script>
     <script src="overview.js?v=2"></script>

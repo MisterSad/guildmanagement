@@ -177,6 +177,9 @@
             if (eventName === 'glory' && window.RAD_GLORY) {
                 window.RAD_GLORY.load();
             }
+            if (eventName === 'history' && window.RAD_HISTORY) {
+                window.RAD_HISTORY.load();
+            }
             if (tabId === 'tab-sanctions' && window.RAD_SANCTIONS) {
                 window.RAD_SANCTIONS.load();
             }

@@ -463,6 +463,52 @@
     }
 }
 
+/* ─── Event history cards ─── */
+.gm-history-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: .75rem;
+}
+.gm-history-card {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    padding: .85rem 1rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.gm-history-card:hover {
+    transform: translateY(-1px);
+    background: var(--bg-elev-hover, var(--bg-elev));
+    border-color: var(--accent);
+}
+.gm-history-head {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+.gm-history-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+.gm-history-title {
+    font-weight: 600;
+    font-size: .95rem;
+}
+.gm-history-when {
+    font-size: .78rem;
+    margin-top: 2px;
+}
+.gm-history-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+}
+
 /* ─── Podium (Stats top 3) ─── */
 .gm-podium {
     display: grid;
