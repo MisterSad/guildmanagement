@@ -373,6 +373,12 @@
             if (uidInput) uidInput.value = '';
             renderGuildMembers();
             showToast(pseudo + ' ' + t('toast_member_added'), 'success');
+
+            if (window.RAD_EVENTS && window.RAD_EVENTS.addMemberToActiveEvents) {
+                window.RAD_EVENTS.addMemberToActiveEvents(pseudo).then(function (n) {
+                    if (n > 0) showToast(pseudo + ' ' + t('toast_member_added_active_events'), 'info');
+                });
+            }
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
