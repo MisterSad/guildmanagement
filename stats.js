@@ -68,10 +68,12 @@
     }
 
     // ── Fetch des semaines disponibles ──────────────────────────────────────────
+    // RPC car SELECT direct est plafonné à 1 000 lignes côté PostgREST : avec
+    // plusieurs centaines de participants × semaines, certaines semaines
+    // disparaissaient du sélecteur.
     async function fetchAllWeeks() {
-        var res = await db.from('event_participants').select('week_start');
-        var weeks = [];
-        if (res.data) weeks = Array.from(new Set(res.data.map(function (r) { return r.week_start; })));
+        var res = await db.rpc('list_event_weeks');
+        var weeks = (res.data || []).map(function (r) { return r.week_start; });
         weeks.sort(function (a, b) { return b.localeCompare(a); });
         if (weeks.indexOf(currentWeek) === -1) weeks.unshift(currentWeek);
         allWeeks = weeks;
@@ -86,8 +88,8 @@
 
         var [membersRes, partsRes, gloryRes] = await Promise.all([
             db.from('guild_members').select('pseudo'),
-            db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory'),
-            db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan)
+            db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
+            db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000)
         ]);
 
         var members      = (membersRes.data || []).map(function (m) { return m.pseudo; });
@@ -437,8 +439,8 @@
     async function openProfile(pseudo) {
         var [membersRes, partsRes, gloryRes] = await Promise.all([
             db.from('guild_members').select('pseudo'),
-            db.from('event_participants').select('*').neq('event_name', 'Glory'),
-            db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory')
+            db.from('event_participants').select('*').neq('event_name', 'Glory').limit(100000),
+            db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').limit(100000)
         ]);
         var allMembers = (membersRes.data || []).map(function (m) { return m.pseudo; });
         var allParts   = partsRes.data || [];
