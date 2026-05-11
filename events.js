@@ -39,7 +39,7 @@
     var uidMap = {};
 
     // ── Public API ────────────────────────────────────────────────────────────
-    window.RAD_EVENTS = { loadEvent: loadEvent };
+    window.RAD_EVENTS = { loadEvent: loadEvent, addMemberToActiveEvents: addMemberToActiveEvents };
 
     // ── Load event (called when tab is clicked) ────────────────────────────
     async function loadEvent(tabKey) {
@@ -157,6 +157,74 @@
             window.RAD.showToast(inserted + ' ' + t('toast_members_imported'), 'success');
         }
         await fetchParticipants(tabKey);
+    }
+
+    // ── Ajout dynamique d'un membre aux événements actifs ─────────────────
+    // Appelé après l'insertion d'un membre dans guild_members. Insère une
+    // ligne event_participants pour chaque event actif (hors Shadowfront,
+    // dont les participants sont liés aux assignations de squad).
+    // Retourne le nombre d'events mis à jour.
+    async function addMemberToActiveEvents(pseudo) {
+        if (!db || !pseudo) return 0;
+
+        var dbEventNames = [];
+        Object.keys(TAB_TO_DB_EVENTS).forEach(function (k) {
+            TAB_TO_DB_EVENTS[k].forEach(function (n) { dbEventNames.push(n); });
+        });
+
+        try {
+            var statusRes = await db.from('event_status')
+                .select('event_name, session_id')
+                .eq('is_active', true)
+                .in('event_name', dbEventNames);
+            if (statusRes.error) throw statusRes.error;
+
+            var active = (statusRes.data || []).filter(function (r) { return r.session_id; });
+            if (active.length === 0) return 0;
+
+            var rows = active.map(function (r) {
+                return {
+                    event_name:   r.event_name,
+                    session_id:   r.session_id,
+                    week_start:   window.RAD.getWeekStart(new Date(r.session_id)),
+                    pseudo:       pseudo,
+                    participated: 0,
+                    score:        null
+                };
+            });
+
+            var insRes = await db.from('event_participants').insert(rows);
+            if (insRes.error) throw insRes.error;
+
+            // Sync UI : pour chaque onglet ouvert dont la session courante a été enrichie,
+            // ajoute le membre en mémoire et re-rendu.
+            Object.keys(state).forEach(function (tabKey) {
+                var s = state[tabKey];
+                if (!s.isActive || !s.sessionId) return;
+                var matched = active.some(function (a) {
+                    return a.event_name === s.activeEventName && a.session_id === s.sessionId;
+                });
+                if (!matched) return;
+                if (s.participants.some(function (p) { return p.pseudo === pseudo; })) return;
+                s.participants.push({
+                    event_name:   s.activeEventName,
+                    session_id:   s.sessionId,
+                    week_start:   window.RAD.getWeekStart(new Date(s.sessionId)),
+                    pseudo:       pseudo,
+                    participated: 0,
+                    score:        null
+                });
+                s.participants.sort(function (a, b) {
+                    return String(a.pseudo).localeCompare(String(b.pseudo));
+                });
+                renderParticipants(tabKey);
+            });
+
+            return active.length;
+        } catch (err) {
+            console.error('addMemberToActiveEvents', err);
+            return 0;
+        }
     }
 
     // ── Fetch participants de la session active ──────────────────────────
