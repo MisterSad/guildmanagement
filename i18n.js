@@ -168,6 +168,15 @@
             glory_evolution_pct:   'Évolution (%)',
             glory_vs_prev:         'Comparaison vs semaine précédente active',
 
+            /* ── Historique des événements ─── */
+            nav_history:           'Historique',
+            history_title:         'Historique des événements',
+            history_subtitle:      'Toutes les sessions passées — clique sur une session pour le détail',
+            history_filter_all:    'Tous',
+            history_week_only:     'Semaine entière',
+            history_empty:         'Aucune session pour ce filtre.',
+            history_empty_session: 'Aucun participant pour cette session.',
+
             /* ── Stats ────────────────────── */
             nav_stats:             'Stats',
             stats_subtitle:        'Classement et évolution des membres de la guilde',
@@ -422,6 +431,15 @@
             glory_evolution:       'Evolution',
             glory_evolution_pct:   'Evolution (%)',
             glory_vs_prev:         'Comparison vs previous week',
+
+            /* ── Event history ─────────────── */
+            nav_history:           'History',
+            history_title:         'Event history',
+            history_subtitle:      'All past sessions — click a session for details',
+            history_filter_all:    'All',
+            history_week_only:     'Full week',
+            history_empty:         'No session for this filter.',
+            history_empty_session: 'No participant for this session.',
 
             /* ── Stats ────────────────────── */
             nav_stats:             'Stats',
