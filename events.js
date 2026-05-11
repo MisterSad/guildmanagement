@@ -256,10 +256,18 @@
     }
 
     async function saveScore(tabKey, pseudo, value) {
+        return saveScoreField(tabKey, pseudo, 'score', value);
+    }
+
+    // SvS has two scores (Preparation Stage + PvP Day) ; ce helper update une
+    // colonne arbitraire de event_participants.
+    async function saveScoreField(tabKey, pseudo, field, value) {
         if (!db) return;
         var s = state[tabKey];
         var num = window.RAD.parseNumber(value);
-        await db.from('event_participants').update({ score: num })
+        var update = {};
+        update[field] = num;
+        await db.from('event_participants').update(update)
             .eq('event_name', s.activeEventName)
             .eq('session_id', s.sessionId)
             .eq('pseudo', pseudo);
@@ -323,9 +331,12 @@
             return;
         }
 
-        var done = participants.reduce(function (a, p) { return a + (p.participated || 0); }, 0);
-        var totalScore = participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
+        var isSvs    = dbEventName === 'SvS';
         var hasScore = EVENTS_WITHOUT_SCORE.indexOf(dbEventName) === -1;
+        var done = participants.reduce(function (a, p) { return a + (p.participated || 0); }, 0);
+        var totalScore = isSvs
+            ? participants.reduce(function (a, p) { return a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0); }, 0)
+            : participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
 
         var html =
             '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between;">' +
@@ -345,7 +356,9 @@
                 '<thead><tr>' +
                     '<th>' + t('col_member') + '</th>' +
                     '<th class="gm-center">' + t('col_participated') + '</th>' +
-                    (hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : '') +
+                    (isSvs
+                        ? '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>'
+                        : (hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : '')) +
                 '</tr></thead><tbody>';
 
         participants.forEach(function (p) {
@@ -365,10 +378,16 @@
                             '<span class="check-mark"><i class="ph ph-check"></i></span>' +
                         '</label>' +
                     '</td>' +
-                    (hasScore ? '<td class="gm-right" data-label="' + t('col_score') + '">' +
-                        '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? fmt(p.score) : '') + '" placeholder="—"' +
-                            ' data-pseudo="' + esc(p.pseudo) + '">' +
-                    '</td>' : '') +
+                    (isSvs
+                        ? '<td class="gm-right" data-label="' + t('col_score_prep') + '">' +
+                              '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? fmt(p.score_prep) : '') + '" placeholder="—" data-pseudo="' + esc(p.pseudo) + '">' +
+                          '</td>' +
+                          '<td class="gm-right" data-label="' + t('col_score_pvp') + '">' +
+                              '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? fmt(p.score_pvp) : '') + '" placeholder="—" data-pseudo="' + esc(p.pseudo) + '">' +
+                          '</td>'
+                        : (hasScore ? '<td class="gm-right" data-label="' + t('col_score') + '">' +
+                              '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? fmt(p.score) : '') + '" placeholder="—" data-pseudo="' + esc(p.pseudo) + '">' +
+                          '</td>' : '')) +
                 '</tr>';
         });
 
@@ -390,21 +409,27 @@
             });
         });
 
-        el.querySelectorAll('.score-input').forEach(function (inp) {
-            window.RAD.attachNumberFormatter(inp);
-            var timer;
-            inp.addEventListener('input', function () {
-                clearTimeout(timer);
-                timer = setTimeout(function () {
-                    var pseudo = inp.getAttribute('data-pseudo');
-                    saveScore(tabKey, pseudo, inp.value).then(function () {
-                        var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
-                        if (pp) pp.score = window.RAD.parseNumber(inp.value);
-                        refreshStats(el, tabKey);
-                    });
-                }, 700);
+        function wireScoreInputs(selector, field, stateKey) {
+            el.querySelectorAll(selector).forEach(function (inp) {
+                window.RAD.attachNumberFormatter(inp);
+                var timer;
+                inp.addEventListener('input', function () {
+                    clearTimeout(timer);
+                    timer = setTimeout(function () {
+                        var pseudo = inp.getAttribute('data-pseudo');
+                        saveScoreField(tabKey, pseudo, field, inp.value).then(function () {
+                            var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
+                            if (pp) pp[stateKey] = window.RAD.parseNumber(inp.value);
+                            refreshStats(el, tabKey);
+                        });
+                    }, 700);
+                });
             });
-        });
+        }
+
+        wireScoreInputs('.score-input',      'score',      'score');
+        wireScoreInputs('.score-input-prep', 'score_prep', 'score_prep');
+        wireScoreInputs('.score-input-pvp',  'score_pvp',  'score_pvp');
 
         var searchInput = el.querySelector('.event-search-input');
         if (searchInput) {
@@ -421,8 +446,11 @@
 
     function refreshStats(el, tabKey) {
         var participants = state[tabKey].participants;
+        var isSvs = state[tabKey].activeEventName === 'SvS';
         var done = participants.reduce(function (a, p) { return a + (p.participated || 0); }, 0);
-        var totalScore = participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
+        var totalScore = isSvs
+            ? participants.reduce(function (a, p) { return a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0); }, 0)
+            : participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
         var chips = el.querySelectorAll('.event-stats .gm-chip');
         if (chips[1]) chips[1].innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated');
         if (chips[2]) chips[2].innerHTML = '<i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent');

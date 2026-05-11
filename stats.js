@@ -112,14 +112,15 @@
     // ── Mode SvS / GvG : classement brut par score d'événement ─────────────────
     async function loadEventRanking(eventName, week) {
         var res = await db.from('event_participants')
-            .select('pseudo, score, participated')
+            .select('pseudo, score, score_prep, score_pvp, participated')
             .eq('event_name', eventName)
             .eq('week_start', week);
 
         var agg = {};
         (res.data || []).forEach(function (r) {
             if (!agg[r.pseudo]) agg[r.pseudo] = { pseudo: r.pseudo, score: 0, participated: 0 };
-            agg[r.pseudo].score        += (r.score        || 0);
+            // SvS : on additionne prep + pvp pour les nouvelles saisies, score pour les legacy
+            agg[r.pseudo].score        += (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0);
             agg[r.pseudo].participated += (r.participated || 0);
         });
 
@@ -180,6 +181,26 @@
             maxScorePerEvent[name] = values.length ? Math.max.apply(null, values) : 0;
         });
 
+        // 2bis. SvS dual-score : maxes séparés prep / pvp / legacy
+        var svsMaxes = (function () {
+            var perPlayerPrep = {}, perPlayerPvp = {}, perPlayerLegacy = {};
+            participants.forEach(function (p) {
+                if (p.event_name !== 'SvS') return;
+                var isNew = (p.score_prep != null || p.score_pvp != null);
+                if (isNew) {
+                    if (p.score_prep != null) perPlayerPrep[p.pseudo] = (perPlayerPrep[p.pseudo] || 0) + p.score_prep;
+                    if (p.score_pvp  != null) perPlayerPvp[p.pseudo]  = (perPlayerPvp[p.pseudo]  || 0) + p.score_pvp;
+                } else if (p.score != null) {
+                    perPlayerLegacy[p.pseudo] = (perPlayerLegacy[p.pseudo] || 0) + p.score;
+                }
+            });
+            return {
+                prep:   Math.max.apply(null, [0].concat(Object.values(perPlayerPrep))),
+                pvp:    Math.max.apply(null, [0].concat(Object.values(perPlayerPvp))),
+                legacy: Math.max.apply(null, [0].concat(Object.values(perPlayerLegacy)))
+            };
+        })();
+
         // 3. Δgloire par joueur (somme des deltas positifs sur la période)
         var weekStarts = Object.keys(gloryByWeek).sort();
         var deltaByPseudo = {};
@@ -207,12 +228,40 @@
                     return p.pseudo === pseudo && group.dbNames.indexOf(p.event_name) !== -1;
                 });
                 var participated = rows.some(function (r) { return r.participated > 0; });
-                var totalScore = rows.reduce(function (s, r) { return s + (r.score || 0); }, 0);
+                var totalScore = rows.reduce(function (s, r) { return s + (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0); }, 0);
 
                 var base = participated ? W.participation * group.coeff : 0;
                 var perf = 0;
-                if (participated && group.hasScore && maxScorePerEvent[name] > 0) {
-                    perf = W.performance * group.coeff * (totalScore / maxScorePerEvent[name]);
+                if (participated && group.hasScore) {
+                    if (name === 'SvS') {
+                        // Formule dual-score équitable : (prep/max_prep + pvp/max_pvp) / 2.
+                        // Mélange new+legacy : moyenne pondérée par nombre de lignes.
+                        var playerPrep = 0, playerPvp = 0, playerLegacy = 0;
+                        var nNew = 0, nLegacy = 0;
+                        rows.forEach(function (r) {
+                            var isNew = (r.score_prep != null || r.score_pvp != null);
+                            if (isNew) {
+                                playerPrep += r.score_prep || 0;
+                                playerPvp  += r.score_pvp  || 0;
+                                nNew++;
+                            } else {
+                                playerLegacy += r.score || 0;
+                                nLegacy++;
+                            }
+                        });
+                        var ratioNew = 0;
+                        if (nNew > 0) {
+                            var rPrep = svsMaxes.prep > 0 ? playerPrep / svsMaxes.prep : 0;
+                            var rPvp  = svsMaxes.pvp  > 0 ? playerPvp  / svsMaxes.pvp  : 0;
+                            ratioNew = (rPrep + rPvp) / 2;
+                        }
+                        var ratioLegacy = (nLegacy > 0 && svsMaxes.legacy > 0) ? playerLegacy / svsMaxes.legacy : 0;
+                        var totalN = nNew + nLegacy;
+                        var ratio  = totalN > 0 ? (nNew * ratioNew + nLegacy * ratioLegacy) / totalN : 0;
+                        perf = W.performance * group.coeff * ratio;
+                    } else if (maxScorePerEvent[name] > 0) {
+                        perf = W.performance * group.coeff * (totalScore / maxScorePerEvent[name]);
+                    }
                 }
                 var eventScore = base + perf;
                 eventsScore += eventScore;
