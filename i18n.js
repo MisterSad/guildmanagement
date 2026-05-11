@@ -126,6 +126,8 @@
             col_member:            'Membre',
             col_participated:      'A participé',
             col_score:             'Score',
+            col_score_prep:        'Preparation Stage',
+            col_score_pvp:         'PvP day score',
 
             /* ── Shadowfront ───────────────────── */
             sf_tab_squads:         'Attribution des Squads',
@@ -379,6 +381,8 @@
             col_member:            'Member',
             col_participated:      'Participated',
             col_score:             'Score',
+            col_score_prep:        'Preparation Stage',
+            col_score_pvp:         'PvP day score',
 
             /* ── Shadowfront ───────────────────── */
             sf_tab_squads:         'Squad Assignment',
