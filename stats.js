@@ -484,7 +484,11 @@
         });
     }
 
-    // ── Profil membre : historique semaine par semaine + breakdown courant ─────
+    // ── Profil membre ───────────────────────────────────────────────────────────
+    // Calcule pour chaque semaine de l'historique global la note du joueur, son rang
+    // dans la guilde, et conserve le breakdown par événement. Permet ensuite de
+    // dériver des métriques d'évolution réelle (tendance mobile, présence cumulée,
+    // évolution par événement) au lieu d'un simple snapshot.
     async function openProfile(pseudo) {
         var [membersRes, partsRes, gloryRes] = await Promise.all([
             db.from('guild_members').select('pseudo'),
@@ -496,10 +500,6 @@
         var allGlory   = gloryRes.data || [];
 
         var weeks = Array.from(new Set(allParts.map(function (r) { return r.week_start; }))).sort();
-        var glorySpan = (function () {
-            var allWeeks = Array.from(new Set(allGlory.map(function (r) { return r.week_start; })));
-            return allWeeks.sort();
-        })();
 
         var history = weeks.map(function (w) {
             var weekParts = allParts.filter(function (r) { return r.week_start === w; });
@@ -509,31 +509,179 @@
                 return glorySpanW.indexOf(r.week_start) !== -1;
             }), glorySpanW);
             var result = computeScores(allMembers, weekParts, gloryByWeek, [w]);
+
+            // Rang basé sur les participants actifs (au moins un événement OU gain de gloire).
+            var active = result.scores.filter(function (s) {
+                return s.events_done > 0 || s.glory_delta > 0;
+            });
+            var rank = -1;
+            for (var i = 0; i < active.length; i++) {
+                if (active[i].pseudo === pseudo) { rank = i + 1; break; }
+            }
+
             var found = result.scores.find(function (s) { return s.pseudo === pseudo; });
-            return found ? Object.assign({ week_start: w, max_possible: result.maxPossible }, found)
-                         : { week_start: w, score: 0, events_done: 0, events_total: 0, glory_delta: 0, max_possible: result.maxPossible };
-        }).filter(function (r) { return r.events_total > 0 || r.glory_delta > 0; });
+            var base = {
+                week_start:   w,
+                max_possible: result.maxPossible,
+                rank:         rank,
+                active_count: active.length
+            };
+            return found
+                ? Object.assign(base, found)
+                : Object.assign(base, {
+                      score: 0, events_score: 0, events_done: 0, events_total: 0,
+                      attendance_rate: 0, glory_delta: 0, glory_bonus: 0,
+                      consistency_bonus: 0, breakdown: {}
+                  });
+        }).filter(function (r) { return r.events_done > 0 || r.glory_delta > 0; });
 
         renderProfileModal(pseudo, history);
+    }
+
+    // Agrège l'historique en métriques d'évolution : tendance mobile, présence
+    // cumulée, séries, statistiques par événement. Tout ce que la modale affiche
+    // dérive d'ici (la vue est sans logique).
+    function computeProfileMetrics(history) {
+        var n = history.length;
+        var empty = {
+            n: 0, avg: 0, avgPct: 0,
+            best: null, worst: null,
+            totalGlory: 0, totalAttended: 0, totalPossible: 0, attendancePct: 0,
+            avgRank: null, bestRank: null,
+            streak: 0, trend: null, eventStats: {}
+        };
+        if (n === 0) return empty;
+
+        var totalScore = 0;
+        var pctSum = 0, pctCount = 0;
+        var totalGlory = 0;
+        var totalAttended = 0;
+        var totalPossible = 0;
+        var ranks = [];
+        var best = history[0];
+        var worst = history[0];
+
+        history.forEach(function (r) {
+            totalScore += r.score;
+            if (r.max_possible > 0) { pctSum += r.score / r.max_possible; pctCount++; }
+            totalGlory += r.glory_delta || 0;
+            totalAttended += r.events_done || 0;
+            totalPossible += r.events_total || 0;
+            if (r.rank > 0) ranks.push(r.rank);
+            if (r.score > best.score) best = r;
+            if (r.score < worst.score) worst = r;
+        });
+
+        var avg = round1(totalScore / n);
+        var avgPct = pctCount > 0 ? pctSum / pctCount : 0;
+        var attendancePct = totalPossible > 0 ? totalAttended / totalPossible : 0;
+        var avgRank = ranks.length ? Math.round(ranks.reduce(function (s, r) { return s + r; }, 0) / ranks.length) : null;
+        var bestRank = ranks.length ? Math.min.apply(null, ranks) : null;
+
+        // Série courante : nombre de semaines consécutives (en fin d'historique)
+        // avec au moins un événement participé.
+        var streak = 0;
+        for (var i = history.length - 1; i >= 0; i--) {
+            if (history[i].events_done > 0) streak++;
+            else break;
+        }
+
+        // Tendance = moyenne des K dernières semaines vs les K précédentes (K ≤ 4).
+        // Plus fiable qu'un simple delta semaine-N vs semaine-N-1.
+        var trend = null;
+        if (n >= 2) {
+            var win = Math.min(4, Math.floor(n / 2));
+            if (win >= 1) {
+                var recent = history.slice(-win).reduce(function (s, r) { return s + r.score; }, 0) / win;
+                var prev   = history.slice(-2 * win, -win);
+                if (prev.length === win) {
+                    var prevAvg = prev.reduce(function (s, r) { return s + r.score; }, 0) / win;
+                    trend = {
+                        delta:     round1(recent - prevAvg),
+                        recentAvg: round1(recent),
+                        prevAvg:   round1(prevAvg),
+                        window:    win
+                    };
+                }
+            }
+            if (!trend) {
+                trend = {
+                    delta:     round1(history[n - 1].score - history[n - 2].score),
+                    recentAvg: round1(history[n - 1].score),
+                    prevAvg:   round1(history[n - 2].score),
+                    window:    1
+                };
+            }
+        }
+
+        // Évolution par événement : sur toutes les semaines où l'événement a tourné,
+        // combien le joueur a participé, score moyen / meilleur, points cumulés.
+        var eventStats = {};
+        history.forEach(function (r) {
+            if (!r.breakdown) return;
+            Object.keys(r.breakdown).forEach(function (name) {
+                var b = r.breakdown[name];
+                if (!eventStats[name]) {
+                    eventStats[name] = {
+                        name:          name,
+                        coeff:         b.coeff,
+                        weeksRan:      0,
+                        weeksAttended: 0,
+                        scores:        [],
+                        totalPoints:   0,
+                        maxPoints:     0,
+                        lastDelta:     null
+                    };
+                }
+                var s = eventStats[name];
+                s.weeksRan++;
+                s.maxPoints   += b.max   || 0;
+                s.totalPoints += b.total || 0;
+                if (b.participated) {
+                    s.weeksAttended++;
+                    if (b.score > 0) s.scores.push(b.score);
+                }
+            });
+        });
+
+        return {
+            n: n,
+            avg: avg, avgPct: avgPct,
+            best: best, worst: worst,
+            totalGlory: totalGlory,
+            totalAttended: totalAttended, totalPossible: totalPossible, attendancePct: attendancePct,
+            avgRank: avgRank, bestRank: bestRank,
+            streak: streak, trend: trend,
+            eventStats: eventStats
+        };
     }
 
     function renderProfileModal(pseudo, history) {
         var existing = document.getElementById('profile-modal');
         if (existing) existing.remove();
 
-        var avg  = history.length ? round1(history.reduce(function (s, r) { return s + r.score; }, 0) / history.length) : 0;
-        var best = history.length ? round1(Math.max.apply(null, history.map(function (r) { return r.score; }))) : 0;
-        var trend = history.length >= 2
-            ? round1(history[history.length - 1].score - history[history.length - 2].score)
-            : null;
-        var trendHtml = trend !== null
-            ? '<span class="stat-chip ' + (trend >= 0 ? 'success' : 'muted') + '">' +
-              (trend >= 0 ? '↑' : '↓') + ' ' + Math.abs(trend) + ' ' + t('stats_pts') + '</span>'
-            : '';
+        var m = computeProfileMetrics(history);
 
         var modal = document.createElement('div');
         modal.id = 'profile-modal';
         modal.className = 'confirm-overlay';
+
+        // ── Header ────────────────────────────────────────────────────────────
+        var trendChip = '';
+        if (m.trend !== null) {
+            var d = m.trend.delta;
+            var stable = Math.abs(d) < 1;
+            var cls    = stable ? 'gm-chip' : (d > 0 ? 'gm-chip gm-chip-success' : 'gm-chip gm-chip-danger');
+            var icon   = stable ? 'ph-arrows-left-right' : (d > 0 ? 'ph-trend-up' : 'ph-trend-down');
+            var label  = stable ? t('stats_trend_stable') : (d > 0 ? t('stats_trend_improving') : t('stats_trend_declining'));
+            var title  = t('stats_trend_window').replace('{0}', m.trend.window) +
+                         ' : ' + fmt(m.trend.recentAvg) + ' vs ' + fmt(m.trend.prevAvg);
+            var sign   = d > 0 ? '+' : '';
+            trendChip = '<span class="' + cls + '" title="' + esc(title) + '">' +
+                        '<i class="ph ' + icon + '"></i> ' + label +
+                        (stable ? '' : ' (' + sign + d + ' ' + t('stats_pts') + ')') +
+                        '</span>';
+        }
 
         var html =
             '<div class="profile-card glass-card">' +
@@ -542,26 +690,131 @@
                     '<div class="profile-info">' +
                         '<h2 class="text-gradient">' + esc(pseudo) + '</h2>' +
                         '<div class="profile-meta-row">' +
-                            '<span class="stat-chip accent"><i class="ph-fill ph-trophy"></i> ' + t('stats_avg') + ' ' + fmt(avg) + '</span>' +
-                            '<span class="stat-chip success"><i class="ph-fill ph-star"></i> ' + t('stats_best') + ' ' + fmt(best) + '</span>' +
-                            '<span class="stat-chip"><i class="ph-fill ph-calendar"></i> ' + history.length + ' ' + t('stats_weeks') + '</span>' +
-                            trendHtml +
+                            '<span class="gm-chip"><i class="ph-fill ph-calendar"></i> ' + m.n + ' ' + t('stats_weeks') + '</span>' +
+                            trendChip +
                         '</div>' +
                     '</div>' +
                     '<button class="icon-btn profile-close" title="' + t('close_title') + '"><i class="ph ph-x"></i></button>' +
                 '</div>';
 
-        if (history.length >= 2) {
-            html += '<div class="profile-sparkline">' + buildSparkline(
-                history.map(function (r) { return r.score; }),
-                history.map(function (r) { return r.week_start; }),
-                history[0].max_possible || 0
-            ) + '</div>';
+        if (m.n === 0) {
+            html += '<div class="gm-empty"><i class="ph-duotone ph-chart-bar gm-icon"></i>' +
+                    '<div class="gm-empty-title">' + t('stats_no_data') + '</div></div></div>';
+            modal.innerHTML = html;
+            document.body.appendChild(modal);
+            requestAnimationFrame(function () { modal.classList.add('visible'); });
+            modal.querySelector('.profile-close').addEventListener('click', function () { closeModal(modal); });
+            modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(modal); });
+            return;
         }
 
-        // Décomposition de la dernière semaine
+        // ── KPI grid (6 cartes) ──────────────────────────────────────────────
+        var kpis = [
+            {
+                icon: 'ph-trophy', cls: 'kpi-accent',
+                label: t('stats_kpi_avg_score'),
+                value: fmt(m.avg),
+                sub:   Math.round(m.avgPct * 100) + '% ' + t('stats_kpi_of_max')
+            },
+            {
+                icon: 'ph-star', cls: 'kpi-success',
+                label: t('stats_kpi_best_week'),
+                value: fmt(m.best.score),
+                sub:   window.RAD.formatWeek(m.best.week_start)
+            },
+            {
+                icon: 'ph-medal', cls: 'kpi-info',
+                label: t('stats_kpi_avg_rank'),
+                value: m.avgRank !== null ? '#' + m.avgRank : '—',
+                sub:   m.bestRank !== null ? t('stats_kpi_best') + ' #' + m.bestRank : ''
+            },
+            {
+                icon: 'ph-check-circle', cls: 'kpi-info',
+                label: t('stats_kpi_attendance'),
+                value: m.totalAttended + ' / ' + m.totalPossible,
+                sub:   Math.round(m.attendancePct * 100) + '%'
+            },
+            {
+                icon: 'ph-fire', cls: 'kpi-warning',
+                label: t('stats_kpi_glory_total'),
+                value: m.totalGlory > 0 ? '+' + fmt(m.totalGlory) : '—',
+                sub:   t('stats_kpi_cumulated')
+            },
+            {
+                icon: 'ph-lightning', cls: 'kpi-accent',
+                label: t('stats_kpi_streak'),
+                value: m.streak + ' ' + t('stats_weeks'),
+                sub:   t('stats_kpi_streak_sub')
+            }
+        ];
+
+        html += '<div class="profile-kpis">';
+        kpis.forEach(function (k) {
+            html += '<div class="kpi-card ' + k.cls + '">' +
+                        '<div class="kpi-icon"><i class="ph-fill ' + k.icon + '"></i></div>' +
+                        '<div class="kpi-body">' +
+                            '<div class="kpi-label">' + k.label + '</div>' +
+                            '<div class="kpi-value">' + k.value + '</div>' +
+                            (k.sub ? '<div class="kpi-sub">' + k.sub + '</div>' : '') +
+                        '</div>' +
+                    '</div>';
+        });
+        html += '</div>';
+
+        // ── Sparkline (score brut + moyenne mobile) ──────────────────────────
+        if (m.n >= 2) {
+            html += '<div class="profile-sparkline">' +
+                        '<div class="sparkline-legend">' +
+                            '<span><span class="sp-swatch sp-swatch-score"></span>' + t('stats_score_pts') + '</span>' +
+                            (m.n >= 3 ? '<span><span class="sp-swatch sp-swatch-ma"></span>' + t('stats_moving_avg') + '</span>' : '') +
+                            '<span><span class="sp-swatch sp-swatch-max"></span>' + t('stats_max_line') + '</span>' +
+                        '</div>' +
+                        buildSparkline(history) +
+                    '</div>';
+        }
+
+        // ── Évolution par événement ──────────────────────────────────────────
+        var eventNames = Object.keys(m.eventStats);
+        if (eventNames.length) {
+            html += '<div class="profile-events">' +
+                '<h4><i class="ph ph-chart-line"></i> ' + t('stats_evolution_per_event') + '</h4>' +
+                '<table class="leaderboard-table"><thead><tr>' +
+                    '<th>' + t('stats_event') + '</th>' +
+                    '<th class="center">' + t('stats_kpi_attendance') + '</th>' +
+                    '<th class="center">' + t('stats_kpi_avg_score') + '</th>' +
+                    '<th class="center">' + t('stats_best') + '</th>' +
+                    '<th class="center">' + t('stats_pts_earned') + '</th>' +
+                '</tr></thead><tbody>';
+            eventNames.forEach(function (name) {
+                var s = m.eventStats[name];
+                var attRate = s.weeksRan > 0 ? s.weeksAttended / s.weeksRan : 0;
+                var avgEv = s.scores.length
+                    ? Math.round(s.scores.reduce(function (a, b) { return a + b; }, 0) / s.scores.length)
+                    : 0;
+                var bestEv = s.scores.length ? Math.max.apply(null, s.scores) : 0;
+                var ptsRatio = s.maxPoints > 0 ? s.totalPoints / s.maxPoints : 0;
+                var ptsCls = ptsRatio >= 0.7 ? 'score-high' : ptsRatio >= 0.4 ? 'score-mid' : 'score-low';
+                var attCls = attRate >= 0.8 ? 'gm-chip-success'
+                           : attRate >= 0.5 ? 'gm-chip-warning'
+                           : 'gm-chip-danger';
+                html += '<tr>' +
+                        '<td><strong>' + esc(name) + '</strong> <span class="gm-dim">×' + s.coeff + '</span></td>' +
+                        '<td class="center"><span class="gm-chip ' + attCls + '">' +
+                            s.weeksAttended + '/' + s.weeksRan +
+                            ' · ' + Math.round(attRate * 100) + '%</span></td>' +
+                        '<td class="center">' + (avgEv > 0 ? fmt(avgEv) : '<span class="gm-dim">—</span>') + '</td>' +
+                        '<td class="center">' + (bestEv > 0 ? fmt(bestEv) : '<span class="gm-dim">—</span>') + '</td>' +
+                        '<td class="center"><span class="score-badge ' + ptsCls + '">' +
+                            fmt(round1(s.totalPoints)) + ' / ' + fmt(round1(s.maxPoints)) +
+                        '</span></td>' +
+                    '</tr>';
+            });
+            html += '</tbody></table></div>';
+        }
+
+        // ── Décomposition de la dernière semaine (inchangé visuellement) ─────
         var last = history[history.length - 1];
-        if (last && last.breakdown) {
+        if (last && last.breakdown && Object.keys(last.breakdown).length) {
             html += '<div class="profile-breakdown">' +
                 '<h4><i class="ph ph-list-checks"></i> ' + t('stats_breakdown') + ' — ' + window.RAD.formatWeek(last.week_start) + '</h4>' +
                 '<table class="leaderboard-table"><thead><tr>' +
@@ -600,23 +853,47 @@
                 '</tbody></table></div>';
         }
 
-        // Historique
+        // ── Historique détaillé : rang, % du max, direction semaine-à-semaine ─
         html +=
             '<div class="profile-history">' +
             '<h4><i class="ph ph-clock-counter-clockwise"></i> ' + t('stats_history') + '</h4>' +
             '<table class="leaderboard-table"><thead><tr>' +
                 '<th>' + t('stats_week') + '</th>' +
+                '<th class="center">' + t('stats_rank') + '</th>' +
                 '<th class="center">' + t('stats_score_pts') + '</th>' +
+                '<th class="center">' + t('stats_pct_max') + '</th>' +
                 '<th class="center">' + t('stats_events') + '</th>' +
                 '<th class="center">' + t('stats_glory_delta') + '</th>' +
             '</tr></thead><tbody>';
 
-        history.slice().reverse().forEach(function (row) {
+        var reversed = history.slice().reverse();
+        reversed.forEach(function (row, idx) {
             var ratio = row.max_possible > 0 ? row.score / row.max_possible : 0;
             var cls = ratio >= 0.7 ? 'score-high' : ratio >= 0.4 ? 'score-mid' : 'score-low';
+            var rankCell = row.rank > 0
+                ? '<strong>#' + row.rank + '</strong>' +
+                  (row.active_count > 0 ? '<span class="gm-dim"> / ' + row.active_count + '</span>' : '')
+                : '<span class="gm-dim">—</span>';
+
+            // Direction = semaine courante vs semaine chronologiquement précédente
+            // (qui est, dans le tableau inversé, la ligne suivante).
+            var dir = '';
+            if (idx < reversed.length - 1) {
+                var dScore = row.score - reversed[idx + 1].score;
+                if (Math.abs(dScore) >= 1) {
+                    var up = dScore > 0;
+                    dir = ' <i class="ph ' + (up ? 'ph-arrow-up' : 'ph-arrow-down') +
+                          '" title="' + (up ? '+' : '') + round1(dScore) + ' ' + t('stats_pts') +
+                          '" style="color:' + (up ? 'var(--success)' : 'var(--danger)') +
+                          ';font-size:0.7rem;vertical-align:middle;"></i>';
+                }
+            }
+
             html +=
                 '<tr><td class="week-cell">' + window.RAD.formatWeek(row.week_start) + '</td>' +
-                '<td class="center"><span class="score-badge ' + cls + '">' + fmt(row.score) + '</span></td>' +
+                '<td class="center">' + rankCell + '</td>' +
+                '<td class="center"><span class="score-badge ' + cls + '">' + fmt(row.score) + '</span>' + dir + '</td>' +
+                '<td class="center"><span class="gm-dim">' + Math.round(ratio * 100) + '%</span></td>' +
                 '<td class="center">' + row.events_done + '/' + row.events_total + '</td>' +
                 '<td class="center">' + (row.glory_delta > 0 ? '+' + fmt(row.glory_delta) : '—') + '</td></tr>';
         });
@@ -635,42 +912,71 @@
         setTimeout(function () { modal.remove(); }, 300);
     }
 
-    // ── SVG Sparkline (échelle dynamique) ───────────────────────────────────────
-    function buildSparkline(scores, weeks, maxPossible) {
-        var W_ = 500, H = 100, px = 16, py = 12;
-        var n = scores.length;
-        var ymax = Math.max(maxPossible || 0, Math.max.apply(null, scores), 1);
-        // Round ymax up to a "nice" number
-        ymax = niceCeil(ymax);
+    // ── SVG Sparkline : score brut + moyenne mobile + repère max théorique ──
+    // L'échelle Y est calée sur le max théorique max parmi toutes les semaines
+    // (pas seulement la première) pour rester cohérente quand les événements
+    // qui ont tourné varient.
+    function buildSparkline(history) {
+        var scores = history.map(function (r) { return r.score; });
+        var weeks  = history.map(function (r) { return r.week_start; });
+        var maxesPossible = history.map(function (r) { return r.max_possible || 0; });
+        var globalMax = Math.max.apply(null, maxesPossible.concat([0]));
 
-        var pts = scores.map(function (s, i) {
-            var x = px + (n === 1 ? (W_ - px * 2) / 2 : (i / (n - 1)) * (W_ - px * 2));
-            var y = H - py - (s / ymax) * (H - py * 2);
-            return [x.toFixed(1), y.toFixed(1)];
+        var W_ = 520, H = 110, px = 32, py = 14;
+        var n = scores.length;
+        var ymax = niceCeil(Math.max(globalMax, Math.max.apply(null, scores), 1));
+
+        // Moyenne mobile (fenêtre = 3, ou tout si n < 3)
+        var maWindow = Math.min(3, n);
+        var maValues = scores.map(function (_, i) {
+            var start = Math.max(0, i - maWindow + 1);
+            var slice = scores.slice(start, i + 1);
+            return slice.reduce(function (s, v) { return s + v; }, 0) / slice.length;
         });
 
-        var line = pts.map(function (p) { return p.join(','); }).join(' ');
-        var area = (px + ',' + (H - py) + ' ') + line + (' ' + (W_ - px) + ',' + (H - py));
+        function projectX(i) {
+            return px + (n === 1 ? (W_ - px * 2) / 2 : (i / (n - 1)) * (W_ - px * 2));
+        }
+        function projectY(v) {
+            return H - py - (v / ymax) * (H - py * 2);
+        }
+
+        var pts = scores.map(function (s, i) {
+            return [projectX(i).toFixed(1), projectY(s).toFixed(1)];
+        });
+        var maPts = maValues.map(function (v, i) {
+            return [projectX(i).toFixed(1), projectY(v).toFixed(1)];
+        });
+        var maxPts = maxesPossible.map(function (v, i) {
+            return [projectX(i).toFixed(1), projectY(v).toFixed(1)];
+        });
+
+        var line   = pts.map(function (p) { return p.join(','); }).join(' ');
+        var maLine = maPts.map(function (p) { return p.join(','); }).join(' ');
+        var maxLn  = maxPts.map(function (p) { return p.join(','); }).join(' ');
+        var area   = (projectX(0).toFixed(1) + ',' + (H - py)) + ' ' + line + ' ' + (projectX(n - 1).toFixed(1) + ',' + (H - py));
+
         var dots = pts.map(function (p, i) {
             var cls = i === n - 1 ? 'sp-dot sp-dot-last' : 'sp-dot';
-            return '<circle class="' + cls + '" cx="' + p[0] + '" cy="' + p[1] + '" r="4"/>';
+            return '<circle class="' + cls + '" cx="' + p[0] + '" cy="' + p[1] + '" r="3.5"/>';
         }).join('');
 
         var ticks = [0, ymax / 2, ymax];
         var yLines = ticks.map(function (v) {
-            var y = H - py - (v / ymax) * (H - py * 2);
+            var y = projectY(v);
             return '<line x1="' + px + '" x2="' + (W_ - px) + '" y1="' + y + '" y2="' + y + '" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4"/>' +
-                   '<text x="' + (px - 4) + '" y="' + (y + 4) + '" text-anchor="end" font-size="9" fill="#64748b">' + Math.round(v) + '</text>';
+                   '<text x="' + (px - 4) + '" y="' + (y + 4) + '" text-anchor="end" font-size="9" fill="#94a3b8">' + Math.round(v) + '</text>';
         }).join('');
 
         var step = Math.max(1, Math.floor(n / 6));
-        var xLabels = pts.filter(function (_, i) { return i % step === 0 || i === n - 1; }).map(function (p, idx) {
-            var wi = idx * step;
-            if (wi >= n) wi = n - 1;
-            var d = new Date(weeks[wi] + 'T12:00:00Z');
-            var label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
-            return '<text x="' + p[0] + '" y="' + (H + 2) + '" text-anchor="middle" font-size="9" fill="#64748b">' + label + '</text>';
-        }).join('');
+        var xLabels = '';
+        for (var i = 0; i < n; i++) {
+            if (i % step === 0 || i === n - 1) {
+                var d = new Date(weeks[i] + 'T12:00:00Z');
+                var label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+                xLabels += '<text x="' + projectX(i).toFixed(1) + '" y="' + (H + 2) + '" text-anchor="middle" font-size="9" fill="#94a3b8">' + label + '</text>';
+            }
+        }
 
         return '<svg viewBox="0 0 ' + W_ + ' ' + (H + 12) + '" class="sparkline-svg" preserveAspectRatio="none">' +
             '<defs><linearGradient id="sg1" x1="0" y1="0" x2="0" y2="1">' +
@@ -678,8 +984,12 @@
                 '<stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>' +
             '</linearGradient></defs>' +
             yLines +
+            '<polyline points="' + maxLn + '" fill="none" stroke="rgba(148,163,184,0.5)" stroke-width="1.2" stroke-dasharray="2,3" stroke-linecap="round"/>' +
             '<polygon points="' + area + '" fill="url(#sg1)"/>' +
             '<polyline points="' + line + '" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+            (maWindow >= 2
+                ? '<polyline points="' + maLine + '" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-dasharray="5,3" stroke-linecap="round" stroke-linejoin="round"/>'
+                : '') +
             dots + xLabels +
         '</svg>';
     }
