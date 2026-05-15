@@ -287,8 +287,19 @@ html, body {
 }
 .gm-bottom-nav-inner {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     height: var(--bottom-nav-h);
+}
+.gm-bottom-nav-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 2px;
+}
+@media (max-width: 380px) {
+    .gm-bottom-nav-item { font-size: .6rem; }
+    .gm-bottom-nav-item .gm-icon { font-size: 1.15rem; }
 }
 .gm-bottom-nav-item {
     display: flex; flex-direction: column;

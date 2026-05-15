@@ -279,8 +279,8 @@
     function renderBottomNav() {
         var el = document.querySelector('[data-gm-bottom-nav]');
         if (!el) return;
-        // 4 items principaux + More
-        var primary = ['overview', 'members', 'events', 'stats'];
+        // 5 items principaux + More
+        var primary = ['overview', 'members', 'events', 'history', 'stats'];
         var html = '<div class="gm-bottom-nav-inner">';
         primary.forEach(function (id) {
             var item = NAV_ITEMS.find(function (i) { return i.id === id; });
