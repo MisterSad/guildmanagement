@@ -44,7 +44,19 @@
     var allWeeks        = [];
     var leaderboardData = [];
     var lastMaxPossible = 0;
-    var currentMode     = 'global'; // 'global' | 'SvS' | 'GvG' | 'prince'
+    var currentMode     = 'global'; // 'global' | 'SvS' | 'GvG' | 'prince' | 'participation'
+    var participationPeriod = '8w'; // '4w' | '8w' | 'all'
+
+    // Liste des onglets — recalculée à chaque render pour respecter la langue.
+    function statsModes() {
+        return [
+            { key: 'global',        label: t('stats_tab_global'),        icon: 'ph-globe' },
+            { key: 'SvS',           label: t('stats_tab_svs'),           icon: 'ph-sword' },
+            { key: 'GvG',           label: t('stats_tab_gvg'),           icon: 'ph-flag-banner' },
+            { key: 'prince',        label: t('stats_tab_prince'),        icon: 'ph-crown' },
+            { key: 'participation', label: t('stats_tab_participation'), icon: 'ph-chart-bar' }
+        ];
+    }
 
     // ── Public API ──────────────────────────────────────────────────────────────
     window.RAD_STATS = { load: loadStats };
@@ -57,6 +69,10 @@
     }
 
     async function refreshData() {
+        if (currentMode === 'participation') {
+            await loadParticipation();
+            return;
+        }
         if (currentMode === 'global') {
             await loadGlobalPeriod([currentWeek]);
         } else if (currentMode === 'SvS' || currentMode === 'GvG') {
@@ -141,6 +157,253 @@
 
         lastMaxPossible = leaderboardData.length ? leaderboardData[0].score : 0;
         renderLeaderboard({ mode: 'event', maxPossible: lastMaxPossible });
+    }
+
+    // ── Participation : taux par événement + joueurs actifs / inactifs ─────────
+    // Période sélectionnable (4 / 8 dernières semaines ou tout l'historique).
+    // Un "slot" = une ligne event_participants : pour chaque slot d'un joueur on
+    // sait s'il a participé (participated > 0). Le taux par événement est la
+    // moyenne pondérée par slot — pas par session — pour rester comparable
+    // quand le nombre de membres varie entre semaines.
+    async function loadParticipation() {
+        var weeksFilter = null;
+        if (participationPeriod === '4w')      weeksFilter = allWeeks.slice(0, 4);
+        else if (participationPeriod === '8w') weeksFilter = allWeeks.slice(0, 8);
+
+        var membersRes = await db.from('guild_members').select('pseudo');
+        var members = (membersRes.data || []).map(function (m) { return m.pseudo; });
+
+        var query = db.from('event_participants')
+            .select('pseudo, event_name, week_start, participated')
+            .neq('event_name', 'Glory')
+            .limit(100000);
+        if (weeksFilter) query = query.in('week_start', weeksFilter);
+        var partsRes = await query;
+        var participants = partsRes.data || [];
+
+        var data = computeParticipation(members, participants);
+        data.period = participationPeriod;
+        data.weeksUsed = weeksFilter ? weeksFilter.length : allWeeks.length;
+        renderParticipationView(data);
+    }
+
+    function computeParticipation(members, participants) {
+        var eventToGroup = {};
+        Object.keys(EVENT_GROUPS).forEach(function (groupName) {
+            EVENT_GROUPS[groupName].dbNames.forEach(function (dbName) {
+                eventToGroup[dbName] = groupName;
+            });
+        });
+
+        var byEvent = {};
+        Object.keys(EVENT_GROUPS).forEach(function (g) {
+            byEvent[g] = {
+                name: g,
+                coeff: EVENT_GROUPS[g].coeff,
+                rows: 0,
+                attendances: 0,
+                sessions: {},
+                uniqueParticipants: {}
+            };
+        });
+
+        // Slots possibles / attendances par joueur — limité aux membres actuels
+        // pour ne pas faire apparaître d'anciens pseudos supprimés.
+        var byPlayer = {};
+        members.forEach(function (p) {
+            byPlayer[p] = { pseudo: p, attended: 0, possible: 0 };
+        });
+
+        participants.forEach(function (p) {
+            var group = eventToGroup[p.event_name];
+            if (!group) return;
+
+            byEvent[group].rows++;
+            byEvent[group].sessions[p.week_start + '|' + p.event_name] = true;
+            if (p.participated > 0) {
+                byEvent[group].attendances++;
+                byEvent[group].uniqueParticipants[p.pseudo] = true;
+            }
+
+            if (!byPlayer[p.pseudo]) return;
+            byPlayer[p.pseudo].possible++;
+            if (p.participated > 0) byPlayer[p.pseudo].attended++;
+        });
+
+        var eventSummary = Object.keys(byEvent).map(function (g) {
+            var e = byEvent[g];
+            return {
+                name: g,
+                coeff: e.coeff,
+                sessions: Object.keys(e.sessions).length,
+                rate: e.rows > 0 ? e.attendances / e.rows : 0,
+                attendances: e.attendances,
+                rows: e.rows,
+                uniqueParticipants: Object.keys(e.uniqueParticipants).length
+            };
+        }).filter(function (e) { return e.sessions > 0; })
+          .sort(function (a, b) { return b.rate - a.rate; });
+
+        var playerList = Object.keys(byPlayer).map(function (k) {
+            var p = byPlayer[k];
+            p.rate = p.possible > 0 ? p.attended / p.possible : 0;
+            return p;
+        }).filter(function (p) { return p.possible > 0; });
+
+        // Égalité de taux : on départage par "opportunités" — plus la fenêtre
+        // ouverte est large, plus l'écart de comportement est significatif.
+        var sortedActive = playerList.slice().sort(function (a, b) {
+            if (b.rate !== a.rate) return b.rate - a.rate;
+            if (b.possible !== a.possible) return b.possible - a.possible;
+            return a.pseudo.localeCompare(b.pseudo);
+        });
+        var sortedInactive = playerList.slice().sort(function (a, b) {
+            if (a.rate !== b.rate) return a.rate - b.rate;
+            if (b.possible !== a.possible) return b.possible - a.possible;
+            return a.pseudo.localeCompare(b.pseudo);
+        });
+
+        return {
+            totalMembers: members.length,
+            eventSummary: eventSummary,
+            topActive: sortedActive.slice(0, 10),
+            topInactive: sortedInactive.slice(0, 10)
+        };
+    }
+
+    function renderParticipationView(data) {
+        var modes = statsModes();
+
+        document.querySelectorAll('.stats-leaderboard-area').forEach(function (container) {
+            var tabsHtml = '<div class="gm-tabs-pill" style="margin-bottom:1rem;">' +
+                modes.map(function (m) {
+                    return '<button class="gm-tab-pill' + (currentMode === m.key ? ' gm-active' : '') + '" data-gm-mode="' + m.key + '">' +
+                        '<i class="ph ' + m.icon + '"></i> ' + m.label + '</button>';
+                }).join('') +
+            '</div>';
+
+            var periods = [
+                { key: '4w',  label: t('stats_part_period_4w') },
+                { key: '8w',  label: t('stats_part_period_8w') },
+                { key: 'all', label: t('stats_part_period_all') }
+            ];
+            var periodHtml =
+                '<div class="gm-part-period">' +
+                    '<span class="gm-dim" style="margin-right:.25rem;">' + t('stats_part_period_label') + '</span>' +
+                    periods.map(function (p) {
+                        return '<button class="gm-chip part-period' + (participationPeriod === p.key ? ' gm-chip-accent active' : '') + '" data-period="' + p.key + '">' +
+                            esc(p.label) + '</button>';
+                    }).join('') +
+                    '<span class="gm-dim" style="margin-left:auto;">' +
+                        data.weeksUsed + ' ' + t('stats_part_weeks') + ' · ' +
+                        data.totalMembers + ' ' + t('stats_part_members') +
+                    '</span>' +
+                '</div>';
+
+            if (!data.eventSummary.length) {
+                container.innerHTML = tabsHtml + periodHtml +
+                    '<div class="gm-empty"><i class="ph-duotone ph-chart-bar gm-icon"></i><div class="gm-empty-title">' + t('stats_part_no_data') + '</div></div>';
+                wireStatsTabs(container);
+                wirePartPeriod(container);
+                return;
+            }
+
+            var eventsHtml = '<div class="gm-section">' +
+                '<div class="gm-section-title"><i class="ph ph-chart-bar"></i>' +
+                    '<span>' + t('stats_part_by_event') + '</span></div>' +
+                '<div class="gm-part-event-grid">';
+            data.eventSummary.forEach(function (e) {
+                var rate = Math.round(e.rate * 100);
+                eventsHtml +=
+                    '<div class="gm-part-event-card">' +
+                        '<div class="gm-part-event-head">' +
+                            '<strong>' + esc(e.name) + '</strong>' +
+                            '<span class="gm-chip">×' + e.coeff + '</span>' +
+                        '</div>' +
+                        '<div class="gm-part-event-rate">' + rate + '<span class="gm-part-pct">%</span></div>' +
+                        '<div class="gm-part-bar"><div class="gm-part-bar-fill" style="width:' + rate + '%;"></div></div>' +
+                        '<div class="gm-part-event-meta">' +
+                            '<span><i class="ph ph-calendar"></i> ' + e.sessions + ' ' + t('stats_part_sessions') + '</span>' +
+                            '<span><i class="ph ph-users"></i> ' + e.uniqueParticipants + ' ' + t('stats_part_players') + '</span>' +
+                        '</div>' +
+                    '</div>';
+            });
+            eventsHtml += '</div></div>';
+
+            var playersHtml = '<div class="gm-part-players-grid">' +
+                renderPartPlayerCard({
+                    title: t('stats_part_most_active'),
+                    sub:   t('stats_part_most_active_sub'),
+                    icon:  'ph-fire',
+                    variant: 'success',
+                    players: data.topActive
+                }) +
+                renderPartPlayerCard({
+                    title: t('stats_part_least_active'),
+                    sub:   t('stats_part_least_active_sub'),
+                    icon:  'ph-ghost',
+                    variant: 'danger',
+                    players: data.topInactive
+                }) +
+            '</div>';
+
+            container.innerHTML = tabsHtml + periodHtml + eventsHtml + playersHtml;
+
+            wireStatsTabs(container);
+            wirePartPeriod(container);
+            container.querySelectorAll('.gm-part-player-row[data-pseudo]').forEach(function (row) {
+                row.addEventListener('click', function () {
+                    openProfile(row.getAttribute('data-pseudo'));
+                });
+            });
+        });
+    }
+
+    function renderPartPlayerCard(opts) {
+        var html = '<div class="gm-part-players-card gm-part-players-' + opts.variant + '">' +
+            '<div class="gm-part-players-head">' +
+                '<i class="ph-fill ' + opts.icon + '"></i>' +
+                '<div>' +
+                    '<div class="gm-part-players-title">' + opts.title + '</div>' +
+                    '<div class="gm-part-players-sub">' + opts.sub + '</div>' +
+                '</div>' +
+            '</div>';
+
+        if (!opts.players.length) {
+            return html + '<div class="gm-dim" style="padding:.75rem;">' + t('stats_no_data') + '</div></div>';
+        }
+
+        html += '<div class="gm-part-player-list">';
+        opts.players.forEach(function (p, i) {
+            var rate = Math.round(p.rate * 100);
+            var initial = window.RAD.avatarInit(p.pseudo);
+            html +=
+                '<button class="gm-part-player-row" data-pseudo="' + esc(p.pseudo) + '">' +
+                    '<span class="gm-part-player-rank">' + (i + 1) + '</span>' +
+                    '<div class="gm-avatar">' + esc(initial) + '</div>' +
+                    '<div class="gm-part-player-info">' +
+                        '<div class="gm-part-player-name">' + esc(p.pseudo) + '</div>' +
+                        '<div class="gm-part-bar gm-part-bar-thin">' +
+                            '<div class="gm-part-bar-fill gm-part-bar-' + opts.variant + '" style="width:' + rate + '%;"></div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="gm-part-player-stats">' +
+                        '<div class="gm-part-player-rate">' + rate + '%</div>' +
+                        '<div class="gm-part-player-count gm-dim">' + p.attended + '/' + p.possible + '</div>' +
+                    '</div>' +
+                '</button>';
+        });
+        html += '</div></div>';
+        return html;
+    }
+
+    function wirePartPeriod(container) {
+        container.querySelectorAll('.part-period').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                participationPeriod = btn.getAttribute('data-period');
+                loadParticipation();
+            });
+        });
     }
 
     // ── Construction de la map gloire par semaine ──────────────────────────────
@@ -318,6 +581,13 @@
     // ── Render contrôles ────────────────────────────────────────────────────────
     function renderControls() {
         document.querySelectorAll('.stats-controls').forEach(function (el) {
+            // Mode participation : pas de sélecteur de semaine (le sélecteur de
+            // période est rendu inline dans la vue participation elle-même).
+            if (currentMode === 'participation') {
+                el.innerHTML = '';
+                return;
+            }
+
             var optHtml = allWeeks.map(function (w) {
                 return '<option value="' + w + '"' + (w === currentWeek ? ' selected' : '') + '>' + window.RAD.formatWeek(w) + '</option>';
             }).join('');
@@ -347,12 +617,7 @@
     function renderLeaderboard(opts) {
         var mode = opts && opts.mode;
         var maxPossible = (opts && opts.maxPossible) || 1;
-        var modes = [
-            { key: 'global', label: t('stats_tab_global'),  icon: 'ph-globe' },
-            { key: 'SvS',    label: t('stats_tab_svs'),     icon: 'ph-sword' },
-            { key: 'GvG',    label: t('stats_tab_gvg'),     icon: 'ph-flag-banner' },
-            { key: 'prince', label: t('stats_tab_prince'),  icon: 'ph-crown' }
-        ];
+        var modes = statsModes();
 
         document.querySelectorAll('.stats-leaderboard-area').forEach(function (container) {
             var tabsHtml = '<div class="gm-tabs-pill" style="margin-bottom:1rem;">' +
@@ -473,6 +738,7 @@
         container.querySelectorAll('[data-gm-mode]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 currentMode = btn.getAttribute('data-gm-mode');
+                renderControls();
                 refreshData();
             });
         });
