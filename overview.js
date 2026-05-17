@@ -88,7 +88,7 @@
             var nowMs = Date.now();
             var upcoming = (statusRows.data || [])
                 .filter(function (s) { return s.start_at && new Date(s.start_at).getTime() > nowMs; })
-                .map(function (s) { return { name: prettyEventName(s.event_name), when: s.start_at }; })
+                .map(function (s) { return { name: fullEventName(s.event_name), when: s.start_at }; })
                 .sort(function (a, b) { return new Date(a.when).getTime() - new Date(b.when).getTime(); });
 
             renderPage(panel, stats, activity, upcoming);
@@ -102,6 +102,14 @@
         if (n === 'ARMS RACE STAGE A') return 'Arms Race Stage A';
         if (n === 'ARMS RACE STAGE B') return 'Arms Race Stage B';
         if (n === 'Defend Trade Route') return 'DTR';
+        return n;
+    }
+
+    // Like prettyEventName but never abbreviates (used in the upcoming agenda).
+    function fullEventName(n) {
+        if (!n) return '';
+        if (n === 'ARMS RACE STAGE A') return 'Arms Race Stage A';
+        if (n === 'ARMS RACE STAGE B') return 'Arms Race Stage B';
         return n;
     }
 
