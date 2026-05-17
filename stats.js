@@ -44,6 +44,7 @@
     var allWeeks        = [];
     var leaderboardData = [];
     var lastMaxPossible = 0;
+    var uidByPseudo     = {};
     var currentMode     = 'global'; // 'global' | 'SvS' | 'GvG' | 'prince' | 'participation'
     var participationPeriod = '8w'; // '4w' | '8w' | 'all'
 
@@ -103,12 +104,15 @@
         var glorySpan = [refPrev].concat(weeks);
 
         var [membersRes, partsRes, gloryRes] = await Promise.all([
-            db.from('guild_members').select('pseudo'),
+            db.from('guild_members').select('pseudo, uid'),
             db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
             db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000)
         ]);
 
-        var members      = (membersRes.data || []).map(function (m) { return m.pseudo; });
+        var memberRows   = membersRes.data || [];
+        var members      = memberRows.map(function (m) { return m.pseudo; });
+        uidByPseudo = {};
+        memberRows.forEach(function (m) { uidByPseudo[m.pseudo] = m.uid || ''; });
         var participants = partsRes.data || [];
         var gloryByWeek  = buildGloryByWeek(gloryRes.data || [], glorySpan);
 
@@ -634,7 +638,8 @@
                 return;
             }
 
-            var isEvent = mode === 'event';
+            var isEvent  = mode === 'event';
+            var isPrince = mode === 'prince';
 
             var bannerHtml = '';
             if (mode === 'prince' && opts.range) {
@@ -683,6 +688,7 @@
                 '<table class="gm-table gm-resp-table"><thead><tr>' +
                     '<th class="gm-center">#</th>' +
                     '<th>' + t('col_member') + '</th>' +
+                    (isPrince ? '<th class="gm-center">' + t('stats_uid') + '</th>' : '') +
                     (!isEvent ? '<th class="gm-center">' + t('stats_events') + '</th>' : '') +
                     (!isEvent ? '<th class="gm-center">' + t('stats_glory_delta') + '</th>' : '') +
                     (!isEvent ? '<th class="gm-center">' + t('stats_consistency') + '</th>' : '') +
@@ -703,6 +709,16 @@
                         : '<span class="gm-dim" title="' + Math.round(m.attendance_rate * 100) + '%">—</span>')
                     : '';
 
+                var uid = uidByPseudo[m.pseudo] || '';
+                var uidCell = uid
+                    ? '<span class="gm-uid-cell" data-uid="' + esc(uid) + '">' +
+                          '<span class="gm-mono">' + esc(uid) + '</span>' +
+                          '<button class="gm-mini-btn gm-uid-copy" type="button" title="' + t('stats_uid_copy') + '">' +
+                              '<i class="ph ph-copy"></i>' +
+                          '</button>' +
+                      '</span>'
+                    : '<span class="gm-dim" title="' + t('stats_uid_none') + '">—</span>';
+
                 tableHtml +=
                     '<tr>' +
                         '<td class="gm-center gm-num" data-label="#">' + rankCell + '</td>' +
@@ -712,6 +728,7 @@
                                 '<strong>' + esc(m.pseudo) + '</strong>' +
                             '</div>' +
                         '</td>' +
+                        (isPrince ? '<td class="gm-center" data-label="' + t('stats_uid') + '">' + uidCell + '</td>' : '') +
                         (!isEvent ? '<td class="gm-center gm-num" data-label="' + t('stats_events') + '">' + m.events_done + '/' + m.events_total + '</td>' : '') +
                         (!isEvent ? '<td class="gm-center gm-num gm-dim" data-label="' + t('stats_glory_delta') + '">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '—') + '</td>' : '') +
                         (!isEvent ? '<td class="gm-center" data-label="' + t('stats_consistency') + '">' + consistencyCell + '</td>' : '') +
@@ -730,6 +747,20 @@
             wireStatsTabs(container);
             container.querySelectorAll('.profile-btn, .gm-podium-slot').forEach(function (btn) {
                 btn.addEventListener('click', function () { openProfile(btn.getAttribute('data-pseudo')); });
+            });
+            container.querySelectorAll('.gm-uid-copy').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var cell = btn.closest('.gm-uid-cell');
+                    var uid  = cell ? cell.getAttribute('data-uid') : '';
+                    if (!uid || !navigator.clipboard) return;
+                    navigator.clipboard.writeText(uid).then(function () {
+                        var icon = btn.querySelector('i');
+                        icon.className = 'ph ph-check';
+                        window.RAD.showToast(t('stats_uid_copied'), 'success');
+                        setTimeout(function () { icon.className = 'ph ph-copy'; }, 2000);
+                    });
+                });
             });
         });
     }

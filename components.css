@@ -594,6 +594,18 @@
     font-variant-numeric: tabular-nums;
 }
 
+.gm-uid-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    justify-content: center;
+}
+.gm-uid-cell .gm-mono {
+    font-size: .85rem;
+    user-select: all;
+}
+.gm-uid-cell .gm-uid-copy { padding: 3px 6px; }
+
 /* ─── Event banner (Events page) ─── */
 .gm-event-banner {
     display: flex; align-items: center; gap: 1rem;
