@@ -82,7 +82,7 @@
     }
 
     // ── Set Active / Inactive ──────────────────────────────────────────────────
-    async function setShadowfrontActive(newState) {
+    async function setShadowfrontActive(newState, startAt) {
         if (!db) return;
         if (newState) {
             // Nouvelle session
@@ -92,6 +92,7 @@
                     event_name: EVENT_NAME,
                     is_active:  true,
                     session_id: sessionId,
+                    start_at:   startAt || null,
                     updated_at: new Date().toISOString()
                 },
                 { onConflict: 'event_name' }
@@ -488,7 +489,12 @@
 
     // ── Wire START / END buttons ───────────────────────────────────────────────
     var sfStartBtn = document.querySelector('.event-start-btn[data-event="Shadowfront"]');
-    if (sfStartBtn) sfStartBtn.addEventListener('click', function () { setShadowfrontActive(true); });
+    if (sfStartBtn) sfStartBtn.addEventListener('click', function () {
+        window.RAD.pickEventStart({ eventLabel: 'Shadowfront' }, function (startAt) {
+            if (!startAt) return; // annulé ⇒ on ne démarre pas
+            setShadowfrontActive(true, startAt);
+        });
+    });
     var sfEndBtn = document.querySelector('.event-end-btn[data-event="Shadowfront"]');
     if (sfEndBtn) sfEndBtn.addEventListener('click', function () { setShadowfrontActive(false); });
 

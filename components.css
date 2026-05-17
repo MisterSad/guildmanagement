@@ -97,6 +97,7 @@
     box-shadow: 0 0 0 3px oklch(0.78 0.13 75 / 0.15);
 }
 .gm-input::placeholder { color: var(--fg-dim); }
+.gm-input[type="date"], .gm-input[type="time"] { color-scheme: dark; }
 
 .gm-input-with-icon { position: relative; }
 .gm-input-with-icon .gm-icon {
