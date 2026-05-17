@@ -1114,6 +1114,11 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .sf-section-title { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); background: rgba(0,0,0,0.1); border-bottom: 1px solid var(--card-border); }
 .sf-cap { padding: 0.1rem 0.5rem; border-radius: 10px; background: rgba(255,255,255,0.06); font-size: 0.75rem; }
 .sf-cap.full { background: rgba(239,68,68,0.15); color: var(--error); }
+.sf-squad-subhead { padding: 0.35rem 1rem 0.55rem; font-size: 0.78rem; border-bottom: 1px solid var(--card-border); }
+.sf-squad-time { color: var(--text-muted); }
+.sf-squad-col.sf-squad-off { opacity: 0.62; }
+.sf-status-seg { display: inline-flex; align-items: center; gap: 0.3rem; }
+.sf-status-seg + .sf-status-seg { margin-left: 0.4rem; }
 .sf-col-body { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem; flex: 1; min-height: 60px; }
 .sf-empty { color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 0.75rem; opacity: 0.6; }
 .sf-member-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); gap: 0.5rem; transition: var(--transition); }

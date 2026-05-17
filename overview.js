@@ -103,6 +103,8 @@
         if (!n) return '';
         if (n === 'ARMS RACE STAGE A') return 'Arms Race Stage A';
         if (n === 'ARMS RACE STAGE B') return 'Arms Race Stage B';
+        if (n === 'Shadowfront Squad 1') return 'Shadowfront — Squad 1';
+        if (n === 'Shadowfront Squad 2') return 'Shadowfront — Squad 2';
         if (n === 'Defend Trade Route') return 'DTR';
         return n;
     }
@@ -112,6 +114,8 @@
         if (!n) return '';
         if (n === 'ARMS RACE STAGE A') return 'Arms Race Stage A';
         if (n === 'ARMS RACE STAGE B') return 'Arms Race Stage B';
+        if (n === 'Shadowfront Squad 1') return 'Shadowfront — Squad 1';
+        if (n === 'Shadowfront Squad 2') return 'Shadowfront — Squad 2';
         return n;
     }
 

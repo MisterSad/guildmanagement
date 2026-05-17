@@ -1,7 +1,12 @@
 /**
- * shadowfront.js — Shadowfront event: squad assignment + participation tracking
- * Chaque START crée une nouvelle session : nouveaux squads, nouveau suivi.
- * L'historique (catégorisation) consulte toutes les sessions passées.
+ * shadowfront.js — Shadowfront: Squad 1 & Squad 2 launched independently.
+ *
+ * Each squad is its own event_status row ("Shadowfront Squad 1/2") with its
+ * own active state, session and UTC start_at — so they can start at
+ * different times and surface as two distinct agenda/notification entries.
+ * Participation/scoring stays under event_name 'Shadowfront' (unchanged),
+ * partitioned per squad session. Players assigned to Squad 1 (participant
+ * OR reserve) are excluded from the Squad 2 pool, and vice-versa.
  */
 (function () {
 
@@ -9,14 +14,17 @@
     var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
     var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
 
-    var EVENT_NAME = 'Shadowfront';
+    var EVENT_NAME = 'Shadowfront'; // event_participants identity (scoring/history)
+    var SQUAD_EVENT = { squad1: 'Shadowfront Squad 1', squad2: 'Shadowfront Squad 2' };
     var PARTICIPANTS_MAX = 20;
     var RESERVES_MAX     = 10;
 
     // ── State ──────────────────────────────────────────────────────────────────
     var sfState = {
-        isActive:     false,
-        sessionId:    null,
+        squads: {
+            squad1: { active: false, sessionId: null, startAt: null },
+            squad2: { active: false, sessionId: null, startAt: null }
+        },
         allMembers:   [],
         assignments:  [],
         participants: [],
@@ -30,43 +38,64 @@
     // ── Public API ─────────────────────────────────────────────────────────────
     window.RAD_SHADOWFRONT = { load: loadShadowfront };
 
+    function squadLabel(squad) { return squad === 'squad1' ? t('sf_squad1') : t('sf_squad2'); }
+    function activeSquadKeys() {
+        return ['squad1', 'squad2'].filter(function (k) { return sfState.squads[k].active; });
+    }
+    function anySquadActive() { return activeSquadKeys().length > 0; }
+    function currentSessionIds() {
+        return ['squad1', 'squad2']
+            .map(function (k) { return sfState.squads[k].sessionId; })
+            .filter(Boolean);
+    }
+
     // ── Load ───────────────────────────────────────────────────────────────────
     async function loadShadowfront() {
         if (!db) return;
         try {
             var [statusRes, membersRes, histSquads, histParts] = await Promise.all([
-                db.from('event_status').select('is_active, session_id').eq('event_name', EVENT_NAME).maybeSingle(),
+                db.from('event_status').select('event_name, is_active, session_id, start_at')
+                    .in('event_name', [SQUAD_EVENT.squad1, SQUAD_EVENT.squad2]),
                 db.from('guild_members').select('pseudo, uid').order('pseudo', { ascending: true }),
                 db.from('shadowfront_squads').select('pseudo, session_id').limit(100000),
                 db.from('event_participants').select('pseudo, participated, session_id').eq('event_name', EVENT_NAME).limit(100000)
             ]);
 
-            sfState.isActive  = statusRes.data ? statusRes.data.is_active : false;
-            sfState.sessionId = statusRes.data ? statusRes.data.session_id : null;
+            ['squad1', 'squad2'].forEach(function (k) {
+                var row = (statusRes.data || []).find(function (r) { return r.event_name === SQUAD_EVENT[k]; });
+                sfState.squads[k] = {
+                    active:    row ? !!row.is_active : false,
+                    sessionId: row ? row.session_id : null,
+                    startAt:   row ? row.start_at : null
+                };
+            });
+
             sfState.allMembers = (membersRes.data || []).map(function (m) { return m.pseudo; });
             sfState.uidMap = {};
             (membersRes.data || []).forEach(function (m) { sfState.uidMap[m.pseudo] = m.uid; });
 
-            // Histoire : exclure la session courante
+            var sids = currentSessionIds();
+
+            // Histoire : exclure les sessions de l'occurrence courante
             var hist = {};
             (histSquads.data || []).forEach(function (r) {
-                if (sfState.sessionId && r.session_id === sfState.sessionId) return;
+                if (sids.indexOf(r.session_id) !== -1) return;
                 if (!hist[r.pseudo]) hist[r.pseudo] = { assigned: 0, participated: 0 };
                 hist[r.pseudo].assigned++;
             });
             (histParts.data || []).forEach(function (r) {
-                if (sfState.sessionId && r.session_id === sfState.sessionId) return;
+                if (sids.indexOf(r.session_id) !== -1) return;
                 if (!hist[r.pseudo]) hist[r.pseudo] = { assigned: 0, participated: 0 };
                 if (r.participated > 0) hist[r.pseudo].participated += r.participated;
             });
             sfState.history = hist;
 
-            if (sfState.isActive && sfState.sessionId) {
+            if (sids.length) {
                 var [assignRes, partRes] = await Promise.all([
                     db.from('shadowfront_squads').select('*')
-                        .eq('session_id', sfState.sessionId).order('pseudo', { ascending: true }),
+                        .in('session_id', sids).order('pseudo', { ascending: true }),
                     db.from('event_participants').select('*')
-                        .eq('event_name', EVENT_NAME).eq('session_id', sfState.sessionId)
+                        .eq('event_name', EVENT_NAME).in('session_id', sids)
                         .order('pseudo', { ascending: true })
                 ]);
                 sfState.assignments  = assignRes.data || [];
@@ -81,15 +110,14 @@
         } catch (err) { console.error('loadShadowfront', err); }
     }
 
-    // ── Set Active / Inactive ──────────────────────────────────────────────────
-    async function setShadowfrontActive(newState, startAt) {
+    // ── Start / End a squad ────────────────────────────────────────────────────
+    async function startSquad(squad, startAt) {
         if (!db) return;
-        if (newState) {
-            // Nouvelle session
-            var sessionId = window.RAD.newSessionId();
-            await db.from('event_status').upsert(
+        var sessionId = window.RAD.newSessionId();
+        try {
+            var res = await db.from('event_status').upsert(
                 {
-                    event_name: EVENT_NAME,
+                    event_name: SQUAD_EVENT[squad],
                     is_active:  true,
                     session_id: sessionId,
                     start_at:   startAt || null,
@@ -97,22 +125,33 @@
                 },
                 { onConflict: 'event_name' }
             );
-            sfState.isActive  = true;
-            sfState.sessionId = sessionId;
-            window.RAD.showToast(t('event_session_started_sf'), 'success');
-        } else {
-            await db.from('event_status').upsert(
-                {
-                    event_name: EVENT_NAME,
-                    is_active:  false,
-                    session_id: sfState.sessionId,
-                    updated_at: new Date().toISOString()
-                },
-                { onConflict: 'event_name' }
-            );
-            sfState.isActive = false;
-            window.RAD.showToast(t('event_session_ended'), 'success');
+            if (res.error) throw res.error;
+            window.RAD.showToast(squadLabel(squad) + ' — ' + t('sf_squad_started'), 'success');
+        } catch (err) {
+            console.error('startSquad', err);
+            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
+        await loadShadowfront();
+    }
+
+    async function endSquads(squads) {
+        if (!db) return;
+        for (var i = 0; i < squads.length; i++) {
+            var squad = squads[i];
+            try {
+                await db.from('event_status').upsert(
+                    {
+                        event_name: SQUAD_EVENT[squad],
+                        is_active:  false,
+                        session_id: sfState.squads[squad].sessionId, // gardé pour l'historique
+                        start_at:   null,                             // retire de l'agenda / rappels
+                        updated_at: new Date().toISOString()
+                    },
+                    { onConflict: 'event_name' }
+                );
+            } catch (err) { console.error('endSquad', err); }
+        }
+        window.RAD.showToast(t('sf_squad_ended'), 'success');
         await loadShadowfront();
     }
 
@@ -134,43 +173,50 @@
 
     // ── Assign / Unassign ──────────────────────────────────────────────────────
     async function assign(pseudo, squad, role) {
-        if (!db || !sfState.sessionId) return;
+        if (!db) return;
+        var sq = sfState.squads[squad];
+        if (!sq || !sq.active || !sq.sessionId) {
+            window.RAD.showToast(t('sf_squad_inactive_hint'), 'error');
+            return;
+        }
         var existing = sfState.assignments.filter(function (a) { return a.squad === squad && a.role === role; });
         var max = role === 'participant' ? PARTICIPANTS_MAX : RESERVES_MAX;
         if (existing.length >= max) { window.RAD.showToast(t('sf_squad_full'), 'error'); return; }
 
-        // Supprimer la précédente affectation s'il y en a une (cette session)
+        // Supprimer une précédente affectation dans la session de ce squad
         await db.from('shadowfront_squads').delete()
-            .eq('session_id', sfState.sessionId).eq('pseudo', pseudo);
+            .eq('session_id', sq.sessionId).eq('pseudo', pseudo);
 
         await db.from('shadowfront_squads').insert({
             week_start: window.RAD.getWeekStart(),
-            session_id: sfState.sessionId,
+            session_id: sq.sessionId,
             pseudo: pseudo,
             squad: squad,
             role: role
         });
 
-        await syncParticipantRows();
+        await syncParticipantRows(sq.sessionId);
         await loadShadowfront();
     }
 
     async function unassign(pseudo) {
-        if (!db || !sfState.sessionId) return;
+        if (!db) return;
+        var a = sfState.assignments.find(function (x) { return x.pseudo === pseudo; });
+        if (!a) return;
         await db.from('shadowfront_squads').delete()
-            .eq('session_id', sfState.sessionId).eq('pseudo', pseudo);
+            .eq('session_id', a.session_id).eq('pseudo', pseudo);
         await loadShadowfront();
     }
 
     // ── Sync participant rows ──────────────────────────────────────────────────
-    async function syncParticipantRows() {
-        if (!db || !sfState.sessionId) return;
+    async function syncParticipantRows(sessionId) {
+        if (!db || !sessionId) return;
         var existingRes = await db.from('event_participants').select('pseudo')
-            .eq('event_name', EVENT_NAME).eq('session_id', sfState.sessionId);
+            .eq('event_name', EVENT_NAME).eq('session_id', sessionId);
         var existing = new Set((existingRes.data || []).map(function (r) { return r.pseudo; }));
 
         var assignRes = await db.from('shadowfront_squads').select('pseudo')
-            .eq('session_id', sfState.sessionId);
+            .eq('session_id', sessionId);
         var assigned = (assignRes.data || []).map(function (a) { return a.pseudo; });
 
         var toInsert = assigned
@@ -179,7 +225,7 @@
                 return {
                     event_name: EVENT_NAME,
                     week_start: window.RAD.getWeekStart(),
-                    session_id: sfState.sessionId,
+                    session_id: sessionId,
                     pseudo: p,
                     participated: 0
                 };
@@ -188,9 +234,11 @@
     }
 
     async function saveParticipation(pseudo, value) {
-        if (!db || !sfState.sessionId) return;
+        if (!db) return;
+        var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
+        if (!p) return;
         await db.from('event_participants').update({ participated: value })
-            .eq('event_name', EVENT_NAME).eq('session_id', sfState.sessionId).eq('pseudo', pseudo);
+            .eq('event_name', EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
     }
 
     // ── Render status badge + START/END buttons ────────────────────────────────
@@ -200,13 +248,19 @@
         var badge    = panel.querySelector('.event-status-badge');
         var startBtn = panel.querySelector('.event-start-btn');
         var endBtn   = panel.querySelector('.event-end-btn');
+
         if (badge) {
-            badge.className = 'event-status-badge gm-chip' + (sfState.isActive ? ' gm-chip-success active' : '');
-            badge.innerHTML = '<span class="gm-dot"></span> ' +
-                (sfState.isActive ? t('event_active') : t('event_inactive'));
+            badge.className = 'event-status-badge gm-chip' + (anySquadActive() ? ' gm-chip-success active' : '');
+            badge.innerHTML = ['squad1', 'squad2'].map(function (k) {
+                var on = sfState.squads[k].active;
+                return '<span class="sf-status-seg" title="' + (on ? t('event_active') : t('event_inactive')) + '">' +
+                    '<span class="gm-dot" style="background:' + (on ? 'var(--success)' : 'var(--fg-dim)') + ';"></span> ' +
+                    esc(squadLabel(k)) + '</span>';
+            }).join(' &nbsp; ');
         }
-        if (startBtn) startBtn.disabled = sfState.isActive;
-        if (endBtn)   endBtn.disabled   = !sfState.isActive;
+        // Start tant qu'au moins un squad est inactif ; End tant qu'au moins un actif.
+        if (startBtn) startBtn.disabled = sfState.squads.squad1.active && sfState.squads.squad2.active;
+        if (endBtn)   endBtn.disabled   = !anySquadActive();
     }
 
     // ── Main render ────────────────────────────────────────────────────────────
@@ -214,7 +268,7 @@
         var area = document.querySelector('#event-shadowfront .event-participants-area');
         if (!area) return;
 
-        if (!sfState.isActive) {
+        if (!anySquadActive()) {
             area.innerHTML =
                 '<div class="gm-empty">' +
                     '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
@@ -285,6 +339,24 @@
                     ? '<span class="sf-hist-stat">' + h.participated + '/' + h.assigned + ' ' + t('sf_hist_attended') + '</span>'
                     : '';
 
+                var btns = '';
+                if (sfState.squads.squad1.active) {
+                    btns +=
+                        '<div class="sf-squad-btns">' +
+                            '<span class="sf-squad-label">S1</span>' +
+                            '<button class="sf-btn sf-btn-p" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
+                            '<button class="sf-btn sf-btn-r" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
+                        '</div>';
+                }
+                if (sfState.squads.squad2.active) {
+                    btns +=
+                        '<div class="sf-squad-btns">' +
+                            '<span class="sf-squad-label">S2</span>' +
+                            '<button class="sf-btn sf-btn-p" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
+                            '<button class="sf-btn sf-btn-r" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
+                        '</div>';
+                }
+
                 html +=
                     '<div class="sf-member-row sf-member-' + cat + '">' +
                         '<div class="sf-member-info">' +
@@ -292,18 +364,7 @@
                             '<span class="sf-pseudo">' + esc(pseudo) + '</span>' +
                             stats +
                         '</div>' +
-                        '<div class="sf-actions">' +
-                            '<div class="sf-squad-btns">' +
-                                '<span class="sf-squad-label">S1</span>' +
-                                '<button class="sf-btn sf-btn-p" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
-                                '<button class="sf-btn sf-btn-r" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
-                            '</div>' +
-                            '<div class="sf-squad-btns">' +
-                                '<span class="sf-squad-label">S2</span>' +
-                                '<button class="sf-btn sf-btn-p" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
-                                '<button class="sf-btn sf-btn-r" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
-                            '</div>' +
-                        '</div>' +
+                        '<div class="sf-actions">' + btns + '</div>' +
                     '</div>';
             });
         }
@@ -328,14 +389,22 @@
     }
 
     function renderSquadColumn(squad, participants, reserves) {
-        var label = squad === 'squad1' ? t('sf_squad1') : t('sf_squad2');
+        var sq = sfState.squads[squad];
+        var label = squadLabel(squad);
         var pFull = participants.length >= PARTICIPANTS_MAX;
         var rFull = reserves.length >= RESERVES_MAX;
 
-        var html = '<div class="sf-column sf-squad-col">' +
+        var sub = sq.active
+            ? (sq.startAt
+                ? '<span class="sf-squad-time">' + esc(window.RAD.formatDateTimeUTC(sq.startAt)) + '</span>'
+                : '<span class="sf-squad-time">' + t('event_active') + '</span>')
+            : '<span class="sf-squad-time gm-dim">' + t('sf_squad_inactive_hint') + '</span>';
+
+        var html = '<div class="sf-column sf-squad-col' + (sq.active ? '' : ' sf-squad-off') + '">' +
             '<div class="sf-col-header squad-header ' + squad + '">' +
                 '<i class="ph-fill ph-shield-star"></i> ' + label +
             '</div>' +
+            '<div class="sf-squad-subhead">' + sub + '</div>' +
             '<div class="sf-section-title">' + t('sf_participants') + ' <span class="sf-cap ' + (pFull ? 'full' : '') + '">' + participants.length + '/' + PARTICIPANTS_MAX + '</span></div>' +
             '<div class="sf-col-body">';
 
@@ -388,14 +457,14 @@
 
         participants.forEach(function (p) {
             var assignment = sfState.assignments.find(function (a) { return a.pseudo === p.pseudo; });
-            var squadLabel = assignment
-                ? (assignment.squad === 'squad1' ? t('sf_squad1') : t('sf_squad2')) + ' — ' + (assignment.role === 'participant' ? t('sf_participant') : t('sf_reserve'))
+            var squadLbl = assignment
+                ? squadLabel(assignment.squad) + ' — ' + (assignment.role === 'participant' ? t('sf_participant') : t('sf_reserve'))
                 : '—';
             var isChecked = p.participated > 0;
             html +=
                 '<tr class="participant-row' + (isChecked ? ' participated' : '') + '">' +
                     '<td class="pseudo-cell"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(p.pseudo) + '</td>' +
-                    '<td><span class="squad-chip ' + (assignment ? assignment.squad : '') + '">' + squadLabel + '</span></td>' +
+                    '<td><span class="squad-chip ' + (assignment ? assignment.squad : '') + '">' + squadLbl + '</span></td>' +
                     '<td class="check-cell">' +
                         '<label class="participation-check">' +
                             '<input type="checkbox" class="participation-checkbox sf-participation-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
@@ -447,10 +516,12 @@
                     t('delete_title'),
                     '<strong>' + esc(pseudo) + '</strong><br>' + t('confirm_remove_participant_body'),
                     async function () {
-                        if (!db || !sfState.sessionId) return;
+                        if (!db) return;
+                        var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
+                        if (!p) return;
                         await db.from('event_participants').delete()
                             .eq('event_name', EVENT_NAME)
-                            .eq('session_id', sfState.sessionId)
+                            .eq('session_id', p.session_id)
                             .eq('pseudo', pseudo);
                         loadShadowfront();
                     }
@@ -487,15 +558,98 @@
         }
     }
 
+    // ── Squad picker modal (comme le choix de stage Arms Race) ──────────────────
+    function pickSquad(callback) {
+        var existing = document.getElementById('sf-squad-overlay');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'sf-squad-overlay';
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML =
+            '<div class="confirm-card glass-card">' +
+                '<div class="confirm-icon"><i class="ph-fill ph-shield-star text-accent"></i></div>' +
+                '<h3>' + t('sf_pick_squad_title') + '</h3>' +
+                '<p>' + t('sf_pick_squad_body') + '</p>' +
+                '<div class="confirm-actions" style="gap: 1rem; flex-wrap: wrap;">' +
+                    '<button id="sf-squad-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
+                    '<button id="sf-squad-1" class="primary-btn"' + (sfState.squads.squad1.active ? ' disabled' : '') + '>' + t('sf_squad1') + '</button>' +
+                    '<button id="sf-squad-2" class="primary-btn"' + (sfState.squads.squad2.active ? ' disabled' : '') + '>' + t('sf_squad2') + '</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function close(result) {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 300);
+            callback(result);
+        }
+        document.getElementById('sf-squad-cancel').addEventListener('click', function () { close(null); });
+        document.getElementById('sf-squad-1').addEventListener('click', function () { if (!sfState.squads.squad1.active) close('squad1'); });
+        document.getElementById('sf-squad-2').addEventListener('click', function () { if (!sfState.squads.squad2.active) close('squad2'); });
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(null); });
+    }
+
+    // ── End picker (1 actif ⇒ direct ; 2 actifs ⇒ choix) ────────────────────────
+    function pickEnd(callback) {
+        var keys = activeSquadKeys();
+        if (keys.length === 0) { callback(null); return; }
+        if (keys.length === 1) { callback([keys[0]]); return; }
+
+        var existing = document.getElementById('sf-end-overlay');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'sf-end-overlay';
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML =
+            '<div class="confirm-card glass-card">' +
+                '<div class="confirm-icon"><i class="ph-fill ph-stop-circle text-accent"></i></div>' +
+                '<h3>' + t('sf_end_title') + '</h3>' +
+                '<div class="confirm-actions" style="gap: 1rem; flex-wrap: wrap;">' +
+                    '<button id="sf-end-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
+                    '<button id="sf-end-1" class="primary-btn">' + t('sf_squad1') + '</button>' +
+                    '<button id="sf-end-2" class="primary-btn">' + t('sf_squad2') + '</button>' +
+                    '<button id="sf-end-both" class="primary-btn">' + t('sf_end_both') + '</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function close(result) {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 300);
+            callback(result);
+        }
+        document.getElementById('sf-end-cancel').addEventListener('click', function () { close(null); });
+        document.getElementById('sf-end-1').addEventListener('click', function () { close(['squad1']); });
+        document.getElementById('sf-end-2').addEventListener('click', function () { close(['squad2']); });
+        document.getElementById('sf-end-both').addEventListener('click', function () { close(['squad1', 'squad2']); });
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(null); });
+    }
+
     // ── Wire START / END buttons ───────────────────────────────────────────────
     var sfStartBtn = document.querySelector('.event-start-btn[data-event="Shadowfront"]');
     if (sfStartBtn) sfStartBtn.addEventListener('click', function () {
-        window.RAD.pickEventStart({ eventLabel: 'Shadowfront' }, function (startAt) {
-            if (!startAt) return; // annulé ⇒ on ne démarre pas
-            setShadowfrontActive(true, startAt);
+        pickSquad(function (squad) {
+            if (!squad) return;
+            if (sfState.squads[squad].active) {
+                window.RAD.showToast(t('sf_squad_active_already'), 'error');
+                return;
+            }
+            window.RAD.pickEventStart({ eventLabel: 'Shadowfront — ' + squadLabel(squad) }, function (startAt) {
+                if (!startAt) return; // annulé ⇒ on ne démarre pas
+                startSquad(squad, startAt);
+            });
         });
     });
     var sfEndBtn = document.querySelector('.event-end-btn[data-event="Shadowfront"]');
-    if (sfEndBtn) sfEndBtn.addEventListener('click', function () { setShadowfrontActive(false); });
+    if (sfEndBtn) sfEndBtn.addEventListener('click', function () {
+        pickEnd(function (squads) {
+            if (!squads || !squads.length) return;
+            endSquads(squads);
+        });
+    });
 
 })();
