@@ -230,6 +230,77 @@
         }, 3500);
     }
 
+    // Format an ISO timestamp as a short UTC wall-clock label, eg "ven. 17/05 · 20:00 UTC".
+    function formatDateTimeUTC(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        var date = d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+        return date + ' · ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ' UTC';
+    }
+
+    // Modale jour + heure (interprétés en UTC). callback(isoString) si confirmé,
+    // callback(null) si annulé. Réutilisée par events.js et shadowfront.js.
+    function pickEventStart(opts, callback) {
+        opts = opts || {};
+        var existing = document.getElementById('evt-start-overlay');
+        if (existing) existing.remove();
+
+        var now = new Date();
+        var defDate = now.getUTCFullYear() + '-' + pad2(now.getUTCMonth() + 1) + '-' + pad2(now.getUTCDate());
+        var defTime = pad2(now.getUTCHours()) + ':' + pad2(now.getUTCMinutes());
+
+        var overlay = document.createElement('div');
+        overlay.id = 'evt-start-overlay';
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML =
+            '<div class="confirm-card glass-card">' +
+                '<div class="confirm-icon"><i class="ph-fill ph-calendar-plus text-accent"></i></div>' +
+                '<h3>' + t('event_start_when_title') + '</h3>' +
+                '<p>' + (opts.eventLabel ? '<strong>' + escapeHTML(opts.eventLabel) + '</strong> — ' : '') + t('event_start_when_body') + '</p>' +
+                '<div class="gm-col" style="gap:.75rem; text-align:left; margin:.25rem 0 1.2rem;">' +
+                    '<div class="gm-col" style="gap:.3rem;">' +
+                        '<span class="gm-dim" style="font-size:.8rem;">' + t('event_start_date') + '</span>' +
+                        '<input type="date" id="evt-start-date" class="gm-input" value="' + defDate + '">' +
+                    '</div>' +
+                    '<div class="gm-col" style="gap:.3rem;">' +
+                        '<span class="gm-dim" style="font-size:.8rem;">' + t('event_start_time') + '</span>' +
+                        '<input type="time" id="evt-start-time" class="gm-input" value="' + defTime + '">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="confirm-actions" style="gap:1rem;">' +
+                    '<button id="evt-start-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
+                    '<button id="evt-start-ok" class="primary-btn">' + t('event_start_confirm') + '</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        var done = false;
+        function close(result) {
+            if (done) return;
+            done = true;
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 300);
+            callback(result);
+        }
+        document.getElementById('evt-start-cancel').addEventListener('click', function () { close(null); });
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(null); });
+        document.getElementById('evt-start-ok').addEventListener('click', function () {
+            var dateStr = document.getElementById('evt-start-date').value;
+            var timeStr = document.getElementById('evt-start-time').value;
+            if (!dateStr || !timeStr) { showToast(t('event_start_invalid'), 'error'); return; }
+            var dm = dateStr.split('-');
+            var tm = timeStr.split(':');
+            var d = new Date(Date.UTC(
+                parseInt(dm[0], 10), parseInt(dm[1], 10) - 1, parseInt(dm[2], 10),
+                parseInt(tm[0], 10), parseInt(tm[1], 10), 0
+            ));
+            if (isNaN(d.getTime())) { showToast(t('event_start_invalid'), 'error'); return; }
+            close(d.toISOString());
+        });
+    }
+
     window.RAD = {
         db: db,
         t: t,
@@ -242,6 +313,8 @@
         getPrevWeekStart: getPrevWeekStart,
         formatWeek: formatWeek,
         newSessionId: newSessionId,
+        formatDateTimeUTC: formatDateTimeUTC,
+        pickEventStart: pickEventStart,
         showToast: showToast,
         validatePseudo: validatePseudo,
         validateUid: validateUid,

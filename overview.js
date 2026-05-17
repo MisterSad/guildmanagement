@@ -36,7 +36,7 @@
             var week = window.RAD.getWeekStart();
             var [memCount, statusRows, gloryRows, sanctionsRows, recentMembers, recentSanctions] = await Promise.all([
                 db.from('guild_members').select('id', { count: 'exact', head: true }),
-                db.from('event_status').select('event_name, is_active, updated_at, session_id'),
+                db.from('event_status').select('event_name, is_active, updated_at, session_id, start_at'),
                 db.from('event_participants').select('score').eq('event_name', 'Glory').eq('week_start', week),
                 db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5),
                 db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5),
@@ -84,7 +84,14 @@
             });
             activity = activity.slice(0, 6);
 
-            renderPage(panel, stats, activity);
+            // Événements à venir : start_at futur, ordre croissant
+            var nowMs = Date.now();
+            var upcoming = (statusRows.data || [])
+                .filter(function (s) { return s.start_at && new Date(s.start_at).getTime() > nowMs; })
+                .map(function (s) { return { name: prettyEventName(s.event_name), when: s.start_at }; })
+                .sort(function (a, b) { return new Date(a.when).getTime() - new Date(b.when).getTime(); });
+
+            renderPage(panel, stats, activity, upcoming);
         } catch (err) {
             console.error('overview load', err);
         }
@@ -111,7 +118,7 @@
             '</div>';
     }
 
-    function renderPage(panel, stats, activity) {
+    function renderPage(panel, stats, activity, upcoming) {
         var content = panel.querySelector('[data-gm-overview-content]');
         if (!content) return;
 
@@ -128,12 +135,51 @@
             '</div>' +
             '<div class="gm-section">' +
                 '<div class="gm-section-head">' +
+                    '<div class="gm-section-title"><i class="ph ph-calendar-dots"></i> ' + t('overview_upcoming_title') + '</div>' +
+                '</div>' +
+                renderUpcomingCard(upcoming) +
+            '</div>' +
+            '<div class="gm-section">' +
+                '<div class="gm-section-head">' +
                     '<div class="gm-section-title"><i class="ph ph-pulse"></i> ' + t('overview_recent_activity') + '</div>' +
                 '</div>' +
                 renderActivityCard(activity) +
             '</div>';
 
         content.innerHTML = html;
+    }
+
+    function renderUpcomingCard(upcoming) {
+        if (!upcoming || !upcoming.length) {
+            return '<div class="gm-empty"><i class="ph-duotone ph-calendar-x gm-icon"></i>' +
+                '<div class="gm-empty-title">' + t('overview_no_upcoming') + '</div></div>';
+        }
+        var html = '<div class="gm-card gm-card-padded gm-col" style="gap:.75rem;">';
+        upcoming.forEach(function (u, i) {
+            var isLast = i === upcoming.length - 1;
+            html +=
+                '<div class="gm-row" style="gap:.75rem; padding:.4rem 0;' +
+                    (!isLast ? ' border-bottom: 1px solid var(--border-soft); padding-bottom: .85rem;' : '') + '">' +
+                    '<div style="width:36px; height:36px; border-radius:9px; background: var(--accent-soft); color: var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0;">' +
+                        '<i class="ph ph-calendar-dot"></i>' +
+                    '</div>' +
+                    '<div class="gm-grow">' +
+                        '<div style="font-size:.9rem; font-weight:600;">' + esc(u.name) + '</div>' +
+                        '<div class="gm-dim" style="font-size:.78rem;">' + esc(window.RAD.formatDateTimeUTC(u.when)) + '</div>' +
+                    '</div>' +
+                    '<span class="gm-chip gm-chip-accent">' + esc(countdownText(u.when)) + '</span>' +
+                '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
+
+    function countdownText(iso) {
+        var diff = (new Date(iso).getTime() - Date.now()) / 1000;
+        if (diff <= 60)    return t('overview_time_now');
+        if (diff < 3600)   return t('overview_in') + ' ' + Math.round(diff / 60) + ' min';
+        if (diff < 86400)  return t('overview_in') + ' ' + Math.round(diff / 3600) + ' h';
+        return t('overview_in') + ' ' + Math.round(diff / 86400) + ' j';
     }
 
     function statTile(label, value, trend, icon, accent, meta) {

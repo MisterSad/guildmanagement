@@ -74,7 +74,7 @@
     }
 
     // ── Démarrage d'une nouvelle session ──────────────────────────────────
-    async function startEvent(tabKey, dbEventName, stage) {
+    async function startEvent(tabKey, dbEventName, stage, startAt) {
         if (!db) return;
         var sessionId = window.RAD.newSessionId();
         try {
@@ -84,6 +84,7 @@
                     is_active:  true,
                     session_id: sessionId,
                     stage:      stage || null,
+                    start_at:   startAt || null,
                     updated_at: new Date().toISOString()
                 },
                 { onConflict: 'event_name' }
@@ -490,6 +491,10 @@
     }
 
     // ── Wire START / END buttons ──────────────────────────────────────────
+    // Ces événements demandent un jour + heure de début (UTC) au lancement :
+    // alimente l'agenda Overview et les futurs rappels.
+    var SCHEDULED_TABS = ['Defend Trade Route', 'ARMS RACE'];
+
     document.querySelectorAll('.event-start-btn[data-event]').forEach(function (btn) {
         var ev = btn.getAttribute('data-event');
         if (!TAB_TO_DB_EVENTS[ev]) return;
@@ -498,7 +503,15 @@
             if (ev === 'ARMS RACE') {
                 pickArmsRaceStage(function (stage) {
                     var dbEventName = stage === 'A' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
-                    startEvent('ARMS RACE', dbEventName, stage);
+                    window.RAD.pickEventStart({ eventLabel: 'Arms Race Stage ' + stage }, function (startAt) {
+                        if (!startAt) return; // annulé ⇒ on ne démarre pas
+                        startEvent('ARMS RACE', dbEventName, stage, startAt);
+                    });
+                });
+            } else if (SCHEDULED_TABS.indexOf(ev) !== -1) {
+                window.RAD.pickEventStart({ eventLabel: ev }, function (startAt) {
+                    if (!startAt) return; // annulé ⇒ on ne démarre pas
+                    startEvent(ev, ev, null, startAt);
                 });
             } else {
                 startEvent(ev, ev, null);
