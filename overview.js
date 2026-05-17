@@ -21,6 +21,8 @@
     var esc = window.RAD.escapeHTML;
     var fmt = window.RAD.formatNumber;
 
+    var countdownTimer = null;
+
     window.RAD_OVERVIEW = { load: loadOverview };
 
     async function loadOverview() {
@@ -114,6 +116,7 @@
     }
 
     function renderShell(panel) {
+        if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
         panel.innerHTML =
             '<div class="gm-page">' +
                 '<header class="gm-page-header">' +
@@ -159,6 +162,8 @@
 
         var notifSlot = content.querySelector('[data-gm-notif]');
         if (notifSlot && window.RAD_PUSH) window.RAD_PUSH.mount(notifSlot);
+
+        startCountdownTicker();
     }
 
     function renderUpcomingCard(upcoming) {
@@ -179,19 +184,37 @@
                         '<div style="font-size:.9rem; font-weight:600;">' + esc(u.name) + '</div>' +
                         '<div class="gm-dim" style="font-size:.78rem;">' + esc(window.RAD.formatDateTimeUTC(u.when)) + '</div>' +
                     '</div>' +
-                    '<span class="gm-chip gm-chip-accent">' + esc(countdownText(u.when)) + '</span>' +
+                    '<span class="gm-chip gm-chip-accent gm-countdown gm-mono" data-deadline="' + esc(u.when) + '">' + esc(formatCountdown(u.when)) + '</span>' +
                 '</div>';
         });
         html += '</div>';
         return html;
     }
 
-    function countdownText(iso) {
-        var diff = (new Date(iso).getTime() - Date.now()) / 1000;
-        if (diff <= 60)    return t('overview_time_now');
-        if (diff < 3600)   return t('overview_in') + ' ' + Math.round(diff / 60) + ' min';
-        if (diff < 86400)  return t('overview_in') + ' ' + Math.round(diff / 3600) + ' h';
-        return t('overview_in') + ' ' + Math.round(diff / 86400) + ' j';
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+    // Live HH:MM:SS until the deadline (hours not capped at 24). "now" once reached.
+    function formatCountdown(iso) {
+        var ms = new Date(iso).getTime() - Date.now();
+        if (isNaN(ms)) return '';
+        if (ms <= 0) return t('overview_time_now');
+        var total = Math.floor(ms / 1000);
+        return pad2(Math.floor(total / 3600)) + ':' +
+               pad2(Math.floor((total % 3600) / 60)) + ':' +
+               pad2(total % 60);
+    }
+
+    function startCountdownTicker() {
+        if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+        var panel = document.getElementById('gm-overview');
+        if (!panel || !panel.querySelector('.gm-countdown')) return;
+        countdownTimer = setInterval(function () {
+            var els = document.querySelectorAll('#gm-overview .gm-countdown');
+            if (!els.length) { clearInterval(countdownTimer); countdownTimer = null; return; }
+            els.forEach(function (el) {
+                el.textContent = formatCountdown(el.getAttribute('data-deadline'));
+            });
+        }, 1000);
     }
 
     function statTile(label, value, trend, icon, accent, meta) {
