@@ -139,6 +139,70 @@
         });
     }
 
+    // ── Auth : login via Edge Function (verify chiffré côté serveur) ─────────
+    // Le mot de passe n'est jamais comparé côté client ; la table accounts
+    // n'est plus accessible via la clé publique. L'Edge Function renvoie une
+    // vraie session Supabase (JWT signé par le projet) que supabase-js gère
+    // et rafraîchit ensuite automatiquement pour toutes les requêtes.
+    async function login(id, password) {
+        if (!db) return { ok: false, error: 'no_client' };
+        var r;
+        try {
+            r = await db.functions.invoke('auth-login', { body: { id: id, password: password } });
+        } catch (e) {
+            return { ok: false, error: 'request_failed' };
+        }
+        var data = r && r.data;
+        if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
+        var s = await db.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token
+        });
+        if (s.error) return { ok: false, error: 'session_set_failed' };
+        return { ok: true, role: data.role, id: data.id };
+    }
+
+    async function logout() {
+        if (!db) return;
+        try { await db.auth.signOut(); } catch (_) {}
+    }
+
+    // Opérations admin sur les comptes (R5 only — vérifié côté serveur via le
+    // JWT). La session courante est jointe automatiquement par supabase-js.
+    async function adminAccounts(action, payload) {
+        if (!db) return { ok: false, error: 'no_client' };
+        var body = Object.assign({ action: action }, payload || {});
+        var r;
+        try {
+            r = await db.functions.invoke('admin-accounts', { body: body });
+        } catch (e) {
+            return { ok: false, error: 'request_failed' };
+        }
+        var data = r && r.data;
+        if (!data) return { ok: false, error: (r && r.error && r.error.message) || 'request_failed' };
+        return data;
+    }
+
+    // Restaure le rôle/identifiant depuis la session persistée (localStorage
+    // supabase-js) — survit à une fermeture d'onglet, contrairement à
+    // sessionStorage. Lit les claims app_metadata du JWT.
+    async function sessionInfo() {
+        if (!db) return null;
+        var res;
+        try { res = await db.auth.getSession(); } catch (_) { return null; }
+        var session = res && res.data && res.data.session;
+        if (!session || !session.access_token) return null;
+        try {
+            var p = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            p += '='.repeat((4 - p.length % 4) % 4);
+            var claims = JSON.parse(decodeURIComponent(escape(atob(p))));
+            var am = claims.app_metadata || {};
+            return { role: am.app_role || 'R4', accountId: am.account_id || null };
+        } catch (e) {
+            return { role: 'R4', accountId: null };
+        }
+    }
+
     function showToast(message, type) {
         if (window.RAD_APP && window.RAD_APP.showToast) {
             window.RAD_APP.showToast(message, type);
@@ -169,6 +233,10 @@
     window.RAD = {
         db: db,
         t: t,
+        login: login,
+        logout: logout,
+        adminAccounts: adminAccounts,
+        sessionInfo: sessionInfo,
         escapeHTML: escapeHTML,
         getWeekStart: getWeekStart,
         getPrevWeekStart: getPrevWeekStart,
