@@ -49,10 +49,16 @@
         btn.classList.toggle('active', btn.getAttribute('data-lang') === window.RAD_I18N.getLang());
     });
 
-    var savedRole = sessionStorage.getItem('rad_role');
-    if (savedRole === 'admin' || savedRole === 'member') {
-        showAdminDashboard(savedRole);
-    }
+    // Restaure depuis la session Supabase persistée (survit au rechargement
+    // et à la fermeture d'onglet tant que le refresh token est valide).
+    (async function restoreSession() {
+        var info = await window.RAD.sessionInfo();
+        if (!info) return;
+        var role = info.role === 'R5' ? 'admin' : 'member';
+        sessionStorage.setItem('rad_role', role);
+        if (info.accountId) sessionStorage.setItem('rad_user', info.accountId);
+        showAdminDashboard(role);
+    })();
 
     // ─── Auth ─────────────────────────────────────────────────────────────────
     loginForm.addEventListener('submit', async function (e) {
@@ -66,14 +72,13 @@
         if (span) span.textContent = t('login_btn_loading');
 
         try {
-            if (!supabase) throw new Error('Supabase not initialized');
-            var res = await supabase.from('accounts').select('*').eq('id', user).eq('password', pass).single();
+            var resp = await window.RAD.login(user, pass);
 
-            if (res.data) {
+            if (resp.ok) {
                 loginError.classList.add('hidden');
                 document.getElementById('password').value = '';
 
-                var role = (res.data.role === 'R5') ? 'admin' : 'member';
+                var role = (resp.role === 'R5') ? 'admin' : 'member';
                 sessionStorage.setItem('rad_role', role);
                 sessionStorage.setItem('rad_user', user);
 
@@ -98,6 +103,7 @@
     if (memberLogoutBtn) memberLogoutBtn.addEventListener('click', doLogout);
 
     function doLogout() {
+        window.RAD.logout();
         sessionStorage.removeItem('rad_role');
         sessionStorage.removeItem('rad_user');
         showLogin();
@@ -201,9 +207,9 @@
     async function fetchAccounts() {
         if (!supabase) return;
         try {
-            var res = await supabase.from('accounts').select('*').order('id', { ascending: true });
-            if (res.error) throw res.error;
-            accounts = res.data || [];
+            var res = await window.RAD.adminAccounts('list');
+            if (!res.ok) throw new Error(res.error || 'list_failed');
+            accounts = res.accounts || [];
             renderAccounts();
         } catch (err) {
             showToast(t('toast_err_fetch_accounts') + ' ' + err.message, 'error');
@@ -229,9 +235,9 @@
 
             var newPassword = generatePassword(12);
             try {
-                var res = await supabase.from('accounts').insert([{ id: identifier, password: newPassword }]);
-                if (res.error) throw res.error;
-                accounts.unshift({ id: identifier, password: newPassword, created_at: new Date().toISOString() });
+                var res = await window.RAD.adminAccounts('create', { id: identifier, password: newPassword, role: 'R4' });
+                if (!res.ok) throw new Error(res.error || 'create_failed');
+                accounts.unshift({ id: identifier, password: newPassword, role: 'R4', created_at: new Date().toISOString() });
                 renderAccounts();
                 idInput.value = '';
                 showToast(t('toast_account_created'), 'success');
@@ -246,8 +252,8 @@
 
     async function deleteAccount(id) {
         try {
-            var res = await supabase.from('accounts').delete().eq('id', id);
-            if (res.error) throw res.error;
+            var res = await window.RAD.adminAccounts('delete', { id: id });
+            if (!res.ok) throw new Error(res.error || 'delete_failed');
             accounts = accounts.filter(function (a) { return a.id !== id; });
             renderAccounts();
             showToast(t('toast_account_deleted'), 'success');
