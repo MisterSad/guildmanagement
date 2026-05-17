@@ -136,6 +136,7 @@
             '<div class="gm-section">' +
                 '<div class="gm-section-head">' +
                     '<div class="gm-section-title"><i class="ph ph-calendar-dots"></i> ' + t('overview_upcoming_title') + '</div>' +
+                    '<div data-gm-notif></div>' +
                 '</div>' +
                 renderUpcomingCard(upcoming) +
             '</div>' +
@@ -147,6 +148,9 @@
             '</div>';
 
         content.innerHTML = html;
+
+        var notifSlot = content.querySelector('[data-gm-notif]');
+        if (notifSlot && window.RAD_PUSH) window.RAD_PUSH.mount(notifSlot);
     }
 
     function renderUpcomingCard(upcoming) {
