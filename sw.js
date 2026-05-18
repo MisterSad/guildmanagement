@@ -21,8 +21,8 @@ self.addEventListener('push', function (event) {
     var title = data.title || 'RAD Management';
     var options = {
         body:     data.body || '',
-        icon:     '/favicon.png',
-        badge:    '/favicon.png',
+        icon:     '/icon-192.png',
+        badge:    '/icon-192.png',
         tag:      data.tag || 'rad-event',
         renotify: true,
         data:     { url: data.url || '/' }
