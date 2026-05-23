@@ -1155,25 +1155,13 @@
             return;
         }
 
-        // ── KPI grid (6 cartes) ──────────────────────────────────────────────
+        // ── KPI grid (4 cartes épurées) ──────────────────────────────────────
         var kpis = [
             {
                 icon: 'ph-trophy', cls: 'kpi-accent',
                 label: t('stats_kpi_avg_score'),
                 value: fmt(m.avg),
                 sub:   Math.round(m.avgPct * 100) + '% ' + t('stats_kpi_of_max')
-            },
-            {
-                icon: 'ph-star', cls: 'kpi-success',
-                label: t('stats_kpi_best_week'),
-                value: fmt(m.best.score),
-                sub:   window.RAD.formatWeek(m.best.week_start)
-            },
-            {
-                icon: 'ph-medal', cls: 'kpi-info',
-                label: t('stats_kpi_avg_rank'),
-                value: m.avgRank !== null ? '#' + m.avgRank : '—',
-                sub:   m.bestRank !== null ? t('stats_kpi_best') + ' #' + m.bestRank : ''
             },
             {
                 icon: 'ph-check-circle', cls: 'kpi-info',
@@ -1221,105 +1209,95 @@
                     '</div>';
         }
 
-        // ── Évolution par événement ──────────────────────────────────────────
-        var eventNames = Object.keys(m.eventStats);
-        if (eventNames.length) {
-            html += '<div class="profile-events">' +
-                '<h4><i class="ph ph-chart-line"></i> ' + t('stats_evolution_per_event') + '</h4>' +
-                '<table class="leaderboard-table"><thead><tr>' +
-                    '<th>' + t('stats_event') + '</th>' +
-                    '<th class="center">' + t('stats_kpi_attendance') + '</th>' +
-                    '<th class="center">' + t('stats_kpi_avg_score') + '</th>' +
-                    '<th class="center">' + t('stats_best') + '</th>' +
-                    '<th class="center">' + t('stats_pts_earned') + '</th>' +
-                '</tr></thead><tbody>';
-            eventNames.forEach(function (name) {
-                var s = m.eventStats[name];
-                var attRate = s.weeksRan > 0 ? s.weeksAttended / s.weeksRan : 0;
-                var avgEv = s.scores.length
-                    ? Math.round(s.scores.reduce(function (a, b) { return a + b; }, 0) / s.scores.length)
-                    : 0;
-                var bestEv = s.scores.length ? Math.max.apply(null, s.scores) : 0;
-                var ptsRatio = s.maxPoints > 0 ? s.totalPoints / s.maxPoints : 0;
-                var ptsCls = ptsRatio >= 0.7 ? 'score-high' : ptsRatio >= 0.4 ? 'score-mid' : 'score-low';
-                var attCls = attRate >= 0.8 ? 'gm-chip-success'
-                           : attRate >= 0.5 ? 'gm-chip-warning'
-                           : 'gm-chip-danger';
-                html += '<tr>' +
-                        '<td><strong>' + esc(name) + '</strong> <span class="gm-dim">×' + s.coeff + '</span></td>' +
-                        '<td class="center"><span class="gm-chip ' + attCls + '">' +
-                            s.weeksAttended + '/' + s.weeksRan +
-                            ' · ' + Math.round(attRate * 100) + '%</span></td>' +
-                        '<td class="center">' + (avgEv > 0 ? fmt(avgEv) : '<span class="gm-dim">—</span>') + '</td>' +
-                        '<td class="center">' + (bestEv > 0 ? fmt(bestEv) : '<span class="gm-dim">—</span>') + '</td>' +
-                        '<td class="center"><span class="score-badge ' + ptsCls + '">' +
-                            fmt(round1(s.totalPoints)) + ' / ' + fmt(round1(s.maxPoints)) +
-                        '</span></td>' +
-                    '</tr>';
-            });
-            html += '</tbody></table></div>';
+        // Helper pour générer un mini-badge pour la participation à un événement
+        function renderEventChip(key, breakdownInfo) {
+            if (!breakdownInfo) return '';
+            var label = key;
+            if (key === 'Shadowfront') label = 'SF';
+            if (key === 'DTR' || key === 'Defend Trade Route') label = 'DTR';
+            if (key === 'Arms Race') label = 'AR';
+            
+            var participated = breakdownInfo.participated;
+            var cls = participated ? 'mini-chip-' + key.toLowerCase().replace(/\s+/g, '') + ' participated' : 'mini-chip-missed';
+            var icon = participated ? 'ph-check-circle' : 'ph-x-circle';
+            var title = key + ' : ' + (participated ? 'Présent' : 'Non participé') + ' (Score: ' + (breakdownInfo.score > 0 ? breakdownInfo.score : '—') + ')';
+            
+            return '<span class="gm-mini-chip ' + cls + '" title="' + esc(title) + '">' +
+                       '<i class="ph ' + icon + '"></i>' + esc(label) +
+                   '</span>';
         }
 
-        // ── Décomposition de la dernière semaine (inchangé visuellement) ─────
-        var last = history[history.length - 1];
-        if (last && last.breakdown && Object.keys(last.breakdown).length) {
-            html += '<div class="profile-breakdown">' +
-                '<h4><i class="ph ph-list-checks"></i> ' + t('stats_breakdown') + ' — ' + window.RAD.formatWeek(last.week_start) + '</h4>' +
-                '<table class="leaderboard-table"><thead><tr>' +
-                    '<th>' + t('stats_event') + '</th>' +
-                    '<th class="center">' + t('stats_coeff') + '</th>' +
-                    '<th class="center">' + t('stats_participated') + '</th>' +
-                    '<th class="center">' + t('stats_event_score') + '</th>' +
-                    '<th class="center">' + t('stats_pts_earned') + '</th>' +
-                '</tr></thead><tbody>';
-
-            Object.keys(last.breakdown).forEach(function (name) {
-                var b = last.breakdown[name];
-                html +=
-                    '<tr>' +
-                        '<td>' + esc(name) + '</td>' +
-                        '<td class="center">×' + b.coeff + '</td>' +
-                        '<td class="center">' + (b.participated ? '✅' : '⛔') + '</td>' +
-                        '<td class="center">' + (b.score > 0 ? fmt(b.score) : '—') + '</td>' +
-                        '<td class="center"><strong>' + fmt(b.total) + '</strong> / ' + fmt(b.max) + '</td>' +
-                    '</tr>';
-            });
-
-            html +=
-                    '<tr class="breakdown-bonus">' +
-                        '<td colspan="4">' + t('stats_glory_bonus') + ' (Δ ' + (last.glory_delta > 0 ? '+' : '') + fmt(last.glory_delta) + ')</td>' +
-                        '<td class="center"><strong>+' + fmt(last.glory_bonus) + '</strong> / 20</td>' +
-                    '</tr>' +
-                    '<tr class="breakdown-bonus">' +
-                        '<td colspan="4">' + t('stats_consistency_bonus') + ' (' + Math.round(last.attendance_rate * 100) + '%)</td>' +
-                        '<td class="center"><strong>+' + fmt(last.consistency_bonus) + '</strong> / 15</td>' +
-                    '</tr>' +
-                    '<tr class="breakdown-total">' +
-                        '<td colspan="4"><strong>' + t('stats_total') + '</strong></td>' +
-                        '<td class="center"><strong>' + fmt(last.score) + '</strong> / ' + fmt(last.max_possible) + '</td>' +
-                    '</tr>' +
-                '</tbody></table></div>';
-        }
-
-        // ── Historique détaillé : rang, % du max, direction semaine-à-semaine ─
+        // ── Unification : Tableau Unique d'Historique et de Participation ────
         html +=
             '<div class="profile-history">' +
-            '<h4><i class="ph ph-clock-counter-clockwise"></i> ' + t('stats_history') + '</h4>' +
-            '<table class="leaderboard-table"><thead><tr>' +
+            '<h4><i class="ph ph-clock-counter-clockwise"></i> ' + t('stats_history') + ' & Participation</h4>' +
+            '<div class="table-responsive" style="overflow-x:auto; -webkit-overflow-scrolling:touch; width:100%; border-radius:var(--radius-md); background:rgba(0,0,0,0.15); border:1px solid var(--card-border);">' +
+            '<table class="leaderboard-table" style="width:100%;">' +
+            '<thead><tr>' +
                 '<th>' + t('stats_week') + '</th>' +
                 '<th class="center">' + t('stats_rank') + '</th>' +
                 '<th class="center">' + t('stats_score_pts') + '</th>' +
-                '<th class="center">' + t('stats_pct_max') + '</th>' +
-                '<th class="center">' + t('stats_events') + '</th>' +
-                '<th class="center">' + t('stats_glory_delta') + '</th>' +
+                '<th class="center" style="min-width: 220px;">' + t('stats_events') + '</th>' +
+                '<th class="center">Δ ' + t('stats_glory') + '</th>' +
             '</tr></thead><tbody>';
 
         var reversed = history.slice().reverse();
         reversed.forEach(function (row, idx) {
             var ratio = row.max_possible > 0 ? row.score / row.max_possible : 0;
             var cls = ratio >= 0.7 ? 'score-high' : ratio >= 0.4 ? 'score-mid' : 'score-low';
-            var rankCell = row.rank > 0
-                ? '<strong>#' + row.rank + '</strong>' +
+            
+            var rankCell = '';
+            if (row.rank === 1) {
+                rankCell = '<span class="score-badge" style="background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid rgba(251,191,36,0.3); font-weight:700;"><i class="ph-fill ph-crown" style="margin-right:0.15rem; vertical-align:middle;"></i>#1</span>';
+            } else if (row.rank > 0) {
+                rankCell = '<strong>#' + row.rank + '</strong><span class="gm-dim">/' + row.active_count + '</span>';
+            } else {
+                rankCell = '<span class="gm-dim">—</span>';
+            }
+
+            // Direction = semaine courante vs semaine chronologiquement précédente
+            var dir = '';
+            if (idx < reversed.length - 1) {
+                var dScore = row.score - reversed[idx + 1].score;
+                if (Math.abs(dScore) >= 1) {
+                    var up = dScore > 0;
+                    dir = ' <i class="ph ' + (up ? 'ph-arrow-up' : 'ph-arrow-down') +
+                          '" title="' + (up ? '+' : '') + round1(dScore) + ' ' + t('stats_pts') +
+                          '" style="color:' + (up ? 'var(--success)' : 'var(--danger)') +
+                          ';font-size:0.75rem;vertical-align:middle;margin-left:0.25rem;"></i>';
+                }
+            }
+
+            // Génération des chips d'événements
+            var chipsHtml = '<div style="display: flex; gap: 0.35rem; justify-content: center; flex-wrap: wrap; padding: 0.2rem 0;">';
+            var eventKeys = ['SvS', 'GvG', 'Shadowfront', 'DTR', 'Arms Race'];
+            var hasEvents = false;
+            eventKeys.forEach(function (key) {
+                if (row.breakdown && row.breakdown[key]) {
+                    chipsHtml += renderEventChip(key, row.breakdown[key]);
+                    hasEvents = true;
+                }
+            });
+            if (!hasEvents) {
+                chipsHtml += '<span class="gm-dim" style="font-size:0.75rem;">—</span>';
+            }
+            chipsHtml += '</div>';
+
+            var gloryCell = row.glory_delta > 0
+                ? '<span class="score-badge score-mid" style="font-weight:600;"><i class="ph ph-fire" style="vertical-align:middle;margin-right:0.15rem;"></i>+' + fmt(row.glory_delta) + '</span>'
+                : '<span class="gm-dim">—</span>';
+
+            html +=
+                '<tr>' +
+                '<td class="week-cell"><strong>' + window.RAD.formatWeek(row.week_start) + '</strong></td>' +
+                '<td class="center">' + rankCell + '</td>' +
+                '<td class="center"><span class="score-badge ' + cls + '">' + fmt(row.score) + ' / ' + fmt(row.max_possible) + '</span>' + dir + '</td>' +
+                '<td class="center">' + chipsHtml + '</td>' +
+                '<td class="center">' + gloryCell + '</td>' +
+                '</tr>';
+        });
+
+        html += '</tbody></table></div></div>';rong>' +
                   (row.active_count > 0 ? '<span class="gm-dim"> / ' + row.active_count + '</span>' : '')
                 : '<span class="gm-dim">—</span>';
 

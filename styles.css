@@ -1306,7 +1306,9 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .profile-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
 /* ─── Profile Modal ──────────────────────────────────────────────────────── */
-.profile-card { padding: 2rem; max-width: 860px; width: 95vw; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 1.25rem; }
+.profile-card { padding: 2rem; max-width: 860px; width: 95vw; max-height: none; height: auto; overflow: visible; display: flex; flex-direction: column; gap: 1.25rem; }
+#profile-modal { align-items: flex-start; overflow-y: auto; padding: 2rem 1rem; }
+#profile-modal .profile-card { margin-top: 2vh; margin-bottom: 2vh; }
 .profile-header { display: flex; align-items: flex-start; gap: 1.25rem; }
 .profile-avatar { font-size: 3.5rem; color: var(--primary); flex-shrink: 0; filter: drop-shadow(0 0 12px rgba(99,102,241,0.4)); }
 .profile-info { flex: 1; min-width: 0; }
@@ -1317,7 +1319,7 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 /* ─── Profile KPIs grid ──────────────────────────────────────────────────── */
 .profile-kpis {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 0.6rem;
 }
 .kpi-card {

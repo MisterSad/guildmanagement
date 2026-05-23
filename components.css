@@ -916,3 +916,54 @@
     .gm-part-period { font-size: .78rem; padding: .55rem .7rem; }
     .gm-part-period .gm-dim:last-child { width: 100%; margin-left: 0 !important; }
 }
+
+/* ─── Mini event chips for individual profile history ─── */
+.gm-mini-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+.gm-mini-chip .ph {
+    font-size: 0.75rem;
+}
+.gm-mini-chip.mini-chip-missed {
+    background: rgba(255, 255, 255, 0.02);
+    color: rgba(255, 255, 255, 0.25);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+.gm-mini-chip.participated {
+    border-style: solid;
+    border-width: 1px;
+}
+.gm-mini-chip.mini-chip-svs.participated {
+    background: rgba(99, 102, 241, 0.15);
+    color: #c7d2fe;
+    border-color: rgba(99, 102, 241, 0.35);
+}
+.gm-mini-chip.mini-chip-gvg.participated {
+    background: rgba(59, 130, 246, 0.15);
+    color: #bfdbfe;
+    border-color: rgba(59, 130, 246, 0.35);
+}
+.gm-mini-chip.mini-chip-shadowfront.participated {
+    background: rgba(20, 184, 166, 0.15);
+    color: #99f6e4;
+    border-color: rgba(20, 184, 166, 0.35);
+}
+.gm-mini-chip.mini-chip-dtr.participated {
+    background: rgba(139, 92, 246, 0.15);
+    color: #e9d5ff;
+    border-color: rgba(139, 92, 246, 0.35);
+}
+.gm-mini-chip.mini-chip-armsrace.participated {
+    background: rgba(244, 63, 94, 0.15);
+    color: #fecdd3;
+    border-color: rgba(244, 63, 94, 0.35);
+}
