@@ -11,24 +11,22 @@
     var fmt  = window.RAD ? window.RAD.formatNumber : function (n) { return String(n); };
 
     // event_name "logique" → event_name côté DB (Arms Race a 2 stages)
-    var STANDARD_EVENTS = ['SvS', 'GvG', 'Defend Trade Route', 'ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
+    var STANDARD_EVENTS = ['SvS', 'GvG', 'Defend Trade Route'];
 
     // Onglet UI → liste d'event_names DB qu'il pilote
     var TAB_TO_DB_EVENTS = {
         'SvS':                ['SvS'],
         'GvG':                ['GvG'],
-        'Defend Trade Route': ['Defend Trade Route'],
-        'ARMS RACE':          ['ARMS RACE STAGE A', 'ARMS RACE STAGE B']
+        'Defend Trade Route': ['Defend Trade Route']
     };
 
     var PANEL_MAP = {
         'SvS':                'event-svs',
         'GvG':                'event-gvg',
-        'Defend Trade Route': 'event-dtr',
-        'ARMS RACE':          'event-arms-race'
+        'Defend Trade Route': 'event-dtr'
     };
 
-    var EVENTS_WITHOUT_SCORE = ['ARMS RACE STAGE A', 'ARMS RACE STAGE B', 'Defend Trade Route'];
+    var EVENTS_WITHOUT_SCORE = ['Defend Trade Route'];
 
     // ── State ────────────────────────────────────────────────────────────────
     // tabKey → { activeEventName, sessionId, stage, isActive, participants[] }
@@ -286,7 +284,7 @@
     }
 
     // Ces événements demandent un jour + heure de début (UTC) au lancement
-    var SCHEDULED_TABS = ['Defend Trade Route', 'ARMS RACE'];
+    var SCHEDULED_TABS = ['Defend Trade Route'];
 
     async function editEventSchedule(tabKey) {
         if (!db) return;
@@ -407,15 +405,7 @@
                 var startBtnDyn = actionsDiv.querySelector('.event-start-btn');
                 if (startBtnDyn) {
                     startBtnDyn.addEventListener('click', function () {
-                        if (tabKey === 'ARMS RACE') {
-                            pickArmsRaceStage(function (stage) {
-                                var dbEventName = stage === 'A' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
-                                window.RAD.pickEventStart({ eventLabel: 'Arms Race Stage ' + stage }, function (startAt) {
-                                    if (!startAt) return;
-                                    startEvent('ARMS RACE', dbEventName, stage, startAt);
-                                });
-                            });
-                        } else if (SCHEDULED_TABS.indexOf(tabKey) !== -1) {
+                        if (SCHEDULED_TABS.indexOf(tabKey) !== -1) {
                             window.RAD.pickEventStart({ eventLabel: tabKey }, function (startAt) {
                                 if (!startAt) return;
                                 startEvent(tabKey, tabKey, null, startAt);
@@ -429,13 +419,8 @@
         }
 
         if (stageBadge) {
-            if (tabKey === 'ARMS RACE' && s.isActive && s.stage) {
-                stageBadge.textContent = 'Stage ' + s.stage;
-                stageBadge.classList.remove('hidden');
-            } else {
-                stageBadge.classList.add('hidden');
-                stageBadge.textContent = '';
-            }
+            stageBadge.classList.add('hidden');
+            stageBadge.textContent = '';
         }
     }
 
@@ -588,57 +573,19 @@
         if (chips[3]) chips[3].innerHTML = '<i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore);
     }
 
-    // ── Stage selector modal pour Arms Race ───────────────────────────────
-    function pickArmsRaceStage(callback) {
-        var existing = document.getElementById('stage-overlay');
-        if (existing) existing.remove();
 
-        var overlay = document.createElement('div');
-        overlay.id = 'stage-overlay';
-        overlay.className = 'confirm-overlay';
-        overlay.innerHTML =
-            '<div class="confirm-card glass-card">' +
-                '<div class="confirm-icon"><i class="ph-fill ph-target text-accent"></i></div>' +
-                '<h3>' + t('arms_pick_stage_title') + '</h3>' +
-                '<p>' + t('arms_pick_stage_body') + '</p>' +
-                '<div class="confirm-actions" style="gap: 1rem;">' +
-                    '<button id="stage-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
-                    '<button id="stage-a" class="primary-btn">Stage A</button>' +
-                    '<button id="stage-b" class="primary-btn">Stage B</button>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(overlay);
-        requestAnimationFrame(function () { overlay.classList.add('visible'); });
-
-        function close() {
-            overlay.classList.remove('visible');
-            setTimeout(function () { overlay.remove(); }, 300);
-        }
-        document.getElementById('stage-cancel').addEventListener('click', close);
-        document.getElementById('stage-a').addEventListener('click', function () { close(); callback('A'); });
-        document.getElementById('stage-b').addEventListener('click', function () { close(); callback('B'); });
-        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
-    }
 
     // ── Wire START / END buttons ──────────────────────────────────────────
     // Ces événements demandent un jour + heure de début (UTC) au lancement :
     // alimente l'agenda Overview et les futurs rappels.
-    var SCHEDULED_TABS = ['Defend Trade Route', 'ARMS RACE'];
+    var SCHEDULED_TABS = ['Defend Trade Route'];
 
     document.querySelectorAll('.event-start-btn[data-event]').forEach(function (btn) {
         var ev = btn.getAttribute('data-event');
         if (!TAB_TO_DB_EVENTS[ev]) return;
 
         btn.addEventListener('click', function () {
-            if (ev === 'ARMS RACE') {
-                pickArmsRaceStage(function (stage) {
-                    var dbEventName = stage === 'A' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
-                    window.RAD.pickEventStart({ eventLabel: 'Arms Race Stage ' + stage }, function (startAt) {
-                        if (!startAt) return; // annulé ⇒ on ne démarre pas
-                        startEvent('ARMS RACE', dbEventName, stage, startAt);
-                    });
-                });
-            } else if (SCHEDULED_TABS.indexOf(ev) !== -1) {
+            if (SCHEDULED_TABS.indexOf(ev) !== -1) {
                 window.RAD.pickEventStart({ eventLabel: ev }, function (startAt) {
                     if (!startAt) return; // annulé ⇒ on ne démarre pas
                     startEvent(ev, ev, null, startAt);

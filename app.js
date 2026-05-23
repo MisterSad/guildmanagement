@@ -175,8 +175,11 @@
                 loadGuildSettings();
             }
             var eventName = tabBtn.getAttribute('data-event-tab');
-            if (eventName && ['SvS', 'GvG', 'Defend Trade Route', 'ARMS RACE'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
+            if (eventName && ['SvS', 'GvG', 'Defend Trade Route'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
                 window.RAD_EVENTS.loadEvent(eventName);
+            }
+            if (eventName === 'ARMS RACE' && window.RAD_ARMSRACE) {
+                window.RAD_ARMSRACE.load();
             }
             if (eventName === 'Shadowfront' && window.RAD_SHADOWFRONT) {
                 window.RAD_SHADOWFRONT.load();
@@ -440,10 +443,15 @@
             renderGuildMembers();
             showToast(pseudo + ' ' + t('toast_member_added'), 'success');
 
+            var addedEvents = 0;
             if (window.RAD_EVENTS && window.RAD_EVENTS.addMemberToActiveEvents) {
-                window.RAD_EVENTS.addMemberToActiveEvents(pseudo).then(function (n) {
-                    if (n > 0) showToast(pseudo + ' ' + t('toast_member_added_active_events'), 'info');
-                });
+                addedEvents += await window.RAD_EVENTS.addMemberToActiveEvents(pseudo);
+            }
+            if (window.RAD_ARMSRACE && window.RAD_ARMSRACE.addMemberToActiveEvents) {
+                addedEvents += await window.RAD_ARMSRACE.addMemberToActiveEvents(pseudo);
+            }
+            if (addedEvents > 0) {
+                showToast(pseudo + ' ' + t('toast_member_added_active_events'), 'info');
             }
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
