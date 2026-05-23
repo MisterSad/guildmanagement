@@ -41,6 +41,7 @@
 
     // ── State ──────────────────────────────────────────────────────────────────
     var currentWeek     = window.RAD ? window.RAD.getWeekStart() : '';
+    var statsPeriod     = '1w';
     var allWeeks        = [];
     var leaderboardData = [];
     var lastMaxPossible = 0;
@@ -75,7 +76,15 @@
             return;
         }
         if (currentMode === 'global') {
-            await loadGlobalPeriod([currentWeek]);
+            var idx = allWeeks.indexOf(currentWeek);
+            if (idx === -1) idx = 0;
+            var weeksToLoad = [currentWeek];
+            if (statsPeriod === '4w') {
+                weeksToLoad = allWeeks.slice(idx, idx + 4);
+            } else if (statsPeriod === '8w') {
+                weeksToLoad = allWeeks.slice(idx, idx + 8);
+            }
+            await loadGlobalPeriod(weeksToLoad);
         } else if (currentMode === 'SvS' || currentMode === 'GvG') {
             await loadEventRanking(currentMode, currentWeek);
         } else if (currentMode === 'prince') {
@@ -103,10 +112,17 @@
         var refPrev = window.RAD.getPrevWeekStart(weeks[0]);
         var glorySpan = [refPrev].concat(weeks);
 
-        var [membersRes, partsRes, gloryRes] = await Promise.all([
+        var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace, reserveCreditPct] = await Promise.all([
             db.from('guild_members').select('pseudo, uid'),
             db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
-            db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000)
+            db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000),
+            db.from('shadowfront_squads').select('pseudo, role, week_start').in('week_start', weeks).limit(100000),
+            window.RAD.config.get('coeff_svs'),
+            window.RAD.config.get('coeff_gvg'),
+            window.RAD.config.get('coeff_shadowfront'),
+            window.RAD.config.get('coeff_dtr'),
+            window.RAD.config.get('coeff_armsrace'),
+            window.RAD.config.get('reserve_credit_pct')
         ]);
 
         var memberRows   = membersRes.data || [];
@@ -116,9 +132,18 @@
         var participants = partsRes.data || [];
         var gloryByWeek  = buildGloryByWeek(gloryRes.data || [], glorySpan);
 
+        var config = {
+            coeff_svs: parseInt(coeffSvs, 10) || 5,
+            coeff_gvg: parseInt(coeffGvg, 10) || 5,
+            coeff_shadowfront: parseInt(coeffShadowfront, 10) || 3,
+            coeff_dtr: parseInt(coeffDtr, 10) || 2,
+            coeff_armsrace: parseInt(coeffArmsrace, 10) || 1,
+            reserve_credit_pct: parseInt(reserveCreditPct, 10) || 50
+        };
+
         if (members.length === 0) { renderEmpty(); return; }
 
-        var result = computeScores(members, participants, gloryByWeek, weeks);
+        var result = computeScores(members, participants, gloryByWeek, weeks, config, squadsRes.data || []);
         leaderboardData = result.scores;
         lastMaxPossible = result.maxPossible;
         renderLeaderboard({
@@ -422,11 +447,20 @@
     }
 
     // ── Calcul du score selon la nouvelle formule ──────────────────────────────
-    function computeScores(members, participants, gloryByWeek, periodWeeks) {
+    function computeScores(members, participants, gloryByWeek, periodWeeks, config, shadowfrontSquads) {
+        config = config || { coeff_svs: 5, coeff_gvg: 5, coeff_shadowfront: 3, coeff_dtr: 2, coeff_armsrace: 1, reserve_credit_pct: 50 };
+        var dynamicEventGroups = {
+            'SvS':         { coeff: config.coeff_svs,         hasScore: true,  dbNames: ['SvS'] },
+            'GvG':         { coeff: config.coeff_gvg,         hasScore: true,  dbNames: ['GvG'] },
+            'Shadowfront': { coeff: config.coeff_shadowfront, hasScore: false, dbNames: ['Shadowfront'] },
+            'DTR':         { coeff: config.coeff_dtr,         hasScore: false, dbNames: ['Defend Trade Route'] },
+            'Arms Race':   { coeff: config.coeff_armsrace,    hasScore: false, dbNames: ['ARMS RACE STAGE A', 'ARMS RACE STAGE B'] }
+        };
+
         // 1. Identifier les événements qui ont tourné dans la période
         var ranEvents = {};
-        Object.keys(EVENT_GROUPS).forEach(function (name) {
-            var group = EVENT_GROUPS[name];
+        Object.keys(dynamicEventGroups).forEach(function (name) {
+            var group = dynamicEventGroups[name];
             var hasRows = participants.some(function (p) {
                 return group.dbNames.indexOf(p.event_name) !== -1;
             });
@@ -497,12 +531,21 @@
                 var participated = rows.some(function (r) { return r.participated > 0; });
                 var totalScore = rows.reduce(function (s, r) { return s + (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0); }, 0);
 
-                var base = participated ? W.participation * group.coeff : 0;
+                var base = 0;
+                if (participated) {
+                    base = W.participation * group.coeff;
+                } else if (name === 'Shadowfront' && shadowfrontSquads) {
+                    var wasReserve = shadowfrontSquads.some(function (s) {
+                        return s.pseudo === pseudo && s.role === 'reserve';
+                    });
+                    if (wasReserve) {
+                        base = (config.reserve_credit_pct / 100) * W.participation * group.coeff;
+                    }
+                }
+                
                 var perf = 0;
                 if (participated && group.hasScore) {
                     if (name === 'SvS') {
-                        // Formule dual-score équitable : (prep/max_prep + pvp/max_pvp) / 2.
-                        // Mélange new+legacy : moyenne pondérée par nombre de lignes.
                         var playerPrep = 0, playerPvp = 0, playerLegacy = 0;
                         var nNew = 0, nLegacy = 0;
                         rows.forEach(function (r) {
@@ -546,10 +589,10 @@
             });
 
             var attendanceRate = eventsTotal > 0 ? eventsAttended / eventsTotal : 0;
-            var consistencyBonus = attendanceRate >= W.threshold ? W.consistency : 0;
+            var consistencyBonus = attendanceRate >= W.threshold ? W.consistency * periodWeeks.length : 0;
 
             var delta = deltaByPseudo[pseudo] || 0;
-            var gloryBonus = (delta > 0 && maxDelta > 0) ? (delta / maxDelta) * W.gloryMax : 0;
+            var gloryBonus = (delta > 0 && maxDelta > 0) ? (delta / maxDelta) * W.gloryMax * periodWeeks.length : 0;
 
             var totalScore = eventsScore + gloryBonus + consistencyBonus;
 
@@ -570,12 +613,13 @@
             return a.pseudo.localeCompare(b.pseudo);
         });
 
-        // 5. Max théorique = somme des maxs des événements qui ont tourné + Bg + Bc
+        // 5. Max théorique = somme des maxs des événements qui ont tourné + Bg + Bc (multiplié par le nombre de semaines de la période)
         var maxPossible = 0;
         Object.keys(ranEvents).forEach(function (name) {
             maxPossible += maxEventScore(ranEvents[name]);
         });
         maxPossible += W.gloryMax + W.consistency;
+        maxPossible = maxPossible * periodWeeks.length;
 
         return { scores: scores, maxPossible: round1(maxPossible), ranEvents: ranEvents };
     }
@@ -596,13 +640,29 @@
                 return '<option value="' + w + '"' + (w === currentWeek ? ' selected' : '') + '>' + window.RAD.formatWeek(w) + '</option>';
             }).join('');
 
+            var periods = [
+                { key: '1w', label: t('stats_period_1w') || '1 Semaine' },
+                { key: '4w', label: t('stats_period_4w') || '4 Semaines' },
+                { key: '8w', label: t('stats_period_8w') || '8 Semaines' }
+            ];
+            
+            var periodOptHtml = periods.map(function (p) {
+                return '<option value="' + p.key + '"' + (p.key === statsPeriod ? ' selected' : '') + '>' + esc(p.label) + '</option>';
+            }).join('');
+
             el.innerHTML =
                 '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap;">' +
                     '<select class="gm-select week-select" style="width:auto; min-width:180px;">' + optHtml + '</select>' +
+                    '<select class="gm-select period-select" style="width:auto; min-width:140px;">' + periodOptHtml + '</select>' +
                 '</div>';
 
             el.querySelector('.week-select').addEventListener('change', function () {
                 currentWeek = this.value;
+                refreshData();
+            });
+
+            el.querySelector('.period-select').addEventListener('change', function () {
+                statsPeriod = this.value;
                 refreshData();
             });
         });
@@ -787,25 +847,43 @@
     // dériver des métriques d'évolution réelle (tendance mobile, présence cumulée,
     // évolution par événement) au lieu d'un simple snapshot.
     async function openProfile(pseudo) {
-        var [membersRes, partsRes, gloryRes] = await Promise.all([
+        var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace, reserveCreditPct] = await Promise.all([
             db.from('guild_members').select('pseudo'),
             db.from('event_participants').select('*').neq('event_name', 'Glory').limit(100000),
-            db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').limit(100000)
+            db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').limit(100000),
+            db.from('shadowfront_squads').select('pseudo, role, week_start').limit(100000),
+            window.RAD.config.get('coeff_svs'),
+            window.RAD.config.get('coeff_gvg'),
+            window.RAD.config.get('coeff_shadowfront'),
+            window.RAD.config.get('coeff_dtr'),
+            window.RAD.config.get('coeff_armsrace'),
+            window.RAD.config.get('reserve_credit_pct')
         ]);
         var allMembers = (membersRes.data || []).map(function (m) { return m.pseudo; });
         var allParts   = partsRes.data || [];
         var allGlory   = gloryRes.data || [];
+        var allSquads  = squadsRes.data || [];
+
+        var config = {
+            coeff_svs: parseInt(coeffSvs, 10) || 5,
+            coeff_gvg: parseInt(coeffGvg, 10) || 5,
+            coeff_shadowfront: parseInt(coeffShadowfront, 10) || 3,
+            coeff_dtr: parseInt(coeffDtr, 10) || 2,
+            coeff_armsrace: parseInt(coeffArmsrace, 10) || 1,
+            reserve_credit_pct: parseInt(reserveCreditPct, 10) || 50
+        };
 
         var weeks = Array.from(new Set(allParts.map(function (r) { return r.week_start; }))).sort();
 
         var history = weeks.map(function (w) {
             var weekParts = allParts.filter(function (r) { return r.week_start === w; });
+            var weekSquads = allSquads.filter(function (s) { return s.week_start === w; });
             var prev = window.RAD.getPrevWeekStart(w);
             var glorySpanW = [prev, w];
             var gloryByWeek = buildGloryByWeek(allGlory.filter(function (r) {
                 return glorySpanW.indexOf(r.week_start) !== -1;
             }), glorySpanW);
-            var result = computeScores(allMembers, weekParts, gloryByWeek, [w]);
+            var result = computeScores(allMembers, weekParts, gloryByWeek, [w], config, weekSquads);
 
             // Rang basé sur les participants actifs (au moins un événement OU gain de gloire).
             var active = result.scores.filter(function (s) {
@@ -845,7 +923,7 @@
             best: null, worst: null,
             totalGlory: 0, totalAttended: 0, totalPossible: 0, attendancePct: 0,
             avgRank: null, bestRank: null,
-            streak: 0, trend: null, eventStats: {}
+            streak: 0, trend: null, eventStats: {}, achievements: []
         };
         if (n === 0) return empty;
 
@@ -941,6 +1019,65 @@
             });
         });
 
+        var achievements = [];
+        
+        var activeWeeks = history.filter(function (r) { return r.events_done > 0; });
+        if (activeWeeks.length >= 4) {
+            var last4 = activeWeeks.slice(-4);
+            var ironMan = last4.every(function (r) { return r.events_done === r.events_total; });
+            if (ironMan) {
+                achievements.push({
+                    key: 'iron_man',
+                    label: t('badge_iron_man') || 'Iron Man',
+                    desc: t('badge_iron_man_desc') || '100% de présence sur les 4 dernières semaines actives.',
+                    icon: 'ph-shield-check',
+                    color: 'var(--success)'
+                });
+            }
+        }
+        
+        var reachedRank1 = history.some(function (r) { return r.rank === 1; });
+        if (reachedRank1) {
+            achievements.push({
+                key: 'mvp',
+                label: 'MVP',
+                desc: t('badge_mvp_desc') || 'A terminé premier du classement hebdomadaire de la guilde.',
+                icon: 'ph-crown',
+                color: 'oklch(0.78 0.16 75)'
+            });
+        }
+        
+        if (totalGlory >= 5000) {
+            achievements.push({
+                key: 'glory_climber',
+                label: t('badge_glory_climber') || 'Glory Climber',
+                desc: t('badge_glory_climber_desc') || 'A cumulé plus de 5 000 points de progression de Gloire.',
+                icon: 'ph-trend-up',
+                color: 'var(--accent)'
+            });
+        }
+        
+        if (totalAttended >= 15) {
+            achievements.push({
+                key: 'loyal_soldier',
+                label: t('badge_loyal_soldier') || 'Soldat Loyal',
+                desc: t('badge_loyal_soldier_desc') || 'A participé à 15 événements de guilde ou plus.',
+                icon: 'ph-sword',
+                color: 'var(--info)'
+            });
+        }
+        
+        var consistencyCount = history.filter(function (r) { return r.consistency_bonus > 0; }).length;
+        if (consistencyCount >= 4) {
+            achievements.push({
+                key: 'consistency_master',
+                label: t('badge_consistency_master') || 'Maître de la Constance',
+                desc: t('badge_consistency_master_desc') || 'A obtenu le bonus de présence sur au moins 4 semaines.',
+                icon: 'ph-calendar-check',
+                color: 'var(--warning)'
+            });
+        }
+
         return {
             n: n,
             avg: avg, avgPct: avgPct,
@@ -949,7 +1086,8 @@
             totalAttended: totalAttended, totalPossible: totalPossible, attendancePct: attendancePct,
             avgRank: avgRank, bestRank: bestRank,
             streak: streak, trend: trend,
-            eventStats: eventStats
+            eventStats: eventStats,
+            achievements: achievements
         };
     }
 
@@ -980,6 +1118,17 @@
                         '</span>';
         }
 
+        var achievementsHtml = '';
+        if (m.achievements && m.achievements.length > 0) {
+            achievementsHtml = '<div class="profile-achievements-row" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.4rem;">' +
+                m.achievements.map(function (a) {
+                    return '<span class="gm-chip profile-achievement-badge" style="background: rgba(255,255,255,0.04); border: 1px solid ' + a.color + '40; color: ' + a.color + '; font-size:0.75rem; padding: 0.15rem 0.45rem; font-weight: 500;" title="' + esc(a.desc) + '">' +
+                        '<i class="ph ' + a.icon + '" style="margin-right:0.2rem; font-size:0.85rem; vertical-align:middle;"></i>' + esc(a.label) +
+                    '</span>';
+                }).join('') +
+            '</div>';
+        }
+
         var html =
             '<div class="profile-card glass-card">' +
                 '<div class="profile-header">' +
@@ -990,6 +1139,7 @@
                             '<span class="gm-chip"><i class="ph-fill ph-calendar"></i> ' + m.n + ' ' + t('stats_weeks') + '</span>' +
                             trendChip +
                         '</div>' +
+                        achievementsHtml +
                     '</div>' +
                     '<button class="icon-btn profile-close" title="' + t('close_title') + '"><i class="ph ph-x"></i></button>' +
                 '</div>';
@@ -1060,13 +1210,14 @@
 
         // ── Sparkline (score brut + moyenne mobile) ──────────────────────────
         if (m.n >= 2) {
-            html += '<div class="profile-sparkline">' +
+            html += '<div class="profile-sparkline" style="position:relative;">' +
                         '<div class="sparkline-legend">' +
                             '<span><span class="sp-swatch sp-swatch-score"></span>' + t('stats_score_pts') + '</span>' +
                             (m.n >= 3 ? '<span><span class="sp-swatch sp-swatch-ma"></span>' + t('stats_moving_avg') + '</span>' : '') +
                             '<span><span class="sp-swatch sp-swatch-max"></span>' + t('stats_max_line') + '</span>' +
                         '</div>' +
                         buildSparkline(history) +
+                        '<div id="sp-tooltip" class="glass-card sparkline-tooltip" style="position:absolute; display:none; pointer-events:none; z-index:10; padding:0.5rem; font-size:0.75rem; border-radius:6px; background:rgba(15,23,42,0.92); border:1px solid rgba(255,255,255,0.1); color:#fff; box-shadow:0 4px 16px rgba(0,0,0,0.6); transform:translateX(-50%); white-space:nowrap; top:-10px; transition: left 0.1s ease, top 0.1s ease;"></div>' +
                     '</div>';
         }
 
@@ -1200,6 +1351,48 @@
         document.body.appendChild(modal);
         requestAnimationFrame(function () { modal.classList.add('visible'); });
 
+        // Register interactive sparkline tooltips
+        var tooltipEl = modal.querySelector('#sp-tooltip');
+        var highlightDot = modal.querySelector('#sp-highlight-dot');
+        var hoverRects = modal.querySelectorAll('.sp-hover-rect');
+        
+        hoverRects.forEach(function (rect) {
+            function showTooltip() {
+                var dataStr = rect.getAttribute('data-tooltip');
+                if (!dataStr) return;
+                var d = JSON.parse(dataStr);
+                
+                tooltipEl.innerHTML = '<div style="font-weight:600; margin-bottom:0.25rem;">' + esc(d.week) + '</div>' +
+                                      '<div style="display:flex; justify-content:space-between; gap:1rem;"><span>' + t('stats_score_pts') + ' :</span><strong>' + fmt(d.score) + ' / ' + fmt(d.max) + '</strong></div>' +
+                                      (d.rank > 0 ? '<div style="display:flex; justify-content:space-between; gap:1rem; margin-top:0.15rem;"><span>' + t('stats_rank') + ' :</span><strong>#' + d.rank + '</strong></div>' : '');
+                
+                tooltipEl.style.display = 'block';
+                var xPct = (d.x / 520) * 100;
+                tooltipEl.style.left = xPct + '%';
+                var yPct = (d.y / 122) * 100;
+                tooltipEl.style.top = (yPct - 35) + '%';
+                
+                if (highlightDot) {
+                    highlightDot.setAttribute('cx', d.x);
+                    highlightDot.setAttribute('cy', d.y);
+                    highlightDot.style.display = 'block';
+                }
+            }
+            
+            function hideTooltip() {
+                if (tooltipEl) tooltipEl.style.display = 'none';
+                if (highlightDot) highlightDot.style.display = 'none';
+            }
+            
+            rect.addEventListener('mouseenter', showTooltip);
+            rect.addEventListener('mouseleave', hideTooltip);
+            rect.addEventListener('touchstart', function (e) {
+                e.preventDefault();
+                showTooltip();
+            });
+            rect.addEventListener('touchend', hideTooltip);
+        });
+
         modal.querySelector('.profile-close').addEventListener('click', function () { closeModal(modal); });
         modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(modal); });
     }
@@ -1258,6 +1451,20 @@
             return '<circle class="' + cls + '" cx="' + p[0] + '" cy="' + p[1] + '" r="3.5"/>';
         }).join('');
 
+        var colW = n > 1 ? (W_ - px * 2) / (n - 1) : W_ - px * 2;
+        var hoverRects = history.map(function (row, i) {
+            var rx = projectX(i) - colW / 2;
+            var tooltipData = {
+                week: window.RAD.formatWeek(row.week_start),
+                score: row.score,
+                max: row.max_possible,
+                rank: row.rank,
+                x: projectX(i),
+                y: projectY(row.score)
+            };
+            return '<rect class="sp-hover-rect" x="' + rx.toFixed(1) + '" y="0" width="' + colW.toFixed(1) + '" height="' + H + '" fill="transparent" style="cursor:pointer;" data-tooltip=\'' + JSON.stringify(tooltipData).replace(/'/g, "&apos;") + '\'/>';
+        }).join('');
+
         var ticks = [0, ymax / 2, ymax];
         var yLines = ticks.map(function (v) {
             var y = projectY(v);
@@ -1275,7 +1482,7 @@
             }
         }
 
-        return '<svg viewBox="0 0 ' + W_ + ' ' + (H + 12) + '" class="sparkline-svg" preserveAspectRatio="none">' +
+        return '<svg viewBox="0 0 ' + W_ + ' ' + (H + 12) + '" class="sparkline-svg" preserveAspectRatio="none" style="position:relative; overflow:visible;">' +
             '<defs><linearGradient id="sg1" x1="0" y1="0" x2="0" y2="1">' +
                 '<stop offset="0%" stop-color="#6366f1" stop-opacity="0.35"/>' +
                 '<stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>' +
@@ -1288,6 +1495,8 @@
                 ? '<polyline points="' + maLine + '" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-dasharray="5,3" stroke-linecap="round" stroke-linejoin="round"/>'
                 : '') +
             dots + xLabels +
+            hoverRects +
+            '<circle id="sp-highlight-dot" r="4.5" fill="#f59e0b" stroke="#fff" stroke-width="1.5" style="display:none; pointer-events:none; transition: all 0.08s ease;"/>' +
         '</svg>';
     }
 

@@ -129,8 +129,8 @@
         } else {
             if (roleLabel) roleLabel.textContent = 'R5 :';
             if (nameLabel) nameLabel.textContent = sessionStorage.getItem('rad_user') || 'Admin';
-            if (adminHomeBtn) adminHomeBtn.style.display = '';
             fetchAccounts();
+            loadGuildSettings();
         }
         // Default landing : Overview (R4 et R5)
         // Retry car gm-overview nav-tab est créé par shell.js après notre code.
@@ -169,6 +169,10 @@
 
             if (tabId === 'admin-members' || tabId === 'member-members') {
                 fetchGuildMembers();
+            }
+            if (tabId === 'admin-home') {
+                fetchAccounts();
+                loadGuildSettings();
             }
             var eventName = tabBtn.getAttribute('data-event-tab');
             if (eventName && ['SvS', 'GvG', 'Defend Trade Route', 'ARMS RACE'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
@@ -260,6 +264,59 @@
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
+    }
+
+    async function loadGuildSettings() {
+        var form = document.getElementById('guild-settings-form');
+        if (!form) return;
+
+        var coeffSvs = await window.RAD.config.get('coeff_svs');
+        var coeffGvg = await window.RAD.config.get('coeff_gvg');
+        var coeffShadowfront = await window.RAD.config.get('coeff_shadowfront');
+        var coeffDtr = await window.RAD.config.get('coeff_dtr');
+        var coeffArmsrace = await window.RAD.config.get('coeff_armsrace');
+        var reserveCreditPct = await window.RAD.config.get('reserve_credit_pct');
+        var discordWebhook = await window.RAD.config.get('discord_webhook_url');
+
+        document.getElementById('coeff-svs').value = coeffSvs;
+        document.getElementById('coeff-gvg').value = coeffGvg;
+        document.getElementById('coeff-shadowfront').value = coeffShadowfront;
+        document.getElementById('coeff-dtr').value = coeffDtr;
+        document.getElementById('coeff-armsrace').value = coeffArmsrace;
+        document.getElementById('reserve-credit-pct').value = reserveCreditPct;
+        document.getElementById('discord-webhook-url').value = discordWebhook;
+    }
+
+    var guildSettingsForm = document.getElementById('guild-settings-form');
+    if (guildSettingsForm) {
+        guildSettingsForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            
+            var btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            var span = btn.querySelector('span');
+            var origText = span ? span.textContent : '';
+            if (span) span.textContent = '...';
+
+            try {
+                await Promise.all([
+                    window.RAD.config.set('coeff_svs', document.getElementById('coeff-svs').value),
+                    window.RAD.config.set('coeff_gvg', document.getElementById('coeff-gvg').value),
+                    window.RAD.config.set('coeff_shadowfront', document.getElementById('coeff-shadowfront').value),
+                    window.RAD.config.set('coeff_dtr', document.getElementById('coeff-dtr').value),
+                    window.RAD.config.set('coeff_armsrace', document.getElementById('coeff-armsrace').value),
+                    window.RAD.config.set('reserve_credit_pct', document.getElementById('reserve-credit-pct').value),
+                    window.RAD.config.set('discord_webhook_url', document.getElementById('discord-webhook-url').value.trim())
+                ]);
+                
+                showToast(t('toast_config_updated'), 'success');
+            } catch (err) {
+                showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                if (span) span.textContent = origText;
+            }
+        });
     }
 
     function renderAccounts() {

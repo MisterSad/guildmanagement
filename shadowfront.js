@@ -127,6 +127,10 @@
             );
             if (res.error) throw res.error;
             window.RAD.showToast(squadLabel(squad) + ' — ' + t('sf_squad_started'), 'success');
+
+            if (window.RAD.notifyDiscordEvent) {
+                window.RAD.notifyDiscordEvent(SQUAD_EVENT[squad], startAt || sessionId, 'start');
+            }
         } catch (err) {
             console.error('startSquad', err);
             window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -181,6 +185,11 @@
                     if (updateRes.error) throw updateRes.error;
 
                     window.RAD.showToast(t('toast_member_updated'), 'success');
+
+                    if (window.RAD.notifyDiscordEvent) {
+                        window.RAD.notifyDiscordEvent(SQUAD_EVENT[squad], startAt, 'edit');
+                    }
+
                     await loadShadowfront();
                 } catch (err) {
                     console.error('editSquadSchedule update', err);

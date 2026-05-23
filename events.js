@@ -97,6 +97,10 @@
             state[tabKey].isActive        = true;
             renderStatus(tabKey);
             await populateParticipants(tabKey);
+
+            if (window.RAD.notifyDiscordEvent) {
+                window.RAD.notifyDiscordEvent(dbEventName, startAt || sessionId, 'start');
+            }
         } catch (err) {
             console.error('startEvent', err);
             window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -310,6 +314,11 @@
                     if (updateRes.error) throw updateRes.error;
                     
                     window.RAD.showToast(t('toast_member_updated'), 'success');
+                    
+                    if (window.RAD.notifyDiscordEvent) {
+                        window.RAD.notifyDiscordEvent(s.activeEventName, startAt, 'edit');
+                    }
+
                     await loadEvent(tabKey);
                 } catch (err) {
                     console.error('editEventSchedule update', err);

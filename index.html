@@ -173,6 +173,54 @@
                         </form>
                     </div>
 
+                    <div class="gm-card gm-card-padded gm-section" id="guild-settings-card">
+                        <div class="gm-section-title" style="margin-bottom: 1.25rem;">
+                            <i class="ph ph-gear"></i>
+                            <span data-i18n="card_guild_settings">Configuration &amp; Coefficients de Guilde</span>
+                        </div>
+                        <form id="guild-settings-form" class="gm-col" style="gap: 1.25rem;">
+                            <div class="gm-row" style="gap: 1rem; flex-wrap: wrap;">
+                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-svs" data-i18n="label_coeff_svs">Coeff SvS</label>
+                                    <input type="number" id="coeff-svs" class="gm-input" min="0" max="20" required>
+                                </div>
+                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-gvg" data-i18n="label_coeff_gvg">Coeff GvG</label>
+                                    <input type="number" id="coeff-gvg" class="gm-input" min="0" max="20" required>
+                                </div>
+                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-shadowfront" data-i18n="label_coeff_shadowfront">Coeff Shadowfront</label>
+                                    <input type="number" id="coeff-shadowfront" class="gm-input" min="0" max="20" required>
+                                </div>
+                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-dtr" data-i18n="label_coeff_dtr">Coeff DTR</label>
+                                    <input type="number" id="coeff-dtr" class="gm-input" min="0" max="20" required>
+                                </div>
+                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-armsrace" data-i18n="label_coeff_armsrace">Coeff Arms Race</label>
+                                    <input type="number" id="coeff-armsrace" class="gm-input" min="0" max="20" required>
+                                </div>
+                                <div class="gm-col" style="flex: 1.5; min-width: 180px; gap: 0.35rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="reserve-credit-pct" data-i18n="label_reserve_credit">Crédit Réserviste (%)</label>
+                                    <input type="number" id="reserve-credit-pct" class="gm-input" min="0" max="100" required>
+                                </div>
+                            </div>
+                            <div class="gm-col" style="gap: 0.35rem;">
+                                <label class="gm-dim" style="font-size: 0.85rem;" for="discord-webhook-url" data-i18n="label_discord_webhook">Discord Webhook URL</label>
+                                <div class="gm-input-with-icon">
+                                    <i class="ph ph-bell gm-icon"></i>
+                                    <input type="url" id="discord-webhook-url" class="gm-input" placeholder="https://discord.com/api/webhooks/...">
+                                </div>
+                            </div>
+                            <div class="gm-row" style="justify-content: flex-end;">
+                                <button type="submit" class="gm-btn gm-btn-primary">
+                                    <i class="ph ph-floppy-disk"></i>
+                                    <span data-i18n="btn_save_config">Sauvegarder la configuration</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
                     <div class="gm-section">
                         <div class="gm-section-head">
                             <div class="gm-section-title">

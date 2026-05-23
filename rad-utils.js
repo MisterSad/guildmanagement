@@ -304,6 +304,78 @@
         });
     }
 
+    var localConfigFallback = {
+        coeff_svs: '5',
+        coeff_gvg: '5',
+        coeff_shadowfront: '3',
+        coeff_dtr: '2',
+        coeff_armsrace: '1',
+        reserve_credit_pct: '50',
+        discord_webhook_url: ''
+    };
+
+    async function getGuildConfig(key) {
+        if (db) {
+            try {
+                var res = await db.from('guild_config').select('value').eq('key', key).maybeSingle();
+                if (res && res.data) return res.data.value;
+            } catch (e) {
+                console.warn('guild_config table fetch error, falling back to LocalStorage', e);
+            }
+        }
+        var local = localStorage.getItem('rad_config_' + key);
+        return local !== null ? local : (localConfigFallback[key] || '');
+    }
+
+    async function setGuildConfig(key, value) {
+        localStorage.setItem('rad_config_' + key, value);
+        if (db) {
+            try {
+                var res = await db.from('guild_config').upsert({ key: key, value: value, updated_at: new Date().toISOString() });
+                if (res && !res.error) return true;
+            } catch (e) {
+                console.warn('guild_config table save error', e);
+            }
+        }
+        return true;
+    }
+
+    async function notifyDiscordEvent(eventName, startAt, action) {
+        var webhookUrl = await getGuildConfig('discord_webhook_url');
+        if (!webhookUrl || webhookUrl.trim() === '') return;
+        
+        var dateFormatted = formatDateTimeUTC(startAt);
+        var actionLabel = action === 'start' ? '🚀 Lancé / Planifié' : '📅 Horaire Modifié';
+        var color = action === 'start' ? 5763719 : 16750848; // Vert ou Orange
+
+        var body = {
+            embeds: [{
+                title: '📢 Événement de Guilde : ' + eventName,
+                description: 'Un événement vient d\'être configuré dans l\'outil RAD Management !',
+                color: color,
+                fields: [
+                    { name: 'Statut', value: actionLabel, inline: true },
+                    { name: 'Début (UTC)', value: dateFormatted, inline: true },
+                    { name: 'Agenda de Guilde', value: 'Veuillez vous tenir prêts aux horaires indiqués.', inline: false }
+                ],
+                timestamp: new Date().toISOString(),
+                footer: {
+                    text: 'RAD Management Tool'
+                }
+            }]
+        };
+
+        try {
+            await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        } catch (e) {
+            console.error('Discord webhook notify failed', e);
+        }
+    }
+
     window.RAD = {
         db: db,
         t: t,
@@ -325,7 +397,12 @@
         parseNumber: parseNumber,
         attachNumberFormatter: attachNumberFormatter,
         avatarInit: avatarInit,
-        MAX_NUMERIC: MAX_NUMERIC
+        MAX_NUMERIC: MAX_NUMERIC,
+        config: {
+            get: getGuildConfig,
+            set: setGuildConfig
+        },
+        notifyDiscordEvent: notifyDiscordEvent
     };
 
 })();

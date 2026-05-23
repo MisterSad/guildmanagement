@@ -40,6 +40,18 @@
             show_pwd:              'Afficher / Masquer',
             cred_created:          'Créé le',
 
+            /* ── Guild Config ─────────────────── */
+            card_guild_settings:   'Configuration & Coefficients de Guilde',
+            label_coeff_svs:       'Coeff SvS',
+            label_coeff_gvg:       'Coeff GvG',
+            label_coeff_shadowfront:'Coeff Shadowfront',
+            label_coeff_dtr:       'Coeff DTR',
+            label_coeff_armsrace:  'Coeff Arms Race',
+            label_reserve_credit:  'Crédit Réserviste (%)',
+            label_discord_webhook: 'Discord Webhook URL',
+            btn_save_config:       'Sauvegarder la configuration',
+            toast_config_updated:  'Configuration de guilde mise à jour avec succès !',
+
             /* ── Guild Members page ────────────── */
             members_title:         'Membres de la Guilde',
             members_subtitle:      'Gérez les membres in-game de Foundation Galactic Frontier',
@@ -204,6 +216,9 @@
             stats_subtitle:        'Classement et évolution des membres de la guilde',
             stats_compute:         'Recalculer',
             stats_no_data:         'Aucune donnée disponible pour cette semaine.',
+            stats_period_1w:       '1 Semaine',
+            stats_period_4w:       '4 Semaines',
+            stats_period_8w:       '8 Semaines',
             stats_score:           'Note /20',
             stats_events:          'Événements',
             stats_glory:           'Glory',
@@ -275,6 +290,15 @@
             stats_evolution_per_event: 'Évolution par événement',
             stats_moving_avg:      'Moy. mobile',
             stats_max_line:        'Max théorique',
+            badge_iron_man:        'Iron Man',
+            badge_iron_man_desc:   '100% de présence sur les 4 dernières semaines actives.',
+            badge_mvp_desc:        'A terminé premier du classement hebdomadaire de la guilde.',
+            badge_glory_climber:   'Glory Climber',
+            badge_glory_climber_desc: 'A cumulé plus de 5 000 points de progression de Gloire.',
+            badge_loyal_soldier:   'Soldat Loyal',
+            badge_loyal_soldier_desc: 'A participé à 15 événements de guilde ou plus.',
+            badge_consistency_master: 'Maître de la Constance',
+            badge_consistency_master_desc: 'A obtenu le bonus de présence sur au moins 4 semaines.',
 
             /* ── Sanctions ────────────────── */
             nav_sanctions:         'Sanctions',
@@ -376,6 +400,18 @@
             delete_title:          'Delete',
             show_pwd:              'Show / Hide',
             cred_created:          'Created',
+
+            /* ── Guild Config ─────────────────── */
+            card_guild_settings:   'Guild Settings & Coefficients',
+            label_coeff_svs:       'SvS Coeff',
+            label_coeff_gvg:       'GvG Coeff',
+            label_coeff_shadowfront:'Shadowfront Coeff',
+            label_coeff_dtr:       'DTR Coeff',
+            label_coeff_armsrace:  'Arms Race Coeff',
+            label_reserve_credit:  'Reserve Credit (%)',
+            label_discord_webhook: 'Discord Webhook URL',
+            btn_save_config:       'Save Configuration',
+            toast_config_updated:  'Guild configuration updated successfully!',
 
             /* ── Guild Members page ────────────── */
             members_title:         'Guild Members',
@@ -541,6 +577,9 @@
             stats_subtitle:        'Rankings and member evolution',
             stats_compute:         'Recompute',
             stats_no_data:         'No data available for this week.',
+            stats_period_1w:       '1 Week',
+            stats_period_4w:       '4 Weeks',
+            stats_period_8w:       '8 Weeks',
             stats_score:           'Score /20',
             stats_events:          'Events',
             stats_glory:           'Glory',
@@ -612,6 +651,15 @@
             stats_evolution_per_event: 'Per-event evolution',
             stats_moving_avg:      'Moving avg',
             stats_max_line:        'Theoretical max',
+            badge_iron_man:        'Iron Man',
+            badge_iron_man_desc:   '100% attendance over the last 4 active weeks.',
+            badge_mvp_desc:        'Finished first in the weekly guild ranking.',
+            badge_glory_climber:   'Glory Climber',
+            badge_glory_climber_desc: 'Accumulated over 5,000 Glory progression points.',
+            badge_loyal_soldier:   'Loyal Soldier',
+            badge_loyal_soldier_desc: 'Participated in 15 or more guild events.',
+            badge_consistency_master: 'Consistency Master',
+            badge_consistency_master_desc: 'Obtained the attendance bonus for at least 4 weeks.',
 
             /* ── Sanctions ────────────────── */
             nav_sanctions:         'Sanctions',
