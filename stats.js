@@ -22,7 +22,7 @@
     var EVENT_GROUPS = {
         'SvS':         { coeff: 5, hasScore: true,  dbNames: ['SvS'] },
         'GvG':         { coeff: 5, hasScore: true,  dbNames: ['GvG'] },
-        'Shadowfront': { coeff: 3, hasScore: false, dbNames: ['Shadowfront'] },
+        'Shadowfront': { coeff: 3, hasScore: false, dbNames: ['Shadowfront', 'Shadowfront Squad 1', 'Shadowfront Squad 2'] },
         'DTR':         { coeff: 2, hasScore: false, dbNames: ['Defend Trade Route'] },
         'Arms Race':   { coeff: 1, hasScore: false, dbNames: ['ARMS RACE STAGE A', 'ARMS RACE STAGE B'] }
     };
@@ -452,7 +452,7 @@
         var dynamicEventGroups = {
             'SvS':         { coeff: config.coeff_svs,         hasScore: true,  dbNames: ['SvS'] },
             'GvG':         { coeff: config.coeff_gvg,         hasScore: true,  dbNames: ['GvG'] },
-            'Shadowfront': { coeff: config.coeff_shadowfront, hasScore: false, dbNames: ['Shadowfront'] },
+            'Shadowfront': { coeff: config.coeff_shadowfront, hasScore: false, dbNames: ['Shadowfront', 'Shadowfront Squad 1', 'Shadowfront Squad 2'] },
             'DTR':         { coeff: config.coeff_dtr,         hasScore: false, dbNames: ['Defend Trade Route'] },
             'Arms Race':   { coeff: config.coeff_armsrace,    hasScore: false, dbNames: ['ARMS RACE STAGE A', 'ARMS RACE STAGE B'] }
         };
