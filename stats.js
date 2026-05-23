@@ -1322,12 +1322,25 @@
         function renderEventChip(key, breakdownInfo) {
             if (!breakdownInfo) return '';
             var label = key;
-            if (key === 'Shadowfront') label = 'SF';
-            if (key === 'DTR' || key === 'Defend Trade Route') label = 'DTR';
-            if (key === 'Arms Race') label = 'AR';
+            var clsBase = 'default';
+
+            if (key.indexOf('ARMS RACE') !== -1 || key.indexOf('Arms Race') !== -1) {
+                label = key.replace(/ARMS RACE/i, 'AR');
+                clsBase = 'armsrace';
+            } else if (key.indexOf('Shadowfront') !== -1) {
+                label = key.replace(/Shadowfront/i, 'SF');
+                clsBase = 'shadowfront';
+            } else if (key.indexOf('Defend Trade Route') !== -1 || key === 'DTR') {
+                label = key.replace(/Defend Trade Route/i, 'DTR');
+                clsBase = 'dtr';
+            } else if (key === 'SvS') {
+                clsBase = 'svs';
+            } else if (key === 'GvG') {
+                clsBase = 'gvg';
+            }
             
             var participated = breakdownInfo.participated;
-            var cls = participated ? 'mini-chip-' + key.toLowerCase().replace(/\s+/g, '') + ' participated' : 'mini-chip-missed';
+            var cls = participated ? 'mini-chip-' + clsBase + ' participated' : 'mini-chip-missed';
             var icon = participated ? 'ph-check-circle' : 'ph-x-circle';
             var title = key + ' : ' + (participated ? 'Présent' : 'Non participé') + ' (Score: ' + (breakdownInfo.score > 0 ? breakdownInfo.score : '—') + ')';
             
@@ -1379,13 +1392,11 @@
 
             // Génération des chips d'événements
             var chipsHtml = '<div style="display: flex; gap: 0.35rem; justify-content: center; flex-wrap: wrap; padding: 0.2rem 0;">';
-            var eventKeys = ['SvS', 'GvG', 'Shadowfront', 'DTR', 'Arms Race'];
+            var eventKeys = row.breakdown ? Object.keys(row.breakdown).sort() : [];
             var hasEvents = false;
             eventKeys.forEach(function (key) {
-                if (row.breakdown && row.breakdown[key]) {
-                    chipsHtml += renderEventChip(key, row.breakdown[key]);
-                    hasEvents = true;
-                }
+                chipsHtml += renderEventChip(key, row.breakdown[key]);
+                hasEvents = true;
             });
             if (!hasEvents) {
                 chipsHtml += '<span class="gm-dim" style="font-size:0.75rem;">—</span>';
