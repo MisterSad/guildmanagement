@@ -20,11 +20,11 @@
 
     // ── Configuration formule ───────────────────────────────────────────────────
     var EVENT_GROUPS = {
-        'SvS':         { coeff: 5, hasScore: true,  isComposed: false, dbNames: ['SvS'] },
-        'GvG':         { coeff: 5, hasScore: true,  isComposed: false, dbNames: ['GvG'] },
-        'Shadowfront': { coeff: 3, hasScore: false, isComposed: true,  dbNames: ['Shadowfront', 'Shadowfront Squad 1', 'Shadowfront Squad 2'] },
-        'DTR':         { coeff: 2, hasScore: false, isComposed: true,  dbNames: ['Defend Trade Route', 'DTR'] },
-        'Arms Race':   { coeff: 1, hasScore: false, isComposed: true,  dbNames: ['ARMS RACE STAGE A', 'ARMS RACE STAGE B', 'ARMS RACE', 'Arms Race'] }
+        'SvS':         { coeff: 5, hasScore: true,  dbNames: ['SvS'] },
+        'GvG':         { coeff: 5, hasScore: true,  dbNames: ['GvG'] },
+        'Shadowfront': { coeff: 3, hasScore: false, dbNames: ['Shadowfront', 'Shadowfront Squad 1', 'Shadowfront Squad 2'] },
+        'DTR':         { coeff: 2, hasScore: false, dbNames: ['Defend Trade Route', 'DTR'] },
+        'Arms Race':   { coeff: 1, hasScore: false, dbNames: ['ARMS RACE STAGE A', 'ARMS RACE STAGE B', 'ARMS RACE', 'Arms Race'] }
     };
 
     var W = {
@@ -48,15 +48,7 @@
         var map = {};
         rows.forEach(function(p) {
             var norm = normalizePseudo(p.pseudo);
-            var isComp = ['Shadowfront', 'DTR', 'Arms Race'].some(function(g) {
-                return EVENT_GROUPS[g].dbNames.indexOf(p.event_name) !== -1;
-            });
-            var key;
-            if (isComp) {
-                key = norm + '|' + p.event_name + '|' + p.week_start;
-            } else {
-                key = norm + '|' + p.event_name + '|' + (p.session_id || p.week_start);
-            }
+            var key = norm + '|' + p.event_name + '|' + (p.session_id || p.week_start);
             if (!map[key]) {
                 map[key] = Object.assign({}, p);
                 map[key].pseudoNorm = norm;
@@ -273,13 +265,12 @@
             byPlayer[normalizePseudo(p)] = { pseudo: p, attended: 0, possible: 0 };
         });
 
-        // Group rows by opportunity (week + groupName for composed, session_id + groupName for others)
+        // Group rows by opportunity (session_id + groupName)
         var oppMap = {};
         participants.forEach(function (p) {
             var group = eventToGroup[p.event_name];
             if (!group) return;
-            var isComp = EVENT_GROUPS[group].isComposed;
-            var oppKey = isComp ? p.week_start : (p.session_id || p.week_start);
+            var oppKey = p.session_id || p.week_start;
             var key = oppKey + '|' + group;
             if (!oppMap[key]) {
                 oppMap[key] = { group: group, oppKey: oppKey, players: {} };
@@ -505,11 +496,11 @@
     function computeScores(members, participants, gloryByWeek, periodWeeks, config, shadowfrontSquads) {
         config = config || { coeff_svs: 5, coeff_gvg: 5, coeff_shadowfront: 3, coeff_dtr: 2, coeff_armsrace: 1, reserve_credit_pct: 50 };
         var dynamicEventGroups = {
-            'SvS':         { coeff: config.coeff_svs,         hasScore: true,  isComposed: false, dbNames: ['SvS'] },
-            'GvG':         { coeff: config.coeff_gvg,         hasScore: true,  isComposed: false, dbNames: ['GvG'] },
-            'Shadowfront': { coeff: config.coeff_shadowfront, hasScore: false, isComposed: true,  dbNames: ['Shadowfront', 'Shadowfront Squad 1', 'Shadowfront Squad 2'] },
-            'DTR':         { coeff: config.coeff_dtr,         hasScore: false, isComposed: true,  dbNames: ['Defend Trade Route', 'DTR'] },
-            'Arms Race':   { coeff: config.coeff_armsrace,    hasScore: false, isComposed: true,  dbNames: ['ARMS RACE STAGE A', 'ARMS RACE STAGE B', 'ARMS RACE', 'Arms Race'] }
+            'SvS':         { coeff: config.coeff_svs,         hasScore: true,  dbNames: ['SvS'] },
+            'GvG':         { coeff: config.coeff_gvg,         hasScore: true,  dbNames: ['GvG'] },
+            'Shadowfront': { coeff: config.coeff_shadowfront, hasScore: false, dbNames: ['Shadowfront', 'Shadowfront Squad 1', 'Shadowfront Squad 2'] },
+            'DTR':         { coeff: config.coeff_dtr,         hasScore: false, dbNames: ['Defend Trade Route', 'DTR'] },
+            'Arms Race':   { coeff: config.coeff_armsrace,    hasScore: false, dbNames: ['ARMS RACE STAGE A', 'ARMS RACE STAGE B', 'ARMS RACE', 'Arms Race'] }
         };
 
         // Initialize aggregation per member
@@ -521,17 +512,6 @@
                 eventsTotal: 0,
                 perEvent: {}
             };
-            Object.keys(dynamicEventGroups).forEach(function(name) {
-                memberAgg[pseudo].perEvent[name] = {
-                    coeff: dynamicEventGroups[name].coeff,
-                    participated: false,
-                    score: 0,
-                    base: 0,
-                    perf: 0,
-                    total: 0,
-                    max: 0
-                };
-            });
         });
 
         var globalMaxPossible = 0;
@@ -549,19 +529,22 @@
                 var gRows = weekParts.filter(function (p) { return group.dbNames.indexOf(p.event_name) !== -1; });
                 if (gRows.length === 0) return;
 
-                if (group.isComposed) {
-                    opps.push({ id: name + '|' + week, name: name, group: group, rows: gRows });
-                } else {
-                    var sessMap = {};
-                    gRows.forEach(function(p) {
-                        var sid = p.session_id || 'no_session';
-                        if (!sessMap[sid]) sessMap[sid] = [];
-                        sessMap[sid].push(p);
+                var sessMap = {};
+                gRows.forEach(function(p) {
+                    var sid = p.session_id || 'no_session';
+                    if (!sessMap[sid]) sessMap[sid] = [];
+                    sessMap[sid].push(p);
+                });
+                Object.keys(sessMap).forEach(function(sid) {
+                    var actualEventName = sessMap[sid][0].event_name;
+                    opps.push({ 
+                        id: name + '|' + week + '|' + sid, 
+                        name: name, // logical group
+                        actualEventName: actualEventName,
+                        group: group, 
+                        rows: sessMap[sid] 
                     });
-                    Object.keys(sessMap).forEach(function(sid) {
-                        opps.push({ id: name + '|' + week + '|' + sid, name: name, group: group, rows: sessMap[sid] });
-                    });
-                }
+                });
             });
 
             var maxScorePerOpp = {};
@@ -659,16 +642,30 @@
                     
                     var eventScore = base + perf;
                     agg.eventsScore += eventScore;
-                    if (participated) {
-                        agg.eventsAttended++;
-                        agg.perEvent[opp.name].participated = true;
+                    
+                    var evName = opp.actualEventName;
+                    if (!agg.perEvent[evName]) {
+                        agg.perEvent[evName] = {
+                            coeff: opp.group.coeff,
+                            participated: false,
+                            score: 0,
+                            base: 0,
+                            perf: 0,
+                            total: 0,
+                            max: 0
+                        };
                     }
                     
-                    agg.perEvent[opp.name].score += totalScore;
-                    agg.perEvent[opp.name].base += base;
-                    agg.perEvent[opp.name].perf += perf;
-                    agg.perEvent[opp.name].total += eventScore;
-                    agg.perEvent[opp.name].max += maxEventScore(opp.group);
+                    if (participated) {
+                        agg.eventsAttended++;
+                        agg.perEvent[evName].participated = true;
+                    }
+                    
+                    agg.perEvent[evName].score += totalScore;
+                    agg.perEvent[evName].base += base;
+                    agg.perEvent[evName].perf += perf;
+                    agg.perEvent[evName].total += eventScore;
+                    agg.perEvent[evName].max += maxEventScore(opp.group);
                 });
             });
         });
