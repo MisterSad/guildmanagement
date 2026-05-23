@@ -343,6 +343,15 @@
     async function notifyDiscordEvent(eventName, startAt, action) {
         var webhookUrl = await getGuildConfig('discord_webhook_url');
         if (!webhookUrl || webhookUrl.trim() === '') return;
+
+        var allowedEvents = [
+            'ARMS RACE STAGE A',
+            'ARMS RACE STAGE B',
+            'Defend Trade Route',
+            'Shadowfront Squad 1',
+            'Shadowfront Squad 2'
+        ];
+        if (allowedEvents.indexOf(eventName) === -1) return;
         
         var dateFormatted = formatDateTimeUTC(startAt);
         var actionLabel = action === 'start' ? '🚀 Scheduled / Live' : '📅 Schedule Updated';
