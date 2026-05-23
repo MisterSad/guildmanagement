@@ -1297,33 +1297,6 @@
                 '</tr>';
         });
 
-        html += '</tbody></table></div></div>';rong>' +
-                  (row.active_count > 0 ? '<span class="gm-dim"> / ' + row.active_count + '</span>' : '')
-                : '<span class="gm-dim">—</span>';
-
-            // Direction = semaine courante vs semaine chronologiquement précédente
-            // (qui est, dans le tableau inversé, la ligne suivante).
-            var dir = '';
-            if (idx < reversed.length - 1) {
-                var dScore = row.score - reversed[idx + 1].score;
-                if (Math.abs(dScore) >= 1) {
-                    var up = dScore > 0;
-                    dir = ' <i class="ph ' + (up ? 'ph-arrow-up' : 'ph-arrow-down') +
-                          '" title="' + (up ? '+' : '') + round1(dScore) + ' ' + t('stats_pts') +
-                          '" style="color:' + (up ? 'var(--success)' : 'var(--danger)') +
-                          ';font-size:0.7rem;vertical-align:middle;"></i>';
-                }
-            }
-
-            html +=
-                '<tr><td class="week-cell">' + window.RAD.formatWeek(row.week_start) + '</td>' +
-                '<td class="center">' + rankCell + '</td>' +
-                '<td class="center"><span class="score-badge ' + cls + '">' + fmt(row.score) + '</span>' + dir + '</td>' +
-                '<td class="center"><span class="gm-dim">' + Math.round(ratio * 100) + '%</span></td>' +
-                '<td class="center">' + row.events_done + '/' + row.events_total + '</td>' +
-                '<td class="center">' + (row.glory_delta > 0 ? '+' + fmt(row.glory_delta) : '—') + '</td></tr>';
-        });
-
         html += '</tbody></table></div></div>';
         modal.innerHTML = html;
         document.body.appendChild(modal);
