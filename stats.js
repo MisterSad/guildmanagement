@@ -39,6 +39,30 @@
         return group.coeff * (W.participation + (group.hasScore ? W.performance : 0));
     }
 
+    // ── Helper: Normalisation & Dédoublonnage ──────────────────────────────────
+    function normalizePseudo(p) {
+        return p ? p.trim().toLowerCase() : '';
+    }
+
+    function deduplicateParticipants(rows) {
+        var map = {};
+        rows.forEach(function(p) {
+            var norm = normalizePseudo(p.pseudo);
+            var key = norm + '|' + p.event_name + '|' + p.week_start;
+            if (!map[key]) {
+                map[key] = Object.assign({}, p);
+                map[key].pseudoNorm = norm;
+            } else {
+                var existing = map[key];
+                if ((p.participated || 0) > (existing.participated || 0)) existing.participated = p.participated;
+                if ((p.score || 0) > (existing.score || 0)) existing.score = p.score;
+                if ((p.score_prep || 0) > (existing.score_prep || 0)) existing.score_prep = p.score_prep;
+                if ((p.score_pvp || 0) > (existing.score_pvp || 0)) existing.score_pvp = p.score_pvp;
+            }
+        });
+        return Object.values(map);
+    }
+
     // ── State ──────────────────────────────────────────────────────────────────
     var currentWeek     = window.RAD ? window.RAD.getWeekStart() : '';
     var statsPeriod     = '1w';
@@ -129,7 +153,7 @@
         var members      = memberRows.map(function (m) { return m.pseudo; });
         uidByPseudo = {};
         memberRows.forEach(function (m) { uidByPseudo[m.pseudo] = m.uid || ''; });
-        var participants = partsRes.data || [];
+        var participants = deduplicateParticipants(partsRes.data || []);
         var gloryByWeek  = buildGloryByWeek(gloryRes.data || [], glorySpan);
 
         var config = {
@@ -208,7 +232,7 @@
             .limit(100000);
         if (weeksFilter) query = query.in('week_start', weeksFilter);
         var partsRes = await query;
-        var participants = partsRes.data || [];
+        var participants = deduplicateParticipants(partsRes.data || []);
 
         var data = computeParticipation(members, participants);
         data.period = participationPeriod;
@@ -240,7 +264,7 @@
         // pour ne pas faire apparaître d'anciens pseudos supprimés.
         var byPlayer = {};
         members.forEach(function (p) {
-            byPlayer[p] = { pseudo: p, attended: 0, possible: 0 };
+            byPlayer[normalizePseudo(p)] = { pseudo: p, attended: 0, possible: 0 };
         });
 
         participants.forEach(function (p) {
@@ -251,12 +275,13 @@
             byEvent[group].sessions[p.week_start + '|' + p.event_name] = true;
             if (p.participated > 0) {
                 byEvent[group].attendances++;
-                byEvent[group].uniqueParticipants[p.pseudo] = true;
+                byEvent[group].uniqueParticipants[normalizePseudo(p.pseudo)] = true;
             }
 
-            if (!byPlayer[p.pseudo]) return;
-            byPlayer[p.pseudo].possible++;
-            if (p.participated > 0) byPlayer[p.pseudo].attended++;
+            var norm = normalizePseudo(p.pseudo);
+            if (!byPlayer[norm]) return;
+            byPlayer[norm].possible++;
+            if (p.participated > 0) byPlayer[norm].attended++;
         });
 
         var eventSummary = Object.keys(byEvent).map(function (g) {
@@ -441,7 +466,7 @@
         weeks.forEach(function (w) { byWeek[w] = {}; });
         rows.forEach(function (r) {
             if (!byWeek[r.week_start]) byWeek[r.week_start] = {};
-            byWeek[r.week_start][r.pseudo] = r.score || 0;
+            byWeek[r.week_start][normalizePseudo(r.pseudo)] = r.score || 0;
         });
         return byWeek;
     }
@@ -476,7 +501,8 @@
             var perPlayer = {};
             participants.forEach(function (p) {
                 if (group.dbNames.indexOf(p.event_name) === -1) return;
-                perPlayer[p.pseudo] = (perPlayer[p.pseudo] || 0) + (p.score || 0);
+                var norm = normalizePseudo(p.pseudo);
+                perPlayer[norm] = (perPlayer[norm] || 0) + (p.score || 0);
             });
             var values = Object.values(perPlayer);
             maxScorePerEvent[name] = values.length ? Math.max.apply(null, values) : 0;
@@ -487,12 +513,13 @@
             var perPlayerPrep = {}, perPlayerPvp = {}, perPlayerLegacy = {};
             participants.forEach(function (p) {
                 if (p.event_name !== 'SvS') return;
+                var norm = normalizePseudo(p.pseudo);
                 var isNew = (p.score_prep != null || p.score_pvp != null);
                 if (isNew) {
-                    if (p.score_prep != null) perPlayerPrep[p.pseudo] = (perPlayerPrep[p.pseudo] || 0) + p.score_prep;
-                    if (p.score_pvp  != null) perPlayerPvp[p.pseudo]  = (perPlayerPvp[p.pseudo]  || 0) + p.score_pvp;
+                    if (p.score_prep != null) perPlayerPrep[norm] = (perPlayerPrep[norm] || 0) + p.score_prep;
+                    if (p.score_pvp  != null) perPlayerPvp[norm]  = (perPlayerPvp[norm]  || 0) + p.score_pvp;
                 } else if (p.score != null) {
-                    perPlayerLegacy[p.pseudo] = (perPlayerLegacy[p.pseudo] || 0) + p.score;
+                    perPlayerLegacy[norm] = (perPlayerLegacy[norm] || 0) + p.score;
                 }
             });
             return {
@@ -506,10 +533,11 @@
         var weekStarts = Object.keys(gloryByWeek).sort();
         var deltaByPseudo = {};
         members.forEach(function (pseudo) {
+            var norm = normalizePseudo(pseudo);
             var totalDelta = 0;
             for (var i = 1; i < weekStarts.length; i++) {
-                var curr = gloryByWeek[weekStarts[i]][pseudo] || 0;
-                var prev = gloryByWeek[weekStarts[i - 1]][pseudo] || 0;
+                var curr = gloryByWeek[weekStarts[i]][norm] || 0;
+                var prev = gloryByWeek[weekStarts[i - 1]][norm] || 0;
                 var d = curr - prev;
                 if (d > 0) totalDelta += d;
             }
@@ -519,6 +547,7 @@
 
         // 4. Score par joueur (avec décomposition pour transparence)
         var scores = members.map(function (pseudo) {
+            var normPseudo = normalizePseudo(pseudo);
             var eventsScore = 0;
             var eventsAttended = 0;
             var perEvent = {};
@@ -526,7 +555,7 @@
             Object.keys(ranEvents).forEach(function (name) {
                 var group = ranEvents[name];
                 var rows = participants.filter(function (p) {
-                    return p.pseudo === pseudo && group.dbNames.indexOf(p.event_name) !== -1;
+                    return normalizePseudo(p.pseudo) === normPseudo && group.dbNames.indexOf(p.event_name) !== -1;
                 });
                 var participated = rows.some(function (r) { return r.participated > 0; });
                 var totalScore = rows.reduce(function (s, r) { return s + (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0); }, 0);
@@ -536,7 +565,7 @@
                     base = W.participation * group.coeff;
                 } else if (name === 'Shadowfront' && shadowfrontSquads) {
                     var wasReserve = shadowfrontSquads.some(function (s) {
-                        return s.pseudo === pseudo && s.role === 'reserve';
+                        return normalizePseudo(s.pseudo) === normPseudo && s.role === 'reserve';
                     });
                     if (wasReserve) {
                         base = (config.reserve_credit_pct / 100) * W.participation * group.coeff;
@@ -860,7 +889,7 @@
             window.RAD.config.get('reserve_credit_pct')
         ]);
         var allMembers = (membersRes.data || []).map(function (m) { return m.pseudo; });
-        var allParts   = partsRes.data || [];
+        var allParts   = deduplicateParticipants(partsRes.data || []);
         var allGlory   = gloryRes.data || [];
         var allSquads  = squadsRes.data || [];
 
