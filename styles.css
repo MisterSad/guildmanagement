@@ -1141,6 +1141,104 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .squad-chip.squad1 { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
 .squad-chip.squad2 { background: rgba(139,92,246,0.15); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
 
+/* Hide the static Shadowfront banner as each squad will have its own dynamic banner */
+#event-shadowfront .gm-event-banner {
+    display: none;
+}
+
+/* ─── Shadowfront Main Tabs ─── */
+.sf-main-tabs {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: 0.4rem;
+}
+.sf-main-tab {
+    flex: 1;
+    padding: 0.65rem 1.2rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+.sf-main-tab:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.05);
+}
+.sf-main-tab.active {
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+.sf-main-tab.active.squad1 {
+    background: rgba(99, 102, 241, 0.16);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+.sf-main-tab.active.squad2 {
+    background: rgba(139, 92, 246, 0.16);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* ─── Shadowfront Participation Rate Badges ─── */
+.sf-rate-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    flex-shrink: 0;
+}
+.sf-rate-badge.excellent {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: var(--success);
+}
+.sf-rate-badge.good {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.35);
+    color: #60a5fa;
+}
+.sf-rate-badge.average {
+    background: rgba(249, 115, 22, 0.15);
+    border-color: rgba(249, 115, 22, 0.35);
+    color: #fb923c;
+}
+.sf-rate-badge.poor {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: var(--error);
+}
+.sf-rate-badge.none {
+    background: rgba(148, 163, 184, 0.08);
+    border-color: var(--card-border);
+    color: var(--text-muted);
+}
+.sf-filter-btn span {
+    margin-left: 0.25rem;
+    padding: 0.05rem 0.3rem;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    font-size: 0.68rem;
+}
+
 /* ─── Stats Controls ─────────────────────────────────────────────────────── */
 .stats-controls { margin-bottom: 1.5rem; }
 .stats-controls-inner { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }

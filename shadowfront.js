@@ -32,8 +32,9 @@
         uidMap:       {}
     };
 
-    var sfFilter    = 'all';      // 'all' | 'regular' | 'rotation'
-    var sfActiveTab = 'squads';   // 'squads' | 'tracking'
+    var sfFilter      = 'all';      // 'all' | 'excellent' | 'good' | 'average' | 'poor' | 'none'
+    var sfActiveTab   = 'squads';   // 'squads' | 'tracking'
+    var sfActiveSquad = 'squad1';   // 'squad1' | 'squad2'
 
     // ── Public API ─────────────────────────────────────────────────────────────
     window.RAD_SHADOWFRONT = { load: loadShadowfront };
@@ -105,7 +106,6 @@
                 sfState.participants = [];
             }
 
-            renderStatus();
             renderShadowfront();
         } catch (err) { console.error('loadShadowfront', err); }
     }
@@ -158,17 +158,20 @@
     // ── Catégorisation ─────────────────────────────────────────────────────────
     function categorise(pseudo) {
         var h = sfState.history[pseudo];
-        if (!h || h.assigned === 0) return 'rotation';
+        if (!h || h.assigned === 0) return 'none';
         var rate = h.participated / h.assigned;
-        if (h.assigned >= 2 && rate >= 0.6) return 'regular';
-        if (rate < 0.3)                     return 'rotation';
-        return 'occasional';
+        if (rate > 0.8) return 'excellent';
+        if (rate >= 0.5) return 'good';
+        if (rate >= 0.2) return 'average';
+        return 'poor';
     }
 
     function categoryMeta(cat) {
-        if (cat === 'regular')    return { label: t('sf_cat_regular'),    cls: 'cat-regular',    icon: '🟢' };
-        if (cat === 'rotation')   return { label: t('sf_cat_rotation'),   cls: 'cat-rotation',   icon: '🔵' };
-        return                           { label: t('sf_cat_occasional'), cls: 'cat-occasional', icon: '🟡' };
+        if (cat === 'excellent')  return { label: t('sf_filter_excellent'), cls: 'excellent', icon: '🟢' };
+        if (cat === 'good')       return { label: t('sf_filter_good'),      cls: 'good',      icon: '🔵' };
+        if (cat === 'average')    return { label: t('sf_filter_average'),   cls: 'average',   icon: '🟡' };
+        if (cat === 'poor')       return { label: t('sf_filter_poor'),      cls: 'poor',      icon: '🔴' };
+        return                    { label: t('sf_filter_none'),      cls: 'none',      icon: '⚫' };
     }
 
     // ── Assign / Unassign ──────────────────────────────────────────────────────
@@ -241,57 +244,72 @@
             .eq('event_name', EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
     }
 
-    // ── Render status badge + START/END buttons ────────────────────────────────
-    function renderStatus() {
-        var panel = document.getElementById('event-shadowfront');
-        if (!panel) return;
-        var badge    = panel.querySelector('.event-status-badge');
-        var startBtn = panel.querySelector('.event-start-btn');
-        var endBtn   = panel.querySelector('.event-end-btn');
-
-        if (badge) {
-            badge.className = 'event-status-badge gm-chip' + (anySquadActive() ? ' gm-chip-success active' : '');
-            badge.innerHTML = ['squad1', 'squad2'].map(function (k) {
-                var on = sfState.squads[k].active;
-                return '<span class="sf-status-seg" title="' + (on ? t('event_active') : t('event_inactive')) + '">' +
-                    '<span class="gm-dot" style="background:' + (on ? 'var(--success)' : 'var(--fg-dim)') + ';"></span> ' +
-                    esc(squadLabel(k)) + '</span>';
-            }).join(' &nbsp; ');
-        }
-        // Start tant qu'au moins un squad est inactif ; End tant qu'au moins un actif.
-        if (startBtn) startBtn.disabled = sfState.squads.squad1.active && sfState.squads.squad2.active;
-        if (endBtn)   endBtn.disabled   = !anySquadActive();
-    }
-
     // ── Main render ────────────────────────────────────────────────────────────
     function renderShadowfront() {
         var area = document.querySelector('#event-shadowfront .event-participants-area');
         if (!area) return;
 
-        if (!anySquadActive()) {
-            area.innerHTML =
-                '<div class="gm-empty">' +
+        var sq = sfState.squads[sfActiveSquad];
+        var sqLabel = squadLabel(sfActiveSquad);
+        var isActive = sq.active;
+        
+        var statusBadgeClass = isActive ? 'gm-chip-success active' : 'gm-chip-muted';
+        var statusText = isActive ? t('event_active') : t('event_inactive');
+        var dotColor = isActive ? 'var(--success)' : 'var(--fg-dim)';
+        var subText = sq.startAt 
+            ? window.RAD.formatDateTimeUTC(sq.startAt)
+            : (isActive ? t('event_active') : t('sf_squad_inactive_hint'));
+
+        // 1. Selector for Squad 1 / Squad 2 at the top
+        var html =
+            '<div class="sf-main-tabs">' +
+                '<button class="sf-main-tab squad1' + (sfActiveSquad === 'squad1' ? ' active' : '') + '" data-squad="squad1"><i class="ph ph-shield-star"></i> ' + t('sf_squad1') + '</button>' +
+                '<button class="sf-main-tab squad2' + (sfActiveSquad === 'squad2' ? ' active' : '') + '" data-squad="squad2"><i class="ph ph-shield-star"></i> ' + t('sf_squad2') + '</button>' +
+            '</div>';
+
+        // 2. Dynamic Banner for currently selected squad
+        html +=
+            '<div class="gm-event-banner" style="display: flex; margin-bottom: 1.5rem; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); padding: 1rem 1.5rem; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">' +
+                '<div class="gm-event-meta" style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 250px;">' +
+                    '<div class="gm-event-icon" style="width: 48px; height: 48px; border-radius: 50%; background: ' + (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') + '; color: ' + (isActive ? 'var(--primary)' : 'var(--text-muted)') + '; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;"><i class="ph ph-ghost"></i></div>' +
+                    '<div class="gm-grow" style="display: flex; flex-direction: column; gap: 0.25rem;">' +
+                        '<div class="gm-event-name" style="font-size: 1.2rem; font-weight: 700; font-family: var(--font-family-title);">' + esc(sqLabel) + '</div>' +
+                        '<div class="gm-event-status-line" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">' +
+                            '<span class="event-status-badge gm-chip ' + statusBadgeClass + '" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem;"><span class="gm-dot" style="background: ' + dotColor + '; width: 8px; height: 8px; border-radius: 50%;"></span> ' + statusText + '</span>' +
+                            '<span class="gm-dim" style="font-size: 0.8rem; color: var(--text-muted);">' + esc(subText) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="gm-event-actions" style="display: flex; gap: 0.5rem;">' +
+                    '<button class="gm-btn gm-btn-success event-start-btn sf-squad-start-btn" data-squad="' + sfActiveSquad + '"' + (isActive ? ' disabled' : '') + '><i class="ph ph-play"></i> <span>' + t('event_start') + '</span></button>' +
+                    '<button class="gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' + sfActiveSquad + '"' + (!isActive ? ' disabled' : '') + '><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>' +
+                '</div>' +
+            '</div>';
+
+        if (!isActive) {
+            html +=
+                '<div class="gm-empty" style="margin-top: 2rem;">' +
                     '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
                     '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
-                    '<div class="gm-empty-hint">' + t('event_not_active_hint') + '</div>' +
+                    '<div class="gm-empty-hint">' + t('sf_squad_inactive_hint') + '</div>' +
                 '</div>';
+            area.innerHTML = html;
+            attachSFListeners(area);
             return;
         }
 
         var assignedPseudos = sfState.assignments.map(function (a) { return a.pseudo; });
         var unassigned = sfState.allMembers.filter(function (p) { return assignedPseudos.indexOf(p) === -1; });
 
-        var s1p = sfState.assignments.filter(function (a) { return a.squad === 'squad1' && a.role === 'participant'; });
-        var s1r = sfState.assignments.filter(function (a) { return a.squad === 'squad1' && a.role === 'reserve'; });
-        var s2p = sfState.assignments.filter(function (a) { return a.squad === 'squad2' && a.role === 'participant'; });
-        var s2r = sfState.assignments.filter(function (a) { return a.squad === 'squad2' && a.role === 'reserve'; });
+        var squadParticipants = sfState.assignments.filter(function (a) { return a.squad === sfActiveSquad && a.role === 'participant'; });
+        var squadReserves = sfState.assignments.filter(function (a) { return a.squad === sfActiveSquad && a.role === 'reserve'; });
 
-        var counts = { regular: 0, rotation: 0, occasional: 0 };
+        var counts = { excellent: 0, good: 0, average: 0, poor: 0, none: 0 };
         unassigned.forEach(function (p) { counts[categorise(p)]++; });
 
-        var html =
+        html +=
             '<div class="sf-sub-tabs">' +
-                '<button class="sf-sub-tab' + (sfActiveTab === 'squads' ? ' active' : '') + '" data-tab="squads"><i class="ph ph-users"></i> ' + t('sf_tab_squads') + '</button>' +
+                '<button class="sf-sub-tab' + (sfActiveTab === 'squads' ? ' active' : '') + '" data-tab="squads"><i class="ph ph-users"></i> ' + t('sf_tab_composition') + '</button>' +
                 '<button class="sf-sub-tab' + (sfActiveTab === 'tracking' ? ' active' : '') + '" data-tab="tracking"><i class="ph ph-chart-bar"></i> ' + t('sf_tab_tracking') + '</button>' +
             '</div>' +
             '<div class="input-wrapper" style="margin-bottom: 1.5rem;">' +
@@ -303,23 +321,29 @@
         html += '<div class="sf-sub-panel' + (sfActiveTab === 'squads' ? ' active' : '') + '">';
         html += '<div class="sf-layout">';
 
+        // Column 1: Unassigned
         html +=
             '<div class="sf-column sf-unassigned">' +
             '<div class="sf-col-header"><i class="ph-fill ph-users-three"></i> ' + t('sf_unassigned') +
                 ' <span class="count-badge">' + unassigned.length + '</span></div>';
 
         html +=
-            '<div class="sf-history-summary">' +
-                '<span class="sf-cat-badge cat-regular">🟢 ' + counts.regular + ' ' + t('sf_cat_regular') + '</span>' +
-                '<span class="sf-cat-badge cat-rotation">🔵 ' + counts.rotation + ' ' + t('sf_cat_rotation') + '</span>' +
-                '<span class="sf-cat-badge cat-occasional">🟡 ' + counts.occasional + ' ' + t('sf_cat_occasional') + '</span>' +
+            '<div class="sf-history-summary" style="display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; padding: 0.5rem 0.25rem;">' +
+                '<span class="sf-cat-badge sf-rate-badge excellent">🟢 ' + counts.excellent + '</span>' +
+                '<span class="sf-cat-badge sf-rate-badge good">🔵 ' + counts.good + '</span>' +
+                '<span class="sf-cat-badge sf-rate-badge average">🟡 ' + counts.average + '</span>' +
+                '<span class="sf-cat-badge sf-rate-badge poor">🔴 ' + counts.poor + '</span>' +
+                '<span class="sf-cat-badge sf-rate-badge none">⚫ ' + counts.none + '</span>' +
             '</div>';
 
         html +=
-            '<div class="sf-filter-tabs">' +
+            '<div class="sf-filter-tabs" style="padding: 0.5rem; justify-content: center; gap: 0.2rem;">' +
                 '<button class="sf-filter-btn' + (sfFilter === 'all'      ? ' active' : '') + '" data-filter="all">' + t('sf_filter_all') + '</button>' +
-                '<button class="sf-filter-btn' + (sfFilter === 'regular'  ? ' active' : '') + '" data-filter="regular">🟢 ' + t('sf_filter_regular') + '</button>' +
-                '<button class="sf-filter-btn' + (sfFilter === 'rotation' ? ' active' : '') + '" data-filter="rotation">🔵 ' + t('sf_filter_rotation') + '</button>' +
+                '<button class="sf-filter-btn' + (sfFilter === 'excellent'? ' active' : '') + '" data-filter="excellent">🟢 ' + t('sf_filter_excellent').split(' (')[0] + ' <span>' + counts.excellent + '</span></button>' +
+                '<button class="sf-filter-btn' + (sfFilter === 'good'     ? ' active' : '') + '" data-filter="good">🔵 ' + t('sf_filter_good').split(' (')[0] + ' <span>' + counts.good + '</span></button>' +
+                '<button class="sf-filter-btn' + (sfFilter === 'average'  ? ' active' : '') + '" data-filter="average">🟡 ' + t('sf_filter_average').split(' (')[0] + ' <span>' + counts.average + '</span></button>' +
+                '<button class="sf-filter-btn' + (sfFilter === 'poor'     ? ' active' : '') + '" data-filter="poor">🔴 ' + t('sf_filter_poor').split(' (')[0] + ' <span>' + counts.poor + '</span></button>' +
+                '<button class="sf-filter-btn' + (sfFilter === 'none'     ? ' active' : '') + '" data-filter="none">⚫ ' + t('sf_filter_none').split(' /')[0] + ' <span>' + counts.none + '</span></button>' +
             '</div>';
 
         var sortedUnassigned = unassigned.slice().sort(function (a, b) { return a.localeCompare(b); });
@@ -327,7 +351,7 @@
             return sfFilter === 'all' ? true : categorise(p) === sfFilter;
         });
 
-        html += '<div class="sf-col-body">';
+        html += '<div class="sf-col-body" style="max-height: 480px; overflow-y: auto;">';
         if (filtered.length === 0) {
             html += '<div class="sf-empty">' + (unassigned.length === 0 ? t('sf_all_assigned') : t('sf_no_match_filter')) + '</div>';
         } else {
@@ -335,50 +359,44 @@
                 var cat   = categorise(pseudo);
                 var meta  = categoryMeta(cat);
                 var h     = sfState.history[pseudo] || { assigned: 0, participated: 0 };
+                var rateText = h.assigned > 0
+                    ? Math.round((h.participated / h.assigned) * 100) + '%'
+                    : 'N/A';
                 var stats = h.assigned > 0
-                    ? '<span class="sf-hist-stat">' + h.participated + '/' + h.assigned + ' ' + t('sf_hist_attended') + '</span>'
-                    : '';
+                    ? '<span class="sf-hist-stat">' + h.participated + '/' + h.assigned + '</span>'
+                    : '<span class="sf-hist-stat">—</span>';
 
-                var btns = '';
-                if (sfState.squads.squad1.active) {
-                    btns +=
-                        '<div class="sf-squad-btns">' +
-                            '<span class="sf-squad-label">S1</span>' +
-                            '<button class="sf-btn sf-btn-p" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
-                            '<button class="sf-btn sf-btn-r" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
-                        '</div>';
-                }
-                if (sfState.squads.squad2.active) {
-                    btns +=
-                        '<div class="sf-squad-btns">' +
-                            '<span class="sf-squad-label">S2</span>' +
-                            '<button class="sf-btn sf-btn-p" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
-                            '<button class="sf-btn sf-btn-r" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
-                        '</div>';
-                }
+                var btns =
+                    '<div class="sf-squad-btns">' +
+                        '<button class="sf-btn sf-btn-p" data-pseudo="' + esc(pseudo) + '" data-squad="' + sfActiveSquad + '" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
+                        '<button class="sf-btn sf-btn-r" data-pseudo="' + esc(pseudo) + '" data-squad="' + sfActiveSquad + '" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
+                    '</div>';
 
                 html +=
-                    '<div class="sf-member-row sf-member-' + cat + '">' +
-                        '<div class="sf-member-info">' +
-                            '<span class="sf-cat-dot ' + meta.cls + '" title="' + meta.label + '">' + meta.icon + '</span>' +
-                            '<span class="sf-pseudo">' + esc(pseudo) + '</span>' +
+                    '<div class="sf-member-row sf-member-' + cat + '" style="border-left: 3px solid ' + (cat === 'excellent' ? 'var(--success)' : cat === 'good' ? '#60a5fa' : cat === 'average' ? '#fb923c' : cat === 'poor' ? 'var(--error)' : 'var(--text-muted)') + ';">' +
+                        '<div class="sf-member-info" style="display: flex; align-items: center; gap: 0.4rem; min-width: 0; overflow: hidden; flex: 1;">' +
+                            '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">' + rateText + '</span>' +
+                            '<span class="sf-pseudo" style="margin-left: 0.2rem; font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="' + esc(pseudo) + '">' + esc(pseudo) + '</span>' +
                             stats +
                         '</div>' +
                         '<div class="sf-actions">' + btns + '</div>' +
                     '</div>';
             });
         }
-        html += '</div></div>';
+        html += '</div></div>'; // Column 1: Unassigned
 
-        html += renderSquadColumn('squad1', s1p, s1r);
-        html += renderSquadColumn('squad2', s2p, s2r);
+        // Columns 2 & 3: Participants & Reserves
+        html += renderSquadColumn(sfActiveSquad, squadParticipants, squadReserves);
         html += '</div>'; // sf-layout
         html += '</div>'; // sf-sub-panel (squads)
 
         // ── Panel: Tracking ────────────────────────────────────────────────
         html += '<div class="sf-sub-panel' + (sfActiveTab === 'tracking' ? ' active' : '') + '">';
-        if (sfState.participants.length > 0) {
-            html += renderTrackingTable();
+        var activeSessionId = sq.sessionId;
+        var squadTrackingParticipants = sfState.participants.filter(function (p) { return p.session_id === activeSessionId; });
+
+        if (squadTrackingParticipants.length > 0) {
+            html += renderTrackingTable(squadTrackingParticipants);
         } else {
             html += '<div class="empty-state">' + t('sf_no_one') + '</div>';
         }
@@ -390,33 +408,33 @@
 
     function renderSquadColumn(squad, participants, reserves) {
         var sq = sfState.squads[squad];
-        var label = squadLabel(squad);
         var pFull = participants.length >= PARTICIPANTS_MAX;
         var rFull = reserves.length >= RESERVES_MAX;
 
-        var sub = sq.active
-            ? (sq.startAt
-                ? '<span class="sf-squad-time">' + esc(window.RAD.formatDateTimeUTC(sq.startAt)) + '</span>'
-                : '<span class="sf-squad-time">' + t('event_active') + '</span>')
-            : '<span class="sf-squad-time gm-dim">' + t('sf_squad_inactive_hint') + '</span>';
+        var html = '';
 
-        var html = '<div class="sf-column sf-squad-col' + (sq.active ? '' : ' sf-squad-off') + '">' +
+        // Column 2: Participants
+        html += '<div class="sf-column sf-squad-col' + (sq.active ? '' : ' sf-squad-off') + '">' +
             '<div class="sf-col-header squad-header ' + squad + '">' +
-                '<i class="ph-fill ph-shield-star"></i> ' + label +
+                '<i class="ph-fill ph-shield-check"></i> ' + t('sf_participants') +
+                ' <span class="sf-cap ' + (pFull ? 'full' : '') + '" style="margin-left: auto;">' + participants.length + '/' + PARTICIPANTS_MAX + '</span>' +
             '</div>' +
-            '<div class="sf-squad-subhead">' + sub + '</div>' +
-            '<div class="sf-section-title">' + t('sf_participants') + ' <span class="sf-cap ' + (pFull ? 'full' : '') + '">' + participants.length + '/' + PARTICIPANTS_MAX + '</span></div>' +
-            '<div class="sf-col-body">';
+            '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
 
         if (participants.length === 0) {
             html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
         } else {
             participants.forEach(function (a) { html += renderAssignedRow(a.pseudo); });
         }
-        html += '</div>';
+        html += '</div></div>';
 
-        html += '<div class="sf-section-title">' + t('sf_reserves') + ' <span class="sf-cap ' + (rFull ? 'full' : '') + '">' + reserves.length + '/' + RESERVES_MAX + '</span></div>' +
-            '<div class="sf-col-body">';
+        // Column 3: Reserves
+        html += '<div class="sf-column sf-squad-col' + (sq.active ? '' : ' sf-squad-off') + '">' +
+            '<div class="sf-col-header squad-header ' + squad + '" style="filter: brightness(0.95);">' +
+                '<i class="ph-fill ph-clock-countdown"></i> ' + t('sf_reserves') +
+                ' <span class="sf-cap ' + (rFull ? 'full' : '') + '" style="margin-left: auto;">' + reserves.length + '/' + RESERVES_MAX + '</span>' +
+            '</div>' +
+            '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
 
         if (reserves.length === 0) {
             html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
@@ -424,27 +442,31 @@
             reserves.forEach(function (a) { html += renderAssignedRow(a.pseudo); });
         }
         html += '</div></div>';
+
         return html;
     }
 
     function renderAssignedRow(pseudo) {
         var cat  = categorise(pseudo);
         var meta = categoryMeta(cat);
-        return '<div class="sf-assigned-row">' +
-            '<span class="sf-cat-dot ' + meta.cls + '" title="' + meta.label + '">' + meta.icon + '</span>' +
-            '<span class="sf-pseudo">' + esc(pseudo) + '</span>' +
+        var h     = sfState.history[pseudo] || { assigned: 0, participated: 0 };
+        var rateText = h.assigned > 0
+            ? Math.round((h.participated / h.assigned) * 100) + '%'
+            : 'N/A';
+        return '<div class="sf-assigned-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem;">' +
+            '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; margin-right: 0.25rem;">' + rateText + '</span>' +
+            '<span class="sf-pseudo" style="font-weight: 500; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(pseudo) + '</span>' +
             '<button class="sf-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove') + '"><i class="ph ph-x"></i></button>' +
         '</div>';
     }
 
-    function renderTrackingTable() {
-        var participants = sfState.participants;
+    function renderTrackingTable(participants) {
         var done = participants.reduce(function (s, p) { return s + (p.participated || 0); }, 0);
 
         var html =
             '<div class="sf-tracking">' +
                 '<div class="sf-tracking-header"><i class="ph-fill ph-chart-bar"></i> ' + t('sf_tracking_title') + '</div>' +
-                '<div class="event-stats">' +
+                '<div class="event-stats" style="margin-bottom: 1rem;">' +
                     '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
                     '<span class="stat-chip success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
                 '</div>' +
@@ -461,9 +483,20 @@
                 ? squadLabel(assignment.squad) + ' — ' + (assignment.role === 'participant' ? t('sf_participant') : t('sf_reserve'))
                 : '—';
             var isChecked = p.participated > 0;
+            
+            var cat = categorise(p.pseudo);
+            var meta = categoryMeta(cat);
+            var h = sfState.history[p.pseudo] || { assigned: 0, participated: 0 };
+            var rateText = h.assigned > 0
+                ? Math.round((h.participated / h.assigned) * 100) + '%'
+                : 'N/A';
+
             html +=
                 '<tr class="participant-row' + (isChecked ? ' participated' : '') + '">' +
-                    '<td class="pseudo-cell"><i class="ph-fill ph-game-controller text-accent"></i> ' + esc(p.pseudo) + '</td>' +
+                    '<td class="pseudo-cell" style="display: flex; align-items: center; gap: 0.5rem;">' +
+                        '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem;">' + rateText + '</span>' +
+                        '<strong style="font-size: 0.88rem;">' + esc(p.pseudo) + '</strong>' +
+                    '</td>' +
                     '<td><span class="squad-chip ' + (assignment ? assignment.squad : '') + '">' + squadLbl + '</span></td>' +
                     '<td class="check-cell">' +
                         '<label class="participation-check">' +
@@ -481,6 +514,38 @@
 
     // ── Event listeners ────────────────────────────────────────────────────────
     function attachSFListeners(area) {
+        area.querySelectorAll('.sf-main-tab').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                sfActiveSquad = btn.getAttribute('data-squad');
+                renderShadowfront();
+            });
+        });
+
+        var startBtn = area.querySelector('.sf-squad-start-btn');
+        if (startBtn) {
+            startBtn.addEventListener('click', function () {
+                var squad = startBtn.getAttribute('data-squad');
+                window.RAD.pickEventStart({ eventLabel: 'Shadowfront — ' + squadLabel(squad) }, function (startAt) {
+                    if (!startAt) return; // annulé
+                    startSquad(squad, startAt);
+                });
+            });
+        }
+
+        var endBtn = area.querySelector('.sf-squad-end-btn');
+        if (endBtn) {
+            endBtn.addEventListener('click', function () {
+                var squad = endBtn.getAttribute('data-squad');
+                window.showConfirm(
+                    t('event_end'),
+                    '<strong>' + squadLabel(squad) + '</strong><br>' + t('sf_squad_ended'),
+                    function () {
+                        endSquads([squad]);
+                    }
+                );
+            });
+        }
+
         area.querySelectorAll('.sf-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 assign(btn.getAttribute('data-pseudo'), btn.getAttribute('data-squad'), btn.getAttribute('data-role'));
@@ -558,98 +623,6 @@
         }
     }
 
-    // ── Squad picker modal (comme le choix de stage Arms Race) ──────────────────
-    function pickSquad(callback) {
-        var existing = document.getElementById('sf-squad-overlay');
-        if (existing) existing.remove();
 
-        var overlay = document.createElement('div');
-        overlay.id = 'sf-squad-overlay';
-        overlay.className = 'confirm-overlay';
-        overlay.innerHTML =
-            '<div class="confirm-card glass-card">' +
-                '<div class="confirm-icon"><i class="ph-fill ph-shield-star text-accent"></i></div>' +
-                '<h3>' + t('sf_pick_squad_title') + '</h3>' +
-                '<p>' + t('sf_pick_squad_body') + '</p>' +
-                '<div class="confirm-actions" style="gap: 1rem; flex-wrap: wrap;">' +
-                    '<button id="sf-squad-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
-                    '<button id="sf-squad-1" class="primary-btn"' + (sfState.squads.squad1.active ? ' disabled' : '') + '>' + t('sf_squad1') + '</button>' +
-                    '<button id="sf-squad-2" class="primary-btn"' + (sfState.squads.squad2.active ? ' disabled' : '') + '>' + t('sf_squad2') + '</button>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(overlay);
-        requestAnimationFrame(function () { overlay.classList.add('visible'); });
-
-        function close(result) {
-            overlay.classList.remove('visible');
-            setTimeout(function () { overlay.remove(); }, 300);
-            callback(result);
-        }
-        document.getElementById('sf-squad-cancel').addEventListener('click', function () { close(null); });
-        document.getElementById('sf-squad-1').addEventListener('click', function () { if (!sfState.squads.squad1.active) close('squad1'); });
-        document.getElementById('sf-squad-2').addEventListener('click', function () { if (!sfState.squads.squad2.active) close('squad2'); });
-        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(null); });
-    }
-
-    // ── End picker (1 actif ⇒ direct ; 2 actifs ⇒ choix) ────────────────────────
-    function pickEnd(callback) {
-        var keys = activeSquadKeys();
-        if (keys.length === 0) { callback(null); return; }
-        if (keys.length === 1) { callback([keys[0]]); return; }
-
-        var existing = document.getElementById('sf-end-overlay');
-        if (existing) existing.remove();
-
-        var overlay = document.createElement('div');
-        overlay.id = 'sf-end-overlay';
-        overlay.className = 'confirm-overlay';
-        overlay.innerHTML =
-            '<div class="confirm-card glass-card">' +
-                '<div class="confirm-icon"><i class="ph-fill ph-stop-circle text-accent"></i></div>' +
-                '<h3>' + t('sf_end_title') + '</h3>' +
-                '<div class="confirm-actions" style="gap: 1rem; flex-wrap: wrap;">' +
-                    '<button id="sf-end-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
-                    '<button id="sf-end-1" class="primary-btn">' + t('sf_squad1') + '</button>' +
-                    '<button id="sf-end-2" class="primary-btn">' + t('sf_squad2') + '</button>' +
-                    '<button id="sf-end-both" class="primary-btn">' + t('sf_end_both') + '</button>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(overlay);
-        requestAnimationFrame(function () { overlay.classList.add('visible'); });
-
-        function close(result) {
-            overlay.classList.remove('visible');
-            setTimeout(function () { overlay.remove(); }, 300);
-            callback(result);
-        }
-        document.getElementById('sf-end-cancel').addEventListener('click', function () { close(null); });
-        document.getElementById('sf-end-1').addEventListener('click', function () { close(['squad1']); });
-        document.getElementById('sf-end-2').addEventListener('click', function () { close(['squad2']); });
-        document.getElementById('sf-end-both').addEventListener('click', function () { close(['squad1', 'squad2']); });
-        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(null); });
-    }
-
-    // ── Wire START / END buttons ───────────────────────────────────────────────
-    var sfStartBtn = document.querySelector('.event-start-btn[data-event="Shadowfront"]');
-    if (sfStartBtn) sfStartBtn.addEventListener('click', function () {
-        pickSquad(function (squad) {
-            if (!squad) return;
-            if (sfState.squads[squad].active) {
-                window.RAD.showToast(t('sf_squad_active_already'), 'error');
-                return;
-            }
-            window.RAD.pickEventStart({ eventLabel: 'Shadowfront — ' + squadLabel(squad) }, function (startAt) {
-                if (!startAt) return; // annulé ⇒ on ne démarre pas
-                startSquad(squad, startAt);
-            });
-        });
-    });
-    var sfEndBtn = document.querySelector('.event-end-btn[data-event="Shadowfront"]');
-    if (sfEndBtn) sfEndBtn.addEventListener('click', function () {
-        pickEnd(function (squads) {
-            if (!squads || !squads.length) return;
-            endSquads(squads);
-        });
-    });
 
 })();
