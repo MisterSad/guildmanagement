@@ -242,10 +242,8 @@
 
     function computeParticipation(members, participants) {
         var eventToGroup = {};
-        Object.keys(EVENT_GROUPS).forEach(function (groupName) {
-            EVENT_GROUPS[groupName].dbNames.forEach(function (dbName) {
-                eventToGroup[dbName] = groupName;
-            });
+        Object.keys(EVENT_GROUPS).forEach(function (g) {
+            EVENT_GROUPS[g].dbNames.forEach(function (n) { eventToGroup[n.toLowerCase()] = g; });
         });
 
         var byEvent = {};
@@ -268,7 +266,8 @@
         // Group rows by opportunity (session_id + groupName)
         var oppMap = {};
         participants.forEach(function (p) {
-            var group = eventToGroup[p.event_name];
+            var evName = (p.event_name || '').trim().toLowerCase();
+            var group = eventToGroup[evName];
             if (!group) return;
             var oppKey = p.session_id || p.week_start;
             var key = oppKey + '|' + group;
@@ -526,7 +525,10 @@
             var opps = [];
             Object.keys(dynamicEventGroups).forEach(function (name) {
                 var group = dynamicEventGroups[name];
-                var gRows = weekParts.filter(function (p) { return group.dbNames.indexOf(p.event_name) !== -1; });
+                var gRows = weekParts.filter(function (p) { 
+                    var evName = (p.event_name || '').trim().toLowerCase();
+                    return group.dbNames.some(function(n) { return n.toLowerCase() === evName; });
+                });
                 if (gRows.length === 0) return;
 
                 var sessMap = {};
