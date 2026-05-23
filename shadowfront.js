@@ -155,6 +155,83 @@
         await loadShadowfront();
     }
 
+    async function editSquadSchedule(squad) {
+        if (!db) return;
+        var sq = sfState.squads[squad];
+        if (!sq || !sq.active || !sq.sessionId) return;
+
+        try {
+            var res = await db.from('event_status').select('start_at')
+                .eq('event_name', SQUAD_EVENT[squad]).single();
+            if (res.error) throw res.error;
+
+            var currentStartAt = res.data ? res.data.start_at : null;
+
+            window.RAD.pickEventStart({
+                eventLabel: squadLabel(squad) + ' — ' + t('edit_title'),
+                defaultVal: currentStartAt
+            }, async function (startAt) {
+                if (!startAt) return;
+
+                try {
+                    var updateRes = await db.from('event_status').update({
+                        start_at: startAt,
+                        updated_at: new Date().toISOString()
+                    }).eq('event_name', SQUAD_EVENT[squad]);
+                    if (updateRes.error) throw updateRes.error;
+
+                    window.RAD.showToast(t('toast_member_updated'), 'success');
+                    await loadShadowfront();
+                } catch (err) {
+                    console.error('editSquadSchedule update', err);
+                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                }
+            });
+        } catch (err) {
+            console.error('editSquadSchedule fetch', err);
+            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        }
+    }
+
+    function deleteSquadSession(squad) {
+        if (!db) return;
+        var sq = sfState.squads[squad];
+        if (!sq || !sq.sessionId) return;
+
+        window.showConfirm(
+            t('confirm_delete_session_title'),
+            '<strong>' + esc(squadLabel(squad)) + '</strong><br>' + t('confirm_delete_session_body'),
+            async function () {
+                try {
+                    // 1. Delete matching participants in event_participants
+                    var delPartRes = await db.from('event_participants')
+                        .delete()
+                        .eq('event_name', EVENT_NAME)
+                        .eq('session_id', sq.sessionId);
+                    if (delPartRes.error) throw delPartRes.error;
+
+                    // 2. Delete matching assignments in shadowfront_squads
+                    var delSquadsRes = await db.from('shadowfront_squads')
+                        .delete()
+                        .eq('session_id', sq.sessionId);
+                    if (delSquadsRes.error) throw delSquadsRes.error;
+
+                    // 3. Delete from event_status
+                    var delStatusRes = await db.from('event_status')
+                        .delete()
+                        .eq('event_name', SQUAD_EVENT[squad]);
+                    if (delStatusRes.error) throw delStatusRes.error;
+
+                    window.RAD.showToast(t('toast_account_deleted'), 'success');
+                    await loadShadowfront();
+                } catch (err) {
+                    console.error('deleteSquadSession', err);
+                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                }
+            }
+        );
+    }
+
     // ── Catégorisation ─────────────────────────────────────────────────────────
     function categorise(pseudo) {
         var h = sfState.history[pseudo];
@@ -281,8 +358,14 @@
                     '</div>' +
                 '</div>' +
                 '<div class="gm-event-actions" style="display: flex; gap: 0.5rem;">' +
-                    '<button class="gm-btn gm-btn-success event-start-btn sf-squad-start-btn" data-squad="' + sfActiveSquad + '"' + (isActive ? ' disabled' : '') + '><i class="ph ph-play"></i> <span>' + t('event_start') + '</span></button>' +
-                    '<button class="gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' + sfActiveSquad + '"' + (!isActive ? ' disabled' : '') + '><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>' +
+                    (isActive ? 
+                        '<button class="gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' + sfActiveSquad + '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>' +
+                        '<button class="gm-btn sf-squad-edit-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-squad="' + sfActiveSquad + '" title="' + t('edit_title') + '"><i class="ph ph-calendar"></i> <span>' + t('edit_title') + '</span></button>' +
+                        '<button class="gm-btn sf-squad-delete-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-squad="' + sfActiveSquad + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>'
+                    :
+                        '<button class="gm-btn gm-btn-success event-start-btn sf-squad-start-btn" data-squad="' + sfActiveSquad + '"><i class="ph ph-play"></i> <span>' + t('event_start') + '</span></button>' +
+                        '<button class="gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' + sfActiveSquad + '" disabled><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>'
+                    ) +
                 '</div>' +
             '</div>';
 
@@ -543,6 +626,22 @@
                         endSquads([squad]);
                     }
                 );
+            });
+        }
+
+        var editBtn = area.querySelector('.sf-squad-edit-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', function () {
+                var squad = editBtn.getAttribute('data-squad');
+                editSquadSchedule(squad);
+            });
+        }
+
+        var deleteBtn = area.querySelector('.sf-squad-delete-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function () {
+                var squad = deleteBtn.getAttribute('data-squad');
+                deleteSquadSession(squad);
             });
         }
 

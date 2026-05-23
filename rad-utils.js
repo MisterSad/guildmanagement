@@ -248,7 +248,8 @@
         var existing = document.getElementById('evt-start-overlay');
         if (existing) existing.remove();
 
-        var now = new Date();
+        var now = (opts && opts.defaultVal) ? new Date(opts.defaultVal) : new Date();
+        if (isNaN(now.getTime())) now = new Date();
         var defDate = now.getUTCFullYear() + '-' + pad2(now.getUTCMonth() + 1) + '-' + pad2(now.getUTCDate());
         var defTime = pad2(now.getUTCHours()) + ':' + pad2(now.getUTCMinutes());
 

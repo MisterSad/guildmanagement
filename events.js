@@ -281,13 +281,90 @@
         return p ? p.querySelector('.event-participants-area') : null;
     }
 
+    // Ces événements demandent un jour + heure de début (UTC) au lancement
+    var SCHEDULED_TABS = ['Defend Trade Route', 'ARMS RACE'];
+
+    async function editEventSchedule(tabKey) {
+        if (!db) return;
+        var s = state[tabKey];
+        if (!s.activeEventName || !s.sessionId) return;
+        
+        try {
+            var res = await db.from('event_status').select('start_at')
+                .eq('event_name', s.activeEventName).single();
+            if (res.error) throw res.error;
+            
+            var currentStartAt = res.data ? res.data.start_at : null;
+            
+            window.RAD.pickEventStart({ 
+                eventLabel: s.activeEventName + ' — ' + t('edit_title'), 
+                defaultVal: currentStartAt 
+            }, async function (startAt) {
+                if (!startAt) return;
+                
+                try {
+                    var updateRes = await db.from('event_status').update({
+                        start_at: startAt,
+                        updated_at: new Date().toISOString()
+                    }).eq('event_name', s.activeEventName);
+                    if (updateRes.error) throw updateRes.error;
+                    
+                    window.RAD.showToast(t('toast_member_updated'), 'success');
+                    await loadEvent(tabKey);
+                } catch (err) {
+                    console.error('editEventSchedule update', err);
+                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                }
+            });
+        } catch (err) {
+            console.error('editEventSchedule fetch', err);
+            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        }
+    }
+
+    function deleteEventSession(tabKey) {
+        if (!db) return;
+        var s = state[tabKey];
+        if (!s.activeEventName || !s.sessionId) return;
+        
+        window.showConfirm(
+            t('confirm_delete_session_title'),
+            '<strong>' + esc(s.activeEventName) + '</strong><br>' + t('confirm_delete_session_body'),
+            async function () {
+                try {
+                    var delPartRes = await db.from('event_participants')
+                        .delete()
+                        .eq('event_name', s.activeEventName)
+                        .eq('session_id', s.sessionId);
+                    if (delPartRes.error) throw delPartRes.error;
+                    
+                    var delStatusRes = await db.from('event_status')
+                        .delete()
+                        .eq('event_name', s.activeEventName);
+                    if (delStatusRes.error) throw delStatusRes.error;
+                    
+                    window.RAD.showToast(t('toast_account_deleted'), 'success');
+                    
+                    s.activeEventName = null;
+                    s.sessionId       = null;
+                    s.stage           = null;
+                    s.isActive        = false;
+                    renderStatus(tabKey);
+                    renderInactive(tabKey);
+                } catch (err) {
+                    console.error('deleteEventSession', err);
+                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                }
+            }
+        );
+    }
+
     function renderStatus(tabKey) {
         var panel = getPanel(tabKey);
         if (!panel) return;
         var s = state[tabKey];
         var badge    = panel.querySelector('.event-status-badge');
-        var startBtn = panel.querySelector('.event-start-btn');
-        var endBtn   = panel.querySelector('.event-end-btn');
+        var actionsDiv = panel.querySelector('.gm-event-actions');
         var stageBadge = panel.querySelector('.arms-stage-badge');
 
         if (badge) {
@@ -295,8 +372,52 @@
             badge.innerHTML = '<span class="gm-dot"></span> ' +
                 (s.isActive ? t('event_active') : t('event_inactive'));
         }
-        if (startBtn) startBtn.disabled = s.isActive;
-        if (endBtn)   endBtn.disabled   = !s.isActive;
+
+        if (actionsDiv) {
+            if (s.isActive) {
+                var eventNameAttr = tabKey;
+                actionsDiv.innerHTML = 
+                    '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' + esc(eventNameAttr) + '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>' +
+                    '<button class="gm-btn event-edit-sched-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-event="' + esc(eventNameAttr) + '" title="' + t('edit_title') + '"><i class="ph ph-calendar"></i> <span>' + t('edit_title') + '</span></button>' +
+                    '<button class="gm-btn event-delete-session-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-event="' + esc(eventNameAttr) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>';
+                
+                var endBtnDyn = actionsDiv.querySelector('.event-end-btn');
+                if (endBtnDyn) endBtnDyn.addEventListener('click', function () { endEvent(tabKey); });
+                
+                var editBtnDyn = actionsDiv.querySelector('.event-edit-sched-btn');
+                if (editBtnDyn) editBtnDyn.addEventListener('click', function () { editEventSchedule(tabKey); });
+                
+                var deleteBtnDyn = actionsDiv.querySelector('.event-delete-session-btn');
+                if (deleteBtnDyn) deleteBtnDyn.addEventListener('click', function () { deleteEventSession(tabKey); });
+            } else {
+                var eventNameAttr = tabKey;
+                actionsDiv.innerHTML = 
+                    '<button class="gm-btn gm-btn-success event-start-btn" data-event="' + esc(eventNameAttr) + '" style="margin-right: 0.25rem;"><i class="ph ph-play"></i> <span>' + t('event_start') + '</span></button>' +
+                    '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' + esc(eventNameAttr) + '" disabled><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>';
+                
+                var startBtnDyn = actionsDiv.querySelector('.event-start-btn');
+                if (startBtnDyn) {
+                    startBtnDyn.addEventListener('click', function () {
+                        if (tabKey === 'ARMS RACE') {
+                            pickArmsRaceStage(function (stage) {
+                                var dbEventName = stage === 'A' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
+                                window.RAD.pickEventStart({ eventLabel: 'Arms Race Stage ' + stage }, function (startAt) {
+                                    if (!startAt) return;
+                                    startEvent('ARMS RACE', dbEventName, stage, startAt);
+                                });
+                            });
+                        } else if (SCHEDULED_TABS.indexOf(tabKey) !== -1) {
+                            window.RAD.pickEventStart({ eventLabel: tabKey }, function (startAt) {
+                                if (!startAt) return;
+                                startEvent(tabKey, tabKey, null, startAt);
+                            });
+                        } else {
+                            startEvent(tabKey, tabKey, null);
+                        }
+                    });
+                }
+            }
+        }
 
         if (stageBadge) {
             if (tabKey === 'ARMS RACE' && s.isActive && s.stage) {

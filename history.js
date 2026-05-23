@@ -193,6 +193,10 @@
         var totalScore = sorted.reduce(function (s, r) { return s + (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0); }, 0);
         var doneCount  = sorted.reduce(function (s, r) { return s + (r.participated > 0 ? 1 : 0); }, 0);
 
+        var deleteBtnHtml = sessionId
+            ? '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' + t('delete_title') + '</span></button>'
+            : '';
+
         var overlay = document.createElement('div');
         overlay.id = 'history-modal';
         overlay.className = 'confirm-overlay';
@@ -203,7 +207,10 @@
                         '<h3 style="margin:0;"><i class="ph-fill ' + meta.icon + '" style="color:' + meta.border + ';"></i> ' + esc(meta.label) + '</h3>' +
                         '<div class="gm-dim" style="margin-top:.25rem; font-size:.85rem;">' + esc(when) + ' · ' + esc(window.RAD.formatWeek(weekStart)) + '</div>' +
                     '</div>' +
-                    '<button class="gm-btn gm-btn-ghost gm-btn-icon" id="history-modal-close" title="' + t('close_title') + '"><i class="ph ph-x"></i></button>' +
+                    '<div class="gm-row" style="gap:.5rem; margin-left:auto;">' +
+                        deleteBtnHtml +
+                        '<button class="gm-btn gm-btn-ghost gm-btn-icon" id="history-modal-close" title="' + t('close_title') + '"><i class="ph ph-x"></i></button>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;">' +
                     '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + sorted.length + '</span>' +
@@ -216,7 +223,7 @@
                         '<table class="gm-table gm-resp-table">' +
                             '<thead><tr>' + headerCols + '</tr></thead>' +
                             '<tbody>' + rowsHtml + '</tbody>' +
-                        '</table>' +
+                            '</table>' +
                       '</div></div>') +
             '</div>';
         document.body.appendChild(overlay);
@@ -227,6 +234,48 @@
             setTimeout(function () { overlay.remove(); }, 300);
         }
         document.getElementById('history-modal-close').addEventListener('click', close);
+
+        var deleteBtn = document.getElementById('history-modal-delete');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function () {
+                window.showConfirm(
+                    t('confirm_delete_session_title'),
+                    '<strong>' + esc(meta.label) + '</strong><br>' + t('confirm_delete_session_body'),
+                    async function () {
+                        try {
+                            // 1. Delete matching participants in event_participants
+                            var delPartRes = await db.from('event_participants')
+                                .delete()
+                                .eq('event_name', eventName)
+                                .eq('session_id', sessionId);
+                            if (delPartRes.error) throw delPartRes.error;
+
+                            // 2. If Shadowfront, also delete matching assignments in shadowfront_squads
+                            if (eventName === 'Shadowfront') {
+                                var delSquadRes = await db.from('shadowfront_squads')
+                                    .delete()
+                                    .eq('session_id', sessionId);
+                                if (delSquadRes.error) throw delSquadRes.error;
+                            }
+
+                            // 3. Delete matching event_status if any
+                            var delStatusRes = await db.from('event_status')
+                                .delete()
+                                .eq('session_id', sessionId);
+                            if (delStatusRes.error) throw delStatusRes.error;
+
+                            window.RAD.showToast(t('toast_account_deleted'), 'success');
+                            close();
+                            await loadHistory();
+                        } catch (err) {
+                            console.error('Delete history session error', err);
+                            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                        }
+                    }
+                );
+            });
+        }
+
         overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
     }
 
