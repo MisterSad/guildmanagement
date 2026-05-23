@@ -345,18 +345,19 @@
         if (!webhookUrl || webhookUrl.trim() === '') return;
         
         var dateFormatted = formatDateTimeUTC(startAt);
-        var actionLabel = action === 'start' ? '🚀 Lancé / Planifié' : '📅 Horaire Modifié';
-        var color = action === 'start' ? 5763719 : 16750848; // Vert ou Orange
+        var actionLabel = action === 'start' ? '🚀 Scheduled / Live' : '📅 Schedule Updated';
+        var color = action === 'start' ? 5763719 : 16750848; // Green or Orange
 
         var body = {
+            content: '@everyone', // ping everyone on schedule
             embeds: [{
-                title: '📢 Événement de Guilde : ' + eventName,
-                description: 'Un événement vient d\'être configuré dans l\'outil RAD Management !',
+                title: '📢 Guild Event: ' + eventName,
+                description: 'A guild event has been configured in the RAD Management tool!',
                 color: color,
                 fields: [
-                    { name: 'Statut', value: actionLabel, inline: true },
-                    { name: 'Début (UTC)', value: dateFormatted, inline: true },
-                    { name: 'Agenda de Guilde', value: 'Veuillez vous tenir prêts aux horaires indiqués.', inline: false }
+                    { name: 'Status', value: actionLabel, inline: true },
+                    { name: 'Start (UTC)', value: dateFormatted, inline: true },
+                    { name: 'Guild Agenda', value: 'Please prepare and be ready at the scheduled time.', inline: false }
                 ],
                 timestamp: new Date().toISOString(),
                 footer: {
