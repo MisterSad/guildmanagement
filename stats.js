@@ -266,9 +266,26 @@
         // Group rows by opportunity (session_id + groupName)
         var oppMap = {};
         participants.forEach(function (p) {
-            var evName = (p.event_name || '').trim().toLowerCase();
+            var originalName = (p.event_name || '').trim();
+            var evName = originalName.toLowerCase();
+            if (!evName || evName === 'glory') return;
+
             var group = eventToGroup[evName];
-            if (!group) return;
+            if (!group) {
+                group = originalName;
+                eventToGroup[evName] = group;
+                if (!byEvent[group]) {
+                    byEvent[group] = {
+                        name: group,
+                        coeff: 1,
+                        rows: 0,
+                        attendances: 0,
+                        sessions: {},
+                        uniqueParticipants: {}
+                    };
+                }
+            }
+            
             var oppKey = p.session_id || p.week_start;
             var key = oppKey + '|' + group;
             if (!oppMap[key]) {
@@ -501,6 +518,30 @@
             'DTR':         { coeff: config.coeff_dtr,         hasScore: false, dbNames: ['Defend Trade Route', 'DTR'] },
             'Arms Race':   { coeff: config.coeff_armsrace,    hasScore: false, dbNames: ['ARMS RACE STAGE A', 'ARMS RACE STAGE B', 'ARMS RACE', 'Arms Race'] }
         };
+
+        // Découverte automatique des événements non mappés (ex: nom mal orthographié, nouvel évent)
+        participants.forEach(function (p) {
+            var originalName = (p.event_name || '').trim();
+            var evName = originalName.toLowerCase();
+            if (!evName || evName === 'glory') return;
+            
+            var matched = false;
+            Object.keys(dynamicEventGroups).forEach(function(g) {
+                if (dynamicEventGroups[g].dbNames.some(function(n) { return n.toLowerCase() === evName; })) {
+                    matched = true;
+                }
+            });
+            
+            if (!matched) {
+                if (!dynamicEventGroups[originalName]) {
+                    dynamicEventGroups[originalName] = {
+                        coeff: 1,
+                        hasScore: false,
+                        dbNames: [originalName]
+                    };
+                }
+            }
+        });
 
         // Initialize aggregation per member
         var memberAgg = {};
