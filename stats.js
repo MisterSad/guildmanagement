@@ -593,9 +593,13 @@
             var maxScorePerOpp = {};
             var svsMaxesPerOpp = {};
             
+            var weekMaxAdded = {};
             opps.forEach(function (opp) {
                 globalRanEvents[opp.name] = opp.group;
-                globalMaxPossible += maxEventScore(opp.group);
+                if (!weekMaxAdded[opp.name]) {
+                    globalMaxPossible += maxEventScore(opp.group);
+                    weekMaxAdded[opp.name] = true;
+                }
 
                 if (!opp.group.hasScore) { maxScorePerOpp[opp.id] = 0; return; }
                 
@@ -628,10 +632,41 @@
                 }
             });
 
+            var weekGroups = [];
+            opps.forEach(function (opp) {
+                if (weekGroups.indexOf(opp.name) === -1) {
+                    weekGroups.push(opp.name);
+                }
+            });
+
             members.forEach(function (pseudo) {
                 var normPseudo = normalizePseudo(pseudo);
                 var agg = memberAgg[pseudo];
-                agg.eventsTotal += opps.length;
+                
+                // Group-based attendance tracking (fair consistency bonus)
+                agg.eventsTotal += weekGroups.length;
+
+                weekGroups.forEach(function (groupName) {
+                    var groupOpps = opps.filter(function (o) { return o.name === groupName; });
+                    var groupParticipated = groupOpps.some(function (opp) {
+                        return opp.rows.some(function (r) {
+                            return normalizePseudo(r.pseudo) === normPseudo && r.participated > 0;
+                        });
+                    });
+
+                    var groupReserve = false;
+                    if (groupName === 'Shadowfront') {
+                        groupReserve = weekSquads.some(function (s) {
+                            return normalizePseudo(s.pseudo) === normPseudo && s.role === 'reserve';
+                        });
+                    }
+
+                    if (groupParticipated || groupReserve) {
+                        agg.eventsAttended++;
+                    }
+                });
+
+                var shadowfrontReserveCreditGiven = false;
 
                 opps.forEach(function (opp) {
                     var pRows = opp.rows.filter(function (p) { return normalizePseudo(p.pseudo) === normPseudo; });
@@ -646,8 +681,9 @@
                         var wasReserve = weekSquads.some(function (s) {
                             return normalizePseudo(s.pseudo) === normPseudo && s.role === 'reserve';
                         });
-                        if (wasReserve) {
+                        if (wasReserve && !shadowfrontReserveCreditGiven) {
                             base = (config.reserve_credit_pct / 100) * W.participation * opp.group.coeff;
+                            shadowfrontReserveCreditGiven = true;
                         }
                     }
                     
@@ -700,7 +736,6 @@
                     }
                     
                     if (participated) {
-                        agg.eventsAttended++;
                         agg.perEvent[evName].participated = true;
                     }
                     
