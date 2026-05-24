@@ -333,14 +333,7 @@
             try {
                 var res = await db.from('guild_config').upsert({ key: key, value: value, updated_at: new Date().toISOString() });
                 if (res && !res.error) return true;
-            } catch (e) {
-                console.warn('guild_config table save error', e);
-            }
-        }
-        return true;
-    }
-
-    async function notifyDiscordEvent(eventName, startAt, action) {
+      async function notifyDiscordEvent(eventName, startAt, action) {
         var webhookUrl = await getGuildConfig('discord_webhook_url');
         if (!webhookUrl || webhookUrl.trim() === '') return;
 
@@ -354,20 +347,44 @@
         if (allowedEvents.indexOf(eventName) === -1) return;
         
         var dateFormatted = formatDateTimeUTC(startAt);
-        var actionLabel = action === 'start' ? '🚀 Scheduled / Live' : '📅 Schedule Updated';
-        var color = action === 'start' ? 5763719 : 16750848; // Green or Orange
+        var content = '';
+        var embedTitle = '📢 Guild Event: ' + eventName;
+        var embedDesc = 'A guild event has been configured in the RAD Management tool!';
+        var actionLabel = '';
+        var color = 5763719; // Green
+
+        if (action === 'start') {
+            actionLabel = '🚀 Scheduled / Live';
+            color = 5763719; // Green
+        } else if (action === 'edit') {
+            actionLabel = '📅 Schedule Updated';
+            color = 16750848; // Orange
+        } else if (action === 'reminder_15') {
+            content = '⏰ **Rappel :** ' + eventName + ' commence dans **15 minutes** ! @everyone';
+            embedTitle = '⏰ Reminder: ' + eventName + ' starts in 15 minutes!';
+            embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
+            color = 16750848; // Orange
+        } else if (action === 'reminder_5') {
+            content = '🚨 **Rappel Immédiat :** ' + eventName + ' commence dans **5 minutes** ! Secouez-vous ! @everyone';
+            embedTitle = '🚨 Immediate Reminder: ' + eventName + ' starts in 5 minutes!';
+            embedDesc = 'Action time! Join your squad now!';
+            color = 15548997; // Bright Red
+        }
+
+        var fields = [];
+        if (actionLabel) {
+            fields.push({ name: 'Status', value: actionLabel, inline: true });
+        }
+        fields.push({ name: 'Start Time (UTC)', value: dateFormatted, inline: true });
+        fields.push({ name: 'Guild Agenda', value: action.indexOf('reminder') !== -1 ? 'Please connect now.' : 'Please prepare and be ready at the scheduled time.', inline: false });
 
         var body = {
-            content: '@everyone', // ping everyone on schedule
+            content: content,
             embeds: [{
-                title: '📢 Guild Event: ' + eventName,
-                description: 'A guild event has been configured in the RAD Management tool!',
+                title: embedTitle,
+                description: embedDesc,
                 color: color,
-                fields: [
-                    { name: 'Status', value: actionLabel, inline: true },
-                    { name: 'Start (UTC)', value: dateFormatted, inline: true },
-                    { name: 'Guild Agenda', value: 'Please prepare and be ready at the scheduled time.', inline: false }
-                ],
+                fields: fields,
                 timestamp: new Date().toISOString(),
                 footer: {
                     text: 'RAD Management Tool'
