@@ -44,7 +44,7 @@
         if (!db || !TAB_TO_DB_EVENTS[tabKey]) return;
         try {
             var dbEvents = TAB_TO_DB_EVENTS[tabKey];
-            var res = await db.from('event_status').select('event_name, is_active, session_id, stage')
+            var res = await db.from('event_status').select('event_name, is_active, session_id, stage, start_at')
                 .in('event_name', dbEvents);
 
             var active = (res.data || []).find(function (r) { return r.is_active; });
@@ -53,6 +53,7 @@
                 s.activeEventName = active.event_name;
                 s.sessionId       = active.session_id;
                 s.stage           = active.stage;
+                s.startAt         = active.start_at;
                 s.isActive        = true;
                 renderStatus(tabKey);
                 await fetchParticipants(tabKey);
@@ -64,6 +65,7 @@
                 s.activeEventName = null;
                 s.sessionId       = null;
                 s.stage           = null;
+                s.startAt         = null;
                 s.isActive        = false;
                 renderStatus(tabKey);
                 renderInactive(tabKey);
@@ -92,6 +94,7 @@
             state[tabKey].activeEventName = dbEventName;
             state[tabKey].sessionId       = sessionId;
             state[tabKey].stage           = stage || null;
+            state[tabKey].startAt         = startAt || null;
             state[tabKey].isActive        = true;
             renderStatus(tabKey);
             await populateParticipants(tabKey);
@@ -142,7 +145,7 @@
         var s = state[tabKey];
         if (!s.activeEventName || !s.sessionId) return;
 
-        var week = window.RAD.getWeekStart();
+        var week = window.RAD.getWeekStart(s.startAt);
         var rpcRes = await db.rpc('populate_event_participants', {
             p_event_name: s.activeEventName,
             p_session_id: s.sessionId,
@@ -177,7 +180,7 @@
 
         try {
             var statusRes = await db.from('event_status')
-                .select('event_name, session_id')
+                .select('event_name, session_id, start_at')
                 .eq('is_active', true)
                 .in('event_name', dbEventNames);
             if (statusRes.error) throw statusRes.error;
@@ -189,7 +192,7 @@
                 return {
                     event_name:   r.event_name,
                     session_id:   r.session_id,
-                    week_start:   window.RAD.getWeekStart(new Date(r.session_id)),
+                    week_start:   window.RAD.getWeekStart(r.start_at || new Date(r.session_id)),
                     pseudo:       pseudo,
                     participated: 0,
                     score:        null
@@ -204,7 +207,7 @@
             Object.keys(state).forEach(function (tabKey) {
                 var s = state[tabKey];
                 if (!s.isActive || !s.sessionId) return;
-                var matched = active.some(function (a) {
+                var matched = active.find(function (a) {
                     return a.event_name === s.activeEventName && a.session_id === s.sessionId;
                 });
                 if (!matched) return;
@@ -212,7 +215,7 @@
                 s.participants.push({
                     event_name:   s.activeEventName,
                     session_id:   s.sessionId,
-                    week_start:   window.RAD.getWeekStart(new Date(s.sessionId)),
+                    week_start:   window.RAD.getWeekStart(matched.start_at || new Date(s.sessionId)),
                     pseudo:       pseudo,
                     participated: 0,
                     score:        null
@@ -310,6 +313,13 @@
                         updated_at: new Date().toISOString()
                     }).eq('event_name', s.activeEventName);
                     if (updateRes.error) throw updateRes.error;
+
+                    var newWeek = window.RAD.getWeekStart(startAt);
+                    var updatePartRes = await db.from('event_participants').update({
+                        week_start: newWeek
+                    }).eq('event_name', s.activeEventName)
+                      .eq('session_id', s.sessionId);
+                    if (updatePartRes.error) throw updatePartRes.error;
                     
                     window.RAD.showToast(t('toast_member_updated'), 'success');
                     

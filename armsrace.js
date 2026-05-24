@@ -94,7 +94,7 @@
             if (res.error) throw res.error;
 
             // populate participants
-            var week = window.RAD.getWeekStart();
+            var week = window.RAD.getWeekStart(startAt);
             var rpcRes = await db.rpc('populate_event_participants', {
                 p_event_name: evName,
                 p_session_id: sessionId,
@@ -162,6 +162,13 @@
                         updated_at: new Date().toISOString()
                     }).eq('event_name', STAGE_EVENTS[stageKey]);
                     if (updateRes.error) throw updateRes.error;
+
+                    var newWeek = window.RAD.getWeekStart(startAt);
+                    var updatePartRes = await db.from('event_participants').update({
+                        week_start: newWeek
+                    }).eq('event_name', STAGE_EVENTS[stageKey])
+                      .eq('session_id', stg.sessionId);
+                    if (updatePartRes.error) throw updatePartRes.error;
 
                     window.RAD.showToast(t('toast_member_updated'), 'success');
 
@@ -232,7 +239,7 @@
                 return {
                     event_name: STAGE_EVENTS[k],
                     session_id: stg.sessionId,
-                    week_start: window.RAD.getWeekStart(new Date(stg.sessionId)),
+                    week_start: window.RAD.getWeekStart(stg.startAt || new Date(stg.sessionId)),
                     pseudo: pseudo,
                     participated: 0,
                     score: null
@@ -247,7 +254,7 @@
                 stg.participants.push({
                     event_name: STAGE_EVENTS[k],
                     session_id: stg.sessionId,
-                    week_start: window.RAD.getWeekStart(new Date(stg.sessionId)),
+                    week_start: window.RAD.getWeekStart(stg.startAt || new Date(stg.sessionId)),
                     pseudo: pseudo,
                     participated: 0,
                     score: null

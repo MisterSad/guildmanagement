@@ -184,6 +184,16 @@
                     }).eq('event_name', SQUAD_EVENT[squad]);
                     if (updateRes.error) throw updateRes.error;
 
+                    var newWeek = window.RAD.getWeekStart(startAt);
+                    await db.from('shadowfront_squads').update({
+                        week_start: newWeek
+                    }).eq('session_id', sq.sessionId);
+
+                    await db.from('event_participants').update({
+                        week_start: newWeek
+                    }).eq('event_name', EVENT_NAME)
+                      .eq('session_id', sq.sessionId);
+
                     window.RAD.showToast(t('toast_member_updated'), 'success');
 
                     if (window.RAD.notifyDiscordEvent) {
@@ -277,7 +287,7 @@
             .eq('session_id', sq.sessionId).eq('pseudo', pseudo);
 
         await db.from('shadowfront_squads').insert({
-            week_start: window.RAD.getWeekStart(),
+            week_start: window.RAD.getWeekStart(sq.startAt || new Date(sq.sessionId)),
             session_id: sq.sessionId,
             pseudo: pseudo,
             squad: squad,
@@ -308,12 +318,16 @@
             .eq('session_id', sessionId);
         var assigned = (assignRes.data || []).map(function (a) { return a.pseudo; });
 
+        var sq = Object.values(sfState.squads).find(function (s) { return s.sessionId === sessionId; });
+        var startAt = sq ? sq.startAt : null;
+        var week = window.RAD.getWeekStart(startAt || new Date(sessionId));
+
         var toInsert = assigned
             .filter(function (p) { return !existing.has(p); })
             .map(function (p) {
                 return {
                     event_name: EVENT_NAME,
-                    week_start: window.RAD.getWeekStart(),
+                    week_start: week,
                     session_id: sessionId,
                     pseudo: p,
                     participated: 0
