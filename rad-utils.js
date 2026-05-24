@@ -360,12 +360,12 @@
             actionLabel = '📅 Schedule Updated';
             color = 16750848; // Orange
         } else if (action === 'reminder_15') {
-            content = '⏰ **Rappel :** ' + eventName + ' commence dans **15 minutes** ! @everyone';
+            content = '⏰ **Reminder:** ' + eventName + ' starts in **15 minutes**! @everyone';
             embedTitle = '⏰ Reminder: ' + eventName + ' starts in 15 minutes!';
             embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
             color = 16750848; // Orange
         } else if (action === 'reminder_5') {
-            content = '🚨 **Rappel Immédiat :** ' + eventName + ' commence dans **5 minutes** ! Secouez-vous ! @everyone';
+            content = '🚨 **Immediate Reminder:** ' + eventName + ' starts in **5 minutes**! Get ready! @everyone';
             embedTitle = '🚨 Immediate Reminder: ' + eventName + ' starts in 5 minutes!';
             embedDesc = 'Action time! Join your squad now!';
             color = 15548997; // Bright Red

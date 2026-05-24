@@ -65,12 +65,12 @@ serve(async (req) => {
             let color = 5763719; // Green
 
             if (reminderType === 'reminder_15') {
-              content = `⏰ **Rappel :** ${event.event_name} commence dans **15 minutes** ! @everyone`;
+              content = `⏰ **Reminder:** ${event.event_name} starts in **15 minutes**! @everyone`;
               embedTitle = `⏰ Reminder: ${event.event_name} starts in 15 minutes!`;
               embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
               color = 16750848; // Orange
             } else if (reminderType === 'reminder_5') {
-              content = `🚨 **Rappel Immédiat :** ${event.event_name} commence dans **5 minutes** ! Secouez-vous ! @everyone`;
+              content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! @everyone`;
               embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
               embedDesc = 'Action time! Join your squad now!';
               color = 15548997; // Bright Red
