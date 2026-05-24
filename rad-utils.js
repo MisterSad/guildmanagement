@@ -333,7 +333,14 @@
             try {
                 var res = await db.from('guild_config').upsert({ key: key, value: value, updated_at: new Date().toISOString() });
                 if (res && !res.error) return true;
-      async function notifyDiscordEvent(eventName, startAt, action) {
+            } catch (e) {
+                console.warn('guild_config table save error', e);
+            }
+        }
+        return true;
+    }
+
+    async function notifyDiscordEvent(eventName, startAt, action) {
         var webhookUrl = await getGuildConfig('discord_webhook_url');
         if (!webhookUrl || webhookUrl.trim() === '') return;
 
