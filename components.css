@@ -967,3 +967,109 @@
     color: #fecdd3;
     border-color: rgba(244, 63, 94, 0.35);
 }
+
+/* ─── Timezone Clocks (Overview Page) ────────────────────────────────────── */
+.gm-overview-clocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.gm-clock-card {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 0.45rem 0.75rem;
+    min-width: 140px;
+    transition: border-color 0.2s, transform 0.2s, background-color 0.2s;
+    cursor: default;
+}
+
+.gm-clock-card:hover {
+    border-color: var(--border);
+    background: var(--bg-2);
+    transform: translateY(-1px);
+}
+
+.gm-clock-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.gm-clock-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--fg);
+    line-height: 1.2;
+}
+
+.gm-clock-meta {
+    font-size: 0.65rem;
+    color: var(--fg-dim);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1.1;
+}
+
+.gm-clock-time {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+.gm-avatar.gm-avatar-sm {
+    width: 24px;
+    height: 24px;
+    font-size: 0.65rem;
+}
+
+.gm-avatar.gm-avatar-accent {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--accent-fg);
+}
+
+.gm-avatar.gm-avatar-info {
+    background: linear-gradient(135deg, var(--info), var(--info-soft));
+    color: white;
+}
+
+.gm-avatar.gm-avatar-success {
+    background: linear-gradient(135deg, var(--success), var(--success-soft));
+    color: oklch(0.18 0.02 150);
+}
+
+.gm-avatar.gm-avatar-warning {
+    background: linear-gradient(135deg, var(--warning), var(--warning-soft));
+    color: oklch(0.18 0.02 80);
+}
+
+.gm-avatar.gm-avatar-danger {
+    background: linear-gradient(135deg, var(--danger), var(--danger-soft));
+    color: white;
+}
+
+@media (max-width: 900px) {
+    .gm-overview-clocks {
+        width: 100%;
+        margin-top: 0.75rem;
+    }
+    .gm-clock-card {
+        flex: 1 1 calc(50% - 0.25rem);
+        min-width: 130px;
+    }
+}
+
+@media (max-width: 480px) {
+    .gm-clock-card {
+        flex: 1 1 100%;
+    }
+}

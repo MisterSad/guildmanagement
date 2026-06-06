@@ -22,6 +22,15 @@
     var fmt = window.RAD.formatNumber;
 
     var countdownTimer = null;
+    var timezoneClockTimer = null;
+
+    var CLOCK_MEMBERS = [
+        { name: 'Natalie', offset: 7, color: 'danger' },
+        { name: 'HawkTuah', offset: 2, color: 'accent' },
+        { name: 'Phantom', offset: 2, color: 'info' },
+        { name: 'Vaylah', offset: -4, color: 'success' },
+        { name: 'BroKen', offset: -7, color: 'warning' }
+    ];
 
     window.RAD_OVERVIEW = { load: loadOverview };
 
@@ -121,6 +130,7 @@
 
     function renderShell(panel) {
         if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+        if (timezoneClockTimer) { clearInterval(timezoneClockTimer); timezoneClockTimer = null; }
         panel.innerHTML =
             '<div class="gm-page">' +
                 '<header class="gm-page-header">' +
@@ -128,9 +138,85 @@
                         '<h1 class="gm-page-title">' + t('gm_overview_title') + '</h1>' +
                         '<p class="gm-page-subtitle">' + t('gm_overview_sub_real') + '</p>' +
                     '</div>' +
+                    '<div class="gm-overview-clocks" id="gm-overview-clocks"></div>' +
                 '</header>' +
                 '<div data-gm-overview-content></div>' +
             '</div>';
+
+        renderTimezoneClocks(panel);
+        startTimezoneClockTicker();
+    }
+
+    function renderTimezoneClocks(panel) {
+        var container = panel.querySelector('#gm-overview-clocks');
+        if (!container) return;
+
+        var html = '';
+        CLOCK_MEMBERS.forEach(function (m) {
+            var initials = window.RAD.avatarInit(m.name);
+            var offsetText = 'UTC' + (m.offset >= 0 ? '+' + m.offset : m.offset);
+            html +=
+                '<div class="gm-clock-card" data-offset="' + m.offset + '">' +
+                    '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '">' + esc(initials) + '</div>' +
+                    '<div class="gm-clock-info">' +
+                        '<div class="gm-clock-name">' + esc(m.name) + '</div>' +
+                        '<div class="gm-clock-meta">' +
+                            '<span>' + offsetText + '</span>' +
+                            '<span class="gm-clock-icon-slot"></span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="gm-clock-time">--:--:--</div>' +
+                '</div>';
+        });
+        container.innerHTML = html;
+        updateClocksTime();
+    }
+
+    function updateClocksTime() {
+        var container = document.getElementById('gm-overview-clocks');
+        if (!container) return;
+
+        var cards = container.querySelectorAll('.gm-clock-card');
+        var now = new Date();
+        var utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
+
+        cards.forEach(function (card) {
+            var offset = parseFloat(card.getAttribute('data-offset'));
+            var targetDate = new Date(utcMs + (3600000 * offset));
+
+            var hh = pad2(targetDate.getHours());
+            var mm = pad2(targetDate.getMinutes());
+            var ss = pad2(targetDate.getSeconds());
+            var timeStr = hh + ':' + mm + ':' + ss;
+
+            var timeEl = card.querySelector('.gm-clock-time');
+            if (timeEl) timeEl.textContent = timeStr;
+
+            var hour = targetDate.getHours();
+            var isDay = hour >= 6 && hour < 18;
+
+            var iconSlot = card.querySelector('.gm-clock-icon-slot');
+            if (iconSlot) {
+                var iconClass = isDay ? 'ph-sun' : 'ph-moon';
+                var currentIcon = iconSlot.querySelector('i');
+                if (!currentIcon || !currentIcon.classList.contains(iconClass)) {
+                    iconSlot.innerHTML = '<i class="ph ' + iconClass + '" style="color: ' + (isDay ? '#fbbf24' : '#a5b4fc') + ';"></i>';
+                }
+            }
+        });
+    }
+
+    function startTimezoneClockTicker() {
+        if (timezoneClockTimer) { clearInterval(timezoneClockTimer); timezoneClockTimer = null; }
+        var panel = document.getElementById('gm-overview');
+        if (!panel || !panel.querySelector('#gm-overview-clocks')) return;
+        timezoneClockTimer = setInterval(function () {
+            var container = document.getElementById('gm-overview-clocks');
+            if (!container) { clearInterval(timezoneClockTimer); timezoneClockTimer = null; return; }
+            if (panel.classList.contains('active')) {
+                updateClocksTime();
+            }
+        }, 1000);
     }
 
     function renderPage(panel, stats, activity, upcoming) {
