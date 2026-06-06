@@ -972,19 +972,20 @@
 .gm-overview-clocks {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
 }
 
 .gm-clock-card {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.75rem;
     background: var(--bg-1);
     border: 1px solid var(--border-soft);
-    border-radius: var(--radius);
-    padding: 0.45rem 0.75rem;
-    min-width: 140px;
+    border-radius: var(--radius-lg);
+    padding: 0.6rem 1rem;
+    min-width: 160px;
     transition: border-color 0.2s, transform 0.2s, background-color 0.2s;
     cursor: default;
 }
@@ -992,7 +993,7 @@
 .gm-clock-card:hover {
     border-color: var(--border);
     background: var(--bg-2);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
 .gm-clock-info {
@@ -1002,24 +1003,24 @@
 }
 
 .gm-clock-name {
-    font-size: 0.8rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: var(--fg);
     line-height: 1.2;
 }
 
 .gm-clock-meta {
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     color: var(--fg-dim);
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     line-height: 1.1;
 }
 
 .gm-clock-time {
     font-family: var(--font-mono);
-    font-size: 0.85rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--accent);
     margin-left: auto;
@@ -1027,9 +1028,9 @@
 }
 
 .gm-avatar.gm-avatar-sm {
-    width: 24px;
-    height: 24px;
-    font-size: 0.65rem;
+    width: 30px;
+    height: 30px;
+    font-size: 0.75rem;
 }
 
 .gm-avatar.gm-avatar-accent {
@@ -1063,8 +1064,8 @@
         margin-top: 0.75rem;
     }
     .gm-clock-card {
-        flex: 1 1 calc(50% - 0.25rem);
-        min-width: 130px;
+        flex: 1 1 calc(50% - 0.35rem);
+        min-width: 140px;
     }
 }
 

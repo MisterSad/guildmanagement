@@ -138,8 +138,8 @@
                         '<h1 class="gm-page-title">' + t('gm_overview_title') + '</h1>' +
                         '<p class="gm-page-subtitle">' + t('gm_overview_sub_real') + '</p>' +
                     '</div>' +
-                    '<div class="gm-overview-clocks" id="gm-overview-clocks"></div>' +
                 '</header>' +
+                '<div class="gm-overview-clocks" id="gm-overview-clocks"></div>' +
                 '<div data-gm-overview-content></div>' +
             '</div>';
 
