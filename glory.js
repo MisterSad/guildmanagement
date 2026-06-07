@@ -38,6 +38,18 @@
             toInsert.forEach(function (item) { currMap[item.pseudo] = null; });
         }
 
+        // Tri par ordre décroissant de la gloire de la semaine précédente
+        members.sort(function (a, b) {
+            var valA = prevMap[a] != null ? (typeof prevMap[a] === 'number' ? prevMap[a] : parseInt(prevMap[a], 10)) : -1;
+            var valB = prevMap[b] != null ? (typeof prevMap[b] === 'number' ? prevMap[b] : parseInt(prevMap[b], 10)) : -1;
+            if (isNaN(valA)) valA = -1;
+            if (isNaN(valB)) valB = -1;
+            if (valB !== valA) {
+                return valB - valA;
+            }
+            return a.localeCompare(b);
+        });
+
         renderGlory(members, currMap, prevMap, week);
     }
 
