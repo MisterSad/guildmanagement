@@ -48,10 +48,24 @@ serve(async (req) => {
       // Rounded minutes until event
       const roundedMins = Math.round(diffMins);
 
-      // Check if it is exactly 15 or 5 minutes before start
-      if (roundedMins === 15 || roundedMins === 5) {
-        const reminderType = roundedMins === 15 ? 'reminder_15' : 'reminder_5';
-        
+      let trigger = false;
+      let reminderType = '';
+
+      const isShadowfrontSquad = event.event_name === 'Shadowfront Squad 1' || event.event_name === 'Shadowfront Squad 2';
+
+      if (isShadowfrontSquad) {
+        if (roundedMins === 30 || roundedMins === 15 || roundedMins === 0) {
+          trigger = true;
+          reminderType = roundedMins === 30 ? 'reminder_30' : (roundedMins === 15 ? 'reminder_15' : 'start');
+        }
+      } else {
+        if (roundedMins === 15 || roundedMins === 5) {
+          trigger = true;
+          reminderType = roundedMins === 15 ? 'reminder_15' : 'reminder_5';
+        }
+      }
+
+      if (trigger) {
         // A. Trigger Discord Notification via Webhook if configured
         if (webhookUrl && webhookUrl.trim() !== '') {
           try {
@@ -65,17 +79,32 @@ serve(async (req) => {
             let embedTitle = `📢 Guild Event: ${event.event_name}`;
             let embedDesc = 'A guild event has been configured in the RAD Management tool!';
             let color = 5763719; // Green
+            let agenda = 'Please connect now.';
 
-            if (reminderType === 'reminder_15') {
+            if (reminderType === 'reminder_30') {
+              content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! @everyone`;
+              embedTitle = `⏰ Reminder: ${event.event_name} starts in 30 minutes!`;
+              embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
+              color = 16750848; // Orange
+              agenda = 'Please connect and get ready soon.';
+            } else if (reminderType === 'reminder_15') {
               content = `⏰ **Reminder:** ${event.event_name} starts in **15 minutes**! @everyone`;
               embedTitle = `⏰ Reminder: ${event.event_name} starts in 15 minutes!`;
               embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
               color = 16750848; // Orange
+              agenda = 'Please connect and get ready.';
             } else if (reminderType === 'reminder_5') {
               content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! @everyone`;
               embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
               embedDesc = 'Action time! Join your squad now!';
               color = 15548997; // Bright Red
+              agenda = 'Action time! Connect now!';
+            } else if (reminderType === 'start') {
+              content = `⚔️ **Event Started:** ${event.event_name} starts now! @everyone`;
+              embedTitle = `⚔️ Event Started: ${event.event_name} is active!`;
+              embedDesc = 'Action time! Join your squad now!';
+              color = 15548997; // Bright Red
+              agenda = 'Battle starts now! Join your squad!';
             }
 
             const body = {
@@ -86,7 +115,7 @@ serve(async (req) => {
                 color: color,
                 fields: [
                   { name: 'Start Time (UTC)', value: dateFormatted, inline: true },
-                  { name: 'Guild Agenda', value: 'Please connect now.', inline: false }
+                  { name: 'Guild Agenda', value: agenda, inline: false }
                 ],
                 timestamp: new Date().toISOString(),
                 footer: { text: 'RAD Management Tool' }
