@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { sendNotification } from "npm:web-push-neo"
-import { createCanvas } from "https://deno.land/x/canvas/mod.ts"
+import { createCanvas, loadImage } from "https://deno.land/x/canvas/mod.ts"
+import { TEMPLATE_BASE64 } from "./template.ts"
 
 // Cache for the font buffer
 let fontBuffer: Uint8Array | null = null;
@@ -21,8 +22,8 @@ async function getFontBuffer(): Promise<Uint8Array | null> {
 }
 
 async function drawNotificationCard(title: string, subtitle: string, emoji: string): Promise<Uint8Array> {
-  const width = 800;
-  const height = 400;
+  const width = 919;
+  const height = 444;
   const canvas = createCanvas(width, height);
   
   // Load custom font if available
@@ -33,50 +34,41 @@ async function drawNotificationCard(title: string, subtitle: string, emoji: stri
 
   const ctx = canvas.getContext("2d");
 
-  // 1. Draw Space Background Gradient
-  const grad = ctx.createLinearGradient(0, 0, width, height);
-  grad.addColorStop(0, "#0d0915");
-  grad.addColorStop(0.5, "#151124");
-  grad.addColorStop(1, "#09060c");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, width, height);
+  // 1. Clear canvas for transparent background
+  ctx.clearRect(0, 0, width, height);
 
-  // 2. Draw Stars/Dots
-  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-  for (let i = 0; i < 40; i++) {
-    const x = Math.random() * width;
-    const y = Math.random() * height;
-    const r = Math.random() * 2;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
+  // 2. Load and Draw Plaque Template
+  try {
+    const templateImg = await loadImage(TEMPLATE_BASE64);
+    ctx.drawImage(templateImg, 0, 0, width, height);
+  } catch (err) {
+    console.error("Failed to load plaque template image, falling back to gradient background:", err);
+    // Fallback: draw dark violet background and border
+    ctx.fillStyle = "#0d0915";
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "rgba(139, 92, 246, 0.8)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(40, 40, width - 80, height - 80);
   }
 
-  // 3. Draw Outer Card Border with Glow (Neomorphism / Glowing effect)
-  ctx.shadowColor = "rgba(139, 92, 246, 0.6)"; // Violet glow
-  ctx.shadowBlur = 15;
-  ctx.strokeStyle = "rgba(139, 92, 246, 0.8)";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(40, 40, width - 80, height - 80);
-
-  // 4. Reset shadow for text to be crisp
-  ctx.shadowBlur = 0;
-
-  // 5. Draw Shield / Crest (using emoji)
-  ctx.font = "80px Arial";
+  // 3. Draw Title (with prepended and appended emoji)
+  ctx.fillStyle = "#ffffff";
+  ctx.font = font ? "bold 32px Roboto" : "bold 32px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(emoji, width / 2, height / 2 - 30);
+  
+  const displayTitle = `${emoji} ${title.toUpperCase()} ${emoji}`;
+  ctx.fillText(displayTitle, width / 2, 54);
 
-  // 6. Draw Title
-  ctx.fillStyle = "#ffffff";
-  ctx.font = font ? "bold 36px Roboto" : "bold 36px sans-serif";
-  ctx.fillText(title.toUpperCase(), width / 2, height / 2 + 60);
+  // 4. Draw Subtitle 1 (e.g., Starts in 5 minutes!)
+  ctx.fillStyle = "#c084fc"; // Light purple/pink
+  ctx.font = font ? "bold 24px Roboto" : "bold 24px sans-serif";
+  ctx.fillText(subtitle, width / 2, 337);
 
-  // 7. Draw Subtitle
-  ctx.fillStyle = "#c084fc"; // Light purple
-  ctx.font = font ? "24px Roboto" : "24px sans-serif";
-  ctx.fillText(subtitle, width / 2, height / 2 + 110);
+  // 5. Draw Subtitle 2 (Join your squads now!)
+  ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+  ctx.font = font ? "20px Roboto" : "20px sans-serif";
+  ctx.fillText("Join your squads now!", width / 2, 382);
 
   return canvas.toBuffer();
 }
