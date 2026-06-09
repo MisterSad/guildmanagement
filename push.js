@@ -10,7 +10,7 @@
  */
 (function () {
 
-    var VAPID_PUBLIC = 'BLw7_cAHmnJHFAP5YF0Kd2l1lmZhTHMQXEGfh7caXDACI7AW_Ung8h6-nZZfDKlsaGOqoduI8A3eU5aajQK2f9I';
+    var VAPID_PUBLIC = 'BKJ-mf-as7Si__DvBVRPN8EdpqnjihviHfkHZSvB_HgK5V68dG85WT8oDLvkE9_AQQw7gQqs7jeOn_a2ofrpBvo';
 
     var t   = window.RAD ? window.RAD.t : function (k) { return k; };
     var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
@@ -44,6 +44,16 @@
         return out;
     }
 
+    function byteArraysEqual(a, b) {
+        if (a.byteLength !== b.byteLength) return false;
+        var ua = new Uint8Array(a);
+        var ub = new Uint8Array(b);
+        for (var i = 0; i < ua.length; i++) {
+            if (ua[i] !== ub[i]) return false;
+        }
+        return true;
+    }
+
     async function getReg() {
         if (swReg) return swReg;
         if ('serviceWorker' in navigator) {
@@ -57,7 +67,16 @@
         try {
             var reg = await getReg();
             if (!reg) return null;
-            return await reg.pushManager.getSubscription();
+            var sub = await reg.pushManager.getSubscription();
+            if (sub && sub.options && sub.options.applicationServerKey) {
+                var expected = urlBase64ToUint8Array(VAPID_PUBLIC);
+                if (!byteArraysEqual(sub.options.applicationServerKey, expected)) {
+                    // Public key mismatch! Unsubscribe to force resubscription with the new key.
+                    await sub.unsubscribe();
+                    return null;
+                }
+            }
+            return sub;
         } catch (e) { return null; }
     }
 

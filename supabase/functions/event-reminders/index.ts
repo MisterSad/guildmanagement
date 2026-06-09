@@ -1,5 +1,65 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { sendNotification } from "npm:web-push-neo"
+
+async function sendWebPush(supabase: any, title: string, body: string) {
+  try {
+    const { data: subs, error: subError } = await supabase
+      .from('push_subscriptions')
+      .select('*');
+
+    if (subError) throw subError;
+    if (!subs || subs.length === 0) return;
+
+    const vapidDetails = {
+      subject: 'mailto:web-push@guildmanagement.internal',
+      publicKey: Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
+      privateKey: Deno.env.get('VAPID_PRIVATE_KEY') ?? '',
+    };
+
+    if (!vapidDetails.publicKey || !vapidDetails.privateKey) {
+      console.warn('VAPID keys not configured in Supabase secrets, skipping Web Push');
+      return;
+    }
+
+    const payload = {
+      title,
+      body: body.replace(/@everyone/g, '').trim(),
+      url: '/'
+    };
+
+    for (const sub of subs) {
+      try {
+        const subscription = {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth
+          }
+        };
+
+        await sendNotification({
+          subscription,
+          payload: JSON.stringify(payload),
+          vapidDetails
+        });
+        console.log(`Web Push sent successfully to sub ID: ${sub.id}`);
+      } catch (err: any) {
+        console.error(`Failed to send Web Push to sub ID ${sub.id}:`, err);
+        if (err.statusCode === 410 || err.statusCode === 404 || err.message?.includes('410') || err.message?.includes('404')) {
+          console.log(`Cleaning up expired subscription ID: ${sub.id}`);
+          await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('id', sub.id);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error in sendWebPush:', e);
+  }
+}
+
 
 // VAPID keys and keys will be read from environment variables on Supabase
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -70,47 +130,47 @@ serve(async (req) => {
       }
 
       if (trigger) {
+        // Build the body using the same logic as notifyDiscordEvent
+        const dateFormatted = new Date(event.start_at).toLocaleDateString('fr-FR', {
+          weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC',
+          hour: '2-digit', minute: '2-digit'
+        }) + ' UTC';
+
+        let content = '';
+        let embedTitle = `📢 Guild Event: ${event.event_name}`;
+        let embedDesc = 'A guild event has been configured in the RAD Management tool!';
+        let color = 5763719; // Green
+        let agenda = 'Please connect now.';
+
+        if (reminderType === 'reminder_30') {
+          content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! @everyone`;
+          embedTitle = `⏰ Reminder: ${event.event_name} starts in 30 minutes!`;
+          embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
+          color = 16750848; // Orange
+          agenda = 'Please connect and get ready soon.';
+        } else if (reminderType === 'reminder_15') {
+          content = `⏰ **Reminder:** ${event.event_name} starts in **15 minutes**! @everyone`;
+          embedTitle = `⏰ Reminder: ${event.event_name} starts in 15 minutes!`;
+          embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
+          color = 16750848; // Orange
+          agenda = 'Please connect and get ready.';
+        } else if (reminderType === 'reminder_5') {
+          content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! @everyone`;
+          embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
+          embedDesc = 'Action time! Join your squad now!';
+          color = 15548997; // Bright Red
+          agenda = 'Action time! Connect now!';
+        } else if (reminderType === 'start') {
+          content = `⚔️ **Event Started:** ${event.event_name} starts now! @everyone`;
+          embedTitle = `⚔️ Event Started: ${event.event_name} is active!`;
+          embedDesc = 'Action time! Join your squad now!';
+          color = 15548997; // Bright Red
+          agenda = 'Battle starts now! Join your squad!';
+        }
+
         // A. Trigger Discord Notification via Webhook if configured
         if (webhookUrl && webhookUrl.trim() !== '') {
           try {
-            // Build the body using the same logic as notifyDiscordEvent
-            const dateFormatted = new Date(event.start_at).toLocaleDateString('fr-FR', {
-              weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC',
-              hour: '2-digit', minute: '2-digit'
-            }) + ' UTC';
-
-            let content = '';
-            let embedTitle = `📢 Guild Event: ${event.event_name}`;
-            let embedDesc = 'A guild event has been configured in the RAD Management tool!';
-            let color = 5763719; // Green
-            let agenda = 'Please connect now.';
-
-            if (reminderType === 'reminder_30') {
-              content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! @everyone`;
-              embedTitle = `⏰ Reminder: ${event.event_name} starts in 30 minutes!`;
-              embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
-              color = 16750848; // Orange
-              agenda = 'Please connect and get ready soon.';
-            } else if (reminderType === 'reminder_15') {
-              content = `⏰ **Reminder:** ${event.event_name} starts in **15 minutes**! @everyone`;
-              embedTitle = `⏰ Reminder: ${event.event_name} starts in 15 minutes!`;
-              embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
-              color = 16750848; // Orange
-              agenda = 'Please connect and get ready.';
-            } else if (reminderType === 'reminder_5') {
-              content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! @everyone`;
-              embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
-              embedDesc = 'Action time! Join your squad now!';
-              color = 15548997; // Bright Red
-              agenda = 'Action time! Connect now!';
-            } else if (reminderType === 'start') {
-              content = `⚔️ **Event Started:** ${event.event_name} starts now! @everyone`;
-              embedTitle = `⚔️ Event Started: ${event.event_name} is active!`;
-              embedDesc = 'Action time! Join your squad now!';
-              color = 15548997; // Bright Red
-              agenda = 'Battle starts now! Join your squad!';
-            }
-
             const body = {
               content: content,
               embeds: [{
@@ -141,20 +201,7 @@ serve(async (req) => {
         }
 
         // B. Trigger Web Push Notifications (via push subscriptions)
-        // Fetch all subscriptions
-        try {
-          const { data: subs, error: subError } = await supabase
-            .from('push_subscriptions')
-            .select('*');
-
-          if (!subError && subs && subs.length > 0) {
-            // Invoke your Push Notification delivery service or Deno Web Push client here
-            // (Uses Web Push protocol to notify PWA devices)
-            console.log(`Sending Web Push reminders to ${subs.length} devices...`);
-          }
-        } catch (e) {
-          console.error('Error fetching push subscriptions:', e);
-        }
+        await sendWebPush(supabase, embedTitle, content);
 
         results.push({ event: event.event_name, type: reminderType, status: 'sent' });
       }
@@ -162,7 +209,7 @@ serve(async (req) => {
 
     // 3. GvG Saturday notifications and reminders
     const isGvgActive = (events || []).some(e => e.event_name === 'GvG');
-    if (isGvgActive && webhookUrl && webhookUrl.trim() !== '') {
+    if (isGvgActive) {
       const dateUtc = new Date(now);
       const curDay = dateUtc.getUTCDay();
       const curHour = dateUtc.getUTCHours();
@@ -234,32 +281,35 @@ serve(async (req) => {
           const startMinStr = String(matchingSlot.targetMinute).padStart(2, '0');
           const timeStr = `${startHourStr}:${startMinStr} UTC`;
 
-          const body = {
-            content: content,
-            embeds: [{
-              title: embedTitle,
-              description: embedDesc,
-              color: color,
-              fields: [
-                { name: 'Start Time (UTC)', value: timeStr, inline: true },
-                { name: 'Guild Agenda', value: agenda, inline: false }
-              ],
-              timestamp: new Date().toISOString(),
-              footer: { text: 'RAD Management Tool' }
-            }]
-          };
+          if (webhookUrl && webhookUrl.trim() !== '') {
+            const body = {
+              content: content,
+              embeds: [{
+                title: embedTitle,
+                description: embedDesc,
+                color: color,
+                fields: [
+                  { name: 'Start Time (UTC)', value: timeStr, inline: true },
+                  { name: 'Guild Agenda', value: agenda, inline: false }
+                ],
+                timestamp: new Date().toISOString(),
+                footer: { text: 'RAD Management Tool' }
+              }]
+            };
 
-          const discordRes = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
+            const discordRes = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
 
-          if (!discordRes.ok) {
-            console.error(`Discord GvG Saturday reminder webhook failed with status: ${discordRes.status}`);
-          } else {
-            results.push({ event: `GvG Saturday - ${matchingSlot.label} (${matchingSlot.type})`, type: 'gvg_saturday', status: 'sent' });
+            if (!discordRes.ok) {
+              console.error(`Discord GvG Saturday reminder webhook failed with status: ${discordRes.status}`);
+            }
           }
+
+          await sendWebPush(supabase, embedTitle, content);
+          results.push({ event: `GvG Saturday - ${matchingSlot.label} (${matchingSlot.type})`, type: 'gvg_saturday', status: 'sent' });
         } catch (e) {
           console.error('Error sending Discord GvG Saturday webhook:', e);
         }
@@ -268,7 +318,7 @@ serve(async (req) => {
 
     // 4. SvS notifications and reminders
     const isSvsActive = (events || []).some(e => e.event_name === 'SvS');
-    if (isSvsActive && webhookUrl && webhookUrl.trim() !== '') {
+    if (isSvsActive) {
       const dateUtc = new Date(now);
       const curDay = dateUtc.getUTCDay();
       const curHour = dateUtc.getUTCHours();
@@ -348,29 +398,32 @@ serve(async (req) => {
             ];
           }
 
-          const body = {
-            content: content,
-            embeds: [{
-              title: embedTitle,
-              description: embedDesc,
-              color: color,
-              fields: fields,
-              timestamp: new Date().toISOString(),
-              footer: { text: 'RAD Management Tool' }
-            }]
-          };
+          if (webhookUrl && webhookUrl.trim() !== '') {
+            const body = {
+              content: content,
+              embeds: [{
+                title: embedTitle,
+                description: embedDesc,
+                color: color,
+                fields: fields,
+                timestamp: new Date().toISOString(),
+                footer: { text: 'RAD Management Tool' }
+              }]
+            };
 
-          const discordRes = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
+            const discordRes = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
 
-          if (!discordRes.ok) {
-            console.error(`Discord SvS reminder webhook failed with status: ${discordRes.status}`);
-          } else {
-            results.push({ event: `SvS - ${matchingSlot.label}`, type: `svs_${matchingSlot.type}`, status: 'sent' });
+            if (!discordRes.ok) {
+              console.error(`Discord SvS reminder webhook failed with status: ${discordRes.status}`);
+            }
           }
+
+          await sendWebPush(supabase, embedTitle, content);
+          results.push({ event: `SvS - ${matchingSlot.label}`, type: `svs_${matchingSlot.type}`, status: 'sent' });
         } catch (e) {
           console.error('Error sending Discord SvS webhook:', e);
         }
@@ -378,7 +431,7 @@ serve(async (req) => {
     }
 
     // 5. Calamity Befalls weekly reminders
-    if (webhookUrl && webhookUrl.trim() !== '') {
+    {
       const dateUtc = new Date(now);
       const curDay = dateUtc.getUTCDay();
       const curHour = dateUtc.getUTCHours();
@@ -423,33 +476,36 @@ serve(async (req) => {
           const startMinStr = String(matchingSlot.targetMinute).padStart(2, '0');
           const timeStr = `${matchingSlot.targetDay} · ${startHourStr}:${startMinStr} UTC`;
 
-          const body = {
-            content: content,
-            embeds: [{
-              title: embedTitle,
-              description: embedDesc,
-              color: color,
-              fields: [
-                { name: 'Round', value: `${matchingSlot.round} / 16`, inline: true },
-                { name: 'Start Time (UTC)', value: timeStr, inline: true },
-                { name: 'Guild Agenda', value: agenda, inline: false }
-              ],
-              timestamp: new Date().toISOString(),
-              footer: { text: 'RAD Management Tool' }
-            }]
-          };
+          if (webhookUrl && webhookUrl.trim() !== '') {
+            const body = {
+              content: content,
+              embeds: [{
+                title: embedTitle,
+                description: embedDesc,
+                color: color,
+                fields: [
+                  { name: 'Round', value: `${matchingSlot.round} / 16`, inline: true },
+                  { name: 'Start Time (UTC)', value: timeStr, inline: true },
+                  { name: 'Guild Agenda', value: agenda, inline: false }
+                ],
+                timestamp: new Date().toISOString(),
+                footer: { text: 'RAD Management Tool' }
+              }]
+            };
 
-          const discordRes = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
+            const discordRes = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
 
-          if (!discordRes.ok) {
-            console.error(`Discord Calamity Befalls reminder webhook failed with status: ${discordRes.status}`);
-          } else {
-            results.push({ event: `Calamity Befalls - Round ${matchingSlot.round}`, type: 'calamity_befalls', status: 'sent' });
+            if (!discordRes.ok) {
+              console.error(`Discord Calamity Befalls reminder webhook failed with status: ${discordRes.status}`);
+            }
           }
+
+          await sendWebPush(supabase, embedTitle, content);
+          results.push({ event: `Calamity Befalls - Round ${matchingSlot.round}`, type: 'calamity_befalls', status: 'sent' });
         } catch (e) {
           console.error('Error sending Discord Calamity Befalls webhook:', e);
         }
