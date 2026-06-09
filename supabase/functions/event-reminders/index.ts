@@ -84,6 +84,15 @@ function getSlotDateString(now: number, slotDay: number): string {
   return d.toISOString().split('T')[0]; // YYYY-MM-DD
 }
 
+function getWeekStart(date: Date | string | number): string {
+  const d = new Date(date);
+  const day = d.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  return monday.getUTCFullYear() + '-' + pad2(monday.getUTCMonth() + 1) + '-' + pad2(monday.getUTCDate());
+}
+
 serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
   const xCronSecret = req.headers.get('x-cron-secret');
@@ -120,6 +129,13 @@ serve(async (req) => {
     for (const event of (events || [])) {
       if (!event.start_at) continue;
 
+      const isStandardEvent = event.event_name === 'ARMS RACE STAGE A' ||
+                              event.event_name === 'ARMS RACE STAGE B' ||
+                              event.event_name === 'Defend Trade Route' ||
+                              event.event_name === 'Shadowfront Squad 1' ||
+                              event.event_name === 'Shadowfront Squad 2';
+      if (!isStandardEvent) continue;
+
       const startMs = new Date(event.start_at).getTime();
       const diffMs = startMs - now;
       const diffMins = diffMs / 60000;
@@ -128,30 +144,27 @@ serve(async (req) => {
       let trigger = false;
       let reminderType = '';
 
-      const isShadowfrontSquad = event.event_name === 'Shadowfront Squad 1' || event.event_name === 'Shadowfront Squad 2';
-
-      if (isShadowfrontSquad) {
-        if (roundedMins === 30 || roundedMins === 15 || roundedMins === 5 || roundedMins === 0) {
-          trigger = true;
-          reminderType = roundedMins === 30 ? 'reminder_30'
-            : roundedMins === 15 ? 'reminder_15'
-            : roundedMins === 5  ? 'reminder_5'
-            : 'start';
-        }
-      } else {
-        if (roundedMins === 15 || roundedMins === 5) {
-          trigger = true;
-          reminderType = roundedMins === 15 ? 'reminder_15' : 'reminder_5';
-        }
+      if (roundedMins <= 30 && roundedMins >= 26) {
+        trigger = true;
+        reminderType = 'reminder_30';
+      } else if (roundedMins <= 15 && roundedMins >= 11) {
+        trigger = true;
+        reminderType = 'reminder_15';
+      } else if (roundedMins <= 5 && roundedMins >= 1) {
+        trigger = true;
+        reminderType = 'reminder_5';
+      } else if (roundedMins <= 0 && roundedMins >= -4) {
+        trigger = true;
+        reminderType = 'start';
       }
 
       if (trigger) {
         const lockKey = `sent_event_${event.event_name.replace(/\s+/g, '_')}_${event.session_id}_${reminderType}`;
         if (config[lockKey] !== 'sent') {
           let sentSuccess = false;
-          const dateFormatted = new Date(event.start_at).toLocaleDateString('fr-FR', {
-            weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC',
-            hour: '2-digit', minute: '2-digit'
+          const dateFormatted = new Date(event.start_at).toLocaleString('en-US', {
+            weekday: 'short', month: '2-digit', day: '2-digit', timeZone: 'UTC',
+            hour: '2-digit', minute: '2-digit', hour12: false
           }) + ' UTC';
 
           let content = '';
@@ -237,7 +250,8 @@ serve(async (req) => {
     }
 
     // 3. GvG Saturday notifications and reminders
-    const isGvgActive = (events || []).some(e => e.event_name === 'GvG');
+    const gvgEvent = (events || []).find(e => e.event_name === 'GvG');
+    const isGvgActive = gvgEvent && getWeekStart(gvgEvent.start_at || gvgEvent.session_id) === getWeekStart(now);
     if (isGvgActive) {
       const dateUtc = new Date(now);
       const curDay = dateUtc.getUTCDay();
@@ -361,7 +375,8 @@ serve(async (req) => {
     }
 
     // 4. SvS notifications and reminders
-    const isSvsActive = (events || []).some(e => e.event_name === 'SvS');
+    const svsEvent = (events || []).find(e => e.event_name === 'SvS');
+    const isSvsActive = svsEvent && getWeekStart(svsEvent.start_at || svsEvent.session_id) === getWeekStart(now);
     if (isSvsActive) {
       const dateUtc = new Date(now);
       const curDay = dateUtc.getUTCDay();
