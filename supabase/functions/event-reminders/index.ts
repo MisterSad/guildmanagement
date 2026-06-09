@@ -63,6 +63,27 @@ async function sendWebPush(supabase: any, title: string, body: string) {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
+function getMinutesDiff(curDay: number, curHour: number, curMin: number, targetDay: number, targetHour: number, targetMin: number): number {
+  const curWeeklyMins = curDay * 1440 + curHour * 60 + curMin;
+  const targetWeeklyMins = targetDay * 1440 + targetHour * 60 + targetMin;
+  let diff = curWeeklyMins - targetWeeklyMins;
+  // Normalize difference to [-5040, 5040] to handle weekly rollover
+  diff = (diff + 10080 + 5040) % 10080 - 5040;
+  return diff;
+}
+
+function getSlotDateString(now: number, slotDay: number): string {
+  const d = new Date(now);
+  const curDay = d.getUTCDay();
+  let dayDiff = slotDay - curDay;
+  // Normalize to closest day in the weekly cycle (-3 to 3)
+  if (dayDiff > 3) dayDiff -= 7;
+  else if (dayDiff < -3) dayDiff += 7;
+  
+  d.setUTCDate(d.getUTCDate() + dayDiff);
+  return d.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
 serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
   const xCronSecret = req.headers.get('x-cron-secret');
@@ -125,76 +146,93 @@ serve(async (req) => {
       }
 
       if (trigger) {
-        const dateFormatted = new Date(event.start_at).toLocaleDateString('fr-FR', {
-          weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC',
-          hour: '2-digit', minute: '2-digit'
-        }) + ' UTC';
+        const lockKey = `sent_event_${event.event_name.replace(/\s+/g, '_')}_${event.session_id}_${reminderType}`;
+        if (config[lockKey] !== 'sent') {
+          let sentSuccess = false;
+          const dateFormatted = new Date(event.start_at).toLocaleDateString('fr-FR', {
+            weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC',
+            hour: '2-digit', minute: '2-digit'
+          }) + ' UTC';
 
-        let content = '';
-        let embedTitle = `📢 Guild Event: ${event.event_name}`;
-        let embedDesc = 'A guild event has been configured in the RAD Management tool!';
-        let color = 5763719; // Green
-        let agenda = 'Please connect now.';
+          let content = '';
+          let embedTitle = `📢 Guild Event: ${event.event_name}`;
+          let embedDesc = 'A guild event has been configured in the RAD Management tool!';
+          let color = 5763719; // Green
+          let agenda = 'Please connect now.';
 
-        if (reminderType === 'reminder_30') {
-          content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! @everyone`;
-          embedTitle = `⏰ Reminder: ${event.event_name} starts in 30 minutes!`;
-          embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
-          color = 16750848; // Orange
-          agenda = 'Please connect and get ready soon.';
-        } else if (reminderType === 'reminder_15') {
-          content = `⏰ **Reminder:** ${event.event_name} starts in **15 minutes**! @everyone`;
-          embedTitle = `⏰ Reminder: ${event.event_name} starts in 15 minutes!`;
-          embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
-          color = 16750848; // Orange
-          agenda = 'Please connect and get ready.';
-        } else if (reminderType === 'reminder_5') {
-          content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! @everyone`;
-          embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
-          embedDesc = 'Action time! Join your squad now!';
-          color = 15548997; // Bright Red
-          agenda = 'Action time! Connect now!';
-        } else if (reminderType === 'start') {
-          content = `⚔️ **Event Started:** ${event.event_name} starts now! @everyone`;
-          embedTitle = `⚔️ Event Started: ${event.event_name} is active!`;
-          embedDesc = 'Action time! Join your squad now!';
-          color = 15548997; // Bright Red
-          agenda = 'Battle starts now! Join your squad!';
-        }
+          if (reminderType === 'reminder_30') {
+            content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! @everyone`;
+            embedTitle = `⏰ Reminder: ${event.event_name} starts in 30 minutes!`;
+            embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
+            color = 16750848; // Orange
+            agenda = 'Please connect and get ready soon.';
+          } else if (reminderType === 'reminder_15') {
+            content = `⏰ **Reminder:** ${event.event_name} starts in **15 minutes**! @everyone`;
+            embedTitle = `⏰ Reminder: ${event.event_name} starts in 15 minutes!`;
+            embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
+            color = 16750848; // Orange
+            agenda = 'Please connect and get ready.';
+          } else if (reminderType === 'reminder_5') {
+            content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! @everyone`;
+            embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
+            embedDesc = 'Action time! Join your squad now!';
+            color = 15548997; // Bright Red
+            agenda = 'Action time! Connect now!';
+          } else if (reminderType === 'start') {
+            content = `⚔️ **Event Started:** ${event.event_name} starts now! @everyone`;
+            embedTitle = `⚔️ Event Started: ${event.event_name} is active!`;
+            embedDesc = 'Action time! Join your squad now!';
+            color = 15548997; // Bright Red
+            agenda = 'Battle starts now! Join your squad!';
+          }
 
-        if (webhookUrl && webhookUrl.trim() !== '') {
-          try {
-            const body = {
-              content: content,
-              embeds: [{
-                title: embedTitle,
-                description: embedDesc,
-                color: color,
-                fields: [
-                  { name: 'Start Time (UTC)', value: dateFormatted, inline: true },
-                  { name: 'Guild Agenda', value: agenda, inline: false }
-                ],
-                timestamp: new Date().toISOString(),
-                footer: { text: 'RAD Management Tool' }
-              }]
-            };
+          if (webhookUrl && webhookUrl.trim() !== '') {
+            try {
+              const body = {
+                content: content,
+                embeds: [{
+                  title: embedTitle,
+                  description: embedDesc,
+                  color: color,
+                  fields: [
+                    { name: 'Start Time (UTC)', value: dateFormatted, inline: true },
+                    { name: 'Guild Agenda', value: agenda, inline: false }
+                  ],
+                  timestamp: new Date().toISOString(),
+                  footer: { text: 'RAD Management Tool' }
+                }]
+              };
 
-            const discordRes = await fetch(webhookUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body)
-            });
-            
-            if (!discordRes.ok) {
-              console.error(`Discord reminder webhook failed with status: ${discordRes.status}`);
+              const discordRes = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+              });
+              
+              if (!discordRes.ok) {
+                console.error(`Discord reminder webhook failed with status: ${discordRes.status}`);
+              } else {
+                sentSuccess = true;
+              }
+            } catch (e) {
+              console.error('Error sending Discord webhook reminder:', e);
             }
-          } catch (e) {
-            console.error('Error sending Discord webhook reminder:', e);
+          } else {
+            sentSuccess = true; // No webhook configured, count as sent so we trigger web push once
+          }
+
+          if (sentSuccess) {
+            await sendWebPush(supabase, embedTitle, content);
+            try {
+              await supabase
+                .from('guild_config')
+                .upsert({ key: lockKey, value: 'sent', updated_at: new Date().toISOString() });
+            } catch (dbErr) {
+              console.error(`Error saving standard event lock ${lockKey}:`, dbErr);
+            }
+            results.push({ event: event.event_name, type: reminderType, status: 'sent' });
           }
         }
-
-        await sendWebPush(supabase, embedTitle, content);
-        results.push({ event: event.event_name, type: reminderType, status: 'sent' });
       }
     }
 
@@ -222,12 +260,19 @@ serve(async (req) => {
         { day: 6, hour: 21, minute: 55, targetHour: 22, targetMinute: 0, label: 'War Fortress', type: 'reminder' }
       ];
 
-      const matchingSlot = GVG_SCHEDULE.find(slot => {
-        if (slot.day !== curDay || slot.hour !== curHour) return false;
-        return Math.abs(slot.minute - curMin) <= 1;
+      const matchingSlots = GVG_SCHEDULE.filter(slot => {
+        const diff = getMinutesDiff(curDay, curHour, curMin, slot.day, slot.hour, slot.minute);
+        return diff >= 0 && diff <= 10;
       });
 
-      if (matchingSlot) {
+      for (const slot of matchingSlots) {
+        const slotDate = getSlotDateString(now, slot.day);
+        const lockKey = `sent_gvg_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
+
+        if (config[lockKey] === 'sent') {
+          continue;
+        }
+
         try {
           let content = '';
           let embedTitle = '';
@@ -235,14 +280,14 @@ serve(async (req) => {
           let color = 5763719;
           let agenda = '';
 
-          if (matchingSlot.type === 'now') {
-            if (matchingSlot.label === 'War Prism') {
+          if (slot.type === 'now') {
+            if (slot.label === 'War Prism') {
               content = `⚔️ **GvG: War Prism** starts now! @everyone`;
               embedTitle = `⚔️ GvG - War Prism`;
               embedDesc = `The War Prism event is active. Join the battle now!`;
               color = 9807270;
               agenda = `Secure the War Prism now.`;
-            } else if (matchingSlot.label === 'War Fortress') {
+            } else if (slot.label === 'War Fortress') {
               content = `🏰 **GvG: War Fortress** starts now! @everyone`;
               embedTitle = `🏰 GvG - War Fortress`;
               embedDesc = `The War Fortress event is active. All units to their stations!`;
@@ -250,13 +295,13 @@ serve(async (req) => {
               agenda = `Secure the War Fortress now.`;
             }
           } else {
-            if (matchingSlot.label === 'War Prism') {
+            if (slot.label === 'War Prism') {
               content = `⏰ **GvG: War Prism** starts in **5 minutes**! @everyone`;
               embedTitle = `⏰ GvG - War Prism (Reminder)`;
               embedDesc = `Get ready! The War Prism event starts in 5 minutes.`;
               color = 16750848;
               agenda = `Log in and prepare for the War Prism.`;
-            } else if (matchingSlot.label === 'War Fortress') {
+            } else if (slot.label === 'War Fortress') {
               content = `⏰ **GvG: War Fortress** starts in **5 minutes**! @everyone`;
               embedTitle = `⏰ GvG - War Fortress (Reminder)`;
               embedDesc = `Get ready! The War Fortress event starts in 5 minutes.`;
@@ -265,10 +310,11 @@ serve(async (req) => {
             }
           }
 
-          const startHourStr = String(matchingSlot.targetHour).padStart(2, '0');
-          const startMinStr = String(matchingSlot.targetMinute).padStart(2, '0');
+          const startHourStr = String(slot.targetHour).padStart(2, '0');
+          const startMinStr = String(slot.targetMinute).padStart(2, '0');
           const timeStr = `${startHourStr}:${startMinStr} UTC`;
 
+          let sentSuccess = false;
           if (webhookUrl && webhookUrl.trim() !== '') {
             const body = {
               content: content,
@@ -293,11 +339,21 @@ serve(async (req) => {
 
             if (!discordRes.ok) {
               console.error(`Discord GvG Saturday reminder webhook failed with status: ${discordRes.status}`);
+            } else {
+              sentSuccess = true;
             }
+          } else {
+            sentSuccess = true;
           }
 
-          await sendWebPush(supabase, embedTitle, content);
-          results.push({ event: `GvG Saturday - ${matchingSlot.label} (${matchingSlot.type})`, type: 'gvg_saturday', status: 'sent' });
+          if (sentSuccess) {
+            await sendWebPush(supabase, embedTitle, content);
+            await supabase
+              .from('guild_config')
+              .upsert({ key: lockKey, value: 'sent', updated_at: new Date().toISOString() });
+
+            results.push({ event: `GvG Saturday - ${slot.label} (${slot.type})`, type: 'gvg_saturday', status: 'sent' });
+          }
         } catch (e) {
           console.error('Error sending Discord GvG Saturday webhook:', e);
         }
@@ -324,12 +380,19 @@ serve(async (req) => {
         { day: 6, hour: 14, minute: 0, label: 'Battle Start', type: 'battle_start' }
       ];
 
-      const matchingSlot = SVS_SCHEDULE.find(slot => {
-        if (slot.day !== curDay || slot.hour !== curHour) return false;
-        return Math.abs(slot.minute - curMin) <= 1;
+      const matchingSlots = SVS_SCHEDULE.filter(slot => {
+        const diff = getMinutesDiff(curDay, curHour, curMin, slot.day, slot.hour, slot.minute);
+        return diff >= 0 && diff <= 10;
       });
 
-      if (matchingSlot) {
+      for (const slot of matchingSlots) {
+        const slotDate = getSlotDateString(now, slot.day);
+        const lockKey = `sent_svs_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
+
+        if (config[lockKey] === 'sent') {
+          continue;
+        }
+
         try {
           let content = '';
           let embedTitle = '';
@@ -338,7 +401,7 @@ serve(async (req) => {
           let agenda = '';
           let fields: any[] = [];
 
-          if (matchingSlot.type === 'garrison') {
+          if (slot.type === 'garrison') {
             content = `🛡️ **SvS: Garrison Reminder** - Don't forget to put your ships in garrison to avoid being attacked while offline! @everyone`;
             embedTitle = `🛡️ SvS: Garrison Reminder`;
             embedDesc = `Protect your ships before going offline.`;
@@ -351,25 +414,25 @@ serve(async (req) => {
           } else {
             const timeStr = '14:00 UTC';
             
-            if (matchingSlot.type === 'reminder_30') {
+            if (slot.type === 'reminder_30') {
               content = `⏰ **SvS: Battle starts in 30 minutes!** @everyone`;
               embedTitle = `⏰ SvS: Starts in 30 minutes`;
               embedDesc = `The SvS battle will begin shortly. Prepare yourself!`;
               color = 16750848;
               agenda = `Connection recommended soon for preparation.`;
-            } else if (matchingSlot.type === 'reminder_15') {
+            } else if (slot.type === 'reminder_15') {
               content = `⏰ **SvS: Battle starts in 15 minutes!** @everyone`;
               embedTitle = `⏰ SvS: Starts in 15 minutes`;
               embedDesc = `Soldiers, prepare your lines. Connection highly recommended.`;
               color = 16750848;
               agenda = `Prepare your fleets and log in.`;
-            } else if (matchingSlot.type === 'reminder_5') {
+            } else if (slot.type === 'reminder_5') {
               content = `🚨 **SvS: Battle starts in 5 minutes!** @everyone`;
               embedTitle = `🚨 SvS: Starts in 5 minutes!`;
               embedDesc = `Battle imminent! Join your squads!`;
               color = 15548997;
               agenda = `Join squads and be ready for combat.`;
-            } else if (matchingSlot.type === 'battle_start') {
+            } else if (slot.type === 'battle_start') {
               content = `⚔️ **SvS: Battle has started!** Time to fight! @everyone`;
               embedTitle = `⚔️ SvS: Battle has started!`;
               embedDesc = `The SvS battle begins now! To the attack!`;
@@ -383,6 +446,7 @@ serve(async (req) => {
             ];
           }
 
+          let sentSuccess = false;
           if (webhookUrl && webhookUrl.trim() !== '') {
             const body = {
               content: content,
@@ -404,11 +468,21 @@ serve(async (req) => {
 
             if (!discordRes.ok) {
               console.error(`Discord SvS reminder webhook failed with status: ${discordRes.status}`);
+            } else {
+              sentSuccess = true;
             }
+          } else {
+            sentSuccess = true;
           }
 
-          await sendWebPush(supabase, embedTitle, content);
-          results.push({ event: `SvS - ${matchingSlot.label}`, type: `svs_${matchingSlot.type}`, status: 'sent' });
+          if (sentSuccess) {
+            await sendWebPush(supabase, embedTitle, content);
+            await supabase
+              .from('guild_config')
+              .upsert({ key: lockKey, value: 'sent', updated_at: new Date().toISOString() });
+
+            results.push({ event: `SvS - ${slot.label}`, type: `svs_${slot.type}`, status: 'sent' });
+          }
         } catch (e) {
           console.error('Error sending Discord SvS webhook:', e);
         }
@@ -441,23 +515,31 @@ serve(async (req) => {
         { day: 3, hour: 20, minute: 55, round: 16, targetHour: 21, targetMinute: 0, targetDay: 'Wednesday' }
       ];
 
-      const matchingSlot = CALAMITY_SCHEDULE.find(slot => {
-        if (slot.day !== curDay || slot.hour !== curHour) return false;
-        return Math.abs(slot.minute - curMin) <= 1;
+      const matchingSlots = CALAMITY_SCHEDULE.filter(slot => {
+        const diff = getMinutesDiff(curDay, curHour, curMin, slot.day, slot.hour, slot.minute);
+        return diff >= 0 && diff <= 10;
       });
 
-      if (matchingSlot) {
+      for (const slot of matchingSlots) {
+        const slotDate = getSlotDateString(now, slot.day);
+        const lockKey = `sent_calamity_round_${slot.round}_${slotDate}`;
+
+        if (config[lockKey] === 'sent') {
+          continue;
+        }
+
         try {
-          const content = `⏰ **Calamity Befalls: Round ${matchingSlot.round} starts in 5 minutes!** @everyone`;
-          const embedTitle = `⏰ Calamity Befalls - Round ${matchingSlot.round} (Reminder)`;
-          const embedDesc = `Prepare your squads! Calamity Befalls Round ${matchingSlot.round} starts in 5 minutes.`;
+          const content = `⏰ **Calamity Befalls: Round ${slot.round} starts in 5 minutes!** @everyone`;
+          const embedTitle = `⏰ Calamity Befalls - Round ${slot.round} (Reminder)`;
+          const embedDesc = `Prepare your squads! Calamity Befalls Round ${slot.round} starts in 5 minutes.`;
           const color = 16750848;
           const agenda = 'Log in and prepare for the battle.';
 
-          const startHourStr = String(matchingSlot.targetHour).padStart(2, '0');
-          const startMinStr = String(matchingSlot.targetMinute).padStart(2, '0');
-          const timeStr = `${matchingSlot.targetDay} · ${startHourStr}:${startMinStr} UTC`;
+          const startHourStr = String(slot.targetHour).padStart(2, '0');
+          const startMinStr = String(slot.targetMinute).padStart(2, '0');
+          const timeStr = `${slot.targetDay} · ${startHourStr}:${startMinStr} UTC`;
 
+          let sentSuccess = false;
           if (webhookUrl && webhookUrl.trim() !== '') {
             const body = {
               content: content,
@@ -466,7 +548,7 @@ serve(async (req) => {
                 description: embedDesc,
                 color: color,
                 fields: [
-                  { name: 'Round', value: `${matchingSlot.round} / 16`, inline: true },
+                  { name: 'Round', value: `${slot.round} / 16`, inline: true },
                   { name: 'Start Time (UTC)', value: timeStr, inline: true },
                   { name: 'Guild Agenda', value: agenda, inline: false }
                 ],
@@ -483,11 +565,21 @@ serve(async (req) => {
 
             if (!discordRes.ok) {
               console.error(`Discord Calamity Befalls reminder webhook failed with status: ${discordRes.status}`);
+            } else {
+              sentSuccess = true;
             }
+          } else {
+            sentSuccess = true;
           }
 
-          await sendWebPush(supabase, embedTitle, content);
-          results.push({ event: `Calamity Befalls - Round ${matchingSlot.round}`, type: 'calamity_befalls', status: 'sent' });
+          if (sentSuccess) {
+            await sendWebPush(supabase, embedTitle, content);
+            await supabase
+              .from('guild_config')
+              .upsert({ key: lockKey, value: 'sent', updated_at: new Date().toISOString() });
+
+            results.push({ event: `Calamity Befalls - Round ${slot.round}`, type: 'calamity_befalls', status: 'sent' });
+          }
         } catch (e) {
           console.error('Error sending Discord Calamity Befalls webhook:', e);
         }
