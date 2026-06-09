@@ -51,23 +51,77 @@ async function drawNotificationCard(title: string, subtitle: string, emoji: stri
     ctx.strokeRect(40, 40, width - 80, height - 80);
   }
 
-  // 3. Draw Title (with prepended and appended emoji)
+  // 3. Process Title and Subtitle dynamically
+  let cleanTitle = title;
+  let roundStr = "";
+
+  // Extract Round number if present in title (e.g. "Calamity Befalls - Round 6")
+  const roundMatch = title.match(/(.*)\s*-\s*Round\s*(\d+)/i);
+  if (roundMatch) {
+    cleanTitle = roundMatch[1].trim(); // "Calamity Befalls"
+    roundStr = `ROUND ${roundMatch[2]}`; // "ROUND 6"
+  }
+
+  const displayTitle = `${emoji} ${cleanTitle.toUpperCase()} ${emoji}`;
+
+  // Formulate Subtitle
+  let displaySubtitle = subtitle.toUpperCase().replace("MINUTES", "MIN").replace("MINUTE", "MIN").replace("!", "");
+  if (roundStr) {
+    displaySubtitle = `${roundStr} • ${displaySubtitle}`; // e.g. "ROUND 6 • STARTS IN 5 MIN"
+  }
+
+  // 4. Draw Title with Neon Purple/Magenta Glow
+  ctx.save();
+  ctx.shadowColor = "rgba(217, 70, 239, 0.85)"; // Purple glow
+  ctx.shadowBlur = 12;
   ctx.fillStyle = "#ffffff";
   ctx.font = font ? "bold 32px Roboto" : "bold 32px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  
-  const displayTitle = `${emoji} ${title.toUpperCase()} ${emoji}`;
   ctx.fillText(displayTitle, width / 2, 54);
+  ctx.restore();
 
-  // 4. Draw Subtitle 1 (e.g., Starts in 5 minutes!)
-  ctx.fillStyle = "#c084fc"; // Light purple/pink
+  // 5. Draw Subtitle 1 with multi-color splitting (e.g. "ROUND 6 • STARTS IN " and "5 MIN")
+  ctx.save();
   ctx.font = font ? "bold 24px Roboto" : "bold 24px sans-serif";
-  ctx.fillText(subtitle, width / 2, 337);
+  ctx.textBaseline = "middle";
 
-  // 5. Draw Subtitle 2 (Join your squads now!)
-  ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+  const timeMatch = displaySubtitle.match(/(.*?\bIN\s+)(\d+\s*MIN.*)/i);
+  if (timeMatch) {
+    const part1 = timeMatch[1]; // "ROUND 6 • STARTS IN "
+    const part2 = timeMatch[2]; // "5 MIN"
+
+    // Measure text widths for precise horizontal centering
+    const w1 = ctx.measureText(part1).width;
+    const w2 = ctx.measureText(part2).width;
+    const totalW = w1 + w2;
+    const startX = (width - totalW) / 2;
+
+    // Draw part 1 (white text)
+    ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.fillText(part1, startX, 337);
+
+    // Draw part 2 (pink glowing text)
+    ctx.save();
+    ctx.shadowColor = "rgba(244, 114, 182, 0.95)"; // Pink glow
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = "#f472b6"; // Hot pink
+    ctx.fillText(part2, startX + w1, 337);
+    ctx.restore();
+  } else {
+    // Fallback: draw centered white subtitle
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(displaySubtitle, width / 2, 337);
+  }
+  ctx.restore();
+
+  // 6. Draw Subtitle 2 (Join your squads now!)
+  ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
   ctx.font = font ? "20px Roboto" : "20px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
   ctx.fillText("Join your squads now!", width / 2, 382);
 
   return canvas.toBuffer();
