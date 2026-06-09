@@ -373,6 +373,83 @@ serve(async (req) => {
       }
     }
 
+    // 5. Calamity Befalls weekly reminders
+    if (webhookUrl && webhookUrl.trim() !== '') {
+      const dateUtc = new Date(now);
+      const curDay = dateUtc.getUTCDay();
+      const curHour = dateUtc.getUTCHours();
+      const curMin = dateUtc.getUTCMinutes();
+
+      const CALAMITY_SCHEDULE = [
+        { day: 1, hour: 23, minute: 55, round: 1, targetHour: 0, targetMinute: 0, targetDay: 'Tuesday' },
+        { day: 2, hour: 2, minute: 55, round: 2, targetHour: 3, targetMinute: 0, targetDay: 'Tuesday' },
+        { day: 2, hour: 5, minute: 55, round: 3, targetHour: 6, targetMinute: 0, targetDay: 'Tuesday' },
+        { day: 2, hour: 8, minute: 55, round: 4, targetHour: 9, targetMinute: 0, targetDay: 'Tuesday' },
+        { day: 2, hour: 11, minute: 55, round: 5, targetHour: 12, targetMinute: 0, targetDay: 'Tuesday' },
+        { day: 2, hour: 14, minute: 55, round: 6, targetHour: 15, targetMinute: 0, targetDay: 'Tuesday' },
+        { day: 2, hour: 17, minute: 55, round: 7, targetHour: 18, targetMinute: 0, targetDay: 'Tuesday' },
+        { day: 2, hour: 20, minute: 55, round: 8, targetHour: 21, targetMinute: 0, targetDay: 'Tuesday' },
+        { day: 2, hour: 23, minute: 55, round: 9, targetHour: 0, targetMinute: 0, targetDay: 'Wednesday' },
+        { day: 3, hour: 2, minute: 55, round: 10, targetHour: 3, targetMinute: 0, targetDay: 'Wednesday' },
+        { day: 3, hour: 5, minute: 55, round: 11, targetHour: 6, targetMinute: 0, targetDay: 'Wednesday' },
+        { day: 3, hour: 8, minute: 55, round: 12, targetHour: 9, targetMinute: 0, targetDay: 'Wednesday' },
+        { day: 3, hour: 11, minute: 55, round: 13, targetHour: 12, targetMinute: 0, targetDay: 'Wednesday' },
+        { day: 3, hour: 14, minute: 55, round: 14, targetHour: 15, targetMinute: 0, targetDay: 'Wednesday' },
+        { day: 3, hour: 17, minute: 55, round: 15, targetHour: 18, targetMinute: 0, targetDay: 'Wednesday' },
+        { day: 3, hour: 20, minute: 55, round: 16, targetHour: 21, targetMinute: 0, targetDay: 'Wednesday' }
+      ];
+
+      const matchingSlot = CALAMITY_SCHEDULE.find(slot => 
+        slot.day === curDay && 
+        slot.hour === curHour && 
+        slot.minute === curMin
+      );
+
+      if (matchingSlot) {
+        try {
+          const content = `⏰ **Calamity Befalls: Round ${matchingSlot.round} starts in 5 minutes!** @everyone`;
+          const embedTitle = `⏰ Calamity Befalls - Round ${matchingSlot.round} (Reminder)`;
+          const embedDesc = `Prepare your squads! Calamity Befalls Round ${matchingSlot.round} starts in 5 minutes.`;
+          const color = 16750848; // Orange
+          const agenda = 'Log in and prepare for the battle.';
+
+          const startHourStr = String(matchingSlot.targetHour).padStart(2, '0');
+          const startMinStr = String(matchingSlot.targetMinute).padStart(2, '0');
+          const timeStr = `${matchingSlot.targetDay} · ${startHourStr}:${startMinStr} UTC`;
+
+          const body = {
+            content: content,
+            embeds: [{
+              title: embedTitle,
+              description: embedDesc,
+              color: color,
+              fields: [
+                { name: 'Round', value: `${matchingSlot.round} / 16`, inline: true },
+                { name: 'Start Time (UTC)', value: timeStr, inline: true },
+                { name: 'Guild Agenda', value: agenda, inline: false }
+              ],
+              timestamp: new Date().toISOString(),
+              footer: { text: 'RAD Management Tool' }
+            }]
+          };
+
+          const discordRes = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+
+          if (!discordRes.ok) {
+            console.error(`Discord Calamity Befalls reminder webhook failed with status: ${discordRes.status}`);
+          } else {
+            results.push({ event: `Calamity Befalls - Round ${matchingSlot.round}`, type: 'calamity_befalls', status: 'sent' });
+          }
+        } catch (e) {
+          console.error('Error sending Discord Calamity Befalls webhook:', e);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ ok: true, processed: results }), {
       headers: { 'Content-Type': 'application/json' }
     });
