@@ -54,9 +54,13 @@ serve(async (req) => {
       const isShadowfrontSquad = event.event_name === 'Shadowfront Squad 1' || event.event_name === 'Shadowfront Squad 2';
 
       if (isShadowfrontSquad) {
-        if (roundedMins === 30 || roundedMins === 15 || roundedMins === 0) {
+        // 30min, 15min, 5min reminders + start notification (same pattern as DTR/Arms Race)
+        if (roundedMins === 30 || roundedMins === 15 || roundedMins === 5 || roundedMins === 0) {
           trigger = true;
-          reminderType = roundedMins === 30 ? 'reminder_30' : (roundedMins === 15 ? 'reminder_15' : 'start');
+          reminderType = roundedMins === 30 ? 'reminder_30'
+            : roundedMins === 15 ? 'reminder_15'
+            : roundedMins === 5  ? 'reminder_5'
+            : 'start';
         }
       } else {
         if (roundedMins === 15 || roundedMins === 5) {
@@ -182,11 +186,11 @@ serve(async (req) => {
         { day: 6, hour: 21, minute: 55, targetHour: 22, targetMinute: 0, label: 'War Fortress', type: 'reminder' }
       ];
 
-      const matchingSlot = GVG_SCHEDULE.find(slot => 
-        slot.day === curDay && 
-        slot.hour === curHour && 
-        slot.minute === curMin
-      );
+      // Use ±1 minute tolerance to handle cron execution delays (same as Calamity fix).
+      const matchingSlot = GVG_SCHEDULE.find(slot => {
+        if (slot.day !== curDay || slot.hour !== curHour) return false;
+        return Math.abs(slot.minute - curMin) <= 1;
+      });
 
       if (matchingSlot) {
         try {
@@ -284,11 +288,11 @@ serve(async (req) => {
         { day: 6, hour: 14, minute: 0, label: 'Battle Start', type: 'battle_start' }
       ];
 
-      const matchingSlot = SVS_SCHEDULE.find(slot => 
-        slot.day === curDay && 
-        slot.hour === curHour && 
-        slot.minute === curMin
-      );
+      // Use ±1 minute tolerance to handle cron execution delays (same as Calamity fix).
+      const matchingSlot = SVS_SCHEDULE.find(slot => {
+        if (slot.day !== curDay || slot.hour !== curHour) return false;
+        return Math.abs(slot.minute - curMin) <= 1;
+      });
 
       if (matchingSlot) {
         try {
@@ -399,11 +403,13 @@ serve(async (req) => {
         { day: 3, hour: 20, minute: 55, round: 16, targetHour: 21, targetMinute: 0, targetDay: 'Wednesday' }
       ];
 
-      const matchingSlot = CALAMITY_SCHEDULE.find(slot => 
-        slot.day === curDay && 
-        slot.hour === curHour && 
-        slot.minute === curMin
-      );
+      // Use ±1 minute tolerance to handle cron execution delays.
+      // All Calamity slots fire at :55 — if the Edge Function starts a few
+      // seconds late, getUTCMinutes() returns 56 and the match is silently missed.
+      const matchingSlot = CALAMITY_SCHEDULE.find(slot => {
+        if (slot.day !== curDay || slot.hour !== curHour) return false;
+        return Math.abs(slot.minute - curMin) <= 1;
+      });
 
       if (matchingSlot) {
         try {
