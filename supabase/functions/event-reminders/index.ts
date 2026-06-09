@@ -65,8 +65,9 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '
 
 serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
+  const xCronSecret = req.headers.get('x-cron-secret');
   const cronSecret = Deno.env.get('CRON_SECRET');
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && xCronSecret !== cronSecret) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
