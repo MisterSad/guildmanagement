@@ -60,6 +60,58 @@ async function sendWebPush(supabase: any, title: string, body: string) {
   }
 }
 
+async function sendDiscordWebhookWithRetry(url: string, body: any): Promise<boolean> {
+  let attempts = 0;
+  const maxAttempts = 3;
+  let delay = 500; // 500ms initial backoff
+
+  while (attempts < maxAttempts) {
+    attempts++;
+    try {
+      console.log(`Sending Discord webhook attempt ${attempts} to: ${url}`);
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (res.ok) {
+        return true;
+      }
+
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get('retry-after');
+        let waitMs = 1000;
+        if (retryAfterHeader) {
+          const parsed = parseFloat(retryAfterHeader);
+          if (!isNaN(parsed)) {
+            waitMs = parsed < 120 ? parsed * 1000 : parsed;
+          }
+        }
+        console.warn(`Discord Rate Limit (429) hit. Waiting ${waitMs}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitMs));
+        continue;
+      }
+
+      if (res.status >= 500) {
+        console.warn(`Discord server error (${res.status}). Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // exponential backoff
+        continue;
+      }
+
+      console.error(`Discord webhook failed with non-retriable status: ${res.status}`);
+      return false;
+
+    } catch (err: any) {
+      console.error(`Network error sending Discord webhook: ${err.message}. Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+  return false;
+}
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
@@ -160,91 +212,102 @@ serve(async (req) => {
 
       if (trigger) {
         const lockKey = `sent_event_${event.event_name.replace(/\s+/g, '_')}_${event.session_id}_${reminderType}`;
-        if (config[lockKey] !== 'sent') {
-          let sentSuccess = false;
-          const dateFormatted = new Date(event.start_at).toLocaleString('en-US', {
-            weekday: 'short', month: '2-digit', day: '2-digit', timeZone: 'UTC',
-            hour: '2-digit', minute: '2-digit', hour12: false
-          }) + ' UTC';
 
-          let content = '';
-          let embedTitle = `📢 Guild Event: ${event.event_name}`;
-          let embedDesc = 'A guild event has been configured in the RAD Management tool!';
-          let color = 5763719; // Green
-          let agenda = 'Please connect now.';
+        // Fast-path memory check
+        if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+          continue;
+        }
 
-          if (reminderType === 'reminder_30') {
-            content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! @everyone`;
-            embedTitle = `⏰ Reminder: ${event.event_name} starts in 30 minutes!`;
-            embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
-            color = 16750848; // Orange
-            agenda = 'Please connect and get ready soon.';
-          } else if (reminderType === 'reminder_15') {
-            content = `⏰ **Reminder:** ${event.event_name} starts in **15 minutes**! @everyone`;
-            embedTitle = `⏰ Reminder: ${event.event_name} starts in 15 minutes!`;
-            embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
-            color = 16750848; // Orange
-            agenda = 'Please connect and get ready.';
-          } else if (reminderType === 'reminder_5') {
-            content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! @everyone`;
-            embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
-            embedDesc = 'Action time! Join your squad now!';
-            color = 15548997; // Bright Red
-            agenda = 'Action time! Connect now!';
-          } else if (reminderType === 'start') {
-            content = `⚔️ **Event Started:** ${event.event_name} starts now! @everyone`;
-            embedTitle = `⚔️ Event Started: ${event.event_name} is active!`;
-            embedDesc = 'Action time! Join your squad now!';
-            color = 15548997; // Bright Red
-            agenda = 'Battle starts now! Join your squad!';
+        // Acquire lock
+        const { error: lockErr } = await supabase
+          .from('guild_config')
+          .insert({ key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+
+        if (lockErr) {
+          console.log(`Lock already exists (DB insert failed) for standard event ${event.event_name} (${reminderType}), skipping`);
+          continue;
+        }
+
+        let sentSuccess = false;
+        const dateFormatted = new Date(event.start_at).toLocaleString('en-US', {
+          weekday: 'short', month: '2-digit', day: '2-digit', timeZone: 'UTC',
+          hour: '2-digit', minute: '2-digit', hour12: false
+        }) + ' UTC';
+
+        let content = '';
+        let embedTitle = `📢 Guild Event: ${event.event_name}`;
+        let embedDesc = 'A guild event has been configured in the RAD Management tool!';
+        let color = 5763719; // Green
+        let agenda = 'Please connect now.';
+
+        if (reminderType === 'reminder_30') {
+          content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! @everyone`;
+          embedTitle = `⏰ Reminder: ${event.event_name} starts in 30 minutes!`;
+          embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
+          color = 16750848; // Orange
+          agenda = 'Please connect and get ready soon.';
+        } else if (reminderType === 'reminder_15') {
+          content = `⏰ **Reminder:** ${event.event_name} starts in **15 minutes**! @everyone`;
+          embedTitle = `⏰ Reminder: ${event.event_name} starts in 15 minutes!`;
+          embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
+          color = 16750848; // Orange
+          agenda = 'Please connect and get ready.';
+        } else if (reminderType === 'reminder_5') {
+          content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! @everyone`;
+          embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
+          embedDesc = 'Action time! Join your squad now!';
+          color = 15548997; // Bright Red
+          agenda = 'Action time! Connect now!';
+        } else if (reminderType === 'start') {
+          content = `⚔️ **Event Started:** ${event.event_name} starts now! @everyone`;
+          embedTitle = `⚔️ Event Started: ${event.event_name} is active!`;
+          embedDesc = 'Action time! Join your squad now!';
+          color = 15548997; // Bright Red
+          agenda = 'Battle starts now! Join your squad!';
+        }
+
+        const body = {
+          content: content,
+          embeds: [{
+            title: embedTitle,
+            description: embedDesc,
+            color: color,
+            fields: [
+              { name: 'Start Time (UTC)', value: dateFormatted, inline: true },
+              { name: 'Guild Agenda', value: agenda, inline: false }
+            ],
+            timestamp: new Date().toISOString(),
+            footer: { text: 'RAD Management Tool' }
+          }]
+        };
+
+        if (webhookUrl && webhookUrl.trim() !== '') {
+          sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
+        } else {
+          sentSuccess = true; // No webhook configured
+        }
+
+        if (sentSuccess) {
+          await sendWebPush(supabase, embedTitle, content);
+          try {
+            await supabase
+              .from('guild_config')
+              .update({ value: 'sent', updated_at: new Date().toISOString() })
+              .eq('key', lockKey);
+          } catch (dbErr) {
+            console.error(`Error updating standard event lock ${lockKey}:`, dbErr);
           }
-
-          if (webhookUrl && webhookUrl.trim() !== '') {
-            try {
-              const body = {
-                content: content,
-                embeds: [{
-                  title: embedTitle,
-                  description: embedDesc,
-                  color: color,
-                  fields: [
-                    { name: 'Start Time (UTC)', value: dateFormatted, inline: true },
-                    { name: 'Guild Agenda', value: agenda, inline: false }
-                  ],
-                  timestamp: new Date().toISOString(),
-                  footer: { text: 'RAD Management Tool' }
-                }]
-              };
-
-              const discordRes = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-              });
-              
-              if (!discordRes.ok) {
-                console.error(`Discord reminder webhook failed with status: ${discordRes.status}`);
-              } else {
-                sentSuccess = true;
-              }
-            } catch (e) {
-              console.error('Error sending Discord webhook reminder:', e);
-            }
-          } else {
-            sentSuccess = true; // No webhook configured, count as sent so we trigger web push once
+          results.push({ event: event.event_name, type: reminderType, status: 'sent' });
+        } else {
+          try {
+            await supabase
+              .from('guild_config')
+              .delete()
+              .eq('key', lockKey);
+          } catch (dbErr) {
+            console.error(`Error releasing standard event lock ${lockKey}:`, dbErr);
           }
-
-          if (sentSuccess) {
-            await sendWebPush(supabase, embedTitle, content);
-            try {
-              await supabase
-                .from('guild_config')
-                .upsert({ key: lockKey, value: 'sent', updated_at: new Date().toISOString() });
-            } catch (dbErr) {
-              console.error(`Error saving standard event lock ${lockKey}:`, dbErr);
-            }
-            results.push({ event: event.event_name, type: reminderType, status: 'sent' });
-          }
+          console.error(`Failed to send standard event ${event.event_name} reminder. Lock released.`);
         }
       }
     }
@@ -283,7 +346,18 @@ serve(async (req) => {
         const slotDate = getSlotDateString(now, slot.day);
         const lockKey = `sent_gvg_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
 
-        if (config[lockKey] === 'sent') {
+        // Fast-path memory check
+        if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+          continue;
+        }
+
+        // Acquire lock
+        const { error: lockErr } = await supabase
+          .from('guild_config')
+          .insert({ key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+
+        if (lockErr) {
+          console.log(`Lock already exists (DB insert failed) for GvG ${slot.label} (${slot.type}), skipping`);
           continue;
         }
 
@@ -328,34 +402,24 @@ serve(async (req) => {
           const startMinStr = String(slot.targetMinute).padStart(2, '0');
           const timeStr = `${startHourStr}:${startMinStr} UTC`;
 
+          const body = {
+            content: content,
+            embeds: [{
+              title: embedTitle,
+              description: embedDesc,
+              color: color,
+              fields: [
+                { name: 'Start Time (UTC)', value: timeStr, inline: true },
+                { name: 'Guild Agenda', value: agenda, inline: false }
+              ],
+              timestamp: new Date().toISOString(),
+              footer: { text: 'RAD Management Tool' }
+            }]
+          };
+
           let sentSuccess = false;
           if (webhookUrl && webhookUrl.trim() !== '') {
-            const body = {
-              content: content,
-              embeds: [{
-                title: embedTitle,
-                description: embedDesc,
-                color: color,
-                fields: [
-                  { name: 'Start Time (UTC)', value: timeStr, inline: true },
-                  { name: 'Guild Agenda', value: agenda, inline: false }
-                ],
-                timestamp: new Date().toISOString(),
-                footer: { text: 'RAD Management Tool' }
-              }]
-            };
-
-            const discordRes = await fetch(webhookUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body)
-            });
-
-            if (!discordRes.ok) {
-              console.error(`Discord GvG Saturday reminder webhook failed with status: ${discordRes.status}`);
-            } else {
-              sentSuccess = true;
-            }
+            sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
           } else {
             sentSuccess = true;
           }
@@ -364,12 +428,23 @@ serve(async (req) => {
             await sendWebPush(supabase, embedTitle, content);
             await supabase
               .from('guild_config')
-              .upsert({ key: lockKey, value: 'sent', updated_at: new Date().toISOString() });
+              .update({ value: 'sent', updated_at: new Date().toISOString() })
+              .eq('key', lockKey);
 
             results.push({ event: `GvG Saturday - ${slot.label} (${slot.type})`, type: 'gvg_saturday', status: 'sent' });
+          } else {
+            await supabase
+              .from('guild_config')
+              .delete()
+              .eq('key', lockKey);
+            console.error(`Failed to send GvG Saturday reminder. Lock released.`);
           }
         } catch (e) {
           console.error('Error sending Discord GvG Saturday webhook:', e);
+          await supabase
+            .from('guild_config')
+            .delete()
+            .eq('key', lockKey);
         }
       }
     }
@@ -404,7 +479,18 @@ serve(async (req) => {
         const slotDate = getSlotDateString(now, slot.day);
         const lockKey = `sent_svs_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
 
-        if (config[lockKey] === 'sent') {
+        // Fast-path memory check
+        if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+          continue;
+        }
+
+        // Acquire lock
+        const { error: lockErr } = await supabase
+          .from('guild_config')
+          .insert({ key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+
+        if (lockErr) {
+          console.log(`Lock already exists (DB insert failed) for SvS ${slot.label} (${slot.type}), skipping`);
           continue;
         }
 
@@ -461,31 +547,21 @@ serve(async (req) => {
             ];
           }
 
+          const body = {
+            content: content,
+            embeds: [{
+              title: embedTitle,
+              description: embedDesc,
+              color: color,
+              fields: fields,
+              timestamp: new Date().toISOString(),
+              footer: { text: 'RAD Management Tool' }
+            }]
+          };
+
           let sentSuccess = false;
           if (webhookUrl && webhookUrl.trim() !== '') {
-            const body = {
-              content: content,
-              embeds: [{
-                title: embedTitle,
-                description: embedDesc,
-                color: color,
-                fields: fields,
-                timestamp: new Date().toISOString(),
-                footer: { text: 'RAD Management Tool' }
-              }]
-            };
-
-            const discordRes = await fetch(webhookUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body)
-            });
-
-            if (!discordRes.ok) {
-              console.error(`Discord SvS reminder webhook failed with status: ${discordRes.status}`);
-            } else {
-              sentSuccess = true;
-            }
+            sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
           } else {
             sentSuccess = true;
           }
@@ -494,12 +570,23 @@ serve(async (req) => {
             await sendWebPush(supabase, embedTitle, content);
             await supabase
               .from('guild_config')
-              .upsert({ key: lockKey, value: 'sent', updated_at: new Date().toISOString() });
+              .update({ value: 'sent', updated_at: new Date().toISOString() })
+              .eq('key', lockKey);
 
             results.push({ event: `SvS - ${slot.label}`, type: `svs_${slot.type}`, status: 'sent' });
+          } else {
+            await supabase
+              .from('guild_config')
+              .delete()
+              .eq('key', lockKey);
+            console.error(`Failed to send SvS reminder. Lock released.`);
           }
         } catch (e) {
           console.error('Error sending Discord SvS webhook:', e);
+          await supabase
+            .from('guild_config')
+            .delete()
+            .eq('key', lockKey);
         }
       }
     }
@@ -539,7 +626,18 @@ serve(async (req) => {
         const slotDate = getSlotDateString(now, slot.day);
         const lockKey = `sent_calamity_round_${slot.round}_${slotDate}`;
 
-        if (config[lockKey] === 'sent') {
+        // Fast-path memory check
+        if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+          continue;
+        }
+
+        // Acquire lock
+        const { error: lockErr } = await supabase
+          .from('guild_config')
+          .insert({ key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+
+        if (lockErr) {
+          console.log(`Lock already exists (DB insert failed) for Calamity Round ${slot.round}, skipping`);
           continue;
         }
 
@@ -554,35 +652,25 @@ serve(async (req) => {
           const startMinStr = String(slot.targetMinute).padStart(2, '0');
           const timeStr = `${slot.targetDay} · ${startHourStr}:${startMinStr} UTC`;
 
+          const body = {
+            content: content,
+            embeds: [{
+              title: embedTitle,
+              description: embedDesc,
+              color: color,
+              fields: [
+                { name: 'Round', value: `${slot.round} / 16`, inline: true },
+                { name: 'Start Time (UTC)', value: timeStr, inline: true },
+                { name: 'Guild Agenda', value: agenda, inline: false }
+              ],
+              timestamp: new Date().toISOString(),
+              footer: { text: 'RAD Management Tool' }
+            }]
+          };
+
           let sentSuccess = false;
           if (webhookUrl && webhookUrl.trim() !== '') {
-            const body = {
-              content: content,
-              embeds: [{
-                title: embedTitle,
-                description: embedDesc,
-                color: color,
-                fields: [
-                  { name: 'Round', value: `${slot.round} / 16`, inline: true },
-                  { name: 'Start Time (UTC)', value: timeStr, inline: true },
-                  { name: 'Guild Agenda', value: agenda, inline: false }
-                ],
-                timestamp: new Date().toISOString(),
-                footer: { text: 'RAD Management Tool' }
-              }]
-            };
-
-            const discordRes = await fetch(webhookUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body)
-            });
-
-            if (!discordRes.ok) {
-              console.error(`Discord Calamity Befalls reminder webhook failed with status: ${discordRes.status}`);
-            } else {
-              sentSuccess = true;
-            }
+            sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
           } else {
             sentSuccess = true;
           }
@@ -591,12 +679,23 @@ serve(async (req) => {
             await sendWebPush(supabase, embedTitle, content);
             await supabase
               .from('guild_config')
-              .upsert({ key: lockKey, value: 'sent', updated_at: new Date().toISOString() });
+              .update({ value: 'sent', updated_at: new Date().toISOString() })
+              .eq('key', lockKey);
 
             results.push({ event: `Calamity Befalls - Round ${slot.round}`, type: 'calamity_befalls', status: 'sent' });
+          } else {
+            await supabase
+              .from('guild_config')
+              .delete()
+              .eq('key', lockKey);
+            console.error(`Failed to send Calamity Befalls reminder. Lock released.`);
           }
         } catch (e) {
           console.error('Error sending Discord Calamity Befalls webhook:', e);
+          await supabase
+            .from('guild_config')
+            .delete()
+            .eq('key', lockKey);
         }
       }
     }
