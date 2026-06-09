@@ -10,13 +10,13 @@ let fontBuffer: Uint8Array | null = null;
 async function getFontBuffer(): Promise<Uint8Array | null> {
   if (fontBuffer) return fontBuffer;
   try {
-    const res = await fetch("https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto-Bold.ttf");
+    const res = await fetch("https://raw.githubusercontent.com/google/fonts/main/ofl/rajdhani/Rajdhani-Bold.ttf");
     if (res.ok) {
       fontBuffer = new Uint8Array(await res.arrayBuffer());
       return fontBuffer;
     }
   } catch (e) {
-    console.error("Failed to fetch font:", e);
+    console.error("Failed to fetch Rajdhani-Bold font:", e);
   }
   return null;
 }
@@ -29,7 +29,7 @@ async function drawNotificationCard(title: string, subtitle: string, emoji: stri
   // Load custom font if available
   const font = await getFontBuffer();
   if (font) {
-    canvas.loadFont(font, { family: "Roboto" });
+    canvas.loadFont(font, { family: "Rajdhani" });
   }
 
   const ctx = canvas.getContext("2d");
@@ -62,7 +62,7 @@ async function drawNotificationCard(title: string, subtitle: string, emoji: stri
     roundStr = `ROUND ${roundMatch[2]}`; // "ROUND 6"
   }
 
-  const displayTitle = `${emoji} ${cleanTitle.toUpperCase()} ${emoji}`;
+  const displayTitle = cleanTitle.toUpperCase();
 
   // Formulate Subtitle
   let displaySubtitle = subtitle.toUpperCase().replace("MINUTES", "MIN").replace("MINUTE", "MIN").replace("!", "");
@@ -70,12 +70,12 @@ async function drawNotificationCard(title: string, subtitle: string, emoji: stri
     displaySubtitle = `${roundStr} • ${displaySubtitle}`; // e.g. "ROUND 6 • STARTS IN 5 MIN"
   }
 
-  // 4. Draw Title with Neon Purple/Magenta Glow
+  // 4. Draw Title with Neon Purple/Magenta Glow (flanked by swords in the template)
   ctx.save();
   ctx.shadowColor = "rgba(217, 70, 239, 0.85)"; // Purple glow
   ctx.shadowBlur = 12;
   ctx.fillStyle = "#ffffff";
-  ctx.font = font ? "bold 32px Roboto" : "bold 32px sans-serif";
+  ctx.font = font ? "bold 34px Rajdhani" : "bold 34px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(displayTitle, width / 2, 54);
@@ -83,7 +83,7 @@ async function drawNotificationCard(title: string, subtitle: string, emoji: stri
 
   // 5. Draw Subtitle 1 with multi-color splitting (e.g. "ROUND 6 • STARTS IN " and "5 MIN")
   ctx.save();
-  ctx.font = font ? "bold 24px Roboto" : "bold 24px sans-serif";
+  ctx.font = font ? "bold 26px Rajdhani" : "bold 26px sans-serif";
   ctx.textBaseline = "middle";
 
   const timeMatch = displaySubtitle.match(/(.*?\bIN\s+)(\d+\s*MIN.*)/i);
@@ -119,13 +119,14 @@ async function drawNotificationCard(title: string, subtitle: string, emoji: stri
 
   // 6. Draw Subtitle 2 (Join your squads now!)
   ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-  ctx.font = font ? "20px Roboto" : "20px sans-serif";
+  ctx.font = font ? "22px Rajdhani" : "22px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("Join your squads now!", width / 2, 382);
 
   return canvas.toBuffer();
 }
+
 
 async function generateAndUploadNotificationImage(
   supabase: any,
