@@ -1,6 +1,118 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { sendNotification } from "npm:web-push-neo"
+import { createCanvas } from "https://deno.land/x/canvas/mod.ts"
+
+// Cache for the font buffer
+let fontBuffer: Uint8Array | null = null;
+
+async function getFontBuffer(): Promise<Uint8Array | null> {
+  if (fontBuffer) return fontBuffer;
+  try {
+    const res = await fetch("https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto-Bold.ttf");
+    if (res.ok) {
+      fontBuffer = new Uint8Array(await res.arrayBuffer());
+      return fontBuffer;
+    }
+  } catch (e) {
+    console.error("Failed to fetch font:", e);
+  }
+  return null;
+}
+
+async function drawNotificationCard(title: string, subtitle: string, emoji: string): Promise<Uint8Array> {
+  const width = 800;
+  const height = 400;
+  const canvas = createCanvas(width, height);
+  
+  // Load custom font if available
+  const font = await getFontBuffer();
+  if (font) {
+    canvas.loadFont(font, { family: "Roboto" });
+  }
+
+  const ctx = canvas.getContext("2d");
+
+  // 1. Draw Space Background Gradient
+  const grad = ctx.createLinearGradient(0, 0, width, height);
+  grad.addColorStop(0, "#0d0915");
+  grad.addColorStop(0.5, "#151124");
+  grad.addColorStop(1, "#09060c");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
+
+  // 2. Draw Stars/Dots
+  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+  for (let i = 0; i < 40; i++) {
+    const x = Math.random() * width;
+    const y = Math.random() * height;
+    const r = Math.random() * 2;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 3. Draw Outer Card Border with Glow (Neomorphism / Glowing effect)
+  ctx.shadowColor = "rgba(139, 92, 246, 0.6)"; // Violet glow
+  ctx.shadowBlur = 15;
+  ctx.strokeStyle = "rgba(139, 92, 246, 0.8)";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(40, 40, width - 80, height - 80);
+
+  // 4. Reset shadow for text to be crisp
+  ctx.shadowBlur = 0;
+
+  // 5. Draw Shield / Crest (using emoji)
+  ctx.font = "80px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(emoji, width / 2, height / 2 - 30);
+
+  // 6. Draw Title
+  ctx.fillStyle = "#ffffff";
+  ctx.font = font ? "bold 36px Roboto" : "bold 36px sans-serif";
+  ctx.fillText(title.toUpperCase(), width / 2, height / 2 + 60);
+
+  // 7. Draw Subtitle
+  ctx.fillStyle = "#c084fc"; // Light purple
+  ctx.font = font ? "24px Roboto" : "24px sans-serif";
+  ctx.fillText(subtitle, width / 2, height / 2 + 110);
+
+  return canvas.toBuffer();
+}
+
+async function generateAndUploadNotificationImage(
+  supabase: any,
+  title: string,
+  subtitle: string,
+  emoji: string
+): Promise<string | null> {
+  try {
+    const buffer = await drawNotificationCard(title, subtitle, emoji);
+    const filename = `alert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.png`;
+
+    const { error } = await supabase
+      .storage
+      .from('notifications')
+      .upload(filename, buffer, {
+        contentType: 'image/png',
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase
+      .storage
+      .from('notifications')
+      .getPublicUrl(filename);
+
+    return publicUrl;
+  } catch (e) {
+    console.error("Failed to generate and upload notification image:", e);
+    return null;
+  }
+}
 
 async function sendWebPush(supabase: any, title: string, body: string) {
   try {
@@ -171,7 +283,18 @@ serve(async (req) => {
         // A. Trigger Discord Notification via Webhook if configured
         if (webhookUrl && webhookUrl.trim() !== '') {
           try {
-            const body = {
+            const emoji = event.event_name.includes('Shadowfront') ? '🛡️' : '📢';
+            const imageUrl = await generateAndUploadNotificationImage(
+              supabase,
+              event.event_name,
+              reminderType === 'reminder_30' ? 'Starts in 30 minutes'
+                : reminderType === 'reminder_15' ? 'Starts in 15 minutes'
+                : reminderType === 'reminder_5' ? 'Starts in 5 minutes'
+                : 'Active now!',
+              emoji
+            );
+
+            const body: any = {
               content: content,
               embeds: [{
                 title: embedTitle,
@@ -185,6 +308,10 @@ serve(async (req) => {
                 footer: { text: 'RAD Management Tool' }
               }]
             };
+
+            if (imageUrl) {
+              body.embeds[0].image = { url: imageUrl };
+            }
 
             const discordRes = await fetch(webhookUrl, {
               method: 'POST',
@@ -281,8 +408,15 @@ serve(async (req) => {
           const startMinStr = String(matchingSlot.targetMinute).padStart(2, '0');
           const timeStr = `${startHourStr}:${startMinStr} UTC`;
 
+          const imageUrl = await generateAndUploadNotificationImage(
+            supabase,
+            matchingSlot.label,
+            matchingSlot.type === 'now' ? 'Starts now!' : 'Starts in 5 minutes!',
+            matchingSlot.label === 'War Prism' ? '💎' : '🏰'
+          );
+
           if (webhookUrl && webhookUrl.trim() !== '') {
-            const body = {
+            const body: any = {
               content: content,
               embeds: [{
                 title: embedTitle,
@@ -296,6 +430,10 @@ serve(async (req) => {
                 footer: { text: 'RAD Management Tool' }
               }]
             };
+
+            if (imageUrl) {
+              body.embeds[0].image = { url: imageUrl };
+            }
 
             const discordRes = await fetch(webhookUrl, {
               method: 'POST',
@@ -398,8 +536,19 @@ serve(async (req) => {
             ];
           }
 
+          const imageUrl = await generateAndUploadNotificationImage(
+            supabase,
+            matchingSlot.label,
+            matchingSlot.type === 'garrison' ? 'Garrison your ships!'
+              : matchingSlot.type === 'reminder_30' ? 'Starts in 30 minutes'
+              : matchingSlot.type === 'reminder_15' ? 'Starts in 15 minutes'
+              : matchingSlot.type === 'reminder_5' ? 'Starts in 5 minutes'
+              : 'Started now!',
+            matchingSlot.type === 'garrison' ? '🛡️' : '⚔️'
+          );
+
           if (webhookUrl && webhookUrl.trim() !== '') {
-            const body = {
+            const body: any = {
               content: content,
               embeds: [{
                 title: embedTitle,
@@ -410,6 +559,10 @@ serve(async (req) => {
                 footer: { text: 'RAD Management Tool' }
               }]
             };
+
+            if (imageUrl) {
+              body.embeds[0].image = { url: imageUrl };
+            }
 
             const discordRes = await fetch(webhookUrl, {
               method: 'POST',
@@ -476,8 +629,15 @@ serve(async (req) => {
           const startMinStr = String(matchingSlot.targetMinute).padStart(2, '0');
           const timeStr = `${matchingSlot.targetDay} · ${startHourStr}:${startMinStr} UTC`;
 
+          const imageUrl = await generateAndUploadNotificationImage(
+            supabase,
+            `Calamity Befalls - Round ${matchingSlot.round}`,
+            'Starts in 5 minutes!',
+            '🔥'
+          );
+
           if (webhookUrl && webhookUrl.trim() !== '') {
-            const body = {
+            const body: any = {
               content: content,
               embeds: [{
                 title: embedTitle,
@@ -492,6 +652,10 @@ serve(async (req) => {
                 footer: { text: 'RAD Management Tool' }
               }]
             };
+
+            if (imageUrl) {
+              body.embeds[0].image = { url: imageUrl };
+            }
 
             const discordRes = await fetch(webhookUrl, {
               method: 'POST',
