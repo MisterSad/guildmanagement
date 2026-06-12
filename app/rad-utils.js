@@ -47,7 +47,7 @@
         var end = new Date(d); end.setUTCDate(end.getUTCDate() + 6);
         var opts = { day: '2-digit', month: '2-digit', timeZone: 'UTC' };
         var endOpts = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' };
-        return d.toLocaleDateString('fr-FR', opts) + ' → ' + end.toLocaleDateString('fr-FR', endOpts);
+        return d.toLocaleDateString(window.RAD_I18N.dateLocale(), opts) + ' → ' + end.toLocaleDateString(window.RAD_I18N.dateLocale(), endOpts);
     }
 
     function newSessionId() {
@@ -86,6 +86,11 @@
         var num = typeof n === 'number' ? n : parseInt(String(n).replace(/\D/g, ''), 10);
         if (isNaN(num)) return '';
         if (num > MAX_NUMERIC) num = MAX_NUMERIC;
+        // Séparateur de milliers selon la locale courante (Intl) ; fallback espace.
+        if (window.RAD_I18N && window.RAD_I18N.formatNumber) {
+            var s = window.RAD_I18N.formatNumber(num);
+            if (s) return s;
+        }
         return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     }
 
@@ -235,8 +240,7 @@
         if (!iso) return '';
         var d = new Date(iso);
         if (isNaN(d.getTime())) return '';
-        var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
-        var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
+        var locale = (window.RAD_I18N && window.RAD_I18N.dateLocale) ? window.RAD_I18N.dateLocale() : 'en-GB';
         var date = d.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC' });
         return date + ' · ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ' UTC';
     }

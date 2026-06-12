@@ -250,25 +250,17 @@
               '</div>'
             : '<div class="gm-topbar-title">' + title + '</div>';
 
-        var lang = window.RAD_I18N.getLang();
         var html = brandHtml +
             '<div class="gm-topbar-actions">' +
-                '<div class="gm-lang-toggle">' +
-                    '<button data-gm-lang="fr" class="' + (lang === 'fr' ? 'gm-active' : '') + '">FR</button>' +
-                    '<button data-gm-lang="en" class="' + (lang === 'en' ? 'gm-active' : '') + '">EN</button>' +
-                '</div>' +
+                '<div data-gmt-lang-switcher></div>' +
                 '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + t('nav_logout_title') + '">' +
                     '<i class="ph ph-sign-out"></i>' +
                 '</button>' +
             '</div>';
         el.innerHTML = html;
 
-        el.querySelectorAll('[data-gm-lang]').forEach(function (b) {
-            b.addEventListener('click', function () {
-                window.RAD_I18N.setLang(b.getAttribute('data-gm-lang'));
-                renderShell();
-            });
-        });
+        var langEl = el.querySelector('[data-gmt-lang-switcher]');
+        if (langEl && window.RAD_I18N.mountSwitcher) window.RAD_I18N.mountSwitcher(langEl);
         var lo = el.querySelector('[data-gm-logout]');
         if (lo) lo.addEventListener('click', function () {
             var legacy = document.getElementById('logout-btn');
@@ -343,10 +335,13 @@
         document.querySelector('[data-gm-drawer-backdrop]').classList.remove('gm-open');
     }
 
+    var langWired = false;
     function wireLangSwitcher() {
-        // Re-render quand i18n change
-        // (RAD_I18N.setLang appelle déjà applyTranslations sur le DOM existant.
-        // Pour notre shell, on a re-render manuellement après chaque setLang.)
+        if (langWired) return;
+        langWired = true;
+        // Le moteur i18n émet gmt:langchange après applyTranslations ; le shell
+        // se reconstruit pour traduire ses libellés générés en JS.
+        document.addEventListener('gmt:langchange', function () { renderShell(); });
     }
 
     // ── Navigation : déléguée à app.js via les anciennes .nav-tab ───────────

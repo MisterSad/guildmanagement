@@ -36,18 +36,9 @@
     var accounts     = [];
     var guildMembers = [];
 
-    // ─── Language Switcher ────────────────────────────────────────────────────
-    document.querySelectorAll('.lang-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            window.RAD_I18N.setLang(btn.getAttribute('data-lang'));
-        });
-    });
-
     // ─── Boot ─────────────────────────────────────────────────────────────────
+    // (Le sélecteur de langue est géré par i18n.js via [data-gmt-lang-switcher].)
     window.RAD_I18N.applyTranslations();
-    document.querySelectorAll('.lang-btn').forEach(function (btn) {
-        btn.classList.toggle('active', btn.getAttribute('data-lang') === window.RAD_I18N.getLang());
-    });
 
     // Restaure depuis la session Supabase persistée (survit au rechargement
     // et à la fermeture d'onglet tant que le refresh token est valide).
@@ -335,7 +326,7 @@
             // Détermine le rôle pour le chip — si 'role' est dispo, sinon défaut R4
             var role = acc.role || 'R4';
             var chipCls = role === 'R5' ? 'gm-chip-accent' : 'gm-chip-info';
-            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString(window.RAD_I18N.dateLocale(), { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
             html +=
                 '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
                     '<div class="gm-row" style="justify-content:space-between;">' +
@@ -575,7 +566,7 @@
     function memberTileHtml(m, i, withActions) {
         var uidVal = m.uid || '—';
         var dateStr = m.created_at
-            ? new Date(m.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' })
+            ? new Date(m.created_at).toLocaleDateString(window.RAD_I18N.dateLocale(), { day:'2-digit', month:'2-digit', year:'numeric' })
             : '—';
         var initial = window.RAD.avatarInit(m.pseudo);
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +

@@ -42,7 +42,7 @@
 
         var html = '<div class="gm-sanction-list">';
         sanctions.forEach(function (s) {
-            var dateStr = new Date(s.created_at).toLocaleDateString('fr-FR', {
+            var dateStr = new Date(s.created_at).toLocaleDateString(window.RAD_I18N.dateLocale(), {
                 day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
             });
             var author = s.created_by || '—';

@@ -1626,7 +1626,7 @@
         for (var i = 0; i < n; i++) {
             if (i % step === 0 || i === n - 1) {
                 var d = new Date(weeks[i] + 'T12:00:00Z');
-                var label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+                var label = d.toLocaleDateString(window.RAD_I18N.dateLocale(), { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
                 xLabels += '<text x="' + projectX(i).toFixed(1) + '" y="' + (H + 2) + '" text-anchor="middle" font-size="9" fill="#94a3b8">' + label + '</text>';
             }
         }

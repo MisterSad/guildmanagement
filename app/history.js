@@ -136,7 +136,7 @@
 
     function formatWhen(sessionId, weekStart) {
         if (sessionId) {
-            return new Date(sessionId).toLocaleDateString('fr-FR', {
+            return new Date(sessionId).toLocaleDateString(window.RAD_I18N.dateLocale(), {
                 day: '2-digit', month: '2-digit', year: 'numeric',
                 hour: '2-digit', minute: '2-digit'
             });
@@ -195,7 +195,7 @@
         if (existing) existing.remove();
 
         var when = sessionId
-            ? new Date(sessionId).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            ? new Date(sessionId).toLocaleDateString(window.RAD_I18N.dateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
             : t('history_week_only');
 
         var sorted = rows.slice().sort(function (a, b) {

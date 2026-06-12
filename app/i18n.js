@@ -1,770 +1,225 @@
 /**
- * RAD MANAGEMENT TOOL – i18n module
- * Usage:  t('key')          → translated string
- *         setLang('en')     → switch language + re-render
- *         applyTranslations() → update all [data-i18n] elements
+ * i18n engine — registry-driven, English-first (saas_strategy.md §7).
+ *
+ * Languages are declared in locales/index.js (window.GMT_LANGUAGES); each
+ * locale lives in locales/<code>.js and registers itself on
+ * window.GMT_LOCALES. English is the reference locale: it is loaded eagerly
+ * from index.html and is the fallback for any missing key. Other locales are
+ * lazy-loaded on first use by injecting their script tag.
+ *
+ * Adding a language requires NO change to this file — see locales/index.js.
+ *
+ * Public API (kept on window.RAD_I18N for backward compatibility with the
+ * existing modules; window.GMT_I18N is an alias):
+ *   t(key)                  → translated string (current → en → key)
+ *   tn(key, n)              → plural-aware: tries `${key}_<plural-rule>` then
+ *                             `${key}_other`, replaces "{n}" with n
+ *   getLang()               → current language code ('en', 'fr', …)
+ *   setLang(code)           → switch + persist + re-render
+ *   getLanguages()          → registry entries
+ *   dateLocale()            → Intl locale of the current language ('en-GB', …)
+ *   formatNumber(n)         → Intl-formatted integer in the current locale
+ *   applyTranslations()     → update all [data-i18n*] elements
+ *   mountSwitcher(el)       → render a language <select> into el (also runs
+ *                             automatically on [data-gmt-lang-switcher])
  */
 (function () {
 
-    var TRANSLATIONS = {
-        fr: {
-            /* ── Login ──────────────────────────── */
-            login_title:           'RAD MANAGEMENT',
-            login_subtitle:        'Foundation Galactic Frontier',
-            login_label_id:        'Identifiant',
-            login_placeholder_id:  'Votre identifiant',
-            login_label_pass:      'Mot de passe',
-            login_placeholder_pass:'Votre mot de passe',
-            login_error:           'Identifiants invalides.',
-            login_btn:             'Accéder',
-            login_btn_loading:     'Connexion...',
+    var STORAGE_KEY        = 'gmt_lang';
+    var LEGACY_STORAGE_KEY = 'rad_lang';
+    var DEFAULT_LANG       = 'en';
+    var LOCALE_VERSION     = '1'; // bump with locale file cache-busting
 
-            /* ── Admin topbar ──────────────────── */
-            nav_dashboard:         'Command Center',
-            nav_members:           'Membres',
-            nav_admin_label:       'Admin :',
-            nav_logout_title:      'Déconnexion',
+    function registry() {
+        return window.GMT_LANGUAGES || [{ code: 'en', label: 'English', flag: '', intl: 'en-GB' }];
+    }
+    function registryEntry(code) {
+        return registry().find(function (l) { return l.code === code; }) || null;
+    }
+    function locales() {
+        window.GMT_LOCALES = window.GMT_LOCALES || {};
+        return window.GMT_LOCALES;
+    }
 
-            /* ── Admin home ────────────────────── */
-            admin_title:           'Command Center',
-            admin_subtitle:        'Gérez les accès et comptes de la guilde',
-            card_create_account:   'Créer un compte',
-            label_account_id:      'Identifiant du compte',
-            placeholder_account_id:'ex. NomDuMembre',
-            btn_generate:          "Générer l'accès",
-            btn_generating:        'Création...',
-            card_active_accounts:  'Comptes actifs',
-            empty_accounts:        'Aucun compte généré',
-            copy_title:            'Copier le mot de passe',
-            delete_title:          'Supprimer',
-            show_pwd:              'Afficher / Masquer',
-            cred_created:          'Créé le',
+    // ── Initial language detection: storage → browser → default ──────────────
+    function detectLang() {
+        try {
+            var stored = localStorage.getItem(STORAGE_KEY);
+            if (!stored) {
+                // One-time migration from the pre-SaaS storage key.
+                var legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+                if (legacy) {
+                    stored = legacy;
+                    localStorage.setItem(STORAGE_KEY, legacy);
+                    localStorage.removeItem(LEGACY_STORAGE_KEY);
+                }
+            }
+            if (stored && registryEntry(stored)) return stored;
+        } catch (_) {}
 
-            /* ── Guild Config ─────────────────── */
-            card_guild_settings:   'Configuration & Coefficients de Guilde',
-            label_coeff_svs:       'Coeff SvS',
-            label_coeff_gvg:       'Coeff GvG',
-            label_coeff_shadowfront:'Coeff Shadowfront',
-            label_coeff_dtr:       'Coeff DTR',
-            label_coeff_armsrace:  'Coeff Arms Race',
-            label_reserve_credit:  'Crédit Réserviste (%)',
-            label_discord_webhook: 'Discord Webhook URL',
-            btn_save_config:       'Sauvegarder la configuration',
-            toast_config_updated:  'Configuration de guilde mise à jour avec succès !',
-
-            /* ── Guild Members page ────────────── */
-            members_title:         'Membres de la Guilde',
-            members_subtitle:      'Gérez les membres in-game de Foundation Galactic Frontier',
-            card_add_member:       'Ajouter un membre',
-            label_pseudo:          'Pseudo in-game',
-            placeholder_pseudo:    'ex. StarWarrior99',
-            btn_add:               'Ajouter',
-            card_member_list:      'Liste des membres',
-            empty_members:         'Aucun membre enregistré',
-            search_placeholder:    'Rechercher par pseudo ou UID...',
-
-            /* ── Member view ───────────────────── */
-            member_home_tab:       'Accueil',
-            member_home_title:     'Espace Membre',
-            member_home_subtitle:  'Bienvenue sur le portail de la guilde',
-            member_greeting:       'Bonjour,',
-            member_connected:      "Vous êtes connecté(e) à l'espace membre de",
-            member_hint:           'Utilisez le menu ci-dessus pour accéder à la liste des membres.',
-
-            /* ── Toasts ────────────────────────── */
-            toast_login_ok:        'Accès accordé. Bienvenue, Admin.',
-            toast_welcome:         'Bienvenue,',
-            toast_logout:          'Déconnexion réussie.',
-            toast_account_created: 'Compte créé avec succès.',
-            toast_account_deleted: 'Compte supprimé.',
-            toast_member_added:    'ajouté(e) à la guilde !',
-            toast_member_added_active_events: 'a aussi été ajouté(e) aux événements en cours.',
-            toast_member_removed:  'retiré(e) de la guilde.',
-            toast_member_updated:  'Membre mis à jour avec succès.',
-            toast_members_imported:'membres importés dans l\'événement.',
-            toast_no_members_to_import: 'Aucun membre dans la guilde — ajoutez des membres avant de démarrer un événement.',
-            toast_err_import_participants: 'Erreur import participants :',
-            toast_copied:          'Mot de passe copié !',
-            toast_duplicate_account:'Cet identifiant existe déjà !',
-            toast_duplicate_member: 'Ce pseudo est déjà dans la guilde !',
-            toast_duplicate_uid:    'Cet UID est déjà utilisé par un autre membre.',
-            validation_pseudo_invalid:       'Pseudo invalide.',
-            validation_pseudo_empty:         'Le pseudo ne peut pas être vide.',
-            validation_pseudo_too_long:      'Pseudo trop long (32 caractères max).',
-            validation_pseudo_invalid_chars: 'Le pseudo contient des caractères interdits (< > " \' ` & \\ /).',
-            validation_uid_invalid:          'UID invalide.',
-            validation_uid_too_long:         'UID trop long (20 chiffres max).',
-            validation_uid_not_numeric:      'UID doit contenir uniquement des chiffres.',
-            toast_err_fetch_accounts: 'Erreur chargement comptes :',
-            toast_err_fetch_members:  'Erreur chargement membres :',
-            toast_err_create:      'Échec de la création.',
-            toast_err_generic:     'Erreur :',
-
-            /* ── Confirm dialog ────────────────── */
-            confirm_delete_account_title:   'Supprimer le compte',
-            confirm_delete_account_body:    'Supprimer le compte',
-            confirm_delete_account_body2:   '? Cette action est irréversible.',
-            confirm_delete_session_title:   'Supprimer la session',
-            confirm_delete_session_body:    'Voulez-vous vraiment supprimer cette session ? Cela effacera définitivement tous les scores et participations associés.',
-            confirm_remove_member_title:    'Retirer le membre',
-            confirm_remove_member_body:     'Retirer',
-            confirm_remove_member_body2:    'de la guilde ?',
-            confirm_remove_member_cascade:  'Cette action supprime aussi toutes ses participations, scores, sanctions et historique.',
-            confirm_remove_participant_body: 'Retirer du suivi de participation ?',
-            confirm_cancel:        'Annuler',
-            confirm_ok:            'Confirmer',
-            edit_title:            'Modifier',
-            edit_member_title:     'Modifier le membre',
-            edit_member_body:      'Le pseudo et l\'UID seront mis à jour partout (participations, sanctions, scores).',
-
-            /* ── Events (generic) ──────────────── */
-            event_active:          'Actif',
-            event_inactive:        'Inactif',
-            events_title:          'Événements',
-            events_sub:            'Pilotez les sessions et la participation',
-            event_start:           'Démarrer',
-            event_end:             'Terminer',
-            event_session_ended:   'Événement sauvegardé et terminé.',
-            event_session_started_sf: 'Nouvelle session Shadowfront démarrée.',
-            arms_pick_stage_title: 'Arms Race — Choix du Stage',
-            arms_pick_stage_body:  'Quel stage démarrez-vous ?',
-            event_start_when_title: 'Jour et heure de début',
-            event_start_when_body:  'Définis quand l\'événement commence (heure UTC). Alimente l\'agenda et les rappels.',
-            event_start_date:       'Date (UTC)',
-            event_start_time:       'Heure (UTC)',
-            event_start_confirm:    'Démarrer',
-            event_start_invalid:    'Choisis une date et une heure valides.',
-            close_title:           'Fermer',
-            event_activate:        'Activer l\'événement',
-            event_deactivate:      'Désactiver',
-            event_not_active:      'Aucune session en cours',
-            event_not_active_hint: 'Démarrez l\'événement pour importer les membres et ouvrir la saisie.',
-            event_total:           'membres',
-            event_participated:    'participants',
-            event_absent:          'absents',
-            event_total_score:     'Score total :',
-            col_member:            'Membre',
-            col_participated:      'A participé',
-            col_score:             'Score',
-            col_score_prep:        'Preparation Stage',
-            col_score_pvp:         'PvP day score',
-
-            /* ── Shadowfront ───────────────────── */
-            sf_tab_squads:         'Attribution des Squads',
-            sf_tab_tracking:       'Suivi de participation',
-            sf_squad1:             'Squad 1',
-            sf_squad2:             'Squad 2',
-            sf_unassigned:         'Non assignés',
-            sf_all_assigned:       'Tous les membres sont assignés.',
-            sf_no_one:             'Aucun membre',
-            sf_participants:       'Participants',
-            sf_reserves:           'Réservistes',
-            sf_participant:        'Participant',
-            sf_reserve:            'Réserviste',
-            sf_remove:             'Retirer du squad',
-            sf_squad_full:         'Ce slot est complet !',
-            sf_tracking_title:     'Suivi de participation',
-            sf_squad_col:          'Squad / Rôle',
-            sf_pick_squad_title:   'Shadowfront — Choix du Squad',
-            sf_pick_squad_body:    'Quel squad démarres-tu ?',
-            sf_squad_active_already: 'Ce squad est déjà en cours.',
-            sf_squad_started:      'Squad démarré.',
-            sf_squad_ended:        'Squad terminé.',
-            sf_end_title:          'Terminer quel squad ?',
-            sf_end_both:           'Les deux',
-            sf_squad_inactive_hint: 'Squad non démarré — clique « Démarrer » pour le planifier.',
-            sf_subtitle:           'Squad 1 & Squad 2 — 20 participants + 10 réservistes',
-            sf_cat_regular:        'Régulier',
-            sf_cat_rotation:       'À faire tourner',
-            sf_cat_occasional:     'Occasionnel',
-            sf_filter_all:         'Tous',
-            sf_filter_regular:     'Réguliers',
-            sf_filter_rotation:    'À tourner',
-            sf_filter_excellent:   '> 80% (Excellent)',
-            sf_filter_good:        '50% - 80% (Bon)',
-            sf_filter_average:     '20% - 50% (Moyen)',
-            sf_filter_poor:        '< 20% (Faible)',
-            sf_filter_none:        'Nouveau / Inconnu',
-            sf_tab_composition:    'Composition du Squad',
-            sf_hist_attended:      'participations',
-            sf_hist_never:         'Jamais assigné',
-            sf_no_match_filter:    'Aucun membre dans cette catégorie.',
-
-            /* ── Glory tracker ────────────── */
-            glory_title:           'Suivi de la Gloire',
-            glory_subtitle:        'Gloire gagnée par les membres cette semaine',
-            glory_gained:          'Cette semaine',
-            glory_total:           'Total guilde :',
-            glory_prev_week:       'Semaine précédente',
-            glory_this_week:       'Semaine en cours',
-            glory_input:           'Saisie',
-            glory_evolution:       'Évolution',
-            glory_evolution_pct:   'Évolution (%)',
-            glory_vs_prev:         'Comparaison vs semaine précédente active',
-
-            /* ── Historique des événements ─── */
-            nav_history:           'Historique',
-            history_title:         'Historique des événements',
-            history_subtitle:      'Toutes les sessions passées — clique sur une session pour le détail',
-            history_filter_all:    'Tous',
-            history_week_only:     'Semaine entière',
-            history_empty:         'Aucune session pour ce filtre.',
-            history_empty_session: 'Aucun participant pour cette session.',
-
-            /* ── Stats ────────────────────── */
-            nav_stats:             'Stats',
-            stats_subtitle:        'Classement et évolution des membres de la guilde',
-            stats_compute:         'Recalculer',
-            stats_no_data:         'Aucune donnée disponible pour cette semaine.',
-            stats_period_1w:       '1 Semaine',
-            stats_period_4w:       '4 Semaines',
-            stats_period_8w:       '8 Semaines',
-            stats_score:           'Note /20',
-            stats_events:          'Événements',
-            stats_glory:           'Glory',
-            stats_profile:         'Profil',
-            stats_see_profile:     'Voir le profil',
-            stats_week:            'Semaine',
-            stats_mode_global:     'Global',
-            stats_mode_svs:        'SvS',
-            stats_mode_gvg:        'GvG',
-            stats_tab_global:      'Global Semaine',
-            stats_tab_svs:         'Score SvS',
-            stats_tab_gvg:         'Score GvG',
-            stats_tab_prince:      'Prince Rewards (2 sem.)',
-            stats_tab_participation: 'Participation',
-            stats_prince_banner:   'Cumul des 2 dernières semaines',
-            stats_uid:             'UID',
-            stats_uid_none:        'Aucun UID',
-            stats_uid_copy:        'Copier l\'UID',
-            stats_uid_copied:      'UID copié !',
-            stats_part_period_label:  'Période :',
-            stats_part_period_4w:     '4 sem.',
-            stats_part_period_8w:     '8 sem.',
-            stats_part_period_all:    'Tout l\'historique',
-            stats_part_weeks:         'sem. analysées',
-            stats_part_members:       'membres',
-            stats_part_by_event:      'Taux de participation par événement',
-            stats_part_sessions:      'sessions',
-            stats_part_players:       'participants uniques',
-            stats_part_most_active:   'Plus actifs',
-            stats_part_most_active_sub: 'Présence régulière sur la période',
-            stats_part_least_active:  'Moins actifs',
-            stats_part_least_active_sub: 'Faible engagement — à recadrer',
-            stats_part_no_data:       'Aucune donnée de participation pour la période choisie.',
-            stats_pts:             'pts',
-            stats_points:          'points',
-            stats_score_pts:       'Score (pts)',
-            stats_max_possible:    'Max théorique sur la période',
-            stats_glory_delta:     'Δ Gloire',
-            stats_consistency:     'Consistance',
-            stats_avg:             'Moy.',
-            stats_best:            'Best',
-            stats_weeks:           'sem.',
-            stats_breakdown:       'Décomposition de la dernière semaine',
-            stats_history:         'Historique',
-            stats_event:           'Événement',
-            stats_coeff:           'Coeff',
-            stats_participated:    'Participé',
-            stats_event_score:     'Score event',
-            stats_pts_earned:      'Points',
-            stats_glory_bonus:     'Bonus Gloire',
-            stats_consistency_bonus:'Bonus Consistance',
-            stats_total:           'TOTAL',
-            stats_rank:            'Rang',
-            stats_pct_max:         '% max',
-            stats_kpi_avg_score:   'Score moyen',
-            stats_kpi_of_max:      'du max',
-            stats_kpi_best_week:   'Meilleure semaine',
-            stats_kpi_avg_rank:    'Rang moyen',
-            stats_kpi_best:        'Meilleur',
-            stats_kpi_attendance:  'Présence',
-            stats_kpi_glory_total: 'Gloire cumulée',
-            stats_kpi_cumulated:   'sur la période',
-            stats_kpi_streak:      'Série actuelle',
-            stats_kpi_streak_sub:  'sem. consécutives',
-            stats_trend_improving: 'En progression',
-            stats_trend_stable:    'Stable',
-            stats_trend_declining: 'En recul',
-            stats_trend_window:    'Moy. {0} dern. sem. vs précédentes',
-            stats_evolution_per_event: 'Évolution par événement',
-            stats_moving_avg:      'Moy. mobile',
-            stats_max_line:        'Max théorique',
-            badge_iron_man:        'Iron Man',
-            badge_iron_man_desc:   '100% de présence sur les 4 dernières semaines actives.',
-            badge_mvp_desc:        'A terminé premier du classement hebdomadaire de la guilde.',
-            badge_glory_climber:   'Glory Climber',
-            badge_glory_climber_desc: 'A cumulé plus de 5 000 points de progression de Gloire.',
-            badge_loyal_soldier:   'Soldat Loyal',
-            badge_loyal_soldier_desc: 'A participé à 15 événements de guilde ou plus.',
-            badge_consistency_master: 'Maître de la Constance',
-            badge_consistency_master_desc: 'A obtenu le bonus de présence sur au moins 4 semaines.',
-
-            /* ── Sanctions ────────────────── */
-            nav_sanctions:         'Sanctions',
-            sanctions_title:       'Suivi des Sanctions',
-            sanctions_subtitle:    'Gérez et historisez les manquements des membres',
-            label_target_player:   'Membre concerné',
-            placeholder_target_player: 'Rechercher un membre...',
-            label_comment:         'Commentaire / Motif',
-            btn_apply_sanction:    'Appliquer la sanction',
-            sanctions_history:     'Historique des sanctions',
-            sanction_by:           'par',
-
-            /* ── Shell v2 ────────────────── */
-            gm_brand:              'RAD MANAGEMENT',
-            gm_brand_sub:          'Foundation Galactic Frontier',
-            gm_nav_play:           'Activité',
-            gm_nav_admin:          'Admin',
-            gm_nav_overview:       'Vue d\'ensemble',
-            gm_nav_accounts:       'Comptes & accès',
-            gm_nav_members:        'Membres',
-            gm_nav_events:         'Événements',
-            gm_nav_glory:          'Gloire',
-            gm_nav_history:        'Historique',
-            gm_nav_stats:          'Statistiques',
-            gm_nav_sanctions:      'Sanctions',
-            gm_nav_more:           'Plus',
-            gm_overview_title:     'Vue d\'ensemble',
-            gm_overview_sub:       'Foundation Galactic Frontier',
-            gm_overview_sub_real:  'Foundation Galactic Frontier — état de la guilde',
-            gm_overview_soon:      'Tableau de bord à venir',
-            gm_overview_soon_hint: 'Cette page affichera les statistiques de la guilde, l\'activité récente et les actions rapides.',
-            overview_s_members:    'Membres actifs',
-            overview_s_events:     'Événements en cours',
-            overview_s_glory:      'Gloire de la semaine',
-            overview_s_glory_meta: 'Cumulée pour tous les membres',
-            overview_s_sanctions:  'Sanctions enregistrées',
-            overview_no_live:      'Aucun en cours',
-            overview_recent_activity: 'Activité récente',
-            overview_quick_actions: 'Actions rapides',
-            overview_event_started: 'démarré',
-            overview_event_ended:   'terminé',
-            overview_sanction_for:  'Sanction pour',
-            overview_member_added:  'a rejoint la guilde',
-            overview_no_activity:   'Aucune activité récente',
-            overview_upcoming_title: 'Événements à venir',
-            overview_no_upcoming:    'Aucun événement planifié',
-            overview_in:             'dans',
-            push_enable:             'Activer les rappels',
-            push_enabled:            'Rappels activés',
-            push_disable:            'Désactiver',
-            push_blocked:            'Notifications bloquées — autorise-les dans les réglages.',
-            push_unsupported:        'Notifications non supportées sur cet appareil.',
-            push_ios_hint:           'Ajoute l\'app à l\'écran d\'accueil pour activer les rappels.',
-            push_toast_on:           'Rappels d\'événements activés.',
-            push_toast_off:          'Rappels désactivés.',
-            push_toast_err:          'Activation des notifications impossible.',
-            overview_qa_add_member:    'Ajouter un membre',
-            overview_qa_start_svs:     'Démarrer un événement',
-            overview_qa_update_glory:  'Mettre à jour la gloire',
-            overview_qa_create_account:'Créer un accès',
-            overview_time_now:      'à l\'instant',
-            alert_recidivist:      '🚨 ALERTE RÉCIDIVISTE 🚨\nCe joueur vient de cumuler sa 3ème sanction ou plus !',
-            toast_sanction_added:  'Sanction enregistrée avec succès.',
-            col_date:              'Date',
-            col_reason:            'Motif / Commentaire',
-            confirm_delete_sanction_title: 'Supprimer la sanction',
-            confirm_delete_sanction_body:  'Voulez-vous vraiment supprimer cette sanction ? Cette action est irréversible.',
-        },
-
-        en: {
-            /* ── Login ──────────────────────────── */
-            login_title:           'RAD MANAGEMENT',
-            login_subtitle:        'Foundation Galactic Frontier',
-            login_label_id:        'Identifier',
-            login_placeholder_id:  'Your identifier',
-            login_label_pass:      'Password',
-            login_placeholder_pass:'Your password',
-            login_error:           'Invalid credentials.',
-            login_btn:             'Access',
-            login_btn_loading:     'Logging in...',
-
-            /* ── Admin topbar ──────────────────── */
-            nav_dashboard:         'Command Center',
-            nav_members:           'Members',
-            nav_admin_label:       'Admin:',
-            nav_logout_title:      'Logout',
-
-            /* ── Admin home ────────────────────── */
-            admin_title:           'Command Center',
-            admin_subtitle:        'Manage access and accounts for the guild',
-            card_create_account:   'Create Account',
-            label_account_id:      'Account Identifier',
-            placeholder_account_id:'e.g. MemberName',
-            btn_generate:          'Generate Access',
-            btn_generating:        'Creating...',
-            card_active_accounts:  'Active Accounts',
-            empty_accounts:        'No accounts generated',
-            copy_title:            'Copy password',
-            delete_title:          'Delete',
-            show_pwd:              'Show / Hide',
-            cred_created:          'Created',
-
-            /* ── Guild Config ─────────────────── */
-            card_guild_settings:   'Guild Settings & Coefficients',
-            label_coeff_svs:       'SvS Coeff',
-            label_coeff_gvg:       'GvG Coeff',
-            label_coeff_shadowfront:'Shadowfront Coeff',
-            label_coeff_dtr:       'DTR Coeff',
-            label_coeff_armsrace:  'Arms Race Coeff',
-            label_reserve_credit:  'Reserve Credit (%)',
-            label_discord_webhook: 'Discord Webhook URL',
-            btn_save_config:       'Save Configuration',
-            toast_config_updated:  'Guild configuration updated successfully!',
-
-            /* ── Guild Members page ────────────── */
-            members_title:         'Guild Members',
-            members_subtitle:      'Manage in-game members of Foundation Galactic Frontier',
-            card_add_member:       'Add a member',
-            label_pseudo:          'In-game username',
-            placeholder_pseudo:    'e.g. StarWarrior99',
-            btn_add:               'Add',
-            card_member_list:      'Members list',
-            empty_members:         'No members registered',
-            search_placeholder:    'Search by username or UID...',
-
-            /* ── Member view ───────────────────── */
-            member_home_tab:       'Home',
-            member_home_title:     'Member Space',
-            member_home_subtitle:  'Welcome to the guild portal',
-            member_greeting:       'Hello,',
-            member_connected:      'You are connected to the member space of',
-            member_hint:           'Use the menu above to access the guild member list.',
-
-            /* ── Toasts ────────────────────────── */
-            toast_login_ok:        'Access granted. Welcome back, Admin.',
-            toast_welcome:         'Welcome,',
-            toast_logout:          'Successfully logged out.',
-            toast_account_created: 'Account created successfully.',
-            toast_account_deleted: 'Account deleted.',
-            toast_member_added:    'added to the guild!',
-            toast_member_added_active_events: 'was also added to ongoing events.',
-            toast_member_removed:  'removed from the guild.',
-            toast_member_updated:  'Member updated successfully.',
-            toast_members_imported:'members imported into the event.',
-            toast_no_members_to_import: 'No guild members yet — add members before starting an event.',
-            toast_err_import_participants: 'Error importing participants:',
-            toast_copied:          'Password copied!',
-            toast_duplicate_account:'This identifier already exists!',
-            toast_duplicate_member: 'This username is already in the guild!',
-            toast_duplicate_uid:    'This UID is already used by another member.',
-            validation_pseudo_invalid:       'Invalid username.',
-            validation_pseudo_empty:         'Username cannot be empty.',
-            validation_pseudo_too_long:      'Username too long (max 32 characters).',
-            validation_pseudo_invalid_chars: 'Username contains forbidden characters (< > " \' ` & \\ /).',
-            validation_uid_invalid:          'Invalid UID.',
-            validation_uid_too_long:         'UID too long (max 20 digits).',
-            validation_uid_not_numeric:      'UID must contain digits only.',
-            toast_err_fetch_accounts: 'Error loading accounts:',
-            toast_err_fetch_members:  'Error loading members:',
-            toast_err_create:      'Creation failed.',
-            toast_err_generic:     'Error:',
-
-            /* ── Confirm dialog ────────────────── */
-            confirm_delete_account_title:   'Delete account',
-            confirm_delete_account_body:    'Delete account',
-            confirm_delete_account_body2:   '? This action is irreversible.',
-            confirm_delete_session_title:   'Delete session',
-            confirm_delete_session_body:    'Do you really want to delete this session? This will permanently erase all associated scores and participations.',
-            confirm_remove_member_title:    'Remove member',
-            confirm_remove_member_body:     'Remove',
-            confirm_remove_member_body2:    'from the guild?',
-            confirm_remove_member_cascade:  'This also deletes all their participations, scores, sanctions and history.',
-            confirm_remove_participant_body: 'Remove from participation tracking?',
-            confirm_cancel:        'Cancel',
-            confirm_ok:            'Confirm',
-            edit_title:            'Edit',
-            edit_member_title:     'Edit member',
-            edit_member_body:      'Username and UID will be updated everywhere (participations, sanctions, scores).',
-
-            /* ── Events (generic) ──────────────── */
-            event_active:          'Active',
-            event_inactive:        'Inactive',
-            events_title:          'Events',
-            events_sub:            'Run sessions and track participation',
-            event_start:           'Start',
-            event_end:             'End',
-            event_session_ended:   'Event saved and ended.',
-            event_session_started_sf: 'New Shadowfront session started.',
-            arms_pick_stage_title: 'Arms Race — Pick a Stage',
-            arms_pick_stage_body:  'Which stage are you starting?',
-            event_start_when_title: 'Start day and time',
-            event_start_when_body:  'Set when the event starts (UTC). Feeds the agenda and reminders.',
-            event_start_date:       'Date (UTC)',
-            event_start_time:       'Time (UTC)',
-            event_start_confirm:    'Start',
-            event_start_invalid:    'Pick a valid date and time.',
-            close_title:           'Close',
-            event_activate:        'Activate event',
-            event_deactivate:      'Deactivate',
-            event_not_active:      'No active session',
-            event_not_active_hint: 'Start the event to import members and open data entry.',
-            event_total:           'members',
-            event_participated:    'participated',
-            event_absent:          'absent',
-            event_total_score:     'Total score:',
-            col_member:            'Member',
-            col_participated:      'Participated',
-            col_score:             'Score',
-            col_score_prep:        'Preparation Stage',
-            col_score_pvp:         'PvP day score',
-
-            /* ── Shadowfront ───────────────────── */
-            sf_tab_squads:         'Squad Assignment',
-            sf_tab_tracking:       'Participation Tracking',
-            sf_squad1:             'Squad 1',
-            sf_squad2:             'Squad 2',
-            sf_unassigned:         'Unassigned',
-            sf_all_assigned:       'All members are assigned.',
-            sf_no_one:             'No members',
-            sf_participants:       'Participants',
-            sf_reserves:           'Reserves',
-            sf_participant:        'Participant',
-            sf_reserve:            'Reserve',
-            sf_remove:             'Remove from squad',
-            sf_squad_full:         'This slot is full!',
-            sf_tracking_title:     'Participation tracking',
-            sf_squad_col:          'Squad / Role',
-            sf_pick_squad_title:   'Shadowfront — Pick a Squad',
-            sf_pick_squad_body:    'Which squad are you starting?',
-            sf_squad_active_already: 'This squad is already running.',
-            sf_squad_started:      'Squad started.',
-            sf_squad_ended:        'Squad ended.',
-            sf_end_title:          'End which squad?',
-            sf_end_both:           'Both',
-            sf_squad_inactive_hint: 'Squad not started — click "Start" to schedule it.',
-            sf_subtitle:           'Squad 1 & Squad 2 — 20 participants + 10 reserves',
-            sf_cat_regular:        'Regular',
-            sf_cat_rotation:       'Due for rotation',
-            sf_cat_occasional:     'Occasional',
-            sf_filter_all:         'All',
-            sf_filter_regular:     'Regulars',
-            sf_filter_rotation:    'Due for rotation',
-            sf_filter_excellent:   '> 80% (Excellent)',
-            sf_filter_good:        '50% - 80% (Good)',
-            sf_filter_average:     '20% - 50% (Average)',
-            sf_filter_poor:        '< 20% (Poor)',
-            sf_filter_none:        'New / Unknown',
-            sf_tab_composition:    'Squad Composition',
-            sf_hist_attended:      'attendances',
-            sf_hist_never:         'Never assigned',
-            sf_no_match_filter:    'No members in this category.',
-
-            /* ── Glory tracker ────────────── */
-            glory_title:           'Glory Tracker',
-            glory_subtitle:        'Glory gained by members this week',
-            glory_gained:          'This week',
-            glory_total:           'Guild total:',
-            glory_prev_week:       'Previous week',
-            glory_this_week:       'This week',
-            glory_input:           'Input',
-            glory_evolution:       'Evolution',
-            glory_evolution_pct:   'Evolution (%)',
-            glory_vs_prev:         'Comparison vs previous week',
-
-            /* ── Event history ─────────────── */
-            nav_history:           'History',
-            history_title:         'Event history',
-            history_subtitle:      'All past sessions — click a session for details',
-            history_filter_all:    'All',
-            history_week_only:     'Full week',
-            history_empty:         'No session for this filter.',
-            history_empty_session: 'No participant for this session.',
-
-            /* ── Stats ────────────────────── */
-            nav_stats:             'Stats',
-            stats_subtitle:        'Rankings and member evolution',
-            stats_compute:         'Recompute',
-            stats_no_data:         'No data available for this week.',
-            stats_period_1w:       '1 Week',
-            stats_period_4w:       '4 Weeks',
-            stats_period_8w:       '8 Weeks',
-            stats_score:           'Score /20',
-            stats_events:          'Events',
-            stats_glory:           'Glory',
-            stats_profile:         'Profile',
-            stats_see_profile:     'View profile',
-            stats_week:            'Week',
-            stats_mode_global:     'Global',
-            stats_mode_svs:        'SvS',
-            stats_mode_gvg:        'GvG',
-            stats_tab_global:      'Weekly Global',
-            stats_tab_svs:         'SvS Score',
-            stats_tab_gvg:         'GvG Score',
-            stats_tab_prince:      'Prince Rewards (2 weeks)',
-            stats_tab_participation: 'Participation',
-            stats_part_period_label:  'Period:',
-            stats_part_period_4w:     '4 wks',
-            stats_part_period_8w:     '8 wks',
-            stats_part_period_all:    'All time',
-            stats_part_weeks:         'weeks analyzed',
-            stats_part_members:       'members',
-            stats_part_by_event:      'Participation rate per event',
-            stats_part_sessions:      'sessions',
-            stats_part_players:       'unique participants',
-            stats_part_most_active:   'Most active',
-            stats_part_most_active_sub: 'Consistently showing up',
-            stats_part_least_active:  'Least active',
-            stats_part_least_active_sub: 'Low engagement — needs follow-up',
-            stats_part_no_data:       'No participation data for the selected period.',
-            stats_prince_banner:   'Cumulated over the last 2 weeks',
-            stats_uid:             'UID',
-            stats_uid_none:        'No UID',
-            stats_uid_copy:        'Copy UID',
-            stats_uid_copied:      'UID copied!',
-            stats_pts:             'pts',
-            stats_points:          'points',
-            stats_score_pts:       'Score (pts)',
-            stats_max_possible:    'Theoretical max for the period',
-            stats_glory_delta:     'Δ Glory',
-            stats_consistency:     'Consistency',
-            stats_avg:             'Avg.',
-            stats_best:            'Best',
-            stats_weeks:           'weeks',
-            stats_breakdown:       'Last week breakdown',
-            stats_history:         'History',
-            stats_event:           'Event',
-            stats_coeff:           'Coeff',
-            stats_participated:    'Attended',
-            stats_event_score:     'Event score',
-            stats_pts_earned:      'Points',
-            stats_glory_bonus:     'Glory Bonus',
-            stats_consistency_bonus:'Consistency Bonus',
-            stats_total:           'TOTAL',
-            stats_rank:            'Rank',
-            stats_pct_max:         '% max',
-            stats_kpi_avg_score:   'Avg score',
-            stats_kpi_of_max:      'of max',
-            stats_kpi_best_week:   'Best week',
-            stats_kpi_avg_rank:    'Avg rank',
-            stats_kpi_best:        'Best',
-            stats_kpi_attendance:  'Attendance',
-            stats_kpi_glory_total: 'Total glory',
-            stats_kpi_cumulated:   'over period',
-            stats_kpi_streak:      'Current streak',
-            stats_kpi_streak_sub:  'consec. weeks',
-            stats_trend_improving: 'Improving',
-            stats_trend_stable:    'Stable',
-            stats_trend_declining: 'Declining',
-            stats_trend_window:    'Avg last {0} weeks vs previous',
-            stats_evolution_per_event: 'Per-event evolution',
-            stats_moving_avg:      'Moving avg',
-            stats_max_line:        'Theoretical max',
-            badge_iron_man:        'Iron Man',
-            badge_iron_man_desc:   '100% attendance over the last 4 active weeks.',
-            badge_mvp_desc:        'Finished first in the weekly guild ranking.',
-            badge_glory_climber:   'Glory Climber',
-            badge_glory_climber_desc: 'Accumulated over 5,000 Glory progression points.',
-            badge_loyal_soldier:   'Loyal Soldier',
-            badge_loyal_soldier_desc: 'Participated in 15 or more guild events.',
-            badge_consistency_master: 'Consistency Master',
-            badge_consistency_master_desc: 'Obtained the attendance bonus for at least 4 weeks.',
-
-            /* ── Sanctions ────────────────── */
-            nav_sanctions:         'Sanctions',
-            sanctions_title:       'Sanctions Tracking',
-            sanctions_subtitle:    'Manage and history member infractions',
-            label_target_player:   'Target Member',
-            placeholder_target_player: 'Search for a member...',
-            label_comment:         'Comment / Reason',
-            btn_apply_sanction:    'Apply Sanction',
-            sanctions_history:     'Sanctions History',
-            sanction_by:           'by',
-
-            /* ── Shell v2 ────────────────── */
-            gm_brand:              'RAD MANAGEMENT',
-            gm_brand_sub:          'Foundation Galactic Frontier',
-            gm_nav_play:           'Activity',
-            gm_nav_admin:          'Admin',
-            gm_nav_overview:       'Overview',
-            gm_nav_accounts:       'Accounts & access',
-            gm_nav_members:        'Members',
-            gm_nav_events:         'Events',
-            gm_nav_glory:          'Glory',
-            gm_nav_history:        'History',
-            gm_nav_stats:          'Stats',
-            gm_nav_sanctions:      'Sanctions',
-            gm_nav_more:           'More',
-            gm_overview_title:     'Overview',
-            gm_overview_sub:       'Foundation Galactic Frontier',
-            gm_overview_sub_real:  'Foundation Galactic Frontier — guild status',
-            gm_overview_soon:      'Dashboard coming soon',
-            gm_overview_soon_hint: 'This page will display guild stats, recent activity and quick actions.',
-            overview_s_members:    'Active members',
-            overview_s_events:     'Live events',
-            overview_s_glory:      'Glory this week',
-            overview_s_glory_meta: 'Sum across all members',
-            overview_s_sanctions:  'Recorded sanctions',
-            overview_no_live:      'None live',
-            overview_recent_activity: 'Recent activity',
-            overview_quick_actions: 'Quick actions',
-            overview_event_started: 'started',
-            overview_event_ended:   'ended',
-            overview_sanction_for:  'Sanction for',
-            overview_member_added:  'joined the guild',
-            overview_no_activity:   'No recent activity',
-            overview_upcoming_title: 'Upcoming events',
-            overview_no_upcoming:    'No scheduled events',
-            overview_in:             'in',
-            push_enable:             'Enable reminders',
-            push_enabled:            'Reminders on',
-            push_disable:            'Turn off',
-            push_blocked:            'Notifications blocked — allow them in settings.',
-            push_unsupported:        'Notifications not supported on this device.',
-            push_ios_hint:           'Add the app to your home screen to enable reminders.',
-            push_toast_on:           'Event reminders enabled.',
-            push_toast_off:          'Reminders turned off.',
-            push_toast_err:          'Could not enable notifications.',
-            overview_qa_add_member:    'Add a member',
-            overview_qa_start_svs:     'Start an event',
-            overview_qa_update_glory:  'Update glory',
-            overview_qa_create_account:'Create credentials',
-            overview_time_now:      'just now',
-            alert_recidivist:      '🚨 RECIDIVIST ALERT 🚨\nThis player has just accumulated their 3rd sanction or more!',
-            toast_sanction_added:  'Sanction successfully recorded.',
-            col_date:              'Date',
-            col_reason:            'Reason / Comment',
-            confirm_delete_sanction_title: 'Delete sanction',
-            confirm_delete_sanction_body:  'Do you really want to delete this sanction? This action is irreversible.',
+        var navLangs = (navigator.languages && navigator.languages.length)
+            ? navigator.languages
+            : [navigator.language || ''];
+        for (var i = 0; i < navLangs.length; i++) {
+            var nl = String(navLangs[i] || '').toLowerCase();
+            // Exact BCP-47 match first (e.g. 'pt-br'), then primary subtag ('pt').
+            var exact = registry().find(function (l) { return l.code.toLowerCase() === nl; });
+            if (exact) return exact.code;
+            var primary = nl.split('-')[0];
+            var base = registry().find(function (l) { return l.code.toLowerCase() === primary; });
+            if (base) return base.code;
         }
-    };
+        return DEFAULT_LANG;
+    }
 
-    // ── Public API ─────────────────────────────────────────────────────────────
-    var currentLang = localStorage.getItem('rad_lang') || 'en';
+    var currentLang = detectLang();
+    var pendingLang = null; // language being lazy-loaded
 
+    // ── Lazy locale loading via script injection (no-build static site) ──────
+    function isLoaded(code) { return !!locales()[code]; }
+
+    function loadLocale(code, done) {
+        if (isLoaded(code)) { done(true); return; }
+        var s = document.createElement('script');
+        s.src = 'locales/' + encodeURIComponent(code) + '.js?v=' + LOCALE_VERSION;
+        s.onload = function () { done(isLoaded(code)); };
+        s.onerror = function () { done(false); };
+        document.head.appendChild(s);
+    }
+
+    function syncHtmlLang() {
+        try { document.documentElement.lang = currentLang; } catch (_) {}
+    }
+
+    // ── Switcher widgets ──────────────────────────────────────────────────────
+    var switchers = [];
+
+    function renderSwitcher(el) {
+        if (!el) return;
+        var html = '<select class="gmt-lang-select" aria-label="Language">';
+        registry().forEach(function (l) {
+            html += '<option value="' + l.code + '"' + (l.code === currentLang ? ' selected' : '') + '>' +
+                (l.flag ? l.flag + ' ' : '') + l.code.toUpperCase() +
+            '</option>';
+        });
+        html += '</select>';
+        el.innerHTML = html;
+        var sel = el.querySelector('select');
+        sel.addEventListener('change', function () {
+            window.RAD_I18N.setLang(sel.value);
+        });
+    }
+
+    function refreshSwitchers() {
+        switchers = switchers.filter(function (el) { return el && el.isConnected; });
+        switchers.forEach(renderSwitcher);
+    }
+
+    // ── Public API ────────────────────────────────────────────────────────────
     window.RAD_I18N = {
         t: function (key) {
-            return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key])
-                || (TRANSLATIONS['en'] && TRANSLATIONS['en'][key])
+            var L = locales();
+            return (L[currentLang] && L[currentLang][key])
+                || (L[DEFAULT_LANG] && L[DEFAULT_LANG][key])
                 || key;
         },
+
+        // Plural-aware lookup: keys follow `<key>_one` / `<key>_other` (plus
+        // any category the language needs: _few, _many…). "{n}" is replaced.
+        tn: function (key, n) {
+            var cat = 'other';
+            try { cat = new Intl.PluralRules(this.dateLocale()).select(n); } catch (_) {}
+            var L = locales();
+            var lookup = function (k) {
+                return (L[currentLang] && L[currentLang][k])
+                    || (L[DEFAULT_LANG] && L[DEFAULT_LANG][k]) || null;
+            };
+            var s = lookup(key + '_' + cat) || lookup(key + '_other') || lookup(key) || key;
+            return String(s).replace(/\{n\}/g, String(n));
+        },
+
         getLang: function () { return currentLang; },
+
+        getLanguages: function () { return registry().slice(); },
+
+        dateLocale: function () {
+            var e = registryEntry(currentLang);
+            return (e && e.intl) || currentLang;
+        },
+
+        formatNumber: function (n) {
+            if (n === null || n === undefined || n === '' || isNaN(n)) return '';
+            try { return new Intl.NumberFormat(this.dateLocale()).format(n); }
+            catch (_) { return String(n); }
+        },
+
         setLang: function (lang) {
-            if (!TRANSLATIONS[lang]) return;
-            currentLang = lang;
-            localStorage.setItem('rad_lang', lang);
-            window.RAD_I18N.applyTranslations();
-            // Update switcher button states
-            document.querySelectorAll('.lang-btn').forEach(function (btn) {
-                btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+            if (!registryEntry(lang)) return;
+            pendingLang = lang;
+            loadLocale(lang, function (ok) {
+                if (!ok || pendingLang !== lang) return;
+                pendingLang = null;
+                currentLang = lang;
+                try { localStorage.setItem(STORAGE_KEY, lang); } catch (_) {}
+                syncHtmlLang();
+                window.RAD_I18N.applyTranslations();
+                refreshSwitchers();
+                // Legacy two-button switchers (kept for compatibility while
+                // some views still ship them).
+                document.querySelectorAll('.lang-btn').forEach(function (btn) {
+                    btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+                });
+                document.dispatchEvent(new CustomEvent('gmt:langchange', { detail: { lang: lang } }));
             });
         },
+
         applyTranslations: function () {
             var t = window.RAD_I18N.t;
-            // Text content
             document.querySelectorAll('[data-i18n]').forEach(function (el) {
                 el.textContent = t(el.getAttribute('data-i18n'));
             });
-            // Placeholder attributes
             document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
                 el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
             });
-            // Title attributes
             document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
                 el.setAttribute('title', t(el.getAttribute('data-i18n-title')));
             });
-        }
+        },
+
+        mountSwitcher: function (el) {
+            if (!el) return;
+            if (switchers.indexOf(el) === -1) switchers.push(el);
+            renderSwitcher(el);
+        },
+
+        // Called by locale files once they register themselves (lazy load).
+        _onLocaleLoaded: function (_code) { /* hook for future use */ }
     };
+
+    window.GMT_I18N = window.RAD_I18N;
+
+    // ── Boot ──────────────────────────────────────────────────────────────────
+    syncHtmlLang();
+
+    function autoMount() {
+        document.querySelectorAll('[data-gmt-lang-switcher]').forEach(function (el) {
+            window.RAD_I18N.mountSwitcher(el);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', autoMount);
+    } else {
+        autoMount();
+    }
+
+    // If the detected language is not the eagerly-loaded default, load it and
+    // re-render (the HTML ships English defaults, so worst case is a brief
+    // English flash for non-English users).
+    if (currentLang !== DEFAULT_LANG && !isLoaded(currentLang)) {
+        var detected = currentLang;
+        currentLang = DEFAULT_LANG; // serve English until the locale arrives
+        window.RAD_I18N.setLang(detected);
+    }
 
 })();
