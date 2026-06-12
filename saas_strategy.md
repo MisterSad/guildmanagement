@@ -255,12 +255,19 @@ L'outil actuel est une PWA vanilla JS (~11 300 lignes, sans framework ni build) 
 
 ```
 locales/
-  en.json        ← langue source (référence, toujours complète)
-  fr.json
-  de.json        ← exemple d'ajout futur
-  index.json     ← registre des langues disponibles
+  en.js          ← langue source (référence, toujours complète)
+  fr.js
+  de.js          ← exemple d'ajout futur
+  index.js       ← registre des langues disponibles
 i18n.js          ← moteur : registre + chargement + fallback + formats
 ```
+
+> **Écart d'implémentation (12/06/2026)** : fichiers de locale en `.js`
+> (objet enregistré sur `window.GMT_LOCALES`) plutôt qu'en `.json` — sur un
+> site statique sans build, le chargement par balise `<script>` est
+> synchrone et déterministe (pas de course fetch/render au boot), tout en
+> gardant la propriété clé : *ajouter une langue = un fichier + une entrée
+> de registre*. Conversion JSON triviale si un bundler arrive un jour.
 
 **Registre** (`locales/index.json`) — la seule « déclaration » d'une langue :
 
@@ -402,7 +409,12 @@ Tout ce qui est vrai pour la guilde RAD mais faux pour les autres :
 /pricing     → ancre ou page dédiée
 ```
 
-- Landing **à la racine**, app déplacée sous `/app/` (un seul déploiement statique, un seul domaine). Alternative : `app.domaine.tld` — à trancher au moment du choix du domaine ; la racine `/app/` est plus simple (un seul certificat, un seul projet d'hébergement). ⚠️ Impacts : `manifest start_url/scope`, enregistrement du SW (`/app/sw.js`), chemins d'icônes — et les PWA déjà installées (la tienne) devront être réinstallées.
+- Landing **à la racine**, app déplacée sous `/app/` (un seul déploiement statique, un seul domaine). Alternative : `app.domaine.tld` — à trancher au moment du choix du domaine ; la racine `/app/` est plus simple (un seul certificat, un seul projet d'hébergement). ⚠️ Impacts : `manifest start_url/scope`, chemins d'icônes — et les PWA déjà installées (la tienne) devront être réinstallées.
+  > **Écart d'implémentation (12/06/2026)** : `sw.js` reste à la **racine**
+  > (scope `/`) au lieu de `/app/sw.js` — cela préserve les enregistrements
+  > service worker existants et les 11 abonnements push actifs (un
+  > changement de chemin de SW les aurait orphelinés). Les clics de
+  > notification ouvrent `/app/`.
 - [ ] Acheter le domaine (ex. `guildmanagementtool.app` ou `.io`) + e-mail de support associé.
 
 ### 12.3 Structure de page (sections, copy EN draft)
