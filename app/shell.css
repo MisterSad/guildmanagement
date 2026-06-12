@@ -560,3 +560,8 @@ html, body {
     background: var(--bg-2, #1a1926);
     color: var(--fg, #eee);
 }
+
+/* ─── Marque sans logo : icône de police (rebrand, saas_strategy.md §11) ─── */
+.gm-brand-mark i { font-size: 1.25rem; }
+.gm-login-crest { display: flex; align-items: center; justify-content: center; }
+.gm-login-crest i { font-size: 1.8rem; }

@@ -236,7 +236,7 @@ serve(async (req) => {
 
         let content = '';
         let embedTitle = `📢 Guild Event: ${event.event_name}`;
-        let embedDesc = 'A guild event has been configured in the RAD Management tool!';
+        let embedDesc = 'A guild event has been configured in the Guild Management Tool!';
         let color = 5763719; // Green
         let agenda = 'Please connect now.';
 
@@ -277,7 +277,7 @@ serve(async (req) => {
               { name: 'Guild Agenda', value: agenda, inline: false }
             ],
             timestamp: new Date().toISOString(),
-            footer: { text: 'RAD Management Tool' }
+            footer: { text: 'Guild Management Tool' }
           }]
         };
 
@@ -413,7 +413,7 @@ serve(async (req) => {
                 { name: 'Guild Agenda', value: agenda, inline: false }
               ],
               timestamp: new Date().toISOString(),
-              footer: { text: 'RAD Management Tool' }
+              footer: { text: 'Guild Management Tool' }
             }]
           };
 
@@ -555,7 +555,7 @@ serve(async (req) => {
               color: color,
               fields: fields,
               timestamp: new Date().toISOString(),
-              footer: { text: 'RAD Management Tool' }
+              footer: { text: 'Guild Management Tool' }
             }]
           };
 
@@ -664,7 +664,7 @@ serve(async (req) => {
                 { name: 'Guild Agenda', value: agenda, inline: false }
               ],
               timestamp: new Date().toISOString(),
-              footer: { text: 'RAD Management Tool' }
+              footer: { text: 'Guild Management Tool' }
             }]
           };
 

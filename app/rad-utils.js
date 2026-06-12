@@ -4,8 +4,9 @@
  */
 (function () {
 
-    var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
-    var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
+    var cfg = window.GMT_CONFIG || {};
+    var SUPABASE_URL = cfg.SUPABASE_URL;
+    var SUPABASE_KEY = cfg.SUPABASE_PUBLISHABLE_KEY;
 
     var db = null;
     try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
@@ -360,7 +361,7 @@
         var dateFormatted = formatDateTimeUTC(startAt);
         var content = '';
         var embedTitle = '📢 Guild Event: ' + eventName;
-        var embedDesc = 'A guild event has been configured in the RAD Management tool!';
+        var embedDesc = 'A guild event has been configured in the Guild Management Tool!';
         var actionLabel = '';
         var color = 5763719; // Green
 
@@ -398,7 +399,7 @@
                 fields: fields,
                 timestamp: new Date().toISOString(),
                 footer: {
-                    text: 'RAD Management Tool'
+                    text: 'Guild Management Tool'
                 }
             }]
         };

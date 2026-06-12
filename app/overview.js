@@ -24,13 +24,32 @@
     var countdownTimer = null;
     var timezoneClockTimer = null;
 
-    var CLOCK_MEMBERS = [
-        { name: 'Natalie', offset: 7, color: 'danger' },
-        { name: 'HawkTuah', offset: 2, color: 'accent' },
-        { name: 'Phantom', offset: 2, color: 'info' },
-        { name: 'Vaylah', offset: -4, color: 'success' },
-        { name: 'BroKen', offset: -7, color: 'warning' }
-    ];
+    // Horloges membres : configurées par guilde via la clé guild_config
+    // `overview_clocks` — JSON: [{"name":"…","offset":2,"color":"accent"}].
+    // Section masquée si la clé est vide/absente. (saas_strategy.md §10)
+    var CLOCK_COLORS = ['accent', 'info', 'success', 'warning', 'danger'];
+
+    async function getClockMembers() {
+        try {
+            var raw = await window.RAD.config.get('overview_clocks');
+            if (!raw) return [];
+            var arr = JSON.parse(raw);
+            if (!Array.isArray(arr)) return [];
+            return arr
+                .filter(function (m) { return m && m.name; })
+                .slice(0, 8)
+                .map(function (m, i) {
+                    var off = parseFloat(m.offset);
+                    return {
+                        name: String(m.name),
+                        offset: isNaN(off) ? 0 : off,
+                        color: m.color || CLOCK_COLORS[i % CLOCK_COLORS.length]
+                    };
+                });
+        } catch (e) {
+            return [];
+        }
+    }
 
     window.RAD_OVERVIEW = { load: loadOverview };
 
@@ -147,12 +166,16 @@
         startTimezoneClockTicker();
     }
 
-    function renderTimezoneClocks(panel) {
+    async function renderTimezoneClocks(panel) {
         var container = panel.querySelector('#gm-overview-clocks');
         if (!container) return;
 
+        var members = await getClockMembers();
+        if (!members.length) { container.style.display = 'none'; return; }
+        container.style.display = '';
+
         var html = '';
-        CLOCK_MEMBERS.forEach(function (m) {
+        members.forEach(function (m) {
             var initials = window.RAD.avatarInit(m.name);
             var offsetText = 'UTC' + (m.offset >= 0 ? '+' + m.offset : m.offset);
             html +=

@@ -1,7 +1,7 @@
 {
-  "name": "RAD Management Tool",
-  "short_name": "RAD MGMT",
-  "description": "Guild Management Tool for Foundation Galactic Frontier",
+  "name": "Guild Management Tool",
+  "short_name": "Guild Tool",
+  "description": "All-in-one guild management — events, squads, leaderboards, reminders.",
   "lang": "en",
   "start_url": "/app/",
   "scope": "/app/",
