@@ -15,8 +15,13 @@ migrations/
   20260612000100_baseline.sql              Snapshot prod du 12/06/2026 (fresh envs only)
   20260612000200_security_hardening_p0.sql Durcissement P0 (appliqué en prod le 12/06/2026)
 migrations_staged/
-  …                          Migrations multi-tenant NON appliquées (voir docs/cutover-runbook.md)
+  20990101000000_multitenant.sql           Migration multi-tenant NON appliquée
+functions_staged/
+  auth-login/ admin-accounts/ event-reminders/   Versions v2 multi-tenant NON déployées
 ```
+
+Migration staged + fonctions staged + ajustements frontend = **release
+atomique** : suivre `docs/cutover-runbook.md`.
 
 ⚠️ `migrations_staged/` est volontairement hors de `migrations/` pour qu'un
 `supabase db push` ne les applique pas par accident. Elles seront déplacées
