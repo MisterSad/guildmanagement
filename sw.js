@@ -25,14 +25,14 @@ self.addEventListener('push', function (event) {
         badge:    '/icon-192.png',
         tag:      data.tag || 'rad-event',
         renotify: true,
-        data:     { url: data.url || '/' }
+        data:     { url: (data.url && data.url !== '/') ? data.url : '/app/' }
     };
     event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
-    var target = (event.notification.data && event.notification.data.url) || '/';
+    var target = (event.notification.data && event.notification.data.url) || '/app/';
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
             for (var i = 0; i < clientList.length; i++) {
