@@ -136,7 +136,8 @@
         var refPrev = window.RAD.getPrevWeekStart(weeks[0]);
         var glorySpan = [refPrev].concat(weeks);
 
-        var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace, reserveCreditPct] = await Promise.all([
+        var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace, reserveCreditPct,
+             wPart, wPerf, wGlory, wConsist, wThreshold] = await Promise.all([
             db.from('guild_members').select('pseudo, uid'),
             db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
             db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000),
@@ -146,8 +147,22 @@
             window.RAD.config.get('coeff_shadowfront'),
             window.RAD.config.get('coeff_dtr'),
             window.RAD.config.get('coeff_armsrace'),
-            window.RAD.config.get('reserve_credit_pct')
+            window.RAD.config.get('reserve_credit_pct'),
+            window.RAD.config.get('score_w_participation'),
+            window.RAD.config.get('score_w_performance'),
+            window.RAD.config.get('score_glory_bonus'),
+            window.RAD.config.get('score_consistency_bonus'),
+            window.RAD.config.get('score_consistency_threshold')
         ]);
+
+        // Apply per-guild formula weights (defaults equal the original constants,
+        // so an unconfigured guild scores identically). saas_strategy.md §10.
+        W.participation = parseFloat(wPart)      > 0 ? parseFloat(wPart)    : 6;
+        W.performance   = parseFloat(wPerf)      >= 0 ? parseFloat(wPerf)   : 4;
+        W.gloryMax      = parseFloat(wGlory)     >= 0 ? parseFloat(wGlory)  : 20;
+        W.consistency   = parseFloat(wConsist)   >= 0 ? parseFloat(wConsist): 15;
+        var thr = parseFloat(wThreshold);
+        W.threshold     = (thr >= 0 && thr <= 100) ? thr / 100 : 0.80;
 
         var memberRows   = membersRes.data || [];
         var members      = memberRows.map(function (m) { return m.pseudo; });
@@ -1626,7 +1641,7 @@
         for (var i = 0; i < n; i++) {
             if (i % step === 0 || i === n - 1) {
                 var d = new Date(weeks[i] + 'T12:00:00Z');
-                var label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+                var label = d.toLocaleDateString(window.RAD_I18N.dateLocale(), { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
                 xLabels += '<text x="' + projectX(i).toFixed(1) + '" y="' + (H + 2) + '" text-anchor="middle" font-size="9" fill="#94a3b8">' + label + '</text>';
             }
         }

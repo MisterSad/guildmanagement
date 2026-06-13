@@ -136,7 +136,7 @@
 
     function formatWhen(sessionId, weekStart) {
         if (sessionId) {
-            return new Date(sessionId).toLocaleDateString('fr-FR', {
+            return new Date(sessionId).toLocaleDateString(window.RAD_I18N.dateLocale(), {
                 day: '2-digit', month: '2-digit', year: 'numeric',
                 hour: '2-digit', minute: '2-digit'
             });
@@ -195,7 +195,7 @@
         if (existing) existing.remove();
 
         var when = sessionId
-            ? new Date(sessionId).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            ? new Date(sessionId).toLocaleDateString(window.RAD_I18N.dateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
             : t('history_week_only');
 
         var sorted = rows.slice().sort(function (a, b) {
@@ -235,7 +235,12 @@
         var totalScore = sorted.reduce(function (s, r) { return s + (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0); }, 0);
         var doneCount  = sorted.reduce(function (s, r) { return s + (r.participated > 0 ? 1 : 0); }, 0);
 
-        var deleteBtnHtml = sessionId
+        // Suppression de session réservée au R5 (saas_strategy.md §6.3). Aligne
+        // l'UI sur la RLS multi-tenant (DELETE event_status/event_participants
+        // R5-only) : sans ce gate, un R4 obtiendrait une suppression partielle
+        // silencieuse (squads supprimés, participants/statut refusés).
+        var isR5 = sessionStorage.getItem('rad_role') === 'admin';
+        var deleteBtnHtml = (sessionId && isR5)
             ? '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' + t('delete_title') + '</span></button>'
             : '';
 

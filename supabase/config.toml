@@ -414,3 +414,18 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.event-reminders]
 verify_jwt = false
+
+# Called by Paddle (no Supabase JWT); the function verifies the Paddle-Signature
+# HMAC itself. Staged until the multi-tenant + billing release.
+[functions.billing-webhook]
+verify_jwt = false
+
+# Transactional email via Resend. Called server-to-server; gated by an
+# x-email-secret header (EMAIL_FN_SECRET), not a Supabase JWT.
+[functions.send-email]
+verify_jwt = false
+
+# First-login provisioning for an email R5 (creates the guild, stamps claims).
+# Caller is the signed-in R5, so the JWT is required. Staged.
+[functions.bootstrap-r5]
+verify_jwt = true

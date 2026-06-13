@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guild Management Tool : pilotez votre guilde comme un pro</title>
+    <meta name="description" content="Suivi de participation aux événements, compositions d'équipes, classements équitables et rappels automatiques Discord & push pour les chefs de guilde (R5).">
+    <link rel="canonical" href="https://guildmanagement.vercel.app/fr/">
+    <link rel="alternate" hreflang="en" href="https://guildmanagement.vercel.app/">
+    <link rel="alternate" hreflang="fr" href="https://guildmanagement.vercel.app/fr/">
+    <link rel="alternate" hreflang="x-default" href="https://guildmanagement.vercel.app/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Guild Management Tool : pilotez votre guilde comme un pro">
+    <meta property="og:description" content="Suivi d'événements, squads, classements équitables et rappels automatiques pour les guildes de jeux mobiles.">
+    <meta property="og:image" content="/icon-512.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" type="image/png" href="/favicon.png?v=3">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/landing.css?v=1">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Guild Management Tool",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "description": "Gestion de guilde tout-en-un : suivi de participation aux événements, compositions d'équipes, classements pondérés et rappels automatiques Discord & push.",
+      "offers": { "@type": "Offer", "price": "9.99", "priceCurrency": "EUR" }
+    }
+    </script>
+</head>
+<body>
+    <div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+
+    <nav class="nav">
+        <div class="wrap nav-inner">
+            <a class="nav-logo" href="/fr/"><i class="ph-fill ph-shield-star"></i> Guild Management Tool</a>
+            <div class="nav-links">
+                <a href="#features">Fonctionnalités</a>
+                <a href="#how">Comment ça marche</a>
+                <a href="#pricing">Tarif</a>
+                <a href="#faq">FAQ</a>
+            </div>
+            <div class="nav-actions">
+                <div class="nav-lang"><a href="/">EN</a><a class="on" href="/fr/">FR</a></div>
+                <a class="btn" href="/app/">Connexion</a>
+                <a class="btn btn-primary" href="/app/">Essai gratuit</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ─── Hero ─── -->
+    <header class="hero wrap">
+        <div class="hero-badge"><i class="ph-fill ph-circle"></i> Créé par un R5, éprouvé sur une guilde de 130 membres</div>
+        <h1>Pilotez votre guilde<br><span class="grad">comme un pro.</span></h1>
+        <p class="sub">Suivez la participation aux événements, composez vos squads, classez vos membres équitablement et ne ratez plus jamais une bataille, avec des rappels automatiques Discord &amp; push. Arrêtez de gérer votre guilde dans un tableur.</p>
+        <div class="hero-cta">
+            <a class="btn btn-primary btn-lg" href="/app/">Démarrer l'essai gratuit de 14 jours</a>
+            <a class="btn btn-lg" href="#features">Voir ce que ça fait</a>
+        </div>
+        <div class="hero-note">Sans carte bancaire · Annulable à tout moment</div>
+
+        <div class="mock" aria-hidden="true">
+            <div class="mock-bar">
+                <span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span>
+                <span class="mock-url">guild-tool/app/stats</span>
+            </div>
+            <div class="mock-body">
+                <div class="mock-side">
+                    <div class="mock-side-item"><i class="ph ph-squares-four"></i> Vue d'ensemble</div>
+                    <div class="mock-side-item"><i class="ph ph-users"></i> Membres</div>
+                    <div class="mock-side-item"><i class="ph ph-sword"></i> Événements</div>
+                    <div class="mock-side-item"><i class="ph ph-trophy"></i> Gloire</div>
+                    <div class="mock-side-item on"><i class="ph ph-chart-bar"></i> Stats</div>
+                    <div class="mock-side-item"><i class="ph ph-warning-octagon"></i> Sanctions</div>
+                </div>
+                <div class="mock-main">
+                    <div class="mock-title">Classement hebdo (score pondéré)</div>
+                    <div class="mock-row"><span class="mock-rank gold">1</span><span class="mock-av">SW</span> StarWarrior <span class="mock-barw"><span class="mock-fill" style="width:92%"></span></span><span class="mock-score">241,5</span></div>
+                    <div class="mock-row"><span class="mock-rank">2</span><span class="mock-av">NV</span> NovaVex <span class="mock-barw"><span class="mock-fill" style="width:84%"></span></span><span class="mock-score">219,0</span></div>
+                    <div class="mock-row"><span class="mock-rank">3</span><span class="mock-av">KR</span> KaelRift <span class="mock-barw"><span class="mock-fill" style="width:77%"></span></span><span class="mock-score">201,8</span></div>
+                    <div class="mock-row"><span class="mock-rank">4</span><span class="mock-av">LX</span> LunarX <span class="mock-barw"><span class="mock-fill" style="width:64%"></span></span><span class="mock-score">167,2</span></div>
+                    <div class="mock-row"><span class="mock-rank">5</span><span class="mock-av">DR</span> DriftKing <span class="mock-barw"><span class="mock-fill" style="width:51%"></span></span><span class="mock-score">133,9</span></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ─── Bandeau preuve ─── -->
+    <section class="proof">
+        <div class="wrap proof-inner">
+            <div class="proof-item"><strong>7 700+</strong><span>participations suivies</span></div>
+            <div class="proof-item"><strong>130+</strong><span>membres gérés</span></div>
+            <div class="proof-item"><strong>100%</strong><span>des batailles rappelées à l'heure</span></div>
+        </div>
+    </section>
+
+    <!-- ─── Fonctionnalités ─── -->
+    <section class="section wrap" id="features">
+        <div class="section-head">
+            <h2>Tout ce dont un R5 a besoin. Rien d'autre.</h2>
+            <p>Un seul outil pour tout le cycle hebdomadaire : planifier, rappeler, suivre, classer.</p>
+        </div>
+        <div class="features">
+            <div class="feature">
+                <i class="ph ph-sword"></i>
+                <h3>Suivi des événements</h3>
+                <p>SvS, GvG, Shadowfront, Defend Trade Route, Arms Race : lancez une session, cochez la participation, saisissez les scores. L'historique est conservé.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-users-three"></i>
+                <h3>Compositions de squads</h3>
+                <p>Compositions Shadowfront avec participants et réservistes, guidées par l'historique d'assiduité de chaque membre.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-chart-bar"></i>
+                <h3>Classements équitables</h3>
+                <p>Classements hebdomadaires pondérés : coefficients configurables, crédit réserviste, progression de gloire et bonus de régularité.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-trophy"></i>
+                <h3>Tracker de Gloire</h3>
+                <p>Saisissez la gloire de chaque membre une fois par semaine ; l'évolution et les totaux de guilde sont calculés automatiquement.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-bell-ringing"></i>
+                <h3>Rappels Discord &amp; push</h3>
+                <p>Alertes automatiques avant chaque bataille, à 30, 15 et 5 minutes, sur votre serveur Discord et sur les téléphones de vos officiers.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-warning-octagon"></i>
+                <h3>Registre de sanctions</h3>
+                <p>Gardez la trace des absences et des manquements, avec alerte automatique en cas de récidive.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Comment ça marche ─── -->
+    <section class="section wrap" id="how">
+        <div class="section-head">
+            <h2>Opérationnel en quelques minutes</h2>
+        </div>
+        <div class="steps">
+            <div class="step"><div class="step-n">1</div><h3>Créez votre guilde</h3><p>Inscrivez-vous, nommez votre guilde et choisissez les événements que vous jouez. Vos données restent isolées.</p></div>
+            <div class="step"><div class="step-n">2</div><h3>Importez votre roster</h3><p>Collez votre liste de membres (ou ajoutez-les un à un). Pseudo + UID du jeu, c'est tout.</p></div>
+            <div class="step"><div class="step-n">3</div><h3>Invitez vos officiers</h3><p>Générez des comptes R4 en un clic. Ils suivent la participation, vous gardez le contrôle.</p></div>
+        </div>
+    </section>
+
+    <!-- ─── Installation ─── -->
+    <section class="section wrap">
+        <div class="install">
+            <div class="install-txt">
+                <h2>Comme une app. Sans app store.</h2>
+                <p>Ajoutez l'outil à l'écran d'accueil de votre iPhone ou Android : plein écran, chargement instantané, notifications push pour les rappels de bataille. Vos membres n'ont pas besoin de compte : seuls vous et vos officiers vous connectez.</p>
+                <div class="install-badges">
+                    <span class="install-badge"><i class="ph ph-device-mobile"></i> iOS &amp; Android</span>
+                    <span class="install-badge"><i class="ph ph-bell-ringing"></i> Notifications push</span>
+                    <span class="install-badge"><i class="ph ph-globe"></i> English &amp; Français</span>
+                </div>
+            </div>
+            <div class="install-phone" aria-hidden="true">
+                <div class="install-notch"></div>
+                <div class="install-notif"><i class="ph-fill ph-bell-ringing"></i><div><b>⏰ SvS starts in 15 minutes!</b><span>Get ready, log in and prepare for battle.</span></div></div>
+                <div class="install-notif"><i class="ph-fill ph-bell-ringing"></i><div><b>🏰 GvG - War Fortress</b><span>The event is active. All units to stations!</span></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Tarif ─── -->
+    <section class="section wrap" id="pricing">
+        <div class="section-head">
+            <h2>Un seul plan. Tout inclus.</h2>
+        </div>
+        <div class="price-card">
+            <div class="price-amount">9,99 €<small>/mois</small></div>
+            <div class="price-per">par guilde, TTC</div>
+            <ul class="price-list">
+                <li><i class="ph-fill ph-check-circle"></i> Membres &amp; comptes officiers illimités</li>
+                <li><i class="ph-fill ph-check-circle"></i> Tous les événements, classements &amp; historique</li>
+                <li><i class="ph-fill ph-check-circle"></i> Rappels Discord &amp; push selon vos horaires</li>
+                <li><i class="ph-fill ph-check-circle"></i> App installable (iOS &amp; Android)</li>
+                <li><i class="ph-fill ph-check-circle"></i> Export de vos données à tout moment</li>
+            </ul>
+            <a class="btn btn-primary btn-lg" href="/app/">Démarrer l'essai gratuit de 14 jours</a>
+            <div class="price-note">Essai sans carte bancaire · Annulation en un clic</div>
+        </div>
+    </section>
+
+    <!-- ─── FAQ ─── -->
+    <section class="section wrap" id="faq">
+        <div class="section-head"><h2>Questions fréquentes</h2></div>
+        <div class="faq">
+            <details>
+                <summary>Pour quel jeu est-ce conçu ?</summary>
+                <p>L'outil est construit autour du cycle d'événements hebdomadaire des guildes type Foundation: Galactic Frontier (SvS, GvG, Shadowfront, Defend Trade Route, Arms Race, Gloire). Si votre guilde joue ces événements, vous êtes au bon endroit.</p>
+            </details>
+            <details>
+                <summary>Mes membres ont-ils besoin de comptes ?</summary>
+                <p>Non. Seuls le chef de guilde (R5) et les officiers (R4) se connectent. Les membres sont des entrées de roster : pas d'inscription, pas d'e-mail personnel.</p>
+            </details>
+            <details>
+                <summary>Puis-je configurer les horaires de rappels ?</summary>
+                <p>Oui. Chaque serveur a ses propres horaires de bataille : les rappels se configurent par guilde, en UTC, avec des valeurs par défaut modifiables.</p>
+            </details>
+            <details>
+                <summary>Puis-je annuler à tout moment ?</summary>
+                <p>Oui, en un clic, effectif à la fin de la période en cours. Pas d'engagement, pas de pièges.</p>
+            </details>
+            <details>
+                <summary>Que deviennent mes données si j'arrête de payer ?</summary>
+                <p>Votre guilde passe en lecture seule pendant 30 jours et rien n'est supprimé. Vous pouvez tout exporter ; la suppression définitive n'intervient qu'après un préavis de 60 jours.</p>
+            </details>
+            <details>
+                <summary>Mes données sont-elles en sécurité ?</summary>
+                <p>Les données de chaque guilde sont isolées au niveau de la base (row-level security), hébergées dans l'UE, avec sauvegardes quotidiennes. Seul votre compte R5 gère les officiers et la configuration.</p>
+            </details>
+            <details>
+                <summary>Quelles langues sont disponibles ?</summary>
+                <p>Anglais et français aujourd'hui ; l'app est conçue pour ajouter d'autres langues rapidement. Dites-nous laquelle il vous faut.</p>
+            </details>
+        </div>
+    </section>
+
+    <!-- ─── CTA final ─── -->
+    <section class="cta-final">
+        <h2>Votre prochaine bataille mérite un roster complet.</h2>
+        <a class="btn btn-primary btn-lg" href="/app/">Démarrer l'essai gratuit de 14 jours</a>
+        <div class="hero-note">Sans carte bancaire</div>
+    </section>
+
+    <footer class="footer">
+        <div class="wrap footer-inner">
+            <div class="footer-brand"><i class="ph-fill ph-shield-star"></i> Guild Management Tool</div>
+            <div class="footer-links">
+                <a href="/legal/terms.html">Conditions d'utilisation</a>
+                <a href="/legal/privacy.html">Confidentialité</a>
+                <a href="mailto:fgfguildmanagementtool@proton.me">Contact</a>
+                <a href="/">English</a>
+            </div>
+            <div class="footer-note">© 2026 Guild Management Tool. Non affilié à, ni approuvé par, ni lié à un quelconque éditeur de jeu. Les noms de jeux sont utilisés à titre descriptif uniquement.</div>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</body>
+</html>

@@ -1,689 +1,252 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAD MANAGEMENT TOOL</title>
-    <meta name="description" content="Guild Management Tool for Foundation Galactic Frontier">
+    <title>Guild Management Tool: Run your guild like a pro</title>
+    <meta name="description" content="Track event participation, build squads, rank your members fairly and never miss a battle. Automatic Discord & push reminders for guild leaders (R5).">
+    <link rel="canonical" href="https://guildmanagement.vercel.app/">
+    <link rel="alternate" hreflang="en" href="https://guildmanagement.vercel.app/">
+    <link rel="alternate" hreflang="fr" href="https://guildmanagement.vercel.app/fr/">
+    <link rel="alternate" hreflang="x-default" href="https://guildmanagement.vercel.app/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Guild Management Tool: Run your guild like a pro">
+    <meta property="og:description" content="Event tracking, squad building, fair leaderboards and automatic reminders for mobile-game guilds.">
+    <meta property="og:image" content="/icon-512.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" type="image/png" href="/favicon.png?v=3">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=4">
-    <link rel="stylesheet" href="tokens.css?v=3">
-    <link rel="stylesheet" href="components.css?v=7">
-    <link rel="stylesheet" href="shell.css?v=5">
-    <link rel="icon" type="image/png" href="favicon.png?v=2">
-    <link rel="manifest" href="manifest.webmanifest">
-    <meta name="theme-color" content="#15141d">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="RAD MGMT">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/landing.css?v=1">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Guild Management Tool",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "description": "All-in-one guild management: event participation tracking, squad building, weighted leaderboards and automatic Discord & push reminders.",
+      "offers": { "@type": "Offer", "price": "9.99", "priceCurrency": "EUR" }
+    }
+    </script>
+    <!-- Analytics: cookie-less provider only (Plausible/Umami) to stay
+         consent-banner-free; snippet added once the account exists. -->
 </head>
 <body>
-    <div class="animated-bg">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-    </div>
+    <div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 
-    <div id="app">
+    <nav class="nav">
+        <div class="wrap nav-inner">
+            <a class="nav-logo" href="/"><i class="ph-fill ph-shield-star"></i> Guild Management Tool</a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#how">How it works</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#faq">FAQ</a>
+            </div>
+            <div class="nav-actions">
+                <div class="nav-lang"><a class="on" href="/">EN</a><a href="/fr/">FR</a></div>
+                <a class="btn" href="/app/">Log in</a>
+                <a class="btn btn-primary" href="/app/">Start free trial</a>
+            </div>
+        </div>
+    </nav>
 
-        <!-- ─── Login View ──────────────────────────────────────── -->
-        <div id="login-view" class="view active gm-login-wrap">
-            <div class="gm-login-lang-pos">
-                <div class="gm-lang-toggle">
-                    <button class="lang-btn gm-active" data-lang="fr">FR</button>
-                    <button class="lang-btn" data-lang="en">EN</button>
+    <!-- ─── Hero ─── -->
+    <header class="hero wrap">
+        <div class="hero-badge"><i class="ph-fill ph-circle"></i> Built by an R5, battle-tested on a 130-member guild</div>
+        <h1>Run your guild<br><span class="grad">like a pro.</span></h1>
+        <p class="sub">Track event participation, build squads, rank your members fairly, and never miss a battle, with automatic Discord &amp; push reminders. Stop managing your guild in a spreadsheet.</p>
+        <div class="hero-cta">
+            <a class="btn btn-primary btn-lg" href="/app/">Start your 14-day free trial</a>
+            <a class="btn btn-lg" href="#features">See what it does</a>
+        </div>
+        <div class="hero-note">No credit card required · Cancel anytime</div>
+
+        <div class="mock" aria-hidden="true">
+            <div class="mock-bar">
+                <span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span>
+                <span class="mock-url">guild-tool/app/stats</span>
+            </div>
+            <div class="mock-body">
+                <div class="mock-side">
+                    <div class="mock-side-item"><i class="ph ph-squares-four"></i> Overview</div>
+                    <div class="mock-side-item"><i class="ph ph-users"></i> Members</div>
+                    <div class="mock-side-item"><i class="ph ph-sword"></i> Events</div>
+                    <div class="mock-side-item"><i class="ph ph-trophy"></i> Glory</div>
+                    <div class="mock-side-item on"><i class="ph ph-chart-bar"></i> Stats</div>
+                    <div class="mock-side-item"><i class="ph ph-warning-octagon"></i> Sanctions</div>
+                </div>
+                <div class="mock-main">
+                    <div class="mock-title">Weekly leaderboard (weighted score)</div>
+                    <div class="mock-row"><span class="mock-rank gold">1</span><span class="mock-av">SW</span> StarWarrior <span class="mock-barw"><span class="mock-fill" style="width:92%"></span></span><span class="mock-score">241.5</span></div>
+                    <div class="mock-row"><span class="mock-rank">2</span><span class="mock-av">NV</span> NovaVex <span class="mock-barw"><span class="mock-fill" style="width:84%"></span></span><span class="mock-score">219.0</span></div>
+                    <div class="mock-row"><span class="mock-rank">3</span><span class="mock-av">KR</span> KaelRift <span class="mock-barw"><span class="mock-fill" style="width:77%"></span></span><span class="mock-score">201.8</span></div>
+                    <div class="mock-row"><span class="mock-rank">4</span><span class="mock-av">LX</span> LunarX <span class="mock-barw"><span class="mock-fill" style="width:64%"></span></span><span class="mock-score">167.2</span></div>
+                    <div class="mock-row"><span class="mock-rank">5</span><span class="mock-av">DR</span> DriftKing <span class="mock-barw"><span class="mock-fill" style="width:51%"></span></span><span class="mock-score">133.9</span></div>
                 </div>
             </div>
-            <form id="login-form" class="gm-login-card">
-                <div class="gm-login-brand-row">
-                    <div class="gm-avatar-xl"><img src="apple-touch-icon.png?v=2" alt="RAD"></div>
-                    <div class="gm-login-title" data-i18n="login_title">RAD MANAGEMENT</div>
-                    <div class="gm-login-sub" data-i18n="login_subtitle">Foundation Galactic Frontier</div>
-                </div>
-                <div class="gm-login-form">
-                    <div class="gm-login-field">
-                        <label for="username" data-i18n="login_label_id">Identifiant</label>
-                        <div class="gm-input-with-icon">
-                            <i class="ph ph-user gm-icon"></i>
-                            <input type="text" id="username" class="gm-input" required
-                                data-i18n-placeholder="login_placeholder_id"
-                                placeholder="Votre identifiant" autocomplete="username">
-                        </div>
-                    </div>
-                    <div class="gm-login-field">
-                        <label for="password" data-i18n="login_label_pass">Mot de passe</label>
-                        <div class="gm-input-with-icon gm-login-pwd-wrap">
-                            <i class="ph ph-lock gm-icon"></i>
-                            <input type="password" id="password" class="gm-input" required
-                                data-i18n-placeholder="login_placeholder_pass"
-                                placeholder="Votre mot de passe" autocomplete="current-password">
-                            <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Afficher / masquer le mot de passe">
-                                <i class="ph ph-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div id="login-error" class="gm-login-error hidden">
-                        <i class="ph ph-warning-circle"></i>
-                        <span data-i18n="login_error">Identifiants invalides.</span>
-                    </div>
-                    <button type="submit" id="login-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                        <i class="ph ph-sign-in"></i>
-                        <span data-i18n="login_btn">Se connecter</span>
-                    </button>
-                </div>
-            </form>
         </div>
+    </header>
 
-        <!-- ─── Admin Dashboard View ────────────────────────────── -->
-        <div id="dashboard-view" class="view hidden">
-            <header class="app-header">
-                <nav class="topbar glass-nav">
-                    <div class="nav-brand">
-                        <i class="ph-fill ph-shield-star logo-icon"></i>
-                        <h2>RAD MANAGEMENT TOOL</h2>
-                    </div>
-                    <div class="nav-user">
-                        <span class="user-badge">
-                            <span class="status-dot"></span>
-                            <span id="nav-user-role">R5 :</span> <strong id="nav-user-name">HakwTuah</strong>
-                        </span>
-                        <div class="lang-switcher topbar-lang">
-                            <button class="lang-btn active" data-lang="fr">🇫🇷 FR</button>
-                            <button class="lang-btn" data-lang="en">🇬🇧 EN</button>
-                        </div>
-                        <button id="logout-btn" class="icon-btn"
-                            data-i18n-title="nav_logout_title" title="Déconnexion">
-                            <i class="ph ph-sign-out"></i>
-                        </button>
-                    </div>
-                </nav>
-                <div class="sub-navbar glass-nav">
-                    <div class="nav-tabs">
-                        <button class="nav-tab active" data-tab="admin-home" data-view="dashboard-view">
-                            <i class="ph ph-squares-four"></i>
-                            <span data-i18n="nav_dashboard">Command Center</span>
-                        </button>
-                        <button class="nav-tab" data-tab="admin-members" data-view="dashboard-view">
-                            <i class="ph ph-users"></i>
-                            <span data-i18n="nav_members">Membres</span>
-                        </button>
-                        <button class="nav-tab" data-tab="event-svs" data-view="dashboard-view" data-event-tab="SvS">
-                            <i class="ph ph-sword"></i> SvS
-                        </button>
-                        <button class="nav-tab" data-tab="event-gvg" data-view="dashboard-view" data-event-tab="GvG">
-                            <i class="ph ph-flag-banner"></i> GvG
-                        </button>
-                        <button class="nav-tab" data-tab="event-shadowfront" data-view="dashboard-view" data-event-tab="Shadowfront">
-                            <i class="ph ph-ghost"></i> Shadowfront
-                        </button>
-                        <button class="nav-tab" data-tab="event-dtr" data-view="dashboard-view" data-event-tab="Defend Trade Route">
-                            <i class="ph ph-rocket"></i> DTR
-                        </button>
-                        <button class="nav-tab" data-tab="event-arms-race" data-view="dashboard-view" data-event-tab="ARMS RACE">
-                            <i class="ph ph-target"></i> Arms Race
-                        </button>
-                        <button class="nav-tab" data-tab="event-glory" data-view="dashboard-view" data-event-tab="glory">
-                            <i class="ph ph-trophy"></i> Glory
-                        </button>
-                        <button class="nav-tab" data-tab="event-history" data-view="dashboard-view" data-event-tab="history">
-                            <i class="ph ph-clock-counter-clockwise"></i>
-                            <span data-i18n="nav_history">Historique</span>
-                        </button>
-                        <button class="nav-tab" data-tab="stats-admin" data-view="dashboard-view" data-event-tab="stats">
-                            <i class="ph ph-chart-bar"></i>
-                            <span data-i18n="nav_stats">Stats</span>
-                        </button>
-                        <button class="nav-tab" data-tab="tab-sanctions" data-view="dashboard-view" data-event-tab="sanctions">
-                            <i class="ph ph-warning-octagon"></i>
-                            <span data-i18n="nav_sanctions">Sanctions</span>
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Tab: Admin Home (Comptes & accès) -->
-            <main class="dashboard-content tab-panel active" id="admin-home">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="admin_title">Comptes &amp; accès</h1>
-                            <p class="gm-page-subtitle" data-i18n="admin_subtitle">Créez et gérez les accès au tableau de bord</p>
-                        </div>
-                    </header>
-
-                    <div class="gm-card gm-card-padded gm-section">
-                        <div class="gm-section-title" style="margin-bottom: 1rem;">
-                            <i class="ph ph-key"></i>
-                            <span data-i18n="card_create_account">Nouveau compte</span>
-                        </div>
-                        <form id="create-account-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
-                            <div class="gm-input-with-icon" style="flex:1; min-width: 220px;">
-                                <i class="ph ph-identification-card gm-icon"></i>
-                                <input type="text" id="account-id" class="gm-input" required
-                                    data-i18n-placeholder="placeholder_account_id"
-                                    placeholder="Identifiant du compte">
-                            </div>
-                            <button type="submit" class="gm-btn gm-btn-primary">
-                                <i class="ph ph-magic-wand"></i>
-                                <span data-i18n="btn_generate">Générer l'accès</span>
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="gm-card gm-card-padded gm-section" id="guild-settings-card">
-                        <div class="gm-section-title" style="margin-bottom: 1.25rem;">
-                            <i class="ph ph-gear"></i>
-                            <span data-i18n="card_guild_settings">Configuration &amp; Coefficients de Guilde</span>
-                        </div>
-                        <form id="guild-settings-form" class="gm-col" style="gap: 1.25rem;">
-                            <div class="gm-row" style="gap: 1rem; flex-wrap: wrap;">
-                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-svs" data-i18n="label_coeff_svs">Coeff SvS</label>
-                                    <input type="number" id="coeff-svs" class="gm-input" min="0" max="20" required>
-                                </div>
-                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-gvg" data-i18n="label_coeff_gvg">Coeff GvG</label>
-                                    <input type="number" id="coeff-gvg" class="gm-input" min="0" max="20" required>
-                                </div>
-                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-shadowfront" data-i18n="label_coeff_shadowfront">Coeff Shadowfront</label>
-                                    <input type="number" id="coeff-shadowfront" class="gm-input" min="0" max="20" required>
-                                </div>
-                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-dtr" data-i18n="label_coeff_dtr">Coeff DTR</label>
-                                    <input type="number" id="coeff-dtr" class="gm-input" min="0" max="20" required>
-                                </div>
-                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-armsrace" data-i18n="label_coeff_armsrace">Coeff Arms Race</label>
-                                    <input type="number" id="coeff-armsrace" class="gm-input" min="0" max="20" required>
-                                </div>
-                                <div class="gm-col" style="flex: 1.5; min-width: 180px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="reserve-credit-pct" data-i18n="label_reserve_credit">Crédit Réserviste (%)</label>
-                                    <input type="number" id="reserve-credit-pct" class="gm-input" min="0" max="100" required>
-                                </div>
-                            </div>
-                            <div class="gm-col" style="gap: 0.35rem;">
-                                <label class="gm-dim" style="font-size: 0.85rem;" for="discord-webhook-url" data-i18n="label_discord_webhook">Discord Webhook URL</label>
-                                <div class="gm-input-with-icon">
-                                    <i class="ph ph-bell gm-icon"></i>
-                                    <input type="url" id="discord-webhook-url" class="gm-input" placeholder="https://discord.com/api/webhooks/...">
-                                </div>
-                            </div>
-                            <div class="gm-row" style="justify-content: flex-end;">
-                                <button type="submit" class="gm-btn gm-btn-primary">
-                                    <i class="ph ph-floppy-disk"></i>
-                                    <span data-i18n="btn_save_config">Sauvegarder la configuration</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="gm-section">
-                        <div class="gm-section-head">
-                            <div class="gm-section-title">
-                                <i class="ph ph-users-three"></i>
-                                <span data-i18n="card_active_accounts">Comptes actifs</span>
-                                <span class="gm-count" id="account-count">0</span>
-                            </div>
-                        </div>
-                        <div id="account-list">
-                            <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
-                                <div class="gm-empty-title" data-i18n="empty_accounts">Aucun compte généré</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- Tab: Admin Members -->
-            <main class="dashboard-content tab-panel" id="admin-members">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="members_title">Membres de la guilde</h1>
-                            <p class="gm-page-subtitle" data-i18n="members_subtitle">Gérez les pseudos in-game et les UID</p>
-                        </div>
-                    </header>
-
-                    <div class="gm-card gm-card-padded gm-section">
-                        <div class="gm-section-title" style="margin-bottom: .75rem;">
-                            <i class="ph ph-user-plus"></i>
-                            <span data-i18n="card_add_member">Ajouter un membre</span>
-                        </div>
-                        <form id="add-member-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
-                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
-                                <i class="ph ph-game-controller gm-icon"></i>
-                                <input type="text" id="member-pseudo" class="gm-input" required
-                                    data-i18n-placeholder="placeholder_pseudo"
-                                    placeholder="Pseudo in-game">
-                            </div>
-                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
-                                <i class="ph ph-identification-badge gm-icon"></i>
-                                <input type="text" id="member-uid" class="gm-input" placeholder="Player UID" required>
-                            </div>
-                            <button type="submit" class="gm-btn gm-btn-primary">
-                                <i class="ph ph-plus"></i>
-                                <span data-i18n="btn_add">Ajouter</span>
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="gm-section">
-                        <div class="gm-section-head">
-                            <div class="gm-section-title">
-                                <i class="ph ph-users"></i>
-                                <span data-i18n="card_member_list">Liste des membres</span>
-                                <span class="gm-count" id="guild-member-count">0</span>
-                            </div>
-                            <div class="gm-input-with-icon" style="min-width: 220px; max-width: 360px; flex: 1;">
-                                <i class="ph ph-magnifying-glass gm-icon"></i>
-                                <input type="text" id="member-search-admin" class="gm-input" data-i18n-placeholder="search_placeholder" placeholder="Rechercher pseudo, UID…">
-                            </div>
-                        </div>
-                        <div id="guild-member-list">
-                            <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
-                                <div class="gm-empty-title" data-i18n="empty_members">Aucun membre enregistré</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- ─ Event tab: SvS ─────────────────────────────────── -->
-            <main class="dashboard-content tab-panel" id="event-svs">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="events_title">Événements</h1>
-                            <p class="gm-page-subtitle" data-i18n="events_sub">Pilotez les sessions et la participation</p>
-                        </div>
-                    </header>
-                    <div data-gm-events-tabs></div>
-                    <div class="gm-event-banner">
-                        <div class="gm-event-meta">
-                            <div class="gm-event-icon"><i class="ph ph-sword"></i></div>
-                            <div class="gm-grow">
-                                <div class="gm-event-name">Server vs Server</div>
-                                <div class="gm-event-status-line">
-                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactif</span></span>
-                                    <span class="gm-dim">· coeff. 5×</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="gm-event-actions">
-                            <button class="gm-btn gm-btn-success event-start-btn" data-event="SvS"><i class="ph ph-play"></i> <span data-i18n="event_start">Démarrer</span></button>
-                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="SvS" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">Terminer</span></button>
-                        </div>
-                    </div>
-                    <div class="event-participants-area"></div>
-                </div>
-            </main>
-
-            <!-- ─ Sanctions tab ──────────────────────────────────── -->
-            <main class="dashboard-content tab-panel" id="tab-sanctions">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="sanctions_title">Sanctions</h1>
-                            <p class="gm-page-subtitle" data-i18n="sanctions_subtitle">Suivez les manquements et leur historique</p>
-                        </div>
-                    </header>
-
-                    <div class="gm-card gm-card-padded gm-section">
-                        <div class="gm-section-title" style="margin-bottom: .75rem;">
-                            <i class="ph ph-warning"></i>
-                            <span data-i18n="btn_apply_sanction">Appliquer une sanction</span>
-                        </div>
-                        <form id="apply-sanction-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
-                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
-                                <i class="ph ph-user-focus gm-icon"></i>
-                                <input type="text" id="sanction-player" class="gm-input" required list="member-list-datalist"
-                                    data-i18n-placeholder="placeholder_target_player"
-                                    placeholder="Membre concerné">
-                                <datalist id="member-list-datalist"></datalist>
-                            </div>
-                            <div class="gm-input-with-icon" style="flex:2; min-width: 220px;">
-                                <i class="ph ph-chat-text gm-icon"></i>
-                                <input type="text" id="sanction-comment" class="gm-input" required
-                                    placeholder="Motif…">
-                            </div>
-                            <button type="submit" class="gm-btn gm-btn-danger">
-                                <i class="ph ph-gavel"></i>
-                                <span data-i18n="btn_apply_sanction">Appliquer</span>
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="gm-section">
-                        <div class="gm-section-head">
-                            <div class="gm-section-title">
-                                <i class="ph ph-clock-counter-clockwise"></i>
-                                <span data-i18n="sanctions_history">Historique</span>
-                                <span class="gm-count" id="sanctions-count">0</span>
-                            </div>
-                        </div>
-                        <div id="sanctions-list">
-                            <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
-                                <div class="gm-empty-title" data-i18n="empty_members">Aucun historique</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-            <!-- ─ Event tab: GvG ─────────────────────────────────── -->
-            <main class="dashboard-content tab-panel" id="event-gvg">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="events_title">Événements</h1>
-                            <p class="gm-page-subtitle" data-i18n="events_sub">Pilotez les sessions et la participation</p>
-                        </div>
-                    </header>
-                    <div data-gm-events-tabs></div>
-                    <div class="gm-event-banner">
-                        <div class="gm-event-meta">
-                            <div class="gm-event-icon"><i class="ph ph-flag-banner"></i></div>
-                            <div class="gm-grow">
-                                <div class="gm-event-name">Guild vs Guild</div>
-                                <div class="gm-event-status-line">
-                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactif</span></span>
-                                    <span class="gm-dim">· coeff. 5×</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="gm-event-actions">
-                            <button class="gm-btn gm-btn-success event-start-btn" data-event="GvG"><i class="ph ph-play"></i> <span data-i18n="event_start">Démarrer</span></button>
-                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="GvG" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">Terminer</span></button>
-                        </div>
-                    </div>
-                    <div class="event-participants-area"></div>
-                </div>
-            </main>
-            <!-- ─ Event tab: Shadowfront ──────────────────────────── -->
-            <main class="dashboard-content tab-panel" id="event-shadowfront">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="events_title">Événements</h1>
-                            <p class="gm-page-subtitle" data-i18n="sf_subtitle">Squad 1 &amp; Squad 2 — 20 participants + 10 réservistes</p>
-                        </div>
-                    </header>
-                    <div data-gm-events-tabs></div>
-                    <div class="gm-event-banner">
-                        <div class="gm-event-meta">
-                            <div class="gm-event-icon"><i class="ph ph-ghost"></i></div>
-                            <div class="gm-grow">
-                                <div class="gm-event-name">Shadowfront</div>
-                                <div class="gm-event-status-line">
-                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactif</span></span>
-                                    <span class="gm-dim">· coeff. 3×</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="gm-event-actions">
-                            <button class="gm-btn gm-btn-success event-start-btn" data-event="Shadowfront"><i class="ph ph-play"></i> <span data-i18n="event_start">Démarrer</span></button>
-                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="Shadowfront" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">Terminer</span></button>
-                        </div>
-                    </div>
-                    <div class="event-participants-area"></div>
-                </div>
-            </main>
-            <!-- ─ Event tab: Defend Trade Route ──────────────────── -->
-            <main class="dashboard-content tab-panel" id="event-dtr">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="events_title">Événements</h1>
-                            <p class="gm-page-subtitle" data-i18n="events_sub">Pilotez les sessions et la participation</p>
-                        </div>
-                    </header>
-                    <div data-gm-events-tabs></div>
-                    <div class="gm-event-banner">
-                        <div class="gm-event-meta">
-                            <div class="gm-event-icon"><i class="ph ph-rocket"></i></div>
-                            <div class="gm-grow">
-                                <div class="gm-event-name">Defend Trade Route</div>
-                                <div class="gm-event-status-line">
-                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactif</span></span>
-                                    <span class="gm-dim">· coeff. 2×</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="gm-event-actions">
-                            <button class="gm-btn gm-btn-success event-start-btn" data-event="Defend Trade Route"><i class="ph ph-play"></i> <span data-i18n="event_start">Démarrer</span></button>
-                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="Defend Trade Route" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">Terminer</span></button>
-                        </div>
-                    </div>
-                    <div class="event-participants-area"></div>
-                </div>
-            </main>
-            <!-- ─ Event tab: Arms Race ─ -->
-            <main class="dashboard-content tab-panel" id="event-arms-race">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="events_title">Événements</h1>
-                            <p class="gm-page-subtitle" data-i18n="ar_subtitle">Stage A &amp; Stage B</p>
-                        </div>
-                    </header>
-                    <div data-gm-events-tabs></div>
-                    <div class="event-participants-area"></div>
-                </div>
-            </main>
-            <!-- ─ Glory tracker (not an event) ───────────────── -->
-            <main class="dashboard-content tab-panel" id="event-glory">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="glory_title">Tracker de Gloire</h1>
-                            <p class="gm-page-subtitle" data-i18n="glory_subtitle">Saisissez la gloire de chaque membre, l'évolution est calculée automatiquement</p>
-                        </div>
-                    </header>
-                    <div class="event-participants-area"></div>
-                </div>
-            </main>
-
-            <!-- Event history (toutes sessions) -->
-            <main class="dashboard-content tab-panel" id="event-history">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="history_title">Historique des événements</h1>
-                            <p class="gm-page-subtitle" data-i18n="history_subtitle">Toutes les sessions passées — clique sur une session pour le détail</p>
-                        </div>
-                    </header>
-                    <div class="history-area"></div>
-                </div>
-            </main>
-
-            <!-- Stats panel (admin) -->
-            <main class="dashboard-content tab-panel" id="stats-admin">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="nav_stats">Classement</h1>
-                            <p class="gm-page-subtitle" data-i18n="stats_subtitle">Score pondéré sur la semaine sélectionnée</p>
-                        </div>
-                        <div class="stats-controls"></div>
-                    </header>
-                    <div class="stats-leaderboard-area"></div>
-                </div>
-            </main>
-
-            <!-- Stats panel (member) -->
-            <main class="dashboard-content tab-panel" id="stats-member">
-                <header class="dashboard-header slide-up">
-                    <div class="event-page-header">
-                        <div>
-                            <h1><i class="ph ph-chart-bar"></i> <span data-i18n="nav_stats">Statistiques</span></h1>
-                            <p data-i18n="stats_subtitle">Classement et évolution des membres de la guilde</p>
-                        </div>
-                    </div>
-                </header>
-                <div class="stats-controls"></div>
-                <div class="stats-leaderboard-area"></div>
-            </main>
-
-        </div><!-- #dashboard-view -->
-        <!-- ─── Member View ──────────────────────────────────────── -->
-        <div id="member-view" class="view hidden">
-            <header class="app-header">
-                <nav class="topbar glass-nav">
-                    <div class="nav-brand">
-                        <i class="ph-fill ph-shield-star logo-icon"></i>
-                        <h2>RAD MANAGEMENT TOOL</h2>
-                    </div>
-                    <div class="nav-user">
-                        <span class="user-badge">
-                            <span class="status-dot"></span>
-                            <span id="member-name">Membre</span>
-                        </span>
-                        <div class="lang-switcher topbar-lang">
-                            <button class="lang-btn active" data-lang="fr">🇫🇷 FR</button>
-                            <button class="lang-btn" data-lang="en">🇬🇧 EN</button>
-                        </div>
-                        <button id="member-logout-btn" class="icon-btn"
-                            data-i18n-title="nav_logout_title" title="Déconnexion">
-                            <i class="ph ph-sign-out"></i>
-                        </button>
-                    </div>
-                </nav>
-                <div class="sub-navbar glass-nav">
-                    <div class="nav-tabs">
-                        <button class="nav-tab active" data-tab="member-home" data-view="member-view">
-                            <i class="ph ph-house"></i>
-                            <span data-i18n="member_home_tab">Accueil</span>
-                        </button>
-                        <button class="nav-tab" data-tab="member-members" data-view="member-view">
-                            <i class="ph ph-users"></i>
-                            <span data-i18n="nav_members">Membres</span>
-                        </button>
-                        <button class="nav-tab" data-tab="stats-member" data-view="member-view" data-event-tab="stats">
-                            <i class="ph ph-chart-bar"></i>
-                            <span data-i18n="nav_stats">Stats</span>
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Tab: Member Home -->
-            <main class="dashboard-content tab-panel active" id="member-home">
-                <header class="dashboard-header slide-up">
-                    <h1 data-i18n="member_home_title">Espace Membre</h1>
-                    <p data-i18n="member_home_subtitle">Bienvenue sur le portail de la guilde</p>
-                </header>
-                <div class="member-welcome-card glass-card slide-up" style="animation-delay:0.1s">
-                    <div class="member-welcome-inner">
-                        <div class="member-avatar">
-                            <i class="ph-fill ph-user-circle"></i>
-                        </div>
-                        <div>
-                            <h2>
-                                <span data-i18n="member_greeting">Bonjour,</span>
-                                <span id="member-name-display" class="text-gradient">Membre</span> 👋
-                            </h2>
-                            <p>
-                                <span data-i18n="member_connected">Vous êtes connecté(e) à l'espace membre de</span>
-                                <strong> RAD Management</strong>.
-                            </p>
-                            <p class="text-muted-sm" data-i18n="member_hint">
-                                Utilisez le menu ci-dessus pour accéder à la liste des membres.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- Tab: Member Members -->
-            <main class="dashboard-content tab-panel" id="member-members">
-                <header class="dashboard-header slide-up">
-                    <h1 data-i18n="members_title">Membres de la Guilde</h1>
-                    <p data-i18n="members_subtitle">Gérez les membres in-game de la guilde</p>
-                </header>
-                <div class="admin-home-layout">
-                    <!-- Horizontal Banner for adding member -->
-                    <div class="glass-card action-card horizontal-banner slide-up" style="animation-delay:0.1s">
-                        <div class="banner-header">
-                            <i class="ph-fill ph-user-plus text-accent"></i>
-                            <h3 data-i18n="card_add_member">Ajouter un membre</h3>
-                        </div>
-                        <form id="add-member-form-member" class="horizontal-form">
-                            <div class="input-group">
-                                <label for="member-pseudo-m" data-i18n="label_pseudo">Pseudo in-game</label>
-                                <div class="input-wrapper">
-                                    <i class="ph ph-game-controller"></i>
-                                    <input type="text" id="member-pseudo-m" required
-                                        data-i18n-placeholder="placeholder_pseudo"
-                                        placeholder="ex. StarWarrior99">
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="member-uid-m">Player UID</label>
-                                <div class="input-wrapper">
-                                    <i class="ph ph-identification-badge"></i>
-                                    <input type="text" id="member-uid-m" placeholder="ex. 12345678" required>
-                                </div>
-                            </div>
-                            <button type="submit" class="primary-btn">
-                                <span data-i18n="btn_add">Ajouter</span>
-                                <i class="ph ph-plus-circle"></i>
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- Member Tiles Grid -->
-                    <div class="accounts-section slide-up" style="animation-delay:0.2s">
-                        <div class="section-header">
-                            <div class="flex-align">
-                                <i class="ph-fill ph-users text-accent"></i>
-                                <h3 data-i18n="card_member_list">Liste des membres</h3>
-                                <span class="count-badge" id="guild-member-count-m">0</span>
-                            </div>
-                        </div>
-
-                        <div class="search-bar-row slide-up">
-                            <div class="input-wrapper search-wrapper full-width">
-                                <i class="ph ph-magnifying-glass"></i>
-                                <input type="text" id="member-search-member" data-i18n-placeholder="search_placeholder" placeholder="Rechercher...">
-                            </div>
-                        </div>
-                        <div class="account-grid list-view" id="guild-member-list-m">
-                            <div class="empty-state">
-                                <i class="ph-duotone ph-ghost"></i>
-                                <p data-i18n="empty_members">Aucun membre enregistré</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+    <!-- ─── Proof strip ─── -->
+    <section class="proof">
+        <div class="wrap proof-inner">
+            <div class="proof-item"><strong>7,700+</strong><span>participations tracked</span></div>
+            <div class="proof-item"><strong>130+</strong><span>members managed</span></div>
+            <div class="proof-item"><strong>100%</strong><span>battles reminded on time</span></div>
         </div>
+    </section>
 
-    </div><!-- #app -->
+    <!-- ─── Features ─── -->
+    <section class="section wrap" id="features">
+        <div class="section-head">
+            <h2>Everything an R5 needs. Nothing else.</h2>
+            <p>One tool for the whole weekly cycle: plan, remind, track, rank.</p>
+        </div>
+        <div class="features">
+            <div class="feature">
+                <i class="ph ph-sword"></i>
+                <h3>Event tracking</h3>
+                <p>SvS, GvG, Shadowfront, Defend Trade Route, Arms Race: start a session, tick participation, enter scores. History is kept forever.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-users-three"></i>
+                <h3>Squad builder</h3>
+                <p>Shadowfront compositions with participants and reserves, guided by each member's attendance history. No more guesswork.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-chart-bar"></i>
+                <h3>Fair leaderboards</h3>
+                <p>Weighted weekly rankings with configurable coefficients, reserve credit, glory progression and consistency bonuses.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-trophy"></i>
+                <h3>Glory tracker</h3>
+                <p>Enter each member's glory once a week; evolution and guild totals are computed automatically.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-bell-ringing"></i>
+                <h3>Discord &amp; push reminders</h3>
+                <p>Automatic alerts before every battle, 30, 15 and 5 minutes out, to your Discord server and to your officers' phones.</p>
+            </div>
+            <div class="feature">
+                <i class="ph ph-warning-octagon"></i>
+                <h3>Sanctions log</h3>
+                <p>Keep track of no-shows and rule breaches, with automatic repeat-offender alerts.</p>
+            </div>
+        </div>
+    </section>
 
-    <!-- Toast Notification -->
-    <div id="toast-container"></div>
+    <!-- ─── How it works ─── -->
+    <section class="section wrap" id="how">
+        <div class="section-head">
+            <h2>Up and running in minutes</h2>
+        </div>
+        <div class="steps">
+            <div class="step"><div class="step-n">1</div><h3>Create your guild</h3><p>Sign up, name your guild and pick the events you play. Your data is yours and stays isolated.</p></div>
+            <div class="step"><div class="step-n">2</div><h3>Import your roster</h3><p>Paste your member list (or add them one by one). Pseudo + game UID, done.</p></div>
+            <div class="step"><div class="step-n">3</div><h3>Invite your officers</h3><p>Generate R4 accounts in one click. They track participation, you keep control.</p></div>
+        </div>
+    </section>
 
-    <!-- Scripts: i18n first, then Supabase, then icons, then utils, then app logic -->
-    <script src="i18n.js?v=18"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- ─── Install ─── -->
+    <section class="section wrap">
+        <div class="install">
+            <div class="install-txt">
+                <h2>Works like an app. No app store needed.</h2>
+                <p>Add it to your home screen on iPhone or Android and it behaves like a native app: full screen, instant loading, push notifications for battle reminders. Your members don't need accounts: only you and your officers log in.</p>
+                <div class="install-badges">
+                    <span class="install-badge"><i class="ph ph-device-mobile"></i> iOS &amp; Android</span>
+                    <span class="install-badge"><i class="ph ph-bell-ringing"></i> Push notifications</span>
+                    <span class="install-badge"><i class="ph ph-globe"></i> English &amp; Français</span>
+                </div>
+            </div>
+            <div class="install-phone" aria-hidden="true">
+                <div class="install-notch"></div>
+                <div class="install-notif"><i class="ph-fill ph-bell-ringing"></i><div><b>⏰ SvS starts in 15 minutes!</b><span>Get ready, log in and prepare for battle.</span></div></div>
+                <div class="install-notif"><i class="ph-fill ph-bell-ringing"></i><div><b>🏰 GvG - War Fortress</b><span>The event is active. All units to stations!</span></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Pricing ─── -->
+    <section class="section wrap" id="pricing">
+        <div class="section-head">
+            <h2>One plan. Everything included.</h2>
+        </div>
+        <div class="price-card">
+            <div class="price-amount">€9.99<small>/month</small></div>
+            <div class="price-per">per guild, VAT included</div>
+            <ul class="price-list">
+                <li><i class="ph-fill ph-check-circle"></i> Unlimited members &amp; officer accounts</li>
+                <li><i class="ph-fill ph-check-circle"></i> All events, leaderboards &amp; history</li>
+                <li><i class="ph-fill ph-check-circle"></i> Discord &amp; push reminders on your schedule</li>
+                <li><i class="ph-fill ph-check-circle"></i> Installable app (iOS &amp; Android)</li>
+                <li><i class="ph-fill ph-check-circle"></i> Data export anytime</li>
+            </ul>
+            <a class="btn btn-primary btn-lg" href="/app/">Start your 14-day free trial</a>
+            <div class="price-note">No credit card required for the trial · Cancel anytime in one click</div>
+        </div>
+    </section>
+
+    <!-- ─── FAQ ─── -->
+    <section class="section wrap" id="faq">
+        <div class="section-head"><h2>Frequently asked questions</h2></div>
+        <div class="faq">
+            <details>
+                <summary>Which game is this for?</summary>
+                <p>The tool is built around the weekly event cycle of Foundation: Galactic Frontier-style guilds (SvS, GvG, Shadowfront, Defend Trade Route, Arms Race, Glory). If your guild plays these, you're home.</p>
+            </details>
+            <details>
+                <summary>Do my members need accounts?</summary>
+                <p>No. Only the guild leader (R5) and the officers (R4) log in. Members appear as roster entries: no sign-up, no personal e-mail needed.</p>
+            </details>
+            <details>
+                <summary>Can I configure the reminder schedule?</summary>
+                <p>Yes. Every server has its own battle times, so reminder schedules are configured per guild, in UTC, with sensible defaults you can edit.</p>
+            </details>
+            <details>
+                <summary>Can I cancel anytime?</summary>
+                <p>Yes, in one click, effective at the end of the billing period. No lock-in, no retention dark patterns.</p>
+            </details>
+            <details>
+                <summary>What happens to my data if I stop paying?</summary>
+                <p>Your guild switches to read-only for 30 days and nothing is deleted. You can export everything, and data is permanently removed only after a 60-day notice.</p>
+            </details>
+            <details>
+                <summary>Is my data safe?</summary>
+                <p>Each guild's data is isolated at the database level (row-level security), hosted in the EU, with daily backups. Only your R5 account can manage officers and settings.</p>
+            </details>
+            <details>
+                <summary>What languages are supported?</summary>
+                <p>English and French today; the app is built to add more languages quickly. Tell us which one you need.</p>
+            </details>
+        </div>
+    </section>
+
+    <!-- ─── Final CTA ─── -->
+    <section class="cta-final">
+        <h2>Your next battle deserves a full roster.</h2>
+        <a class="btn btn-primary btn-lg" href="/app/">Start your 14-day free trial</a>
+        <div class="hero-note">No credit card required</div>
+    </section>
+
+    <footer class="footer">
+        <div class="wrap footer-inner">
+            <div class="footer-brand"><i class="ph-fill ph-shield-star"></i> Guild Management Tool</div>
+            <div class="footer-links">
+                <a href="/legal/terms.html">Terms of Service</a>
+                <a href="/legal/privacy.html">Privacy Policy</a>
+                <a href="mailto:fgfguildmanagementtool@proton.me">Contact</a>
+                <a href="/fr/">Français</a>
+            </div>
+            <div class="footer-note">© 2026 Guild Management Tool. Not affiliated with, endorsed by, or connected to any game publisher. Game names are used descriptively only.</div>
+        </div>
+    </footer>
+
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="rad-utils.js?v=7"></script>
-    <script src="push.js?v=1"></script>
-    <script src="app.js?v=12"></script>
-    <script src="events.js?v=13"></script>
-    <script src="shadowfront.js?v=10"></script>
-    <script src="armsrace.js?v=1"></script>
-    <script src="glory.js?v=7"></script>
-    <script src="history.js?v=1"></script>
-    <script src="stats.js?v=13"></script>
-    <script src="sanctions.js?v=7"></script>
-    <script src="overview.js?v=6"></script>
-    <script src="shell.js?v=7"></script>
 </body>
 </html>

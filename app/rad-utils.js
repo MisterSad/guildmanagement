@@ -4,8 +4,9 @@
  */
 (function () {
 
-    var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
-    var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
+    var cfg = window.GMT_CONFIG || {};
+    var SUPABASE_URL = cfg.SUPABASE_URL;
+    var SUPABASE_KEY = cfg.SUPABASE_PUBLISHABLE_KEY;
 
     var db = null;
     try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
@@ -47,7 +48,7 @@
         var end = new Date(d); end.setUTCDate(end.getUTCDate() + 6);
         var opts = { day: '2-digit', month: '2-digit', timeZone: 'UTC' };
         var endOpts = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' };
-        return d.toLocaleDateString('fr-FR', opts) + ' → ' + end.toLocaleDateString('fr-FR', endOpts);
+        return d.toLocaleDateString(window.RAD_I18N.dateLocale(), opts) + ' → ' + end.toLocaleDateString(window.RAD_I18N.dateLocale(), endOpts);
     }
 
     function newSessionId() {
@@ -86,6 +87,11 @@
         var num = typeof n === 'number' ? n : parseInt(String(n).replace(/\D/g, ''), 10);
         if (isNaN(num)) return '';
         if (num > MAX_NUMERIC) num = MAX_NUMERIC;
+        // Séparateur de milliers selon la locale courante (Intl) ; fallback espace.
+        if (window.RAD_I18N && window.RAD_I18N.formatNumber) {
+            var s = window.RAD_I18N.formatNumber(num);
+            if (s) return s;
+        }
         return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     }
 
@@ -197,9 +203,9 @@
             p += '='.repeat((4 - p.length % 4) % 4);
             var claims = JSON.parse(decodeURIComponent(escape(atob(p))));
             var am = claims.app_metadata || {};
-            return { role: am.app_role || 'R4', accountId: am.account_id || null };
+            return { role: am.app_role || 'R4', accountId: am.account_id || null, guildId: am.guild_id || null };
         } catch (e) {
-            return { role: 'R4', accountId: null };
+            return { role: 'R4', accountId: null, guildId: null };
         }
     }
 
@@ -235,8 +241,7 @@
         if (!iso) return '';
         var d = new Date(iso);
         if (isNaN(d.getTime())) return '';
-        var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
-        var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
+        var locale = (window.RAD_I18N && window.RAD_I18N.dateLocale) ? window.RAD_I18N.dateLocale() : 'en-GB';
         var date = d.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC' });
         return date + ' · ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ' UTC';
     }
@@ -304,6 +309,8 @@
         });
     }
 
+    // Defaults below MUST equal the previously hardcoded values so that a guild
+    // with no stored config behaves exactly as before (saas_strategy.md §10).
     var localConfigFallback = {
         coeff_svs: '5',
         coeff_gvg: '5',
@@ -311,7 +318,22 @@
         coeff_dtr: '2',
         coeff_armsrace: '1',
         reserve_credit_pct: '50',
-        discord_webhook_url: ''
+        discord_webhook_url: '',
+        // Weighted-score formula (stats.js): participation/performance weights,
+        // glory bonus cap, consistency bonus + its attendance threshold (%).
+        score_w_participation: '6',
+        score_w_performance: '4',
+        score_glory_bonus: '20',
+        score_consistency_bonus: '15',
+        score_consistency_threshold: '80',
+        // Shadowfront squad sizes and attendance category thresholds (%).
+        sf_participants_max: '20',
+        sf_reserves_max: '10',
+        sf_cat_excellent: '80',
+        sf_cat_good: '50',
+        sf_cat_average: '20',
+        // Sanctions: number of records that triggers the repeat-offender alert.
+        sanctions_recidivist_threshold: '3'
     };
 
     async function getGuildConfig(key) {
@@ -356,7 +378,7 @@
         var dateFormatted = formatDateTimeUTC(startAt);
         var content = '';
         var embedTitle = '📢 Guild Event: ' + eventName;
-        var embedDesc = 'A guild event has been configured in the RAD Management tool!';
+        var embedDesc = 'A guild event has been configured in the Guild Management Tool!';
         var actionLabel = '';
         var color = 5763719; // Green
 
@@ -394,7 +416,7 @@
                 fields: fields,
                 timestamp: new Date().toISOString(),
                 footer: {
-                    text: 'RAD Management Tool'
+                    text: 'Guild Management Tool'
                 }
             }]
         };

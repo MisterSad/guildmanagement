@@ -16,23 +16,23 @@ self.addEventListener('push', function (event) {
     try {
         data = event.data ? event.data.json() : {};
     } catch (e) {
-        data = { title: 'RAD Management', body: event.data ? event.data.text() : '' };
+        data = { title: 'Guild Management Tool', body: event.data ? event.data.text() : '' };
     }
-    var title = data.title || 'RAD Management';
+    var title = data.title || 'Guild Management Tool';
     var options = {
         body:     data.body || '',
         icon:     '/icon-192.png',
         badge:    '/icon-192.png',
-        tag:      data.tag || 'rad-event',
+        tag:      data.tag || 'gmt-event',
         renotify: true,
-        data:     { url: data.url || '/' }
+        data:     { url: (data.url && data.url !== '/') ? data.url : '/app/' }
     };
     event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
-    var target = (event.notification.data && event.notification.data.url) || '/';
+    var target = (event.notification.data && event.notification.data.url) || '/app/';
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
             for (var i = 0; i < clientList.length; i++) {

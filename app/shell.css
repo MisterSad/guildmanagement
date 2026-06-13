@@ -533,3 +533,39 @@ html, body {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ─── Language switcher (registry-driven, see i18n.js + locales/index.js) ─── */
+.gmt-lang-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--bg-2);
+    color: var(--fg);
+    border: 1px solid var(--border-soft);
+    border-radius: 7px;
+    padding: 4px 22px 4px 9px;
+    font-family: var(--font);
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23888da0'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 7px center;
+}
+.gmt-lang-select:focus {
+    outline: none;
+    border-color: var(--border-strong, var(--border-soft));
+}
+.gmt-lang-select option {
+    background: var(--bg-2, #1a1926);
+    color: var(--fg, #eee);
+}
+
+/* ─── Marque sans logo : icône de police (rebrand, saas_strategy.md §11) ─── */
+.gm-brand-mark i { font-size: 1.25rem; }
+.gm-login-crest { display: flex; align-items: center; justify-content: center; }
+.gm-login-crest i { font-size: 1.8rem; }
+
+/* ─── Inline text links (auth signup/forgot, etc.) ─── */
+.gm-link { color: var(--primary); text-decoration: none; }
+.gm-link:hover { text-decoration: underline; }

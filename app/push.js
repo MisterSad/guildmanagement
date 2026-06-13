@@ -10,7 +10,7 @@
  */
 (function () {
 
-    var VAPID_PUBLIC = 'BKJ-mf-as7Si__DvBVRPN8EdpqnjihviHfkHZSvB_HgK5V68dG85WT8oDLvkE9_AQQw7gQqs7jeOn_a2ofrpBvo';
+    var VAPID_PUBLIC = (window.GMT_CONFIG || {}).VAPID_PUBLIC_KEY || '';
 
     var t   = window.RAD ? window.RAD.t : function (k) { return k; };
     var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };

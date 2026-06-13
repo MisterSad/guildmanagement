@@ -36,22 +36,19 @@
     var accounts     = [];
     var guildMembers = [];
 
-    // ─── Language Switcher ────────────────────────────────────────────────────
-    document.querySelectorAll('.lang-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            window.RAD_I18N.setLang(btn.getAttribute('data-lang'));
-        });
-    });
-
     // ─── Boot ─────────────────────────────────────────────────────────────────
+    // (Le sélecteur de langue est géré par i18n.js via [data-gmt-lang-switcher].)
     window.RAD_I18N.applyTranslations();
-    document.querySelectorAll('.lang-btn').forEach(function (btn) {
-        btn.classList.toggle('active', btn.getAttribute('data-lang') === window.RAD_I18N.getLang());
-    });
 
     // Restaure depuis la session Supabase persistée (survit au rechargement
     // et à la fermeture d'onglet tant que le refresh token est valide).
     (async function restoreSession() {
+        // A guild leader arriving from the email-confirmation link is signed in
+        // but not yet provisioned (no guild/claims); provision before restoring
+        // so they land as R5, not as a member.
+        if (window.RAD_AUTH && window.RAD_AUTH.maybeProvision) {
+            try { await window.RAD_AUTH.maybeProvision(); } catch (_) {}
+        }
         var info = await window.RAD.sessionInfo();
         if (!info) return;
         var role = info.role === 'R5' ? 'admin' : 'member';
@@ -72,7 +69,11 @@
         if (span) span.textContent = t('login_btn_loading');
 
         try {
-            var resp = await window.RAD.login(user, pass);
+            // R5 email auth (when enabled) is auto-routed: an identifier that
+            // looks like an email goes through Supabase native auth; everything
+            // else keeps the existing identifier + edge-function login.
+            var useEmail = window.RAD_AUTH && window.RAD_AUTH.isEmailLogin && window.RAD_AUTH.isEmailLogin(user);
+            var resp = useEmail ? await window.RAD_AUTH.emailLogin(user, pass) : await window.RAD.login(user, pass);
 
             if (resp.ok) {
                 loginError.classList.add('hidden');
@@ -80,7 +81,7 @@
 
                 var role = (resp.role === 'R5') ? 'admin' : 'member';
                 sessionStorage.setItem('rad_role', role);
-                sessionStorage.setItem('rad_user', user);
+                sessionStorage.setItem('rad_user', resp.id || user);
 
                 showAdminDashboard(role);
                 showToast(role === 'admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
@@ -131,6 +132,8 @@
             if (nameLabel) nameLabel.textContent = sessionStorage.getItem('rad_user') || 'Admin';
             fetchAccounts();
             loadGuildSettings();
+            if (window.RAD_REMINDERS) window.RAD_REMINDERS.load();
+            if (window.RAD_BILLING) window.RAD_BILLING.load();
         }
         // Default landing : Overview (R4 et R5)
         // Retry car gm-overview nav-tab est créé par shell.js après notre code.
@@ -173,6 +176,8 @@
             if (tabId === 'admin-home') {
                 fetchAccounts();
                 loadGuildSettings();
+                if (window.RAD_REMINDERS) window.RAD_REMINDERS.load();
+                if (window.RAD_BILLING) window.RAD_BILLING.load();
             }
             var eventName = tabBtn.getAttribute('data-event-tab');
             if (eventName && ['SvS', 'GvG', 'Defend Trade Route'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
@@ -273,21 +278,34 @@
         var form = document.getElementById('guild-settings-form');
         if (!form) return;
 
-        var coeffSvs = await window.RAD.config.get('coeff_svs');
-        var coeffGvg = await window.RAD.config.get('coeff_gvg');
-        var coeffShadowfront = await window.RAD.config.get('coeff_shadowfront');
-        var coeffDtr = await window.RAD.config.get('coeff_dtr');
-        var coeffArmsrace = await window.RAD.config.get('coeff_armsrace');
-        var reserveCreditPct = await window.RAD.config.get('reserve_credit_pct');
-        var discordWebhook = await window.RAD.config.get('discord_webhook_url');
-
-        document.getElementById('coeff-svs').value = coeffSvs;
-        document.getElementById('coeff-gvg').value = coeffGvg;
-        document.getElementById('coeff-shadowfront').value = coeffShadowfront;
-        document.getElementById('coeff-dtr').value = coeffDtr;
-        document.getElementById('coeff-armsrace').value = coeffArmsrace;
-        document.getElementById('reserve-credit-pct').value = reserveCreditPct;
-        document.getElementById('discord-webhook-url').value = discordWebhook;
+        // key -> input id. Defaults come from RAD.config (localConfigFallback),
+        // so unconfigured guilds show the original values.
+        var fieldMap = {
+            coeff_svs: 'coeff-svs',
+            coeff_gvg: 'coeff-gvg',
+            coeff_shadowfront: 'coeff-shadowfront',
+            coeff_dtr: 'coeff-dtr',
+            coeff_armsrace: 'coeff-armsrace',
+            reserve_credit_pct: 'reserve-credit-pct',
+            discord_webhook_url: 'discord-webhook-url',
+            score_w_participation: 'score-w-participation',
+            score_w_performance: 'score-w-performance',
+            score_glory_bonus: 'score-glory-bonus',
+            score_consistency_bonus: 'score-consistency-bonus',
+            score_consistency_threshold: 'score-consistency-threshold',
+            sf_participants_max: 'sf-participants-max',
+            sf_reserves_max: 'sf-reserves-max',
+            sf_cat_excellent: 'sf-cat-excellent',
+            sf_cat_good: 'sf-cat-good',
+            sf_cat_average: 'sf-cat-average',
+            sanctions_recidivist_threshold: 'sanctions-recidivist-threshold'
+        };
+        var keys = Object.keys(fieldMap);
+        var values = await Promise.all(keys.map(function (k) { return window.RAD.config.get(k); }));
+        keys.forEach(function (k, i) {
+            var el = document.getElementById(fieldMap[k]);
+            if (el) el.value = values[i];
+        });
     }
 
     var guildSettingsForm = document.getElementById('guild-settings-form');
@@ -301,17 +319,35 @@
             var origText = span ? span.textContent : '';
             if (span) span.textContent = '...';
 
+            // key -> input id, with optional transform applied before saving.
+            var saveMap = {
+                coeff_svs: 'coeff-svs',
+                coeff_gvg: 'coeff-gvg',
+                coeff_shadowfront: 'coeff-shadowfront',
+                coeff_dtr: 'coeff-dtr',
+                coeff_armsrace: 'coeff-armsrace',
+                reserve_credit_pct: 'reserve-credit-pct',
+                discord_webhook_url: 'discord-webhook-url',
+                score_w_participation: 'score-w-participation',
+                score_w_performance: 'score-w-performance',
+                score_glory_bonus: 'score-glory-bonus',
+                score_consistency_bonus: 'score-consistency-bonus',
+                score_consistency_threshold: 'score-consistency-threshold',
+                sf_participants_max: 'sf-participants-max',
+                sf_reserves_max: 'sf-reserves-max',
+                sf_cat_excellent: 'sf-cat-excellent',
+                sf_cat_good: 'sf-cat-good',
+                sf_cat_average: 'sf-cat-average',
+                sanctions_recidivist_threshold: 'sanctions-recidivist-threshold'
+            };
             try {
-                await Promise.all([
-                    window.RAD.config.set('coeff_svs', document.getElementById('coeff-svs').value),
-                    window.RAD.config.set('coeff_gvg', document.getElementById('coeff-gvg').value),
-                    window.RAD.config.set('coeff_shadowfront', document.getElementById('coeff-shadowfront').value),
-                    window.RAD.config.set('coeff_dtr', document.getElementById('coeff-dtr').value),
-                    window.RAD.config.set('coeff_armsrace', document.getElementById('coeff-armsrace').value),
-                    window.RAD.config.set('reserve_credit_pct', document.getElementById('reserve-credit-pct').value),
-                    window.RAD.config.set('discord_webhook_url', document.getElementById('discord-webhook-url').value.trim())
-                ]);
-                
+                await Promise.all(Object.keys(saveMap).map(function (k) {
+                    var el = document.getElementById(saveMap[k]);
+                    if (!el) return Promise.resolve();
+                    var val = (k === 'discord_webhook_url') ? el.value.trim() : el.value;
+                    return window.RAD.config.set(k, val);
+                }));
+
                 showToast(t('toast_config_updated'), 'success');
             } catch (err) {
                 showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -332,25 +368,35 @@
         // Cred-grid layout (auto-fill 280px min)
         var html = '<div class="gm-cred-grid">';
         accounts.forEach(function (acc) {
-            // Détermine le rôle pour le chip — si 'role' est dispo, sinon défaut R4
+            // Détermine le rôle pour le chip : si 'role' est dispo, sinon défaut R4
             var role = acc.role || 'R4';
             var chipCls = role === 'R5' ? 'gm-chip-accent' : 'gm-chip-info';
-            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString(window.RAD_I18N.dateLocale(), { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+            // Le mot de passe n'est restitué que par l'API legacy. Avec hash non
+            // réversible (saas_strategy.md §6.2), acc.password est absent : on
+            // n'affiche alors que la régénération, pas la révélation.
+            var hasPass = acc.password != null && acc.password !== '';
+            var passRow = hasPass
+                ? '<div class="gm-cred-pass gm-masked" data-acc-pass="' + esc(acc.password) + '">' +
+                      '<span class="gm-pwd-text">••••••••••••</span>' +
+                      '<button class="gm-mini-btn gm-cred-toggle" title="' + t('show_pwd') + '"><i class="ph ph-eye"></i></button>' +
+                      '<button class="gm-mini-btn gm-cred-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
+                  '</div>'
+                : '<div class="gm-cred-pass gm-dim"><i class="ph ph-lock-key"></i> <span>' + t('pwd_hidden') + '</span></div>';
             html +=
                 '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
                     '<div class="gm-row" style="justify-content:space-between;">' +
                         '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
                         '<span class="gm-chip ' + chipCls + '">' + esc(role) + '</span>' +
                     '</div>' +
-                    '<div class="gm-cred-pass gm-masked" data-acc-pass="' + esc(acc.password) + '">' +
-                        '<span class="gm-pwd-text">••••••••••••</span>' +
-                        '<button class="gm-mini-btn gm-cred-toggle" title="' + t('show_pwd') + '"><i class="ph ph-eye"></i></button>' +
-                        '<button class="gm-mini-btn gm-cred-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
-                    '</div>' +
+                    passRow +
                     '<div class="gm-row gm-dim" style="font-size:.75rem;">' +
                         '<i class="ph ph-calendar-blank"></i>' +
                         '<span>' + t('cred_created') + ' ' + dateStr + '</span>' +
-                        '<button class="gm-mini-btn gm-danger gm-cred-delete" data-id="' + esc(acc.id) + '" title="' + t('delete_title') + '" style="margin-left:auto;">' +
+                        '<button class="gm-mini-btn gm-cred-regen" data-id="' + esc(acc.id) + '" data-role="' + esc(role) + '" title="' + t('regen_pwd_title') + '" style="margin-left:auto;">' +
+                            '<i class="ph ph-arrows-clockwise"></i>' +
+                        '</button>' +
+                        '<button class="gm-mini-btn gm-danger gm-cred-delete" data-id="' + esc(acc.id) + '" title="' + t('delete_title') + '">' +
                             '<i class="ph ph-trash"></i>' +
                         '</button>' +
                     '</div>' +
@@ -389,6 +435,18 @@
             });
         });
 
+        accountList.querySelectorAll('.gm-cred-regen').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-id');
+                var role = btn.getAttribute('data-role') || 'R4';
+                showConfirm(
+                    t('confirm_regen_title'),
+                    t('confirm_regen_body') + ' <strong>' + esc(id) + '</strong>' + t('confirm_regen_body2'),
+                    function () { regenerateAccount(id, role); }
+                );
+            });
+        });
+
         accountList.querySelectorAll('.gm-cred-delete').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var id = btn.getAttribute('data-id');
@@ -397,6 +455,67 @@
                     t('confirm_delete_account_body') + ' <strong>' + esc(id) + '</strong>' + t('confirm_delete_account_body2'),
                     function () { deleteAccount(id); }
                 );
+            });
+        });
+    }
+
+    // Régénère le mot de passe d'un compte. Réutilise l'action 'create' (upsert
+    // côté serveur), donc compatible avec l'API legacy comme avec la v2 hash.
+    // Le nouveau mot de passe n'est affiché qu'une seule fois.
+    async function regenerateAccount(id, role) {
+        var newPassword = generatePassword(12);
+        try {
+            var res = await window.RAD.adminAccounts('create', { id: id, password: newPassword, role: role || 'R4' });
+            if (!res.ok) throw new Error(res.error || 'regen_failed');
+            // Reflète l'état si l'API renvoie encore les mots de passe (legacy) ;
+            // sinon le compte reste sans mot de passe affiché.
+            var acc = accounts.find(function (a) { return a.id === id; });
+            if (acc && acc.password != null && acc.password !== '') acc.password = newPassword;
+            renderAccounts();
+            showSecretOnce(id, newPassword);
+        } catch (err) {
+            showToast(err.message || t('toast_err_generic'), 'error');
+        }
+    }
+
+    // Affiche un secret une seule fois, avec copie. Pas de innerHTML utilisateur.
+    function showSecretOnce(id, secret) {
+        var existing = document.getElementById('secret-overlay');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'secret-overlay';
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML =
+            '<div class="confirm-card glass-card" style="max-width: 460px;">' +
+                '<div class="confirm-icon"><i class="ph-fill ph-key text-accent"></i></div>' +
+                '<h3>' + esc(t('new_pwd_title')) + '</h3>' +
+                '<p>' + esc(t('new_pwd_body')) + ' <strong>' + esc(id) + '</strong></p>' +
+                '<div class="gm-cred-pass" style="margin:.5rem 0 1rem;">' +
+                    '<span class="gm-pwd-text gm-mono" id="secret-value"></span>' +
+                    '<button class="gm-mini-btn" id="secret-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
+                '</div>' +
+                '<div class="confirm-actions">' +
+                    '<button class="primary-btn" id="secret-ok">' + esc(t('confirm_ok')) + '</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        // textContent : le secret n'est jamais injecté en HTML.
+        overlay.querySelector('#secret-value').textContent = secret;
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function close() {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 300);
+        }
+        overlay.querySelector('#secret-ok').addEventListener('click', close);
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+        overlay.querySelector('#secret-copy').addEventListener('click', function () {
+            navigator.clipboard.writeText(secret).then(function () {
+                var icon = overlay.querySelector('#secret-copy i');
+                icon.className = 'ph ph-check';
+                showToast(t('toast_copied'), 'success');
+                setTimeout(function () { icon.className = 'ph ph-copy'; }, 2000);
             });
         });
     }
@@ -575,7 +694,7 @@
     function memberTileHtml(m, i, withActions) {
         var uidVal = m.uid || '—';
         var dateStr = m.created_at
-            ? new Date(m.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' })
+            ? new Date(m.created_at).toLocaleDateString(window.RAD_I18N.dateLocale(), { day:'2-digit', month:'2-digit', year:'numeric' })
             : '—';
         var initial = window.RAD.avatarInit(m.pseudo);
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
