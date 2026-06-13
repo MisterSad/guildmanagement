@@ -1,10 +1,10 @@
 /**
- * config.js — configuration d'environnement (saas_strategy.md §14.1).
+ * config.js : configuration d'environnement (saas_strategy.md §14.1).
  *
  * Seules des valeurs PUBLIQUES vivent ici (clé publishable Supabase, clé
  * VAPID publique) : la sécurité des données repose sur RLS côté serveur.
  * En multi-environnements (staging/prod), ce fichier est remplacé au
- * déploiement — ne mettre aucune logique ici.
+ * déploiement ; ne mettre aucune logique ici.
  */
 window.GMT_CONFIG = {
     SUPABASE_URL: 'https://vgweufzwmfwplusskmuf.supabase.co',

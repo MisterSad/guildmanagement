@@ -1,5 +1,5 @@
 /**
- * i18n engine — registry-driven, English-first (saas_strategy.md §7).
+ * i18n engine. Registry-driven, English-first (saas_strategy.md §7).
  *
  * Languages are declared in locales/index.js (window.GMT_LANGUAGES); each
  * locale lives in locales/<code>.js and registers itself on
@@ -7,20 +7,20 @@
  * from index.html and is the fallback for any missing key. Other locales are
  * lazy-loaded on first use by injecting their script tag.
  *
- * Adding a language requires NO change to this file — see locales/index.js.
+ * Adding a language requires NO change to this file (see locales/index.js).
  *
  * Public API (kept on window.RAD_I18N for backward compatibility with the
  * existing modules; window.GMT_I18N is an alias):
- *   t(key)                  → translated string (current → en → key)
- *   tn(key, n)              → plural-aware: tries `${key}_<plural-rule>` then
+ *   t(key)                  returns a translated string (current, then en, then key)
+ *   tn(key, n)              plural-aware: tries `${key}_<plural-rule>` then
  *                             `${key}_other`, replaces "{n}" with n
- *   getLang()               → current language code ('en', 'fr', …)
- *   setLang(code)           → switch + persist + re-render
- *   getLanguages()          → registry entries
- *   dateLocale()            → Intl locale of the current language ('en-GB', …)
- *   formatNumber(n)         → Intl-formatted integer in the current locale
- *   applyTranslations()     → update all [data-i18n*] elements
- *   mountSwitcher(el)       → render a language <select> into el (also runs
+ *   getLang()               current language code ('en', 'fr', ...)
+ *   setLang(code)           switch, persist and re-render
+ *   getLanguages()          registry entries
+ *   dateLocale()            Intl locale of the current language ('en-GB', ...)
+ *   formatNumber(n)         Intl-formatted integer in the current locale
+ *   applyTranslations()     update all [data-i18n*] elements
+ *   mountSwitcher(el)       render a language <select> into el (also runs
  *                             automatically on [data-gmt-lang-switcher])
  */
 (function () {
@@ -41,7 +41,7 @@
         return window.GMT_LOCALES;
     }
 
-    // ── Initial language detection: storage → browser → default ──────────────
+    // Initial language detection: storage, then browser, then default.
     function detectLang() {
         try {
             var stored = localStorage.getItem(STORAGE_KEY);

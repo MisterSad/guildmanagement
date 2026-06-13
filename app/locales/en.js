@@ -1,5 +1,5 @@
 /**
- * Locale: en — REFERENCE locale (every key must exist here).
+ * Locale: en. REFERENCE locale (every key must exist here).
  * Extracted from the legacy i18n.js translation table.
  * Adding a language: copy en.js, translate, add one entry to locales/index.js.
  */

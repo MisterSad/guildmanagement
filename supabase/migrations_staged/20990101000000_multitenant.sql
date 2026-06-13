@@ -1,7 +1,7 @@
 -- ============================================================================
--- MULTI-TENANT MIGRATION — saas_strategy.md §5 (Chantier 1).
+-- MULTI-TENANT MIGRATION: saas_strategy.md §5 (Chantier 1).
 --
--- ⚠️  STAGED — NOT APPLIED TO PRODUCTION. Lives in migrations_staged/ so that
+-- STAGED, NOT APPLIED TO PRODUCTION. Lives in migrations_staged/ so that
 --     `supabase db push` cannot pick it up by accident. Apply it only by
 --     following docs/cutover-runbook.md (staging rehearsal first), together
 --     with the functions_staged/ edge functions and the frontend that ships
@@ -188,7 +188,7 @@ declare
   rad constant uuid := '00000000-0000-4000-8000-000000000001';
   r int;
 begin
-  -- GvG Saturday (UTC) — gated on the GvG event being active this week.
+  -- GvG Saturday (UTC), gated on the GvG event being active this week.
   insert into public.guild_event_schedules (guild_id, kind, label, day_utc, time_utc, reminder_offsets, requires_event) values
     (rad, 'gvg_war_prism',    'War Prism',    6, '00:00', '{5,0}', 'GvG'),
     (rad, 'gvg_war_prism',    'War Prism',    6, '01:00', '{5,0}', 'GvG'),
@@ -205,7 +205,7 @@ begin
     (rad, 'svs_garrison', 'Garrison', 5, '23:00', '{0}', 'SvS'),
     (rad, 'svs_battle',   'Battle',   6, '14:00', '{30,15,5,0}', 'SvS');
 
-  -- Calamity Befalls: 16 rounds, Tue 00:00 → Wed 21:00 UTC, every 3h,
+  -- Calamity Befalls: 16 rounds, Tue 00:00 to Wed 21:00 UTC, every 3h,
   -- 5-minute reminder each. Not gated on an event session.
   for r in 1..16 loop
     insert into public.guild_event_schedules (guild_id, kind, label, day_utc, time_utc, reminder_offsets, requires_event)

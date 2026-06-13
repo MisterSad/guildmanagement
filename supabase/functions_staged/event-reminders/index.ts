@@ -1,7 +1,7 @@
 /**
- * event-reminders v2 — MULTI-TENANT (saas_strategy.md §5.3 / §10).
+ * event-reminders v2, MULTI-TENANT (saas_strategy.md §5.3 / §10).
  *
- * ⚠️ STAGED — deploy only together with migrations_staged/ (see
+ * STAGED: deploy only together with migrations_staged/ (see
  *    docs/cutover-runbook.md). Differences vs the live v1:
  *      - iterates every guild with a live subscription
  *      - reminder slots come from guild_event_schedules (per guild, UTC)
@@ -125,7 +125,7 @@ async function acquireLock(supabase: any, guildId: string, lockKey: string): Pro
   const { error } = await supabase
     .from("notification_locks")
     .insert({ guild_id: guildId, lock_key: lockKey, status: "sending" });
-  return !error; // unique violation → someone else holds it
+  return !error; // unique violation means someone else holds it
 }
 
 // deno-lint-ignore no-explicit-any

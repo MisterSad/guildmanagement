@@ -1,4 +1,4 @@
-# functions_staged — versions multi-tenant (NE PAS déployer seules)
+# functions_staged : versions multi-tenant (NE PAS déployer seules)
 
 Ces trois fonctions sont les **v2 multi-tenant** de celles de `../functions/`.
 Elles supposent le schéma de `../migrations_staged/20990101000000_multitenant.sql`

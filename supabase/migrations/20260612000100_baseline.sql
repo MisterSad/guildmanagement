@@ -1,10 +1,10 @@
 -- ============================================================================
--- BASELINE — snapshot of the production schema as of 2026-06-12.
+-- BASELINE: snapshot of the production schema as of 2026-06-12.
 --
 -- Purpose: make the repo the source of truth (saas_strategy.md §4 / §14.1).
 -- This file recreates the CURRENT production state on a FRESH project
 -- (staging, local dev). It must NOT be executed against the existing
--- production database — mark it as already applied instead:
+-- production database. Mark it as already applied instead:
 --
 --   supabase migration repair --status applied 20260612000100
 --
@@ -80,7 +80,7 @@ create table public.shadowfront_squads (
   unique (week_start, pseudo)
 );
 
--- Legacy (unused by the current frontend — candidate for removal at cutover).
+-- Legacy (unused by the current frontend; candidate for removal at cutover).
 create table public.weekly_scores (
   id          bigserial primary key,
   week_start  date not null,
@@ -114,7 +114,7 @@ create table public.push_subscriptions (
 );
 
 -- Key/value config. Also (ab)used as the lock table for reminder idempotency
--- (keys `sent_*`) — to be split into notification_locks at the multi-tenant
+-- (keys `sent_*`); to be split into notification_locks at the multi-tenant
 -- cutover (saas_strategy.md §5.1).
 create table public.guild_config (
   key        text primary key,
@@ -122,7 +122,7 @@ create table public.guild_config (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
--- Legacy idempotency tables (superseded by guild_config locks — candidates
+-- Legacy idempotency tables (superseded by guild_config locks; candidates
 -- for removal at cutover).
 create table public.event_reminders_sent (
   event_name text not null,
@@ -141,7 +141,7 @@ create table public.discord_notifications_sent (
 
 -- ─── Row Level Security ─────────────────────────────────────────────────────
 -- Prod state as of the snapshot: blanket allow-all for `authenticated` on the
--- business tables (tightened progressively — see hardening + multi-tenant
+-- business tables (tightened progressively; see hardening + multi-tenant
 -- migrations). guild_config RLS is enabled by 20260612000200.
 
 alter table public.accounts                   enable row level security;  -- no policy: service_role only
@@ -170,7 +170,7 @@ create policy gm_authenticated_all on public.sanctions
 
 -- ─── Functions ──────────────────────────────────────────────────────────────
 
--- Account auth helpers (service_role only — called by edge functions).
+-- Account auth helpers (service_role only; called by edge functions).
 
 CREATE OR REPLACE FUNCTION public.gm_check_login(p_id text, p_password text)
  RETURNS text
@@ -368,7 +368,7 @@ AS $function$
 $function$;
 
 -- Legacy pg_net Discord sender (superseded by the event-reminders edge
--- function — kept for reference, locked down by the hardening migration).
+-- function; kept for reference, locked down by the hardening migration).
 
 CREATE OR REPLACE FUNCTION public.check_and_send_discord_reminders()
  RETURNS void

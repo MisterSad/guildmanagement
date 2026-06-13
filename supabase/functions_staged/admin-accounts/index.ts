@@ -1,7 +1,7 @@
 /**
- * admin-accounts v2 — MULTI-TENANT (saas_strategy.md §5.3 / §6.2).
+ * admin-accounts v2, MULTI-TENANT (saas_strategy.md §5.3 / §6.2).
  *
- * ⚠️ STAGED — deploy only together with migrations_staged/ (see
+ * STAGED: deploy only together with migrations_staged/ (see
  *    docs/cutover-runbook.md). Differences vs the live v1:
  *      - every action is scoped to the caller's guild (JWT guild_id claim)
  *      - `list` no longer returns passwords: the UI must switch from the

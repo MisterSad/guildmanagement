@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * i18n-check — validates locale files against the English reference and
+ * i18n-check. Validates locale files against the English reference and
  * against actual key usage in the app (saas_strategy.md §7.3).
  *
  * Usage: node tools/i18n-check.js

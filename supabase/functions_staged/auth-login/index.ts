@@ -1,7 +1,7 @@
 /**
- * auth-login v2 — MULTI-TENANT (saas_strategy.md §5.2).
+ * auth-login v2, MULTI-TENANT (saas_strategy.md §5.2).
  *
- * ⚠️ STAGED — deploy only together with migrations_staged/ (see
+ * STAGED: deploy only together with migrations_staged/ (see
  *    docs/cutover-runbook.md). Difference vs the live v1: the session's
  *    app_metadata now carries `guild_id` (read via gm_account_info), which
  *    every RLS policy and RPC uses for tenant isolation.

@@ -1,10 +1,10 @@
 -- ============================================================================
--- P0 SECURITY HARDENING — saas_strategy.md §4 (Chantier 0).
+-- P0 SECURITY HARDENING: saas_strategy.md §4 (Chantier 0).
 -- Applied to production on 2026-06-12.
 --
 -- Fixes the issues reported by the Supabase security advisors:
 --   * guild_config fully exposed (RLS disabled) while the publishable key is
---     public → anyone could read/replace the Discord webhook, coefficients
+--     public, so anyone could read/replace the Discord webhook, coefficients
 --     and reminder locks.
 --   * RPCs executable by anonymous visitors (push-subscription spam, history
 --     reads, legacy reminder trigger).
