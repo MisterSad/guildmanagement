@@ -70,7 +70,9 @@ for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.js') && f !== 'i18n
   for (const m of src.matchAll(/\bt(?:n)?\(\s*'([a-z0-9_]+)'/g)) usedKeys.add(m[1]);
 }
 
-const undefinedKeys = [...usedKeys].filter(k => !enKeys.has(k));
+// A key ending in '_' is a dynamic prefix from t('foo_' + x) concatenation,
+// not a real key — the concrete keys (foo_bar, …) are validated on their own.
+const undefinedKeys = [...usedKeys].filter(k => !k.endsWith('_') && !enKeys.has(k));
 if (undefinedKeys.length) {
   console.error(`ERROR: ${undefinedKeys.length} used key(s) missing from en: ${undefinedKeys.join(', ')}`);
   errors++;
