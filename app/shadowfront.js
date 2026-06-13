@@ -16,8 +16,30 @@
 
     var EVENT_NAME = 'Shadowfront'; // event_participants identity (scoring/history)
     var SQUAD_EVENT = { squad1: 'Shadowfront Squad 1', squad2: 'Shadowfront Squad 2' };
+    // Per-guild, loaded in loadShadowfront(); defaults equal the original
+    // hardcoded values so an unconfigured guild is unchanged (saas_strategy.md §10).
     var PARTICIPANTS_MAX = 20;
     var RESERVES_MAX     = 10;
+    var CAT_EXCELLENT = 0.80; // attendance rate > this  -> excellent
+    var CAT_GOOD      = 0.50; // >= this                 -> good
+    var CAT_AVERAGE   = 0.20; // >= this                 -> average (else poor)
+
+    async function loadSfConfig() {
+        function intOr(v, d) { var n = parseInt(v, 10); return (n >= 0) ? n : d; }
+        function pctOr(v, d) { var n = parseFloat(v); return (n >= 0 && n <= 100) ? n / 100 : d; }
+        var vals = await Promise.all([
+            window.RAD.config.get('sf_participants_max'),
+            window.RAD.config.get('sf_reserves_max'),
+            window.RAD.config.get('sf_cat_excellent'),
+            window.RAD.config.get('sf_cat_good'),
+            window.RAD.config.get('sf_cat_average')
+        ]);
+        PARTICIPANTS_MAX = intOr(vals[0], 20) || 20; // must stay positive
+        RESERVES_MAX     = intOr(vals[1], 10);
+        CAT_EXCELLENT    = pctOr(vals[2], 0.80);
+        CAT_GOOD         = pctOr(vals[3], 0.50);
+        CAT_AVERAGE      = pctOr(vals[4], 0.20);
+    }
 
     // ── State ──────────────────────────────────────────────────────────────────
     var sfState = {
@@ -54,6 +76,7 @@
     async function loadShadowfront() {
         if (!db) return;
         try {
+            await loadSfConfig();
             var [statusRes, membersRes, histSquads, histParts] = await Promise.all([
                 db.from('event_status').select('event_name, is_active, session_id, start_at')
                     .in('event_name', [SQUAD_EVENT.squad1, SQUAD_EVENT.squad2]),
@@ -256,9 +279,9 @@
         var h = sfState.history[pseudo];
         if (!h || h.assigned === 0) return 'none';
         var rate = h.participated / h.assigned;
-        if (rate > 0.8) return 'excellent';
-        if (rate >= 0.5) return 'good';
-        if (rate >= 0.2) return 'average';
+        if (rate > CAT_EXCELLENT) return 'excellent';
+        if (rate >= CAT_GOOD)     return 'good';
+        if (rate >= CAT_AVERAGE)  return 'average';
         return 'poor';
     }
 

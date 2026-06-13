@@ -343,7 +343,22 @@
         "confirm_regen_body": "Generate a new password for",
         "confirm_regen_body2": "? The current one will stop working immediately.",
         "new_pwd_title": "New password",
-        "new_pwd_body": "Save this password now, it will not be shown again — account"
+        "new_pwd_body": "Save this password now, it will not be shown again — account",
+        "adv_params_title": "Advanced parameters",
+        "adv_score_group": "Weighted-score formula",
+        "adv_sf_group": "Shadowfront",
+        "adv_sanctions_group": "Sanctions",
+        "label_score_participation": "Participation weight",
+        "label_score_performance": "Performance weight",
+        "label_score_glory": "Glory bonus (max)",
+        "label_score_consistency": "Consistency bonus",
+        "label_score_threshold": "Consistency threshold (%)",
+        "label_sf_participants": "Participants / squad",
+        "label_sf_reserves": "Reserves / squad",
+        "label_sf_excellent": "Excellent > (%)",
+        "label_sf_good": "Good ≥ (%)",
+        "label_sf_average": "Average ≥ (%)",
+        "label_recidivist": "Repeat-offender alert at"
     };
     if (window.RAD_I18N && window.RAD_I18N._onLocaleLoaded) window.RAD_I18N._onLocaleLoaded("en");
 })();

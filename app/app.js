@@ -264,21 +264,34 @@
         var form = document.getElementById('guild-settings-form');
         if (!form) return;
 
-        var coeffSvs = await window.RAD.config.get('coeff_svs');
-        var coeffGvg = await window.RAD.config.get('coeff_gvg');
-        var coeffShadowfront = await window.RAD.config.get('coeff_shadowfront');
-        var coeffDtr = await window.RAD.config.get('coeff_dtr');
-        var coeffArmsrace = await window.RAD.config.get('coeff_armsrace');
-        var reserveCreditPct = await window.RAD.config.get('reserve_credit_pct');
-        var discordWebhook = await window.RAD.config.get('discord_webhook_url');
-
-        document.getElementById('coeff-svs').value = coeffSvs;
-        document.getElementById('coeff-gvg').value = coeffGvg;
-        document.getElementById('coeff-shadowfront').value = coeffShadowfront;
-        document.getElementById('coeff-dtr').value = coeffDtr;
-        document.getElementById('coeff-armsrace').value = coeffArmsrace;
-        document.getElementById('reserve-credit-pct').value = reserveCreditPct;
-        document.getElementById('discord-webhook-url').value = discordWebhook;
+        // key -> input id. Defaults come from RAD.config (localConfigFallback),
+        // so unconfigured guilds show the original values.
+        var fieldMap = {
+            coeff_svs: 'coeff-svs',
+            coeff_gvg: 'coeff-gvg',
+            coeff_shadowfront: 'coeff-shadowfront',
+            coeff_dtr: 'coeff-dtr',
+            coeff_armsrace: 'coeff-armsrace',
+            reserve_credit_pct: 'reserve-credit-pct',
+            discord_webhook_url: 'discord-webhook-url',
+            score_w_participation: 'score-w-participation',
+            score_w_performance: 'score-w-performance',
+            score_glory_bonus: 'score-glory-bonus',
+            score_consistency_bonus: 'score-consistency-bonus',
+            score_consistency_threshold: 'score-consistency-threshold',
+            sf_participants_max: 'sf-participants-max',
+            sf_reserves_max: 'sf-reserves-max',
+            sf_cat_excellent: 'sf-cat-excellent',
+            sf_cat_good: 'sf-cat-good',
+            sf_cat_average: 'sf-cat-average',
+            sanctions_recidivist_threshold: 'sanctions-recidivist-threshold'
+        };
+        var keys = Object.keys(fieldMap);
+        var values = await Promise.all(keys.map(function (k) { return window.RAD.config.get(k); }));
+        keys.forEach(function (k, i) {
+            var el = document.getElementById(fieldMap[k]);
+            if (el) el.value = values[i];
+        });
     }
 
     var guildSettingsForm = document.getElementById('guild-settings-form');
@@ -292,17 +305,35 @@
             var origText = span ? span.textContent : '';
             if (span) span.textContent = '...';
 
+            // key -> input id, with optional transform applied before saving.
+            var saveMap = {
+                coeff_svs: 'coeff-svs',
+                coeff_gvg: 'coeff-gvg',
+                coeff_shadowfront: 'coeff-shadowfront',
+                coeff_dtr: 'coeff-dtr',
+                coeff_armsrace: 'coeff-armsrace',
+                reserve_credit_pct: 'reserve-credit-pct',
+                discord_webhook_url: 'discord-webhook-url',
+                score_w_participation: 'score-w-participation',
+                score_w_performance: 'score-w-performance',
+                score_glory_bonus: 'score-glory-bonus',
+                score_consistency_bonus: 'score-consistency-bonus',
+                score_consistency_threshold: 'score-consistency-threshold',
+                sf_participants_max: 'sf-participants-max',
+                sf_reserves_max: 'sf-reserves-max',
+                sf_cat_excellent: 'sf-cat-excellent',
+                sf_cat_good: 'sf-cat-good',
+                sf_cat_average: 'sf-cat-average',
+                sanctions_recidivist_threshold: 'sanctions-recidivist-threshold'
+            };
             try {
-                await Promise.all([
-                    window.RAD.config.set('coeff_svs', document.getElementById('coeff-svs').value),
-                    window.RAD.config.set('coeff_gvg', document.getElementById('coeff-gvg').value),
-                    window.RAD.config.set('coeff_shadowfront', document.getElementById('coeff-shadowfront').value),
-                    window.RAD.config.set('coeff_dtr', document.getElementById('coeff-dtr').value),
-                    window.RAD.config.set('coeff_armsrace', document.getElementById('coeff-armsrace').value),
-                    window.RAD.config.set('reserve_credit_pct', document.getElementById('reserve-credit-pct').value),
-                    window.RAD.config.set('discord_webhook_url', document.getElementById('discord-webhook-url').value.trim())
-                ]);
-                
+                await Promise.all(Object.keys(saveMap).map(function (k) {
+                    var el = document.getElementById(saveMap[k]);
+                    if (!el) return Promise.resolve();
+                    var val = (k === 'discord_webhook_url') ? el.value.trim() : el.value;
+                    return window.RAD.config.set(k, val);
+                }));
+
                 showToast(t('toast_config_updated'), 'success');
             } catch (err) {
                 showToast(t('toast_err_generic') + ' ' + err.message, 'error');

@@ -343,7 +343,22 @@
         "confirm_regen_body": "Générer un nouveau mot de passe pour",
         "confirm_regen_body2": " ? L’actuel cessera de fonctionner immédiatement.",
         "new_pwd_title": "Nouveau mot de passe",
-        "new_pwd_body": "Notez ce mot de passe maintenant, il ne sera plus affiché — compte"
+        "new_pwd_body": "Notez ce mot de passe maintenant, il ne sera plus affiché — compte",
+        "adv_params_title": "Paramètres avancés",
+        "adv_score_group": "Formule de score pondéré",
+        "adv_sf_group": "Shadowfront",
+        "adv_sanctions_group": "Sanctions",
+        "label_score_participation": "Poids participation",
+        "label_score_performance": "Poids performance",
+        "label_score_glory": "Bonus de gloire (max)",
+        "label_score_consistency": "Bonus de régularité",
+        "label_score_threshold": "Seuil de régularité (%)",
+        "label_sf_participants": "Participants / squad",
+        "label_sf_reserves": "Réservistes / squad",
+        "label_sf_excellent": "Excellent > (%)",
+        "label_sf_good": "Bon ≥ (%)",
+        "label_sf_average": "Moyen ≥ (%)",
+        "label_recidivist": "Alerte récidive à partir de"
     };
     if (window.RAD_I18N && window.RAD_I18N._onLocaleLoaded) window.RAD_I18N._onLocaleLoaded("fr");
 })();

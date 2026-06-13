@@ -309,6 +309,8 @@
         });
     }
 
+    // Defaults below MUST equal the previously hardcoded values so that a guild
+    // with no stored config behaves exactly as before (saas_strategy.md §10).
     var localConfigFallback = {
         coeff_svs: '5',
         coeff_gvg: '5',
@@ -316,7 +318,22 @@
         coeff_dtr: '2',
         coeff_armsrace: '1',
         reserve_credit_pct: '50',
-        discord_webhook_url: ''
+        discord_webhook_url: '',
+        // Weighted-score formula (stats.js): participation/performance weights,
+        // glory bonus cap, consistency bonus + its attendance threshold (%).
+        score_w_participation: '6',
+        score_w_performance: '4',
+        score_glory_bonus: '20',
+        score_consistency_bonus: '15',
+        score_consistency_threshold: '80',
+        // Shadowfront squad sizes and attendance category thresholds (%).
+        sf_participants_max: '20',
+        sf_reserves_max: '10',
+        sf_cat_excellent: '80',
+        sf_cat_good: '50',
+        sf_cat_average: '20',
+        // Sanctions: number of records that triggers the repeat-offender alert.
+        sanctions_recidivist_threshold: '3'
     };
 
     async function getGuildConfig(key) {

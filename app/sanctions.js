@@ -11,9 +11,14 @@
     window.RAD_SANCTIONS = { load: loadSanctions };
 
     var sanctions = [];
+    // Per-guild repeat-offender threshold; default 3 (saas_strategy.md §10).
+    var recidivistThreshold = 3;
 
     async function loadSanctions() {
         if (!db) return;
+
+        var thr = parseInt(await window.RAD.config.get('sanctions_recidivist_threshold'), 10);
+        recidivistThreshold = (thr >= 1) ? thr : 3;
 
         var membersRes = await db.from('guild_members').select('pseudo').order('pseudo', { ascending: true });
         var datalist = document.getElementById('member-list-datalist');
@@ -120,7 +125,7 @@
 
     function checkRecidivist(pseudo) {
         var count = sanctions.filter(function (s) { return s.pseudo === pseudo; }).length;
-        if (count >= 3) {
+        if (count >= recidivistThreshold) {
             setTimeout(function () {
                 alert(t('alert_recidivist') + '\n(' + pseudo + ' : ' + count + ' sanctions)');
             }, 500);
