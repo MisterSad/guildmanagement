@@ -17,5 +17,10 @@ window.GMT_CONFIG = {
     // per docs/paddle-setup.md, then bump config.js?v=.
     PADDLE_ENV: 'sandbox',          // 'sandbox' | 'production'
     PADDLE_CLIENT_TOKEN: '',        // Paddle.js client-side token (test_… / live_…)
-    PADDLE_PRICE_ID: ''             // recurring 9.99 EUR/mo price (pri_…)
+    PADDLE_PRICE_ID: '',            // recurring 9.99 EUR/mo price (pri_…)
+
+    // R5 self-service email auth (signup / login / password reset). Requires the
+    // multi-tenant guilds table (bootstrap-r5) and email delivery, so it is OFF
+    // on the current single-tenant production. Flip to true with the cutover.
+    R5_EMAIL_AUTH: false
 };

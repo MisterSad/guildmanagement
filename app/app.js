@@ -63,7 +63,11 @@
         if (span) span.textContent = t('login_btn_loading');
 
         try {
-            var resp = await window.RAD.login(user, pass);
+            // R5 email auth (when enabled) is auto-routed: an identifier that
+            // looks like an email goes through Supabase native auth; everything
+            // else keeps the existing identifier + edge-function login.
+            var useEmail = window.RAD_AUTH && window.RAD_AUTH.isEmailLogin && window.RAD_AUTH.isEmailLogin(user);
+            var resp = useEmail ? await window.RAD_AUTH.emailLogin(user, pass) : await window.RAD.login(user, pass);
 
             if (resp.ok) {
                 loginError.classList.add('hidden');
@@ -71,7 +75,7 @@
 
                 var role = (resp.role === 'R5') ? 'admin' : 'member';
                 sessionStorage.setItem('rad_role', role);
-                sessionStorage.setItem('rad_user', user);
+                sessionStorage.setItem('rad_user', resp.id || user);
 
                 showAdminDashboard(role);
                 showToast(role === 'admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');

@@ -424,3 +424,8 @@ verify_jwt = false
 # x-email-secret header (EMAIL_FN_SECRET), not a Supabase JWT.
 [functions.send-email]
 verify_jwt = false
+
+# First-login provisioning for an email R5 (creates the guild, stamps claims).
+# Caller is the signed-in R5, so the JWT is required. Staged.
+[functions.bootstrap-r5]
+verify_jwt = true

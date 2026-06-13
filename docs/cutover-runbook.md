@@ -25,6 +25,13 @@ invisibles pour `supabase db push` et `functions deploy`.
     d'historique est masquée pour les R4 (history.js), pour rester cohérente
     avec les policies DELETE R5-only de `event_status`/`event_participants`.
     Sans ce gate, un R4 obtiendrait une suppression partielle silencieuse.
+  - **Inscription R5 par e-mail** (saas_strategy.md §6.1) : passer
+    `GMT_CONFIG.R5_EMAIL_AUTH` à `true` dans `app/config.js`, déployer la
+    fonction `bootstrap-r5`, et côté Supabase Auth : activer signup e-mail +
+    confirmations, régler le **SMTP Resend**, et mettre Site URL +
+    redirect URLs sur `…/app/` (voir `docs/email-setup.md`). Le login par
+    identifiant des R4 reste inchangé (auto-routage : e-mail → Auth natif,
+    identifiant → `auth-login`).
 - [ ] **Staging** : projet Supabase secondaire provisionné via
   `supabase db push` (baseline + hardening) puis la migration staged ;
   secrets Vault + env recréés (cf. supabase/README.md).

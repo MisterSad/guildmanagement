@@ -212,9 +212,9 @@ L'outil actuel est une PWA vanilla JS (~11 300 lignes, sans framework ni build) 
 
 ### 6.1 Compte R5 (le client payant)
 
-- [ ] Inscription e-mail + mot de passe (Supabase Auth natif) avec vérification d'e-mail.
-- [ ] **Réinitialisation de mot de passe** (inexistante aujourd'hui, bloquant absolu pour un produit payant).
-- [ ] Page « Mon compte » : e-mail, mot de passe, langue, suppression de compte (RGPD).
+- [x] Inscription e-mail + mot de passe (Supabase Auth natif) avec vérification d'e-mail. **Fait (staged)** : `app/auth.js` (signup) + `bootstrap-r5` (crée la guilde + claims au 1ᵉʳ login), drapeau `R5_EMAIL_AUTH`. Login auto-routé : e-mail → Auth natif, identifiant → flux R4 existant.
+- [x] **Réinitialisation de mot de passe** : `app/auth.js` (mot de passe oublié → `resetPasswordForEmail` ; lien e-mail → écran « nouveau mot de passe » via l'événement `PASSWORD_RECOVERY`). Anti-énumération de compte (message neutre).
+- [ ] Page « Mon compte » : e-mail, mot de passe, langue, suppression de compte (RGPD). *(reste à faire)*
 
 ### 6.2 Comptes R4 (officiers)
 

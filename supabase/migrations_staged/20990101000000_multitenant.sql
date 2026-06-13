@@ -35,6 +35,7 @@ create table public.guilds (
   provider_customer_id     text,
   provider_subscription_id text,
   management_url           text,   -- Paddle customer portal link (set by billing-webhook)
+  owner_user_id            uuid,   -- R5 auth.users id (set by bootstrap-r5; idempotency key)
   created_at               timestamptz not null default now()
 );
 

@@ -565,3 +565,7 @@ html, body {
 .gm-brand-mark i { font-size: 1.25rem; }
 .gm-login-crest { display: flex; align-items: center; justify-content: center; }
 .gm-login-crest i { font-size: 1.8rem; }
+
+/* ─── Inline text links (auth signup/forgot, etc.) ─── */
+.gm-link { color: var(--primary); text-decoration: none; }
+.gm-link:hover { text-decoration: underline; }

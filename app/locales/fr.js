@@ -411,7 +411,25 @@
         "billing_status_active": "Actif",
         "billing_status_past_due": "Impayé",
         "billing_status_read_only": "Lecture seule",
-        "billing_status_canceled": "Annulé"
+        "billing_status_canceled": "Annulé",
+        "auth_signup_link": "Créer ta guilde",
+        "auth_forgot_link": "Mot de passe oublié ?",
+        "auth_signup_title": "Créer ta guilde",
+        "auth_signup_guild": "Nom de la guilde",
+        "auth_signup_email": "E-mail",
+        "auth_signup_pass": "Mot de passe (8+ caractères)",
+        "auth_signup_submit": "Démarrer l’essai gratuit",
+        "auth_signup_check_email": "Presque fini — vérifie ta boîte mail pour confirmer ton adresse.",
+        "auth_forgot_title": "Réinitialiser le mot de passe",
+        "auth_forgot_body": "Saisis l’e-mail de ton compte, on t’envoie un lien de réinitialisation.",
+        "auth_forgot_submit": "Envoyer le lien",
+        "auth_forgot_sent": "Si cet e-mail existe, un lien de réinitialisation arrive.",
+        "auth_reset_title": "Choisir un nouveau mot de passe",
+        "auth_reset_body": "Choisis un nouveau mot de passe pour ton compte.",
+        "auth_reset_submit": "Mettre à jour",
+        "auth_reset_done": "Mot de passe mis à jour. Tu peux te connecter.",
+        "auth_err_signup_fields": "Vérifie les champs (e-mail valide, mot de passe 8+ caractères).",
+        "auth_err_generic": "Une erreur est survenue. Réessaie."
     };
     if (window.RAD_I18N && window.RAD_I18N._onLocaleLoaded) window.RAD_I18N._onLocaleLoaded("fr");
 })();

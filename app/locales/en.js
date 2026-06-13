@@ -411,7 +411,25 @@
         "billing_status_active": "Active",
         "billing_status_past_due": "Past due",
         "billing_status_read_only": "Read-only",
-        "billing_status_canceled": "Canceled"
+        "billing_status_canceled": "Canceled",
+        "auth_signup_link": "Create your guild",
+        "auth_forgot_link": "Forgot password?",
+        "auth_signup_title": "Create your guild",
+        "auth_signup_guild": "Guild name",
+        "auth_signup_email": "Email",
+        "auth_signup_pass": "Password (8+ characters)",
+        "auth_signup_submit": "Start free trial",
+        "auth_signup_check_email": "Almost there — check your inbox to confirm your email.",
+        "auth_forgot_title": "Reset your password",
+        "auth_forgot_body": "Enter your account email and we will send you a reset link.",
+        "auth_forgot_submit": "Send reset link",
+        "auth_forgot_sent": "If that email exists, a reset link is on its way.",
+        "auth_reset_title": "Set a new password",
+        "auth_reset_body": "Choose a new password for your account.",
+        "auth_reset_submit": "Update password",
+        "auth_reset_done": "Password updated. You can now log in.",
+        "auth_err_signup_fields": "Please check the fields (valid email, 8+ char password).",
+        "auth_err_generic": "Something went wrong. Please try again."
     };
     if (window.RAD_I18N && window.RAD_I18N._onLocaleLoaded) window.RAD_I18N._onLocaleLoaded("en");
 })();
