@@ -323,25 +323,35 @@
         // Cred-grid layout (auto-fill 280px min)
         var html = '<div class="gm-cred-grid">';
         accounts.forEach(function (acc) {
-            // Détermine le rôle pour le chip — si 'role' est dispo, sinon défaut R4
+            // Détermine le rôle pour le chip : si 'role' est dispo, sinon défaut R4
             var role = acc.role || 'R4';
             var chipCls = role === 'R5' ? 'gm-chip-accent' : 'gm-chip-info';
             var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString(window.RAD_I18N.dateLocale(), { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+            // Le mot de passe n'est restitué que par l'API legacy. Avec hash non
+            // réversible (saas_strategy.md §6.2), acc.password est absent : on
+            // n'affiche alors que la régénération, pas la révélation.
+            var hasPass = acc.password != null && acc.password !== '';
+            var passRow = hasPass
+                ? '<div class="gm-cred-pass gm-masked" data-acc-pass="' + esc(acc.password) + '">' +
+                      '<span class="gm-pwd-text">••••••••••••</span>' +
+                      '<button class="gm-mini-btn gm-cred-toggle" title="' + t('show_pwd') + '"><i class="ph ph-eye"></i></button>' +
+                      '<button class="gm-mini-btn gm-cred-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
+                  '</div>'
+                : '<div class="gm-cred-pass gm-dim"><i class="ph ph-lock-key"></i> <span>' + t('pwd_hidden') + '</span></div>';
             html +=
                 '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
                     '<div class="gm-row" style="justify-content:space-between;">' +
                         '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
                         '<span class="gm-chip ' + chipCls + '">' + esc(role) + '</span>' +
                     '</div>' +
-                    '<div class="gm-cred-pass gm-masked" data-acc-pass="' + esc(acc.password) + '">' +
-                        '<span class="gm-pwd-text">••••••••••••</span>' +
-                        '<button class="gm-mini-btn gm-cred-toggle" title="' + t('show_pwd') + '"><i class="ph ph-eye"></i></button>' +
-                        '<button class="gm-mini-btn gm-cred-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
-                    '</div>' +
+                    passRow +
                     '<div class="gm-row gm-dim" style="font-size:.75rem;">' +
                         '<i class="ph ph-calendar-blank"></i>' +
                         '<span>' + t('cred_created') + ' ' + dateStr + '</span>' +
-                        '<button class="gm-mini-btn gm-danger gm-cred-delete" data-id="' + esc(acc.id) + '" title="' + t('delete_title') + '" style="margin-left:auto;">' +
+                        '<button class="gm-mini-btn gm-cred-regen" data-id="' + esc(acc.id) + '" data-role="' + esc(role) + '" title="' + t('regen_pwd_title') + '" style="margin-left:auto;">' +
+                            '<i class="ph ph-arrows-clockwise"></i>' +
+                        '</button>' +
+                        '<button class="gm-mini-btn gm-danger gm-cred-delete" data-id="' + esc(acc.id) + '" title="' + t('delete_title') + '">' +
                             '<i class="ph ph-trash"></i>' +
                         '</button>' +
                     '</div>' +
@@ -380,6 +390,18 @@
             });
         });
 
+        accountList.querySelectorAll('.gm-cred-regen').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-id');
+                var role = btn.getAttribute('data-role') || 'R4';
+                showConfirm(
+                    t('confirm_regen_title'),
+                    t('confirm_regen_body') + ' <strong>' + esc(id) + '</strong>' + t('confirm_regen_body2'),
+                    function () { regenerateAccount(id, role); }
+                );
+            });
+        });
+
         accountList.querySelectorAll('.gm-cred-delete').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var id = btn.getAttribute('data-id');
@@ -388,6 +410,67 @@
                     t('confirm_delete_account_body') + ' <strong>' + esc(id) + '</strong>' + t('confirm_delete_account_body2'),
                     function () { deleteAccount(id); }
                 );
+            });
+        });
+    }
+
+    // Régénère le mot de passe d'un compte. Réutilise l'action 'create' (upsert
+    // côté serveur), donc compatible avec l'API legacy comme avec la v2 hash.
+    // Le nouveau mot de passe n'est affiché qu'une seule fois.
+    async function regenerateAccount(id, role) {
+        var newPassword = generatePassword(12);
+        try {
+            var res = await window.RAD.adminAccounts('create', { id: id, password: newPassword, role: role || 'R4' });
+            if (!res.ok) throw new Error(res.error || 'regen_failed');
+            // Reflète l'état si l'API renvoie encore les mots de passe (legacy) ;
+            // sinon le compte reste sans mot de passe affiché.
+            var acc = accounts.find(function (a) { return a.id === id; });
+            if (acc && acc.password != null && acc.password !== '') acc.password = newPassword;
+            renderAccounts();
+            showSecretOnce(id, newPassword);
+        } catch (err) {
+            showToast(err.message || t('toast_err_generic'), 'error');
+        }
+    }
+
+    // Affiche un secret une seule fois, avec copie. Pas de innerHTML utilisateur.
+    function showSecretOnce(id, secret) {
+        var existing = document.getElementById('secret-overlay');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'secret-overlay';
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML =
+            '<div class="confirm-card glass-card" style="max-width: 460px;">' +
+                '<div class="confirm-icon"><i class="ph-fill ph-key text-accent"></i></div>' +
+                '<h3>' + esc(t('new_pwd_title')) + '</h3>' +
+                '<p>' + esc(t('new_pwd_body')) + ' <strong>' + esc(id) + '</strong></p>' +
+                '<div class="gm-cred-pass" style="margin:.5rem 0 1rem;">' +
+                    '<span class="gm-pwd-text gm-mono" id="secret-value"></span>' +
+                    '<button class="gm-mini-btn" id="secret-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
+                '</div>' +
+                '<div class="confirm-actions">' +
+                    '<button class="primary-btn" id="secret-ok">' + esc(t('confirm_ok')) + '</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        // textContent : le secret n'est jamais injecté en HTML.
+        overlay.querySelector('#secret-value').textContent = secret;
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function close() {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 300);
+        }
+        overlay.querySelector('#secret-ok').addEventListener('click', close);
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+        overlay.querySelector('#secret-copy').addEventListener('click', function () {
+            navigator.clipboard.writeText(secret).then(function () {
+                var icon = overlay.querySelector('#secret-copy i');
+                icon.className = 'ph ph-check';
+                showToast(t('toast_copied'), 'success');
+                setTimeout(function () { icon.className = 'ph ph-copy'; }, 2000);
             });
         });
     }

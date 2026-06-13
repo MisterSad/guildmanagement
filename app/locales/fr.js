@@ -336,7 +336,14 @@
         "confirm_delete_sanction_title": "Supprimer la sanction",
         "confirm_delete_sanction_body": "Voulez-vous vraiment supprimer cette sanction ? Cette action est irréversible.",
         "ar_subtitle": "Stage A & Stage B",
-        "event_started": "Démarré"
+        "event_started": "Démarré",
+        "regen_pwd_title": "Régénérer le mot de passe",
+        "pwd_hidden": "Mot de passe masqué",
+        "confirm_regen_title": "Régénérer le mot de passe",
+        "confirm_regen_body": "Générer un nouveau mot de passe pour",
+        "confirm_regen_body2": " ? L’actuel cessera de fonctionner immédiatement.",
+        "new_pwd_title": "Nouveau mot de passe",
+        "new_pwd_body": "Notez ce mot de passe maintenant, il ne sera plus affiché — compte"
     };
     if (window.RAD_I18N && window.RAD_I18N._onLocaleLoaded) window.RAD_I18N._onLocaleLoaded("fr");
 })();

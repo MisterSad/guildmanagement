@@ -336,7 +336,14 @@
         "confirm_delete_sanction_title": "Delete sanction",
         "confirm_delete_sanction_body": "Do you really want to delete this sanction? This action is irreversible.",
         "ar_subtitle": "Stage A & Stage B",
-        "event_started": "Started"
+        "event_started": "Started",
+        "regen_pwd_title": "Regenerate password",
+        "pwd_hidden": "Password hidden",
+        "confirm_regen_title": "Regenerate password",
+        "confirm_regen_body": "Generate a new password for",
+        "confirm_regen_body2": "? The current one will stop working immediately.",
+        "new_pwd_title": "New password",
+        "new_pwd_body": "Save this password now, it will not be shown again — account"
     };
     if (window.RAD_I18N && window.RAD_I18N._onLocaleLoaded) window.RAD_I18N._onLocaleLoaded("en");
 })();
