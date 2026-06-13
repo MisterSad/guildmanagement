@@ -7,6 +7,10 @@ set -uo pipefail
 
 cd "${CLAUDE_PROJECT_DIR:-.}"
 
+# Enable the free local pre-push validation hook for this clone (no GitHub
+# Actions / no billing). Safe to run every session.
+git config core.hooksPath .githooks 2>/dev/null || true
+
 if ! command -v node >/dev/null 2>&1; then
   echo "session-start: node not found; skipping project validation."
   exit 0

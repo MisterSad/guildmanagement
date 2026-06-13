@@ -469,7 +469,7 @@ Parcours cible (du clic « Start free trial » à la valeur) :
 
 - [ ] **Repo = source de vérité** : fonctions Edge complètes (`auth-login`, `admin-accounts` manquantes !), migrations SQL versionnées dans `supabase/migrations/` (actuellement vide), seed du tenant de démo.
 - [ ] **Staging** : second projet Supabase (ou Supabase Branching) + déploiement préprod du statique. Ne plus jamais développer contre la base des clients.
-- [ ] CI (GitHub Actions) : lint JS, `i18n-check` (clés manquantes), déploiement auto (statique + `supabase db push` + `functions deploy`) sur tag.
+- [x] Validation gratuite sans service CI : hook git `pre-push` (`.githooks/pre-push`) + hook SessionStart, qui lancent `node tools/check.js` (syntaxe JS, `i18n-check`, intégrité des références d'assets). **GitHub Actions volontairement écarté** (facturation). Le déploiement auto (statique + `supabase db push` + `functions deploy`) reste à brancher — Vercel gère déjà le statique sur push ; les migrations/fonctions Supabase se déploieront via un script de release, pas via Actions.
 - [ ] Remplacer le cache-busting manuel `?v=N` par un micro-build avec hash des assets, le système actuel étant une source d'erreurs humaines récurrente.
 - [ ] Config par environnement : URL/clé Supabase et clé VAPID sorties du code (`config.js` généré au déploiement) ; actuellement hardcodées dans `rad-utils.js`/`push.js`.
 

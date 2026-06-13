@@ -55,12 +55,17 @@ missing, which catches the common "renamed a file, forgot the reference" slip.
 
 English is the reference locale and the fallback for any missing key.
 
-## CI & session validation
+## Validation (free, no CI service)
 
-- `.github/workflows/ci.yml` runs `node tools/check.js` on every PR and on
-  pushes to `main`.
-- `.claude/hooks/session-start.sh` runs the same validator at the start of each
-  Claude Code on the web session (non-blocking).
+Validation runs through git hooks and the session hook — no GitHub Actions,
+no paid CI:
+
+- `.githooks/pre-push` runs `node tools/check.js` and **blocks the push** if it
+  fails. Enable per clone with `git config core.hooksPath .githooks` (bypass a
+  single push with `git push --no-verify`).
+- `.claude/hooks/session-start.sh` enables that hooks path and runs the
+  validator at the start of each Claude Code on the web session.
+- Or just run `node tools/check.js` manually anytime.
 
 ## Backend & deploy
 
