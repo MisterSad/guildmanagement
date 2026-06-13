@@ -43,6 +43,12 @@
     // Restaure depuis la session Supabase persistée (survit au rechargement
     // et à la fermeture d'onglet tant que le refresh token est valide).
     (async function restoreSession() {
+        // A guild leader arriving from the email-confirmation link is signed in
+        // but not yet provisioned (no guild/claims); provision before restoring
+        // so they land as R5, not as a member.
+        if (window.RAD_AUTH && window.RAD_AUTH.maybeProvision) {
+            try { await window.RAD_AUTH.maybeProvision(); } catch (_) {}
+        }
         var info = await window.RAD.sessionInfo();
         if (!info) return;
         var role = info.role === 'R5' ? 'admin' : 'member';

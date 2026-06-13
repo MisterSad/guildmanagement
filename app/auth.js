@@ -27,8 +27,25 @@
 
     window.RAD_AUTH = {
         isEmailLogin: function (s) { return enabled() && looksEmail(s); },
-        emailLogin: emailLogin
+        emailLogin: emailLogin,
+        maybeProvision: maybeProvision
     };
+
+    // Provision a confirmed-but-unprovisioned email R5 (e.g. arriving from the
+    // confirmation link) before app.js restores the session. Returns true if it
+    // provisioned. No-op when disabled, when there's no session, or when the
+    // session already carries a guild (R4/R5 shadow users always do post-v2).
+    async function maybeProvision() {
+        if (!enabled() || !db) return false;
+        var info = await window.RAD.sessionInfo();
+        if (!info || info.guildId) return false;
+        var u;
+        try { u = await db.auth.getUser(); } catch (_) { return false; }
+        var user = u && u.data && u.data.user;
+        if (!user || !user.email) return false; // only native email users
+        await ensureGuild();
+        return true;
+    }
 
     // ── Login ────────────────────────────────────────────────────────────────
     async function emailLogin(email, password) {
