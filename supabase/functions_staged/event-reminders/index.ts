@@ -195,10 +195,21 @@ function slotMessage(kind: string, label: string, offset: number, timeStr: strin
     };
   }
   if (kind === "calamity_round") {
+    // Calamity slots are always pre-battle reminders (seeds use offset 5).
+    // Use the actual offset so a future offset=0 reads "now", not "5 minutes".
+    if (offset === 0) {
+      return {
+        content: `⚔️ **Calamity Befalls: ${label}** starts now! @everyone`,
+        title: `⚔️ Calamity Befalls - ${label}`,
+        desc: `Calamity Befalls ${label} starts now. Join the battle!`,
+        color: 15548997,
+        agenda: `Log in and join the battle.`,
+      };
+    }
     return {
-      content: `⏰ **Calamity Befalls: ${label} ${inMin(offset || 5)}!** @everyone`,
+      content: `⏰ **Calamity Befalls: ${label} ${inMin(offset)}!** @everyone`,
       title: `⏰ Calamity Befalls - ${label} (Reminder)`,
-      desc: `Prepare your squads! Calamity Befalls ${label} starts in ${offset || 5} minutes.`,
+      desc: `Prepare your squads! Calamity Befalls ${label} starts in ${offset} minutes.`,
       color: 16750848,
       agenda: `Log in and prepare for the battle.`,
     };

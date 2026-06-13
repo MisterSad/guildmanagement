@@ -21,6 +21,10 @@ invisibles pour `supabase db push` et `functions deploy`.
     sidebar (`gm_brand_sub`), facultatif mais prêt côté RLS (`guild_self_read`).
   - Aucune autre requête ne change : le `guild_id` est posé par trigger à
     l'INSERT et filtré par RLS au SELECT.
+  - Déjà livré (commit de consolidation) : la suppression de session
+    d'historique est masquée pour les R4 (history.js), pour rester cohérente
+    avec les policies DELETE R5-only de `event_status`/`event_participants`.
+    Sans ce gate, un R4 obtiendrait une suppression partielle silencieuse.
 - [ ] **Staging** : projet Supabase secondaire provisionné via
   `supabase db push` (baseline + hardening) puis la migration staged ;
   secrets Vault + env recréés (cf. supabase/README.md).

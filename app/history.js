@@ -235,7 +235,12 @@
         var totalScore = sorted.reduce(function (s, r) { return s + (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0); }, 0);
         var doneCount  = sorted.reduce(function (s, r) { return s + (r.participated > 0 ? 1 : 0); }, 0);
 
-        var deleteBtnHtml = sessionId
+        // Suppression de session réservée au R5 (saas_strategy.md §6.3). Aligne
+        // l'UI sur la RLS multi-tenant (DELETE event_status/event_participants
+        // R5-only) : sans ce gate, un R4 obtiendrait une suppression partielle
+        // silencieuse (squads supprimés, participants/statut refusés).
+        var isR5 = sessionStorage.getItem('rad_role') === 'admin';
+        var deleteBtnHtml = (sessionId && isR5)
             ? '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' + t('delete_title') + '</span></button>'
             : '';
 
