@@ -460,7 +460,7 @@ Parcours cible (du clic « Start free trial » à la valeur) :
 4. **Invitation des R4** : génération des comptes (mécanisme existant, sécurisé cf. §6.2).
 5. **Checklist de démarrage** dans l'overview (3 items : membres importés, webhook testé, premier événement lancé), qui disparaît une fois complétée.
 
-- [ ] E-mails du cycle d'essai : bienvenue (J0), astuce (J3), rappel fin d'essai (J-3), dernier jour (J14). Prestataire : Resend/Postmark (free tier suffisant au début).
+- [ ] E-mails du cycle d'essai : bienvenue (J0), astuce (J3), rappel fin d'essai (J-3), dernier jour (J14). **Envoi via SMTP Proton** (jeton SMTP Business sur une adresse du domaine), `Reply-To` = `fgfguildmanagementtool@proton.me`. Voir `docs/email-setup.md`. Nécessite domaine + plan Proton Business ; alternative déléguée Resend/Postmark si besoin de templates avancés.
 
 ---
 
@@ -480,7 +480,7 @@ Parcours cible (du clic « Start free trial » à la valeur) :
 - [ ] Sentry (ou équivalent léger) sur le frontend + logs des fonctions Edge surveillés.
 - [ ] Uptime monitoring du domaine ; page de statut minimaliste (instatus/upptime gratuit).
 - [ ] **Backups** : PITR Supabase (plan Pro) + export hebdomadaire externe testé (une restauration vérifiée > dix sauvegardes supposées).
-- [ ] **Support** : e-mail support@ + **serveur Discord de support** (culturellement idéal pour la cible ; canal #announcements pour les maintenances). Docs : 8 à 10 articles courts avec captures (créer sa guilde, importer, webhook, horaires, comptes R4, facturation, export, suppression).
+- [ ] **Support** : e-mail `fgfguildmanagementtool@proton.me` (boîte Proton, réception immédiate, déjà en contact sur la landing/légal) + **serveur Discord de support** (culturellement idéal pour la cible ; canal #announcements pour les maintenances). Docs : 8 à 10 articles courts avec captures (créer sa guilde, importer, webhook, horaires, comptes R4, facturation, export, suppression).
 
 ---
 
