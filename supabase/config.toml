@@ -419,3 +419,8 @@ verify_jwt = false
 # HMAC itself. Staged until the multi-tenant + billing release.
 [functions.billing-webhook]
 verify_jwt = false
+
+# Transactional email via Resend. Called server-to-server; gated by an
+# x-email-secret header (EMAIL_FN_SECRET), not a Supabase JWT.
+[functions.send-email]
+verify_jwt = false

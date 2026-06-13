@@ -460,7 +460,7 @@ Parcours cible (du clic « Start free trial » à la valeur) :
 4. **Invitation des R4** : génération des comptes (mécanisme existant, sécurisé cf. §6.2).
 5. **Checklist de démarrage** dans l'overview (3 items : membres importés, webhook testé, premier événement lancé), qui disparaît une fois complétée.
 
-- [ ] E-mails du cycle d'essai : bienvenue (J0), astuce (J3), rappel fin d'essai (J-3), dernier jour (J14). **Envoi via SMTP Proton** (jeton SMTP Business sur une adresse du domaine), `Reply-To` = `fgfguildmanagementtool@proton.me`. Voir `docs/email-setup.md`. Nécessite domaine + plan Proton Business ; alternative déléguée Resend/Postmark si besoin de templates avancés.
+- [ ] E-mails du cycle d'essai : bienvenue (J0), astuce (J3), rappel fin d'essai (J-3), dernier jour (J14). **Prestataire retenu : Resend** (fonction Edge `send-email` livrée, gated par `x-email-secret`), `Reply-To` = `fgfguildmanagementtool@proton.me` (boîte support Proton). FROM de prod = domaine vérifié sur Resend ; SMTP Resend pour les e-mails Auth Supabase. Voir `docs/email-setup.md`.
 
 ---
 

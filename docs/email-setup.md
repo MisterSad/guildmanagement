@@ -10,7 +10,13 @@ Deux besoins distincts, deux mécanismes :
 | Besoin | Adresse | Mécanisme | Disponible |
 |--------|---------|-----------|------------|
 | **Réception / support / contact** | `fgfguildmanagementtool@proton.me` | Boîte Proton, lue à la main | **Maintenant** (aucune intégration) |
-| **Envoi applicatif** (confirmations, reset mot de passe, relances) | une adresse de **ton domaine** (ex. `noreply@tondomaine`) | SMTP Proton (jeton) → Supabase Auth + transactionnel | Quand domaine + plan Business existent |
+| **Envoi applicatif** (relances, bienvenue) | `noreply@tondomaine` (ou test Resend) | **Resend** (API) via la fonction `send-email`, `Reply-To` = Proton | Fonction prête ; FROM prod = domaine vérifié |
+| **E-mails Auth** (confirmation, reset R5) | idem | SMTP Resend dans Supabase Auth | À la mise en place du signup R5 |
+
+> **Décision** : l'envoi applicatif passe par **Resend** (et non le SMTP Proton,
+> qui aurait exigé un plan Business + domaine sur Proton). La boîte Proton reste
+> l'adresse de **support et de `Reply-To`** : les réponses des utilisateurs y
+> arrivent.
 
 ## Réception (fait)
 
@@ -18,37 +24,44 @@ Deux besoins distincts, deux mécanismes :
 (footer EN/FR) et la politique de confidentialité. Les réponses des utilisateurs
 y arrivent directement. Rien à configurer.
 
-## Envoi applicatif — la contrainte Proton
+## Envoi applicatif — Resend
 
-Proton **ne permet pas** d'envoyer du mail applicatif depuis une adresse
-`@proton.me` nue :
+La fonction Edge `supabase/functions/send-email/` envoie via l'**API Resend**.
+Elle est livrée mais **non déployée / non câblée** : il manque le secret et un
+expéditeur. Elle ne s'ouvre qu'aux appels serveur portant l'en-tête
+`x-email-secret`.
 
-- Le **jeton SMTP** Proton (la seule voie serveur) exige un **plan Proton for
-  Business** et doit être **associé à une adresse sur un domaine personnalisé**.
-- Proton **Bridge** enverrait depuis `@proton.me`, mais c'est une appli desktop
-  qui doit tourner en permanence → inutilisable pour un backend serverless.
+### Secrets à régler (Supabase → Edge Functions → Secrets)
 
-Donc l'envoi applicatif attend l'achat du domaine (cohérent avec le reste : prod
-+ Paddle aussi). En attendant, pour le **dev/test** du signup/reset, le SMTP
-intégré de Supabase suffit (rate-limité, non destiné à la prod).
+```
+RESEND_API_KEY   = re_…                      (clé Resend — NE PAS committer)
+EMAIL_FN_SECRET  = <chaîne aléatoire forte>   (protège l'endpoint)
+EMAIL_FROM       = Guild Management Tool <noreply@tondomaine>   (après vérif domaine)
+EMAIL_REPLY_TO   = fgfguildmanagementtool@proton.me            (défaut déjà en code)
+```
 
-## Activation (quand domaine + plan Business)
+> ⚠️ La clé fournie a transité par un canal de chat : **régénère-la** dans le
+> dashboard Resend après l'avoir posée comme secret.
 
-1. **Domaine sur Proton** : ajouter le domaine à Proton Mail (Business),
-   vérifier DNS (MX/SPF/DKIM/DMARC fournis par Proton). `fgfguildmanagementtool@proton.me`
-   peut rester l'adresse de support/reply ; le domaine sert à l'envoi.
-2. **Jeton SMTP** (proton.me/support/smtp-submission) : Settings → SMTP/IMAP →
-   générer un jeton, l'associer à une adresse du domaine (ex. `noreply@tondomaine`).
-   Noter l'hôte `smtp.protonmail.ch`, port `587` (STARTTLS), user = l'adresse,
-   pass = le jeton.
-3. **Supabase Auth → custom SMTP** (Dashboard → Authentication → SMTP) : renseigner
-   host/port/user/pass ci-dessus, sender = `noreply@tondomaine`, sender name =
-   « Guild Management Tool ». Cela couvre confirmation d'e-mail et reset de mot de
-   passe du R5 (P2/P6).
-4. **E-mails transactionnels** (relances essai/paiement — P6) : même SMTP via une
-   petite fonction Edge `send-email`, ou un fournisseur dédié (Resend/Postmark) si
-   on préfère des templates/déliverabilité avancés. `Reply-To` =
-   `fgfguildmanagementtool@proton.me` pour centraliser les réponses.
+### Étapes
+
+1. **Domaine Resend** : Resend → Domains → ajouter le domaine, publier les DNS
+   (SPF/DKIM/DMARC). Tant que ce n'est pas fait, on ne peut envoyer que depuis le
+   domaine de test `onboarding@resend.dev` (et uniquement vers l'e-mail du
+   propriétaire du compte) — suffisant pour un premier test.
+2. **Poser les secrets** ci-dessus, puis `supabase functions deploy send-email`.
+3. **Tester** :
+   ```sh
+   curl -X POST https://<projet>.supabase.co/functions/v1/send-email \
+     -H "x-email-secret: $EMAIL_FN_SECRET" -H "Content-Type: application/json" \
+     -d '{"to":"toi@exemple.com","subject":"Test","text":"Hello"}'
+   ```
+4. **E-mails Auth (R5)** : dans Supabase Auth → SMTP, renseigner le **SMTP
+   Resend** (`smtp.resend.com:465`, user `resend`, pass = `RESEND_API_KEY`,
+   sender = `EMAIL_FROM`). Cela couvre confirmation d'e-mail + reset de mot de
+   passe du R5 quand le signup sera en place.
+5. **Câblage** : les flux P6 (bienvenue, relance fin d'essai J-3, échec de
+   paiement) appelleront `send-email` (cron/edge), `Reply-To` = Proton.
 
 ## Notes
 
