@@ -414,3 +414,8 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.event-reminders]
 verify_jwt = false
+
+# Called by Paddle (no Supabase JWT); the function verifies the Paddle-Signature
+# HMAC itself. Staged until the multi-tenant + billing release.
+[functions.billing-webhook]
+verify_jwt = false

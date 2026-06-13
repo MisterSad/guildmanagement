@@ -393,7 +393,25 @@
         "reminders_requires_label": "Seulement quand cet événement est actif (optionnel)",
         "reminders_enabled": "Activé",
         "reminders_err_offsets": "Saisissez au moins un décalage valide (0–1440).",
-        "reminders_template_loaded": "Horaire par défaut chargé."
+        "reminders_template_loaded": "Horaire par défaut chargé.",
+        "card_subscription": "Abonnement",
+        "billing_not_ready": "Activé avec la mise à jour multi-tenant",
+        "billing_not_ready_hint": "Les abonnements seront disponibles une fois votre guilde migrée vers le backend multi-tenant.",
+        "billing_plan": "Formule",
+        "billing_per_month": "mois",
+        "billing_subscribe": "S’abonner",
+        "billing_manage": "Gérer l’abonnement",
+        "billing_not_configured": "La facturation n’est pas encore configurée (clés du prestataire manquantes). Ajoutez-les pour activer.",
+        "billing_paddle_load_failed": "Impossible d’ouvrir le paiement. Réessayez.",
+        "billing_trial_banner": "Essai gratuit : {n} jour(s) restant(s).",
+        "billing_past_due_banner": "Paiement échoué — mettez à jour votre moyen de paiement pour garder l’accès complet.",
+        "billing_readonly_banner": "Votre guilde est en lecture seule. Réactivez l’abonnement pour modifier.",
+        "billing_canceled_banner": "Abonnement annulé. Réactivez à tout moment pour reprendre.",
+        "billing_status_trialing": "Essai",
+        "billing_status_active": "Actif",
+        "billing_status_past_due": "Impayé",
+        "billing_status_read_only": "Lecture seule",
+        "billing_status_canceled": "Annulé"
     };
     if (window.RAD_I18N && window.RAD_I18N._onLocaleLoaded) window.RAD_I18N._onLocaleLoaded("fr");
 })();

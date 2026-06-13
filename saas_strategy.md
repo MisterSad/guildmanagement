@@ -327,9 +327,10 @@ i18n.js          ← moteur : registre + chargement + fallback + formats
 
 ### 8.2 Intégration technique
 
-- [ ] Fonction Edge `billing-webhook` : réception des événements du PSP (souscription créée, paiement échoué, annulation) et mise à jour de `guilds.subscription_status`.
-- [ ] Checkout hébergé par le PSP (pas de PCI scope côté app) ; portail client du PSP pour CB/factures/annulation.
-- [ ] Page « Abonnement » dans l'app (statut, échéance, lien portail).
+- [x] **Prestataire retenu : Paddle (Merchant of Record).** Intégration livrée mais inerte (placeholders config + table `guilds` staged), prête à brancher une fois le domaine + compte validés. Runbook : `docs/paddle-setup.md`.
+- [x] Fonction Edge `billing-webhook` (staged) : vérifie la signature Paddle (HMAC-SHA256 `ts:rawBody`, tolérance anti-rejeu) et met à jour `guilds.subscription_status` + `provider_*`/`management_url`/`trial_ends_at`.
+- [x] Checkout hébergé Paddle.js (overlay, `custom_data.guild_id`) ; portail client via `management_url` fourni par le webhook. Aucun scope PCI côté app.
+- [x] Page « Abonnement » dans l'app (`app/billing.js`) : statut, essai restant, bandeau impayé/lecture seule, bouton S’abonner/Gérer. Dégradation propre en prod (table `guilds` absente) et tant que Paddle non configuré.
 
 ### 8.3 Cycle de vie & gating
 

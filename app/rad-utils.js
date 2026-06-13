@@ -203,9 +203,9 @@
             p += '='.repeat((4 - p.length % 4) % 4);
             var claims = JSON.parse(decodeURIComponent(escape(atob(p))));
             var am = claims.app_metadata || {};
-            return { role: am.app_role || 'R4', accountId: am.account_id || null };
+            return { role: am.app_role || 'R4', accountId: am.account_id || null, guildId: am.guild_id || null };
         } catch (e) {
-            return { role: 'R4', accountId: null };
+            return { role: 'R4', accountId: null, guildId: null };
         }
     }
 

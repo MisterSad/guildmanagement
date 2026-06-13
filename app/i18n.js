@@ -28,7 +28,7 @@
     var STORAGE_KEY        = 'gmt_lang';
     var LEGACY_STORAGE_KEY = 'rad_lang';
     var DEFAULT_LANG       = 'en';
-    var LOCALE_VERSION     = '5'; // bump with locale file cache-busting
+    var LOCALE_VERSION     = '6'; // bump with locale file cache-busting
 
     function registry() {
         return window.GMT_LANGUAGES || [{ code: 'en', label: 'English', flag: '', intl: 'en-GB' }];

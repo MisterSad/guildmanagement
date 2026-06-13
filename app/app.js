@@ -123,6 +123,7 @@
             fetchAccounts();
             loadGuildSettings();
             if (window.RAD_REMINDERS) window.RAD_REMINDERS.load();
+            if (window.RAD_BILLING) window.RAD_BILLING.load();
         }
         // Default landing : Overview (R4 et R5)
         // Retry car gm-overview nav-tab est créé par shell.js après notre code.
@@ -166,6 +167,7 @@
                 fetchAccounts();
                 loadGuildSettings();
                 if (window.RAD_REMINDERS) window.RAD_REMINDERS.load();
+                if (window.RAD_BILLING) window.RAD_BILLING.load();
             }
             var eventName = tabBtn.getAttribute('data-event-tab');
             if (eventName && ['SvS', 'GvG', 'Defend Trade Route'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {

@@ -1,7 +1,9 @@
 # functions_staged : versions multi-tenant (NE PAS déployer seules)
 
-Ces trois fonctions sont les **v2 multi-tenant** de celles de `../functions/`.
-Elles supposent le schéma de `../migrations_staged/20990101000000_multitenant.sql`
+`auth-login`, `admin-accounts`, `event-reminders` sont les **v2 multi-tenant**
+de celles de `../functions/`. `billing-webhook` est **nouvelle** (Paddle,
+saas_strategy.md §8 — voir `../../docs/paddle-setup.md`). Toutes supposent le
+schéma de `../migrations_staged/20990101000000_multitenant.sql`
 (claim JWT `guild_id`, tables `guilds`/`notification_locks`/`guild_event_schedules`,
 RPC `gm_account_info` et signatures `gm_admin_*(p_guild_id, …)`).
 

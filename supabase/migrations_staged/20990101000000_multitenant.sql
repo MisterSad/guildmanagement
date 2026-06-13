@@ -34,6 +34,7 @@ create table public.guilds (
   trial_ends_at            timestamptz,
   provider_customer_id     text,
   provider_subscription_id text,
+  management_url           text,   -- Paddle customer portal link (set by billing-webhook)
   created_at               timestamptz not null default now()
 );
 

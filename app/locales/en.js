@@ -393,7 +393,25 @@
         "reminders_requires_label": "Only when this event is active (optional)",
         "reminders_enabled": "Enabled",
         "reminders_err_offsets": "Enter at least one valid offset (0–1440).",
-        "reminders_template_loaded": "Default schedule loaded."
+        "reminders_template_loaded": "Default schedule loaded.",
+        "card_subscription": "Subscription",
+        "billing_not_ready": "Activates with the multi-tenant update",
+        "billing_not_ready_hint": "Subscriptions become available once your guild is migrated to the multi-tenant backend.",
+        "billing_plan": "Plan",
+        "billing_per_month": "month",
+        "billing_subscribe": "Subscribe",
+        "billing_manage": "Manage subscription",
+        "billing_not_configured": "Billing is not configured yet (no payment provider keys). Add them to go live.",
+        "billing_paddle_load_failed": "Could not open checkout. Please try again.",
+        "billing_trial_banner": "Free trial: {n} day(s) left.",
+        "billing_past_due_banner": "Payment failed — please update your payment method to keep full access.",
+        "billing_readonly_banner": "Your guild is read-only. Reactivate your subscription to make changes.",
+        "billing_canceled_banner": "Subscription canceled. Reactivate any time to resume.",
+        "billing_status_trialing": "Trial",
+        "billing_status_active": "Active",
+        "billing_status_past_due": "Past due",
+        "billing_status_read_only": "Read-only",
+        "billing_status_canceled": "Canceled"
     };
     if (window.RAD_I18N && window.RAD_I18N._onLocaleLoaded) window.RAD_I18N._onLocaleLoaded("en");
 })();
