@@ -1,0 +1,19 @@
+name: CI
+
+# Validation for a no-build static site: JS syntax, i18n coverage, and that
+# every asset the HTML references actually exists. See tools/check.js.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Project checks (syntax, i18n, asset refs)
+        run: node tools/check.js
