@@ -366,6 +366,24 @@
             col_reason:            'Motif / Commentaire',
             confirm_delete_sanction_title: 'Supprimer la sanction',
             confirm_delete_sanction_body:  'Voulez-vous vraiment supprimer cette sanction ? Cette action est irréversible.',
+            
+            /* ── Discord Notifications Config ── */
+            label_discord_notifications_config: 'Configuration des Notifications Discord',
+            label_armsrace_notifications:    'Course aux armements',
+            label_dtr_notifications:         'Defend Trade Route',
+            label_shadowfront_notifications: 'Front de l\'ombre',
+            label_calamity_notifications:    'Calamity Befalls',
+            label_gvg_notifications:         'GvG Samedi',
+            label_svs_notifications:         'SvS PvP',
+            notify_30m:                      '30 min avant',
+            notify_15m:                      '15 min avant',
+            notify_5m:                       '5 min avant',
+            notify_start:                    'Début de l\'événement',
+            notify_calamity_reminder:        'Rappel 5 min (Rounds)',
+            notify_gvg_pvp_desc:             'Activer le jour PvP',
+            notify_svs_pvp_desc:             'Activer le jour PvP',
+            notify_svs_garrison_desc:        'Rappel de garnison',
+            notify_svs_won_prep_desc:        'Phase de prép. remportée',
         },
 
         en: {
@@ -727,6 +745,24 @@
             col_reason:            'Reason / Comment',
             confirm_delete_sanction_title: 'Delete sanction',
             confirm_delete_sanction_body:  'Do you really want to delete this sanction? This action is irreversible.',
+
+            /* ── Discord Notifications Config ── */
+            label_discord_notifications_config: 'Discord Notifications Configuration',
+            label_armsrace_notifications:    'Arms Race',
+            label_dtr_notifications:         'Defend Trade Route',
+            label_shadowfront_notifications: 'Shadowfront',
+            label_calamity_notifications:    'Calamity Befalls',
+            label_gvg_notifications:         'GvG Saturday',
+            label_svs_notifications:         'SvS PvP',
+            notify_30m:                      '30 min before',
+            notify_15m:                      '15 min before',
+            notify_5m:                       '5 min before',
+            notify_start:                    'Event Start',
+            notify_calamity_reminder:        '5 min reminder (Rounds)',
+            notify_gvg_pvp_desc:             'Enable PvP day',
+            notify_svs_pvp_desc:             'Enable PvP day',
+            notify_svs_garrison_desc:        'Garrison reminder',
+            notify_svs_won_prep_desc:        'Won prep phase',
         }
     };
 

@@ -1870,3 +1870,69 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     .list-row .list-pseudo { min-width: 100%; }
     .list-row .list-meta { width: 100%; }
 }
+
+/* ─── Discord Notification Settings Grid ─────────────────────────────────── */
+.notification-settings-section {
+    border-top: 1.5px dashed var(--border-soft);
+    margin-top: 1.75rem;
+    padding-top: 1.5rem;
+}
+.notification-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+.notification-group {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    transition: var(--transition);
+}
+.notification-group:hover {
+    border-color: rgba(99, 102, 241, 0.25);
+    background: rgba(255, 255, 255, 0.025);
+}
+.notification-group-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1.5px solid var(--border-soft);
+    padding-bottom: 0.5rem;
+}
+.notification-option {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    user-select: none;
+    transition: var(--transition);
+}
+.notification-option:hover {
+    color: white;
+}
+.notification-option input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 17px;
+    height: 17px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 0;
+}
+.notification-option input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+

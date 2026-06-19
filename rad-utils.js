@@ -311,7 +311,24 @@
         coeff_dtr: '2',
         coeff_armsrace: '1',
         reserve_credit_pct: '50',
-        discord_webhook_url: ''
+        discord_webhook_url: '',
+        notify_armsrace_reminder_30: 'true',
+        notify_armsrace_reminder_15: 'true',
+        notify_armsrace_reminder_5: 'true',
+        notify_armsrace_start: 'true',
+        notify_dtr_reminder_30: 'true',
+        notify_dtr_reminder_15: 'true',
+        notify_dtr_reminder_5: 'true',
+        notify_dtr_start: 'true',
+        notify_shadowfront_reminder_30: 'true',
+        notify_shadowfront_reminder_15: 'true',
+        notify_shadowfront_reminder_5: 'true',
+        notify_shadowfront_start: 'true',
+        notify_calamity_5: 'true',
+        notify_gvg_pvp: 'true',
+        notify_svs_garrison: 'true',
+        notify_svs_pvp: 'true',
+        notify_svs_won_prep: 'false'
     };
 
     async function getGuildConfig(key) {
@@ -324,7 +341,7 @@
             }
         }
         var local = localStorage.getItem('rad_config_' + key);
-        return local !== null ? local : (localConfigFallback[key] || '');
+        return local !== null ? local : (localConfigFallback[key] !== undefined ? localConfigFallback[key] : '');
     }
 
     async function setGuildConfig(key, value) {
@@ -343,6 +360,37 @@
     async function notifyDiscordEvent(eventName, startAt, action) {
         var webhookUrl = await getGuildConfig('discord_webhook_url');
         if (!webhookUrl || webhookUrl.trim() === '') return;
+
+        // Check if this type of notification is enabled
+        var eventPrefix = '';
+        if (eventName.indexOf('ARMS RACE') !== -1) {
+            eventPrefix = 'armsrace';
+        } else if (eventName === 'Defend Trade Route') {
+            eventPrefix = 'dtr';
+        } else if (eventName.indexOf('Shadowfront Squad') !== -1) {
+            eventPrefix = 'shadowfront';
+        }
+
+        if (eventPrefix) {
+            var configKey = 'notify_' + eventPrefix + '_';
+            if (action === 'start' || action === 'edit') {
+                configKey += 'start';
+            } else if (action === 'reminder_15') {
+                configKey += 'reminder_15';
+            } else if (action === 'reminder_5') {
+                configKey += 'reminder_5';
+            } else {
+                configKey = ''; // unknown/fallback
+            }
+
+            if (configKey) {
+                var isNotificationEnabled = await getGuildConfig(configKey);
+                if (isNotificationEnabled === 'false') {
+                    console.log('Discord notification for ' + eventName + ' (' + action + ') is disabled in configuration.');
+                    return;
+                }
+            }
+        }
 
         var allowedEvents = [
             'ARMS RACE STAGE A',

@@ -212,6 +212,132 @@
                                     <input type="url" id="discord-webhook-url" class="gm-input" placeholder="https://discord.com/api/webhooks/...">
                                 </div>
                             </div>
+                            
+                            <!-- Discord Notifications Config -->
+                            <div class="notification-settings-section">
+                                <label class="gm-dim" style="font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.25rem;" data-i18n="label_discord_notifications_config">
+                                    <i class="ph ph-bell-ringing" style="font-size: 1.1rem;"></i> Configuration des Notifications Discord
+                                </label>
+                                
+                                <div class="notification-grid">
+                                    <!-- Course aux Armements -->
+                                    <div class="notification-group">
+                                        <div class="notification-group-title">
+                                            <i class="ph ph-sword"></i>
+                                            <span data-i18n="label_armsrace_notifications">Course aux armements</span>
+                                        </div>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-armsrace-30" checked>
+                                            <span data-i18n="notify_30m">30 min avant</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-armsrace-15" checked>
+                                            <span data-i18n="notify_15m">15 min avant</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-armsrace-5" checked>
+                                            <span data-i18n="notify_5m">5 min avant</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-armsrace-start" checked>
+                                            <span data-i18n="notify_start">Début de l'événement</span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Defend Trade Route -->
+                                    <div class="notification-group">
+                                        <div class="notification-group-title">
+                                            <i class="ph ph-truck"></i>
+                                            <span data-i18n="label_dtr_notifications">Defend Trade Route</span>
+                                        </div>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-dtr-30" checked>
+                                            <span data-i18n="notify_30m">30 min avant</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-dtr-15" checked>
+                                            <span data-i18n="notify_15m">15 min avant</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-dtr-5" checked>
+                                            <span data-i18n="notify_5m">5 min avant</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-dtr-start" checked>
+                                            <span data-i18n="notify_start">Début de l'événement</span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Shadowfront -->
+                                    <div class="notification-group">
+                                        <div class="notification-group-title">
+                                            <i class="ph ph-users-four"></i>
+                                            <span data-i18n="label_shadowfront_notifications">Front de l'ombre</span>
+                                        </div>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-shadowfront-30" checked>
+                                            <span data-i18n="notify_30m">30 min avant</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-shadowfront-15" checked>
+                                            <span data-i18n="notify_15m">15 min avant</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-shadowfront-5" checked>
+                                            <span data-i18n="notify_5m">5 min avant</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-shadowfront-start" checked>
+                                            <span data-i18n="notify_start">Début de l'événement</span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Calamity Befalls -->
+                                    <div class="notification-group">
+                                        <div class="notification-group-title">
+                                            <i class="ph ph-skull"></i>
+                                            <span data-i18n="label_calamity_notifications">Calamity Befalls</span>
+                                        </div>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-calamity-5" checked>
+                                            <span data-i18n="notify_calamity_reminder">Rappel 5 min (Rounds)</span>
+                                        </label>
+                                    </div>
+
+                                    <!-- GvG Samedi -->
+                                    <div class="notification-group">
+                                        <div class="notification-group-title">
+                                            <i class="ph ph-flag"></i>
+                                            <span data-i18n="label_gvg_notifications">GvG Samedi</span>
+                                        </div>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-gvg-pvp" checked>
+                                            <span data-i18n="notify_gvg_pvp_desc">Activer le jour PvP</span>
+                                        </label>
+                                    </div>
+
+                                    <!-- SvS PvP -->
+                                    <div class="notification-group">
+                                        <div class="notification-group-title">
+                                            <i class="ph ph-shield-checkered"></i>
+                                            <span data-i18n="label_svs_notifications">SvS PvP</span>
+                                        </div>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-svs-pvp" checked>
+                                            <span data-i18n="notify_svs_pvp_desc">Activer le jour PvP</span>
+                                        </label>
+                                        <label class="notification-option">
+                                            <input type="checkbox" id="notify-svs-garrison" checked>
+                                            <span data-i18n="notify_svs_garrison_desc">Rappel de garnison</span>
+                                        </label>
+                                        <label class="notification-option" style="border-top: 1px dashed var(--border-soft); padding-top: 0.5rem; margin-top: 0.25rem;">
+                                            <input type="checkbox" id="notify-svs-won-prep">
+                                            <span data-i18n="notify_svs_won_prep_desc" style="font-weight: 500;">Phase de prép. remportée</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="gm-row" style="justify-content: flex-end;">
                                 <button type="submit" class="gm-btn gm-btn-primary">
                                     <i class="ph ph-floppy-disk"></i>

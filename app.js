@@ -281,6 +281,29 @@
         var reserveCreditPct = await window.RAD.config.get('reserve_credit_pct');
         var discordWebhook = await window.RAD.config.get('discord_webhook_url');
 
+        // Notification configs
+        var notifyArmsrace30 = await window.RAD.config.get('notify_armsrace_reminder_30');
+        var notifyArmsrace15 = await window.RAD.config.get('notify_armsrace_reminder_15');
+        var notifyArmsrace5 = await window.RAD.config.get('notify_armsrace_reminder_5');
+        var notifyArmsraceStart = await window.RAD.config.get('notify_armsrace_start');
+
+        var notifyDtr30 = await window.RAD.config.get('notify_dtr_reminder_30');
+        var notifyDtr15 = await window.RAD.config.get('notify_dtr_reminder_15');
+        var notifyDtr5 = await window.RAD.config.get('notify_dtr_reminder_5');
+        var notifyDtrStart = await window.RAD.config.get('notify_dtr_start');
+
+        var notifyShadowfront30 = await window.RAD.config.get('notify_shadowfront_reminder_30');
+        var notifyShadowfront15 = await window.RAD.config.get('notify_shadowfront_reminder_15');
+        var notifyShadowfront5 = await window.RAD.config.get('notify_shadowfront_reminder_5');
+        var notifyShadowfrontStart = await window.RAD.config.get('notify_shadowfront_start');
+
+        var notifyCalamity5 = await window.RAD.config.get('notify_calamity_5');
+        var notifyGvgPvp = await window.RAD.config.get('notify_gvg_pvp');
+        
+        var notifySvsGarrison = await window.RAD.config.get('notify_svs_garrison');
+        var notifySvsPvp = await window.RAD.config.get('notify_svs_pvp');
+        var notifySvsWonPrep = await window.RAD.config.get('notify_svs_won_prep');
+
         document.getElementById('coeff-svs').value = coeffSvs;
         document.getElementById('coeff-gvg').value = coeffGvg;
         document.getElementById('coeff-shadowfront').value = coeffShadowfront;
@@ -288,6 +311,38 @@
         document.getElementById('coeff-armsrace').value = coeffArmsrace;
         document.getElementById('reserve-credit-pct').value = reserveCreditPct;
         document.getElementById('discord-webhook-url').value = discordWebhook;
+
+        var setCheckedState = function (id, value, defaultValue) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (value === null || value === undefined || value === '') {
+                el.checked = defaultValue;
+            } else {
+                el.checked = (value === 'true' || value === '1');
+            }
+        };
+
+        setCheckedState('notify-armsrace-30', notifyArmsrace30, true);
+        setCheckedState('notify-armsrace-15', notifyArmsrace15, true);
+        setCheckedState('notify-armsrace-5', notifyArmsrace5, true);
+        setCheckedState('notify-armsrace-start', notifyArmsraceStart, true);
+
+        setCheckedState('notify-dtr-30', notifyDtr30, true);
+        setCheckedState('notify-dtr-15', notifyDtr15, true);
+        setCheckedState('notify-dtr-5', notifyDtr5, true);
+        setCheckedState('notify-dtr-start', notifyDtrStart, true);
+
+        setCheckedState('notify-shadowfront-30', notifyShadowfront30, true);
+        setCheckedState('notify-shadowfront-15', notifyShadowfront15, true);
+        setCheckedState('notify-shadowfront-5', notifyShadowfront5, true);
+        setCheckedState('notify-shadowfront-start', notifyShadowfrontStart, true);
+
+        setCheckedState('notify-calamity-5', notifyCalamity5, true);
+        setCheckedState('notify-gvg-pvp', notifyGvgPvp, true);
+
+        setCheckedState('notify-svs-garrison', notifySvsGarrison, true);
+        setCheckedState('notify-svs-pvp', notifySvsPvp, true);
+        setCheckedState('notify-svs-won-prep', notifySvsWonPrep, false);
     }
 
     var guildSettingsForm = document.getElementById('guild-settings-form');
@@ -309,7 +364,30 @@
                     window.RAD.config.set('coeff_dtr', document.getElementById('coeff-dtr').value),
                     window.RAD.config.set('coeff_armsrace', document.getElementById('coeff-armsrace').value),
                     window.RAD.config.set('reserve_credit_pct', document.getElementById('reserve-credit-pct').value),
-                    window.RAD.config.set('discord_webhook_url', document.getElementById('discord-webhook-url').value.trim())
+                    window.RAD.config.set('discord_webhook_url', document.getElementById('discord-webhook-url').value.trim()),
+
+                    // Notification Configs
+                    window.RAD.config.set('notify_armsrace_reminder_30', document.getElementById('notify-armsrace-30').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_armsrace_reminder_15', document.getElementById('notify-armsrace-15').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_armsrace_reminder_5', document.getElementById('notify-armsrace-5').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_armsrace_start', document.getElementById('notify-armsrace-start').checked ? 'true' : 'false'),
+
+                    window.RAD.config.set('notify_dtr_reminder_30', document.getElementById('notify-dtr-30').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_dtr_reminder_15', document.getElementById('notify-dtr-15').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_dtr_reminder_5', document.getElementById('notify-dtr-5').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_dtr_start', document.getElementById('notify-dtr-start').checked ? 'true' : 'false'),
+
+                    window.RAD.config.set('notify_shadowfront_reminder_30', document.getElementById('notify-shadowfront-30').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_shadowfront_reminder_15', document.getElementById('notify-shadowfront-15').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_shadowfront_reminder_5', document.getElementById('notify-shadowfront-5').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_shadowfront_start', document.getElementById('notify-shadowfront-start').checked ? 'true' : 'false'),
+
+                    window.RAD.config.set('notify_calamity_5', document.getElementById('notify-calamity-5').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_gvg_pvp', document.getElementById('notify-gvg-pvp').checked ? 'true' : 'false'),
+
+                    window.RAD.config.set('notify_svs_garrison', document.getElementById('notify-svs-garrison').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_svs_pvp', document.getElementById('notify-svs-pvp').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_svs_won_prep', document.getElementById('notify-svs-won-prep').checked ? 'true' : 'false')
                 ]);
                 
                 showToast(t('toast_config_updated'), 'success');

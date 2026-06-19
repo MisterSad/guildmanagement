@@ -211,6 +211,25 @@ serve(async (req) => {
       }
 
       if (trigger) {
+        // Check configuration toggle
+        let eventPrefix = '';
+        if (event.event_name.startsWith('ARMS RACE')) {
+          eventPrefix = 'armsrace';
+        } else if (event.event_name === 'Defend Trade Route') {
+          eventPrefix = 'dtr';
+        } else if (event.event_name.startsWith('Shadowfront Squad')) {
+          eventPrefix = 'shadowfront';
+        }
+
+        if (eventPrefix) {
+          const configKey = `notify_${eventPrefix}_${reminderType}`;
+          const isNotificationEnabled = config[configKey] === undefined || config[configKey] === 'true';
+          if (!isNotificationEnabled) {
+            console.log(`Notification for ${event.event_name} (${reminderType}) is disabled in configuration, skipping.`);
+            continue;
+          }
+        }
+
         const lockKey = `sent_event_${event.event_name.replace(/\s+/g, '_')}_${event.session_id}_${reminderType}`;
 
         // Fast-path memory check
@@ -316,12 +335,14 @@ serve(async (req) => {
     const gvgEvent = (events || []).find(e => e.event_name === 'GvG');
     const isGvgActive = gvgEvent && getWeekStart(gvgEvent.start_at || gvgEvent.session_id) === getWeekStart(now);
     if (isGvgActive) {
-      const dateUtc = new Date(now);
-      const curDay = dateUtc.getUTCDay();
-      const curHour = dateUtc.getUTCHours();
-      const curMin = dateUtc.getUTCMinutes();
+      const isGvgPvpEnabled = config['notify_gvg_pvp'] === undefined || config['notify_gvg_pvp'] === 'true';
+      if (isGvgPvpEnabled) {
+        const dateUtc = new Date(now);
+        const curDay = dateUtc.getUTCDay();
+        const curHour = dateUtc.getUTCHours();
+        const curMin = dateUtc.getUTCMinutes();
 
-      const GVG_SCHEDULE = [
+        const GVG_SCHEDULE = [
         { day: 6, hour: 0, minute: 0, targetHour: 0, targetMinute: 0, label: 'War Prism', type: 'now' },
         { day: 6, hour: 1, minute: 0, targetHour: 1, targetMinute: 0, label: 'War Prism', type: 'now' },
         { day: 6, hour: 10, minute: 0, targetHour: 10, targetMinute: 0, label: 'War Fortress', type: 'now' },
@@ -447,6 +468,7 @@ serve(async (req) => {
             .eq('key', lockKey);
         }
       }
+      }
     }
 
     // 4. SvS notifications and reminders
@@ -476,6 +498,21 @@ serve(async (req) => {
       });
 
       for (const slot of matchingSlots) {
+        // Check configuration toggle
+        if (slot.type === 'garrison') {
+          const isGarrisonEnabled = config['notify_svs_garrison'] === undefined || config['notify_svs_garrison'] === 'true';
+          if (!isGarrisonEnabled) {
+            console.log(`SvS Garrison Reminder is disabled in configuration, skipping.`);
+            continue;
+          }
+        } else {
+          const isSvsPvpEnabled = config['notify_svs_pvp'] === undefined || config['notify_svs_pvp'] === 'true';
+          if (!isSvsPvpEnabled) {
+            console.log(`SvS PvP Day notification (${slot.type}) is disabled in configuration, skipping.`);
+            continue;
+          }
+        }
+
         const slotDate = getSlotDateString(now, slot.day);
         const lockKey = `sent_svs_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
 
@@ -514,31 +551,60 @@ serve(async (req) => {
             ];
           } else {
             const timeStr = '14:00 UTC';
+            const wonPrep = config['notify_svs_won_prep'] === 'true';
             
             if (slot.type === 'reminder_30') {
-              content = `⏰ **SvS: Battle starts in 30 minutes!** @everyone`;
-              embedTitle = `⏰ SvS: Starts in 30 minutes`;
-              embedDesc = `The SvS battle will begin shortly. Prepare yourself!`;
+              if (wonPrep) {
+                content = `⏰ **SvS: Invasion starts in 30 minutes! Prepare to attack!** @everyone`;
+                embedTitle = `⏰ SvS: Invasion starts in 30 minutes`;
+                embedDesc = `We won the preparation! We are invading the enemy server. Attack is authorized, but remember: DO NOT attack cargo ships (forbidden)! All other targets are permitted.`;
+                agenda = `Log in and prepare your attack fleets. Save your drones for the main battle at 14:00 UTC (don't lose them early)!`;
+              } else {
+                content = `⏰ **SvS: Defense starts in 30 minutes! Protect yourself and prepare to defend the Blackhole!** @everyone`;
+                embedTitle = `⏰ SvS: Defense starts in 30 minutes`;
+                embedDesc = `We are being invaded. Please put all your ships in garrison now. If garrison is not possible, UNEQUIP your drones to avoid losing them in attacks!`;
+                agenda = `Garrison ships, unequip drones if needed, and log in to prepare for the Blackhole defense starting at 14:00 UTC.`;
+              }
               color = 16750848;
-              agenda = `Connection recommended soon for preparation.`;
             } else if (slot.type === 'reminder_15') {
-              content = `⏰ **SvS: Battle starts in 15 minutes!** @everyone`;
-              embedTitle = `⏰ SvS: Starts in 15 minutes`;
-              embedDesc = `Soldiers, prepare your lines. Connection highly recommended.`;
+              if (wonPrep) {
+                content = `⏰ **SvS: Invasion starts in 15 minutes! Get ready to attack!** @everyone`;
+                embedTitle = `⏰ SvS: Invasion starts in 15 minutes`;
+                embedDesc = `Soldiers, get ready to cross the portal. Remember: Cargo attacks are strictly FORBIDDEN. All other targets are open game. Avoid wasting drones before 14:00 UTC!`;
+                agenda = `Cross-check attack fleets. Conserve your drones for the main clash at 14:00 UTC.`;
+              } else {
+                content = `⏰ **SvS: Defense starts in 15 minutes! Put ships in garrison / unequip drones!** @everyone`;
+                embedTitle = `⏰ SvS: Defense starts in 15 minutes`;
+                embedDesc = `Urgent reminder: Secure your fleets! Put ships in garrison, or unequip your drones immediately if they are out in the open.`;
+                agenda = `Double check your garrison/drone status and get ready to defend the Blackhole.`;
+              }
               color = 16750848;
-              agenda = `Prepare your fleets and log in.`;
             } else if (slot.type === 'reminder_5') {
-              content = `🚨 **SvS: Battle starts in 5 minutes!** @everyone`;
-              embedTitle = `🚨 SvS: Starts in 5 minutes!`;
-              embedDesc = `Battle imminent! Join your squads!`;
+              if (wonPrep) {
+                content = `🚨 **SvS: Invasion starts in 5 minutes! Join attack squads!** @everyone`;
+                embedTitle = `🚨 SvS: Invasion starts in 5 minutes!`;
+                embedDesc = `Portal opens in 5 minutes! Ready to jump and attack. Keep drones safe until the main battle, and remember cargo ships are off-limits!`;
+                agenda = `Join your squads and prepare to jump to the enemy server.`;
+              } else {
+                content = `🚨 **SvS: Defense starts in 5 minutes! Ready your squads!** @everyone`;
+                embedTitle = `🚨 SvS: Defense starts in 5 minutes!`;
+                embedDesc = `Invasion is imminent. Make sure your home assets are safe (garrison/unequip drones) and join defense squads!`;
+                agenda = `Join defense squads now. Guard the Blackhole!`;
+              }
               color = 15548997;
-              agenda = `Join squads and be ready for combat.`;
             } else if (slot.type === 'battle_start') {
-              content = `⚔️ **SvS: Battle has started!** Time to fight! @everyone`;
-              embedTitle = `⚔️ SvS: Battle has started!`;
-              embedDesc = `The SvS battle begins now! To the attack!`;
+              if (wonPrep) {
+                content = `⚔️ **SvS: Invasion has started! Go attack!** @everyone`;
+                embedTitle = `⚔️ SvS: Invasion has started!`;
+                embedDesc = `The invasion portal is open! Jump to the enemy server and conquer. Attacks on cargos are FORBIDDEN; all other targets are allowed. Save your drones for key clashes!`;
+                agenda = `Invade and destroy the enemy! Good luck!`;
+              } else {
+                content = `⚔️ **SvS: Blackhole Defense has started! Protect the server!** @everyone`;
+                embedTitle = `⚔️ SvS: Defense has started!`;
+                embedDesc = `Enemy forces are entering our server! Defend the Blackhole at all costs. Ensure no ships are exposed without garrison unless actively fighting.`;
+                agenda = `Defend the Blackhole! Repel the invaders!`;
+              }
               color = 15548997;
-              agenda = `To the attack! Good luck to everyone.`;
             }
 
             fields = [
@@ -623,6 +689,13 @@ serve(async (req) => {
       });
 
       for (const slot of matchingSlots) {
+        // Check configuration toggle
+        const isCalamityEnabled = config['notify_calamity_5'] === undefined || config['notify_calamity_5'] === 'true';
+        if (!isCalamityEnabled) {
+          console.log(`Calamity Befalls Round reminders are disabled in configuration, skipping.`);
+          continue;
+        }
+
         const slotDate = getSlotDateString(now, slot.day);
         const lockKey = `sent_calamity_round_${slot.round}_${slotDate}`;
 
