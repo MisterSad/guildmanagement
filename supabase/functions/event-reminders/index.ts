@@ -484,7 +484,6 @@ serve(async (req) => {
         { day: 5, hour: 20, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
         { day: 5, hour: 21, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
         { day: 5, hour: 22, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
-        { day: 5, hour: 23, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
 
         { day: 6, hour: 13, minute: 30, label: 'Battle Reminder 30m', type: 'reminder_30' },
         { day: 6, hour: 13, minute: 45, label: 'Battle Reminder 15m', type: 'reminder_15' },
