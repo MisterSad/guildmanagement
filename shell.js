@@ -182,10 +182,10 @@
     }
 
     function getUserName() {
-        return sessionStorage.getItem('rad_user') || 'Membre';
+        return localStorage.getItem('rad_user') || 'Membre';
     }
     function getUserRole() {
-        return sessionStorage.getItem('rad_role') === 'admin' ? 'R5' : 'R4';
+        return localStorage.getItem('rad_role') === 'admin' ? 'R5' : 'R4';
     }
     function getUserRoleLong() {
         var r = getUserRole();

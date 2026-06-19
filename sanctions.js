@@ -97,7 +97,7 @@
                 var res = await db.from('sanctions').insert([{
                     pseudo: pseudo,
                     comment: comment,
-                    created_by: sessionStorage.getItem('rad_user') || 'Admin'
+                    created_by: localStorage.getItem('rad_user') || 'Admin'
                 }]).select();
 
                 if (res.error) throw res.error;

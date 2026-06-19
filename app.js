@@ -52,12 +52,33 @@
     // Restaure depuis la session Supabase persistée (survit au rechargement
     // et à la fermeture d'onglet tant que le refresh token est valide).
     (async function restoreSession() {
+        var localRole = localStorage.getItem('rad_role');
+        var localUser = localStorage.getItem('rad_user');
+
+        // Restauration synchrone immédiate pour éviter le flash de l'écran de connexion
+        if (localRole) {
+            showAdminDashboard(localRole);
+        }
+
         var info = await window.RAD.sessionInfo();
-        if (!info) return;
+        if (!info) {
+            // Si pas de session valide Supabase mais qu'on avait des infos locales, on force la déconnexion
+            if (localRole || localUser) {
+                doLogout();
+            }
+            return;
+        }
+
         var role = info.role === 'R5' ? 'admin' : 'member';
-        sessionStorage.setItem('rad_role', role);
-        if (info.accountId) sessionStorage.setItem('rad_user', info.accountId);
-        showAdminDashboard(role);
+        localStorage.setItem('rad_role', role);
+        if (info.accountId) {
+            localStorage.setItem('rad_user', info.accountId);
+        }
+
+        // Si le rôle/user a changé ou si le dashboard n'était pas affiché
+        if (!localRole || localRole !== role || localUser !== info.accountId) {
+            showAdminDashboard(role);
+        }
     })();
 
     // ─── Auth ─────────────────────────────────────────────────────────────────
@@ -79,8 +100,8 @@
                 document.getElementById('password').value = '';
 
                 var role = (resp.role === 'R5') ? 'admin' : 'member';
-                sessionStorage.setItem('rad_role', role);
-                sessionStorage.setItem('rad_user', user);
+                localStorage.setItem('rad_role', role);
+                localStorage.setItem('rad_user', user);
 
                 showAdminDashboard(role);
                 showToast(role === 'admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
@@ -104,15 +125,15 @@
 
     function doLogout() {
         window.RAD.logout();
-        sessionStorage.removeItem('rad_role');
-        sessionStorage.removeItem('rad_user');
+        localStorage.removeItem('rad_role');
+        localStorage.removeItem('rad_user');
         showLogin();
         showToast(t('toast_logout'), 'info');
     }
 
     // ─── View Switching ───────────────────────────────────────────────────────
     function showAdminDashboard(role) {
-        role = role || sessionStorage.getItem('rad_role');
+        role = role || localStorage.getItem('rad_role');
         loginView.classList.add('hidden');
         if (memberView) memberView.classList.add('hidden');
         dashboardView.classList.remove('hidden');
@@ -124,11 +145,11 @@
 
         if (role === 'member') {
             if (roleLabel) roleLabel.textContent = 'R4 :';
-            if (nameLabel) nameLabel.textContent = sessionStorage.getItem('rad_user') || 'Officier';
+            if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Officier';
             if (adminHomeBtn) adminHomeBtn.style.display = 'none';
         } else {
             if (roleLabel) roleLabel.textContent = 'R5 :';
-            if (nameLabel) nameLabel.textContent = sessionStorage.getItem('rad_user') || 'Admin';
+            if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Admin';
             fetchAccounts();
             loadGuildSettings();
         }
