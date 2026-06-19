@@ -475,52 +475,81 @@ serve(async (req) => {
     const svsEvent = (events || []).find(e => e.event_name === 'SvS');
     const isSvsActive = svsEvent && getWeekStart(svsEvent.start_at || svsEvent.session_id) === getWeekStart(now);
     if (isSvsActive) {
-      const isSvsPvpEnabled = config['notify_svs_pvp'] === undefined || config['notify_svs_pvp'] === 'true';
-      if (isSvsPvpEnabled) {
-        const dateUtc = new Date(now);
-        const curDay = dateUtc.getUTCDay();
-        const curHour = dateUtc.getUTCHours();
-        const curMin = dateUtc.getUTCMinutes();
+      const dateUtc = new Date(now);
+      const curDay = dateUtc.getUTCDay();
+      const curHour = dateUtc.getUTCHours();
+      const curMin = dateUtc.getUTCMinutes();
 
-        const SVS_SCHEDULE = [
-          { day: 6, hour: 13, minute: 30, label: 'Battle Reminder 30m', type: 'reminder_30' },
-          { day: 6, hour: 13, minute: 45, label: 'Battle Reminder 15m', type: 'reminder_15' },
-          { day: 6, hour: 13, minute: 55, label: 'Battle Reminder 5m', type: 'reminder_5' },
-          { day: 6, hour: 14, minute: 0, label: 'Battle Start', type: 'battle_start' }
-        ];
+      const SVS_SCHEDULE = [
+        { day: 5, hour: 20, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
+        { day: 5, hour: 21, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
+        { day: 5, hour: 22, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
+        { day: 5, hour: 23, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
 
-        const matchingSlots = SVS_SCHEDULE.filter(slot => {
-          const diff = getMinutesDiff(curDay, curHour, curMin, slot.day, slot.hour, slot.minute);
-          return diff >= 0 && diff <= 10;
-        });
+        { day: 6, hour: 13, minute: 30, label: 'Battle Reminder 30m', type: 'reminder_30' },
+        { day: 6, hour: 13, minute: 45, label: 'Battle Reminder 15m', type: 'reminder_15' },
+        { day: 6, hour: 13, minute: 55, label: 'Battle Reminder 5m', type: 'reminder_5' },
+        { day: 6, hour: 14, minute: 0, label: 'Battle Start', type: 'battle_start' }
+      ];
 
-        for (const slot of matchingSlots) {
-          const slotDate = getSlotDateString(now, slot.day);
-          const lockKey = `sent_svs_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
+      const matchingSlots = SVS_SCHEDULE.filter(slot => {
+        const diff = getMinutesDiff(curDay, curHour, curMin, slot.day, slot.hour, slot.minute);
+        return diff >= 0 && diff <= 10;
+      });
 
-          // Fast-path memory check
-          if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+      for (const slot of matchingSlots) {
+        // Check configuration toggle
+        if (slot.type === 'garrison') {
+          const isGarrisonEnabled = config['notify_svs_garrison'] === undefined || config['notify_svs_garrison'] === 'true';
+          if (!isGarrisonEnabled) {
+            console.log(`SvS Garrison Reminder is disabled in configuration, skipping.`);
             continue;
           }
-
-          // Acquire lock
-          const { error: lockErr } = await supabase
-            .from('guild_config')
-            .insert({ key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
-
-          if (lockErr) {
-            console.log(`Lock already exists (DB insert failed) for SvS ${slot.label} (${slot.type}), skipping`);
+        } else {
+          const isSvsPvpEnabled = config['notify_svs_pvp'] === undefined || config['notify_svs_pvp'] === 'true';
+          if (!isSvsPvpEnabled) {
+            console.log(`SvS PvP Day notification (${slot.type}) is disabled in configuration, skipping.`);
             continue;
           }
+        }
 
-          try {
-            let content = '';
-            let embedTitle = '';
-            let embedDesc = '';
-            let color = 5763719;
-            let agenda = '';
-            let fields: any[] = [];
+        const slotDate = getSlotDateString(now, slot.day);
+        const lockKey = `sent_svs_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
 
+        // Fast-path memory check
+        if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+          continue;
+        }
+
+        // Acquire lock
+        const { error: lockErr } = await supabase
+          .from('guild_config')
+          .insert({ key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+
+        if (lockErr) {
+          console.log(`Lock already exists (DB insert failed) for SvS ${slot.label} (${slot.type}), skipping`);
+          continue;
+        }
+
+        try {
+          let content = '';
+          let embedTitle = '';
+          let embedDesc = '';
+          let color = 5763719;
+          let agenda = '';
+          let fields: any[] = [];
+
+          if (slot.type === 'garrison') {
+            content = `🛡️ **SvS: Garrison Reminder** - Don't forget to put your ships in garrison to avoid being attacked while offline! @everyone`;
+            embedTitle = `🛡️ SvS: Garrison Reminder`;
+            embedDesc = `Protect your ships before going offline.`;
+            color = 3447003;
+            agenda = `Put your ships in garrison.`;
+            fields = [
+              { name: 'Time (UTC)', value: `${String(curHour).padStart(2, '0')}:00 UTC`, inline: true },
+              { name: 'Guild Agenda', value: agenda, inline: false }
+            ];
+          } else {
             const timeStr = '14:00 UTC';
             const wonPrep = config['notify_svs_won_prep'] === 'true';
             
@@ -625,7 +654,6 @@ serve(async (req) => {
             .delete()
             .eq('key', lockKey);
         }
-      }
       }
     }
 

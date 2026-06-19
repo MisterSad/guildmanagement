@@ -382,6 +382,7 @@
             notify_calamity_reminder:        'Rappel 5 min (Rounds)',
             notify_gvg_pvp_desc:             'Activer le jour PvP',
             notify_svs_pvp_desc:             'Activer le jour PvP',
+            notify_svs_garrison_desc:        'Rappel de garnison',
             notify_svs_won_prep_desc:        'Phase de prép. remportée',
         },
 
@@ -760,6 +761,7 @@
             notify_calamity_reminder:        '5 min reminder (Rounds)',
             notify_gvg_pvp_desc:             'Enable PvP day',
             notify_svs_pvp_desc:             'Enable PvP day',
+            notify_svs_garrison_desc:        'Garrison reminder',
             notify_svs_won_prep_desc:        'Won prep phase',
         }
     };
