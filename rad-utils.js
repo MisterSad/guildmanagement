@@ -326,7 +326,6 @@
         notify_shadowfront_start: 'true',
         notify_calamity_5: 'true',
         notify_gvg_pvp: 'true',
-        notify_svs_garrison: 'true',
         notify_svs_pvp: 'true',
         notify_svs_won_prep: 'false'
     };

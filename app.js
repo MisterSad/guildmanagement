@@ -300,7 +300,6 @@
         var notifyCalamity5 = await window.RAD.config.get('notify_calamity_5');
         var notifyGvgPvp = await window.RAD.config.get('notify_gvg_pvp');
         
-        var notifySvsGarrison = await window.RAD.config.get('notify_svs_garrison');
         var notifySvsPvp = await window.RAD.config.get('notify_svs_pvp');
         var notifySvsWonPrep = await window.RAD.config.get('notify_svs_won_prep');
 
@@ -340,7 +339,6 @@
         setCheckedState('notify-calamity-5', notifyCalamity5, true);
         setCheckedState('notify-gvg-pvp', notifyGvgPvp, true);
 
-        setCheckedState('notify-svs-garrison', notifySvsGarrison, true);
         setCheckedState('notify-svs-pvp', notifySvsPvp, true);
         setCheckedState('notify-svs-won-prep', notifySvsWonPrep, false);
     }
@@ -385,7 +383,6 @@
                     window.RAD.config.set('notify_calamity_5', document.getElementById('notify-calamity-5').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_gvg_pvp', document.getElementById('notify-gvg-pvp').checked ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_svs_garrison', document.getElementById('notify-svs-garrison').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_svs_pvp', document.getElementById('notify-svs-pvp').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_svs_won_prep', document.getElementById('notify-svs-won-prep').checked ? 'true' : 'false')
                 ]);
