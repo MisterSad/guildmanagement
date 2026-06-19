@@ -485,6 +485,9 @@ serve(async (req) => {
         { day: 5, hour: 21, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
         { day: 5, hour: 22, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
 
+        { day: 5, hour: 23, minute: 55, label: 'Portal Reminder 5m', type: 'portal_5' },
+        { day: 6, hour: 0, minute: 0, label: 'Portal Open', type: 'portal_open' },
+
         { day: 6, hour: 13, minute: 30, label: 'Battle Reminder 30m', type: 'reminder_30' },
         { day: 6, hour: 13, minute: 45, label: 'Battle Reminder 15m', type: 'reminder_15' },
         { day: 6, hour: 13, minute: 55, label: 'Battle Reminder 5m', type: 'reminder_5' },
@@ -498,7 +501,14 @@ serve(async (req) => {
 
       for (const slot of matchingSlots) {
         // Check configuration toggle
-        if (slot.type === 'garrison') {
+        const wonPrep = config['notify_svs_won_prep'] === 'true';
+        if (slot.type === 'portal_5' || slot.type === 'portal_open') {
+          const isSvsPvpEnabled = config['notify_svs_pvp'] === undefined || config['notify_svs_pvp'] === 'true';
+          if (!isSvsPvpEnabled || !wonPrep) {
+            console.log(`SvS Portal notification (${slot.type}) skipped (PvP disabled or prep phase not won).`);
+            continue;
+          }
+        } else if (slot.type === 'garrison') {
           const isGarrisonEnabled = config['notify_svs_garrison'] === undefined || config['notify_svs_garrison'] === 'true';
           if (!isGarrisonEnabled) {
             console.log(`SvS Garrison Reminder is disabled in configuration, skipping.`);
@@ -549,10 +559,25 @@ serve(async (req) => {
               { name: 'Guild Agenda', value: agenda, inline: false }
             ];
           } else {
-            const timeStr = '14:00 UTC';
+            let timeStr = '14:00 UTC';
+            if (slot.type === 'portal_5' || slot.type === 'portal_open') {
+              timeStr = '00:00 UTC';
+            }
             const wonPrep = config['notify_svs_won_prep'] === 'true';
             
-            if (slot.type === 'reminder_30') {
+            if (slot.type === 'portal_5') {
+              content = `⏰ **SvS: Invasion Portal opens in 5 minutes! Prepare to cross!** @everyone`;
+              embedTitle = `⏰ SvS: Invasion Portal (5m Reminder)`;
+              embedDesc = `The portal to the enemy server will open in 5 minutes. Get ready to jump!`;
+              color = 16750848;
+              agenda = `Prepare your fleets. Reminder: cargo attacks are forbidden!`;
+            } else if (slot.type === 'portal_open') {
+              content = `⚔️ **SvS: Invasion Portal is Open! Attack!** @everyone`;
+              embedTitle = `⚔️ SvS: Invasion Portal Open!`;
+              embedDesc = `The portal to the enemy server is now open. Time to jump and attack target players! Reminder: cargo ships are strictly off-limits!`;
+              color = 15548997;
+              agenda = `Jump to the enemy server and conquer!`;
+            } else if (slot.type === 'reminder_30') {
               if (wonPrep) {
                 content = `⏰ **SvS: Invasion starts in 30 minutes! Prepare to attack!** @everyone`;
                 embedTitle = `⏰ SvS: Invasion starts in 30 minutes`;
