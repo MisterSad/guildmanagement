@@ -636,28 +636,34 @@
         }
 
         var html = '<div class="gm-member-list">';
+        var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
+        var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
+        var uidPrefix = t('banned_uid_prefix');
+        var reasonLabel = t('banned_reason_label');
+        var byLabel = t('banned_by_label');
+        var onLabel = t('banned_on_label');
+        var fallbackName = t('banned_fallback_name');
+
         filtered.forEach(function (bp) {
             var dateStr = bp.created_at
-                ? new Date(bp.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                ? new Date(bp.created_at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                 : '—';
             var pseudoVal = bp.pseudo || '—';
             var reasonVal = bp.reason || '—';
             var author = bp.created_by || '—';
-            var initial = window.RAD.avatarInit(pseudoVal !== '—' ? pseudoVal : 'Banned');
+            var initial = window.RAD.avatarInit(pseudoVal !== '—' ? pseudoVal : fallbackName);
             
             html += '<div class="gm-member-row" data-uid="' + esc(bp.uid) + '">' +
                 '<div class="gm-member-id">' +
                     '<div class="gm-avatar" style="background: var(--danger-soft); color: var(--danger); border-color: var(--danger-soft);">' + esc(initial) + '</div>' +
                     '<div class="gm-grow gm-truncate">' +
-                        '<div class="gm-member-pseudo gm-truncate" style="color: var(--danger); font-weight: 600;">' + esc(pseudoVal) + '</div>' +
-                        '<div class="gm-row" style="gap:.5rem; margin-top:2px;">' +
-                            '<span class="gm-dim gm-mono" style="font-size:.78rem;">UID ' + esc(bp.uid) + '</span>' +
-                        '</div>' +
+                        '<div class="gm-mono gm-truncate" style="color: var(--danger); font-weight: 700; font-size: 1.25rem;">' + esc(uidPrefix) + ' ' + esc(bp.uid) + '</div>' +
+                        '<div class="gm-member-pseudo gm-dim gm-truncate" style="font-weight: 500; font-size: 0.85rem; margin-top: 2px;">' + esc(pseudoVal) + '</div>' +
                     '</div>' +
                 '</div>' +
                 '<div class="gm-col gm-dim" style="gap:.2rem; font-size:.8rem; flex: 1.5; min-width: 150px;">' +
-                    '<span><strong>Raison:</strong> ' + esc(reasonVal) + '</span>' +
-                    '<span>Par <strong>' + esc(author) + '</strong> le ' + dateStr + '</span>' +
+                    '<span><strong>' + esc(reasonLabel) + '</strong> ' + esc(reasonVal) + '</span>' +
+                    '<span>' + esc(byLabel) + ' <strong>' + esc(author) + '</strong> ' + esc(onLabel) + ' ' + dateStr + '</span>' +
                 '</div>' +
                 '<div class="gm-member-actions">' +
                     '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm banned-delete-btn" data-uid="' + esc(bp.uid) + '" title="' + t('delete_title') + '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
@@ -854,9 +860,11 @@
     }
 
     function memberTileHtml(m, i, withActions) {
+        var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
+        var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
         var uidVal = m.uid || '—';
         var dateStr = m.created_at
-            ? new Date(m.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' })
+            ? new Date(m.created_at).toLocaleDateString(locale, { day:'2-digit', month:'2-digit', year:'numeric' })
             : '—';
         var initial = window.RAD.avatarInit(m.pseudo);
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
@@ -987,6 +995,15 @@
             setTimeout(function () { toast.remove(); }, 300);
         }, 3500);
     }
+
+    window.addEventListener('rad-lang-change', function () {
+        if (bannedListContainer && bannedPlayers.length > 0) {
+            renderBannedPlayers();
+        }
+        if (guildMembers.length > 0) {
+            renderGuildMembers();
+        }
+    });
 
     window.RAD_APP = { showToast: showToast };
 

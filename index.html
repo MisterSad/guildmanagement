@@ -393,7 +393,9 @@
                             </div>
                             <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
                                 <i class="ph ph-identification-badge gm-icon"></i>
-                                <input type="text" id="member-uid" class="gm-input" placeholder="Player UID" required>
+                                <input type="text" id="member-uid" class="gm-input"
+                                    data-i18n-placeholder="placeholder_uid"
+                                    placeholder="Player UID" required>
                             </div>
                             <button type="submit" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-plus"></i>
@@ -442,7 +444,9 @@
                         <form id="add-banned-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
                             <div class="gm-input-with-icon" style="flex:1.5; min-width: 180px;">
                                 <i class="ph ph-identification-badge gm-icon"></i>
-                                <input type="text" id="banned-uid" class="gm-input" placeholder="Player UID" required>
+                                <input type="text" id="banned-uid" class="gm-input"
+                                    data-i18n-placeholder="placeholder_uid"
+                                    placeholder="Player UID" required>
                             </div>
                             <div class="gm-input-with-icon" style="flex:1.5; min-width: 180px;">
                                 <i class="ph ph-game-controller gm-icon"></i>
@@ -452,7 +456,9 @@
                             </div>
                             <div class="gm-input-with-icon" style="flex:2.5; min-width: 240px;">
                                 <i class="ph ph-note gm-icon"></i>
-                                <input type="text" id="banned-reason" class="gm-input" placeholder="Raison du ban (optionnel)">
+                                <input type="text" id="banned-reason" class="gm-input"
+                                    data-i18n-placeholder="placeholder_banned_reason"
+                                    placeholder="Raison du ban (optionnel)">
                             </div>
                             <button type="submit" class="gm-btn gm-btn-danger">
                                 <i class="ph ph-prohibit"></i>
@@ -470,7 +476,9 @@
                             </div>
                             <div class="gm-input-with-icon" style="min-width: 220px; max-width: 360px; flex: 1;">
                                 <i class="ph ph-magnifying-glass gm-icon"></i>
-                                <input type="text" id="banned-search" class="gm-input" placeholder="Rechercher pseudo, UID…">
+                                <input type="text" id="banned-search" class="gm-input"
+                                    data-i18n-placeholder="search_placeholder"
+                                    placeholder="Rechercher pseudo, UID…">
                             </div>
                         </div>
                         <div id="banned-list-container">
@@ -813,7 +821,7 @@
                                 </div>
                             </div>
                             <div class="input-group">
-                                <label for="member-uid-m">Player UID</label>
+                                <label for="member-uid-m" data-i18n="label_uid">Player UID</label>
                                 <div class="input-wrapper">
                                     <i class="ph ph-identification-badge"></i>
                                     <input type="text" id="member-uid-m" placeholder="ex. 12345678" required>

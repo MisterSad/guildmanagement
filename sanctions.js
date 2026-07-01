@@ -41,8 +41,11 @@
         }
 
         var html = '<div class="gm-sanction-list">';
+        var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
+        var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
+
         sanctions.forEach(function (s) {
-            var dateStr = new Date(s.created_at).toLocaleDateString('fr-FR', {
+            var dateStr = new Date(s.created_at).toLocaleDateString(locale, {
                 day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
             });
             var author = s.created_by || '—';
@@ -136,6 +139,11 @@
         } catch (err) {
             window.RAD.showToast(err.message, 'error');
         }
-    }
+    window.addEventListener('rad-lang-change', function () {
+        var activeTab = document.querySelector('.nav-tab.active');
+        if (activeTab && activeTab.getAttribute('data-tab') === 'tab-sanctions') {
+            renderSanctions();
+        }
+    });
 
 })();

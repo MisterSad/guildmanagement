@@ -402,6 +402,14 @@
             confirm_unban_body:              'Voulez-vous vraiment retirer le ban de l\'UID ',
             nav_banned_players:              'Joueurs Bannis',
             toast_player_banned_kick:        ' et retiré des membres de la guilde.',
+            banned_uid_prefix:               'CUID',
+            banned_reason_label:             'Raison :',
+            banned_by_label:                 'Par',
+            banned_on_label:                 'le',
+            banned_fallback_name:            'Banni',
+            placeholder_uid:                 'UID du joueur',
+            placeholder_banned_reason:       'Raison du ban (optionnel)',
+            label_uid:                       'UID du joueur',
         },
 
         en: {
@@ -799,6 +807,14 @@
             confirm_unban_body:              'Do you really want to remove the ban for UID ',
             nav_banned_players:              'Banned Players',
             toast_player_banned_kick:        ' and removed from guild members.',
+            banned_uid_prefix:               'UID',
+            banned_reason_label:             'Reason:',
+            banned_by_label:                 'By',
+            banned_on_label:                 'on',
+            banned_fallback_name:            'Banned',
+            placeholder_uid:                 'Player UID',
+            placeholder_banned_reason:       'Ban reason (optional)',
+            label_uid:                       'Player UID',
         }
     };
 
@@ -821,6 +837,8 @@
             document.querySelectorAll('.lang-btn').forEach(function (btn) {
                 btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
             });
+            var event = new CustomEvent('rad-lang-change', { detail: { lang: lang } });
+            window.dispatchEvent(event);
         },
         applyTranslations: function () {
             var t = window.RAD_I18N.t;
