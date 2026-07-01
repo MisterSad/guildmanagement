@@ -384,6 +384,23 @@
             notify_svs_pvp_desc:             'Activer le jour PvP',
             notify_svs_garrison_desc:        'Rappel de garnison',
             notify_svs_won_prep_desc:        'Phase de prép. remportée',
+            
+            /* ── Banned Players ── */
+            banned_title:                    'Joueurs Bannis',
+            banned_subtitle:                 'Gérez la liste noire des UIDs bannis de la guilde',
+            card_add_banned:                 'Bannir un UID',
+            btn_ban:                         'Bannir',
+            card_banned_list:                'Liste des joueurs bannis',
+            empty_banned:                    'Aucun joueur banni',
+            toast_player_banned_ok:          'Joueur banni avec succès !',
+            toast_player_unbanned_ok:        'Joueur débanni avec succès !',
+            toast_player_already_banned:     'Cet UID est déjà banni !',
+            toast_cannot_add_banned_player:  'Impossible d\'ajouter ce joueur car son UID est banni !',
+            toast_cannot_rename_banned_player: 'Impossible de modifier ce joueur car le nouvel UID est banni !',
+            confirm_unban_title:             'Débannir le joueur',
+            confirm_unban_body:              'Voulez-vous vraiment retirer le ban de l\'UID ',
+            nav_banned_players:              'Joueurs Bannis',
+            toast_player_banned_kick:        ' et retiré des membres de la guilde.',
         },
 
         en: {
@@ -763,6 +780,23 @@
             notify_svs_pvp_desc:             'Enable PvP day',
             notify_svs_garrison_desc:        'Garrison reminder',
             notify_svs_won_prep_desc:        'Won prep phase',
+            
+            /* ── Banned Players ── */
+            banned_title:                    'Banned Players',
+            banned_subtitle:                 'Manage the blacklist of banned guild UIDs',
+            card_add_banned:                 'Ban a UID',
+            btn_ban:                         'Ban',
+            card_banned_list:                'Banned Players List',
+            empty_banned:                    'No banned players',
+            toast_player_banned_ok:          'Player banned successfully!',
+            toast_player_unbanned_ok:        'Player unbanned successfully!',
+            toast_player_already_banned:     'This UID is already banned!',
+            toast_cannot_add_banned_player:  'Cannot add this player because their UID is banned!',
+            toast_cannot_rename_banned_player: 'Cannot update this player because the new UID is banned!',
+            confirm_unban_title:             'Unban Player',
+            confirm_unban_body:              'Do you really want to remove the ban for UID ',
+            nav_banned_players:              'Banned Players',
+            toast_player_banned_kick:        ' and removed from guild members.',
         }
     };
 

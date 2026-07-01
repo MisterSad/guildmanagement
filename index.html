@@ -140,6 +140,10 @@
                             <i class="ph ph-warning-octagon"></i>
                             <span data-i18n="nav_sanctions">Sanctions</span>
                         </button>
+                        <button class="nav-tab" data-tab="admin-banned" data-view="dashboard-view" style="display: none;">
+                            <i class="ph ph-prohibit"></i>
+                            <span data-i18n="nav_banned_players">Joueurs Bannis</span>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -414,6 +418,65 @@
                             <div class="gm-empty">
                                 <i class="ph-duotone ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title" data-i18n="empty_members">Aucun membre enregistré</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Tab: Admin Banned -->
+            <main class="dashboard-content tab-panel" id="admin-banned">
+                <div class="gm-page">
+                    <header class="gm-page-header">
+                        <div>
+                            <h1 class="gm-page-title" data-i18n="banned_title">Joueurs Bannis</h1>
+                            <p class="gm-page-subtitle" data-i18n="banned_subtitle">Gérez la liste noire des UIDs bannis de la guilde</p>
+                        </div>
+                    </header>
+
+                    <div class="gm-card gm-card-padded gm-section">
+                        <div class="gm-section-title" style="margin-bottom: .75rem;">
+                            <i class="ph ph-user-minus"></i>
+                            <span data-i18n="card_add_banned">Bannir un UID</span>
+                        </div>
+                        <form id="add-banned-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
+                            <div class="gm-input-with-icon" style="flex:1.5; min-width: 180px;">
+                                <i class="ph ph-identification-badge gm-icon"></i>
+                                <input type="text" id="banned-uid" class="gm-input" placeholder="Player UID" required>
+                            </div>
+                            <div class="gm-input-with-icon" style="flex:1.5; min-width: 180px;">
+                                <i class="ph ph-game-controller gm-icon"></i>
+                                <input type="text" id="banned-pseudo" class="gm-input"
+                                    data-i18n-placeholder="placeholder_pseudo"
+                                    placeholder="Pseudo in-game (optionnel)">
+                            </div>
+                            <div class="gm-input-with-icon" style="flex:2.5; min-width: 240px;">
+                                <i class="ph ph-note gm-icon"></i>
+                                <input type="text" id="banned-reason" class="gm-input" placeholder="Raison du ban (optionnel)">
+                            </div>
+                            <button type="submit" class="gm-btn gm-btn-danger">
+                                <i class="ph ph-prohibit"></i>
+                                <span data-i18n="btn_ban">Bannir</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="gm-section">
+                        <div class="gm-section-head">
+                            <div class="gm-section-title">
+                                <i class="ph ph-prohibit"></i>
+                                <span data-i18n="card_banned_list">Liste des joueurs bannis</span>
+                                <span class="gm-count" id="banned-count">0</span>
+                            </div>
+                            <div class="gm-input-with-icon" style="min-width: 220px; max-width: 360px; flex: 1;">
+                                <i class="ph ph-magnifying-glass gm-icon"></i>
+                                <input type="text" id="banned-search" class="gm-input" placeholder="Rechercher pseudo, UID…">
+                            </div>
+                        </div>
+                        <div id="banned-list-container">
+                            <div class="gm-empty">
+                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <div class="gm-empty-title" data-i18n="empty_banned">Aucun joueur banni</div>
                             </div>
                         </div>
                     </div>

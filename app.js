@@ -31,10 +31,15 @@
     var addMemberFormM    = document.getElementById('add-member-form-member');
     var guildMemberListM  = document.getElementById('guild-member-list-m');
     var guildMemberCountM = document.getElementById('guild-member-count-m');
+    var addBannedForm     = document.getElementById('add-banned-form');
+    var bannedListContainer = document.getElementById('banned-list-container');
+    var bannedCount       = document.getElementById('banned-count');
+    var bannedSearch      = document.getElementById('banned-search');
 
     // ─── State ────────────────────────────────────────────────────────────────
-    var accounts     = [];
-    var guildMembers = [];
+    var accounts      = [];
+    var guildMembers  = [];
+    var bannedPlayers = [];
 
     // ─── Language Switcher ────────────────────────────────────────────────────
     document.querySelectorAll('.lang-btn').forEach(function (btn) {
@@ -140,6 +145,7 @@
         dashboardView.classList.add('active');
 
         var adminHomeBtn = document.querySelector('.nav-tab[data-tab="admin-home"]');
+        var adminBannedBtn = document.querySelector('.nav-tab[data-tab="admin-banned"]');
         var roleLabel = document.getElementById('nav-user-role');
         var nameLabel = document.getElementById('nav-user-name');
 
@@ -147,9 +153,12 @@
             if (roleLabel) roleLabel.textContent = 'R4 :';
             if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Officier';
             if (adminHomeBtn) adminHomeBtn.style.display = 'none';
+            if (adminBannedBtn) adminBannedBtn.style.display = 'none';
         } else {
             if (roleLabel) roleLabel.textContent = 'R5 :';
             if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Admin';
+            if (adminHomeBtn) adminHomeBtn.style.display = '';
+            if (adminBannedBtn) adminBannedBtn.style.display = '';
             fetchAccounts();
             loadGuildSettings();
         }
@@ -194,6 +203,9 @@
             if (tabId === 'admin-home') {
                 fetchAccounts();
                 loadGuildSettings();
+            }
+            if (tabId === 'admin-banned') {
+                fetchBannedPlayers();
             }
             var eventName = tabBtn.getAttribute('data-event-tab');
             if (eventName && ['SvS', 'GvG', 'Defend Trade Route'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
@@ -533,6 +545,17 @@
             showToast(t('toast_duplicate_uid'), 'error');
             return;
         }
+
+        try {
+            var banCheck = await supabase.from('banned_players').select('uid').eq('uid', uidVal);
+            if (banCheck.error) throw banCheck.error;
+            if (banCheck.data && banCheck.data.length > 0) {
+                showToast(t('toast_cannot_add_banned_player'), 'error');
+                return;
+            }
+        } catch (err) {
+            console.error('Ban check failed', err);
+        }
         try {
             var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal }]);
             if (res.error) throw res.error;
@@ -559,11 +582,17 @@
 
     if (addMemberForm)  addMemberForm.addEventListener('submit', function (e)  { e.preventDefault(); handleAddMember('member-pseudo', 'member-uid'); });
     if (addMemberFormM) addMemberFormM.addEventListener('submit', function (e) { e.preventDefault(); handleAddMember('member-pseudo-m', 'member-uid-m'); });
+    if (addBannedForm) {
+        addBannedForm.addEventListener('submit', function (e) { e.preventDefault(); handleAddBannedPlayer(); });
+    }
 
     var searchAdmin = document.getElementById('member-search-admin');
     if (searchAdmin) searchAdmin.addEventListener('input', renderGuildMembers);
     var searchMember = document.getElementById('member-search-member');
     if (searchMember) searchMember.addEventListener('input', renderGuildMembers);
+    if (bannedSearch) {
+        bannedSearch.addEventListener('input', renderBannedPlayers);
+    }
 
     async function deleteGuildMember(pseudo) {
         try {
@@ -574,6 +603,146 @@
             guildMembers = guildMembers.filter(function (m) { return m.pseudo !== pseudo; });
             renderGuildMembers();
             showToast(pseudo + ' ' + t('toast_member_removed'), 'success');
+        } catch (err) {
+            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        }
+    }
+
+    // ─── Banned Players CRUD ───────────────────────────────────────────────────
+    async function fetchBannedPlayers() {
+        if (!supabase) return;
+        try {
+            var res = await supabase.from('banned_players').select('*').order('created_at', { ascending: false });
+            if (res.error) throw res.error;
+            bannedPlayers = res.data || [];
+            renderBannedPlayers();
+        } catch (err) {
+            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        }
+    }
+
+    function renderBannedPlayers() {
+        if (!bannedListContainer) return;
+        var q = bannedSearch ? bannedSearch.value.toLowerCase() : '';
+        var filtered = bannedPlayers.filter(function (bp) {
+            return (bp.uid.toLowerCase() + ' ' + (bp.pseudo || '').toLowerCase() + ' ' + (bp.reason || '').toLowerCase()).indexOf(q) !== -1;
+        });
+
+        if (bannedCount) bannedCount.textContent = filtered.length;
+
+        if (filtered.length === 0) {
+            bannedListContainer.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_banned') + '</div></div>';
+            return;
+        }
+
+        var html = '<div class="gm-member-list">';
+        filtered.forEach(function (bp) {
+            var dateStr = bp.created_at
+                ? new Date(bp.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : '—';
+            var pseudoVal = bp.pseudo || '—';
+            var reasonVal = bp.reason || '—';
+            var author = bp.created_by || '—';
+            var initial = window.RAD.avatarInit(pseudoVal !== '—' ? pseudoVal : 'Banned');
+            
+            html += '<div class="gm-member-row" data-uid="' + esc(bp.uid) + '">' +
+                '<div class="gm-member-id">' +
+                    '<div class="gm-avatar" style="background: var(--danger-soft); color: var(--danger); border-color: var(--danger-soft);">' + esc(initial) + '</div>' +
+                    '<div class="gm-grow gm-truncate">' +
+                        '<div class="gm-member-pseudo gm-truncate" style="color: var(--danger); font-weight: 600;">' + esc(pseudoVal) + '</div>' +
+                        '<div class="gm-row" style="gap:.5rem; margin-top:2px;">' +
+                            '<span class="gm-dim gm-mono" style="font-size:.78rem;">UID ' + esc(bp.uid) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="gm-col gm-dim" style="gap:.2rem; font-size:.8rem; flex: 1.5; min-width: 150px;">' +
+                    '<span><strong>Raison:</strong> ' + esc(reasonVal) + '</span>' +
+                    '<span>Par <strong>' + esc(author) + '</strong> le ' + dateStr + '</span>' +
+                '</div>' +
+                '<div class="gm-member-actions">' +
+                    '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm banned-delete-btn" data-uid="' + esc(bp.uid) + '" title="' + t('delete_title') + '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
+                '</div>' +
+            '</div>';
+        });
+        html += '</div>';
+        bannedListContainer.innerHTML = html;
+
+        bannedListContainer.querySelectorAll('.banned-delete-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var uid = btn.getAttribute('data-uid');
+                showConfirm(
+                    t('confirm_unban_title'),
+                    t('confirm_unban_body') + ' <strong>' + esc(uid) + '</strong> ?',
+                    function () { deleteBannedPlayer(uid); }
+                );
+            });
+        });
+    }
+
+    async function handleAddBannedPlayer() {
+        var uidInput = document.getElementById('banned-uid');
+        var pseudoInput = document.getElementById('banned-pseudo');
+        var reasonInput = document.getElementById('banned-reason');
+
+        var uidVal = uidInput ? uidInput.value.trim() : '';
+        var pseudoVal = pseudoInput ? pseudoInput.value.trim() : '';
+        var reasonVal = reasonInput ? reasonInput.value.trim() : '';
+
+        if (!uidVal) return;
+
+        var uidErr = window.RAD.validateUid(uidVal);
+        if (uidErr) { showToast(t(uidErr), 'error'); return; }
+
+        if (bannedPlayers.some(function (bp) { return bp.uid === uidVal; })) {
+            showToast(t('toast_player_already_banned'), 'error');
+            return;
+        }
+
+        var btn = addBannedForm.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+
+        try {
+            var currentUser = localStorage.getItem('rad_user') || 'Admin';
+            var res = await supabase.from('banned_players').insert([{
+                uid: uidVal,
+                pseudo: pseudoVal || null,
+                reason: reasonVal || null,
+                created_by: currentUser
+            }]);
+
+            if (res.error) throw res.error;
+
+            if (uidInput) uidInput.value = '';
+            if (pseudoInput) pseudoInput.value = '';
+            if (reasonInput) reasonInput.value = '';
+
+            var kickMsg = '';
+            // Check if member is in guild and delete
+            var member = guildMembers.find(function (m) { return m.uid === uidVal; });
+            if (member) {
+                var delRes = await supabase.from('guild_members').delete().eq('uid', uidVal);
+                if (!delRes.error) {
+                    guildMembers = guildMembers.filter(function (m) { return m.uid !== uidVal; });
+                    renderGuildMembers();
+                    kickMsg = t('toast_player_banned_kick');
+                }
+            }
+
+            showToast(t('toast_player_banned_ok') + kickMsg, 'success');
+            await fetchBannedPlayers();
+        } catch (err) {
+            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    async function deleteBannedPlayer(uid) {
+        try {
+            var res = await supabase.from('banned_players').delete().eq('uid', uid);
+            if (res.error) throw res.error;
+            showToast(t('toast_player_unbanned_ok'), 'success');
+            await fetchBannedPlayers();
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
@@ -603,6 +772,19 @@
         if (uidChanged && newUid && guildMembers.some(function (m) { return m.pseudo !== oldPseudo && (m.uid || '') === newUid; })) {
             showToast(t('toast_duplicate_uid'), 'error');
             return false;
+        }
+
+        if (uidChanged && newUid) {
+            try {
+                var banCheck = await supabase.from('banned_players').select('uid').eq('uid', newUid);
+                if (banCheck.error) throw banCheck.error;
+                if (banCheck.data && banCheck.data.length > 0) {
+                    showToast(t('toast_cannot_rename_banned_player'), 'error');
+                    return false;
+                }
+            } catch (err) {
+                console.error('Ban check failed', err);
+            }
         }
 
         try {
