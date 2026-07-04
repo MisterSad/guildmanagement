@@ -202,7 +202,7 @@
 
         var html =
             '<div class="gm-sidebar-brand">' +
-                '<div class="gm-brand-mark"><img src="apple-touch-icon.png?v=2" alt="RAD"></div>' +
+                '<div class="gm-brand-mark">FGF</div>' +
                 '<div>' +
                     '<div class="gm-brand-text">' + t('gm_brand') + '</div>' +
                     '<div class="gm-brand-sub">' + t('gm_brand_sub') + '</div>' +
@@ -246,7 +246,7 @@
 
         var brandHtml = state.mobile
             ? '<div class="gm-topbar-mobile-brand">' +
-                '<div class="gm-brand-mark"><img src="apple-touch-icon.png?v=2" alt="RAD"></div>' +
+                '<div class="gm-brand-mark">FGF</div>' +
                 '<div class="gm-topbar-title">' + title + '</div>' +
               '</div>'
             : '<div class="gm-topbar-title">' + title + '</div>';

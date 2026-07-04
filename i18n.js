@@ -1,5 +1,5 @@
 /**
- * RAD MANAGEMENT TOOL – i18n module
+ * FGF GUILD MANAGEMENT TOOL – i18n module
  * Usage:  t('key')          → translated string
  *         setLang('en')     → switch language + re-render
  *         applyTranslations() → update all [data-i18n] elements
@@ -9,7 +9,7 @@
     var TRANSLATIONS = {
         fr: {
             /* ── Login ──────────────────────────── */
-            login_title:           'RAD MANAGEMENT',
+            login_title:           'FGF GUILD MANAGEMENT',
             login_subtitle:        'Foundation Galactic Frontier',
             login_label_id:        'Identifiant',
             login_placeholder_id:  'Votre identifiant',
@@ -312,7 +312,7 @@
             sanction_by:           'par',
 
             /* ── Shell v2 ────────────────── */
-            gm_brand:              'RAD MANAGEMENT',
+            gm_brand:              'FGF GUILD MANAGEMENT',
             gm_brand_sub:          'Foundation Galactic Frontier',
             gm_nav_play:           'Activité',
             gm_nav_admin:          'Admin',
@@ -414,7 +414,7 @@
 
         en: {
             /* ── Login ──────────────────────────── */
-            login_title:           'RAD MANAGEMENT',
+            login_title:           'FGF GUILD MANAGEMENT',
             login_subtitle:        'Foundation Galactic Frontier',
             login_label_id:        'Identifier',
             login_placeholder_id:  'Your identifier',
@@ -717,7 +717,7 @@
             sanction_by:           'by',
 
             /* ── Shell v2 ────────────────── */
-            gm_brand:              'RAD MANAGEMENT',
+            gm_brand:              'FGF GUILD MANAGEMENT',
             gm_brand_sub:          'Foundation Galactic Frontier',
             gm_nav_play:           'Activity',
             gm_nav_admin:          'Admin',

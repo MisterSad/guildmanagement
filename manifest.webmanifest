@@ -1,6 +1,6 @@
 {
-  "name": "RAD Management Tool",
-  "short_name": "RAD MGMT",
+  "name": "FGF guild management tool",
+  "short_name": "FGF GM",
   "description": "Guild Management Tool for Foundation Galactic Frontier",
   "lang": "fr",
   "start_url": "/",

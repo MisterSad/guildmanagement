@@ -404,7 +404,7 @@
         var dateFormatted = formatDateTimeUTC(startAt);
         var content = '';
         var embedTitle = '📢 Guild Event: ' + eventName;
-        var embedDesc = 'A guild event has been configured in the RAD Management tool!';
+        var embedDesc = 'A guild event has been configured in the FGF Guild Management tool!';
         var actionLabel = '';
         var color = 5763719; // Green
 
@@ -442,7 +442,7 @@
                 fields: fields,
                 timestamp: new Date().toISOString(),
                 footer: {
-                    text: 'RAD Management Tool'
+                    text: 'FGF Guild Management Tool'
                 }
             }]
         };

@@ -60,4 +60,26 @@
   --sidebar-w:    232px;
   --topbar-h:     60px;
   --bottom-nav-h: 64px;
+
+  /* ─── Glassmorphism Variables ─── */
+  --card-bg:     oklch(0.20 0.022 270 / 0.65);
+  --card-border: oklch(0.32 0.022 270 / 0.35);
+}
+
+/* ─── Global Scrollbars Modernization ─── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-0);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-2);
+  border-radius: 4px;
+  border: 2px solid var(--bg-0);
+  transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
