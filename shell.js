@@ -205,7 +205,6 @@
                 '<div class="gm-brand-mark">FGF</div>' +
                 '<div>' +
                     '<div class="gm-brand-text">' + t('gm_brand') + '</div>' +
-                    '<div class="gm-brand-sub">' + t('gm_brand_sub') + '</div>' +
                 '</div>' +
             '</div>' +
             '<nav class="gm-sidebar-nav">' +

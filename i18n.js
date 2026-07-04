@@ -312,7 +312,7 @@
             sanction_by:           'by',
 
             /* ── Shell v2 ────────────────── */
-            gm_brand:              'FGF GUILD MANAGEMENT',
+            gm_brand:              'Guild management tool',
             gm_brand_sub:          'Foundation Galactic Frontier',
             gm_nav_play:           'Activity',
             gm_nav_admin:          'Admin',
