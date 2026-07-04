@@ -41,18 +41,8 @@
     var guildMembers  = [];
     var bannedPlayers = [];
 
-    // ─── Language Switcher ────────────────────────────────────────────────────
-    document.querySelectorAll('.lang-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            window.RAD_I18N.setLang(btn.getAttribute('data-lang'));
-        });
-    });
-
     // ─── Boot ─────────────────────────────────────────────────────────────────
     window.RAD_I18N.applyTranslations();
-    document.querySelectorAll('.lang-btn').forEach(function (btn) {
-        btn.classList.toggle('active', btn.getAttribute('data-lang') === window.RAD_I18N.getLang());
-    });
 
     // Restaure depuis la session Supabase persistée (survit au rechargement
     // et à la fermeture d'onglet tant que le refresh token est valide).

@@ -251,25 +251,13 @@
               '</div>'
             : '<div class="gm-topbar-title">' + title + '</div>';
 
-        var lang = window.RAD_I18N.getLang();
         var html = brandHtml +
             '<div class="gm-topbar-actions">' +
-                '<div class="gm-lang-toggle">' +
-                    '<button data-gm-lang="fr" class="' + (lang === 'fr' ? 'gm-active' : '') + '">FR</button>' +
-                    '<button data-gm-lang="en" class="' + (lang === 'en' ? 'gm-active' : '') + '">EN</button>' +
-                '</div>' +
                 '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + t('nav_logout_title') + '">' +
                     '<i class="ph ph-sign-out"></i>' +
                 '</button>' +
             '</div>';
         el.innerHTML = html;
-
-        el.querySelectorAll('[data-gm-lang]').forEach(function (b) {
-            b.addEventListener('click', function () {
-                window.RAD_I18N.setLang(b.getAttribute('data-gm-lang'));
-                renderShell();
-            });
-        });
         var lo = el.querySelector('[data-gm-logout]');
         if (lo) lo.addEventListener('click', function () {
             var legacy = document.getElementById('logout-btn');
