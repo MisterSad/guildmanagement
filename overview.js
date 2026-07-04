@@ -24,19 +24,37 @@
     var countdownTimer = null;
     var timezoneClockTimer = null;
 
-    var CLOCK_MEMBERS = [
-        { name: 'Natalie', offset: 7, color: 'danger' },
-        { name: 'HawkTuah', offset: 2, color: 'accent' },
-        { name: 'Phantom', offset: 2, color: 'info' },
-        { name: 'Vaylah', offset: -4, color: 'success' },
-        { name: 'BroKen', offset: -7, color: 'warning' }
-    ];
+    var CLOCK_MEMBERS = [];
+
+    function getDefaultClocks() {
+        return [
+            { name: 'Natalie', offset: 7, color: 'danger' },
+            { name: 'HawkTuah', offset: 2, color: 'accent' },
+            { name: 'Phantom', offset: 2, color: 'info' },
+            { name: 'Vaylah', offset: -4, color: 'success' },
+            { name: 'BroKen', offset: -7, color: 'warning' }
+        ];
+    }
 
     window.RAD_OVERVIEW = { load: loadOverview };
 
     async function loadOverview() {
         var panel = document.getElementById('gm-overview');
         if (!panel) return;
+
+        // Load custom clocks settings from database
+        try {
+            var clocksStr = await window.RAD.config.get('timezone_clocks');
+            if (clocksStr) {
+                CLOCK_MEMBERS = JSON.parse(clocksStr);
+            } else {
+                CLOCK_MEMBERS = getDefaultClocks();
+                await window.RAD.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
+            }
+        } catch (e) {
+            console.error('Failed to load timezone clocks', e);
+            CLOCK_MEMBERS = getDefaultClocks();
+        }
 
         // Skeleton
         renderShell(panel);
@@ -139,12 +157,23 @@
                         '<p class="gm-page-subtitle">' + t('gm_overview_sub_real') + '</p>' +
                     '</div>' +
                 '</header>' +
-                '<div class="gm-overview-clocks" id="gm-overview-clocks"></div>' +
+                '<div class="gm-section-head" style="margin-bottom: 0.75rem; align-items: center;">' +
+                    '<h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;"><i class="ph ph-clock"></i> Horloges</h3>' +
+                    '<button class="gm-mini-btn" id="gm-manage-clocks-btn"><i class="ph ph-gear"></i> ' + t('manage_clocks') + '</button>' +
+                '</div>' +
+                '<div class="gm-overview-clocks" id="gm-overview-clocks" style="margin-bottom: 2rem;"></div>' +
                 '<div data-gm-overview-content></div>' +
             '</div>';
 
         renderTimezoneClocks(panel);
         startTimezoneClockTicker();
+
+        var manageBtn = panel.querySelector('#gm-manage-clocks-btn');
+        if (manageBtn) {
+            manageBtn.addEventListener('click', function () {
+                openManageClocksModal(panel);
+            });
+        }
     }
 
     function renderTimezoneClocks(panel) {
@@ -365,6 +394,120 @@
         if (diff < 86400)     return Math.floor(diff / 3600) + ' h';
         if (diff < 86400 * 7) return Math.floor(diff / 86400) + ' j';
         return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+    }
+
+    function openManageClocksModal(panel) {
+        var existing = document.getElementById('gm-clocks-overlay');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'gm-clocks-overlay';
+        overlay.className = 'confirm-overlay';
+
+        var offsetOptions = '';
+        for (var o = -12; o <= 14; o += 0.5) {
+            var sign = o >= 0 ? '+' : '';
+            var val = 'UTC' + sign + o;
+            offsetOptions += '<option value="' + o + '"' + (o === 0 ? ' selected' : '') + '>' + val + '</option>';
+        }
+
+        overlay.innerHTML =
+            '<div class="confirm-card glass-card" style="max-width: 450px; width: 95%; text-align: left; padding: 1.5rem;">' +
+                '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: 1.25rem;">' + t('modal_manage_clocks_title') + '</h3>' +
+                '<div id="gm-clocks-list-container" class="gm-col" style="gap: .6rem; max-height: 220px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 4px;"></div>' +
+                '<div style="border-top: 1px solid var(--border-soft); padding-top: 1.2rem;">' +
+                    '<h4 style="font-size: 0.85rem; font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' + t('modal_add_clock_section') + '</h4>' +
+                    '<div class="gm-col" style="gap: 0.6rem;">' +
+                        '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' + t('modal_add_clock_name_placeholder') + '" maxlength="20">' +
+                        '<div style="display: flex; gap: 0.5rem;">' +
+                            '<select id="gm-new-clock-offset" class="gm-select" style="flex: 1; padding: .55rem .75rem;">' +
+                                offsetOptions +
+                            '</select>' +
+                            '<button id="gm-add-clock-btn" class="gm-btn gm-btn-primary" style="flex-shrink: 0;"><i class="ph ph-plus"></i> ' + t('modal_add_clock_btn') + '</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="confirm-actions" style="margin-top: 1.5rem; gap: 1rem; justify-content: flex-end;">' +
+                    '<button id="gm-clocks-modal-close" class="gm-btn gm-btn-ghost">' + t('modal_clocks_close') + '</button>' +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        var modalClose = function () {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 250);
+        };
+
+        overlay.addEventListener('click', function (ev) {
+            if (ev.target === overlay) modalClose();
+        });
+        document.getElementById('gm-clocks-modal-close').addEventListener('click', modalClose);
+
+        function renderModalClocks() {
+            var listContainer = overlay.querySelector('#gm-clocks-list-container');
+            if (!listContainer) return;
+
+            if (CLOCK_MEMBERS.length === 0) {
+                listContainer.innerHTML = '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: 1.8rem; margin-bottom: 0.4rem;"></i><div class="gm-empty-title" style="font-size: 0.85rem;">Aucune horloge configurée</div></div>';
+                return;
+            }
+
+            var html = '';
+            CLOCK_MEMBERS.forEach(function (m, idx) {
+                var initials = window.RAD.avatarInit(m.name);
+                var offsetText = 'UTC' + (m.offset >= 0 ? '+' + m.offset : m.offset);
+                html +=
+                    '<div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-1); border: 1px solid var(--border-soft); padding: 0.5rem 0.75rem; border-radius: 8px; gap: 0.5rem;">' +
+                        '<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">' +
+                            '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '" style="flex-shrink:0;">' + esc(initials) + '</div>' +
+                            '<div style="min-width: 0;">' +
+                                '<div style="font-weight: 600; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + esc(m.name) + '</div>' +
+                                '<div style="font-size: 0.72rem; color: var(--fg-dim);">' + offsetText + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<button class="gm-mini-btn gm-danger delete-clock-btn" data-index="' + idx + '" title="Supprimer" style="flex-shrink:0;"><i class="ph ph-trash"></i></button>' +
+                    '</div>';
+            });
+            listContainer.innerHTML = html;
+
+            listContainer.querySelectorAll('.delete-clock-btn').forEach(function (btn) {
+                btn.addEventListener('click', async function () {
+                    var idx = parseInt(btn.getAttribute('data-index'), 10);
+                    CLOCK_MEMBERS.splice(idx, 1);
+                    await window.RAD.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
+                    window.RAD.showToast(t('toast_clock_deleted'), 'info');
+                    renderModalClocks();
+                    renderTimezoneClocks(panel);
+                });
+            });
+        }
+
+        document.getElementById('gm-add-clock-btn').addEventListener('click', async function () {
+            var nameInput = document.getElementById('gm-new-clock-name');
+            var name = nameInput.value.trim();
+            if (!name) {
+                window.RAD.showToast(t('toast_clock_name_empty'), 'error');
+                return;
+            }
+
+            var offsetSelect = document.getElementById('gm-new-clock-offset');
+            var offset = parseFloat(offsetSelect.value);
+
+            var colors = ['accent', 'info', 'success', 'warning', 'danger'];
+            var color = colors[CLOCK_MEMBERS.length % colors.length];
+
+            CLOCK_MEMBERS.push({ name: name, offset: offset, color: color });
+            await window.RAD.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
+            window.RAD.showToast(t('toast_clock_added'), 'success');
+            nameInput.value = '';
+
+            renderModalClocks();
+            renderTimezoneClocks(panel);
+        });
+
+        renderModalClocks();
     }
 
 })();
