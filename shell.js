@@ -238,8 +238,13 @@
         var label = t(item.labelKey);
         var icon = item.icon;
         if (item.id === 'accounts' && getUserRole() === 'R4') {
-            label = t('gm_nav_config');
-            icon = 'ph-gear';
+            if (window.currentGuildRestriction === 'ALPHA') {
+                label = t('gm_nav_accounts');
+                icon = 'ph-key';
+            } else {
+                label = t('gm_nav_config');
+                icon = 'ph-gear';
+            }
         }
         return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
                 '<i class="ph ' + icon + '"></i>' +
@@ -349,8 +354,13 @@
             var label = t(item.labelKey);
             var icon = item.icon;
             if (item.id === 'accounts' && getUserRole() === 'R4') {
-                label = t('gm_nav_config');
-                icon = 'ph-gear';
+                if (window.currentGuildRestriction === 'ALPHA') {
+                    label = t('gm_nav_accounts');
+                    icon = 'ph-key';
+                } else {
+                    label = t('gm_nav_config');
+                    icon = 'ph-gear';
+                }
             }
             html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
                         '<i class="ph ' + icon + ' gm-icon"></i>' +
