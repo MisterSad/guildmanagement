@@ -89,7 +89,7 @@
                     stage:      stageLetter,
                     updated_at: new Date().toISOString()
                 },
-                { onConflict: 'event_name' }
+                { onConflict: 'guild,event_name' }
             );
             if (res.error) throw res.error;
 
@@ -130,7 +130,7 @@
                     stage:      stageKey === 'stageA' ? 'A' : 'B',
                     updated_at: new Date().toISOString()
                 },
-                { onConflict: 'event_name' }
+                { onConflict: 'guild,event_name' }
             );
         } catch (err) { console.error('endStage', err); }
         

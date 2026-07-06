@@ -123,7 +123,7 @@
                     start_at:   startAt || null,
                     updated_at: new Date().toISOString()
                 },
-                { onConflict: 'event_name' }
+                { onConflict: 'guild,event_name' }
             );
             if (res.error) throw res.error;
             window.RAD.showToast(squadLabel(squad) + ' — ' + t('sf_squad_started'), 'success');
@@ -151,7 +151,7 @@
                         start_at:   null,                             // retire de l'agenda / rappels
                         updated_at: new Date().toISOString()
                     },
-                    { onConflict: 'event_name' }
+                    { onConflict: 'guild,event_name' }
                 );
             } catch (err) { console.error('endSquad', err); }
         }

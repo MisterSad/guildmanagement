@@ -87,7 +87,7 @@
                     start_at:   startAt || null,
                     updated_at: new Date().toISOString()
                 },
-                { onConflict: 'event_name' }
+                { onConflict: 'guild,event_name' }
             );
             if (statusRes.error) throw statusRes.error;
 
@@ -122,7 +122,7 @@
                     stage:      s.stage,
                     updated_at: new Date().toISOString()
                 },
-                { onConflict: 'event_name' }
+                { onConflict: 'guild,event_name' }
             );
             s.activeEventName = null;
             s.sessionId       = null;
