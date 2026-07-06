@@ -376,7 +376,6 @@
         coeff_shadowfront: '3',
         coeff_dtr: '2',
         coeff_armsrace: '1',
-        reserve_credit_pct: '50',
         webhook_armsrace: '',
         webhook_dtr: '',
         webhook_shadowfront: '',

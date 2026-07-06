@@ -391,7 +391,6 @@
         var coeffShadowfront = await window.RAD.config.get('coeff_shadowfront');
         var coeffDtr = await window.RAD.config.get('coeff_dtr');
         var coeffArmsrace = await window.RAD.config.get('coeff_armsrace');
-        var reserveCreditPct = await window.RAD.config.get('reserve_credit_pct');
 
         // Webhooks configuration
         var webhookArmsrace = await window.RAD.config.get('webhook_armsrace');
@@ -426,7 +425,6 @@
         document.getElementById('coeff-shadowfront').value = coeffShadowfront;
         document.getElementById('coeff-dtr').value = coeffDtr;
         document.getElementById('coeff-armsrace').value = coeffArmsrace;
-        document.getElementById('reserve-credit-pct').value = reserveCreditPct;
 
         // Set webhook inputs
         document.getElementById('webhook-armsrace').value = webhookArmsrace;
@@ -484,7 +482,6 @@
                     window.RAD.config.set('coeff_shadowfront', document.getElementById('coeff-shadowfront').value),
                     window.RAD.config.set('coeff_dtr', document.getElementById('coeff-dtr').value),
                     window.RAD.config.set('coeff_armsrace', document.getElementById('coeff-armsrace').value),
-                    window.RAD.config.set('reserve_credit_pct', document.getElementById('reserve-credit-pct').value),
 
                     window.RAD.config.set('webhook_armsrace', document.getElementById('webhook-armsrace').value.trim()),
                     window.RAD.config.set('webhook_dtr', document.getElementById('webhook-dtr').value.trim()),

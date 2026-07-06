@@ -47,7 +47,7 @@
             label_coeff_shadowfront:'Shadowfront Coeff',
             label_coeff_dtr:       'DTR Coeff',
             label_coeff_armsrace:  'Arms Race Coeff',
-            label_reserve_credit:  'Reserve Credit (%)',
+
             label_discord_webhook: 'Discord Webhook URL',
             btn_save_config:       'Save Configuration',
             toast_config_updated:  'Guild configuration updated successfully!',

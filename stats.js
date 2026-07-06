@@ -136,7 +136,7 @@
         var refPrev = window.RAD.getPrevWeekStart(weeks[0]);
         var glorySpan = [refPrev].concat(weeks);
 
-        var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace, reserveCreditPct] = await Promise.all([
+        var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace] = await Promise.all([
             db.from('guild_members').select('pseudo, uid'),
             db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
             db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000),
@@ -145,8 +145,7 @@
             window.RAD.config.get('coeff_gvg'),
             window.RAD.config.get('coeff_shadowfront'),
             window.RAD.config.get('coeff_dtr'),
-            window.RAD.config.get('coeff_armsrace'),
-            window.RAD.config.get('reserve_credit_pct')
+            window.RAD.config.get('coeff_armsrace')
         ]);
 
         var memberRows   = membersRes.data || [];
@@ -161,8 +160,7 @@
             coeff_gvg: parseInt(coeffGvg, 10) || 5,
             coeff_shadowfront: parseInt(coeffShadowfront, 10) || 3,
             coeff_dtr: parseInt(coeffDtr, 10) || 2,
-            coeff_armsrace: parseInt(coeffArmsrace, 10) || 1,
-            reserve_credit_pct: parseInt(reserveCreditPct, 10) || 50
+            coeff_armsrace: parseInt(coeffArmsrace, 10) || 1
         };
 
         if (members.length === 0) { renderEmpty(); return; }
@@ -654,19 +652,10 @@
                         });
                     });
 
-                    var groupReserve = false;
-                    if (groupName === 'Shadowfront') {
-                        groupReserve = weekSquads.some(function (s) {
-                            return normalizePseudo(s.pseudo) === normPseudo && s.role === 'reserve';
-                        });
-                    }
-
-                    if (groupParticipated || groupReserve) {
+                    if (groupParticipated) {
                         agg.eventsAttended++;
                     }
                 });
-
-                var shadowfrontReserveCreditGiven = false;
 
                 opps.forEach(function (opp) {
                     var pRows = opp.rows.filter(function (p) { return normalizePseudo(p.pseudo) === normPseudo; });
@@ -677,14 +666,6 @@
                     var base = 0;
                     if (participated) {
                         base = W.participation * opp.group.coeff;
-                    } else if (opp.name === 'Shadowfront') {
-                        var wasReserve = weekSquads.some(function (s) {
-                            return normalizePseudo(s.pseudo) === normPseudo && s.role === 'reserve';
-                        });
-                        if (wasReserve && !shadowfrontReserveCreditGiven) {
-                            base = (config.reserve_credit_pct / 100) * W.participation * opp.group.coeff;
-                            shadowfrontReserveCreditGiven = true;
-                        }
                     }
                     
                     var perf = 0;
@@ -1034,7 +1015,7 @@
     // dériver des métriques d'évolution réelle (tendance mobile, présence cumulée,
     // évolution par événement) au lieu d'un simple snapshot.
     async function openProfile(pseudo) {
-        var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace, reserveCreditPct] = await Promise.all([
+        var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace] = await Promise.all([
             db.from('guild_members').select('pseudo'),
             db.from('event_participants').select('*').neq('event_name', 'Glory').limit(100000),
             db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').limit(100000),
@@ -1043,8 +1024,7 @@
             window.RAD.config.get('coeff_gvg'),
             window.RAD.config.get('coeff_shadowfront'),
             window.RAD.config.get('coeff_dtr'),
-            window.RAD.config.get('coeff_armsrace'),
-            window.RAD.config.get('reserve_credit_pct')
+            window.RAD.config.get('coeff_armsrace')
         ]);
         var allMembers = (membersRes.data || []).map(function (m) { return m.pseudo; });
         var allParts   = deduplicateParticipants(partsRes.data || []);
@@ -1056,8 +1036,7 @@
             coeff_gvg: parseInt(coeffGvg, 10) || 5,
             coeff_shadowfront: parseInt(coeffShadowfront, 10) || 3,
             coeff_dtr: parseInt(coeffDtr, 10) || 2,
-            coeff_armsrace: parseInt(coeffArmsrace, 10) || 1,
-            reserve_credit_pct: parseInt(reserveCreditPct, 10) || 50
+            coeff_armsrace: parseInt(coeffArmsrace, 10) || 1
         };
 
         var weeks = Array.from(new Set(allParts.map(function (r) { return r.week_start; }))).sort();
