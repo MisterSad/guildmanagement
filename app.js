@@ -660,13 +660,26 @@
                              '</button>';
             }
 
+            var guildSelectHtml = '';
+            if (acc.role !== 'R5' && localStorage.getItem('rad_role') === 'admin') {
+                var options = '<option value="ALL"' + (!acc.guild ? ' selected' : '') + '>Toutes</option>';
+                (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
+                    options += '<option value="' + g + '"' + (acc.guild === g ? ' selected' : '') + '>' + g + '</option>';
+                });
+                guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
+                                      options +
+                                  '</select>';
+            } else {
+                guildSelectHtml = '<span class="gm-chip ' + guildCls + '" style="font-size: 0.7rem;">' + esc(guildLabel) + '</span>';
+            }
+
             html +=
                 '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
                     '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
                         '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
-                        '<div class="gm-row" style="gap: 0.25rem;">' +
+                        '<div class="gm-row" style="gap: 0.25rem; align-items: center;">' +
                             '<span class="gm-chip ' + chipCls + '">' + esc(roleLabel) + '</span>' +
-                            '<span class="gm-chip ' + guildCls + '" style="font-size: 0.7rem;">' + esc(guildLabel) + '</span>' +
+                            guildSelectHtml +
                         '</div>' +
                     '</div>' +
                     passHtml +
@@ -687,13 +700,13 @@
                 var pwdSpan = wrap.querySelector('.gm-pwd-text');
                 var icon = btn.querySelector('i');
                 if (wrap.classList.contains('gm-masked')) {
-                    wrap.classList.remove('gm-masked');
-                    pwdSpan.textContent = pass;
-                    icon.className = 'ph ph-eye-slash';
+                     wrap.classList.remove('gm-masked');
+                     pwdSpan.textContent = pass;
+                     icon.className = 'ph ph-eye-slash';
                 } else {
-                    wrap.classList.add('gm-masked');
-                    pwdSpan.textContent = '••••••••••••';
-                    icon.className = 'ph ph-eye';
+                     wrap.classList.add('gm-masked');
+                     pwdSpan.textContent = '••••••••••••';
+                     icon.className = 'ph ph-eye';
                 }
             });
         });
@@ -718,6 +731,29 @@
                     t('confirm_delete_account_body') + ' <strong>' + esc(id) + '</strong>' + t('confirm_delete_account_body2'),
                     function () { deleteAccount(id); }
                 );
+            });
+        });
+
+        accountList.querySelectorAll('.gm-account-guild-select').forEach(function (sel) {
+            sel.addEventListener('change', async function () {
+                var id = sel.getAttribute('data-id');
+                var newGuild = sel.value;
+                sel.disabled = true;
+                try {
+                    var res = await window.RAD.adminAccounts('update-guild', { id: id, guild: newGuild });
+                    if (!res.ok) throw new Error(res.error || 'update_failed');
+                    showToast('Accès de ' + id + ' mis à jour avec succès !', 'success');
+                    
+                    var acc = accounts.find(function (a) { return a.id === id; });
+                    if (acc) {
+                        acc.guild = (newGuild === 'ALL' ? null : newGuild);
+                    }
+                } catch (err) {
+                    showToast('Erreur lors de la mise à jour : ' + err.message, 'error');
+                    fetchAccounts();
+                } finally {
+                    sel.disabled = false;
+                }
             });
         });
     }

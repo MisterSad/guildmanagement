@@ -161,5 +161,31 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true });
   }
 
+  if (action === "update-guild") {
+    const id = (body?.id ?? "").toString().trim();
+    const guild = (body?.guild ?? null) as string | null;
+    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+
+    if (info.role === "R4") {
+      const { data: targetAcc } = await admin
+        .from("accounts")
+        .select("role, guild")
+        .eq("id", id)
+        .maybeSingle();
+      if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+      if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild || guild !== callerGuild) {
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
+    }
+
+    const targetGuild = guild === "ALL" ? null : guild;
+    const { error } = await admin
+      .from("accounts")
+      .update({ guild: targetGuild })
+      .eq("id", id);
+    if (error) return json({ ok: false, error: "server_error" }, 500);
+    return json({ ok: true });
+  }
+
   return json({ ok: false, error: "unknown_action" }, 400);
 });
