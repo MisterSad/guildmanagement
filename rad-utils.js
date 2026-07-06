@@ -403,6 +403,9 @@
         if (db) {
             try {
                 var res = await db.from('guild_config').select('value').eq('key', key).maybeSingle();
+                if (res && res.error) {
+                    console.error('guild_config select error for key ' + key + ':', res.error);
+                }
                 if (res && res.data) return res.data.value;
             } catch (e) {
                 console.warn('guild_config table fetch error, falling back to LocalStorage', e);
@@ -415,14 +418,12 @@
     async function setGuildConfig(key, value) {
         localStorage.setItem('rad_config_' + (window.currentGuild || 'ALPHA') + '_' + key, value);
         if (db) {
-            try {
-                var res = await db.from('guild_config').upsert(
-                    { key: key, value: value, updated_at: new Date().toISOString() },
-                    { onConflict: 'guild,key' }
-                );
-                if (res && !res.error) return true;
-            } catch (e) {
-                console.warn('guild_config table save error', e);
+            var res = await db.from('guild_config').upsert(
+                { key: key, value: value, updated_at: new Date().toISOString() },
+                { onConflict: 'guild,key' }
+            );
+            if (res && res.error) {
+                throw new Error(res.error.message || 'upsert_failed');
             }
         }
         return true;
