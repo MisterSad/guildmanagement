@@ -191,21 +191,24 @@
         if (adminHomeBtn) adminHomeBtn.style.display = '';
         if (adminBannedBtn) adminBannedBtn.style.display = '';
 
-        var isAlphaAdmin = (role === 'member' && window.currentGuildRestriction === 'ALPHA');
         var isR5 = (role !== 'member');
 
-        if (isR5 || isAlphaAdmin) {
-            if (createAccountCard) createAccountCard.style.display = '';
-            if (activeAccountsCard) activeAccountsCard.style.display = '';
-            if (isR5) {
-                if (createGuildCard) createGuildCard.style.display = '';
-            } else {
-                if (createGuildCard) createGuildCard.style.display = 'none';
-            }
+        if (createAccountCard) createAccountCard.style.display = '';
+        if (activeAccountsCard) activeAccountsCard.style.display = '';
+        if (isR5) {
+            if (createGuildCard) createGuildCard.style.display = '';
         } else {
-            if (createAccountCard) createAccountCard.style.display = 'none';
-            if (activeAccountsCard) activeAccountsCard.style.display = 'none';
             if (createGuildCard) createGuildCard.style.display = 'none';
+        }
+
+        var guildSelect = document.getElementById('account-guild');
+        if (guildSelect) {
+            if (role === 'member') {
+                guildSelect.value = window.currentGuildRestriction || '';
+                guildSelect.disabled = true;
+            } else {
+                guildSelect.disabled = false;
+            }
         }
 
         if (role === 'member') { // R4
@@ -217,9 +220,7 @@
             if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Officier';
 
             loadGuildSettings();
-            if (isAlphaAdmin) {
-                fetchAccounts();
-            }
+            fetchAccounts();
         } else { // R5
             if (roleLabel) {
                 roleLabel.textContent = 'Super Admin :';
@@ -363,13 +364,13 @@
 
             var newPassword = generatePassword(12);
             try {
-                var res = await window.RAD.adminAccounts('create', { id: identifier, password: newPassword, role: 'R4' });
+                var res = await window.RAD.adminAccounts('create', {
+                    id: identifier,
+                    password: newPassword,
+                    role: 'R4',
+                    guild: (guildSelected === 'ALL' ? null : guildSelected)
+                });
                 if (!res.ok) throw new Error(res.error || 'create_failed');
-
-                // Write guild field directly to accounts table
-                if (guildSelected !== 'ALL') {
-                    await supabase.from('accounts').update({ guild: guildSelected }).eq('id', identifier);
-                }
 
                 accounts.unshift({ 
                     id: identifier, 

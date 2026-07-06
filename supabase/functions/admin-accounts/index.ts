@@ -54,21 +54,16 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
-  let isAllowed = false;
-  if (info.role === "R5") {
-    isAllowed = true;
-  } else if (info.role === "R4" && info.accountId) {
-    const { data: accData } = await admin
+  // Get caller's guild if R4
+  let callerGuild: string | null = null;
+  if (info.role === "R4") {
+    const { data: callerAcc } = await admin
       .from("accounts")
       .select("guild")
       .eq("id", info.accountId)
       .maybeSingle();
-    if (accData && accData.guild === "ALPHA") {
-      isAllowed = true;
-    }
+    callerGuild = callerAcc?.guild ?? null;
   }
-
-  if (!isAllowed) return json({ ok: false, error: "forbidden" }, 403);
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 400); }
@@ -80,6 +75,15 @@ Deno.serve(async (req: Request) => {
 
     let accountsList = data ?? [];
     if (info.role === "R4") {
+      // Filter list: only show accounts of the same guild.
+      // ALPHA admin can also see Super Admin (R5, guild = null)
+      accountsList = accountsList.filter((acc: any) => {
+        if (acc.guild === callerGuild) return true;
+        if (callerGuild === "ALPHA" && acc.role === "R5") return true;
+        return false;
+      });
+
+      // Obfuscate password for R5 (Super Admin) accounts
       accountsList = accountsList.map((acc: any) => {
         if (acc.role === "R5") {
           return { ...acc, password: "" }; // Obfuscate password for Super Admin
@@ -93,8 +97,18 @@ Deno.serve(async (req: Request) => {
   if (action === "create") {
     const id = (body?.id ?? "").toString().trim();
     const password = (body?.password ?? "").toString();
-    const accRole = (info.role === "R4") ? "R4" : (body?.role ?? "R4").toString();
     if (!id || !password) return json({ ok: false, error: "missing_fields" }, 400);
+
+    let accRole = "R4";
+    let accGuild = (body?.guild ?? null) as string | null;
+
+    if (info.role === "R4") {
+      accRole = "R4";
+      accGuild = callerGuild; // Force caller's guild
+    } else {
+      accRole = (body?.role ?? "R4").toString();
+      accGuild = accGuild === "ALL" ? null : accGuild;
+    }
 
     const email = await emailFor(id);
     const secret = randomSecret();
@@ -112,6 +126,14 @@ Deno.serve(async (req: Request) => {
     }
     const { error: uErr } = await admin.rpc("gm_admin_upsert", { p_id: id, p_password: password, p_role: accRole });
     if (uErr) return json({ ok: false, error: "server_error" }, 500);
+
+    // Save guild
+    const { error: uGuildErr } = await admin
+      .from("accounts")
+      .update({ guild: accGuild })
+      .eq("id", id);
+    if (uGuildErr) return json({ ok: false, error: "server_error" }, 500);
+
     const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: id, p_auth_user_id: uid, p_secret: secret });
     if (aErr) return json({ ok: false, error: "server_error" }, 500);
     return json({ ok: true });
@@ -124,10 +146,11 @@ Deno.serve(async (req: Request) => {
     if (info.role === "R4") {
       const { data: targetAcc } = await admin
         .from("accounts")
-        .select("role")
+        .select("role, guild")
         .eq("id", id)
         .maybeSingle();
-      if (targetAcc && targetAcc.role === "R5") {
+      if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+      if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild) {
         return json({ ok: false, error: "forbidden" }, 403);
       }
     }
