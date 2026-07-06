@@ -26,9 +26,9 @@
         { id: 'glory',     tabId: 'event-glory', icon: 'ph-trophy',          labelKey: 'gm_nav_glory',     section: 'play',  panels: ['event-glory'] },
         { id: 'history',   tabId: 'event-history', icon: 'ph-clock-counter-clockwise', labelKey: 'gm_nav_history', section: 'play',  panels: ['event-history'] },
         { id: 'stats',     tabId: 'stats-admin', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
-        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'], r5Only: true },
+        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
         { id: 'sanctions', tabId: 'tab-sanctions', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
-        { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'], r5Only: true }
+        { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] }
     ];
 
     function visibleNavItems() {
@@ -190,7 +190,11 @@
     }
     function getUserRoleLong() {
         var r = getUserRole();
-        return r === 'R5' ? 'R5 · Leader' : 'R4 · Officier';
+        if (r === 'R5') return 'Super Admin';
+        if (window.currentGuildRestriction) {
+            return 'Admin ' + window.currentGuildRestriction;
+        }
+        return 'Admin';
     }
 
     function renderSidebar() {
@@ -231,9 +235,15 @@
 
     function navItemHtml(item) {
         var isActive = state.active === item.id;
+        var label = t(item.labelKey);
+        var icon = item.icon;
+        if (item.id === 'accounts' && getUserRole() === 'R4') {
+            label = t('gm_nav_config');
+            icon = 'ph-gear';
+        }
         return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
-                '<i class="ph ' + item.icon + '"></i>' +
-                '<span>' + t(item.labelKey) + '</span>' +
+                '<i class="ph ' + icon + '"></i>' +
+                '<span>' + label + '</span>' +
             '</button>';
     }
 
@@ -250,13 +260,46 @@
               '</div>'
             : '<div class="gm-topbar-title">' + title + '</div>';
 
+        var guilds = ['ALPHA', 'OMEGA', 'IMK'];
+        if (window.currentGuildRestriction) {
+            guilds = [window.currentGuildRestriction];
+            window.currentGuild = window.currentGuildRestriction;
+            localStorage.setItem('rad_current_guild', window.currentGuildRestriction);
+        }
+        var guildOptions = guilds.map(function(g) {
+            return '<option value="' + g + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + g + '</option>';
+        }).join('');
+
+        var selectStyle = window.currentGuildRestriction 
+            ? 'display: none; padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
+            : 'padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
+
         var html = brandHtml +
             '<div class="gm-topbar-actions">' +
+                (window.currentGuildRestriction ? '<span class="gm-chip gm-chip-info" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">' + esc(window.currentGuildRestriction) + '</span>' : '') +
+                '<select id="guild-selector" class="gm-select" style="' + selectStyle + '">' +
+                    guildOptions +
+                '</select>' +
                 '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + t('nav_logout_title') + '">' +
                     '<i class="ph ph-sign-out"></i>' +
                 '</button>' +
             '</div>';
         el.innerHTML = html;
+
+        var gs = el.querySelector('#guild-selector');
+        if (gs) {
+            gs.addEventListener('change', function () {
+                var newGuild = gs.value;
+                localStorage.setItem('rad_current_guild', newGuild);
+                window.currentGuild = newGuild;
+                if (window.RAD_APP && window.RAD_APP.reloadActiveView) {
+                    window.RAD_APP.reloadActiveView();
+                } else {
+                    window.location.reload();
+                }
+            });
+        }
+
         var lo = el.querySelector('[data-gm-logout]');
         if (lo) lo.addEventListener('click', function () {
             var legacy = document.getElementById('logout-btn');
@@ -303,9 +346,15 @@
         var html = '<div class="gm-drawer-handle"></div><div class="gm-drawer-grid">';
         visibleNavItems().forEach(function (item) {
             var isActive = state.active === item.id;
+            var label = t(item.labelKey);
+            var icon = item.icon;
+            if (item.id === 'accounts' && getUserRole() === 'R4') {
+                label = t('gm_nav_config');
+                icon = 'ph-gear';
+            }
             html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
-                        '<i class="ph ' + item.icon + ' gm-icon"></i>' +
-                        '<span>' + t(item.labelKey) + '</span>' +
+                        '<i class="ph ' + icon + ' gm-icon"></i>' +
+                        '<span>' + label + '</span>' +
                     '</button>';
         });
         html += '</div>';

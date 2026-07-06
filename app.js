@@ -64,6 +64,25 @@
             return;
         }
 
+        // Fetch guild restriction if R4
+        if (info.role === 'R4' && info.accountId) {
+            try {
+                var { data } = await supabase.from('accounts').select('guild').eq('id', info.accountId).maybeSingle();
+                if (data && data.guild) {
+                    window.currentGuildRestriction = data.guild;
+                    window.currentGuild = data.guild;
+                    localStorage.setItem('rad_current_guild', data.guild);
+                } else {
+                    window.currentGuildRestriction = null;
+                }
+            } catch (err) {
+                console.error('Failed to restore account guild restriction:', err);
+                window.currentGuildRestriction = null;
+            }
+        } else {
+            window.currentGuildRestriction = null;
+        }
+
         var role = info.role === 'R5' ? 'admin' : 'member';
         localStorage.setItem('rad_role', role);
         if (info.accountId) {
@@ -94,6 +113,25 @@
                 loginError.classList.add('hidden');
                 document.getElementById('password').value = '';
 
+                // Fetch guild restriction for new logins if R4
+                if (resp.role === 'R4') {
+                    try {
+                        var { data } = await supabase.from('accounts').select('guild').eq('id', user).maybeSingle();
+                        if (data && data.guild) {
+                            window.currentGuildRestriction = data.guild;
+                            window.currentGuild = data.guild;
+                            localStorage.setItem('rad_current_guild', data.guild);
+                        } else {
+                            window.currentGuildRestriction = null;
+                        }
+                    } catch (err) {
+                        console.error('Failed to load login guild restriction:', err);
+                        window.currentGuildRestriction = null;
+                    }
+                } else {
+                    window.currentGuildRestriction = null;
+                }
+
                 var role = (resp.role === 'R5') ? 'admin' : 'member';
                 localStorage.setItem('rad_role', role);
                 localStorage.setItem('rad_user', user);
@@ -122,6 +160,7 @@
         window.RAD.logout();
         localStorage.removeItem('rad_role');
         localStorage.removeItem('rad_user');
+        window.currentGuildRestriction = null;
         showLogin();
         showToast(t('toast_logout'), 'info');
     }
@@ -139,16 +178,34 @@
         var roleLabel = document.getElementById('nav-user-role');
         var nameLabel = document.getElementById('nav-user-name');
 
-        if (role === 'member') {
-            if (roleLabel) roleLabel.textContent = 'R4 :';
+        var createAccountCard = document.getElementById('create-account-card');
+        var activeAccountsCard = document.getElementById('active-accounts-card');
+
+        // Allow both roles (R4/member and R5/admin) to view home & banned tabs
+        if (adminHomeBtn) adminHomeBtn.style.display = '';
+        if (adminBannedBtn) adminBannedBtn.style.display = '';
+
+        if (role === 'member') { // R4
+            if (roleLabel) {
+                roleLabel.textContent = window.currentGuildRestriction 
+                    ? 'Admin ' + window.currentGuildRestriction + ' :' 
+                    : 'Admin :';
+            }
             if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Officier';
-            if (adminHomeBtn) adminHomeBtn.style.display = 'none';
-            if (adminBannedBtn) adminBannedBtn.style.display = 'none';
-        } else {
-            if (roleLabel) roleLabel.textContent = 'R5 :';
-            if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Admin';
-            if (adminHomeBtn) adminHomeBtn.style.display = '';
-            if (adminBannedBtn) adminBannedBtn.style.display = '';
+            
+            // Hide accounts management cards for R4
+            if (createAccountCard) createAccountCard.style.display = 'none';
+            if (activeAccountsCard) activeAccountsCard.style.display = 'none';
+
+            loadGuildSettings();
+        } else { // R5
+            if (roleLabel) roleLabel.textContent = 'Super Admin :';
+            if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Leader';
+
+            // Show accounts management cards for R5
+            if (createAccountCard) createAccountCard.style.display = '';
+            if (activeAccountsCard) activeAccountsCard.style.display = '';
+
             fetchAccounts();
             loadGuildSettings();
         }
@@ -240,6 +297,24 @@
             var res = await window.RAD.adminAccounts('list');
             if (!res.ok) throw new Error(res.error || 'list_failed');
             accounts = res.accounts || [];
+
+            // Query guilds from accounts directly to merge
+            var dbAccsMap = {};
+            try {
+                var dbRes = await supabase.from('accounts').select('id, guild');
+                if (dbRes.data) {
+                    dbRes.data.forEach(function (r) {
+                        dbAccsMap[r.id] = r.guild;
+                    });
+                }
+            } catch (dbErr) {
+                console.warn('Failed to query guilds directly from accounts table', dbErr);
+            }
+
+            accounts.forEach(function (acc) {
+                acc.guild = dbAccsMap[acc.id] || null;
+            });
+
             renderAccounts();
         } catch (err) {
             showToast(t('toast_err_fetch_accounts') + ' ' + err.message, 'error');
@@ -252,6 +327,9 @@
             var idInput    = document.getElementById('account-id');
             var identifier = idInput.value.trim();
             if (!identifier) return;
+
+            var guildInput = document.getElementById('account-guild');
+            var guildSelected = guildInput ? guildInput.value : 'ALL';
 
             if (accounts.some(function (a) { return a.id.toLowerCase() === identifier.toLowerCase(); })) {
                 showToast(t('toast_duplicate_account'), 'error');
@@ -267,7 +345,19 @@
             try {
                 var res = await window.RAD.adminAccounts('create', { id: identifier, password: newPassword, role: 'R4' });
                 if (!res.ok) throw new Error(res.error || 'create_failed');
-                accounts.unshift({ id: identifier, password: newPassword, role: 'R4', created_at: new Date().toISOString() });
+
+                // Write guild field directly to accounts table
+                if (guildSelected !== 'ALL') {
+                    await supabase.from('accounts').update({ guild: guildSelected }).eq('id', identifier);
+                }
+
+                accounts.unshift({ 
+                    id: identifier, 
+                    password: newPassword, 
+                    role: 'R4', 
+                    guild: (guildSelected === 'ALL' ? null : guildSelected), 
+                    created_at: new Date().toISOString() 
+                });
                 renderAccounts();
                 idInput.value = '';
                 showToast(t('toast_account_created'), 'success');
@@ -302,25 +392,29 @@
         var coeffDtr = await window.RAD.config.get('coeff_dtr');
         var coeffArmsrace = await window.RAD.config.get('coeff_armsrace');
         var reserveCreditPct = await window.RAD.config.get('reserve_credit_pct');
-        var discordWebhook = await window.RAD.config.get('discord_webhook_url');
+
+        // Webhooks configuration
+        var webhookArmsrace = await window.RAD.config.get('webhook_armsrace');
+        var webhookDtr = await window.RAD.config.get('webhook_dtr');
+        var webhookShadowfront = await window.RAD.config.get('webhook_shadowfront');
+        var webhookCalamity = await window.RAD.config.get('webhook_calamity');
+        var webhookGvg = await window.RAD.config.get('webhook_gvg');
+        var webhookSvs = await window.RAD.config.get('webhook_svs');
 
         // Notification configs
         var notifyArmsrace30 = await window.RAD.config.get('notify_armsrace_reminder_30');
-        var notifyArmsrace15 = await window.RAD.config.get('notify_armsrace_reminder_15');
         var notifyArmsrace5 = await window.RAD.config.get('notify_armsrace_reminder_5');
         var notifyArmsraceStart = await window.RAD.config.get('notify_armsrace_start');
 
         var notifyDtr30 = await window.RAD.config.get('notify_dtr_reminder_30');
-        var notifyDtr15 = await window.RAD.config.get('notify_dtr_reminder_15');
         var notifyDtr5 = await window.RAD.config.get('notify_dtr_reminder_5');
         var notifyDtrStart = await window.RAD.config.get('notify_dtr_start');
 
         var notifyShadowfront30 = await window.RAD.config.get('notify_shadowfront_reminder_30');
-        var notifyShadowfront15 = await window.RAD.config.get('notify_shadowfront_reminder_15');
         var notifyShadowfront5 = await window.RAD.config.get('notify_shadowfront_reminder_5');
         var notifyShadowfrontStart = await window.RAD.config.get('notify_shadowfront_start');
 
-        var notifyCalamity5 = await window.RAD.config.get('notify_calamity_5');
+        var notifyCalamity10 = await window.RAD.config.get('notify_calamity_10');
         var notifyGvgPvp = await window.RAD.config.get('notify_gvg_pvp');
         
         var notifySvsGarrison = await window.RAD.config.get('notify_svs_garrison');
@@ -333,7 +427,14 @@
         document.getElementById('coeff-dtr').value = coeffDtr;
         document.getElementById('coeff-armsrace').value = coeffArmsrace;
         document.getElementById('reserve-credit-pct').value = reserveCreditPct;
-        document.getElementById('discord-webhook-url').value = discordWebhook;
+
+        // Set webhook inputs
+        document.getElementById('webhook-armsrace').value = webhookArmsrace;
+        document.getElementById('webhook-dtr').value = webhookDtr;
+        document.getElementById('webhook-shadowfront').value = webhookShadowfront;
+        document.getElementById('webhook-calamity').value = webhookCalamity;
+        document.getElementById('webhook-gvg').value = webhookGvg;
+        document.getElementById('webhook-svs').value = webhookSvs;
 
         var setCheckedState = function (id, value, defaultValue) {
             var el = document.getElementById(id);
@@ -346,21 +447,18 @@
         };
 
         setCheckedState('notify-armsrace-30', notifyArmsrace30, true);
-        setCheckedState('notify-armsrace-15', notifyArmsrace15, true);
         setCheckedState('notify-armsrace-5', notifyArmsrace5, true);
         setCheckedState('notify-armsrace-start', notifyArmsraceStart, true);
 
         setCheckedState('notify-dtr-30', notifyDtr30, true);
-        setCheckedState('notify-dtr-15', notifyDtr15, true);
         setCheckedState('notify-dtr-5', notifyDtr5, true);
         setCheckedState('notify-dtr-start', notifyDtrStart, true);
 
         setCheckedState('notify-shadowfront-30', notifyShadowfront30, true);
-        setCheckedState('notify-shadowfront-15', notifyShadowfront15, true);
         setCheckedState('notify-shadowfront-5', notifyShadowfront5, true);
         setCheckedState('notify-shadowfront-start', notifyShadowfrontStart, true);
 
-        setCheckedState('notify-calamity-5', notifyCalamity5, true);
+        setCheckedState('notify-calamity-10', notifyCalamity10, true);
         setCheckedState('notify-gvg-pvp', notifyGvgPvp, true);
 
         setCheckedState('notify-svs-garrison', notifySvsGarrison, true);
@@ -387,25 +485,28 @@
                     window.RAD.config.set('coeff_dtr', document.getElementById('coeff-dtr').value),
                     window.RAD.config.set('coeff_armsrace', document.getElementById('coeff-armsrace').value),
                     window.RAD.config.set('reserve_credit_pct', document.getElementById('reserve-credit-pct').value),
-                    window.RAD.config.set('discord_webhook_url', document.getElementById('discord-webhook-url').value.trim()),
+
+                    window.RAD.config.set('webhook_armsrace', document.getElementById('webhook-armsrace').value.trim()),
+                    window.RAD.config.set('webhook_dtr', document.getElementById('webhook-dtr').value.trim()),
+                    window.RAD.config.set('webhook_shadowfront', document.getElementById('webhook-shadowfront').value.trim()),
+                    window.RAD.config.set('webhook_calamity', document.getElementById('webhook-calamity').value.trim()),
+                    window.RAD.config.set('webhook_gvg', document.getElementById('webhook-gvg').value.trim()),
+                    window.RAD.config.set('webhook_svs', document.getElementById('webhook-svs').value.trim()),
 
                     // Notification Configs
                     window.RAD.config.set('notify_armsrace_reminder_30', document.getElementById('notify-armsrace-30').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_armsrace_reminder_15', document.getElementById('notify-armsrace-15').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_armsrace_reminder_5', document.getElementById('notify-armsrace-5').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_armsrace_start', document.getElementById('notify-armsrace-start').checked ? 'true' : 'false'),
 
                     window.RAD.config.set('notify_dtr_reminder_30', document.getElementById('notify-dtr-30').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_dtr_reminder_15', document.getElementById('notify-dtr-15').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_dtr_reminder_5', document.getElementById('notify-dtr-5').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_dtr_start', document.getElementById('notify-dtr-start').checked ? 'true' : 'false'),
 
                     window.RAD.config.set('notify_shadowfront_reminder_30', document.getElementById('notify-shadowfront-30').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_shadowfront_reminder_15', document.getElementById('notify-shadowfront-15').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_shadowfront_reminder_5', document.getElementById('notify-shadowfront-5').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_shadowfront_start', document.getElementById('notify-shadowfront-start').checked ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_calamity_5', document.getElementById('notify-calamity-5').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_calamity_10', document.getElementById('notify-calamity-10').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_gvg_pvp', document.getElementById('notify-gvg-pvp').checked ? 'true' : 'false'),
 
                     window.RAD.config.set('notify_svs_garrison', document.getElementById('notify-svs-garrison').checked ? 'true' : 'false'),
@@ -435,13 +536,19 @@
         accounts.forEach(function (acc) {
             // Détermine le rôle pour le chip — si 'role' est dispo, sinon défaut R4
             var role = acc.role || 'R4';
+            var roleLabel = role === 'R5' ? 'Super Admin' : 'Admin';
             var chipCls = role === 'R5' ? 'gm-chip-accent' : 'gm-chip-info';
             var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+            var guildLabel = acc.guild ? 'Guilde: ' + acc.guild : 'Toutes les guildes';
+            var guildCls = acc.guild ? 'gm-chip-warning' : 'gm-chip-success';
             html +=
                 '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
-                    '<div class="gm-row" style="justify-content:space-between;">' +
+                    '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
                         '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
-                        '<span class="gm-chip ' + chipCls + '">' + esc(role) + '</span>' +
+                        '<div class="gm-row" style="gap: 0.25rem;">' +
+                            '<span class="gm-chip ' + chipCls + '">' + esc(roleLabel) + '</span>' +
+                            '<span class="gm-chip ' + guildCls + '" style="font-size: 0.7rem;">' + esc(guildLabel) + '</span>' +
+                        '</div>' +
                     '</div>' +
                     '<div class="gm-cred-pass gm-masked" data-acc-pass="' + esc(acc.password) + '">' +
                         '<span class="gm-pwd-text">••••••••••••</span>' +
@@ -986,6 +1093,49 @@
         }, 3500);
     }
 
+    function reloadActiveView() {
+        var activePanel = document.querySelector('.tab-panel.active');
+        if (!activePanel) return;
+        var tabId = activePanel.id;
+
+        if (tabId === 'admin-members' || tabId === 'member-members') {
+            fetchGuildMembers();
+        }
+        if (tabId === 'admin-home') {
+            fetchAccounts();
+            loadGuildSettings();
+        }
+        if (tabId === 'admin-banned') {
+            fetchBannedPlayers();
+        }
+        var activeTabBtn = document.querySelector('.nav-tab.active');
+        var eventName = activeTabBtn ? activeTabBtn.getAttribute('data-event-tab') : null;
+        if (eventName && ['SvS', 'GvG', 'Defend Trade Route'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
+            window.RAD_EVENTS.loadEvent(eventName);
+        }
+        if (eventName === 'ARMS RACE' && window.RAD_ARMSRACE) {
+            window.RAD_ARMSRACE.load();
+        }
+        if (eventName === 'Shadowfront' && window.RAD_SHADOWFRONT) {
+            window.RAD_SHADOWFRONT.load();
+        }
+        if (eventName === 'stats' && window.RAD_STATS) {
+            window.RAD_STATS.load();
+        }
+        if (eventName === 'glory' && window.RAD_GLORY) {
+            window.RAD_GLORY.load();
+        }
+        if (eventName === 'history' && window.RAD_HISTORY) {
+            window.RAD_HISTORY.load();
+        }
+        if (tabId === 'tab-sanctions' && window.RAD_SANCTIONS) {
+            window.RAD_SANCTIONS.load();
+        }
+        if (tabId === 'gm-overview' && window.RAD_OVERVIEW) {
+            window.RAD_OVERVIEW.load();
+        }
+    }
+
     window.addEventListener('rad-lang-change', function () {
         if (bannedListContainer && bannedPlayers.length > 0) {
             renderBannedPlayers();
@@ -995,6 +1145,6 @@
         }
     });
 
-    window.RAD_APP = { showToast: showToast };
+    window.RAD_APP = { showToast: showToast, reloadActiveView: reloadActiveView };
 
 })();

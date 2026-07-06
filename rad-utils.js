@@ -11,6 +11,72 @@
     try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
     catch (e) { console.error('rad-utils: supabase init', e); }
 
+    window.currentGuild = localStorage.getItem('rad_current_guild') || 'ALPHA';
+
+    // Intercept database calls to automatically add the 'guild' filter
+    if (db) {
+        var originalFrom = db.from;
+        db.from = function (table) {
+            var builder = originalFrom.call(db, table);
+            var tenantTables = [
+                'guild_members',
+                'banned_players',
+                'event_status',
+                'event_participants',
+                'shadowfront_squads',
+                'sanctions',
+                'weekly_scores',
+                'guild_config',
+                'push_subscriptions',
+                'event_reminders_sent',
+                'discord_notifications_sent'
+            ];
+            if (tenantTables.indexOf(table) !== -1) {
+                var originalSelect = builder.select;
+                builder.select = function () {
+                    return originalSelect.apply(this, arguments).eq('guild', window.currentGuild || 'ALPHA');
+                };
+
+                var originalDelete = builder.delete;
+                builder.delete = function () {
+                    return originalDelete.apply(this, arguments).eq('guild', window.currentGuild || 'ALPHA');
+                };
+
+                var originalUpdate = builder.update;
+                builder.update = function (values, options) {
+                    return originalUpdate.call(this, values, options).eq('guild', window.currentGuild || 'ALPHA');
+                };
+
+                var originalInsert = builder.insert;
+                builder.insert = function (values, options) {
+                    var guildVal = window.currentGuild || 'ALPHA';
+                    if (Array.isArray(values)) {
+                        values = values.map(function (v) {
+                            return Object.assign({ guild: guildVal }, v);
+                        });
+                    } else if (values && typeof values === 'object') {
+                        values = Object.assign({ guild: guildVal }, values);
+                    }
+                    return originalInsert.call(this, values, options);
+                };
+
+                var originalUpsert = builder.upsert;
+                builder.upsert = function (values, options) {
+                    var guildVal = window.currentGuild || 'ALPHA';
+                    if (Array.isArray(values)) {
+                        values = values.map(function (v) {
+                            return Object.assign({ guild: guildVal }, v);
+                        });
+                    } else if (values && typeof values === 'object') {
+                        values = Object.assign({ guild: guildVal }, values);
+                    }
+                    return originalUpsert.call(this, values, options);
+                };
+            }
+            return builder;
+        };
+    }
+
     function t(key) {
         return window.RAD_I18N ? window.RAD_I18N.t(key) : key;
     }
@@ -311,20 +377,22 @@
         coeff_dtr: '2',
         coeff_armsrace: '1',
         reserve_credit_pct: '50',
-        discord_webhook_url: '',
+        webhook_armsrace: '',
+        webhook_dtr: '',
+        webhook_shadowfront: '',
+        webhook_calamity: '',
+        webhook_gvg: '',
+        webhook_svs: '',
         notify_armsrace_reminder_30: 'true',
-        notify_armsrace_reminder_15: 'true',
         notify_armsrace_reminder_5: 'true',
         notify_armsrace_start: 'true',
         notify_dtr_reminder_30: 'true',
-        notify_dtr_reminder_15: 'true',
         notify_dtr_reminder_5: 'true',
         notify_dtr_start: 'true',
         notify_shadowfront_reminder_30: 'true',
-        notify_shadowfront_reminder_15: 'true',
         notify_shadowfront_reminder_5: 'true',
         notify_shadowfront_start: 'true',
-        notify_calamity_5: 'true',
+        notify_calamity_10: 'true',
         notify_gvg_pvp: 'true',
         notify_svs_garrison: 'true',
         notify_svs_pvp: 'true',
@@ -340,12 +408,12 @@
                 console.warn('guild_config table fetch error, falling back to LocalStorage', e);
             }
         }
-        var local = localStorage.getItem('rad_config_' + key);
+        var local = localStorage.getItem('rad_config_' + (window.currentGuild || 'ALPHA') + '_' + key);
         return local !== null ? local : (localConfigFallback[key] !== undefined ? localConfigFallback[key] : '');
     }
 
     async function setGuildConfig(key, value) {
-        localStorage.setItem('rad_config_' + key, value);
+        localStorage.setItem('rad_config_' + (window.currentGuild || 'ALPHA') + '_' + key, value);
         if (db) {
             try {
                 var res = await db.from('guild_config').upsert({ key: key, value: value, updated_at: new Date().toISOString() });
@@ -358,10 +426,6 @@
     }
 
     async function notifyDiscordEvent(eventName, startAt, action) {
-        var webhookUrl = await getGuildConfig('discord_webhook_url');
-        if (!webhookUrl || webhookUrl.trim() === '') return;
-
-        // Check if this type of notification is enabled
         var eventPrefix = '';
         if (eventName.indexOf('ARMS RACE') !== -1) {
             eventPrefix = 'armsrace';
@@ -369,26 +433,38 @@
             eventPrefix = 'dtr';
         } else if (eventName.indexOf('Shadowfront Squad') !== -1) {
             eventPrefix = 'shadowfront';
+        } else if (eventName === 'GvG') {
+            eventPrefix = 'gvg';
+        } else if (eventName === 'SvS') {
+            eventPrefix = 'svs';
+        } else if (eventName.indexOf('Calamity') !== -1) {
+            eventPrefix = 'calamity';
         }
 
-        if (eventPrefix) {
-            var configKey = 'notify_' + eventPrefix + '_';
-            if (action === 'start' || action === 'edit') {
-                configKey += 'start';
-            } else if (action === 'reminder_15') {
-                configKey += 'reminder_15';
-            } else if (action === 'reminder_5') {
-                configKey += 'reminder_5';
-            } else {
-                configKey = ''; // unknown/fallback
-            }
+        if (!eventPrefix) return;
 
-            if (configKey) {
-                var isNotificationEnabled = await getGuildConfig(configKey);
-                if (isNotificationEnabled === 'false') {
-                    console.log('Discord notification for ' + eventName + ' (' + action + ') is disabled in configuration.');
-                    return;
-                }
+        var webhookUrl = await getGuildConfig('webhook_' + eventPrefix);
+        if (!webhookUrl || webhookUrl.trim() === '') return;
+
+        // Check if this type of notification is enabled
+        var configKey = 'notify_' + eventPrefix + '_';
+        if (action === 'start' || action === 'edit') {
+            configKey += 'start';
+        } else if (action === 'reminder_30') {
+            configKey += 'reminder_30';
+        } else if (action === 'reminder_5') {
+            configKey += 'reminder_5';
+        } else if (action === 'reminder_10') {
+            configKey += 'reminder_10';
+        } else {
+            configKey = ''; // unknown/fallback
+        }
+
+        if (configKey) {
+            var isNotificationEnabled = await getGuildConfig(configKey);
+            if (isNotificationEnabled === 'false') {
+                console.log('Discord notification for ' + eventName + ' (' + action + ') is disabled in configuration.');
+                return;
             }
         }
 
@@ -414,9 +490,9 @@
         } else if (action === 'edit') {
             actionLabel = '📅 Schedule Updated';
             color = 16750848; // Orange
-        } else if (action === 'reminder_15') {
-            content = '⏰ **Reminder:** ' + eventName + ' starts in **15 minutes**! @everyone';
-            embedTitle = '⏰ Reminder: ' + eventName + ' starts in 15 minutes!';
+        } else if (action === 'reminder_30') {
+            content = '⏰ **Reminder:** ' + eventName + ' starts in **30 minutes**! @everyone';
+            embedTitle = '⏰ Reminder: ' + eventName + ' starts in 30 minutes!';
             embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
             color = 16750848; // Orange
         } else if (action === 'reminder_5') {
