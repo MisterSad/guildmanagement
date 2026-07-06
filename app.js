@@ -55,6 +55,8 @@
             showAdminDashboard(localRole);
         }
 
+        await fetchGuilds();
+
         var info = await window.RAD.sessionInfo();
         if (!info) {
             // Si pas de session valide Supabase mais qu'on avait des infos locales, on force la déconnexion
@@ -112,6 +114,9 @@
             if (resp.ok) {
                 loginError.classList.add('hidden');
                 document.getElementById('password').value = '';
+
+                // Fetch guilds list
+                await fetchGuilds();
 
                 // Fetch guild restriction for new logins if R4
                 if (resp.role === 'R4') {
@@ -180,6 +185,7 @@
 
         var createAccountCard = document.getElementById('create-account-card');
         var activeAccountsCard = document.getElementById('active-accounts-card');
+        var createGuildCard = document.getElementById('create-guild-card');
 
         // Allow both roles (R4/member and R5/admin) to view home & banned tabs
         if (adminHomeBtn) adminHomeBtn.style.display = '';
@@ -193,18 +199,22 @@
             }
             if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Officier';
             
-            // Hide accounts management cards for R4
+            // Hide accounts/guild management cards for R4
             if (createAccountCard) createAccountCard.style.display = 'none';
             if (activeAccountsCard) activeAccountsCard.style.display = 'none';
+            if (createGuildCard) createGuildCard.style.display = 'none';
 
             loadGuildSettings();
         } else { // R5
-            if (roleLabel) roleLabel.textContent = 'Super Admin :';
+            if (roleLabel) {
+                roleLabel.textContent = 'Super Admin :';
+            }
             if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Leader';
 
-            // Show accounts management cards for R5
+            // Show accounts/guild management cards for R5
             if (createAccountCard) createAccountCard.style.display = '';
             if (activeAccountsCard) activeAccountsCard.style.display = '';
+            if (createGuildCard) createGuildCard.style.display = '';
 
             fetchAccounts();
             loadGuildSettings();
@@ -380,6 +390,81 @@
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
+    }
+
+    async function fetchGuilds() {
+        if (!supabase) return;
+        try {
+            var { data, error } = await supabase.from('guilds').select('id').order('id');
+            if (error) throw error;
+            if (data && data.length > 0) {
+                window.guildsList = data.map(function (g) { return g.id; });
+                
+                // Re-render topbar if shell is loaded
+                if (window.RAD_SHELL && window.RAD_SHELL.renderTopbar) {
+                    window.RAD_SHELL.renderTopbar();
+                }
+                
+                // Update account creation select
+                populateAccountGuildSelect();
+            }
+        } catch (err) {
+            console.error('Failed to fetch guilds list', err);
+        }
+    }
+
+    function populateAccountGuildSelect() {
+        var select = document.getElementById('account-guild');
+        if (!select) return;
+        var currentVal = select.value;
+        
+        var html = '<option value="ALL">Toutes les guildes (Admin)</option>';
+        (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
+            html += '<option value="' + g + '">' + g + '</option>';
+        });
+        select.innerHTML = html;
+        select.value = currentVal || 'ALL';
+    }
+
+    var createGuildForm = document.getElementById('create-guild-form');
+    if (createGuildForm) {
+        createGuildForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var input = document.getElementById('guild-name-input');
+            var guildName = input.value.trim().toUpperCase();
+            if (!guildName) return;
+
+            // Simple validation
+            if (/[^A-Z0-9_]/.test(guildName)) {
+                showToast('Le nom de la guilde ne doit contenir que des lettres majuscules, des chiffres ou des tirets bas.', 'error');
+                return;
+            }
+
+            if ((window.guildsList || []).indexOf(guildName) !== -1) {
+                showToast('Cette guilde existe déjà !', 'error');
+                return;
+            }
+
+            var btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            var span = btn.querySelector('span');
+            var origText = span ? span.textContent : '';
+            if (span) span.textContent = 'Création...';
+
+            try {
+                var { error } = await supabase.from('guilds').insert({ id: guildName });
+                if (error) throw error;
+                
+                showToast('Guilde ' + guildName + ' créée avec succès !', 'success');
+                input.value = '';
+                await fetchGuilds();
+            } catch (err) {
+                showToast('Erreur lors de la création de la guilde: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                if (span) span.textContent = origText;
+            }
+        });
     }
 
     async function loadGuildSettings() {

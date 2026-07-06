@@ -12,6 +12,7 @@
     catch (e) { console.error('rad-utils: supabase init', e); }
 
     window.currentGuild = localStorage.getItem('rad_current_guild') || 'ALPHA';
+    window.guildsList = ['ALPHA', 'OMEGA', 'IMK'];
 
     // Intercept database calls to automatically add the 'guild' filter
     if (db) {

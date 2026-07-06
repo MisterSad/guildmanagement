@@ -260,7 +260,7 @@
               '</div>'
             : '<div class="gm-topbar-title">' + title + '</div>';
 
-        var guilds = ['ALPHA', 'OMEGA', 'IMK'];
+        var guilds = window.guildsList || ['ALPHA', 'OMEGA', 'IMK'];
         if (window.currentGuildRestriction) {
             guilds = [window.currentGuildRestriction];
             window.currentGuild = window.currentGuildRestriction;
@@ -432,7 +432,8 @@
 
     window.RAD_SHELL = {
         gotoItem: gotoItem,
-        renderShell: renderShell
+        renderShell: renderShell,
+        renderTopbar: renderTopbar
     };
 
 })();

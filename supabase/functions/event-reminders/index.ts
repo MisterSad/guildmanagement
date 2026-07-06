@@ -115,7 +115,6 @@ async function sendDiscordWebhookWithRetry(url: string, body: any): Promise<bool
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const GUILDS = ['ALPHA', 'OMEGA', 'IMK'];
 
 function getMinutesDiff(curDay: number, curHour: number, curMin: number, targetDay: number, targetHour: number, targetMin: number): number {
   const curWeeklyMins = curDay * 1440 + curHour * 60 + curMin;
@@ -158,6 +157,13 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
+    // 0. Fetch all active guilds dynamically
+    const { data: guildRows, error: guildError } = await supabase
+      .from('guilds')
+      .select('id');
+    if (guildError) throw guildError;
+    const GUILDS = (guildRows || []).map((r: any) => r.id);
+
     // 1. Fetch all active scheduled events across all guilds
     const { data: allEvents, error: eventError } = await supabase
       .from('event_status')
