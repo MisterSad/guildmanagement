@@ -416,7 +416,10 @@
         localStorage.setItem('rad_config_' + (window.currentGuild || 'ALPHA') + '_' + key, value);
         if (db) {
             try {
-                var res = await db.from('guild_config').upsert({ key: key, value: value, updated_at: new Date().toISOString() });
+                var res = await db.from('guild_config').upsert(
+                    { key: key, value: value, updated_at: new Date().toISOString() },
+                    { onConflict: 'guild,key' }
+                );
                 if (res && !res.error) return true;
             } catch (e) {
                 console.warn('guild_config table save error', e);
