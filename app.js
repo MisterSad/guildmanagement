@@ -636,7 +636,7 @@
             var guildCls = acc.guild ? 'gm-chip-warning' : 'gm-chip-success';
 
             var isSuperAdminAccount = (role === 'R5');
-            var isCurrentUserR4 = (getUserRole() === 'R4');
+            var isCurrentUserR4 = (localStorage.getItem('rad_role') === 'member');
             var canManagePass = !(isSuperAdminAccount && isCurrentUserR4);
             var canDelete = !(isSuperAdminAccount && isCurrentUserR4);
 
