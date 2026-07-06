@@ -319,23 +319,6 @@
             if (!res.ok) throw new Error(res.error || 'list_failed');
             accounts = res.accounts || [];
 
-            // Query guilds from accounts directly to merge
-            var dbAccsMap = {};
-            try {
-                var dbRes = await supabase.from('accounts').select('id, guild');
-                if (dbRes.data) {
-                    dbRes.data.forEach(function (r) {
-                        dbAccsMap[r.id] = r.guild;
-                    });
-                }
-            } catch (dbErr) {
-                console.warn('Failed to query guilds directly from accounts table', dbErr);
-            }
-
-            accounts.forEach(function (acc) {
-                acc.guild = dbAccsMap[acc.id] || null;
-            });
-
             renderAccounts();
         } catch (err) {
             showToast(t('toast_err_fetch_accounts') + ' ' + err.message, 'error');
