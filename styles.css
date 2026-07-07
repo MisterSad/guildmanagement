@@ -1957,40 +1957,40 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     -webkit-backdrop-filter: blur(10px);
 }
 
-body.guild-read-only button.primary-btn,
-body.guild-read-only button.gm-btn-primary,
-body.guild-read-only button[type="submit"],
-body.guild-read-only .guild-delete-btn,
-body.guild-read-only .banned-delete-btn,
-body.guild-read-only .ar-stage-delete-btn,
-body.guild-read-only .event-delete-session-btn,
-body.guild-read-only .sf-squad-delete-btn,
-body.guild-read-only .sf-delete-participant-btn,
-body.guild-read-only .delete-clock-btn,
-body.guild-read-only #add-member-form-member,
-body.guild-read-only #add-member-form,
-body.guild-read-only #add-ban-form,
-body.guild-read-only #create-account-card,
-body.guild-read-only #guild-settings-card button[type="submit"] {
+body.guild-read-only .gm-content button.primary-btn,
+body.guild-read-only .gm-content button.gm-btn-primary,
+body.guild-read-only .gm-content button[type="submit"],
+body.guild-read-only .gm-content .guild-delete-btn,
+body.guild-read-only .gm-content .banned-delete-btn,
+body.guild-read-only .gm-content .ar-stage-delete-btn,
+body.guild-read-only .gm-content .event-delete-session-btn,
+body.guild-read-only .gm-content .sf-squad-delete-btn,
+body.guild-read-only .gm-content .sf-delete-participant-btn,
+body.guild-read-only .gm-content .delete-clock-btn,
+body.guild-read-only .gm-content #add-member-form-member,
+body.guild-read-only .gm-content #add-member-form,
+body.guild-read-only .gm-content #add-ban-form,
+body.guild-read-only .gm-content #create-account-card,
+body.guild-read-only .gm-content #guild-settings-card button[type="submit"] {
     display: none !important;
 }
 
-body.guild-read-only button:not(.nav-tab):not(#guild-selector):not([data-gm-logout]):not([id*="search"]):not([class*="search"]),
-body.guild-read-only input:not([id*="search"]):not([class*="search"]),
-body.guild-read-only select:not(#guild-selector):not([id*="search"]):not([class*="search"]),
-body.guild-read-only textarea,
-body.guild-read-only .gm-btn:not(.nav-tab):not(#guild-selector):not([data-gm-logout]):not([id*="search"]):not([class*="search"]),
-body.guild-read-only .gm-mini-btn:not([id*="search"]):not([class*="search"]),
-body.guild-read-only .sf-squad-cell,
-body.guild-read-only .sf-slot,
-body.guild-read-only .sf-squad-builder,
-body.guild-read-only .event-cell-clickable,
-body.guild-read-only .event-status-btn,
-body.guild-read-only .score-input-cell,
-body.guild-read-only .participation-check,
-body.guild-read-only .check-toggle,
-body.guild-read-only .ar-stage-cell,
-body.guild-read-only .score-cell {
+body.guild-read-only .gm-content button:not(.sf-sub-tab):not(.sf-main-tab):not(.stats-mode-tab):not(.sf-filter-btn):not([id*="search"]):not([class*="search"]),
+body.guild-read-only .gm-content input:not([id*="search"]):not([class*="search"]),
+body.guild-read-only .gm-content select:not([id*="search"]):not([class*="search"]),
+body.guild-read-only .gm-content textarea,
+body.guild-read-only .gm-content .gm-btn:not(.sf-sub-tab):not(.sf-main-tab):not(.stats-mode-tab):not(.sf-filter-btn):not([id*="search"]):not([class*="search"]),
+body.guild-read-only .gm-content .gm-mini-btn:not([id*="search"]):not([class*="search"]),
+body.guild-read-only .gm-content .sf-squad-cell,
+body.guild-read-only .gm-content .sf-slot,
+body.guild-read-only .gm-content .sf-squad-builder,
+body.guild-read-only .gm-content .event-cell-clickable,
+body.guild-read-only .gm-content .event-status-btn,
+body.guild-read-only .gm-content .score-input-cell,
+body.guild-read-only .gm-content .participation-check,
+body.guild-read-only .gm-content .check-toggle,
+body.guild-read-only .gm-content .ar-stage-cell,
+body.guild-read-only .gm-content .score-cell {
     pointer-events: none !important;
     opacity: 0.5;
 }
