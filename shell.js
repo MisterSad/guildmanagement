@@ -341,7 +341,7 @@
                 '</select>' +
                 '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + t('nav_logout_title') + '">' +
                     '<i class="ph ph-sign-out"></i>' +
-                </button>' +
+                '</button>' +
             '</div>';
         el.innerHTML = html;
 
