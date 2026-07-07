@@ -55,8 +55,6 @@
             showAdminDashboard(localRole);
         }
 
-        await fetchGuilds();
-
         var info = await window.RAD.sessionInfo();
         if (!info) {
             // Si pas de session valide Supabase mais qu'on avait des infos locales, on force la déconnexion
@@ -95,12 +93,11 @@
             localStorage.setItem('rad_user', info.accountId);
         }
 
-        // Si le rôle/user a changé ou si le dashboard n'était pas affiché
-        if (!localRole || localRole !== role || localUser !== info.accountId) {
-            showAdminDashboard(role);
-        }
+        // Fetch guilds list (now authenticated, query will succeed)
+        await fetchGuilds();
 
-        // Trigger UI re-render with updated restrictions
+        // Always update the dashboard and shell to reflect fresh authenticated data
+        showAdminDashboard(role);
         if (window.RAD_SHELL && window.RAD_SHELL.renderShell) {
             window.RAD_SHELL.renderShell();
         }
