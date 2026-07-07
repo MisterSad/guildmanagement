@@ -490,6 +490,15 @@
         var actionLabel = '';
         var color = 5763719; // Green
 
+        var guildTags = {
+            ALPHA: '[PR1M]',
+            OMEGA: '[OMG]',
+            IMK: '[IMK]',
+            YARR: '[YARR]',
+            BABE: '[BABE]'
+        };
+        var guildTag = guildTags[window.currentGuild || 'ALPHA'] || '@everyone';
+
         if (action === 'start') {
             actionLabel = '🚀 Scheduled / Live';
             color = 5763719; // Green
@@ -497,12 +506,12 @@
             actionLabel = '📅 Schedule Updated';
             color = 16750848; // Orange
         } else if (action === 'reminder_30') {
-            content = '⏰ **Reminder:** ' + eventName + ' starts in **30 minutes**! @everyone';
+            content = '⏰ **Reminder:** ' + eventName + ' starts in **30 minutes**! ' + guildTag;
             embedTitle = '⏰ Reminder: ' + eventName + ' starts in 30 minutes!';
             embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
             color = 16750848; // Orange
         } else if (action === 'reminder_5') {
-            content = '🚨 **Immediate Reminder:** ' + eventName + ' starts in **5 minutes**! Get ready! @everyone';
+            content = '🚨 **Immediate Reminder:** ' + eventName + ' starts in **5 minutes**! Get ready! ' + guildTag;
             embedTitle = '🚨 Immediate Reminder: ' + eventName + ' starts in 5 minutes!';
             embedDesc = 'Action time! Join your squad now!';
             color = 15548997; // Bright Red

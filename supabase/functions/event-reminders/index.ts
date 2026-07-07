@@ -272,6 +272,15 @@ serve(async (req) => {
               hour: '2-digit', minute: '2-digit', hour12: false
             }) + ' UTC';
 
+            const guildTags: Record<string, string> = {
+              ALPHA: '[PR1M]',
+              OMEGA: '[OMG]',
+              IMK: '[IMK]',
+              YARR: '[YARR]',
+              BABE: '[BABE]'
+            };
+            const guildTag = guildTags[guild] || '@everyone';
+
             let content = '';
             const embedTitle = `📢 Guild Event: ${event.event_name}`;
             let embedDesc = 'A guild event has been configured in the FGF Guild Management tool!';
@@ -279,19 +288,19 @@ serve(async (req) => {
             let agenda = 'Please connect now.';
 
             if (reminderType === 'reminder_30') {
-              content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! @everyone`;
+              content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! ${guildTag}`;
               embedTitle = `⏰ Reminder: ${event.event_name} starts in 30 minutes!`;
               embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
               color = 16750848; // Orange
               agenda = 'Please connect and get ready soon.';
             } else if (reminderType === 'reminder_5') {
-              content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! @everyone`;
+              content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! ${guildTag}`;
               embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
               embedDesc = 'Action time! Join your squad now!';
               color = 15548997; // Bright Red
               agenda = 'Action time! Connect now!';
             } else if (reminderType === 'start') {
-              content = `⚔️ **Event Started:** ${event.event_name} starts now! @everyone`;
+              content = `⚔️ **Event Started:** ${event.event_name} starts now! ${guildTag}`;
               embedTitle = `⚔️ Event Started: ${event.event_name} is active!`;
               embedDesc = 'Action time! Join your squad now!';
               color = 15548997; // Bright Red
