@@ -749,7 +749,7 @@ serve(async (req) => {
           }
 
           try {
-            const content = `⏰ **Calamity Befalls: Round ${slot.round} starts in 10 minutes!** @everyone`;
+            const content = `⏰ **Calamity Befalls: Round ${slot.round} starts in 10 minutes!**`;
             const embedTitle = `⏰ Calamity Befalls - Round ${slot.round} (Reminder)`;
             const embedDesc = `Prepare your squads! Calamity Befalls Round ${slot.round} starts in 10 minutes.`;
             const color = 16750848;
