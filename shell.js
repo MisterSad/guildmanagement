@@ -13,6 +13,7 @@
     if (!window.RAD) return;
 
     var t = window.RAD.t;
+    var esc = window.RAD.escapeHTML;
 
     // ── Définition des items de nav ─────────────────────────────────────────
     // tabId = data-tab existant que app.js sait gérer.
