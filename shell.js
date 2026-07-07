@@ -351,6 +351,10 @@
                 var newGuild = gs.value;
                 localStorage.setItem('rad_current_guild', newGuild);
                 window.currentGuild = newGuild;
+                
+                // Re-render the topbar immediately to update the subscription status chip and read-only mode!
+                renderTopbar();
+                
                 if (window.RAD_APP && window.RAD_APP.reloadActiveView) {
                     window.RAD_APP.reloadActiveView();
                 } else {
