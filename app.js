@@ -74,15 +74,19 @@
                     window.currentGuildRestriction = data.guild;
                     window.currentGuild = data.guild;
                     localStorage.setItem('rad_current_guild', data.guild);
+                    localStorage.setItem('rad_guild_restriction', data.guild);
                 } else {
                     window.currentGuildRestriction = null;
+                    localStorage.removeItem('rad_guild_restriction');
                 }
             } catch (err) {
                 console.error('Failed to restore account guild restriction:', err);
                 window.currentGuildRestriction = null;
+                localStorage.removeItem('rad_guild_restriction');
             }
         } else {
             window.currentGuildRestriction = null;
+            localStorage.removeItem('rad_guild_restriction');
         }
 
         var role = info.role === 'R5' ? 'admin' : 'member';
@@ -94,6 +98,11 @@
         // Si le rôle/user a changé ou si le dashboard n'était pas affiché
         if (!localRole || localRole !== role || localUser !== info.accountId) {
             showAdminDashboard(role);
+        }
+
+        // Trigger UI re-render with updated restrictions
+        if (window.RAD_SHELL && window.RAD_SHELL.renderShell) {
+            window.RAD_SHELL.renderShell();
         }
     })();
 
@@ -126,15 +135,19 @@
                             window.currentGuildRestriction = data.guild;
                             window.currentGuild = data.guild;
                             localStorage.setItem('rad_current_guild', data.guild);
+                            localStorage.setItem('rad_guild_restriction', data.guild);
                         } else {
                             window.currentGuildRestriction = null;
+                            localStorage.removeItem('rad_guild_restriction');
                         }
                     } catch (err) {
                         console.error('Failed to load login guild restriction:', err);
                         window.currentGuildRestriction = null;
+                        localStorage.removeItem('rad_guild_restriction');
                     }
                 } else {
                     window.currentGuildRestriction = null;
+                    localStorage.removeItem('rad_guild_restriction');
                 }
 
                 var role = (resp.role === 'R5') ? 'admin' : 'member';
@@ -142,6 +155,9 @@
                 localStorage.setItem('rad_user', user);
 
                 showAdminDashboard(role);
+                if (window.RAD_SHELL && window.RAD_SHELL.renderShell) {
+                    window.RAD_SHELL.renderShell();
+                }
                 showToast(role === 'admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
             } else {
                 throw new Error('invalid');
@@ -165,6 +181,8 @@
         window.RAD.logout();
         localStorage.removeItem('rad_role');
         localStorage.removeItem('rad_user');
+        localStorage.removeItem('rad_current_guild');
+        localStorage.removeItem('rad_guild_restriction');
         window.currentGuildRestriction = null;
         showLogin();
         showToast(t('toast_logout'), 'info');

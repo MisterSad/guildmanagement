@@ -11,7 +11,9 @@
     try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
     catch (e) { console.error('rad-utils: supabase init', e); }
 
-    window.currentGuild = localStorage.getItem('rad_current_guild') || 'ALPHA';
+    var localRestriction = localStorage.getItem('rad_guild_restriction');
+    window.currentGuildRestriction = localRestriction || null;
+    window.currentGuild = localRestriction || localStorage.getItem('rad_current_guild') || 'ALPHA';
     window.guildsList = ['ALPHA', 'OMEGA', 'IMK'];
 
     // Intercept database calls to automatically add the 'guild' filter
