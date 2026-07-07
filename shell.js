@@ -280,7 +280,7 @@
         if (window.guildsData && window.guildsData[activeGuild]) {
             var sub = window.guildsData[activeGuild];
             if (sub.type === 'Unlimited') {
-                subHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-infinity"></i> Illimité</span>';
+                subHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-infinity"></i> Unlimited</span>';
             } else if (sub.type === 'Premium') {
                 if (sub.end) {
                     var endMs = new Date(sub.end).getTime();
@@ -288,7 +288,7 @@
                     var diff = endMs - nowMs;
                     if (diff <= 0) {
                         isExpired = true;
-                        subHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-lock-keyhole"></i> Expiré</span>';
+                        subHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-lock-keyhole"></i> Expired</span>';
                     } else {
                         var secs = Math.floor(diff / 1000);
                         var mins = Math.floor(secs / 60);
@@ -297,7 +297,7 @@
 
                         var timeStr = '';
                         if (days > 0) {
-                            timeStr = days + 'j ' + (hours % 24) + 'h';
+                            timeStr = days + 'd ' + (hours % 24) + 'h';
                         } else if (hours > 0) {
                             timeStr = hours + 'h ' + (mins % 60) + 'm';
                         } else {
@@ -307,7 +307,7 @@
                     }
                 } else {
                     isExpired = true;
-                    subHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">Expiré</span>';
+                    subHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">Expired</span>';
                 }
             }
         }
@@ -321,7 +321,7 @@
             document.body.classList.add('guild-read-only');
             if (banner) {
                 banner.innerHTML = '<i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem;"></i>' +
-                    '<span><strong>Accès en lecture seule :</strong> L\'abonnement de cette guilde est terminé. La modification des données est désactivée.</span>';
+                    '<span><strong>Read-only access:</strong> The subscription for this guild has expired. Data modification is disabled.</span>';
                 banner.style.display = 'flex';
             }
         } else {

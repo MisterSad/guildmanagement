@@ -785,7 +785,7 @@
             if (error) throw error;
 
             if (!guildsListRaw || guildsListRaw.length === 0) {
-                container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">Aucune guilde trouvée</div></div>';
+                container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">No guild found</div></div>';
                 return;
             }
 
@@ -799,14 +799,14 @@
                 // Calculate countdown html
                 var countdownHtml = '';
                 if (type === 'Unlimited') {
-                    countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Illimité</span>';
+                    countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Unlimited</span>';
                 } else {
                     if (end) {
                         var endMs = new Date(end).getTime();
                         var nowMs = Date.now();
                         var diff = endMs - nowMs;
                         if (diff <= 0) {
-                            countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-lock-keyhole"></i> Expiré</span>';
+                            countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-lock-keyhole"></i> Expired</span>';
                         } else {
                             var secs = Math.floor(diff / 1000);
                             var mins = Math.floor(secs / 60);
@@ -815,16 +815,16 @@
 
                             var timeStr = '';
                             if (days > 0) {
-                                timeStr = days + 'j ' + (hours % 24) + 'h';
+                                timeStr = days + 'd ' + (hours % 24) + 'h';
                             } else if (hours > 0) {
                                 timeStr = hours + 'h ' + (mins % 60) + 'm';
                             } else {
                                 timeStr = mins + 'm';
                             }
-                            countdownHtml = '<span class="gm-chip gm-chip-warning" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ' + timeStr + ' restant</span>';
+                            countdownHtml = '<span class="gm-chip gm-chip-warning" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ' + timeStr + ' remaining</span>';
                         }
                     } else {
-                        countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700;">Sans date (Expiré)</span>';
+                        countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700;">No date (Expired)</span>';
                     }
                 }
 
@@ -845,11 +845,11 @@
                                 '</select>' +
                             '</div>' +
                             '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:120px; ' + (type === 'Unlimited' ? 'display: none;' : '') + '">' +
-                                '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Date de fin</label>' +
+                                '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">End Date</label>' +
                                 '<input type="date" class="gm-input gm-input-sm guild-sub-end" data-guild="' + esc(guildId) + '" value="' + dateVal + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
                             '</div>' +
                             '<button class="gm-btn gm-btn-primary save-guild-sub-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
-                                '<i class="ph ph-floppy-disk"></i> Enregistrer' +
+                                '<i class="ph ph-floppy-disk"></i> Save' +
                             '</button>' +
                         '</div>' +
                     '</div>';
@@ -880,7 +880,7 @@
                     var endVal = null;
                     if (type === 'Premium') {
                         if (!input.value) {
-                            showToast('Veuillez spécifier une date de fin pour l\'abonnement Premium.', 'error');
+                            showToast('Please specify an end date for Premium subscription.', 'error');
                             return;
                         }
                         endVal = new Date(input.value + 'T23:59:59Z').toISOString();
@@ -901,11 +901,11 @@
 
                         if (updateErr) throw updateErr;
 
-                        showToast('Abonnement mis à jour pour la guilde ' + guildId, 'success');
+                        showToast('Subscription updated for guild ' + guildId, 'success');
                         await fetchGuilds();
                         renderGuildsSubscriptionList();
                     } catch (err) {
-                        showToast('Erreur lors de la mise à jour : ' + err.message, 'error');
+                        showToast('Error during update: ' + err.message, 'error');
                     } finally {
                         btn.disabled = false;
                         btn.innerHTML = origText;
@@ -914,7 +914,7 @@
             });
 
         } catch (err) {
-            container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Erreur : ' + esc(err.message) + '</div></div>';
+            container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' + esc(err.message) + '</div></div>';
         }
     }
 

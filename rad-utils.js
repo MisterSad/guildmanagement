@@ -58,7 +58,7 @@
                 var originalDelete = builder.delete;
                 builder.delete = function () {
                     if (isGuildSubscriptionExpired(window.currentGuild)) {
-                        return { then: function(resolve) { resolve({ data: null, error: { message: "L'abonnement de cette guilde a expiré. Accès en lecture seule uniquement." } }); } };
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
                     }
                     return originalDelete.apply(this, arguments).eq('guild', window.currentGuild || 'ALPHA');
                 };
@@ -66,7 +66,7 @@
                 var originalUpdate = builder.update;
                 builder.update = function (values, options) {
                     if (isGuildSubscriptionExpired(window.currentGuild)) {
-                        return { then: function(resolve) { resolve({ data: null, error: { message: "L'abonnement de cette guilde a expiré. Accès en lecture seule uniquement." } }); } };
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
                     }
                     return originalUpdate.call(this, values, options).eq('guild', window.currentGuild || 'ALPHA');
                 };
@@ -74,7 +74,7 @@
                 var originalInsert = builder.insert;
                 builder.insert = function (values, options) {
                     if (isGuildSubscriptionExpired(window.currentGuild)) {
-                        return { then: function(resolve) { resolve({ data: null, error: { message: "L'abonnement de cette guilde a expiré. Accès en lecture seule uniquement." } }); } };
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
                     }
                     var guildVal = window.currentGuild || 'ALPHA';
                     if (Array.isArray(values)) {
@@ -90,7 +90,7 @@
                 var originalUpsert = builder.upsert;
                 builder.upsert = function (values, options) {
                     if (isGuildSubscriptionExpired(window.currentGuild)) {
-                        return { then: function(resolve) { resolve({ data: null, error: { message: "L'abonnement de cette guilde a expiré. Accès en lecture seule uniquement." } }); } };
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
                     }
                     var guildVal = window.currentGuild || 'ALPHA';
                     if (Array.isArray(values)) {
