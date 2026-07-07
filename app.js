@@ -410,6 +410,7 @@
         try {
             var { data, error } = await supabase.from('guilds').select('id, subscription_type, subscription_end').order('id');
             if (error) throw error;
+            console.log('fetchGuilds returned data:', data);
             if (data && data.length > 0) {
                 window.guildsList = data.map(function (g) { return g.id; });
                 
@@ -421,6 +422,7 @@
                         end: g.subscription_end || null
                     };
                 });
+                console.log('window.guildsData populated:', window.guildsData);
                 
                 // Re-render topbar if shell is loaded
                 if (window.RAD_SHELL && window.RAD_SHELL.renderTopbar) {
@@ -780,6 +782,7 @@
                 .select('id, subscription_type, subscription_end')
                 .order('id');
             if (error) throw error;
+            console.log('renderGuildsSubscriptionList fetched data:', guildsListRaw);
 
             if (!guildsListRaw || guildsListRaw.length === 0) {
                 container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">No guild found</div></div>';
