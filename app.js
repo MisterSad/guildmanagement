@@ -210,13 +210,17 @@
         if (adminBannedBtn) adminBannedBtn.style.display = '';
 
         var isR5 = (role !== 'member');
+        var activeGuildsCard = document.getElementById('active-guilds-card');
 
         if (createAccountCard) createAccountCard.style.display = '';
         if (activeAccountsCard) activeAccountsCard.style.display = '';
         if (isR5) {
             if (createGuildCard) createGuildCard.style.display = '';
+            if (activeGuildsCard) activeGuildsCard.style.display = '';
+            renderGuildsSubscriptionList();
         } else {
             if (createGuildCard) createGuildCard.style.display = 'none';
+            if (activeGuildsCard) activeGuildsCard.style.display = 'none';
         }
 
         var guildSelect = document.getElementById('account-guild');
@@ -407,10 +411,19 @@
     async function fetchGuilds() {
         if (!supabase) return;
         try {
-            var { data, error } = await supabase.from('guilds').select('id').order('id');
+            var { data, error } = await supabase.from('guilds').select('id, subscription_type, subscription_end').order('id');
             if (error) throw error;
             if (data && data.length > 0) {
                 window.guildsList = data.map(function (g) { return g.id; });
+                
+                // Save subscription info
+                window.guildsData = {};
+                data.forEach(function (g) {
+                    window.guildsData[g.id] = {
+                        type: g.subscription_type || 'Unlimited',
+                        end: g.subscription_end || null
+                    };
+                });
                 
                 // Re-render topbar if shell is loaded
                 if (window.RAD_SHELL && window.RAD_SHELL.renderTopbar) {
@@ -757,6 +770,152 @@
                 }
             });
         });
+    }
+
+    async function renderGuildsSubscriptionList() {
+        var container = document.getElementById('guilds-list-container');
+        if (!container) return;
+
+        if (!supabase) return;
+        try {
+            var { data: guildsListRaw, error } = await supabase
+                .from('guilds')
+                .select('id, subscription_type, subscription_end')
+                .order('id');
+            if (error) throw error;
+
+            if (!guildsListRaw || guildsListRaw.length === 0) {
+                container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">Aucune guilde trouvée</div></div>';
+                return;
+            }
+
+            var html = '<div class="gm-cred-grid">';
+            guildsListRaw.forEach(function (g) {
+                var guildId = g.id;
+                var type = g.subscription_type || 'Unlimited';
+                var end = g.subscription_end;
+                var dateVal = end ? end.split('T')[0] : '';
+
+                // Calculate countdown html
+                var countdownHtml = '';
+                if (type === 'Unlimited') {
+                    countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Illimité</span>';
+                } else {
+                    if (end) {
+                        var endMs = new Date(end).getTime();
+                        var nowMs = Date.now();
+                        var diff = endMs - nowMs;
+                        if (diff <= 0) {
+                            countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-lock-keyhole"></i> Expiré</span>';
+                        } else {
+                            var secs = Math.floor(diff / 1000);
+                            var mins = Math.floor(secs / 60);
+                            var hours = Math.floor(mins / 60);
+                            var days = Math.floor(hours / 24);
+
+                            var timeStr = '';
+                            if (days > 0) {
+                                timeStr = days + 'j ' + (hours % 24) + 'h';
+                            } else if (hours > 0) {
+                                timeStr = hours + 'h ' + (mins % 60) + 'm';
+                            } else {
+                                timeStr = mins + 'm';
+                            }
+                            countdownHtml = '<span class="gm-chip gm-chip-warning" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ' + timeStr + ' restant</span>';
+                        }
+                    } else {
+                        countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700;">Sans date (Expiré)</span>';
+                    }
+                }
+
+                html +=
+                    '<div class="gm-cred-card" data-guild-id="' + esc(guildId) + '">' +
+                        '<div class="gm-row" style="justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">' +
+                            '<div class="gm-cred-name" style="font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
+                                '<i class="ph ph-shield"></i> ' + esc(guildId) +
+                            '</div>' +
+                            '<div class="countdown-badge-wrapper">' + countdownHtml + '</div>' +
+                        '</div>' +
+                        '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
+                            '<div class="gm-col" style="flex: 1.2; gap: 0.25rem; min-width:120px;">' +
+                                '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Type</label>' +
+                                '<select class="gm-select gm-select-sm guild-sub-type" data-guild="' + esc(guildId) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
+                                    '<option value="Unlimited"' + (type === 'Unlimited' ? ' selected' : '') + '>Unlimited</option>' +
+                                    '<option value="Premium"' + (type === 'Premium' ? ' selected' : '') + '>Premium</option>' +
+                                '</select>' +
+                            '</div>' +
+                            '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:120px; ' + (type === 'Unlimited' ? 'display: none;' : '') + '">' +
+                                '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Date de fin</label>' +
+                                '<input type="date" class="gm-input gm-input-sm guild-sub-end" data-guild="' + esc(guildId) + '" value="' + dateVal + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
+                            '</div>' +
+                            '<button class="gm-btn gm-btn-primary save-guild-sub-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+                                '<i class="ph ph-floppy-disk"></i> Enregistrer' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+
+            // Wire change listener to type dropdown to show/hide end date
+            container.querySelectorAll('.guild-sub-type').forEach(function (select) {
+                select.addEventListener('change', function () {
+                    var guildId = select.getAttribute('data-guild');
+                    var wrapper = container.querySelector('.gm-cred-card[data-guild-id="' + guildId + '"] .guild-sub-end-wrapper');
+                    if (wrapper) {
+                        wrapper.style.display = select.value === 'Premium' ? '' : 'none';
+                    }
+                });
+            });
+
+            // Wire save button listeners
+            container.querySelectorAll('.save-guild-sub-btn').forEach(function (btn) {
+                btn.addEventListener('click', async function () {
+                    var guildId = btn.getAttribute('data-guild');
+                    var card = container.querySelector('.gm-cred-card[data-guild-id="' + guildId + '"]');
+                    var select = card.querySelector('.guild-sub-type');
+                    var input = card.querySelector('.guild-sub-end');
+
+                    var type = select.value;
+                    var endVal = null;
+                    if (type === 'Premium') {
+                        if (!input.value) {
+                            showToast('Veuillez spécifier une date de fin pour l\'abonnement Premium.', 'error');
+                            return;
+                        }
+                        endVal = new Date(input.value + 'T23:59:59Z').toISOString();
+                    }
+
+                    btn.disabled = true;
+                    var origText = btn.innerHTML;
+                    btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i>...';
+
+                    try {
+                        var { error: updateErr } = await supabase
+                            .from('guilds')
+                            .update({
+                                subscription_type: type,
+                                subscription_end: endVal
+                            })
+                            .eq('id', guildId);
+
+                        if (updateErr) throw updateErr;
+
+                        showToast('Abonnement mis à jour pour la guilde ' + guildId, 'success');
+                        await fetchGuilds();
+                        renderGuildsSubscriptionList();
+                    } catch (err) {
+                        showToast('Erreur lors de la mise à jour : ' + err.message, 'error');
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = origText;
+                    }
+                });
+            });
+
+        } catch (err) {
+            container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Erreur : ' + esc(err.message) + '</div></div>';
+        }
     }
 
     // ─── Guild Members CRUD ───────────────────────────────────────────────────

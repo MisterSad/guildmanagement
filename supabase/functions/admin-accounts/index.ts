@@ -45,6 +45,22 @@ function randomSecret(): string {
   return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+async function isSubscriptionActive(admin: any, guildId: string | null): Promise<boolean> {
+  if (!guildId) return true; // Super admin level / no guild restriction
+  const { data } = await admin
+    .from("guilds")
+    .select("subscription_type, subscription_end")
+    .eq("id", guildId)
+    .maybeSingle();
+  if (!data) return false;
+  if (data.subscription_type === "Unlimited") return true;
+  if (data.subscription_type === "Premium") {
+    if (!data.subscription_end) return false;
+    return new Date(data.subscription_end).getTime() >= Date.now();
+  }
+  return false;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST")   return json({ ok: false, error: "method_not_allowed" }, 405);
@@ -68,6 +84,14 @@ Deno.serve(async (req: Request) => {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 400); }
   const action = (body?.action ?? "").toString();
+
+  // Verify subscription status for non-Super Admin (R4) callers on mutations
+  if (info.role === "R4" && action !== "list") {
+    const active = await isSubscriptionActive(admin, callerGuild);
+    if (!active) {
+      return json({ ok: false, error: "subscription_expired" }, 403);
+    }
+  }
 
   if (action === "list") {
     const { data, error } = await admin.rpc("gm_admin_list");

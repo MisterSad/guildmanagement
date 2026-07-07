@@ -160,9 +160,19 @@ serve(async (req) => {
     // 0. Fetch all active guilds dynamically
     const { data: guildRows, error: guildError } = await supabase
       .from('guilds')
-      .select('id');
+      .select('id, subscription_type, subscription_end');
     if (guildError) throw guildError;
-    const GUILDS = (guildRows || []).map((r: any) => r.id);
+    const GUILDS = (guildRows || [])
+      .filter((r: any) => {
+        const type = r.subscription_type ?? 'Unlimited';
+        if (type === 'Unlimited') return true;
+        if (type === 'Premium') {
+          if (!r.subscription_end) return false;
+          return new Date(r.subscription_end).getTime() >= Date.now();
+        }
+        return false;
+      })
+      .map((r: any) => r.id);
 
     // 1. Fetch all active scheduled events across all guilds
     const { data: allEvents, error: eventError } = await supabase

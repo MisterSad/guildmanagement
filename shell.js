@@ -116,6 +116,7 @@
             '<aside class="gm-sidebar" data-gm-sidebar></aside>' +
             '<div class="gm-main">' +
                 '<header class="gm-topbar" data-gm-topbar></header>' +
+                '<div id="guild-warning-banner" class="gm-warning-banner" style="display: none;"></div>' +
                 '<div class="gm-content" data-gm-content></div>' +
             '</div>' +
             '<nav class="gm-bottom-nav" data-gm-bottom-nav></nav>' +
@@ -272,15 +273,75 @@
             ? 'display: none; padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
             : 'padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
 
+        // Check subscription status
+        var isExpired = false;
+        var subHtml = '';
+        var activeGuild = window.currentGuild || 'ALPHA';
+        if (window.guildsData && window.guildsData[activeGuild]) {
+            var sub = window.guildsData[activeGuild];
+            if (sub.type === 'Unlimited') {
+                subHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-infinity"></i> Illimité</span>';
+            } else if (sub.type === 'Premium') {
+                if (sub.end) {
+                    var endMs = new Date(sub.end).getTime();
+                    var nowMs = Date.now();
+                    var diff = endMs - nowMs;
+                    if (diff <= 0) {
+                        isExpired = true;
+                        subHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-lock-keyhole"></i> Expiré</span>';
+                    } else {
+                        var secs = Math.floor(diff / 1000);
+                        var mins = Math.floor(secs / 60);
+                        var hours = Math.floor(mins / 60);
+                        var days = Math.floor(hours / 24);
+
+                        var timeStr = '';
+                        if (days > 0) {
+                            timeStr = days + 'j ' + (hours % 24) + 'h';
+                        } else if (hours > 0) {
+                            timeStr = hours + 'h ' + (mins % 60) + 'm';
+                        } else {
+                            timeStr = mins + 'm';
+                        }
+                        subHtml = '<span class="gm-chip gm-chip-warning" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-clock"></i> ' + timeStr + '</span>';
+                    }
+                } else {
+                    isExpired = true;
+                    subHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">Expiré</span>';
+                }
+            }
+        }
+
+        // Toggle Read-Only logic
+        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
+        var readOnlyActive = isExpired && !isSuperAdmin;
+        var banner = document.getElementById('guild-warning-banner');
+
+        if (readOnlyActive) {
+            document.body.classList.add('guild-read-only');
+            if (banner) {
+                banner.innerHTML = '<i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem;"></i>' +
+                    '<span><strong>Accès en lecture seule :</strong> L\'abonnement de cette guilde est terminé. La modification des données est désactivée.</span>';
+                banner.style.display = 'flex';
+            }
+        } else {
+            document.body.classList.remove('guild-read-only');
+            if (banner) {
+                banner.style.display = 'none';
+                banner.innerHTML = '';
+            }
+        }
+
         var html = brandHtml +
             '<div class="gm-topbar-actions">' +
                 (window.currentGuildRestriction ? '<span class="gm-chip gm-chip-info" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">' + esc(window.currentGuildRestriction) + '</span>' : '') +
+                subHtml +
                 '<select id="guild-selector" class="gm-select" style="' + selectStyle + '">' +
                     guildOptions +
                 '</select>' +
                 '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + t('nav_logout_title') + '">' +
                     '<i class="ph ph-sign-out"></i>' +
-                '</button>' +
+                </button>' +
             '</div>';
         el.innerHTML = html;
 
@@ -424,6 +485,13 @@
             if (!e.matches) closeDrawer();
         });
     }
+
+    // Update countdown periodically every 30 seconds to keep remaining time fresh
+    setInterval(function () {
+        if (state.active) {
+            renderTopbar();
+        }
+    }, 30000);
 
     window.RAD_SHELL = {
         gotoItem: gotoItem,

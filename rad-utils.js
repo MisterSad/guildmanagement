@@ -16,6 +16,21 @@
     window.currentGuild = localRestriction || localStorage.getItem('rad_current_guild') || 'ALPHA';
     window.guildsList = ['ALPHA', 'OMEGA', 'IMK'];
 
+    function isGuildSubscriptionExpired(guildId) {
+        if (localStorage.getItem('rad_role') === 'admin') {
+            return false; // Super admin is never restricted
+        }
+        if (!guildId) return false;
+        if (!window.guildsData || !window.guildsData[guildId]) return false;
+        var sub = window.guildsData[guildId];
+        if (sub.type === 'Unlimited') return false;
+        if (sub.type === 'Premium') {
+            if (!sub.end) return true; // Premium without end date is expired
+            return new Date(sub.end).getTime() < Date.now();
+        }
+        return false;
+    }
+
     // Intercept database calls to automatically add the 'guild' filter
     if (db) {
         var originalFrom = db.from;
@@ -42,16 +57,25 @@
 
                 var originalDelete = builder.delete;
                 builder.delete = function () {
+                    if (isGuildSubscriptionExpired(window.currentGuild)) {
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "L'abonnement de cette guilde a expiré. Accès en lecture seule uniquement." } }); } };
+                    }
                     return originalDelete.apply(this, arguments).eq('guild', window.currentGuild || 'ALPHA');
                 };
 
                 var originalUpdate = builder.update;
                 builder.update = function (values, options) {
+                    if (isGuildSubscriptionExpired(window.currentGuild)) {
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "L'abonnement de cette guilde a expiré. Accès en lecture seule uniquement." } }); } };
+                    }
                     return originalUpdate.call(this, values, options).eq('guild', window.currentGuild || 'ALPHA');
                 };
 
                 var originalInsert = builder.insert;
                 builder.insert = function (values, options) {
+                    if (isGuildSubscriptionExpired(window.currentGuild)) {
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "L'abonnement de cette guilde a expiré. Accès en lecture seule uniquement." } }); } };
+                    }
                     var guildVal = window.currentGuild || 'ALPHA';
                     if (Array.isArray(values)) {
                         values = values.map(function (v) {
@@ -65,6 +89,9 @@
 
                 var originalUpsert = builder.upsert;
                 builder.upsert = function (values, options) {
+                    if (isGuildSubscriptionExpired(window.currentGuild)) {
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "L'abonnement de cette guilde a expiré. Accès en lecture seule uniquement." } }); } };
+                    }
                     var guildVal = window.currentGuild || 'ALPHA';
                     if (Array.isArray(values)) {
                         values = values.map(function (v) {
