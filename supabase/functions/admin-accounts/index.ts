@@ -128,10 +128,16 @@ Deno.serve(async (req: Request) => {
 
     if (info.role === "R4") {
       accRole = "R4";
-      accGuild = callerGuild; // Force caller's guild
+      if (!callerGuild) {
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
+      accGuild = callerGuild;
     } else {
       accRole = (body?.role ?? "R4").toString();
       accGuild = accGuild === "ALL" ? null : accGuild;
+      if (accRole === "R4" && (!accGuild || accGuild === "ALL")) {
+        return json({ ok: false, error: "r4_must_have_guild" }, 400);
+      }
     }
 
     const email = await emailFor(id);
@@ -148,15 +154,8 @@ Deno.serve(async (req: Request) => {
       uid = ex.id;
       await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
     }
-    const { error: uErr } = await admin.rpc("gm_admin_upsert", { p_id: id, p_password: password, p_role: accRole });
+    const { error: uErr } = await admin.rpc("gm_admin_upsert", { p_id: id, p_password: password, p_role: accRole, p_guild: accGuild });
     if (uErr) return json({ ok: false, error: "server_error" }, 500);
-
-    // Save guild
-    const { error: uGuildErr } = await admin
-      .from("accounts")
-      .update({ guild: accGuild })
-      .eq("id", id);
-    if (uGuildErr) return json({ ok: false, error: "server_error" }, 500);
 
     const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: id, p_auth_user_id: uid, p_secret: secret });
     if (aErr) return json({ ok: false, error: "server_error" }, 500);
@@ -190,15 +189,23 @@ Deno.serve(async (req: Request) => {
     const guild = (body?.guild ?? null) as string | null;
     if (!id) return json({ ok: false, error: "missing_fields" }, 400);
 
+    const { data: targetAcc } = await admin
+      .from("accounts")
+      .select("role, guild")
+      .eq("id", id)
+      .maybeSingle();
+    if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+
     if (info.role === "R4") {
-      const { data: targetAcc } = await admin
-        .from("accounts")
-        .select("role, guild")
-        .eq("id", id)
-        .maybeSingle();
-      if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+      if (!callerGuild) {
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
       if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild || guild !== callerGuild) {
         return json({ ok: false, error: "forbidden" }, 403);
+      }
+    } else {
+      if (targetAcc.role === "R4" && (!guild || guild === "ALL")) {
+        return json({ ok: false, error: "r4_must_have_guild" }, 400);
       }
     }
 

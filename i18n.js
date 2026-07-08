@@ -72,6 +72,7 @@
             member_hint:           'Use the menu above to access the guild member list.',
 
             /* ── Toasts ────────────────────────── */
+            event_started:         'Started',
             toast_login_ok:        'Access granted. Welcome back, Admin.',
             toast_welcome:         'Welcome,',
             toast_logout:          'Successfully logged out.',

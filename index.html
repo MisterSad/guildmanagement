@@ -150,19 +150,19 @@
                     <div class="gm-card gm-card-padded gm-section" id="create-account-card">
                         <div class="gm-section-title" style="margin-bottom: 1rem;">
                             <i class="ph ph-key"></i>
-                            <span data-i18n="card_create_account">Nouveau compte</span>
+                            <span data-i18n="card_create_account">New Account</span>
                         </div>
                         <form id="create-account-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
                             <div class="gm-input-with-icon" style="flex:2; min-width: 220px;">
                                 <i class="ph ph-identification-card gm-icon"></i>
                                 <input type="text" id="account-id" class="gm-input" required
                                     data-i18n-placeholder="placeholder_account_id"
-                                    placeholder="Identifiant du compte">
+                                    placeholder="e.g. MemberName">
                             </div>
                             <div class="gm-input-with-icon" style="flex:1; min-width: 160px;">
                                 <i class="ph ph-shield gm-icon"></i>
                                 <select id="account-guild" class="gm-select gm-input" style="padding-left: 2.25rem;">
-                                    <option value="ALL">Toutes les guildes (Admin)</option>
+                                    <option value="ALL">All Guilds (Admin)</option>
                                     <option value="ALPHA">ALPHA</option>
                                     <option value="OMEGA">OMEGA</option>
                                     <option value="IMK">IMK</option>
@@ -178,17 +178,17 @@
                     <div class="gm-card gm-card-padded gm-section" id="create-guild-card">
                         <div class="gm-section-title" style="margin-bottom: 1rem;">
                             <i class="ph ph-shield-plus"></i>
-                            <span>Nouvelle guilde</span>
+                            <span>New Guild</span>
                         </div>
                         <form id="create-guild-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
                             <div class="gm-input-with-icon" style="flex:1; min-width: 220px;">
                                 <i class="ph ph-shield gm-icon"></i>
                                 <input type="text" id="guild-name-input" class="gm-input" required
-                                    placeholder="Nom de la guilde (ex. SIGMA)">
+                                    placeholder="Guild name (e.g. SIGMA)">
                             </div>
                             <button type="submit" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-plus"></i>
-                                <span>Créer la guilde</span>
+                                <span>Create Guild</span>
                             </button>
                         </form>
                     </div>
@@ -299,7 +299,7 @@
                                      </div>
 
                                      <!-- Calamity Befalls -->
-                                     <div class="notification-group">
+                                     <div class="notification-group" id="notification-group-calamity">
                                          <div class="notification-group-title">
                                              <i class="ph ph-skull"></i>
                                              <span data-i18n="label_calamity_notifications">Calamity Befalls</span>
@@ -314,7 +314,7 @@
                                      </div>
 
                                      <!-- GvG Samedi -->
-                                     <div class="notification-group">
+                                     <div class="notification-group" id="notification-group-gvg">
                                          <div class="notification-group-title">
                                              <i class="ph ph-flag"></i>
                                              <span data-i18n="label_gvg_notifications">GvG Samedi</span>
@@ -329,7 +329,7 @@
                                      </div>
 
                                      <!-- SvS PvP -->
-                                     <div class="notification-group">
+                                     <div class="notification-group" id="notification-group-svs">
                                          <div class="notification-group-title">
                                              <i class="ph ph-shield-checkered"></i>
                                              <span data-i18n="label_svs_notifications">SvS PvP</span>
@@ -457,8 +457,8 @@
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
-                            <h1 class="gm-page-title" data-i18n="banned_title">Joueurs Bannis</h1>
-                            <p class="gm-page-subtitle" data-i18n="banned_subtitle">Gérez la liste noire des UIDs bannis de la guilde</p>
+                            <h1 class="gm-page-title" data-i18n="banned_title">Banned Players</h1>
+                            <p class="gm-page-subtitle" data-i18n="banned_subtitle">Manage the blacklist of banned guild UIDs</p>
                         </div>
                     </header>
 
@@ -522,8 +522,8 @@
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
-                            <h1 class="gm-page-title" data-i18n="events_title">Événements</h1>
-                            <p class="gm-page-subtitle" data-i18n="events_sub">Pilotez les sessions et la participation</p>
+                            <h1 class="gm-page-title" data-i18n="events_title">Events</h1>
+                            <p class="gm-page-subtitle" data-i18n="events_sub">Run sessions and track participation</p>
                         </div>
                     </header>
                     <div data-gm-events-tabs></div>
@@ -533,14 +533,14 @@
                             <div class="gm-grow">
                                 <div class="gm-event-name">Server vs Server</div>
                                 <div class="gm-event-status-line">
-                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactif</span></span>
+                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactive</span></span>
                                     <span class="gm-dim">· coeff. 5×</span>
                                 </div>
                             </div>
                         </div>
                         <div class="gm-event-actions">
-                            <button class="gm-btn gm-btn-success event-start-btn" data-event="SvS"><i class="ph ph-play"></i> <span data-i18n="event_start">Démarrer</span></button>
-                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="SvS" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">Terminer</span></button>
+                            <button class="gm-btn gm-btn-success event-start-btn" data-event="SvS"><i class="ph ph-play"></i> <span data-i18n="event_start">Start</span></button>
+                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="SvS" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">End</span></button>
                         </div>
                     </div>
                     <div class="event-participants-area"></div>
@@ -567,17 +567,18 @@
                                 <i class="ph ph-user-focus gm-icon"></i>
                                 <input type="text" id="sanction-player" class="gm-input" required list="member-list-datalist"
                                     data-i18n-placeholder="placeholder_target_player"
-                                    placeholder="Membre concerné">
+                                    placeholder="Search for a member...">
                                 <datalist id="member-list-datalist"></datalist>
                             </div>
                             <div class="gm-input-with-icon" style="flex:2; min-width: 220px;">
                                 <i class="ph ph-chat-text gm-icon"></i>
                                 <input type="text" id="sanction-comment" class="gm-input" required
-                                    placeholder="Motif…">
+                                    data-i18n-placeholder="label_comment"
+                                    placeholder="Reason / Comment...">
                             </div>
                             <button type="submit" class="gm-btn gm-btn-danger">
                                 <i class="ph ph-gavel"></i>
-                                <span data-i18n="btn_apply_sanction">Appliquer</span>
+                                <span data-i18n="btn_apply_sanction">Apply</span>
                             </button>
                         </form>
                     </div>
@@ -604,8 +605,8 @@
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
-                            <h1 class="gm-page-title" data-i18n="events_title">Événements</h1>
-                            <p class="gm-page-subtitle" data-i18n="events_sub">Pilotez les sessions et la participation</p>
+                            <h1 class="gm-page-title" data-i18n="events_title">Events</h1>
+                            <p class="gm-page-subtitle" data-i18n="events_sub">Run sessions and track participation</p>
                         </div>
                     </header>
                     <div data-gm-events-tabs></div>
@@ -615,14 +616,14 @@
                             <div class="gm-grow">
                                 <div class="gm-event-name">Guild vs Guild</div>
                                 <div class="gm-event-status-line">
-                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactif</span></span>
+                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactive</span></span>
                                     <span class="gm-dim">· coeff. 5×</span>
                                 </div>
                             </div>
                         </div>
                         <div class="gm-event-actions">
-                            <button class="gm-btn gm-btn-success event-start-btn" data-event="GvG"><i class="ph ph-play"></i> <span data-i18n="event_start">Démarrer</span></button>
-                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="GvG" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">Terminer</span></button>
+                            <button class="gm-btn gm-btn-success event-start-btn" data-event="GvG"><i class="ph ph-play"></i> <span data-i18n="event_start">Start</span></button>
+                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="GvG" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">End</span></button>
                         </div>
                     </div>
                     <div class="event-participants-area"></div>
@@ -644,14 +645,14 @@
                             <div class="gm-grow">
                                 <div class="gm-event-name">Shadowfront</div>
                                 <div class="gm-event-status-line">
-                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactif</span></span>
+                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactive</span></span>
                                     <span class="gm-dim">· coeff. 3×</span>
                                 </div>
                             </div>
                         </div>
                         <div class="gm-event-actions">
-                            <button class="gm-btn gm-btn-success event-start-btn" data-event="Shadowfront"><i class="ph ph-play"></i> <span data-i18n="event_start">Démarrer</span></button>
-                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="Shadowfront" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">Terminer</span></button>
+                            <button class="gm-btn gm-btn-success event-start-btn" data-event="Shadowfront"><i class="ph ph-play"></i> <span data-i18n="event_start">Start</span></button>
+                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="Shadowfront" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">End</span></button>
                         </div>
                     </div>
                     <div class="event-participants-area"></div>
@@ -662,8 +663,8 @@
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
-                            <h1 class="gm-page-title" data-i18n="events_title">Événements</h1>
-                            <p class="gm-page-subtitle" data-i18n="events_sub">Pilotez les sessions et la participation</p>
+                            <h1 class="gm-page-title" data-i18n="events_title">Events</h1>
+                            <p class="gm-page-subtitle" data-i18n="events_sub">Run sessions and track participation</p>
                         </div>
                     </header>
                     <div data-gm-events-tabs></div>
@@ -673,14 +674,14 @@
                             <div class="gm-grow">
                                 <div class="gm-event-name">Defend Trade Route</div>
                                 <div class="gm-event-status-line">
-                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactif</span></span>
+                                    <span class="event-status-badge gm-chip"><span class="gm-dot"></span> <span data-i18n="event_inactive">Inactive</span></span>
                                     <span class="gm-dim">· coeff. 2×</span>
                                 </div>
                             </div>
                         </div>
                         <div class="gm-event-actions">
-                            <button class="gm-btn gm-btn-success event-start-btn" data-event="Defend Trade Route"><i class="ph ph-play"></i> <span data-i18n="event_start">Démarrer</span></button>
-                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="Defend Trade Route" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">Terminer</span></button>
+                            <button class="gm-btn gm-btn-success event-start-btn" data-event="Defend Trade Route"><i class="ph ph-play"></i> <span data-i18n="event_start">Start</span></button>
+                            <button class="gm-btn gm-btn-danger event-end-btn" data-event="Defend Trade Route" disabled><i class="ph ph-stop-circle"></i> <span data-i18n="event_end">End</span></button>
                         </div>
                     </div>
                     <div class="event-participants-area"></div>
@@ -691,7 +692,7 @@
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
-                            <h1 class="gm-page-title" data-i18n="events_title">Événements</h1>
+                            <h1 class="gm-page-title" data-i18n="events_title">Events</h1>
                             <p class="gm-page-subtitle" data-i18n="ar_subtitle">Stage A &amp; Stage B</p>
                         </div>
                     </header>
@@ -704,8 +705,8 @@
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
-                            <h1 class="gm-page-title" data-i18n="glory_title">Tracker de Gloire</h1>
-                            <p class="gm-page-subtitle" data-i18n="glory_subtitle">Saisissez la gloire de chaque membre, l'évolution est calculée automatiquement</p>
+                            <h1 class="gm-page-title" data-i18n="glory_title">Glory Tracker</h1>
+                            <p class="gm-page-subtitle" data-i18n="glory_subtitle">Enter the glory of each member, the evolution is calculated automatically</p>
                         </div>
                     </header>
                     <div class="event-participants-area"></div>
@@ -730,8 +731,8 @@
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
-                            <h1 class="gm-page-title" data-i18n="nav_stats">Classement</h1>
-                            <p class="gm-page-subtitle" data-i18n="stats_subtitle">Score pondéré sur la semaine sélectionnée</p>
+                            <h1 class="gm-page-title" data-i18n="nav_stats">Stats</h1>
+                            <p class="gm-page-subtitle" data-i18n="stats_subtitle">Weighted score for the selected week</p>
                         </div>
                         <div class="stats-controls"></div>
                     </header>
@@ -744,8 +745,8 @@
                 <header class="dashboard-header slide-up">
                     <div class="event-page-header">
                         <div>
-                            <h1><i class="ph ph-chart-bar"></i> <span data-i18n="nav_stats">Statistiques</span></h1>
-                            <p data-i18n="stats_subtitle">Classement et évolution des membres de la guilde</p>
+                            <h1><i class="ph ph-chart-bar"></i> <span data-i18n="nav_stats">Stats</span></h1>
+                            <p data-i18n="stats_subtitle">Rankings and member evolution</p>
                         </div>
                     </div>
                 </header>

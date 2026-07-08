@@ -103,7 +103,7 @@
 
             if (rpcRes.error) throw rpcRes.error;
 
-            window.RAD.showToast('Arms Race ' + stageLabel(stageKey) + ' — ' + (t('event_started') || 'Démarré'), 'success');
+            window.RAD.showToast('Arms Race ' + stageLabel(stageKey) + ' — ' + (t('event_started') || 'Started'), 'success');
 
             if (window.RAD.notifyDiscordEvent) {
                 window.RAD.notifyDiscordEvent(evName, startAt || sessionId, 'start');

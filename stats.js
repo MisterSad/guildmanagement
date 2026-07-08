@@ -1207,7 +1207,7 @@
             achievements.push({
                 key: 'mvp',
                 label: 'MVP',
-                desc: t('badge_mvp_desc') || 'A terminé premier du classement hebdomadaire de la guilde.',
+                desc: t('badge_mvp_desc') || 'Finished first in the weekly guild ranking.',
                 icon: 'ph-crown',
                 color: 'oklch(0.78 0.16 75)'
             });
@@ -1217,7 +1217,7 @@
             achievements.push({
                 key: 'glory_climber',
                 label: t('badge_glory_climber') || 'Glory Climber',
-                desc: t('badge_glory_climber_desc') || 'A cumulé plus de 5 000 points de progression de Gloire.',
+                desc: t('badge_glory_climber_desc') || 'Accumulated over 5,000 Glory progression points.',
                 icon: 'ph-trend-up',
                 color: 'var(--accent)'
             });
@@ -1226,8 +1226,8 @@
         if (totalAttended >= 15) {
             achievements.push({
                 key: 'loyal_soldier',
-                label: t('badge_loyal_soldier') || 'Soldat Loyal',
-                desc: t('badge_loyal_soldier_desc') || 'A participé à 15 événements de guilde ou plus.',
+                label: t('badge_loyal_soldier') || 'Loyal Soldier',
+                desc: t('badge_loyal_soldier_desc') || 'Participated in 15 or more guild events.',
                 icon: 'ph-sword',
                 color: 'var(--info)'
             });
@@ -1237,8 +1237,8 @@
         if (consistencyCount >= 4) {
             achievements.push({
                 key: 'consistency_master',
-                label: t('badge_consistency_master') || 'Maître de la Constance',
-                desc: t('badge_consistency_master_desc') || 'A obtenu le bonus de présence sur au moins 4 semaines.',
+                label: t('badge_consistency_master') || 'Consistency Master',
+                desc: t('badge_consistency_master_desc') || 'Obtained the attendance bonus for at least 4 weeks.',
                 icon: 'ph-calendar-check',
                 color: 'var(--warning)'
             });

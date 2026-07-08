@@ -495,6 +495,14 @@
         var form = document.getElementById('guild-settings-form');
         if (!form) return;
 
+        var isAlpha = (window.currentGuild === 'ALPHA');
+        var calamityGroup = document.getElementById('notification-group-calamity');
+        var gvgGroup = document.getElementById('notification-group-gvg');
+        var svsGroup = document.getElementById('notification-group-svs');
+        if (calamityGroup) calamityGroup.style.display = isAlpha ? '' : 'none';
+        if (gvgGroup) gvgGroup.style.display = isAlpha ? '' : 'none';
+        if (svsGroup) svsGroup.style.display = isAlpha ? '' : 'none';
+
         var coeffSvs = await window.RAD.config.get('coeff_svs');
         var coeffGvg = await window.RAD.config.get('coeff_gvg');
         var coeffShadowfront = await window.RAD.config.get('coeff_shadowfront');
@@ -585,6 +593,7 @@
             if (span) span.textContent = '...';
 
             try {
+                var isAlpha = (window.currentGuild === 'ALPHA');
                 await Promise.all([
                     window.RAD.config.set('coeff_svs', document.getElementById('coeff-svs').value),
                     window.RAD.config.set('coeff_gvg', document.getElementById('coeff-gvg').value),
@@ -595,9 +604,9 @@
                     window.RAD.config.set('webhook_armsrace', document.getElementById('webhook-armsrace').value.trim()),
                     window.RAD.config.set('webhook_dtr', document.getElementById('webhook-dtr').value.trim()),
                     window.RAD.config.set('webhook_shadowfront', document.getElementById('webhook-shadowfront').value.trim()),
-                    window.RAD.config.set('webhook_calamity', document.getElementById('webhook-calamity').value.trim()),
-                    window.RAD.config.set('webhook_gvg', document.getElementById('webhook-gvg').value.trim()),
-                    window.RAD.config.set('webhook_svs', document.getElementById('webhook-svs').value.trim()),
+                    window.RAD.config.set('webhook_calamity', isAlpha ? document.getElementById('webhook-calamity').value.trim() : ''),
+                    window.RAD.config.set('webhook_gvg', isAlpha ? document.getElementById('webhook-gvg').value.trim() : ''),
+                    window.RAD.config.set('webhook_svs', isAlpha ? document.getElementById('webhook-svs').value.trim() : ''),
 
                     // Notification Configs
                     window.RAD.config.set('notify_armsrace_reminder_30', document.getElementById('notify-armsrace-30').checked ? 'true' : 'false'),
@@ -612,12 +621,12 @@
                     window.RAD.config.set('notify_shadowfront_reminder_5', document.getElementById('notify-shadowfront-5').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_shadowfront_start', document.getElementById('notify-shadowfront-start').checked ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_calamity_10', document.getElementById('notify-calamity-10').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_gvg_pvp', document.getElementById('notify-gvg-pvp').checked ? 'true' : 'false'),
+                    window.RAD.config.set('notify_calamity_10', (isAlpha && document.getElementById('notify-calamity-10').checked) ? 'true' : 'false'),
+                    window.RAD.config.set('notify_gvg_pvp', (isAlpha && document.getElementById('notify-gvg-pvp').checked) ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_svs_garrison', document.getElementById('notify-svs-garrison').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_svs_pvp', document.getElementById('notify-svs-pvp').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_svs_won_prep', document.getElementById('notify-svs-won-prep').checked ? 'true' : 'false')
+                    window.RAD.config.set('notify_svs_garrison', (isAlpha && document.getElementById('notify-svs-garrison').checked) ? 'true' : 'false'),
+                    window.RAD.config.set('notify_svs_pvp', (isAlpha && document.getElementById('notify-svs-pvp').checked) ? 'true' : 'false'),
+                    window.RAD.config.set('notify_svs_won_prep', (isAlpha && document.getElementById('notify-svs-won-prep').checked) ? 'true' : 'false')
                 ]);
                 
                 showToast(t('toast_config_updated'), 'success');

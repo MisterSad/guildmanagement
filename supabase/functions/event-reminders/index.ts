@@ -185,19 +185,22 @@ serve(async (req) => {
     // 2. Fetch all config rows across all guilds
     const { data: configRows, error: configError } = await supabase
       .from('guild_config')
-      .select('guild, key, value');
+      .select('guild, key, value, updated_at');
       
     if (configError) throw configError;
 
     // Group configuration by guild
     const configsByGuild: Record<string, Record<string, string>> = {};
+    const lockTimes: Record<string, Record<string, string>> = {};
     for (const g of GUILDS) {
       configsByGuild[g] = {};
+      lockTimes[g] = {};
     }
     for (const row of (configRows || [])) {
       const g = row.guild || 'ALPHA';
       if (configsByGuild[g]) {
         configsByGuild[g][row.key] = row.value;
+        lockTimes[g][row.key] = row.updated_at || '';
       }
     }
 
@@ -261,9 +264,23 @@ serve(async (req) => {
             const webhookUrl = config[`webhook_${eventPrefix}`];
             const lockKey = `sent_event_${event.event_name.replace(/\s+/g, '_')}_${event.session_id}_${reminderType}`;
 
-            // Fast-path memory check
-            if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+            // Fast-path memory check with stale lock handling
+            if (config[lockKey] === 'sent') {
               continue;
+            }
+            if (config[lockKey] === 'sending') {
+              const updatedStr = lockTimes[guild]?.[lockKey];
+              const lockAgeMins = updatedStr ? (now - new Date(updatedStr).getTime()) / 60000 : 999;
+              if (lockAgeMins < 5) {
+                // Not stale yet, skip
+                continue;
+              }
+              console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
+              await supabase
+                .from('guild_config')
+                .delete()
+                .eq('guild', guild)
+                .eq('key', lockKey);
             }
 
             // Acquire lock
@@ -292,7 +309,7 @@ serve(async (req) => {
             const guildTag = guildTags[guild] || '@everyone';
 
             let content = '';
-            const embedTitle = `📢 Guild Event: ${event.event_name}`;
+            let embedTitle = `📢 Guild Event: ${event.event_name}`;
             let embedDesc = 'A guild event has been configured in the FGF Guild Management tool!';
             let color = 5763719; // Green
             let agenda = 'Please connect now.';
@@ -369,7 +386,7 @@ serve(async (req) => {
       // 3. GvG Saturday notifications and reminders
       const gvgEvent = events.find(e => e.event_name === 'GvG');
       const isGvgActive = gvgEvent && getWeekStart(gvgEvent.start_at || gvgEvent.session_id) === getWeekStart(now);
-      if (isGvgActive) {
+      if (isGvgActive && guild !== 'OMEGA' && guild !== 'IMK') {
         const isGvgPvpEnabled = config['notify_gvg_pvp'] === undefined || config['notify_gvg_pvp'] === 'true';
         if (isGvgPvpEnabled) {
           const dateUtc = new Date(now);
@@ -513,7 +530,7 @@ serve(async (req) => {
       // 4. SvS notifications and reminders
       const svsEvent = events.find(e => e.event_name === 'SvS');
       const isSvsActive = svsEvent && getWeekStart(svsEvent.start_at || svsEvent.session_id) === getWeekStart(now);
-      if (isSvsActive) {
+      if (isSvsActive && guild !== 'OMEGA' && guild !== 'IMK') {
         const dateUtc = new Date(now);
         const curDay = dateUtc.getUTCDay();
         const curHour = dateUtc.getUTCHours();
@@ -711,7 +728,7 @@ serve(async (req) => {
       }
 
       // 5. Calamity Befalls weekly reminders (10m before round)
-      {
+      if (guild !== 'OMEGA' && guild !== 'IMK') {
         const dateUtc = new Date(now);
         const curDay = dateUtc.getUTCDay();
         const curHour = dateUtc.getUTCHours();
