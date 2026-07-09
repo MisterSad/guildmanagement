@@ -1454,6 +1454,13 @@
         }
     }
 
+    window.addEventListener('rad-lang-change', function () {
+        if (bannedListContainer && bannedPlayers.length > 0) {
+            renderBannedPlayers();
+        }
+        if (guildMembers.length > 0) {
+            renderGuildMembers();
+        }
     });
 
     async function openCustomMsgModal(eventPrefix) {
