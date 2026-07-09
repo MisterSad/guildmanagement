@@ -495,13 +495,13 @@
         var form = document.getElementById('guild-settings-form');
         if (!form) return;
 
-        var isAlpha = (window.currentGuild === 'ALPHA');
+        var showCalamityGvgSvs = (window.currentGuild !== 'OMEGA' && window.currentGuild !== 'IMK');
         var calamityGroup = document.getElementById('notification-group-calamity');
         var gvgGroup = document.getElementById('notification-group-gvg');
         var svsGroup = document.getElementById('notification-group-svs');
-        if (calamityGroup) calamityGroup.style.display = isAlpha ? '' : 'none';
-        if (gvgGroup) gvgGroup.style.display = isAlpha ? '' : 'none';
-        if (svsGroup) svsGroup.style.display = isAlpha ? '' : 'none';
+        if (calamityGroup) calamityGroup.style.display = showCalamityGvgSvs ? '' : 'none';
+        if (gvgGroup) gvgGroup.style.display = showCalamityGvgSvs ? '' : 'none';
+        if (svsGroup) svsGroup.style.display = showCalamityGvgSvs ? '' : 'none';
 
         var coeffSvs = await window.RAD.config.get('coeff_svs');
         var coeffGvg = await window.RAD.config.get('coeff_gvg');
@@ -593,7 +593,7 @@
             if (span) span.textContent = '...';
 
             try {
-                var isAlpha = (window.currentGuild === 'ALPHA');
+                var showCalamityGvgSvs = (window.currentGuild !== 'OMEGA' && window.currentGuild !== 'IMK');
                 await Promise.all([
                     window.RAD.config.set('coeff_svs', document.getElementById('coeff-svs').value),
                     window.RAD.config.set('coeff_gvg', document.getElementById('coeff-gvg').value),
@@ -604,9 +604,9 @@
                     window.RAD.config.set('webhook_armsrace', document.getElementById('webhook-armsrace').value.trim()),
                     window.RAD.config.set('webhook_dtr', document.getElementById('webhook-dtr').value.trim()),
                     window.RAD.config.set('webhook_shadowfront', document.getElementById('webhook-shadowfront').value.trim()),
-                    window.RAD.config.set('webhook_calamity', isAlpha ? document.getElementById('webhook-calamity').value.trim() : ''),
-                    window.RAD.config.set('webhook_gvg', isAlpha ? document.getElementById('webhook-gvg').value.trim() : ''),
-                    window.RAD.config.set('webhook_svs', isAlpha ? document.getElementById('webhook-svs').value.trim() : ''),
+                    window.RAD.config.set('webhook_calamity', showCalamityGvgSvs ? document.getElementById('webhook-calamity').value.trim() : ''),
+                    window.RAD.config.set('webhook_gvg', showCalamityGvgSvs ? document.getElementById('webhook-gvg').value.trim() : ''),
+                    window.RAD.config.set('webhook_svs', showCalamityGvgSvs ? document.getElementById('webhook-svs').value.trim() : ''),
 
                     // Notification Configs
                     window.RAD.config.set('notify_armsrace_reminder_30', document.getElementById('notify-armsrace-30').checked ? 'true' : 'false'),
@@ -621,12 +621,12 @@
                     window.RAD.config.set('notify_shadowfront_reminder_5', document.getElementById('notify-shadowfront-5').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_shadowfront_start', document.getElementById('notify-shadowfront-start').checked ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_calamity_10', (isAlpha && document.getElementById('notify-calamity-10').checked) ? 'true' : 'false'),
-                    window.RAD.config.set('notify_gvg_pvp', (isAlpha && document.getElementById('notify-gvg-pvp').checked) ? 'true' : 'false'),
+                    window.RAD.config.set('notify_calamity_10', (showCalamityGvgSvs && document.getElementById('notify-calamity-10').checked) ? 'true' : 'false'),
+                    window.RAD.config.set('notify_gvg_pvp', (showCalamityGvgSvs && document.getElementById('notify-gvg-pvp').checked) ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_svs_garrison', (isAlpha && document.getElementById('notify-svs-garrison').checked) ? 'true' : 'false'),
-                    window.RAD.config.set('notify_svs_pvp', (isAlpha && document.getElementById('notify-svs-pvp').checked) ? 'true' : 'false'),
-                    window.RAD.config.set('notify_svs_won_prep', (isAlpha && document.getElementById('notify-svs-won-prep').checked) ? 'true' : 'false')
+                    window.RAD.config.set('notify_svs_garrison', (showCalamityGvgSvs && document.getElementById('notify-svs-garrison').checked) ? 'true' : 'false'),
+                    window.RAD.config.set('notify_svs_pvp', (showCalamityGvgSvs && document.getElementById('notify-svs-pvp').checked) ? 'true' : 'false'),
+                    window.RAD.config.set('notify_svs_won_prep', (showCalamityGvgSvs && document.getElementById('notify-svs-won-prep').checked) ? 'true' : 'false')
                 ]);
                 
                 showToast(t('toast_config_updated'), 'success');
@@ -1454,12 +1454,233 @@
         }
     }
 
-    window.addEventListener('rad-lang-change', function () {
-        if (bannedListContainer && bannedPlayers.length > 0) {
-            renderBannedPlayers();
+    });
+
+    async function openCustomMsgModal(eventPrefix) {
+        var existing = document.getElementById('custom-msg-modal');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'custom-msg-modal';
+        overlay.className = 'confirm-overlay';
+
+        var reminders = [];
+        if (eventPrefix === 'armsrace' || eventPrefix === 'dtr' || eventPrefix === 'shadowfront') {
+            reminders = [
+                { key: 'reminder_30', label: 'Rappel 30 minutes' },
+                { key: 'reminder_5',  label: 'Rappel 5 minutes' },
+                { key: 'start',       label: 'Début d\'événement' }
+            ];
+        } else if (eventPrefix === 'calamity') {
+            reminders = [
+                { key: 'reminder_10', label: 'Rappel 10 minutes' }
+            ];
+        } else if (eventPrefix === 'gvg') {
+            reminders = [
+                { key: 'reminder', label: 'Rappel 5 minutes' },
+                { key: 'start',    label: 'Début d\'événement' }
+            ];
+        } else if (eventPrefix === 'svs') {
+            reminders = [
+                { key: 'reminder_30_invasion', label: 'Rappel 30 min (Invasion)' },
+                { key: 'reminder_30_defense',  label: 'Rappel 30 min (Défense)' },
+                { key: 'reminder_5_invasion',  label: 'Rappel 5 min (Invasion)' },
+                { key: 'reminder_5_defense',   label: 'Rappel 5 min (Défense)' },
+                { key: 'start_invasion',       label: 'Début d\'événement (Invasion)' },
+                { key: 'start_defense',        label: 'Début d\'événement (Défense)' },
+                { key: 'garrison',             label: 'Rappel de garnison' }
+            ];
         }
-        if (guildMembers.length > 0) {
-            renderGuildMembers();
+
+        var templates = {};
+        for (var i = 0; i < reminders.length; i++) {
+            var r = reminders[i];
+            templates[r.key + '_content'] = await window.RAD.config.get('tpl_' + eventPrefix + '_' + r.key + '_content') || '';
+            templates[r.key + '_title'] = await window.RAD.config.get('tpl_' + eventPrefix + '_' + r.key + '_title') || '';
+            templates[r.key + '_desc'] = await window.RAD.config.get('tpl_' + eventPrefix + '_' + r.key + '_desc') || '';
+        }
+
+        function getDefaultTpl(eventPrefix, key, field) {
+            if (eventPrefix === 'armsrace' || eventPrefix === 'dtr' || eventPrefix === 'shadowfront') {
+                var namePlaceholder = '{event_name}';
+                if (key === 'reminder_30') {
+                    if (field === 'content') return '⏰ **Reminder:** ' + namePlaceholder + ' starts in **30 minutes**! {guild_tag}';
+                    if (field === 'title') return '⏰ Reminder: ' + namePlaceholder + ' starts in 30 minutes!';
+                    if (field === 'desc') return 'Get ready, soldiers! Please log in and prepare for the event.';
+                } else if (key === 'reminder_5') {
+                    if (field === 'content') return '🚨 **Immediate Reminder:** ' + namePlaceholder + ' starts in **5 minutes**! Get ready! {guild_tag}';
+                    if (field === 'title') return '🚨 Immediate Reminder: ' + namePlaceholder + ' starts in 5 minutes!';
+                    if (field === 'desc') return 'Action time! Join your squad now!';
+                } else if (key === 'start') {
+                    if (field === 'content') return '⚔️ **Event Started:** ' + namePlaceholder + ' starts now! {guild_tag}';
+                    if (field === 'title') return '⚔️ Event Started: ' + namePlaceholder + ' is active!';
+                    if (field === 'desc') return 'Action time! Join your squad now!';
+                }
+            } else if (eventPrefix === 'calamity') {
+                if (field === 'content') return '⏰ **Calamity Befalls: Round {round} starts in 10 minutes!**';
+                if (field === 'title') return '⏰ Calamity Befalls - Round {round} (Reminder)';
+                if (field === 'desc') return 'Prepare your squads! Calamity Befalls Round {round} starts in 10 minutes.';
+            } else if (eventPrefix === 'gvg') {
+                if (key === 'reminder') {
+                    if (field === 'content') return '⏰ **GvG: {event_name}** starts in **5 minutes**! @everyone';
+                    if (field === 'title') return '⏰ GvG - {event_name} (Reminder)';
+                    if (field === 'desc') return 'Get ready! The {event_name} event starts in 5 minutes.';
+                } else if (key === 'start') {
+                    if (field === 'content') return '⚔️ **GvG: {event_name}** starts now! @everyone';
+                    if (field === 'title') return '⚔️ GvG - {event_name}';
+                    if (field === 'desc') return 'The {event_name} event is active. Join the battle now!';
+                }
+            } else if (eventPrefix === 'svs') {
+                if (key === 'reminder_30_invasion') {
+                    if (field === 'content') return '⏰ **SvS: Invasion starts in 30 minutes! Prepare to attack!** @everyone';
+                    if (field === 'title') return '⏰ SvS: Invasion starts in 30 minutes';
+                    if (field === 'desc') return 'We won the preparation! We are invading the enemy server...';
+                } else if (key === 'reminder_30_defense') {
+                    if (field === 'content') return '⏰ **SvS: Defense starts in 30 minutes! Protect yourself!** @everyone';
+                    if (field === 'title') return '⏰ SvS: Defense starts in 30 minutes';
+                    if (field === 'desc') return 'We are being invaded. Please put all your ships in garrison now...';
+                } else if (key === 'reminder_5_invasion') {
+                    if (field === 'content') return '🚨 **SvS: Invasion starts in 5 minutes! Join attack squads!** @everyone';
+                    if (field === 'title') return '🚨 SvS: Invasion starts in 5 minutes!';
+                    if (field === 'desc') return 'Portal opens in 5 minutes! Ready to jump and attack...';
+                } else if (key === 'reminder_5_defense') {
+                    if (field === 'content') return '🚨 **SvS: Defense starts in 5 minutes! Ready your squads!** @everyone';
+                    if (field === 'title') return '🚨 SvS: Defense starts in 5 minutes!';
+                    if (field === 'desc') return 'Invasion is imminent. Make sure your home assets are safe...';
+                } else if (key === 'start_invasion') {
+                    if (field === 'content') return '⚔️ **SvS: Invasion has started! Go attack!** @everyone';
+                    if (field === 'title') return '⚔️ SvS: Invasion has started!';
+                    if (field === 'desc') return 'The invasion portal is open! Jump to the enemy server...';
+                } else if (key === 'start_defense') {
+                    if (field === 'content') return '⚔️ **SvS: Blackhole Defense has started! Protect the server!** @everyone';
+                    if (field === 'title') return '⚔️ SvS: Defense has started!';
+                    if (field === 'desc') return 'Enemy forces are entering our server! Defend the Blackhole at all costs...';
+                } else if (key === 'garrison') {
+                    if (field === 'content') return '🛡️ **SvS: Garrison Reminder** - Don\'t forget to put your ships in garrison! @everyone';
+                    if (field === 'title') return '🛡️ SvS: Garrison Reminder';
+                    if (field === 'desc') return 'Put your ships in garrison to avoid being attacked while offline.';
+                }
+            }
+            return '';
+        }
+
+        var titleMap = {
+            armsrace: 'Course aux armements',
+            dtr: 'Defend Trade Route',
+            shadowfront: 'Front de l\'ombre',
+            calamity: 'Calamity Befalls',
+            gvg: 'GvG Samedi',
+            svs: 'SvS PvP'
+        };
+
+        var esc = window.RAD.escapeHTML;
+
+        var html = 
+            '<div class="gm-profile-card" style="max-width: 600px; gap: 1.25rem; align-items: stretch; text-align: left;">' +
+                '<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.75rem;">' +
+                    '<h3 style="font-family: var(--font-display); font-size: 1.2rem; margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
+                        '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personnalisation - ' + titleMap[eventPrefix] +
+                    '</h3>' +
+                    '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" style="padding: 0.25rem;"><i class="ph ph-x"></i></button>' +
+                '</div>' +
+                '<div style="font-size: 0.82rem; color: var(--fg-dim); background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 6px; padding: 0.65rem 0.8rem; line-height: 1.4;">' +
+                    '<strong>Variables disponibles :</strong> <code>{event_name}</code>, <code>{date}</code>, <code>{guild_tag}</code>' +
+                    (eventPrefix === 'calamity' ? ', <code>{round}</code>' : '') +
+                    '<br><span style="font-size: 0.75rem;">Laissez vide pour utiliser le message par défaut.</span>' +
+                '</div>' +
+                '<div style="display: flex; flex-direction: column; gap: 1.5rem; max-height: 50vh; overflow-y: auto; padding-right: 0.25rem;">';
+
+        for (var i = 0; i < reminders.length; i++) {
+            var r = reminders[i];
+            var defContent = getDefaultTpl(eventPrefix, r.key, 'content');
+            var defTitle = getDefaultTpl(eventPrefix, r.key, 'title');
+            var defDesc = getDefaultTpl(eventPrefix, r.key, 'desc');
+
+            var valContent = templates[r.key + '_content'] || '';
+            var valTitle = templates[r.key + '_title'] || '';
+            var valDesc = templates[r.key + '_desc'] || '';
+
+            html += 
+                '<div style="display: flex; flex-direction: column; gap: 0.75rem; border-bottom: 1px dashed var(--border-soft); padding-bottom: 1.25rem;">' +
+                    '<div style="font-size: 0.85rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em;">' + r.label + '</div>' +
+                    '<div class="gm-col" style="gap: 0.35rem;">' +
+                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Message Discord (ping / texte principal) :</label>' +
+                        '<input type="text" id="tpl-' + r.key + '-content" class="gm-input gm-input-sm" style="font-size: 0.8rem;" placeholder="' + esc(defContent) + '" value="' + esc(valContent) + '">' +
+                    '</div>' +
+                    '<div class="gm-col" style="gap: 0.35rem;">' +
+                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Titre de l\'embed :</label>' +
+                        '<input type="text" id="tpl-' + r.key + '-title" class="gm-input gm-input-sm" style="font-size: 0.8rem;" placeholder="' + esc(defTitle) + '" value="' + esc(valTitle) + '">' +
+                    '</div>' +
+                    '<div class="gm-col" style="gap: 0.35rem;">' +
+                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Description de l\'embed :</label>' +
+                        '<textarea id="tpl-' + r.key + '-desc" class="gm-input" style="font-size: 0.8rem; height: 60px; resize: vertical;" placeholder="' + esc(defDesc) + '">' + valDesc + '</textarea>' +
+                    '</div>' +
+                '</div>';
+        }
+
+        html += 
+                '</div>' +
+                '<div style="display: flex; gap: 0.75rem; justify-content: flex-end; border-top: 1px solid var(--border-soft); padding-top: 0.75rem;">' +
+                    '<button type="button" class="gm-btn gm-btn-ghost" id="custom-msg-modal-cancel">Annuler</button>' +
+                    '<button type="button" class="gm-btn gm-btn-primary" id="custom-msg-modal-save">' +
+                        '<i class="ph ph-check"></i> Enregistrer' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+
+        overlay.innerHTML = html;
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(function () {
+            overlay.classList.add('visible');
+        });
+
+        var closeModal = function () {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 250);
+        };
+
+        document.getElementById('custom-msg-modal-close').addEventListener('click', closeModal);
+        document.getElementById('custom-msg-modal-cancel').addEventListener('click', closeModal);
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeModal();
+        });
+
+        var saveBtn = document.getElementById('custom-msg-modal-save');
+        saveBtn.addEventListener('click', async function () {
+            saveBtn.disabled = true;
+            var span = saveBtn.querySelector('span') || saveBtn;
+            var origText = span.innerHTML;
+            span.textContent = '...';
+
+            try {
+                var promises = [];
+                for (var i = 0; i < reminders.length; i++) {
+                    var r = reminders[i];
+                    var valContent = document.getElementById('tpl-' + r.key + '-content').value.trim();
+                    var valTitle = document.getElementById('tpl-' + r.key + '-title').value.trim();
+                    var valDesc = document.getElementById('tpl-' + r.key + '-desc').value.trim();
+
+                    promises.push(window.RAD.config.set('tpl_' + eventPrefix + '_' + r.key + '_content', valContent));
+                    promises.push(window.RAD.config.set('tpl_' + eventPrefix + '_' + r.key + '_title', valTitle));
+                    promises.push(window.RAD.config.set('tpl_' + eventPrefix + '_' + r.key + '_desc', valDesc));
+                }
+                await Promise.all(promises);
+                showToast(t('toast_config_updated'), 'success');
+                closeModal();
+            } catch (err) {
+                showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                saveBtn.disabled = false;
+                span.innerHTML = origText;
+            }
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-custom-msg]');
+        if (btn) {
+            var eventPrefix = btn.getAttribute('data-custom-msg');
+            openCustomMsgModal(eventPrefix);
         }
     });
 

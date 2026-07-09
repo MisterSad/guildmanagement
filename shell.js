@@ -259,6 +259,8 @@
               '</div>'
             : '<div class="gm-topbar-title">' + title + '</div>';
 
+        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
+
         var guilds = window.guildsList || ['ALPHA', 'OMEGA', 'IMK'];
         if (window.currentGuildRestriction) {
             guilds = [window.currentGuildRestriction];
@@ -269,9 +271,9 @@
             return '<option value="' + g + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + g + '</option>';
         }).join('');
 
-        var selectStyle = window.currentGuildRestriction 
-            ? 'display: none; padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
-            : 'padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
+        var selectStyle = isSuperAdmin
+            ? 'padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
+            : 'display: none; padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
 
         // Check subscription status
         var isExpired = false;
@@ -313,7 +315,6 @@
         }
 
         // Toggle Read-Only logic
-        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
         var readOnlyActive = isExpired && !isSuperAdmin;
         var banner = document.getElementById('guild-warning-banner');
 
@@ -332,9 +333,17 @@
             }
         }
 
+        var chipHtml = '';
+        if (!isSuperAdmin) {
+            var displayGuild = window.currentGuildRestriction || window.currentGuild || 'ALPHA';
+            chipHtml = '<span class="gm-chip gm-chip-info" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">' + esc(displayGuild) + '</span>';
+        } else if (window.currentGuildRestriction) {
+            chipHtml = '<span class="gm-chip gm-chip-info" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">' + esc(window.currentGuildRestriction) + '</span>';
+        }
+
         var html = brandHtml +
             '<div class="gm-topbar-actions">' +
-                (window.currentGuildRestriction ? '<span class="gm-chip gm-chip-info" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">' + esc(window.currentGuildRestriction) + '</span>' : '') +
+                chipHtml +
                 subHtml +
                 '<select id="guild-selector" class="gm-select" style="' + selectStyle + '">' +
                     guildOptions +

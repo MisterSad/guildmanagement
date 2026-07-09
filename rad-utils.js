@@ -544,6 +544,24 @@
             color = 15548997; // Bright Red
         }
 
+        if (action !== 'edit') {
+            var customContent = await getGuildConfig('tpl_' + eventPrefix + '_' + action + '_content');
+            var customTitle = await getGuildConfig('tpl_' + eventPrefix + '_' + action + '_title');
+            var customDesc = await getGuildConfig('tpl_' + eventPrefix + '_' + action + '_desc');
+
+            var replacePlaceholders = function (str) {
+                if (!str) return str;
+                return str
+                    .replace(/{event_name}/g, eventName)
+                    .replace(/{date}/g, dateFormatted)
+                    .replace(/{guild_tag}/g, guildTag);
+            };
+
+            if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);
+            if (customTitle && customTitle.trim() !== '') embedTitle = replacePlaceholders(customTitle);
+            if (customDesc && customDesc.trim() !== '') embedDesc = replacePlaceholders(customDesc);
+        }
+
         var fields = [];
         if (actionLabel) {
             fields.push({ name: 'Status', value: actionLabel, inline: true });

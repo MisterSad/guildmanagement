@@ -334,16 +334,39 @@ serve(async (req) => {
               agenda = 'Battle starts now! Join your squad!';
             }
 
+            const customContent = config[`tpl_${eventPrefix}_${reminderType}_content`];
+            const customTitle = config[`tpl_${eventPrefix}_${reminderType}_title`];
+            const customDesc = config[`tpl_${eventPrefix}_${reminderType}_desc`];
+
+            const replacePlaceholders = (str: string) => {
+              if (!str) return str;
+              return str
+                .replace(/{event_name}/g, event.event_name)
+                .replace(/{date}/g, dateFormatted)
+                .replace(/{guild_tag}/g, guildTag);
+            };
+
+            if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);
+            if (customTitle && customTitle.trim() !== '') embedTitle = replacePlaceholders(customTitle);
+            if (customDesc && customDesc.trim() !== '') {
+              embedDesc = replacePlaceholders(customDesc);
+              agenda = '';
+            }
+
+            const fields = [
+              { name: 'Start Time (UTC)', value: dateFormatted, inline: true }
+            ];
+            if (agenda) {
+              fields.push({ name: 'Guild Agenda', value: agenda, inline: false });
+            }
+
             const body = {
               content: content,
               embeds: [{
                 title: embedTitle,
                 description: embedDesc,
                 color: color,
-                fields: [
-                  { name: 'Start Time (UTC)', value: dateFormatted, inline: true },
-                  { name: 'Guild Agenda', value: agenda, inline: false }
-                ],
+                fields: fields,
                 timestamp: new Date().toISOString(),
                 footer: { text: 'FGF Guild Management Tool' }
               }]
@@ -475,16 +498,40 @@ serve(async (req) => {
               const startMinStr = String(slot.targetMinute).padStart(2, '0');
               const timeStr = `${startHourStr}:${startMinStr} UTC`;
 
+              const gvgAction = slot.type === 'now' ? 'start' : 'reminder';
+              const customContent = config[`tpl_gvg_${gvgAction}_content`];
+              const customTitle = config[`tpl_gvg_${gvgAction}_title`];
+              const customDesc = config[`tpl_gvg_${gvgAction}_desc`];
+
+              const replacePlaceholders = (str: string) => {
+                if (!str) return str;
+                return str
+                  .replace(/{event_name}/g, slot.label)
+                  .replace(/{date}/g, timeStr)
+                  .replace(/{guild_tag}/g, guildTag);
+              };
+
+              if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);
+              if (customTitle && customTitle.trim() !== '') embedTitle = replacePlaceholders(customTitle);
+              if (customDesc && customDesc.trim() !== '') {
+                embedDesc = replacePlaceholders(customDesc);
+                agenda = '';
+              }
+
+              const fields = [
+                { name: 'Start Time (UTC)', value: timeStr, inline: true }
+              ];
+              if (agenda) {
+                fields.push({ name: 'Guild Agenda', value: agenda, inline: false });
+              }
+
               const body = {
                 content: content,
                 embeds: [{
                   title: embedTitle,
                   description: embedDesc,
                   color: color,
-                  fields: [
-                    { name: 'Start Time (UTC)', value: timeStr, inline: true },
-                    { name: 'Guild Agenda', value: agenda, inline: false }
-                  ],
+                  fields: fields,
                   timestamp: new Date().toISOString(),
                   footer: { text: 'FGF Guild Management Tool' }
                 }]
@@ -679,6 +726,43 @@ serve(async (req) => {
               ];
             }
 
+            let actionSuffix = '';
+            const wonPrepVal = config['notify_svs_won_prep'] === 'true';
+            if (slot.type === 'reminder_30') {
+              actionSuffix = wonPrepVal ? 'reminder_30_invasion' : 'reminder_30_defense';
+            } else if (slot.type === 'reminder_5') {
+              actionSuffix = wonPrepVal ? 'reminder_5_invasion' : 'reminder_5_defense';
+            } else if (slot.type === 'battle_start') {
+              actionSuffix = wonPrepVal ? 'start_invasion' : 'start_defense';
+            } else if (slot.type === 'garrison') {
+              actionSuffix = 'garrison';
+            }
+
+            if (actionSuffix) {
+              const customContent = config[`tpl_svs_${actionSuffix}_content`];
+              const customTitle = config[`tpl_svs_${actionSuffix}_title`];
+              const customDesc = config[`tpl_svs_${actionSuffix}_desc`];
+
+              const timeVal = slot.type === 'garrison' ? `${String(slot.hour).padStart(2, '0')}:00 UTC` : (slot.type === 'portal_5' || slot.type === 'portal_open' ? '00:00 UTC' : '14:00 UTC');
+
+              const replacePlaceholders = (str: string) => {
+                if (!str) return str;
+                return str
+                  .replace(/{event_name}/g, 'SvS')
+                  .replace(/{date}/g, timeVal)
+                  .replace(/{guild_tag}/g, guildTag);
+              };
+
+              if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);
+              if (customTitle && customTitle.trim() !== '') embedTitle = replacePlaceholders(customTitle);
+              if (customDesc && customDesc.trim() !== '') {
+                embedDesc = replacePlaceholders(customDesc);
+                fields = [
+                  { name: 'Time (UTC)', value: timeVal, inline: true }
+                ];
+              }
+            }
+
             const body = {
               content: content,
               embeds: [{
@@ -785,15 +869,52 @@ serve(async (req) => {
           }
 
           try {
-            const content = `⏰ **Calamity Befalls: Round ${slot.round} starts in 10 minutes!**`;
-            const embedTitle = `⏰ Calamity Befalls - Round ${slot.round} (Reminder)`;
-            const embedDesc = `Prepare your squads! Calamity Befalls Round ${slot.round} starts in 10 minutes.`;
+            let content = `⏰ **Calamity Befalls: Round ${slot.round} starts in 10 minutes!**`;
+            let embedTitle = `⏰ Calamity Befalls - Round ${slot.round} (Reminder)`;
+            let embedDesc = `Prepare your squads! Calamity Befalls Round ${slot.round} starts in 10 minutes.`;
             const color = 16750848;
-            const agenda = 'Log in and prepare for the battle.';
+            let agenda = 'Log in and prepare for the battle.';
 
             const startHourStr = String(slot.targetHour).padStart(2, '0');
             const startMinStr = String(slot.targetMinute).padStart(2, '0');
             const timeStr = `${slot.targetDay} · ${startHourStr}:${startMinStr} UTC`;
+
+            const guildTags: Record<string, string> = {
+              ALPHA: '[PR1M]',
+              OMEGA: '[OMG]',
+              IMK: '[IMK]',
+              YARR: '[YARR]',
+              BABE: '[BABE]'
+            };
+            const guildTag = guildTags[guild] || '@everyone';
+
+            const customContent = config[`tpl_calamity_reminder_10_content`];
+            const customTitle = config[`tpl_calamity_reminder_10_title`];
+            const customDesc = config[`tpl_calamity_reminder_10_desc`];
+
+            const replacePlaceholders = (str: string) => {
+              if (!str) return str;
+              return str
+                .replace(/{event_name}/g, 'Calamity Befalls')
+                .replace(/{date}/g, timeStr)
+                .replace(/{round}/g, String(slot.round))
+                .replace(/{guild_tag}/g, guildTag);
+            };
+
+            if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);
+            if (customTitle && customTitle.trim() !== '') embedTitle = replacePlaceholders(customTitle);
+            if (customDesc && customDesc.trim() !== '') {
+              embedDesc = replacePlaceholders(customDesc);
+              agenda = '';
+            }
+
+            const fields = [
+              { name: 'Round', value: `${slot.round} / 16`, inline: true },
+              { name: 'Start Time (UTC)', value: timeStr, inline: true }
+            ];
+            if (agenda) {
+              fields.push({ name: 'Guild Agenda', value: agenda, inline: false });
+            }
 
             const body = {
               content: content,
@@ -801,11 +922,7 @@ serve(async (req) => {
                 title: embedTitle,
                 description: embedDesc,
                 color: color,
-                fields: [
-                  { name: 'Round', value: `${slot.round} / 16`, inline: true },
-                  { name: 'Start Time (UTC)', value: timeStr, inline: true },
-                  { name: 'Guild Agenda', value: agenda, inline: false }
-                ],
+                fields: fields,
                 timestamp: new Date().toISOString(),
                 footer: { text: 'FGF Guild Management Tool' }
               }]
