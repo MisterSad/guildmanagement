@@ -1474,28 +1474,28 @@
         var reminders = [];
         if (eventPrefix === 'armsrace' || eventPrefix === 'dtr' || eventPrefix === 'shadowfront') {
             reminders = [
-                { key: 'reminder_30', label: 'Rappel 30 minutes' },
-                { key: 'reminder_5',  label: 'Rappel 5 minutes' },
-                { key: 'start',       label: 'Début d\'événement' }
+                { key: 'reminder_30', label: '30 Minutes Reminder' },
+                { key: 'reminder_5',  label: '5 Minutes Reminder' },
+                { key: 'start',       label: 'Event Start' }
             ];
         } else if (eventPrefix === 'calamity') {
             reminders = [
-                { key: 'reminder_10', label: 'Rappel 10 minutes' }
+                { key: 'reminder_10', label: '10 Minutes Reminder' }
             ];
         } else if (eventPrefix === 'gvg') {
             reminders = [
-                { key: 'reminder', label: 'Rappel 5 minutes' },
-                { key: 'start',    label: 'Début d\'événement' }
+                { key: 'reminder', label: '5 Minutes Reminder' },
+                { key: 'start',    label: 'Event Start' }
             ];
         } else if (eventPrefix === 'svs') {
             reminders = [
-                { key: 'reminder_30_invasion', label: 'Rappel 30 min (Invasion)' },
-                { key: 'reminder_30_defense',  label: 'Rappel 30 min (Défense)' },
-                { key: 'reminder_5_invasion',  label: 'Rappel 5 min (Invasion)' },
-                { key: 'reminder_5_defense',   label: 'Rappel 5 min (Défense)' },
-                { key: 'start_invasion',       label: 'Début d\'événement (Invasion)' },
-                { key: 'start_defense',        label: 'Début d\'événement (Défense)' },
-                { key: 'garrison',             label: 'Rappel de garnison' }
+                { key: 'reminder_30_invasion', label: '30 Min Reminder (Invasion)' },
+                { key: 'reminder_30_defense',  label: '30 Min Reminder (Defense)' },
+                { key: 'reminder_5_invasion',  label: '5 Min Reminder (Invasion)' },
+                { key: 'reminder_5_defense',   label: '5 Min Reminder (Defense)' },
+                { key: 'start_invasion',       label: 'Event Start (Invasion)' },
+                { key: 'start_defense',        label: 'Event Start (Defense)' },
+                { key: 'garrison',             label: 'Garrison Reminder' }
             ];
         }
 
@@ -1572,11 +1572,11 @@
         }
 
         var titleMap = {
-            armsrace: 'Course aux armements',
+            armsrace: 'Arms Race',
             dtr: 'Defend Trade Route',
-            shadowfront: 'Front de l\'ombre',
+            shadowfront: 'Shadowfront',
             calamity: 'Calamity Befalls',
-            gvg: 'GvG Samedi',
+            gvg: 'GvG Saturday',
             svs: 'SvS PvP'
         };
 
@@ -1586,14 +1586,14 @@
             '<div class="gm-profile-card" style="max-width: 600px; gap: 1.25rem; align-items: stretch; text-align: left;">' +
                 '<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.75rem;">' +
                     '<h3 style="font-family: var(--font-display); font-size: 1.2rem; margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
-                        '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personnalisation - ' + titleMap[eventPrefix] +
+                        '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personalization - ' + titleMap[eventPrefix] +
                     '</h3>' +
                     '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" style="padding: 0.25rem;"><i class="ph ph-x"></i></button>' +
                 '</div>' +
                 '<div style="font-size: 0.82rem; color: var(--fg-dim); background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 6px; padding: 0.65rem 0.8rem; line-height: 1.4;">' +
-                    '<strong>Variables disponibles :</strong> <code>{event_name}</code>, <code>{date}</code>, <code>{guild_tag}</code>' +
+                    '<strong>Available variables:</strong> <code>{event_name}</code>, <code>{date}</code>, <code>{guild_tag}</code>' +
                     (eventPrefix === 'calamity' ? ', <code>{round}</code>' : '') +
-                    '<br><span style="font-size: 0.75rem;">Laissez vide pour utiliser le message par défaut.</span>' +
+                    '<br><span style="font-size: 0.75rem;">Leave blank to use the default message template.</span>' +
                 '</div>' +
                 '<div style="display: flex; flex-direction: column; gap: 1.5rem; max-height: 50vh; overflow-y: auto; padding-right: 0.25rem;">';
 
@@ -1611,15 +1611,15 @@
                 '<div style="display: flex; flex-direction: column; gap: 0.75rem; border-bottom: 1px dashed var(--border-soft); padding-bottom: 1.25rem;">' +
                     '<div style="font-size: 0.85rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em;">' + r.label + '</div>' +
                     '<div class="gm-col" style="gap: 0.35rem;">' +
-                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Message Discord (ping / texte principal) :</label>' +
+                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Discord Message (ping / main text):</label>' +
                         '<input type="text" id="tpl-' + r.key + '-content" class="gm-input gm-input-sm" style="font-size: 0.8rem;" placeholder="' + esc(defContent) + '" value="' + esc(valContent) + '">' +
                     '</div>' +
                     '<div class="gm-col" style="gap: 0.35rem;">' +
-                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Titre de l\'embed :</label>' +
+                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Embed Title:</label>' +
                         '<input type="text" id="tpl-' + r.key + '-title" class="gm-input gm-input-sm" style="font-size: 0.8rem;" placeholder="' + esc(defTitle) + '" value="' + esc(valTitle) + '">' +
                     '</div>' +
                     '<div class="gm-col" style="gap: 0.35rem;">' +
-                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Description de l\'embed :</label>' +
+                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Embed Description:</label>' +
                         '<textarea id="tpl-' + r.key + '-desc" class="gm-input" style="font-size: 0.8rem; height: 60px; resize: vertical;" placeholder="' + esc(defDesc) + '">' + valDesc + '</textarea>' +
                     '</div>' +
                 '</div>';
@@ -1628,9 +1628,9 @@
         html += 
                 '</div>' +
                 '<div style="display: flex; gap: 0.75rem; justify-content: flex-end; border-top: 1px solid var(--border-soft); padding-top: 0.75rem;">' +
-                    '<button type="button" class="gm-btn gm-btn-ghost" id="custom-msg-modal-cancel">Annuler</button>' +
+                    '<button type="button" class="gm-btn gm-btn-ghost" id="custom-msg-modal-cancel">Cancel</button>' +
                     '<button type="button" class="gm-btn gm-btn-primary" id="custom-msg-modal-save">' +
-                        '<i class="ph ph-check"></i> Enregistrer' +
+                        '<i class="ph ph-check"></i> Save' +
                     '</button>' +
                 '</div>' +
             '</div>';
