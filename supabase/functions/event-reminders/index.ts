@@ -442,9 +442,23 @@ serve(async (req) => {
             const slotDate = getSlotDateString(now, slot.day);
             const lockKey = `sent_gvg_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
 
-            // Fast-path memory check
-            if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+            // Fast-path memory check with stale lock handling
+            if (config[lockKey] === 'sent') {
               continue;
+            }
+            if (config[lockKey] === 'sending') {
+              const updatedStr = lockTimes[guild]?.[lockKey];
+              const lockAgeMins = updatedStr ? (now - new Date(updatedStr).getTime()) / 60000 : 999;
+              if (lockAgeMins < 5) {
+                // Not stale yet, skip
+                continue;
+              }
+              console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
+              await supabase
+                .from('guild_config')
+                .delete()
+                .eq('guild', guild)
+                .eq('key', lockKey);
             }
 
             // Acquire lock
@@ -627,9 +641,23 @@ serve(async (req) => {
           const slotDate = getSlotDateString(now, slot.day);
           const lockKey = `sent_svs_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
 
-          // Fast-path memory check
-          if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+          // Fast-path memory check with stale lock handling
+          if (config[lockKey] === 'sent') {
             continue;
+          }
+          if (config[lockKey] === 'sending') {
+            const updatedStr = lockTimes[guild]?.[lockKey];
+            const lockAgeMins = updatedStr ? (now - new Date(updatedStr).getTime()) / 60000 : 999;
+            if (lockAgeMins < 5) {
+              // Not stale yet, skip
+              continue;
+            }
+            console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
+            await supabase
+              .from('guild_config')
+              .delete()
+              .eq('guild', guild)
+              .eq('key', lockKey);
           }
 
           // Acquire lock
@@ -853,9 +881,23 @@ serve(async (req) => {
           const slotDate = getSlotDateString(now, slot.day);
           const lockKey = `sent_calamity_round_${slot.round}_${slotDate}`;
 
-          // Fast-path memory check
-          if (config[lockKey] === 'sent' || config[lockKey] === 'sending') {
+          // Fast-path memory check with stale lock handling
+          if (config[lockKey] === 'sent') {
             continue;
+          }
+          if (config[lockKey] === 'sending') {
+            const updatedStr = lockTimes[guild]?.[lockKey];
+            const lockAgeMins = updatedStr ? (now - new Date(updatedStr).getTime()) / 60000 : 999;
+            if (lockAgeMins < 5) {
+              // Not stale yet, skip
+              continue;
+            }
+            console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
+            await supabase
+              .from('guild_config')
+              .delete()
+              .eq('guild', guild)
+              .eq('key', lockKey);
           }
 
           // Acquire lock
