@@ -1882,6 +1882,18 @@
             window.RAD.attachNumberFormatter(inp);
         });
 
+        container.querySelectorAll('.portal-check-appointed').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                if (cb.checked) {
+                    var card = cb.closest('.portal-event-card');
+                    var partCb = card ? card.querySelector('.portal-check-participated') : null;
+                    if (partCb) {
+                        partCb.checked = true;
+                    }
+                }
+            });
+        });
+
         container.querySelectorAll('.portal-submit-event-btn').forEach(function (btn) {
             btn.addEventListener('click', async function () {
                 var card = btn.closest('.portal-event-card');

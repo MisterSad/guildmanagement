@@ -579,9 +579,25 @@
         el.querySelectorAll('.appointed-checkbox').forEach(function (cb) {
             cb.addEventListener('change', function () {
                 var pseudo = cb.getAttribute('data-pseudo');
-                saveAppointed(tabKey, pseudo, cb.checked).then(function () {
-                    var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
+                var row  = cb.closest('.participant-row');
+                var partCb = row ? row.querySelector('.participation-checkbox') : null;
+
+                var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
+                var promises = [];
+
+                if (cb.checked && partCb && !partCb.checked) {
+                    partCb.checked = true;
+                    row.classList.add('participated');
+                    promises.push(saveParticipation(tabKey, pseudo, 1).then(function () {
+                        if (pp) pp.participated = 1;
+                    }));
+                }
+
+                promises.push(saveAppointed(tabKey, pseudo, cb.checked).then(function () {
                     if (pp) pp.appointed = cb.checked;
+                }));
+
+                Promise.all(promises).then(function () {
                     refreshStats(el, tabKey);
                 });
             });
