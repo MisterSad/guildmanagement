@@ -154,7 +154,7 @@
             sf_tab_squads:         'Squad Assignment',
             sf_tab_tracking:       'Participation Tracking',
             sf_squad1:             'Squad One',
-            sf_squad2:             'Squad 2',
+            sf_squad2:             'Squad Two',
             sf_unassigned:         'Unassigned',
             sf_all_assigned:       'All members are assigned.',
             sf_no_one:             'No members',
