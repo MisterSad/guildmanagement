@@ -516,6 +516,7 @@
         var webhookCalamity = await window.RAD.config.get('webhook_calamity');
         var webhookGvg = await window.RAD.config.get('webhook_gvg');
         var webhookSvs = await window.RAD.config.get('webhook_svs');
+        var discordRoleId = await window.RAD.config.get('discord_role_id');
 
         // Notification configs
         var notifyArmsrace30 = await window.RAD.config.get('notify_armsrace_reminder_30');
@@ -550,6 +551,7 @@
         document.getElementById('webhook-calamity').value = webhookCalamity;
         document.getElementById('webhook-gvg').value = webhookGvg;
         document.getElementById('webhook-svs').value = webhookSvs;
+        document.getElementById('discord-role-id').value = discordRoleId || '';
 
         var setCheckedState = function (id, value, defaultValue) {
             var el = document.getElementById(id);
@@ -607,6 +609,7 @@
                     window.RAD.config.set('webhook_calamity', showCalamityGvgSvs ? document.getElementById('webhook-calamity').value.trim() : ''),
                     window.RAD.config.set('webhook_gvg', showCalamityGvgSvs ? document.getElementById('webhook-gvg').value.trim() : ''),
                     window.RAD.config.set('webhook_svs', showCalamityGvgSvs ? document.getElementById('webhook-svs').value.trim() : ''),
+                    window.RAD.config.set('discord_role_id', document.getElementById('discord-role-id').value.trim()),
 
                     // Notification Configs
                     window.RAD.config.set('notify_armsrace_reminder_30', document.getElementById('notify-armsrace-30').checked ? 'true' : 'false'),

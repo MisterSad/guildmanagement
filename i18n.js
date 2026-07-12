@@ -382,6 +382,8 @@
 
             /* ── Discord Notifications Config ── */
             label_discord_notifications_config: 'Discord Notifications Configuration',
+            label_discord_role_id:              'Discord Role ID (to tag/ping the role instead of plain text)',
+            label_discord_role_id_hint:         'Tip: You can get the Role ID in Discord by typing \\@RoleName in a channel or copying it from Server Settings > Roles.',
             label_armsrace_notifications:    'Arms Race',
             label_dtr_notifications:         'Defend Trade Route',
             label_shadowfront_notifications: 'Shadowfront',

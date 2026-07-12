@@ -212,6 +212,18 @@ serve(async (req) => {
       const config = configsByGuild[guild];
       const events = (allEvents || []).filter(e => (e.guild || 'ALPHA') === guild);
 
+      const discordRoleId = config['discord_role_id'];
+      const guildTags: Record<string, string> = {
+        ALPHA: '<@&1523751696235495587>',
+        OMEGA: '<@&1523751822139981976>',
+        IMK: '<@&1523751874791211128>',
+        YARR: '[YARR]',
+        BABE: '[BABE]'
+      };
+      const guildTag = (discordRoleId && discordRoleId.trim() !== '')
+        ? `<@&${discordRoleId.trim()}>`
+        : (guildTags[guild] || '@everyone');
+
       // Check standard events with a start_at time
       for (const event of events) {
         if (!event.start_at) continue;
@@ -299,14 +311,7 @@ serve(async (req) => {
               hour: '2-digit', minute: '2-digit', hour12: false
             }) + ' UTC';
 
-            const guildTags: Record<string, string> = {
-              ALPHA: '[PR1M]',
-              OMEGA: '[OMG]',
-              IMK: '[IMK]',
-              YARR: '[YARR]',
-              BABE: '[BABE]'
-            };
-            const guildTag = guildTags[guild] || '@everyone';
+
 
             let content = '';
             let embedTitle = `📢 Guild Event: ${event.event_name}`;
@@ -921,14 +926,7 @@ serve(async (req) => {
             const startMinStr = String(slot.targetMinute).padStart(2, '0');
             const timeStr = `${slot.targetDay} · ${startHourStr}:${startMinStr} UTC`;
 
-            const guildTags: Record<string, string> = {
-              ALPHA: '[PR1M]',
-              OMEGA: '[OMG]',
-              IMK: '[IMK]',
-              YARR: '[YARR]',
-              BABE: '[BABE]'
-            };
-            const guildTag = guildTags[guild] || '@everyone';
+
 
             const customContent = config[`tpl_calamity_reminder_10_content`];
             const customTitle = config[`tpl_calamity_reminder_10_title`];
