@@ -1731,6 +1731,7 @@
             });
 
             if (error || !data || !data.ok) {
+                portalLookupError.querySelector('span').textContent = 'Unable to connect to the portal. Please try again.';
                 portalLookupError.classList.remove('hidden');
                 return;
             }
