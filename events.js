@@ -533,14 +533,14 @@
                     '<td class="gm-center" data-label="' + t('col_participated') + '">' +
                         '<label class="participation-check">' +
                             '<input type="checkbox" class="participation-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
-                            '<span></span>' +
+                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
                         '</label>' +
                     '</td>' +
                     (isDtr
                         ? '<td class="gm-center" data-label="Appointed">' +
                               '<label class="participation-check">' +
-                                  '<input type="checkbox" class="appointed-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isAppointedChecked ? ' checked' : '') + '>' +
-                                  '<span></span>' +
+                                  '<input type="checkbox" class="participation-checkbox appointed-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isAppointedChecked ? ' checked' : '') + '>' +
+                                  '<span class="check-mark"><i class="ph ph-check"></i></span>' +
                               '</label>' +
                           '</td>'
                         : '') +
@@ -561,7 +561,7 @@
         html += '</tbody></table></div></div>';
         el.innerHTML = html;
 
-        el.querySelectorAll('.participation-checkbox').forEach(function (cb) {
+        el.querySelectorAll('.participation-checkbox:not(.appointed-checkbox)').forEach(function (cb) {
             cb.addEventListener('change', function () {
                 var next = cb.checked ? 1 : 0;
                 var row  = cb.closest('.participant-row');
@@ -580,7 +580,7 @@
             cb.addEventListener('change', function () {
                 var pseudo = cb.getAttribute('data-pseudo');
                 var row  = cb.closest('.participant-row');
-                var partCb = row ? row.querySelector('.participation-checkbox') : null;
+                var partCb = row ? row.querySelector('.participation-checkbox:not(.appointed-checkbox)') : null;
 
                 var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
                 var promises = [];
