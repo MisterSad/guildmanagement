@@ -242,9 +242,8 @@
         var totalScore = sorted.reduce(function (s, r) { return s + (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0); }, 0);
         var doneCount  = sorted.reduce(function (s, r) { return s + (r.participated > 0 ? 1 : 0); }, 0);
 
-        var deleteBtnHtml = sessionId
-            ? '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' + t('delete_title') + '</span></button>'
-            : '';
+        var deleteBtnHtml =
+            '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' + t('delete_title') + '</span></button>';
 
         var overlay = document.createElement('div');
         overlay.id = 'history-modal';
@@ -293,25 +292,34 @@
                     async function () {
                         try {
                             // 1. Delete matching participants in event_participants
-                            var delPartRes = await db.from('event_participants')
-                                .delete()
+                            var query = db.from('event_participants').delete()
                                 .eq('event_name', eventName)
-                                .eq('session_id', sessionId);
+                                .eq('week_start', weekStart);
+                            
+                            if (sessionId) {
+                                query = query.eq('session_id', sessionId);
+                            } else {
+                                query = query.is('session_id', null);
+                            }
+                            
+                            var delPartRes = await query;
                             if (delPartRes.error) throw delPartRes.error;
 
-                            // 2. If Shadowfront, also delete matching assignments in shadowfront_squads
-                            if (eventName === 'Shadowfront') {
+                            // 2. If Shadowfront and we have a sessionId, also delete matching assignments in shadowfront_squads
+                            if (eventName === 'Shadowfront' && sessionId) {
                                 var delSquadRes = await db.from('shadowfront_squads')
                                     .delete()
                                     .eq('session_id', sessionId);
                                 if (delSquadRes.error) throw delSquadRes.error;
                             }
 
-                            // 3. Delete matching event_status if any
-                            var delStatusRes = await db.from('event_status')
-                                .delete()
-                                .eq('session_id', sessionId);
-                            if (delStatusRes.error) throw delStatusRes.error;
+                            // 3. Delete matching event_status if any (only if sessionId exists)
+                            if (sessionId) {
+                                var delStatusRes = await db.from('event_status')
+                                    .delete()
+                                    .eq('session_id', sessionId);
+                                if (delStatusRes.error) throw delStatusRes.error;
+                            }
 
                             window.RAD.showToast(t('toast_account_deleted'), 'success');
                             close();
