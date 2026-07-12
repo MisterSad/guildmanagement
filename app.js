@@ -1791,35 +1791,47 @@
             var fieldsHtml = '';
 
             fieldsHtml += 
-                '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
-                    '<label class="notification-option" style="justify-content: flex-start; gap: 0.5rem;">' +
-                        '<input type="checkbox" class="portal-check-participated" ' + (isChecked ? 'checked' : '') + '>' +
-                        '<span>I participated in this event</span>' +
+                '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
+                    '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
+                        '<div class="participation-check">' +
+                            '<input type="checkbox" class="participation-checkbox portal-check-participated" ' + (isChecked ? 'checked' : '') + '>' +
+                            '<span class="check-mark" style="width:20px; height:20px; font-size:0.8rem;"><i class="ph ph-check"></i></span>' +
+                        '</div>' +
+                        '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">I participated in this event</span>' +
                     '</label>' +
                 '</div>';
 
             if (isDtr) {
                 fieldsHtml += 
-                    '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
-                        '<label class="notification-option" style="justify-content: flex-start; gap: 0.5rem;">' +
-                            '<input type="checkbox" class="portal-check-appointed" ' + (isAppointedChecked ? 'checked' : '') + '>' +
-                            '<span>Appointed</span>' +
+                    '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
+                        '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
+                            '<div class="participation-check">' +
+                                '<input type="checkbox" class="participation-checkbox portal-check-appointed" ' + (isAppointedChecked ? 'checked' : '') + '>' +
+                                '<span class="check-mark" style="width:20px; height:20px; font-size:0.8rem;"><i class="ph ph-check"></i></span>' +
+                            '</div>' +
+                            '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">Appointed</span>' +
                         '</label>' +
                     '</div>';
             }
 
             if (isShadowfront) {
                 fieldsHtml += 
-                    '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
-                        '<label class="notification-option" style="justify-content: flex-start; gap: 0.5rem;">' +
-                            '<input type="checkbox" class="portal-check-late" ' + (isLateChecked ? 'checked' : '') + '>' +
-                            '<span>Late</span>' +
+                    '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
+                        '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
+                            '<div class="participation-check">' +
+                                '<input type="checkbox" class="participation-checkbox portal-check-late" ' + (isLateChecked ? 'checked' : '') + '>' +
+                                '<span class="check-mark" style="width:20px; height:20px; font-size:0.8rem;"><i class="ph ph-check"></i></span>' +
+                            '</div>' +
+                            '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">Late</span>' +
                         '</label>' +
                     '</div>' +
-                    '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
-                        '<label class="notification-option" style="justify-content: flex-start; gap: 0.5rem;">' +
-                            '<input type="checkbox" class="portal-check-excused" ' + (isExcusedChecked ? 'checked' : '') + '>' +
-                            '<span>Excused</span>' +
+                    '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
+                        '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
+                            '<div class="participation-check">' +
+                                '<input type="checkbox" class="participation-checkbox portal-check-excused" ' + (isExcusedChecked ? 'checked' : '') + '>' +
+                                '<span class="check-mark" style="width:20px; height:20px; font-size:0.8rem;"><i class="ph ph-check"></i></span>' +
+                            '</div>' +
+                            '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">Excused</span>' +
                         '</label>' +
                     '</div>';
             }
