@@ -624,12 +624,18 @@
     function renderTrackingTable(participants) {
         var done = participants.reduce(function (s, p) { return s + (p.participated || 0); }, 0);
 
+        var pendingCount = participants.reduce(function (s, p) { return s + (p.is_pending ? 1 : 0); }, 0);
+        var approveAllBtn = pendingCount > 0
+            ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success approve-sf-all-btn" style="margin-left: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> Approve All (' + pendingCount + ')</button>'
+            : '';
+
         var html =
             '<div class="sf-tracking">' +
                 '<div class="sf-tracking-header"><i class="ph-fill ph-chart-bar"></i> ' + t('sf_tracking_title') + '</div>' +
-                '<div class="event-stats" style="margin-bottom: 1rem;">' +
+                '<div class="event-stats" style="margin-bottom: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">' +
                     '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
                     '<span class="stat-chip success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
+                    approveAllBtn +
                 '</div>' +
                 '<div class="participants-table-wrap"><table class="participants-table"><thead><tr>' +
                     '<th>' + t('col_member') + '</th>' +
@@ -637,7 +643,7 @@
                     '<th class="center">' + t('col_participated') + '</th>' +
                     '<th class="center">Late</th>' +
                     '<th class="center">Excused</th>' +
-                    '<th style="width: 40px;"></th>' +
+                    '<th style="width: 140px; text-align: right;">Actions</th>' +
                 '</tr></thead><tbody>';
 
         participants.forEach(function (p) {
@@ -656,11 +662,21 @@
                 ? Math.round((h.participated / h.assigned) * 100) + '%'
                 : 'N/A';
 
+            var rowClass = 'participant-row' + (isChecked ? ' participated' : '') + (p.is_pending ? ' pending-approval-row' : '');
+            var rowStyle = p.is_pending ? 'background: rgba(245, 158, 11, 0.05); border-left: 3px solid var(--warning);' : '';
+
+            var actionBtn = p.is_pending
+                ? '<button type="button" class="gm-btn gm-btn-success approve-sf-single-btn" data-pseudo="' + esc(p.pseudo) + '" style="font-size:0.75rem; padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem; margin-right:0.4rem; border:none; border-radius:4px; cursor:pointer;"><i class="ph ph-check"></i> Approve</button>'
+                : '';
+
             html +=
-                '<tr class="participant-row' + (isChecked ? ' participated' : '') + '">' +
+                '<tr class="' + rowClass + '" style="' + rowStyle + '">' +
                     '<td class="pseudo-cell" style="display: flex; align-items: center; gap: 0.5rem;">' +
                         '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem;">' + rateText + '</span>' +
-                        '<strong style="font-size: 0.88rem;">' + esc(p.pseudo) + '</strong>' +
+                        '<strong style="font-size: 0.88rem; display:inline-flex; align-items:center; gap:0.4rem;">' + 
+                            esc(p.pseudo) + 
+                            (p.is_pending ? '<span class="gm-chip" style="font-size:0.65rem; padding:0.05rem 0.25rem; background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending</span>' : '') +
+                        '</strong>' +
                     '</td>' +
                     '<td><span class="squad-chip ' + (assignment ? assignment.squad : '') + '">' + squadLbl + '</span></td>' +
                     '<td class="check-cell">' +
@@ -681,7 +697,7 @@
                             '<span class="check-mark"><i class="ph ph-check"></i></span>' +
                         '</label>' +
                     '</td>' +
-                    '<td><button class="delete-btn sf-delete-participant-btn" data-pseudo="' + esc(p.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button></td>' +
+                    '<td style="white-space: nowrap; text-align: right;">' + actionBtn + '<button class="delete-btn sf-delete-participant-btn" data-pseudo="' + esc(p.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button></td>' +
                 '</tr>';
         });
 
@@ -750,6 +766,52 @@
         area.querySelectorAll('.sf-commander-btn').forEach(function (btn) {
             btn.addEventListener('click', function () { toggleCommander(btn.getAttribute('data-pseudo')); });
         });
+
+        area.querySelectorAll('.approve-sf-single-btn').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+                var pseudo = btn.getAttribute('data-pseudo');
+                btn.disabled = true;
+                btn.textContent = '...';
+                try {
+                    await db.from('event_participants').update({ is_pending: false })
+                        .eq('event_name', EVENT_NAME)
+                        .in('session_id', sfState.squads.squad1.sessionId ? [sfState.squads.squad1.sessionId, sfState.squads.squad2.sessionId].filter(Boolean) : [sfState.squads.squad2.sessionId].filter(Boolean))
+                        .eq('pseudo', pseudo);
+                    
+                    var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
+                    if (pp) pp.is_pending = false;
+                    renderShadowfront();
+                } catch (err) {
+                    window.RAD_APP.showToast('Failed to approve submission.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Approve';
+                }
+            });
+        });
+
+        var approveAllBtnEl = area.querySelector('.approve-sf-all-btn');
+        if (approveAllBtnEl) {
+            approveAllBtnEl.addEventListener('click', async function () {
+                approveAllBtnEl.disabled = true;
+                approveAllBtnEl.textContent = 'Approving...';
+                try {
+                    await db.from('event_participants').update({ is_pending: false })
+                        .eq('event_name', EVENT_NAME)
+                        .in('session_id', sfState.squads.squad1.sessionId ? [sfState.squads.squad1.sessionId, sfState.squads.squad2.sessionId].filter(Boolean) : [sfState.squads.squad2.sessionId].filter(Boolean))
+                        .eq('is_pending', true);
+                    
+                    sfState.participants.forEach(function (p) {
+                        if (p.is_pending) p.is_pending = false;
+                    });
+                    renderShadowfront();
+                } catch (err) {
+                    window.RAD_APP.showToast('Failed to approve all submissions.', 'error');
+                    approveAllBtnEl.disabled = false;
+                    approveAllBtnEl.textContent = 'Approve All';
+                }
+            });
+        }
+
         area.querySelectorAll('.sf-participation-checkbox').forEach(function (cb) {
             cb.addEventListener('change', function () {
                 var next = cb.checked ? 1 : 0;

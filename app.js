@@ -1691,6 +1691,245 @@
         }
     });
 
+    // ─── Player Portal ──────────────────────────────────────────────────────────
+    var playerPortalView = document.getElementById('player-portal-view');
+    var portalStepLookup = document.getElementById('portal-step-lookup');
+    var portalStepForm   = document.getElementById('portal-step-form');
+    var portalUidInput   = document.getElementById('portal-uid');
+    var portalLookupError = document.getElementById('portal-lookup-error');
+    var portalLookupBtn  = document.getElementById('portal-lookup-btn');
+
+    document.getElementById('go-to-portal-btn').addEventListener('click', function () {
+        loginView.classList.add('hidden');
+        playerPortalView.classList.remove('hidden');
+        portalStepLookup.classList.remove('hidden');
+        portalStepForm.classList.add('hidden');
+        portalLookupError.classList.add('hidden');
+        portalUidInput.value = '';
+    });
+
+    document.querySelectorAll('.portal-back-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            playerPortalView.classList.add('hidden');
+            loginView.classList.remove('hidden');
+        });
+    });
+
+    portalLookupBtn.addEventListener('click', async function () {
+        var uid = portalUidInput.value.trim();
+        if (!uid) return;
+
+        portalLookupBtn.disabled = true;
+        var span = portalLookupBtn.querySelector('span');
+        var origText = span ? span.textContent : '';
+        if (span) span.textContent = 'Searching...';
+        portalLookupError.classList.add('hidden');
+
+        try {
+            var { data, error } = await supabase.functions.invoke('member-portal', {
+                body: { action: 'get-active-sessions', payload: { uid: uid } }
+            });
+
+            if (error || !data || !data.ok) {
+                portalLookupError.classList.remove('hidden');
+                return;
+            }
+
+            if (data.error === 'player_not_found') {
+                portalLookupError.querySelector('span').textContent = 'Player UID not found in guild database.';
+                portalLookupError.classList.remove('hidden');
+                return;
+            }
+
+            // Successfully fetched data
+            portalStepLookup.classList.add('hidden');
+            portalStepForm.classList.remove('hidden');
+
+            document.getElementById('portal-user-pseudo').textContent = data.pseudo;
+            document.getElementById('portal-user-guild').textContent = data.guild;
+            
+            var initials = window.RAD.avatarInit(data.pseudo);
+            var avatarEl = document.getElementById('portal-user-avatar');
+            avatarEl.textContent = initials;
+            avatarEl.className = 'gm-avatar gm-avatar-md gm-avatar-accent';
+
+            renderPortalActiveSessions(uid, data.sessions);
+        } catch (err) {
+            console.error(err);
+            portalLookupError.querySelector('span').textContent = 'An error occurred during verification.';
+            portalLookupError.classList.remove('hidden');
+        } finally {
+            portalLookupBtn.disabled = false;
+            if (span) span.textContent = origText;
+        }
+    });
+
+    function renderPortalActiveSessions(uid, sessions) {
+        var container = document.getElementById('portal-active-sessions-container');
+        if (!sessions || sessions.length === 0) {
+            container.innerHTML = '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: 1.8rem;"></i><div class="gm-empty-title" style="font-size: 0.85rem;">No active events for your guild.</div></div>';
+            return;
+        }
+
+        var html = '';
+        sessions.forEach(function (sess, idx) {
+            var eventName = sess.event_name;
+            var isSvsOrGvg = eventName === 'SvS' || eventName === 'GvG';
+            var isDtr = eventName === 'Defend Trade Route';
+            var isShadowfront = eventName === 'Shadowfront';
+            
+            var EVENTS_WITHOUT_SCORE = ['Defend Trade Route', 'Shadowfront', 'ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
+            var hasScore = EVENTS_WITHOUT_SCORE.indexOf(eventName) === -1;
+
+            var curr = sess.current_data || {};
+            var isChecked = curr.participated > 0;
+            var isLateChecked = !!curr.late;
+            var isExcusedChecked = !!curr.excused;
+            var isAppointedChecked = !!curr.appointed;
+
+            var fieldsHtml = '';
+
+            fieldsHtml += 
+                '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
+                    '<label class="notification-option" style="justify-content: flex-start; gap: 0.5rem;">' +
+                        '<input type="checkbox" class="portal-check-participated" ' + (isChecked ? 'checked' : '') + '>' +
+                        '<span>I participated in this event</span>' +
+                    '</label>' +
+                '</div>';
+
+            if (isDtr) {
+                fieldsHtml += 
+                    '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
+                        '<label class="notification-option" style="justify-content: flex-start; gap: 0.5rem;">' +
+                            '<input type="checkbox" class="portal-check-appointed" ' + (isAppointedChecked ? 'checked' : '') + '>' +
+                            '<span>Appointed</span>' +
+                        '</label>' +
+                    '</div>';
+            }
+
+            if (isShadowfront) {
+                fieldsHtml += 
+                    '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
+                        '<label class="notification-option" style="justify-content: flex-start; gap: 0.5rem;">' +
+                            '<input type="checkbox" class="portal-check-late" ' + (isLateChecked ? 'checked' : '') + '>' +
+                            '<span>Late</span>' +
+                        '</label>' +
+                    '</div>' +
+                    '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
+                        '<label class="notification-option" style="justify-content: flex-start; gap: 0.5rem;">' +
+                            '<input type="checkbox" class="portal-check-excused" ' + (isExcusedChecked ? 'checked' : '') + '>' +
+                            '<span>Excused</span>' +
+                        '</label>' +
+                    '</div>';
+            }
+
+            if (hasScore) {
+                if (isSvsOrGvg) {
+                    fieldsHtml += 
+                        '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
+                            '<label style="font-size:0.75rem; color:var(--fg-dim); margin-bottom:0.2rem;">Day 1 to 5 score</label>' +
+                            '<input type="text" class="gm-input gm-input-sm portal-score-prep" value="' + (curr.score_prep != null ? curr.score_prep : '') + '" placeholder="e.g. 150000">' +
+                        '</div>' +
+                        '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
+                            '<label style="font-size:0.75rem; color:var(--fg-dim); margin-bottom:0.2rem;">Day 6 score</label>' +
+                            '<input type="text" class="gm-input gm-input-sm portal-score-pvp" value="' + (curr.score_pvp != null ? curr.score_pvp : '') + '" placeholder="e.g. 50000">' +
+                        '</div>';
+                } else {
+                    fieldsHtml += 
+                        '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
+                            '<label style="font-size:0.75rem; color:var(--fg-dim); margin-bottom:0.2rem;">Score</label>' +
+                            '<input type="text" class="gm-input gm-input-sm portal-score" value="' + (curr.score != null ? curr.score : '') + '" placeholder="e.g. 45000">' +
+                        '</div>';
+                }
+            }
+
+            var statusBadge = curr.is_pending 
+                ? '<span class="gm-chip" style="margin-left:auto; background:rgba(245,158,11,0.12); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending approval</span>'
+                : '';
+
+            html += 
+                '<div class="portal-event-card" data-event="' + esc(eventName) + '" data-session="' + esc(sess.session_id) + '" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:8px; padding:0.75rem 1rem;">' +
+                    '<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">' +
+                        '<strong style="font-size:0.9rem; color:var(--accent);">' + esc(eventName) + '</strong>' +
+                        statusBadge +
+                    '</div>' +
+                    '<div class="gm-col" style="gap:0.4rem;">' +
+                        fieldsHtml +
+                    '</div>' +
+                    '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm portal-submit-event-btn" style="margin-top:0.75rem; width:100%; font-size:0.78rem; padding:0.35rem 0.5rem;">' +
+                        '<i class="ph ph-paper-plane-right"></i>' +
+                        '<span>Submit Scores</span>' +
+                    '</button>' +
+                '</div>';
+        });
+
+        container.innerHTML = html;
+
+        container.querySelectorAll('.portal-score, .portal-score-prep, .portal-score-pvp').forEach(function (inp) {
+            window.RAD.attachNumberFormatter(inp);
+        });
+
+        container.querySelectorAll('.portal-submit-event-btn').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+                var card = btn.closest('.portal-event-card');
+                var eventName = card.getAttribute('data-event');
+                var sessionId = card.getAttribute('data-session');
+
+                var participated = card.querySelector('.portal-check-participated')?.checked;
+                var appointed = card.querySelector('.portal-check-appointed')?.checked;
+                var late = card.querySelector('.portal-check-late')?.checked;
+                var excused = card.querySelector('.portal-check-excused')?.checked;
+
+                var scoreVal = card.querySelector('.portal-score')?.value;
+                var scorePrepVal = card.querySelector('.portal-score-prep')?.value;
+                var scorePvpVal = card.querySelector('.portal-score-pvp')?.value;
+
+                var payload = {
+                    uid: uid,
+                    event_name: eventName,
+                    session_id: sessionId,
+                    participated: participated,
+                    appointed: appointed,
+                    late: late,
+                    excused: excused,
+                    score: scoreVal !== undefined ? window.RAD.parseNumber(scoreVal) : undefined,
+                    score_prep: scorePrepVal !== undefined ? window.RAD.parseNumber(scorePrepVal) : undefined,
+                    score_pvp: scorePvpVal !== undefined ? window.RAD.parseNumber(scorePvpVal) : undefined
+                };
+
+                btn.disabled = true;
+                var span = btn.querySelector('span');
+                var origText = span ? span.textContent : '';
+                if (span) span.textContent = 'Submitting...';
+
+                try {
+                    var { data, error } = await supabase.functions.invoke('member-portal', {
+                        body: { action: 'submit-scores', payload: payload }
+                    });
+
+                    if (error || !data || !data.ok) {
+                        showToast('Submission failed. Check your parameters.', 'error');
+                        return;
+                    }
+
+                    showToast('Scores submitted successfully! Pending officer approval.', 'success');
+                    
+                    var badge = card.querySelector('.gm-chip');
+                    if (!badge) {
+                        var header = card.querySelector('div');
+                        header.insertAdjacentHTML('beforeend', '<span class="gm-chip" style="margin-left:auto; background:rgba(245,158,11,0.12); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending approval</span>');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('An error occurred during submission.', 'error');
+                } finally {
+                    btn.disabled = false;
+                    if (span) span.textContent = origText;
+                }
+            });
+        });
+    }
+
     window.RAD_APP = { showToast: showToast, reloadActiveView: reloadActiveView };
 
 })();

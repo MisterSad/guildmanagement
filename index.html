@@ -67,8 +67,70 @@
                         <i class="ph ph-sign-in"></i>
                         <span data-i18n="login_btn">Sign in</span>
                     </button>
+                    <div style="text-align: center; margin-top: 1rem; border-top: 1px dashed var(--border-soft); padding-top: 1rem;">
+                        <button type="button" id="go-to-portal-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%;">
+                            <i class="ph ph-user-focus"></i>
+                            <span>Access Player Portal (Submit Scores)</span>
+                        </button>
+                    </div>
                 </div>
             </form>
+        </div>
+
+        <!-- ─── Player Portal View ────────────────────────────── -->
+        <div id="player-portal-view" class="view hidden gm-login-wrap">
+            <div class="gm-login-card" style="max-width: 480px; width: 100%;">
+                <div class="gm-login-brand-row">
+                    <div class="gm-avatar-xl" style="display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: var(--font-display); background: var(--accent);">PORTAL</div>
+                    <div class="gm-login-title">PLAYER SUBMISSION PORTAL</div>
+                    <div class="gm-login-sub">Submit your scores for active guild events</div>
+                </div>
+
+                <!-- Step 1: Lookup UID -->
+                <div id="portal-step-lookup" class="gm-login-form">
+                    <div class="gm-login-field">
+                        <label for="portal-uid">Your In-Game UID</label>
+                        <div class="gm-input-with-icon">
+                            <i class="ph ph-identification-badge gm-icon"></i>
+                            <input type="text" id="portal-uid" class="gm-input" required placeholder="e.g. 12345678">
+                        </div>
+                    </div>
+                    <div id="portal-lookup-error" class="gm-login-error hidden">
+                        <i class="ph ph-warning-circle"></i>
+                        <span>Player UID not found in guild database.</span>
+                    </div>
+                    <button type="button" id="portal-lookup-btn" class="gm-btn gm-btn-primary gm-login-submit">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <span>Access My Guild Events</span>
+                    </button>
+                    <button type="button" class="gm-btn gm-btn-ghost portal-back-btn" style="margin-top: 0.5rem; width: 100%;">
+                        <i class="ph ph-arrow-left"></i>
+                        <span>Back to Login</span>
+                    </button>
+                </div>
+
+                <!-- Step 2: Display active events & form -->
+                <div id="portal-step-form" class="gm-login-form hidden" style="max-height: 500px; overflow-y: auto; padding-right: 0.25rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-soft);">
+                        <div class="gm-avatar gm-avatar-md" id="portal-user-avatar" style="font-weight:700;">?</div>
+                        <div>
+                            <h4 id="portal-user-pseudo" style="margin: 0; font-size: 1rem; color: var(--text);">Nickname</h4>
+                            <div id="portal-user-guild" style="font-size: 0.75rem; color: var(--fg-dim);">Guild Name</div>
+                        </div>
+                    </div>
+
+                    <div id="portal-active-sessions-container" class="gm-col" style="gap: 1.25rem;">
+                        <!-- Active events will be injected here -->
+                    </div>
+
+                    <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--border-soft); padding-top: 1rem;">
+                        <button type="button" class="gm-btn gm-btn-ghost portal-back-btn" style="width: 100%;">
+                            <i class="ph ph-arrow-left"></i>
+                            <span>Switch Account / Exit</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ─── Admin Dashboard View ────────────────────────────── -->

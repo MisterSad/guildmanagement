@@ -47,6 +47,7 @@
     function deduplicateParticipants(rows) {
         var map = {};
         rows.forEach(function(p) {
+            if (p.is_pending) return;
             var norm = normalizePseudo(p.pseudo);
             var key = norm + '|' + p.event_name + '|' + (p.session_id || p.week_start);
             if (!map[key]) {
@@ -179,12 +180,13 @@
     // ── Mode SvS / GvG : classement brut par score d'événement ─────────────────
     async function loadEventRanking(eventName, week) {
         var res = await db.from('event_participants')
-            .select('pseudo, score, score_prep, score_pvp, participated')
+            .select('pseudo, score, score_prep, score_pvp, participated, is_pending')
             .eq('event_name', eventName)
             .eq('week_start', week);
 
         var agg = {};
         (res.data || []).forEach(function (r) {
+            if (r.is_pending) return;
             if (!agg[r.pseudo]) agg[r.pseudo] = { pseudo: r.pseudo, score: 0, participated: 0 };
             // SvS : on additionne prep + pvp pour les nouvelles saisies, score pour les legacy
             agg[r.pseudo].score        += (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0);

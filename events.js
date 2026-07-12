@@ -475,14 +475,20 @@
             ? participants.reduce(function (a, p) { return a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0); }, 0)
             : participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
 
+        var pendingCount = participants.reduce(function (a, p) { return a + (p.is_pending ? 1 : 0); }, 0);
+        var approveAllBtn = pendingCount > 0
+            ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success approve-all-btn" style="margin-left: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> Approve All (' + pendingCount + ')</button>'
+            : '';
+
         var html =
-            '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between;">' +
-                '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap;">' +
+            '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between; align-items: center;">' +
+                '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap; align-items: center; flex: 1;">' +
                     '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
                     '<span class="gm-chip gm-chip-success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
                     '<span class="gm-chip"><i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent') + '</span>' +
                     (isDtr ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-check-square"></i> ' + appointedCount + ' Appointed</span>' : '') +
                     (hasScore ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore) + '</span>' : '') +
+                    approveAllBtn +
                 '</div>' +
                 '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
                     '<i class="ph ph-magnifying-glass gm-icon"></i>' +
@@ -498,31 +504,43 @@
                     (isSvsOrGvg
                         ? '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>'
                         : (hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : '')) +
+                    '<th class="gm-center">Actions</th>' +
                 '</tr></thead><tbody>';
 
         participants.forEach(function (p) {
             var isChecked = p.participated > 0;
             var isAppointedChecked = !!p.appointed;
             var initial = window.RAD.avatarInit(p.pseudo);
+            
+            var rowClass = 'participant-row' + (isChecked ? ' participated' : '') + (p.is_pending ? ' pending-approval-row' : '');
+            var rowStyle = p.is_pending ? 'background: rgba(245, 158, 11, 0.05); border-left: 3px solid var(--warning);' : '';
+
+            var actionBtn = p.is_pending
+                ? '<button type="button" class="gm-btn gm-btn-success approve-single-btn" data-pseudo="' + esc(p.pseudo) + '" style="font-size:0.75rem; padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-check"></i> Approve</button>'
+                : '';
+
             html +=
-                '<tr class="participant-row' + (isChecked ? ' participated' : '') + '" data-pseudo="' + esc(p.pseudo) + '">' +
+                '<tr class="' + rowClass + '" style="' + rowStyle + '" data-pseudo="' + esc(p.pseudo) + '">' +
                     '<td data-label="' + t('col_member') + '">' +
                         '<div class="gm-row" style="gap:.6rem;">' +
                             '<div class="gm-avatar">' + esc(initial) + '</div>' +
-                            '<strong>' + esc(p.pseudo) + '</strong>' +
+                            '<strong style="display:inline-flex; align-items:center; gap:0.4rem;">' + 
+                                esc(p.pseudo) + 
+                                (p.is_pending ? '<span class="gm-chip" style="font-size:0.65rem; padding:0.05rem 0.25rem; background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending</span>' : '') +
+                            '</strong>' +
                         '</div>' +
                     '</td>' +
                     '<td class="gm-center" data-label="' + t('col_participated') + '">' +
                         '<label class="participation-check">' +
                             '<input type="checkbox" class="participation-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
-                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                            '<span></span>' +
                         '</label>' +
                     '</td>' +
                     (isDtr
                         ? '<td class="gm-center" data-label="Appointed">' +
                               '<label class="participation-check">' +
                                   '<input type="checkbox" class="appointed-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isAppointedChecked ? ' checked' : '') + '>' +
-                                  '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                                  '<span></span>' +
                               '</label>' +
                           '</td>'
                         : '') +
@@ -536,6 +554,7 @@
                         : (hasScore ? '<td class="gm-right" data-label="' + t('col_score') + '">' +
                               '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? fmt(p.score) : '') + '" placeholder="—" data-pseudo="' + esc(p.pseudo) + '">' +
                           '</td>' : '')) +
+                    '<td class="gm-center" data-label="Actions">' + actionBtn + '</td>' +
                 '</tr>';
         });
 
@@ -599,6 +618,51 @@
                     var uid = (uidMap[row.getAttribute('data-pseudo')] || '').toLowerCase();
                     row.style.display = (pseudo + ' ' + uid).indexOf(q) !== -1 ? '' : 'none';
                 });
+            });
+        }
+
+        el.querySelectorAll('.approve-single-btn').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+                var pseudo = btn.getAttribute('data-pseudo');
+                btn.disabled = true;
+                btn.textContent = '...';
+                try {
+                    await db.from('event_participants').update({ is_pending: false })
+                        .eq('event_name', s.activeEventName)
+                        .eq('session_id', s.sessionId)
+                        .eq('pseudo', pseudo);
+                    
+                    var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
+                    if (pp) pp.is_pending = false;
+                    renderParticipants(tabKey);
+                } catch (err) {
+                    showToast('Failed to approve submission.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Approve';
+                }
+            });
+        });
+
+        var approveAllBtnEl = el.querySelector('.approve-all-btn');
+        if (approveAllBtnEl) {
+            approveAllBtnEl.addEventListener('click', async function () {
+                approveAllBtnEl.disabled = true;
+                approveAllBtnEl.textContent = 'Approving...';
+                try {
+                    await db.from('event_participants').update({ is_pending: false })
+                        .eq('event_name', s.activeEventName)
+                        .eq('session_id', s.sessionId)
+                        .eq('is_pending', true);
+                    
+                    state[tabKey].participants.forEach(function (p) {
+                        if (p.is_pending) p.is_pending = false;
+                    });
+                    renderParticipants(tabKey);
+                } catch (err) {
+                    showToast('Failed to approve all submissions.', 'error');
+                    approveAllBtnEl.disabled = false;
+                    approveAllBtnEl.textContent = 'Approve All (' + pendingCount + ')';
+                }
             });
         }
     }
