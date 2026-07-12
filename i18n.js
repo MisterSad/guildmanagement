@@ -78,6 +78,8 @@
             toast_logout:          'Successfully logged out.',
             toast_account_created: 'Account created successfully.',
             toast_account_deleted: 'Account deleted.',
+            toast_session_deleted: 'Session deleted.',
+            toast_sanction_deleted: 'Sanction deleted.',
             toast_member_added:    'added to the guild!',
             toast_member_added_active_events: 'was also added to ongoing events.',
             toast_member_removed:  'removed from the guild.',

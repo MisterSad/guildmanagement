@@ -28,7 +28,7 @@
 
     async function loadHistory() {
         if (!db) return;
-        var res = await db.rpc('list_event_sessions');
+        var res = await db.rpc('list_event_sessions', { p_guild: window.currentGuild || 'ALPHA' });
         if (res.error) {
             console.error('list_event_sessions', res.error);
             window.RAD.showToast(t('toast_err_generic') + ' ' + res.error.message, 'error');
@@ -321,7 +321,7 @@
                                 if (delStatusRes.error) throw delStatusRes.error;
                             }
 
-                            window.RAD.showToast(t('toast_account_deleted'), 'success');
+                            window.RAD.showToast(t('toast_session_deleted'), 'success');
                             close();
                             await loadHistory();
                         } catch (err) {

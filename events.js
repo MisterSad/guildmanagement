@@ -369,7 +369,7 @@
                         .eq('event_name', s.activeEventName);
                     if (delStatusRes.error) throw delStatusRes.error;
                     
-                    window.RAD.showToast(t('toast_account_deleted'), 'success');
+                    window.RAD.showToast(t('toast_session_deleted'), 'success');
                     
                     s.activeEventName = null;
                     s.sessionId       = null;

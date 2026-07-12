@@ -135,10 +135,11 @@
             var res = await db.from('sanctions').delete().eq('id', id);
             if (res.error) throw res.error;
             await loadSanctions();
-            window.RAD.showToast(t('toast_account_deleted'), 'success');
+            window.RAD.showToast(t('toast_sanction_deleted'), 'success');
         } catch (err) {
             window.RAD.showToast(err.message, 'error');
         }
+    }
     window.addEventListener('rad-lang-change', function () {
         var activeTab = document.querySelector('.nav-tab.active');
         if (activeTab && activeTab.getAttribute('data-tab') === 'tab-sanctions') {

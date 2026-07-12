@@ -209,7 +209,7 @@
                         .eq('event_name', STAGE_EVENTS[stageKey]);
                     if (delStatusRes.error) throw delStatusRes.error;
 
-                    window.RAD.showToast(t('toast_account_deleted'), 'success');
+                    window.RAD.showToast(t('toast_session_deleted'), 'success');
                     await loadArmsRace();
                 } catch (err) {
                     console.error('deleteStageSession', err);

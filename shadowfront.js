@@ -241,7 +241,7 @@
                         .eq('event_name', SQUAD_EVENT[squad]);
                     if (delStatusRes.error) throw delStatusRes.error;
 
-                    window.RAD.showToast(t('toast_account_deleted'), 'success');
+                    window.RAD.showToast(t('toast_session_deleted'), 'success');
                     await loadShadowfront();
                 } catch (err) {
                     console.error('deleteSquadSession', err);
