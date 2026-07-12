@@ -646,9 +646,23 @@
             accountList.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_accounts') + '</div></div>';
             return;
         }
+
+        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
+        var listToRender = accounts.slice();
+        if (isSuperAdmin) {
+            listToRender.sort(function (a, b) {
+                var gA = a.guild || '';
+                var gB = b.guild || '';
+                if (gA !== gB) {
+                    return gA.localeCompare(gB);
+                }
+                return a.id.localeCompare(b.id);
+            });
+        }
+
         // Cred-grid layout (auto-fill 280px min)
         var html = '<div class="gm-cred-grid">';
-        accounts.forEach(function (acc) {
+        listToRender.forEach(function (acc) {
             // Détermine le rôle pour le chip — si 'role' est dispo, sinon défaut R4
             var role = acc.role || 'R4';
             var roleLabel = role === 'R5' ? 'Super Admin' : 'Admin';
