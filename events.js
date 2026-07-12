@@ -261,6 +261,15 @@
             .eq('pseudo', pseudo);
     }
 
+    async function saveAppointed(tabKey, pseudo, value) {
+        if (!db) return;
+        var s = state[tabKey];
+        await db.from('event_participants').update({ appointed: value })
+            .eq('event_name', s.activeEventName)
+            .eq('session_id', s.sessionId)
+            .eq('pseudo', pseudo);
+    }
+
     async function saveScore(tabKey, pseudo, value) {
         return saveScoreField(tabKey, pseudo, 'score', value);
     }
@@ -457,10 +466,12 @@
             return;
         }
 
-        var isSvs    = dbEventName === 'SvS';
+        var isSvsOrGvg = dbEventName === 'SvS' || dbEventName === 'GvG';
+        var isDtr      = dbEventName === 'Defend Trade Route';
         var hasScore = EVENTS_WITHOUT_SCORE.indexOf(dbEventName) === -1;
         var done = participants.reduce(function (a, p) { return a + (p.participated || 0); }, 0);
-        var totalScore = isSvs
+        var appointedCount = participants.reduce(function (a, p) { return a + (p.appointed ? 1 : 0); }, 0);
+        var totalScore = isSvsOrGvg
             ? participants.reduce(function (a, p) { return a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0); }, 0)
             : participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
 
@@ -470,25 +481,28 @@
                     '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
                     '<span class="gm-chip gm-chip-success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
                     '<span class="gm-chip"><i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent') + '</span>' +
+                    (isDtr ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-check-square"></i> ' + appointedCount + ' Appointed</span>' : '') +
                     (hasScore ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore) + '</span>' : '') +
                 '</div>' +
                 '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
                     '<i class="ph ph-magnifying-glass gm-icon"></i>' +
                     '<input type="text" class="gm-input event-search-input" placeholder="' + t('search_placeholder') + '">' +
                 '</div>' +
-            '</div>' +
+                '</div>' +
             '<div class="gm-table-wrap"><div class="gm-table-scroll">' +
             '<table class="gm-table gm-resp-table">' +
                 '<thead><tr>' +
                     '<th>' + t('col_member') + '</th>' +
                     '<th class="gm-center">' + t('col_participated') + '</th>' +
-                    (isSvs
+                    (isDtr ? '<th class="gm-center">Appointed</th>' : '') +
+                    (isSvsOrGvg
                         ? '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>'
                         : (hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : '')) +
                 '</tr></thead><tbody>';
 
         participants.forEach(function (p) {
             var isChecked = p.participated > 0;
+            var isAppointedChecked = !!p.appointed;
             var initial = window.RAD.avatarInit(p.pseudo);
             html +=
                 '<tr class="participant-row' + (isChecked ? ' participated' : '') + '" data-pseudo="' + esc(p.pseudo) + '">' +
@@ -504,7 +518,15 @@
                             '<span class="check-mark"><i class="ph ph-check"></i></span>' +
                         '</label>' +
                     '</td>' +
-                    (isSvs
+                    (isDtr
+                        ? '<td class="gm-center" data-label="Appointed">' +
+                              '<label class="participation-check">' +
+                                  '<input type="checkbox" class="appointed-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isAppointedChecked ? ' checked' : '') + '>' +
+                                  '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                              '</label>' +
+                          '</td>'
+                        : '') +
+                    (isSvsOrGvg
                         ? '<td class="gm-right" data-label="' + t('col_score_prep') + '">' +
                               '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? fmt(p.score_prep) : '') + '" placeholder="—" data-pseudo="' + esc(p.pseudo) + '">' +
                           '</td>' +
@@ -530,6 +552,17 @@
                 saveParticipation(tabKey, pseudo, next).then(function () {
                     var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
                     if (pp) pp.participated = next;
+                    refreshStats(el, tabKey);
+                });
+            });
+        });
+
+        el.querySelectorAll('.appointed-checkbox').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var pseudo = cb.getAttribute('data-pseudo');
+                saveAppointed(tabKey, pseudo, cb.checked).then(function () {
+                    var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
+                    if (pp) pp.appointed = cb.checked;
                     refreshStats(el, tabKey);
                 });
             });
@@ -572,15 +605,25 @@
 
     function refreshStats(el, tabKey) {
         var participants = state[tabKey].participants;
-        var isSvs = state[tabKey].activeEventName === 'SvS';
+        var isSvsOrGvg = state[tabKey].activeEventName === 'SvS' || state[tabKey].activeEventName === 'GvG';
         var done = participants.reduce(function (a, p) { return a + (p.participated || 0); }, 0);
-        var totalScore = isSvs
+        var totalScore = isSvsOrGvg
             ? participants.reduce(function (a, p) { return a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0); }, 0)
             : participants.reduce(function (a, p) { return a + (p.score || 0); }, 0);
         var chips = el.querySelectorAll('.event-stats .gm-chip');
         if (chips[1]) chips[1].innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated');
         if (chips[2]) chips[2].innerHTML = '<i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent');
-        if (chips[3]) chips[3].innerHTML = '<i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore);
+
+        var isDtr = state[tabKey].activeEventName === 'Defend Trade Route';
+        if (isDtr) {
+            var appointedCount = participants.reduce(function (a, p) { return a + (p.appointed ? 1 : 0); }, 0);
+            if (chips[3]) chips[3].innerHTML = '<i class="ph-fill ph-check-square"></i> ' + appointedCount + ' Appointed';
+        } else {
+            var hasScore = EVENTS_WITHOUT_SCORE.indexOf(state[tabKey].activeEventName) === -1;
+            if (hasScore && chips[3]) {
+                chips[3].innerHTML = '<i class="ph-fill ph-trophy"></i> ' + t('event_total_score') + ' ' + fmt(totalScore);
+            }
+        }
     }
 
 

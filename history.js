@@ -168,7 +168,7 @@
         var meta = EVENT_META[eventName] || { label: eventName, icon: 'ph-circle', hasScore: false, border: 'var(--border-soft)' };
 
         var query = db.from('event_participants')
-            .select('pseudo, participated, score, score_prep, score_pvp')
+            .select('pseudo, participated, score, score_prep, score_pvp, appointed')
             .eq('event_name', eventName)
             .eq('week_start', weekStart)
             .limit(100000);
@@ -186,11 +186,11 @@
         }
 
         var rows = res.data || [];
-        var isSvsNew = (eventName === 'SvS') && rows.some(function (r) { return r.score_prep != null || r.score_pvp != null; });
-        renderSessionModal(eventName, sessionId, weekStart, rows, meta, isSvsNew);
+        var isDualScore = (eventName === 'SvS' || eventName === 'GvG') && rows.some(function (r) { return r.score_prep != null || r.score_pvp != null; });
+        renderSessionModal(eventName, sessionId, weekStart, rows, meta, isDualScore);
     }
 
-    function renderSessionModal(eventName, sessionId, weekStart, rows, meta, isSvsNew) {
+    function renderSessionModal(eventName, sessionId, weekStart, rows, meta, isDualScore) {
         var existing = document.getElementById('history-modal');
         if (existing) existing.remove();
 
@@ -207,10 +207,13 @@
             return String(a.pseudo).localeCompare(String(b.pseudo));
         });
 
+        var isDtr = (eventName === 'Defend Trade Route');
+
         var headerCols =
             '<th>' + t('col_member') + '</th>' +
             '<th class="gm-center">' + t('col_participated') + '</th>' +
-            (isSvsNew
+            (isDtr ? '<th class="gm-center">Appointed</th>' : '') +
+            (isDualScore
                 ? '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>'
                 : (meta.hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : ''));
 
@@ -219,7 +222,10 @@
             var participatedCell = r.participated > 0
                 ? '<i class="ph-fill ph-check-circle text-success"></i>'
                 : '<i class="ph ph-x-circle gm-dim"></i>';
-            var scoreCells = isSvsNew
+            var appointedCell = isDtr
+                ? '<td class="gm-center">' + (r.appointed ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>'
+                : '';
+            var scoreCells = isDualScore
                 ? '<td class="gm-right">' + (r.score_prep != null ? fmt(r.score_prep) : '—') + '</td>' +
                   '<td class="gm-right">' + (r.score_pvp  != null ? fmt(r.score_pvp)  : '—') + '</td>'
                 : (meta.hasScore
@@ -228,6 +234,7 @@
             return '<tr>' +
                 '<td><div class="gm-row" style="gap:.5rem;"><div class="gm-avatar">' + esc(initial) + '</div><strong>' + esc(r.pseudo) + '</strong></div></td>' +
                 '<td class="gm-center">' + participatedCell + '</td>' +
+                appointedCell +
                 scoreCells +
                 '</tr>';
         }).join('');

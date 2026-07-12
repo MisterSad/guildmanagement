@@ -450,7 +450,7 @@
             if (!listContainer) return;
 
             if (CLOCK_MEMBERS.length === 0) {
-                listContainer.innerHTML = '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: 1.8rem; margin-bottom: 0.4rem;"></i><div class="gm-empty-title" style="font-size: 0.85rem;">Aucune horloge configurée</div></div>';
+                listContainer.innerHTML = '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: 1.8rem; margin-bottom: 0.4rem;"></i><div class="gm-empty-title" style="font-size: 0.85rem;">No clocks configured</div></div>';
                 return;
             }
 
@@ -467,7 +467,7 @@
                                 '<div style="font-size: 0.72rem; color: var(--fg-dim);">' + offsetText + '</div>' +
                             '</div>' +
                         '</div>' +
-                        '<button class="gm-mini-btn gm-danger delete-clock-btn" data-index="' + idx + '" title="Supprimer" style="flex-shrink:0;"><i class="ph ph-trash"></i></button>' +
+                        '<button class="gm-mini-btn gm-danger delete-clock-btn" data-index="' + idx + '" title="Delete" style="flex-shrink:0;"><i class="ph ph-trash"></i></button>' +
                     '</div>';
             });
             listContainer.innerHTML = html;

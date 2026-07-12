@@ -307,6 +307,31 @@
         await loadShadowfront();
     }
 
+    async function toggleCommander(pseudo) {
+        if (!db) return;
+        var assignment = sfState.assignments.find(function (a) { return a.pseudo === pseudo; });
+        if (!assignment) return;
+
+        var isNewCommander = !assignment.is_commander;
+        var sq = sfState.squads[assignment.squad];
+        if (!sq || !sq.sessionId) return;
+
+        if (isNewCommander) {
+            var currentCommanders = sfState.assignments.filter(function (a) {
+                return a.squad === assignment.squad && a.is_commander;
+            });
+            if (currentCommanders.length >= 3) {
+                window.RAD.showToast('You can only have up to 3 commanders per squad!', 'error');
+                return;
+            }
+        }
+
+        await db.from('shadowfront_squads').update({ is_commander: isNewCommander })
+            .eq('session_id', sq.sessionId).eq('pseudo', pseudo);
+
+        await loadShadowfront();
+    }
+
     // ── Sync participant rows ──────────────────────────────────────────────────
     async function syncParticipantRows(sessionId) {
         if (!db || !sessionId) return;
@@ -343,6 +368,23 @@
         await db.from('event_participants').update({ participated: value })
             .eq('event_name', EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
     }
+
+    async function saveLate(pseudo, value) {
+        if (!db) return;
+        var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
+        if (!p) return;
+        await db.from('event_participants').update({ late: value })
+            .eq('event_name', EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
+    }
+
+    async function saveExcused(pseudo, value) {
+        if (!db) return;
+        var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
+        if (!p) return;
+        await db.from('event_participants').update({ excused: value })
+            .eq('event_name', EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
+    }
+
 
     // ── Main render ────────────────────────────────────────────────────────────
     function renderShadowfront() {
@@ -530,7 +572,7 @@
         if (participants.length === 0) {
             html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
         } else {
-            participants.forEach(function (a) { html += renderAssignedRow(a.pseudo); });
+            participants.forEach(function (a) { html += renderAssignedRow(a.pseudo, true, a.is_commander); });
         }
         html += '</div></div>';
 
@@ -545,24 +587,37 @@
         if (reserves.length === 0) {
             html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
         } else {
-            reserves.forEach(function (a) { html += renderAssignedRow(a.pseudo); });
+            reserves.forEach(function (a) { html += renderAssignedRow(a.pseudo, false); });
         }
         html += '</div></div>';
 
         return html;
     }
 
-    function renderAssignedRow(pseudo) {
+    function renderAssignedRow(pseudo, isParticipant, isCommander) {
         var cat  = categorise(pseudo);
         var meta = categoryMeta(cat);
         var h     = sfState.history[pseudo] || { assigned: 0, participated: 0 };
         var rateText = h.assigned > 0
             ? Math.round((h.participated / h.assigned) * 100) + '%'
             : 'N/A';
+
+        var cmdBtn = '';
+        if (isParticipant) {
+            var iconClass = isCommander ? 'ph-fill ph-star' : 'ph ph-star';
+            var starColor = isCommander ? 'color: #eab308; cursor: pointer;' : 'color: var(--fg-dim); cursor: pointer;';
+            cmdBtn = '<button class="sf-commander-btn" data-pseudo="' + esc(pseudo) + '" title="Toggle Commander" style="background: none; border: none; padding: 0.2rem; margin-right: 0.25rem;' + starColor + '">' +
+                '<i class="' + iconClass + '" style="font-size: 1.1rem;"></i>' +
+            '</button>';
+        }
+
         return '<div class="sf-assigned-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem;">' +
             '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; margin-right: 0.25rem;">' + rateText + '</span>' +
             '<span class="sf-pseudo" style="font-weight: 500; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(pseudo) + '</span>' +
-            '<button class="sf-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove') + '"><i class="ph ph-x"></i></button>' +
+            '<div style="display: flex; align-items: center; gap: 0.2rem;">' +
+                cmdBtn +
+                '<button class="sf-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove') + '"><i class="ph ph-x"></i></button>' +
+            '</div>' +
         '</div>';
     }
 
@@ -580,6 +635,8 @@
                     '<th>' + t('col_member') + '</th>' +
                     '<th>' + t('sf_squad_col') + '</th>' +
                     '<th class="center">' + t('col_participated') + '</th>' +
+                    '<th class="center">Late</th>' +
+                    '<th class="center">Excused</th>' +
                     '<th style="width: 40px;"></th>' +
                 '</tr></thead><tbody>';
 
@@ -589,6 +646,8 @@
                 ? squadLabel(assignment.squad) + ' — ' + (assignment.role === 'participant' ? t('sf_participant') : t('sf_reserve'))
                 : '—';
             var isChecked = p.participated > 0;
+            var isLateChecked = !!p.late;
+            var isExcusedChecked = !!p.excused;
             
             var cat = categorise(p.pseudo);
             var meta = categoryMeta(cat);
@@ -607,6 +666,18 @@
                     '<td class="check-cell">' +
                         '<label class="participation-check">' +
                             '<input type="checkbox" class="participation-checkbox sf-participation-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
+                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                        '</label>' +
+                    '</td>' +
+                    '<td class="check-cell">' +
+                        '<label class="participation-check">' +
+                            '<input type="checkbox" class="sf-late-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isLateChecked ? ' checked' : '') + '>' +
+                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                        '</label>' +
+                    '</td>' +
+                    '<td class="check-cell">' +
+                        '<label class="participation-check">' +
+                            '<input type="checkbox" class="sf-excused-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isExcusedChecked ? ' checked' : '') + '>' +
                             '<span class="check-mark"><i class="ph ph-check"></i></span>' +
                         '</label>' +
                     '</td>' +
@@ -676,6 +747,9 @@
         area.querySelectorAll('.sf-remove-btn').forEach(function (btn) {
             btn.addEventListener('click', function () { unassign(btn.getAttribute('data-pseudo')); });
         });
+        area.querySelectorAll('.sf-commander-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () { toggleCommander(btn.getAttribute('data-pseudo')); });
+        });
         area.querySelectorAll('.sf-participation-checkbox').forEach(function (cb) {
             cb.addEventListener('change', function () {
                 var next = cb.checked ? 1 : 0;
@@ -686,6 +760,24 @@
                 saveParticipation(pseudo, next).then(function () {
                     var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
                     if (pp) pp.participated = next;
+                });
+            });
+        });
+        area.querySelectorAll('.sf-late-checkbox').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var pseudo = cb.getAttribute('data-pseudo');
+                saveLate(pseudo, cb.checked).then(function () {
+                    var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
+                    if (pp) pp.late = cb.checked;
+                });
+            });
+        });
+        area.querySelectorAll('.sf-excused-checkbox').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var pseudo = cb.getAttribute('data-pseudo');
+                saveExcused(pseudo, cb.checked).then(function () {
+                    var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
+                    if (pp) pp.excused = cb.checked;
                 });
             });
         });

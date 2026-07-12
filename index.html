@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,33 +39,33 @@
                 </div>
                 <div class="gm-login-form">
                     <div class="gm-login-field">
-                        <label for="username" data-i18n="login_label_id">Identifiant</label>
+                        <label for="username" data-i18n="login_label_id">Identifier</label>
                         <div class="gm-input-with-icon">
                             <i class="ph ph-user gm-icon"></i>
                             <input type="text" id="username" class="gm-input" required
                                 data-i18n-placeholder="login_placeholder_id"
-                                placeholder="Votre identifiant" autocomplete="username">
+                                placeholder="Your identifier" autocomplete="username">
                         </div>
                     </div>
                     <div class="gm-login-field">
-                        <label for="password" data-i18n="login_label_pass">Mot de passe</label>
+                        <label for="password" data-i18n="login_label_pass">Password</label>
                         <div class="gm-input-with-icon gm-login-pwd-wrap">
                             <i class="ph ph-lock gm-icon"></i>
                             <input type="password" id="password" class="gm-input" required
                                 data-i18n-placeholder="login_placeholder_pass"
-                                placeholder="Votre mot de passe" autocomplete="current-password">
-                            <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Afficher / masquer le mot de passe">
+                                placeholder="Your password" autocomplete="current-password">
+                            <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
                                 <i class="ph ph-eye"></i>
                             </button>
                         </div>
                     </div>
                     <div id="login-error" class="gm-login-error hidden">
                         <i class="ph ph-warning-circle"></i>
-                        <span data-i18n="login_error">Identifiants invalides.</span>
+                        <span data-i18n="login_error">Invalid credentials.</span>
                     </div>
                     <button type="submit" id="login-btn" class="gm-btn gm-btn-primary gm-login-submit">
                         <i class="ph ph-sign-in"></i>
-                        <span data-i18n="login_btn">Se connecter</span>
+                        <span data-i18n="login_btn">Sign in</span>
                     </button>
                 </div>
             </form>
@@ -81,10 +81,10 @@
                     <div class="nav-user">
                         <span class="user-badge">
                             <span class="status-dot"></span>
-                            <span id="nav-user-role">R5 :</span> <strong id="nav-user-name">HakwTuah</strong>
+                            <span id="nav-user-role">R5:</span> <strong id="nav-user-name">HakwTuah</strong>
                         </span>
                         <button id="logout-btn" class="icon-btn"
-                            data-i18n-title="nav_logout_title" title="Déconnexion">
+                            data-i18n-title="nav_logout_title" title="Logout">
                             <i class="ph ph-sign-out"></i>
                         </button>
                     </div>
@@ -97,7 +97,7 @@
                         </button>
                         <button class="nav-tab" data-tab="admin-members" data-view="dashboard-view">
                             <i class="ph ph-users"></i>
-                            <span data-i18n="nav_members">Membres</span>
+                            <span data-i18n="nav_members">Members</span>
                         </button>
                         <button class="nav-tab" data-tab="event-svs" data-view="dashboard-view" data-event-tab="SvS">
                             <i class="ph ph-sword"></i> SvS
@@ -119,7 +119,7 @@
                         </button>
                         <button class="nav-tab" data-tab="event-history" data-view="dashboard-view" data-event-tab="history">
                             <i class="ph ph-clock-counter-clockwise"></i>
-                            <span data-i18n="nav_history">Historique</span>
+                            <span data-i18n="nav_history">History</span>
                         </button>
                         <button class="nav-tab" data-tab="stats-admin" data-view="dashboard-view" data-event-tab="stats">
                             <i class="ph ph-chart-bar"></i>
@@ -131,7 +131,7 @@
                         </button>
                         <button class="nav-tab" data-tab="admin-banned" data-view="dashboard-view" style="display: none;">
                             <i class="ph ph-prohibit"></i>
-                            <span data-i18n="nav_banned_players">Joueurs Bannis</span>
+                            <span data-i18n="nav_banned_players">Banned Players</span>
                         </button>
                     </div>
                 </div>
@@ -142,8 +142,8 @@
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
-                            <h1 class="gm-page-title" data-i18n="admin_title">Comptes &amp; accès</h1>
-                            <p class="gm-page-subtitle" data-i18n="admin_subtitle">Créez et gérez les accès au tableau de bord</p>
+                            <h1 class="gm-page-title" data-i18n="admin_title">Accounts &amp; Access</h1>
+                            <p class="gm-page-subtitle" data-i18n="admin_subtitle">Create and manage dashboard access</p>
                         </div>
                     </header>
 
@@ -170,7 +170,7 @@
                             </div>
                             <button type="submit" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-magic-wand"></i>
-                                <span data-i18n="btn_generate">Générer l'accès</span>
+                                <span data-i18n="btn_generate">Generate Access</span>
                             </button>
                         </form>
                     </div>
@@ -196,28 +196,28 @@
                     <div class="gm-card gm-card-padded gm-section" id="guild-settings-card">
                         <div class="gm-section-title" style="margin-bottom: 1.25rem;">
                             <i class="ph ph-gear"></i>
-                            <span data-i18n="card_guild_settings">Configuration &amp; Coefficients de Guilde</span>
+                            <span data-i18n="card_guild_settings">Guild Configuration &amp; Coefficients</span>
                         </div>
                         <form id="guild-settings-form" class="gm-col" style="gap: 1.25rem;">
                             <div class="gm-row" style="gap: 1rem; flex-wrap: wrap;">
                                 <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-svs" data-i18n="label_coeff_svs">Coeff SvS</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-svs" data-i18n="label_coeff_svs">SvS Coeff</label>
                                     <input type="number" id="coeff-svs" class="gm-input" min="0" max="20" required>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-gvg" data-i18n="label_coeff_gvg">Coeff GvG</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-gvg" data-i18n="label_coeff_gvg">GvG Coeff</label>
                                     <input type="number" id="coeff-gvg" class="gm-input" min="0" max="20" required>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-shadowfront" data-i18n="label_coeff_shadowfront">Coeff Shadowfront</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-shadowfront" data-i18n="label_coeff_shadowfront">Shadowfront Coeff</label>
                                     <input type="number" id="coeff-shadowfront" class="gm-input" min="0" max="20" required>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-dtr" data-i18n="label_coeff_dtr">Coeff DTR</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-dtr" data-i18n="label_coeff_dtr">DTR Coeff</label>
                                     <input type="number" id="coeff-dtr" class="gm-input" min="0" max="20" required>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-armsrace" data-i18n="label_coeff_armsrace">Coeff Arms Race</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-armsrace" data-i18n="label_coeff_armsrace">Arms Race Coeff</label>
                                     <input type="number" id="coeff-armsrace" class="gm-input" min="0" max="20" required>
                                 </div>
 
@@ -225,16 +225,16 @@
                              <!-- Discord Notifications Config -->
                              <div class="notification-settings-section">
                                  <label class="gm-dim" style="font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.25rem;" data-i18n="label_discord_notifications_config">
-                                     <i class="ph ph-bell-ringing" style="font-size: 1.1rem;"></i> Configuration des Notifications Discord
+                                     <i class="ph ph-bell-ringing" style="font-size: 1.1rem;"></i> Discord Notifications Configuration
                                  </label>
                                  
                                  <div class="notification-grid">
-                                     <!-- Course aux Armements -->
+                                     <!-- Arms Race -->
                                      <div class="notification-group">
                                          <div class="notification-group-title">
                                              <i class="ph ph-sword"></i>
-                                             <span data-i18n="label_armsrace_notifications">Course aux armements</span>
-                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="armsrace" title="Personnaliser les messages">
+                                             <span data-i18n="label_armsrace_notifications">Arms Race</span>
+                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="armsrace" title="Customize messages">
                                                  <i class="ph ph-note-pencil"></i>
                                              </button>
                                          </div>
@@ -243,15 +243,15 @@
                                          </div>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-armsrace-30" checked>
-                                             <span data-i18n="notify_30m">30 min avant</span>
+                                             <span data-i18n="notify_30m">30 min before</span>
                                          </label>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-armsrace-5" checked>
-                                             <span data-i18n="notify_5m">5 min avant</span>
+                                             <span data-i18n="notify_5m">5 min before</span>
                                          </label>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-armsrace-start" checked>
-                                             <span data-i18n="notify_start">Début de l'événement</span>
+                                             <span data-i18n="notify_start">Event Start</span>
                                          </label>
                                      </div>
 
@@ -260,7 +260,7 @@
                                          <div class="notification-group-title">
                                              <i class="ph ph-truck"></i>
                                              <span data-i18n="label_dtr_notifications">Defend Trade Route</span>
-                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="dtr" title="Personnaliser les messages">
+                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="dtr" title="Customize messages">
                                                  <i class="ph ph-note-pencil"></i>
                                              </button>
                                          </div>
@@ -269,15 +269,15 @@
                                          </div>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-dtr-30" checked>
-                                             <span data-i18n="notify_30m">30 min avant</span>
+                                             <span data-i18n="notify_30m">30 min before</span>
                                          </label>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-dtr-5" checked>
-                                             <span data-i18n="notify_5m">5 min avant</span>
+                                             <span data-i18n="notify_5m">5 min before</span>
                                          </label>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-dtr-start" checked>
-                                             <span data-i18n="notify_start">Début de l'événement</span>
+                                             <span data-i18n="notify_start">Event Start</span>
                                          </label>
                                      </div>
 
@@ -285,8 +285,8 @@
                                      <div class="notification-group">
                                          <div class="notification-group-title">
                                              <i class="ph ph-users-four"></i>
-                                             <span data-i18n="label_shadowfront_notifications">Front de l'ombre</span>
-                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="shadowfront" title="Personnaliser les messages">
+                                             <span data-i18n="label_shadowfront_notifications">Shadowfront</span>
+                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="shadowfront" title="Customize messages">
                                                  <i class="ph ph-note-pencil"></i>
                                              </button>
                                          </div>
@@ -295,15 +295,15 @@
                                          </div>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-shadowfront-30" checked>
-                                             <span data-i18n="notify_30m">30 min avant</span>
+                                             <span data-i18n="notify_30m">30 min before</span>
                                          </label>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-shadowfront-5" checked>
-                                             <span data-i18n="notify_5m">5 min avant</span>
+                                             <span data-i18n="notify_5m">5 min before</span>
                                          </label>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-shadowfront-start" checked>
-                                             <span data-i18n="notify_start">Début de l'événement</span>
+                                             <span data-i18n="notify_start">Event Start</span>
                                          </label>
                                      </div>
 
@@ -312,7 +312,7 @@
                                          <div class="notification-group-title">
                                              <i class="ph ph-skull"></i>
                                              <span data-i18n="label_calamity_notifications">Calamity Befalls</span>
-                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="calamity" title="Personnaliser les messages">
+                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="calamity" title="Customize messages">
                                                  <i class="ph ph-note-pencil"></i>
                                              </button>
                                          </div>
@@ -321,7 +321,7 @@
                                          </div>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-calamity-10" checked>
-                                             <span data-i18n="notify_calamity_reminder">Rappel 10 min (Rounds)</span>
+                                             <span data-i18n="notify_calamity_reminder">10 min reminder (Rounds)</span>
                                          </label>
                                      </div>
 
@@ -329,8 +329,8 @@
                                      <div class="notification-group" id="notification-group-gvg">
                                          <div class="notification-group-title">
                                              <i class="ph ph-flag"></i>
-                                             <span data-i18n="label_gvg_notifications">GvG Samedi</span>
-                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="gvg" title="Personnaliser les messages">
+                                             <span data-i18n="label_gvg_notifications">GvG</span>
+                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="gvg" title="Customize messages">
                                                  <i class="ph ph-note-pencil"></i>
                                              </button>
                                          </div>
@@ -339,7 +339,7 @@
                                          </div>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-gvg-pvp" checked>
-                                             <span data-i18n="notify_gvg_pvp_desc">Activer le jour PvP</span>
+                                             <span data-i18n="notify_gvg_pvp_desc">Enable Day 6</span>
                                          </label>
                                      </div>
 
@@ -347,8 +347,8 @@
                                      <div class="notification-group" id="notification-group-svs">
                                          <div class="notification-group-title">
                                              <i class="ph ph-shield-checkered"></i>
-                                             <span data-i18n="label_svs_notifications">SvS PvP</span>
-                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="svs" title="Personnaliser les messages">
+                                             <span data-i18n="label_svs_notifications">SvS</span>
+                                             <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem; height: auto; width: auto;" data-custom-msg="svs" title="Customize messages">
                                                  <i class="ph ph-note-pencil"></i>
                                              </button>
                                          </div>
@@ -357,15 +357,15 @@
                                          </div>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-svs-pvp" checked>
-                                             <span data-i18n="notify_svs_pvp_desc">Activer le jour PvP</span>
+                                             <span data-i18n="notify_svs_pvp_desc">Enable Day 6</span>
                                          </label>
                                          <label class="notification-option">
                                              <input type="checkbox" id="notify-svs-garrison" checked>
-                                             <span data-i18n="notify_svs_garrison_desc">Rappel de garnison</span>
+                                             <span data-i18n="notify_svs_garrison_desc">Garrison reminder</span>
                                          </label>
                                          <label class="notification-option" style="border-top: 1px dashed var(--border-soft); padding-top: 0.5rem; margin-top: 0.25rem;">
                                              <input type="checkbox" id="notify-svs-won-prep">
-                                             <span data-i18n="notify_svs_won_prep_desc" style="font-weight: 500;">Phase de prép. remportée</span>
+                                             <span data-i18n="notify_svs_won_prep_desc" style="font-weight: 500;">Won Day 1 to 5</span>
                                          </label>
                                      </div>
                                  </div>
@@ -374,7 +374,7 @@
                             <div class="gm-row" style="justify-content: flex-end;">
                                 <button type="submit" class="gm-btn gm-btn-primary">
                                     <i class="ph ph-floppy-disk"></i>
-                                    <span data-i18n="btn_save_config">Sauvegarder la configuration</span>
+                                    <span data-i18n="btn_save_config">Save Configuration</span>
                                 </button>
                             </div>
                         </form>
@@ -384,14 +384,14 @@
                         <div class="gm-section-head">
                             <div class="gm-section-title">
                                 <i class="ph ph-users-three"></i>
-                                <span data-i18n="card_active_accounts">Comptes actifs</span>
+                                <span data-i18n="card_active_accounts">Active Accounts</span>
                                 <span class="gm-count" id="account-count">0</span>
                             </div>
                         </div>
                         <div id="account-list">
                             <div class="gm-empty">
                                 <i class="ph-duotone ph-ghost gm-icon"></i>
-                                <div class="gm-empty-title" data-i18n="empty_accounts">Aucun compte généré</div>
+                                <div class="gm-empty-title" data-i18n="empty_accounts">No accounts generated</div>
                             </div>
                         </div>
                     </div>
@@ -418,22 +418,22 @@
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
-                            <h1 class="gm-page-title" data-i18n="members_title">Membres de la guilde</h1>
-                            <p class="gm-page-subtitle" data-i18n="members_subtitle">Gérez les pseudos in-game et les UID</p>
+                            <h1 class="gm-page-title" data-i18n="members_title">Guild Members</h1>
+                            <p class="gm-page-subtitle" data-i18n="members_subtitle">Manage in-game members and UIDs</p>
                         </div>
                     </header>
 
                     <div class="gm-card gm-card-padded gm-section">
                         <div class="gm-section-title" style="margin-bottom: .75rem;">
                             <i class="ph ph-user-plus"></i>
-                            <span data-i18n="card_add_member">Ajouter un membre</span>
+                            <span data-i18n="card_add_member">Add a member</span>
                         </div>
                         <form id="add-member-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
                             <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
                                 <i class="ph ph-game-controller gm-icon"></i>
                                 <input type="text" id="member-pseudo" class="gm-input" required
                                     data-i18n-placeholder="placeholder_pseudo"
-                                    placeholder="Pseudo in-game">
+                                    placeholder="In-game username">
                             </div>
                             <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
                                 <i class="ph ph-identification-badge gm-icon"></i>
@@ -443,7 +443,7 @@
                             </div>
                             <button type="submit" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-plus"></i>
-                                <span data-i18n="btn_add">Ajouter</span>
+                                <span data-i18n="btn_add">Add</span>
                             </button>
                         </form>
                     </div>
@@ -452,18 +452,18 @@
                         <div class="gm-section-head">
                             <div class="gm-section-title">
                                 <i class="ph ph-users"></i>
-                                <span data-i18n="card_member_list">Liste des membres</span>
+                                <span data-i18n="card_member_list">Members List</span>
                                 <span class="gm-count" id="guild-member-count">0</span>
                             </div>
                             <div class="gm-input-with-icon" style="min-width: 220px; max-width: 360px; flex: 1;">
                                 <i class="ph ph-magnifying-glass gm-icon"></i>
-                                <input type="text" id="member-search-admin" class="gm-input" data-i18n-placeholder="search_placeholder" placeholder="Rechercher pseudo, UID…">
+                                <input type="text" id="member-search-admin" class="gm-input" data-i18n-placeholder="search_placeholder" placeholder="Search username, UID...">
                             </div>
                         </div>
                         <div id="guild-member-list">
                             <div class="gm-empty">
                                 <i class="ph-duotone ph-ghost gm-icon"></i>
-                                <div class="gm-empty-title" data-i18n="empty_members">Aucun membre enregistré</div>
+                                <div class="gm-empty-title" data-i18n="empty_members">No members registered</div>
                             </div>
                         </div>
                     </div>
@@ -483,7 +483,7 @@
                     <div class="gm-card gm-card-padded gm-section">
                         <div class="gm-section-title" style="margin-bottom: .75rem;">
                             <i class="ph ph-user-minus"></i>
-                            <span data-i18n="card_add_banned">Bannir un UID</span>
+                            <span data-i18n="card_add_banned">Ban a UID</span>
                         </div>
                         <form id="add-banned-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
                             <div class="gm-input-with-icon" style="flex:1.5; min-width: 180px;">
@@ -496,17 +496,17 @@
                                 <i class="ph ph-game-controller gm-icon"></i>
                                 <input type="text" id="banned-pseudo" class="gm-input"
                                     data-i18n-placeholder="placeholder_pseudo"
-                                    placeholder="Pseudo in-game (optionnel)">
+                                    placeholder="In-game username (optional)">
                             </div>
                             <div class="gm-input-with-icon" style="flex:2.5; min-width: 240px;">
                                 <i class="ph ph-note gm-icon"></i>
                                 <input type="text" id="banned-reason" class="gm-input"
                                     data-i18n-placeholder="placeholder_banned_reason"
-                                    placeholder="Raison du ban (optionnel)">
+                                    placeholder="Ban reason (optional)">
                             </div>
                             <button type="submit" class="gm-btn gm-btn-danger">
                                 <i class="ph ph-prohibit"></i>
-                                <span data-i18n="btn_ban">Bannir</span>
+                                <span data-i18n="btn_ban">Ban</span>
                             </button>
                         </form>
                     </div>
@@ -515,20 +515,20 @@
                         <div class="gm-section-head">
                             <div class="gm-section-title">
                                 <i class="ph ph-prohibit"></i>
-                                <span data-i18n="card_banned_list">Liste des joueurs bannis</span>
+                                <span data-i18n="card_banned_list">Banned Players List</span>
                                 <span class="gm-count" id="banned-count">0</span>
                             </div>
                             <div class="gm-input-with-icon" style="min-width: 220px; max-width: 360px; flex: 1;">
                                 <i class="ph ph-magnifying-glass gm-icon"></i>
                                 <input type="text" id="banned-search" class="gm-input"
                                     data-i18n-placeholder="search_placeholder"
-                                    placeholder="Rechercher pseudo, UID…">
+                                    placeholder="Search username, UID...">
                             </div>
                         </div>
                         <div id="banned-list-container">
                             <div class="gm-empty">
                                 <i class="ph-duotone ph-ghost gm-icon"></i>
-                                <div class="gm-empty-title" data-i18n="empty_banned">Aucun joueur banni</div>
+                                <div class="gm-empty-title" data-i18n="empty_banned">No banned players</div>
                             </div>
                         </div>
                     </div>
@@ -571,14 +571,14 @@
                     <header class="gm-page-header">
                         <div>
                             <h1 class="gm-page-title" data-i18n="sanctions_title">Sanctions</h1>
-                            <p class="gm-page-subtitle" data-i18n="sanctions_subtitle">Suivez les manquements et leur historique</p>
+                            <p class="gm-page-subtitle" data-i18n="sanctions_subtitle">Track infractions and their history</p>
                         </div>
                     </header>
 
                     <div class="gm-card gm-card-padded gm-section">
                         <div class="gm-section-title" style="margin-bottom: .75rem;">
                             <i class="ph ph-warning"></i>
-                            <span data-i18n="btn_apply_sanction">Appliquer une sanction</span>
+                            <span data-i18n="btn_apply_sanction">Apply Sanction</span>
                         </div>
                         <form id="apply-sanction-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
                             <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
@@ -605,14 +605,14 @@
                         <div class="gm-section-head">
                             <div class="gm-section-title">
                                 <i class="ph ph-clock-counter-clockwise"></i>
-                                <span data-i18n="sanctions_history">Historique</span>
+                                <span data-i18n="sanctions_history">History</span>
                                 <span class="gm-count" id="sanctions-count">0</span>
                             </div>
                         </div>
                         <div id="sanctions-list">
                             <div class="gm-empty">
                                 <i class="ph-duotone ph-ghost gm-icon"></i>
-                                <div class="gm-empty-title" data-i18n="empty_members">Aucun historique</div>
+                                <div class="gm-empty-title" data-i18n="empty_members">No history</div>
                             </div>
                         </div>
                     </div>
@@ -783,10 +783,10 @@
                     <div class="nav-user">
                         <span class="user-badge">
                             <span class="status-dot"></span>
-                            <span id="member-name">Membre</span>
+                            <span id="member-name">Member</span>
                         </span>
                         <button id="member-logout-btn" class="icon-btn"
-                            data-i18n-title="nav_logout_title" title="Déconnexion">
+                            data-i18n-title="nav_logout_title" title="Logout">
                             <i class="ph ph-sign-out"></i>
                         </button>
                     </div>
@@ -795,11 +795,11 @@
                     <div class="nav-tabs">
                         <button class="nav-tab active" data-tab="member-home" data-view="member-view">
                             <i class="ph ph-house"></i>
-                            <span data-i18n="member_home_tab">Accueil</span>
+                            <span data-i18n="member_home_tab">Home</span>
                         </button>
                         <button class="nav-tab" data-tab="member-members" data-view="member-view">
                             <i class="ph ph-users"></i>
-                            <span data-i18n="nav_members">Membres</span>
+                            <span data-i18n="nav_members">Members</span>
                         </button>
                         <button class="nav-tab" data-tab="stats-member" data-view="member-view" data-event-tab="stats">
                             <i class="ph ph-chart-bar"></i>
@@ -812,8 +812,8 @@
             <!-- Tab: Member Home -->
             <main class="dashboard-content tab-panel active" id="member-home">
                 <header class="dashboard-header slide-up">
-                    <h1 data-i18n="member_home_title">Espace Membre</h1>
-                    <p data-i18n="member_home_subtitle">Bienvenue sur le portail de la guilde</p>
+                    <h1 data-i18n="member_home_title">Member Space</h1>
+                    <p data-i18n="member_home_subtitle">Welcome to the guild portal</p>
                 </header>
                 <div class="member-welcome-card glass-card slide-up" style="animation-delay:0.1s">
                     <div class="member-welcome-inner">
@@ -822,15 +822,15 @@
                         </div>
                         <div>
                             <h2>
-                                <span data-i18n="member_greeting">Bonjour,</span>
-                                <span id="member-name-display" class="text-gradient">Membre</span> 👋
+                                <span data-i18n="member_greeting">Hello,</span>
+                                <span id="member-name-display" class="text-gradient">Member</span> 👋
                             </h2>
                             <p>
-                                <span data-i18n="member_connected">Vous êtes connecté(e) à l'espace membre de</span>
+                                <span data-i18n="member_connected">You are connected to the member space of</span>
                                 <strong> FGF Guild Management</strong>.
                             </p>
                             <p class="text-muted-sm" data-i18n="member_hint">
-                                Utilisez le menu ci-dessus pour accéder à la liste des membres.
+                                Use the menu above to access the members list.
                             </p>
                         </div>
                     </div>
@@ -840,35 +840,35 @@
             <!-- Tab: Member Members -->
             <main class="dashboard-content tab-panel" id="member-members">
                 <header class="dashboard-header slide-up">
-                    <h1 data-i18n="members_title">Membres de la Guilde</h1>
-                    <p data-i18n="members_subtitle">Gérez les membres in-game de la guilde</p>
+                    <h1 data-i18n="members_title">Guild Members</h1>
+                    <p data-i18n="members_subtitle">Manage guild in-game members</p>
                 </header>
                 <div class="admin-home-layout">
                     <!-- Horizontal Banner for adding member -->
                     <div class="glass-card action-card horizontal-banner slide-up" style="animation-delay:0.1s">
                         <div class="banner-header">
                             <i class="ph-fill ph-user-plus text-accent"></i>
-                            <h3 data-i18n="card_add_member">Ajouter un membre</h3>
+                            <h3 data-i18n="card_add_member">Add a member</h3>
                         </div>
                         <form id="add-member-form-member" class="horizontal-form">
                             <div class="input-group">
-                                <label for="member-pseudo-m" data-i18n="label_pseudo">Pseudo in-game</label>
+                                <label for="member-pseudo-m" data-i18n="label_pseudo">In-game username</label>
                                 <div class="input-wrapper">
                                     <i class="ph ph-game-controller"></i>
                                     <input type="text" id="member-pseudo-m" required
                                         data-i18n-placeholder="placeholder_pseudo"
-                                        placeholder="ex. StarWarrior99">
+                                        placeholder="e.g. StarWarrior99">
                                 </div>
                             </div>
                             <div class="input-group">
                                 <label for="member-uid-m" data-i18n="label_uid">Player UID</label>
                                 <div class="input-wrapper">
                                     <i class="ph ph-identification-badge"></i>
-                                    <input type="text" id="member-uid-m" placeholder="ex. 12345678" required>
+                                    <input type="text" id="member-uid-m" placeholder="e.g. 12345678" required>
                                 </div>
                             </div>
                             <button type="submit" class="primary-btn">
-                                <span data-i18n="btn_add">Ajouter</span>
+                                <span data-i18n="btn_add">Add</span>
                                 <i class="ph ph-plus-circle"></i>
                             </button>
                         </form>
@@ -879,7 +879,7 @@
                         <div class="section-header">
                             <div class="flex-align">
                                 <i class="ph-fill ph-users text-accent"></i>
-                                <h3 data-i18n="card_member_list">Liste des membres</h3>
+                                <h3 data-i18n="card_member_list">Members List</h3>
                                 <span class="count-badge" id="guild-member-count-m">0</span>
                             </div>
                         </div>
@@ -887,7 +887,17 @@
                         <div class="search-bar-row slide-up">
                             <div class="input-wrapper search-wrapper full-width">
                                 <i class="ph ph-magnifying-glass"></i>
-                                <input type="text" id="member-search-member" data-i18n-placeholder="search_placeholder" placeholder="Rechercher...">
+                                <input type="text" id="member-search-member" data-i18n-placeholder="search_placeholder" placeholder="Search...">
+                            </div>
+                        </div>
+                        <div class="account-grid list-view" id="guild-member-list-m">
+                            <div class="empty-state">
+                                <i class="ph-duotone ph-ghost"></i>
+                                <p data-i18n="empty_members">No members registered</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>                    <input type="text" id="member-search-member" data-i18n-placeholder="search_placeholder" placeholder="Rechercher...">
                             </div>
                         </div>
                         <div class="account-grid list-view" id="guild-member-list-m">

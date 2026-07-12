@@ -473,17 +473,17 @@
             btn.disabled = true;
             var span = btn.querySelector('span');
             var origText = span ? span.textContent : '';
-            if (span) span.textContent = 'Création...';
+            if (span) span.textContent = 'Creating...';
 
             try {
                 var { error } = await supabase.from('guilds').insert({ id: guildName });
                 if (error) throw error;
                 
-                showToast('Guilde ' + guildName + ' créée avec succès !', 'success');
+                showToast('Guild ' + guildName + ' created successfully!', 'success');
                 input.value = '';
                 await fetchGuilds();
             } catch (err) {
-                showToast('Erreur lors de la création de la guilde: ' + err.message, 'error');
+                showToast('Error creating guild: ' + err.message, 'error');
             } finally {
                 btn.disabled = false;
                 if (span) span.textContent = origText;
@@ -764,14 +764,14 @@
                 try {
                     var res = await window.RAD.adminAccounts('update-guild', { id: id, guild: newGuild });
                     if (!res.ok) throw new Error(res.error || 'update_failed');
-                    showToast('Accès de ' + id + ' mis à jour avec succès !', 'success');
+                    showToast('Access for ' + id + ' updated successfully!', 'success');
                     
                     var acc = accounts.find(function (a) { return a.id === id; });
                     if (acc) {
                         acc.guild = (newGuild === 'ALL' ? null : newGuild);
                     }
                 } catch (err) {
-                    showToast('Erreur lors de la mise à jour : ' + err.message, 'error');
+                    showToast('Error updating: ' + err.message, 'error');
                     fetchAccounts();
                 } finally {
                     sel.disabled = false;

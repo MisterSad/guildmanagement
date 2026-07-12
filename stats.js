@@ -608,7 +608,7 @@
                     var norm = normalizePseudo(p.pseudo);
                     perPlayer[norm] = (perPlayer[norm] || 0) + (p.score || 0);
 
-                    if (opp.name === 'SvS') {
+                    if (opp.name === 'SvS' || opp.name === 'GvG') {
                         var isNew = (p.score_prep != null || p.score_pvp != null);
                         if (isNew) {
                             if (p.score_prep != null) pPrep[norm] = (pPrep[norm] || 0) + p.score_prep;
@@ -621,7 +621,7 @@
                 var values = Object.values(perPlayer);
                 maxScorePerOpp[opp.id] = values.length ? Math.max.apply(null, values) : 0;
                 
-                if (opp.name === 'SvS') {
+                if (opp.name === 'SvS' || opp.name === 'GvG') {
                     svsMaxesPerOpp[opp.id] = {
                         prep: Math.max.apply(null, [0].concat(Object.values(pPrep))),
                         pvp: Math.max.apply(null, [0].concat(Object.values(pPvp))),
@@ -670,7 +670,7 @@
                     
                     var perf = 0;
                     if (participated && opp.group.hasScore) {
-                        if (opp.name === 'SvS') {
+                        if (opp.name === 'SvS' || opp.name === 'GvG') {
                             var plPrep = 0, plPvp = 0, plLeg = 0;
                             var nNew = 0, nLegacy = 0;
                             pRows.forEach(function (r) {
