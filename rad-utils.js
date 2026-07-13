@@ -529,6 +529,9 @@
             ? '<@&' + discordRoleId.trim() + '>'
             : (guildTags[window.currentGuild || 'ALPHA'] || '@everyone');
 
+        var isDtrOrArmsRace = eventName === 'Defend Trade Route' || eventName.indexOf('ARMS RACE') !== -1;
+        var eventGuildTag = isDtrOrArmsRace ? '@everyone' : guildTag;
+
         if (action === 'start') {
             actionLabel = '🚀 Scheduled / Live';
             color = 5763719; // Green
@@ -536,12 +539,12 @@
             actionLabel = '📅 Schedule Updated';
             color = 16750848; // Orange
         } else if (action === 'reminder_30') {
-            content = '⏰ **Reminder:** ' + eventName + ' starts in **30 minutes**! ' + guildTag;
+            content = '⏰ **Reminder:** ' + eventName + ' starts in **30 minutes**! ' + eventGuildTag;
             embedTitle = '⏰ Reminder: ' + eventName + ' starts in 30 minutes!';
             embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
             color = 16750848; // Orange
         } else if (action === 'reminder_5') {
-            content = '🚨 **Immediate Reminder:** ' + eventName + ' starts in **5 minutes**! Get ready! ' + guildTag;
+            content = '🚨 **Immediate Reminder:** ' + eventName + ' starts in **5 minutes**! Get ready! ' + eventGuildTag;
             embedTitle = '🚨 Immediate Reminder: ' + eventName + ' starts in 5 minutes!';
             embedDesc = 'Action time! Join your squad now!';
             color = 15548997; // Bright Red
@@ -557,7 +560,7 @@
                 return str
                     .replace(/{event_name}/g, eventName)
                     .replace(/{date}/g, dateFormatted)
-                    .replace(/{guild_tag}/g, guildTag);
+                    .replace(/{guild_tag}/g, eventGuildTag);
             };
 
             if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);

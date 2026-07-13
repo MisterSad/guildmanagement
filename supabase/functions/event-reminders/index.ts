@@ -235,6 +235,10 @@ serve(async (req) => {
                                 event.event_name === 'Shadowfront Squad 2';
         if (!isStandardEvent) continue;
 
+        const isDtrOrArmsRace = event.event_name === 'Defend Trade Route' ||
+                                event.event_name.startsWith('ARMS RACE');
+        const eventGuildTag = isDtrOrArmsRace ? '@everyone' : guildTag;
+
         const startMs = new Date(event.start_at).getTime();
         const diffMs = startMs - now;
         const diffMins = diffMs / 60000;
@@ -320,19 +324,19 @@ serve(async (req) => {
             let agenda = 'Please connect now.';
 
             if (reminderType === 'reminder_30') {
-              content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! ${guildTag}`;
+              content = `⏰ **Reminder:** ${event.event_name} starts in **30 minutes**! ${eventGuildTag}`;
               embedTitle = `⏰ Reminder: ${event.event_name} starts in 30 minutes!`;
               embedDesc = 'Get ready, soldiers! Please log in and prepare for the event.';
               color = 16750848; // Orange
               agenda = 'Please connect and get ready soon.';
             } else if (reminderType === 'reminder_5') {
-              content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! ${guildTag}`;
+              content = `🚨 **Immediate Reminder:** ${event.event_name} starts in **5 minutes**! Get ready! ${eventGuildTag}`;
               embedTitle = `🚨 Immediate Reminder: ${event.event_name} starts in 5 minutes!`;
               embedDesc = 'Action time! Join your squad now!';
               color = 15548997; // Bright Red
               agenda = 'Action time! Connect now!';
             } else if (reminderType === 'start') {
-              content = `⚔️ **Event Started:** ${event.event_name} starts now! ${guildTag}`;
+              content = `⚔️ **Event Started:** ${event.event_name} starts now! ${eventGuildTag}`;
               embedTitle = `⚔️ Event Started: ${event.event_name} is active!`;
               embedDesc = 'Action time! Join your squad now!';
               color = 15548997; // Bright Red
@@ -348,7 +352,7 @@ serve(async (req) => {
               return str
                 .replace(/{event_name}/g, event.event_name)
                 .replace(/{date}/g, dateFormatted)
-                .replace(/{guild_tag}/g, guildTag);
+                .replace(/{guild_tag}/g, eventGuildTag);
             };
 
             if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);
