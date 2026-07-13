@@ -235,9 +235,10 @@ serve(async (req) => {
                                 event.event_name === 'Shadowfront Squad 2';
         if (!isStandardEvent) continue;
 
-        const isDtrOrArmsRace = event.event_name === 'Defend Trade Route' ||
-                                event.event_name.startsWith('ARMS RACE');
-        const eventGuildTag = isDtrOrArmsRace ? '@everyone' : guildTag;
+        const isDtrOrArmsRaceOrShadowfront = event.event_name === 'Defend Trade Route' ||
+                                             event.event_name.startsWith('ARMS RACE') ||
+                                             event.event_name.startsWith('Shadowfront Squad');
+        const eventGuildTag = isDtrOrArmsRaceOrShadowfront ? '@everyone' : guildTag;
 
         const startMs = new Date(event.start_at).getTime();
         const diffMs = startMs - now;

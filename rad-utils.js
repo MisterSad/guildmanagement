@@ -529,8 +529,10 @@
             ? '<@&' + discordRoleId.trim() + '>'
             : (guildTags[window.currentGuild || 'ALPHA'] || '@everyone');
 
-        var isDtrOrArmsRace = eventName === 'Defend Trade Route' || eventName.indexOf('ARMS RACE') !== -1;
-        var eventGuildTag = isDtrOrArmsRace ? '@everyone' : guildTag;
+        var isDtrOrArmsRaceOrShadowfront = eventName === 'Defend Trade Route' || 
+                                           eventName.indexOf('ARMS RACE') !== -1 ||
+                                           eventName.indexOf('Shadowfront Squad') !== -1;
+        var eventGuildTag = isDtrOrArmsRaceOrShadowfront ? '@everyone' : guildTag;
 
         if (action === 'start') {
             actionLabel = '🚀 Scheduled / Live';
