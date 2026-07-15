@@ -1032,6 +1032,10 @@
     if (tierAdminSelect) tierAdminSelect.addEventListener('change', renderGuildMembers);
     var tierMemberSelect = document.getElementById('member-tier-filter-member');
     if (tierMemberSelect) tierMemberSelect.addEventListener('change', renderGuildMembers);
+    var sortAdminSelect = document.getElementById('member-sort-admin');
+    if (sortAdminSelect) sortAdminSelect.addEventListener('change', renderGuildMembers);
+    var sortMemberSelect = document.getElementById('member-sort-member');
+    if (sortMemberSelect) sortMemberSelect.addEventListener('change', renderGuildMembers);
     if (bannedSearch) {
         bannedSearch.addEventListener('input', renderBannedPlayers);
     }
@@ -1287,6 +1291,11 @@
         var tAdmin  = tierAdminFilter  ? tierAdminFilter.value  : 'ALL';
         var tMember = tierMemberFilter ? tierMemberFilter.value : 'ALL';
 
+        var sortAdminSelect  = document.getElementById('member-sort-admin');
+        var sortMemberSelect = document.getElementById('member-sort-member');
+        var sortAdmin  = sortAdminSelect  ? sortAdminSelect.value  : 'pseudo_asc';
+        var sortMember = sortMemberSelect ? sortMemberSelect.value : 'pseudo_asc';
+
         var powers = guildMembers.map(function (m) { return parseInt(m.overall_power) || 0; });
         var maxPower = powers.length ? Math.max.apply(null, powers) : 0;
 
@@ -1301,17 +1310,39 @@
             return matchSearch && matchTier;
         });
 
+        function sortMembers(list, sortVal) {
+            return list.slice().sort(function (a, b) {
+                if (sortVal === 'pseudo_asc') {
+                    return a.pseudo.localeCompare(b.pseudo);
+                } else if (sortVal === 'pseudo_desc') {
+                    return b.pseudo.localeCompare(a.pseudo);
+                } else if (sortVal === 'power_desc') {
+                    var pA = parseInt(a.overall_power) || 0;
+                    var pB = parseInt(b.overall_power) || 0;
+                    return pB - pA;
+                } else if (sortVal === 'power_asc') {
+                    var pA = parseInt(a.overall_power) || 0;
+                    var pB = parseInt(b.overall_power) || 0;
+                    return pA - pB;
+                }
+                return 0;
+            });
+        }
+
+        var sortedAdmin  = sortMembers(filteredAdmin, sortAdmin);
+        var sortedMember = sortMembers(filteredMember, sortMember);
+
         if (guildMemberCount)  guildMemberCount.textContent  = filteredAdmin.length;
         if (guildMemberCountM) guildMemberCountM.textContent = filteredMember.length;
 
         if (guildMemberList) {
-            guildMemberList.innerHTML = filteredAdmin.length
-                ? '<div class="gm-member-list">' + filteredAdmin.map(function (m, i) { return memberTileHtml(m, i, true, maxPower); }).join('') + '</div>'
+            guildMemberList.innerHTML = sortedAdmin.length
+                ? '<div class="gm-member-list">' + sortedAdmin.map(function (m, i) { return memberTileHtml(m, i, true, maxPower); }).join('') + '</div>'
                 : '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
         }
         if (guildMemberListM) {
-            guildMemberListM.innerHTML = filteredMember.length
-                ? '<div class="gm-member-list">' + filteredMember.map(function (m, i) { return memberTileHtml(m, i, false, maxPower); }).join('') + '</div>'
+            guildMemberListM.innerHTML = sortedMember.length
+                ? '<div class="gm-member-list">' + sortedMember.map(function (m, i) { return memberTileHtml(m, i, false, maxPower); }).join('') + '</div>'
                 : '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
         }
 
@@ -1350,9 +1381,7 @@
         var meta = window.RAD.getPowerTierMeta(tier);
         var formattedPower = window.RAD.formatPower(powerVal);
 
-        var tierBadge = powerVal > 0 
-            ? '<span class="gm-chip ' + meta.cls + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '0a; display: inline-flex; align-items: center; gap: 0.25rem;" title="' + meta.label + ' Tier"><span style="font-size: 0.8rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
-            : '';
+        var tierBadge = '<span class="gm-chip ' + meta.cls + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '0a; display: inline-flex; align-items: center; gap: 0.25rem;" title="' + meta.label + ' Tier"><span style="font-size: 0.8rem;">' + meta.icon + '</span> ' + formattedPower + '</span>';
 
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
