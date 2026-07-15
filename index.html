@@ -529,6 +529,16 @@
                                 <input type="number" id="member-power" class="gm-input"
                                     placeholder="Player Power" min="0" required>
                             </div>
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 120px;">
+                                <i class="ph ph-crown gm-icon"></i>
+                                <select id="member-role" class="gm-input" required>
+                                    <option value="R1">R1</option>
+                                    <option value="R2">R2</option>
+                                    <option value="R3">R3</option>
+                                    <option value="R4">R4</option>
+                                    <option value="R5">R5</option>
+                                </select>
+                            </div>
                             <button type="submit" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-plus"></i>
                                 <span data-i18n="btn_add">Add</span>
@@ -557,10 +567,10 @@
                                     <option value="D">🛡️ Tier D</option>
                                 </select>
                                 <select id="member-sort-admin" class="gm-input" style="flex: 1; min-width: 120px; padding: 0.25rem 0.5rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-md); color: var(--text-normal);">
-                                    <option value="pseudo_asc">Sort: A-Z (Username)</option>
-                                    <option value="pseudo_desc">Sort: Z-A (Username)</option>
                                     <option value="power_desc">Sort: Power (High-Low)</option>
                                     <option value="power_asc">Sort: Power (Low-High)</option>
+                                    <option value="pseudo_asc">Sort: A-Z (Username)</option>
+                                    <option value="pseudo_desc">Sort: Z-A (Username)</option>
                                 </select>
                             </div>
                         </div>
@@ -978,6 +988,19 @@
                                     <input type="number" id="member-power-m" placeholder="e.g. 80000000" min="0" required>
                                 </div>
                             </div>
+                            <div class="input-group">
+                                <label for="member-role-m">Role</label>
+                                <div class="input-wrapper">
+                                    <i class="ph ph-crown"></i>
+                                    <select id="member-role-m" required>
+                                        <option value="R1">R1</option>
+                                        <option value="R2">R2</option>
+                                        <option value="R3">R3</option>
+                                        <option value="R4">R4</option>
+                                        <option value="R5">R5</option>
+                                    </select>
+                                </div>
+                            </div>
                             <button type="submit" class="primary-btn">
                                 <span data-i18n="btn_add">Add</span>
                                 <i class="ph ph-plus-circle"></i>
@@ -1009,10 +1032,10 @@
                                 <option value="D">🛡️ Tier D</option>
                             </select>
                             <select id="member-sort-member" style="flex: 1; max-width: 140px; padding: 0.65rem 0.5rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-md); color: var(--text-normal); font-family: var(--font-family-body); font-size: 0.88rem;">
-                                <option value="pseudo_asc">Sort: A-Z (Username)</option>
-                                <option value="pseudo_desc">Sort: Z-A (Username)</option>
                                 <option value="power_desc">Sort: Power (High-Low)</option>
                                 <option value="power_asc">Sort: Power (Low-High)</option>
+                                <option value="pseudo_asc">Sort: A-Z (Username)</option>
+                                <option value="pseudo_desc">Sort: Z-A (Username)</option>
                             </select>
                         </div>
                         <div class="account-grid list-view" id="guild-member-list-m">

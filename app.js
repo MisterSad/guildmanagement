@@ -40,6 +40,7 @@
     var accounts      = [];
     var guildMembers  = [];
     var bannedPlayers = [];
+    window.RAD_COLLAPSED_ROLES = { R5: false, R4: false, R3: false, R2: false, R1: false };
 
     // ─── Boot ─────────────────────────────────────────────────────────────────
     window.RAD_I18N.applyTranslations();
@@ -957,13 +958,15 @@
         }
     }
 
-    async function handleAddMember(inputId, uidInputId, powerInputId) {
+    async function handleAddMember(inputId, uidInputId, powerInputId, roleInputId) {
         var input  = document.getElementById(inputId);
         var pseudo = input ? input.value.trim() : '';
         var uidInput = document.getElementById(uidInputId);
         var uidVal = uidInput ? uidInput.value.trim() : null;
         var powerInput = powerInputId ? document.getElementById(powerInputId) : null;
         var powerVal = powerInput && powerInput.value ? parseInt(powerInput.value, 10) : NaN;
+        var roleInput = roleInputId ? document.getElementById(roleInputId) : null;
+        var roleVal = roleInput ? roleInput.value : 'R1';
         if (!pseudo || !uidVal || isNaN(powerVal) || powerVal < 0) {
             showToast('Please enter a valid power value.', 'error');
             return;
@@ -994,12 +997,13 @@
             console.error('Ban check failed', err);
         }
         try {
-            var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal, overall_power: powerVal }]);
+            var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal }]);
             if (res.error) throw res.error;
-            guildMembers.push({ pseudo: pseudo, uid: uidVal, overall_power: powerVal, created_at: new Date().toISOString() });
+            guildMembers.push({ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal, created_at: new Date().toISOString() });
             if (input) input.value = '';
             if (uidInput) uidInput.value = '';
             if (powerInput) powerInput.value = '';
+            if (roleInput) roleInput.value = 'R1';
             renderGuildMembers();
             showToast(pseudo + ' ' + t('toast_member_added'), 'success');
 
@@ -1021,8 +1025,8 @@
         }
     }
 
-    if (addMemberForm)  addMemberForm.addEventListener('submit', function (e)  { e.preventDefault(); handleAddMember('member-pseudo', 'member-uid', 'member-power'); });
-    if (addMemberFormM) addMemberFormM.addEventListener('submit', function (e) { e.preventDefault(); handleAddMember('member-pseudo-m', 'member-uid-m', 'member-power-m'); });
+    if (addMemberForm)  addMemberForm.addEventListener('submit', function (e)  { e.preventDefault(); handleAddMember('member-pseudo', 'member-uid', 'member-power', 'member-role'); });
+    if (addMemberFormM) addMemberFormM.addEventListener('submit', function (e) { e.preventDefault(); handleAddMember('member-pseudo-m', 'member-uid-m', 'member-power-m', 'member-role-m'); });
     if (addBannedForm) {
         addBannedForm.addEventListener('submit', function (e) { e.preventDefault(); handleAddBannedPlayer(); });
     }
@@ -1213,10 +1217,11 @@
         }
     }
 
-    async function renameGuildMember(oldPseudo, newPseudo, newUid, newPower) {
+    async function renameGuildMember(oldPseudo, newPseudo, newUid, newPower, newRole) {
         newPseudo = (newPseudo || '').trim();
         newUid    = (newUid || '').trim();
         var powerVal = parseInt(newPower) || 0;
+        var roleVal = newRole || 'R1';
 
         var pseudoErr = window.RAD.validatePseudo(newPseudo);
         if (pseudoErr) { showToast(t(pseudoErr), 'error'); return false; }
@@ -1225,12 +1230,14 @@
 
         var member = guildMembers.find(function (m) { return m.pseudo === oldPseudo; });
         var oldPower = member ? parseInt(member.overall_power) || 0 : 0;
+        var oldRole = member ? member.role || 'R1' : 'R1';
 
         var pseudoChanged = newPseudo.toLowerCase() !== oldPseudo.toLowerCase();
         var uidChanged    = member && (member.uid || '') !== newUid;
         var powerChanged  = oldPower !== powerVal;
+        var roleChanged   = oldRole !== roleVal;
 
-        if (!pseudoChanged && !uidChanged && !powerChanged) return true;
+        if (!pseudoChanged && !uidChanged && !powerChanged && !roleChanged) return true;
 
         if (pseudoChanged && guildMembers.some(function (m) { return m.pseudo.toLowerCase() === newPseudo.toLowerCase(); })) {
             showToast(t('toast_duplicate_member'), 'error');
@@ -1270,6 +1277,7 @@
             if (pseudoChanged) update.pseudo = newPseudo;
             if (uidChanged)    update.uid = newUid || null;
             update.overall_power = powerVal;
+            update.role = roleVal;
 
             var res = await supabase.from('guild_members').update(update).eq('pseudo', oldPseudo);
             if (res.error) throw res.error;
@@ -1296,8 +1304,8 @@
 
         var sortAdminSelect  = document.getElementById('member-sort-admin');
         var sortMemberSelect = document.getElementById('member-sort-member');
-        var sortAdmin  = sortAdminSelect  ? sortAdminSelect.value  : 'pseudo_asc';
-        var sortMember = sortMemberSelect ? sortMemberSelect.value : 'pseudo_asc';
+        var sortAdmin  = sortAdminSelect  ? sortAdminSelect.value  : 'power_desc';
+        var sortMember = sortMemberSelect ? sortMemberSelect.value : 'power_desc';
 
         var powers = guildMembers.map(function (m) { return parseInt(m.overall_power) || 0; });
         var maxPower = powers.length ? Math.max.apply(null, powers) : 0;
@@ -1332,22 +1340,83 @@
             });
         }
 
-        var sortedAdmin  = sortMembers(filteredAdmin, sortAdmin);
-        var sortedMember = sortMembers(filteredMember, sortMember);
+        var roleNames = {
+            'R5': 'R5 (Leader)',
+            'R4': 'R4 (Officer)',
+            'R3': 'R3 (Veteran)',
+            'R2': 'R2 (Member)',
+            'R1': 'R1 (Recruit)'
+        };
+        var roleOrder = ['R5', 'R4', 'R3', 'R2', 'R1'];
+
+        function buildGroupedListHtml(filteredList, sortVal, withActions) {
+            // Group the filtered list
+            var grouped = { R5: [], R4: [], R3: [], R2: [], R1: [] };
+            filteredList.forEach(function (m) {
+                var r = m.role || 'R1';
+                if (!grouped[r]) grouped[r] = [];
+                grouped[r].push(m);
+            });
+
+            var html = '<div class="gm-member-groups" style="display: flex; flex-direction: column; gap: 1rem; width: 100%;">';
+            var hasAnyMembers = false;
+
+            roleOrder.forEach(function (role) {
+                var membersInRole = grouped[role];
+                // Sort members in this role
+                var sorted = sortMembers(membersInRole, sortVal);
+
+                if (sorted.length > 0) {
+                    hasAnyMembers = true;
+                }
+
+                // Collapsed state
+                var isCollapsed = !!window.RAD_COLLAPSED_ROLES[role];
+                var iconClass = isCollapsed ? 'ph-caret-right' : 'ph-caret-down';
+                var displayStyle = isCollapsed ? 'none' : 'block';
+
+                html += '<div class="gm-role-group" data-role="' + role + '" style="border: 1px solid var(--border-soft); border-radius: var(--radius-md); background: var(--bg-card); overflow: hidden; text-align: left;">' +
+                            '<div class="gm-role-group-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--bg-1); cursor: pointer; user-select: none; border-bottom: 1px solid ' + (isCollapsed ? 'transparent' : 'var(--border-soft)') + ';" data-role="' + role + '">' +
+                                '<div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; color: var(--text-normal);">' +
+                                    '<i class="ph ' + iconClass + '" style="font-size: 1rem; color: var(--text-muted);"></i>' +
+                                    '<span>' + esc(roleNames[role]) + '</span>' +
+                                    '<span class="gm-count" style="margin-left: 0.25rem;">' + sorted.length + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="gm-role-group-body" style="display: ' + displayStyle + '; padding: 0.5rem 0.75rem;">' +
+                                (sorted.length 
+                                    ? '<div class="gm-member-list" style="display: flex; flex-direction: column; gap: 0.5rem;">' + sorted.map(function (m, i) { return memberTileHtml(m, i, withActions, maxPower); }).join('') + '</div>'
+                                    : '<div class="gm-dim" style="font-size: 0.85rem; padding: 0.75rem; text-align: center;">No members in this role</div>') +
+                            '</div>' +
+                        '</div>';
+            });
+
+            html += '</div>';
+
+            if (!hasAnyMembers) {
+                return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
+            }
+            return html;
+        }
 
         if (guildMemberCount)  guildMemberCount.textContent  = filteredAdmin.length;
         if (guildMemberCountM) guildMemberCountM.textContent = filteredMember.length;
 
         if (guildMemberList) {
-            guildMemberList.innerHTML = sortedAdmin.length
-                ? '<div class="gm-member-list">' + sortedAdmin.map(function (m, i) { return memberTileHtml(m, i, true, maxPower); }).join('') + '</div>'
-                : '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
+            guildMemberList.innerHTML = buildGroupedListHtml(filteredAdmin, sortAdmin, true);
         }
         if (guildMemberListM) {
-            guildMemberListM.innerHTML = sortedMember.length
-                ? '<div class="gm-member-list">' + sortedMember.map(function (m, i) { return memberTileHtml(m, i, false, maxPower); }).join('') + '</div>'
-                : '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
+            guildMemberListM.innerHTML = buildGroupedListHtml(filteredMember, sortMember, false);
         }
+
+        // Attach collapse click listeners
+        document.querySelectorAll('.gm-role-group-header').forEach(function (header) {
+            header.addEventListener('click', function () {
+                var role = header.getAttribute('data-role');
+                window.RAD_COLLAPSED_ROLES[role] = !window.RAD_COLLAPSED_ROLES[role];
+                renderGuildMembers();
+            });
+        });
 
         document.querySelectorAll('.guild-edit-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -1384,13 +1453,24 @@
         var meta = window.RAD.getPowerTierMeta(tier);
         var formattedPower = window.RAD.formatPower(powerVal);
 
+        var roleVal = m.role || 'R1';
+        var roleStyles = {
+            'R5': { text: 'R5', color: '#f59e0b', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.3)', icon: '👑' },
+            'R4': { text: 'R4', color: '#ef4444', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.3)', icon: '⚔️' },
+            'R3': { text: 'R3', color: '#a855f7', bg: 'rgba(168,85,247,0.06)', border: 'rgba(168,85,247,0.3)', icon: '🛡️' },
+            'R2': { text: 'R2', color: '#3b82f6', bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.3)', icon: '👤' },
+            'R1': { text: 'R1', color: '#94a3b8', bg: 'rgba(148,163,184,0.06)', border: 'rgba(148,163,184,0.3)', icon: '🌱' }
+        };
+        var rMeta = roleStyles[roleVal] || roleStyles.R1;
+        var roleBadgeHtml = '<span class="gm-chip" style="font-size:0.72rem; font-weight:700; padding:0.1rem 0.35rem; color:' + rMeta.color + '; border: 1px solid ' + rMeta.border + '; background:' + rMeta.bg + '; display:inline-flex; align-items:center; gap:0.2rem; border-radius:4px;" title="Role ' + rMeta.text + '">' + rMeta.icon + ' ' + rMeta.text + '</span>';
+
         var tierBadge = '<span class="gm-chip ' + meta.cls + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '0a; display: inline-flex; align-items: center; gap: 0.25rem;" title="' + meta.label + ' Tier"><span style="font-size: 0.8rem;">' + meta.icon + '</span> ' + formattedPower + '</span>';
 
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
                     '<div class="gm-avatar">' + esc(initial) + '</div>' +
                     '<div class="gm-grow gm-truncate">' +
-                        '<div class="gm-member-pseudo gm-truncate">' + esc(m.pseudo) + '</div>' +
+                        '<div class="gm-member-pseudo gm-truncate" style="display:flex; align-items:center; gap:0.35rem;">' + esc(m.pseudo) + ' ' + roleBadgeHtml + '</div>' +
                         '<div class="gm-row" style="gap:.5rem; margin-top:4px; flex-wrap: wrap;">' +
                             '<span class="gm-dim gm-mono" style="font-size:.78rem;">UID ' + esc(uidVal) + '</span>' +
                             tierBadge +
@@ -1460,11 +1540,26 @@
                             '<input type="text" id="edit-uid" value="' + esc(member.uid || '') + '">' +
                         '</div>' +
                     '</div>' +
-                    '<div class="input-group">' +
-                        '<label for="edit-power">Overall Power</label>' +
-                        '<div class="input-wrapper">' +
-                            '<i class="ph ph-sword"></i>' +
-                            '<input type="number" id="edit-power" value="' + esc(member.overall_power || '') + '" placeholder="e.g. 80000000">' +
+                    '<div style="display: flex; gap: 1rem;">' +
+                        '<div class="input-group" style="flex: 1;">' +
+                            '<label for="edit-power">Overall Power</label>' +
+                            '<div class="input-wrapper">' +
+                                '<i class="ph ph-sword"></i>' +
+                                '<input type="number" id="edit-power" value="' + esc(member.overall_power || '') + '" placeholder="e.g. 80000000">' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="input-group" style="flex: 1;">' +
+                            '<label for="edit-role">Role</label>' +
+                            '<div class="input-wrapper">' +
+                                '<i class="ph ph-crown"></i>' +
+                                '<select id="edit-role" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); font-family: var(--font-family-body); font-size: 0.88rem; width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.5rem;">' +
+                                    '<option value="R1"' + (member.role === 'R1' ? ' selected' : '') + '>R1</option>' +
+                                    '<option value="R2"' + (member.role === 'R2' ? ' selected' : '') + '>R2</option>' +
+                                    '<option value="R3"' + (member.role === 'R3' ? ' selected' : '') + '>R3</option>' +
+                                    '<option value="R4"' + (member.role === 'R4' ? ' selected' : '') + '>R4</option>' +
+                                    '<option value="R5"' + (member.role === 'R5' ? ' selected' : '') + '>R5</option>' +
+                                '</select>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                     historyHtml +
@@ -1504,7 +1599,8 @@
             var newPseudo = document.getElementById('edit-pseudo').value;
             var newUid    = document.getElementById('edit-uid').value;
             var newPower  = document.getElementById('edit-power').value;
-            var ok = await renameGuildMember(member.pseudo, newPseudo, newUid, newPower);
+            var newRole   = document.getElementById('edit-role').value;
+            var ok = await renameGuildMember(member.pseudo, newPseudo, newUid, newPower, newRole);
             if (ok) close();
         });
     }
