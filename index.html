@@ -119,6 +119,19 @@
                         </div>
                     </div>
 
+                    <div style="background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.75rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label for="portal-user-power" style="font-size: 0.8rem; color: var(--fg-dim); font-weight: 600; display: flex; align-items: center; gap: 0.35rem;">
+                            <i class="ph ph-sword text-accent"></i> Update My Power
+                        </label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="number" id="portal-user-power" class="gm-input" style="flex: 1; height: 36px; font-size: 0.875rem;" placeholder="e.g. 80000000" min="0">
+                            <button type="button" id="portal-update-power-btn" class="gm-btn gm-btn-primary gm-btn-sm" style="height: 36px; padding: 0 0.85rem; font-size: 0.85rem;">
+                                <i class="ph ph-floppy-disk"></i>
+                                <span>Save</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div id="portal-active-sessions-container" class="gm-col" style="gap: 1.25rem;">
                         <!-- Active events will be injected here -->
                     </div>
@@ -510,6 +523,11 @@
                                 <input type="text" id="member-uid" class="gm-input"
                                     data-i18n-placeholder="placeholder_uid"
                                     placeholder="Player UID" required>
+                            </div>
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 140px;">
+                                <i class="ph ph-sword gm-icon"></i>
+                                <input type="number" id="member-power" class="gm-input"
+                                    placeholder="Power (optional)" min="0">
                             </div>
                             <button type="submit" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-plus"></i>
@@ -945,6 +963,13 @@
                                 <div class="input-wrapper">
                                     <i class="ph ph-identification-badge"></i>
                                     <input type="text" id="member-uid-m" placeholder="e.g. 12345678" required>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="member-power-m">Power (optional)</label>
+                                <div class="input-wrapper">
+                                    <i class="ph ph-sword"></i>
+                                    <input type="number" id="member-power-m" placeholder="e.g. 80000000" min="0">
                                 </div>
                             </div>
                             <button type="submit" class="primary-btn">

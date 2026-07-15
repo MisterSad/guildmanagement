@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
     // 1. Look up player in guild_members
     const { data: member, error: mErr } = await admin
       .from("guild_members")
-      .select("pseudo, guild")
+      .select("pseudo, guild, overall_power")
       .eq("uid", uid)
       .maybeSingle();
 
@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
 
     // 3. For each active session, retrieve the player's participant entry
     if (!activeSessions || activeSessions.length === 0) {
-      return json({ ok: true, pseudo: member.pseudo, guild: member.guild, sessions: [] });
+      return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, sessions: [] });
     }
 
     const sessionIds = activeSessions.map(s => s.session_id);
@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-    return json({ ok: true, pseudo: member.pseudo, guild: member.guild, sessions });
+    return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, sessions });
   }
 
   if (action === "submit-scores") {
@@ -153,6 +153,25 @@ Deno.serve(async (req: Request) => {
       .eq("event_name", eventName)
       .eq("session_id", sessionId)
       .eq("pseudo", member.pseudo);
+
+    if (uErr) {
+      return json({ ok: false, error: "update_failed", message: uErr.message }, 500);
+    }
+
+    return json({ ok: true });
+  }
+
+  if (action === "update-power") {
+    const uid = (payload?.uid ?? "").toString().trim();
+    const power = parseInt(payload?.power) || 0;
+
+    if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
+
+    // Update the player's overall_power in guild_members
+    const { error: uErr } = await admin
+      .from("guild_members")
+      .update({ overall_power: power })
+      .eq("uid", uid);
 
     if (uErr) {
       return json({ ok: false, error: "update_failed", message: uErr.message }, 500);

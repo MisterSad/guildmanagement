@@ -957,11 +957,13 @@
         }
     }
 
-    async function handleAddMember(inputId, uidInputId) {
+    async function handleAddMember(inputId, uidInputId, powerInputId) {
         var input  = document.getElementById(inputId);
         var pseudo = input ? input.value.trim() : '';
         var uidInput = document.getElementById(uidInputId);
         var uidVal = uidInput ? uidInput.value.trim() : null;
+        var powerInput = powerInputId ? document.getElementById(powerInputId) : null;
+        var powerVal = powerInput && powerInput.value ? parseInt(powerInput.value, 10) : 0;
         if (!pseudo || !uidVal) return;
 
         var pseudoErr = window.RAD.validatePseudo(pseudo);
@@ -989,11 +991,12 @@
             console.error('Ban check failed', err);
         }
         try {
-            var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal }]);
+            var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal, overall_power: powerVal }]);
             if (res.error) throw res.error;
-            guildMembers.push({ pseudo: pseudo, uid: uidVal, created_at: new Date().toISOString() });
+            guildMembers.push({ pseudo: pseudo, uid: uidVal, overall_power: powerVal, created_at: new Date().toISOString() });
             if (input) input.value = '';
             if (uidInput) uidInput.value = '';
+            if (powerInput) powerInput.value = '';
             renderGuildMembers();
             showToast(pseudo + ' ' + t('toast_member_added'), 'success');
 
@@ -1015,8 +1018,8 @@
         }
     }
 
-    if (addMemberForm)  addMemberForm.addEventListener('submit', function (e)  { e.preventDefault(); handleAddMember('member-pseudo', 'member-uid'); });
-    if (addMemberFormM) addMemberFormM.addEventListener('submit', function (e) { e.preventDefault(); handleAddMember('member-pseudo-m', 'member-uid-m'); });
+    if (addMemberForm)  addMemberForm.addEventListener('submit', function (e)  { e.preventDefault(); handleAddMember('member-pseudo', 'member-uid', 'member-power'); });
+    if (addMemberFormM) addMemberFormM.addEventListener('submit', function (e) { e.preventDefault(); handleAddMember('member-pseudo-m', 'member-uid-m', 'member-power-m'); });
     if (addBannedForm) {
         addBannedForm.addEventListener('submit', function (e) { e.preventDefault(); handleAddBannedPlayer(); });
     }
@@ -1835,6 +1838,7 @@
     var portalUidInput   = document.getElementById('portal-uid');
     var portalLookupError = document.getElementById('portal-lookup-error');
     var portalLookupBtn  = document.getElementById('portal-lookup-btn');
+    var portalActiveUid  = null;
 
     document.getElementById('go-to-portal-btn').addEventListener('click', function () {
         loginView.classList.add('hidden');
@@ -1843,6 +1847,7 @@
         portalStepForm.classList.add('hidden');
         portalLookupError.classList.add('hidden');
         portalUidInput.value = '';
+        portalActiveUid = null;
     });
 
     document.querySelectorAll('.portal-back-btn').forEach(function (btn) {
@@ -1880,11 +1885,18 @@
             }
 
             // Successfully fetched data
+            portalActiveUid = uid;
             portalStepLookup.classList.add('hidden');
             portalStepForm.classList.remove('hidden');
 
             document.getElementById('portal-user-pseudo').textContent = data.pseudo;
             document.getElementById('portal-user-guild').textContent = data.guild;
+
+            // Pre-populate combat power
+            var powerInputEl = document.getElementById('portal-user-power');
+            if (powerInputEl) {
+                powerInputEl.value = data.overall_power || '';
+            }
             
             var initials = window.RAD.avatarInit(data.pseudo);
             var avatarEl = document.getElementById('portal-user-avatar');
@@ -1901,6 +1913,45 @@
             if (span) span.textContent = origText;
         }
     });
+
+    var portalUpdatePowerBtn = document.getElementById('portal-update-power-btn');
+    if (portalUpdatePowerBtn) {
+        portalUpdatePowerBtn.addEventListener('click', async function () {
+            var powerInputEl = document.getElementById('portal-user-power');
+            var powerVal = powerInputEl ? parseInt(powerInputEl.value, 10) : 0;
+            if (isNaN(powerVal) || powerVal < 0) {
+                showToast('Please enter a valid power number.', 'error');
+                return;
+            }
+            if (!portalActiveUid) return;
+
+            portalUpdatePowerBtn.disabled = true;
+            var origText = portalUpdatePowerBtn.innerHTML;
+            portalUpdatePowerBtn.innerHTML = '<i class="ph ph-circle-notch animate-spin"></i> Saving...';
+
+            try {
+                var { data, error } = await supabase.functions.invoke('member-portal', {
+                    body: { action: 'update-power', payload: { uid: portalActiveUid, power: powerVal } }
+                });
+                if (error || !data || !data.ok) {
+                    throw new Error(error ? error.message : 'Update failed');
+                }
+                showToast('Your combat power has been updated successfully!', 'success');
+                // Sync local guildMembers if loaded
+                var localMember = guildMembers.find(function (m) { return m.uid === portalActiveUid; });
+                if (localMember) {
+                    localMember.overall_power = powerVal;
+                    renderGuildMembers();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to update combat power: ' + err.message, 'error');
+            } finally {
+                portalUpdatePowerBtn.disabled = false;
+                portalUpdatePowerBtn.innerHTML = origText;
+            }
+        });
+    }
 
     function renderPortalActiveSessions(uid, sessions) {
         var container = document.getElementById('portal-active-sessions-container');
