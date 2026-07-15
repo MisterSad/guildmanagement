@@ -963,8 +963,11 @@
         var uidInput = document.getElementById(uidInputId);
         var uidVal = uidInput ? uidInput.value.trim() : null;
         var powerInput = powerInputId ? document.getElementById(powerInputId) : null;
-        var powerVal = powerInput && powerInput.value ? parseInt(powerInput.value, 10) : 0;
-        if (!pseudo || !uidVal) return;
+        var powerVal = powerInput && powerInput.value ? parseInt(powerInput.value, 10) : NaN;
+        if (!pseudo || !uidVal || isNaN(powerVal) || powerVal < 0) {
+            showToast('Please enter a valid power value.', 'error');
+            return;
+        }
 
         var pseudoErr = window.RAD.validatePseudo(pseudo);
         if (pseudoErr) { showToast(t(pseudoErr), 'error'); return; }
