@@ -689,9 +689,21 @@
                             var svsM = svsMaxesPerOpp[opp.id];
                             var ratioNew = 0;
                             if (nNew > 0) {
-                                var rPrep = svsM.prep > 0 ? plPrep / svsM.prep : 0;
-                                var rPvp  = svsM.pvp  > 0 ? plPvp  / svsM.pvp  : 0;
-                                ratioNew = (rPrep + rPvp) / 2;
+                                var sumR = 0;
+                                var countR = 0;
+                                var hasPrep = pRows.some(function (r) { return r.score_prep != null; });
+                                if (hasPrep) {
+                                    var rPrep = svsM.prep > 0 ? plPrep / svsM.prep : 0;
+                                    sumR += rPrep;
+                                    countR++;
+                                }
+                                var hasPvp = pRows.some(function (r) { return r.score_pvp != null; });
+                                if (hasPvp) {
+                                    var rPvp = svsM.pvp > 0 ? plPvp / svsM.pvp : 0;
+                                    sumR += rPvp;
+                                    countR++;
+                                }
+                                ratioNew = countR > 0 ? sumR / countR : 0;
                             }
                             var ratioLegacy = (nLegacy > 0 && svsM.legacy > 0) ? plLeg / svsM.legacy : 0;
                             var totalN = nNew + nLegacy;
