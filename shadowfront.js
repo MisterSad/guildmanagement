@@ -43,6 +43,29 @@
     window.RAD_SHADOWFRONT = { load: loadShadowfront };
 
     function squadLabel(squad) { return squad === 'squad1' ? t('sf_squad1') : t('sf_squad2'); }
+    function getMemberPower(pseudo) {
+        var m = sfState.membersData.find(function (x) { return x.pseudo === pseudo; });
+        return m ? (parseInt(m.overall_power) || 0) : 0;
+    }
+    function getParticipationBadgeHtml(pseudo) {
+        var h = sfState.history[pseudo] || { assigned: 0, participated: 0 };
+        var rateText = h.assigned > 0 ? Math.round((h.participated / h.assigned) * 100) + '%' : 'N/A';
+        var cat = categorise(pseudo);
+        var meta = categoryMeta(cat);
+        return '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; border-radius: 4px; font-weight: 600;">' + rateText + '</span>';
+    }
+    function sortSquadList(list) {
+        return list.slice().sort(function (a, b) {
+            var isCmdA = !!a.is_commander;
+            var isCmdB = !!b.is_commander;
+            if (isCmdA && !isCmdB) return -1;
+            if (!isCmdA && isCmdB) return 1;
+            
+            var powerA = getMemberPower(a.pseudo);
+            var powerB = getMemberPower(b.pseudo);
+            return powerB - powerA; // descending
+        });
+    }
     function activeSquadKeys() {
         return ['squad1', 'squad2'].filter(function (k) { return sfState.squads[k].active; });
     }
@@ -336,7 +359,13 @@
     async function unassign(pseudo) {
         if (!db) return;
         var a = sfState.assignments.find(function (x) { return x.pseudo === pseudo; });
-        if (!a) return;
+        if (!a) {
+            var hasSignup = sfState.signups.some(function (s) { return s.pseudo === pseudo; });
+            if (hasSignup) {
+                await saveAvailability(pseudo, 'none');
+            }
+            return;
+        }
         await db.from('shadowfront_squads').delete()
             .eq('session_id', a.session_id).eq('pseudo', pseudo);
         await loadShadowfront();
@@ -501,10 +530,46 @@
             }
 
             var assignedPseudos = sfState.assignments.map(function (a) { return a.pseudo; });
-            var unassigned = sfState.allMembers.filter(function (p) { return assignedPseudos.indexOf(p) === -1; });
 
-            var squadParticipants = sfState.assignments.filter(function (a) { return a.squad === sfActiveSquad && a.role === 'participant'; });
-            var squadReserves = sfState.assignments.filter(function (a) { return a.squad === sfActiveSquad && a.role === 'reserve'; });
+            // Provisional participants for the active squad
+            var provisionalActive = sfState.signups.filter(function (s) {
+                var matches = (s.availability === sfActiveSquad || s.availability === 'both');
+                if (!matches) return false;
+                return assignedPseudos.indexOf(s.pseudo) === -1;
+            }).map(function (s) {
+                return {
+                    pseudo: s.pseudo,
+                    squad: sfActiveSquad,
+                    role: 'participant',
+                    is_commander: false,
+                    isProvisional: true
+                };
+            });
+
+            // Confirmed assignments for the active squad
+            var confirmedParticipants = sfState.assignments.filter(function (a) {
+                return a.squad === sfActiveSquad && a.role === 'participant';
+            });
+            var confirmedReserves = sfState.assignments.filter(function (a) {
+                return a.squad === sfActiveSquad && a.role === 'reserve';
+            });
+
+            // Combine and sort participants and reserves
+            var squadParticipants = sortSquadList(confirmedParticipants.concat(provisionalActive));
+            var squadReserves = sortSquadList(confirmedReserves);
+
+            // Determine all provisionally assigned pseudos across both squads
+            var provisionalAllPseudos = sfState.signups.filter(function (s) {
+                var hasProvisionalAvailability = (s.availability === 'squad1' || s.availability === 'squad2' || s.availability === 'both');
+                if (!hasProvisionalAvailability) return false;
+                return assignedPseudos.indexOf(s.pseudo) === -1;
+            }).map(function (s) { return s.pseudo; });
+
+            var unassigned = sfState.allMembers.filter(function (p) {
+                var isManuallyAssigned = assignedPseudos.indexOf(p) !== -1;
+                var isProvisionallyAssigned = provisionalAllPseudos.indexOf(p) !== -1;
+                return !isManuallyAssigned && !isProvisionallyAssigned;
+            });
 
             var counts = { excellent: 0, good: 0, average: 0, poor: 0, none: 0 };
             unassigned.forEach(function (p) { counts[categorise(p)]++; });
@@ -537,7 +602,7 @@
                     '<button class="sf-filter-btn' + (sfFilter === 'none'     ? ' active' : '') + '" data-filter="none">⚫ ' + t('sf_filter_none').split(' /')[0] + ' <span>' + counts.none + '</span></button>' +
                 '</div>';
 
-            var sortedUnassigned = unassigned.slice().sort(function (a, b) { return a.localeCompare(b); });
+            var sortedUnassigned = unassigned.slice().sort(function (a, b) { return getMemberPower(b) - getMemberPower(a); });
             var filtered = sortedUnassigned.filter(function (p) {
                 return sfFilter === 'all' ? true : categorise(p) === sfFilter;
             });
@@ -607,7 +672,10 @@
                 '<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-clipboard-text"></i> Declare Availability (Current Week)</h3>' +
                 '<div style="max-height: 250px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem; padding: 0.25rem;">';
             
-            sfState.membersData.forEach(function (m) {
+            var sortedMembers = sfState.membersData.slice().sort(function (a, b) {
+                return (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
+            });
+            sortedMembers.forEach(function (m) {
                 var signup = sfState.signups.find(function (s) { return s.pseudo === m.pseudo; });
                 var avail = signup ? signup.availability : 'none';
                 
@@ -619,9 +687,11 @@
                     ? '<span class="gm-chip" style="font-size:0.7rem; padding:0.05rem 0.25rem; color:' + meta.color + '; border:1px solid ' + meta.color + '22; background: ' + meta.color + '05; display:inline-flex; align-items:center; gap:0.15rem;"><span style="font-size:0.75rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
                     : '';
 
+                var rateBadge = getParticipationBadgeHtml(m.pseudo);
+
                 html += '<div class="sf-prep-member-row" data-pseudo="' + esc(m.pseudo) + '" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.4rem 0.6rem; border-radius: var(--radius-md);">' +
                     '<div style="display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; margin-right: 0.5rem;">' +
-                        '<span style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(m.pseudo) + '</span>' +
+                        '<span style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.35rem;">' + rateBadge + esc(m.pseudo) + '</span>' +
                         '<div>' + powerBadge + '</div>' +
                     '</div>' +
                     '<div class="sf-prep-buttons" style="display: flex; gap: 0.15rem;">' +
@@ -708,7 +778,7 @@
         if (participants.length === 0) {
             html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
         } else {
-            participants.forEach(function (a) { html += renderAssignedRow(a.pseudo, true, a.is_commander); });
+            participants.forEach(function (a) { html += renderAssignedRow(a.pseudo, true, a.is_commander, a.isProvisional); });
         }
         html += '</div></div>';
 
@@ -723,14 +793,14 @@
         if (reserves.length === 0) {
             html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
         } else {
-            reserves.forEach(function (a) { html += renderAssignedRow(a.pseudo, false); });
+            reserves.forEach(function (a) { html += renderAssignedRow(a.pseudo, false, a.is_commander, a.isProvisional); });
         }
         html += '</div></div>';
 
         return html;
     }
 
-    function renderAssignedRow(pseudo, isParticipant, isCommander) {
+    function renderAssignedRow(pseudo, isParticipant, isCommander, isProvisional) {
         var cat  = categorise(pseudo);
         var meta = categoryMeta(cat);
         var h     = sfState.history[pseudo] || { assigned: 0, participated: 0, excused_count: 0 };
@@ -743,7 +813,7 @@
             : 'No previous matches';
 
         var cmdBtn = '';
-        if (isParticipant) {
+        if (isParticipant && !isProvisional) {
             var iconClass = isCommander ? 'ph-fill ph-star' : 'ph ph-star';
             var starColor = isCommander ? 'color: #eab308; cursor: pointer;' : 'color: var(--fg-dim); cursor: pointer;';
             cmdBtn = '<button class="sf-commander-btn" data-pseudo="' + esc(pseudo) + '" title="Toggle Commander" style="background: none; border: none; padding: 0.2rem; margin-right: 0.25rem;' + starColor + '">' +
@@ -751,12 +821,35 @@
             '</button>';
         }
 
-        return '<div class="sf-assigned-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem;">' +
+        var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
+        var powerVal = member ? parseInt(member.overall_power) || 0 : 0;
+        var pTier = window.RAD.getPowerTier(powerVal, sfState.maxPower);
+        var pMeta = window.RAD.getPowerTierMeta(pTier);
+        var formattedPower = powerVal > 0 ? window.RAD.formatPower(powerVal) : '';
+        var powerBadge = powerVal > 0
+            ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-right: 0.25rem;"><span style="font-size:0.75rem;">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
+            : '';
+
+        var confirmBtn = '';
+        var rowStyle = 'display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem; border-radius: 6px; background: rgba(0,0,0,0.15); border: 1px solid transparent; gap: 0.4rem; font-size: 0.85rem;';
+        if (isProvisional) {
+            rowStyle = 'display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem; border-radius: 6px; background: rgba(245,158,11,0.03); border: 1px dashed rgba(245,158,11,0.3); gap: 0.4rem; font-size: 0.85rem;';
+            confirmBtn = '<button class="sf-confirm-btn" data-pseudo="' + esc(pseudo) + '" data-squad="' + sfActiveSquad + '" title="Confirm Assignment" style="width: 22px; height: 22px; border-radius: 4px; border: none; background: rgba(16,185,129,0.15); color: var(--success); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: var(--transition); margin-right: 0.25rem;"><i class="ph ph-check-bold"></i></button>';
+        }
+
+        var removeTitle = isProvisional ? 'Remove Availability' : t('sf_remove');
+
+        return '<div class="sf-assigned-row" style="' + rowStyle + '">' +
             '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; margin-right: 0.25rem;">' + rateText + '</span>' +
-            '<span class="sf-pseudo" title="' + esc(tooltipText) + '" style="font-weight: 500; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(pseudo) + '</span>' +
+            '<span class="sf-pseudo" title="' + esc(tooltipText) + '" style="font-weight: 500; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.25rem;">' + 
+                esc(pseudo) + 
+                (isProvisional ? '<span style="font-size:0.65rem; color:var(--warning); font-style:italic; font-weight:normal;">(Provisoire)</span>' : '') +
+            '</span>' +
+            powerBadge +
             '<div style="display: flex; align-items: center; gap: 0.2rem;">' +
+                confirmBtn +
                 cmdBtn +
-                '<button class="sf-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove') + '"><i class="ph ph-x"></i></button>' +
+                '<button class="sf-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + removeTitle + '"><i class="ph ph-x"></i></button>' +
             '</div>' +
         '</div>';
     }
@@ -771,7 +864,10 @@
         if (list.length === 0) {
             html += '<div class="sf-empty" style="font-size:0.8rem; padding:1.5rem 0.5rem; text-align: center;">No players</div>';
         } else {
-            list.forEach(function (pseudo) {
+            var sortedList = list.slice().sort(function (a, b) {
+                return getMemberPower(b) - getMemberPower(a);
+            });
+            sortedList.forEach(function (pseudo) {
                 var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
                 var power = member ? parseInt(member.overall_power) || 0 : 0;
                 var tier = window.RAD.getPowerTier(power, sfState.maxPower);
@@ -795,10 +891,11 @@
                 }
 
                 var powerText = power > 0 ? window.RAD.formatPower(power) : '—';
+                var rateBadge = getParticipationBadgeHtml(pseudo);
                 
                 html += '<div style="background:var(--bg-dim); border:1px solid var(--border-soft); padding:0.5rem; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:0.2rem; align-items:flex-start;">' +
                     '<div style="width:100%; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">' +
-                        '<span style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; flex:1;" title="' + esc(pseudo) + '">' + esc(pseudo) + '</span>' +
+                        '<span style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; flex:1; display:flex; align-items:center; gap:0.3rem;" title="' + esc(pseudo) + '">' + rateBadge + esc(pseudo) + '</span>' +
                         '<span style="font-size:0.75rem; font-weight:700; color:' + meta.color + ';"><span style="font-size:0.8rem;">' + meta.icon + '</span> ' + powerText + '</span>' +
                     '</div>' +
                     assignedHtml +
@@ -1087,6 +1184,13 @@
         });
         area.querySelectorAll('.sf-commander-btn').forEach(function (btn) {
             btn.addEventListener('click', function () { toggleCommander(btn.getAttribute('data-pseudo')); });
+        });
+        area.querySelectorAll('.sf-confirm-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pseudo = btn.getAttribute('data-pseudo');
+                var squad = btn.getAttribute('data-squad');
+                assign(pseudo, squad, 'participant');
+            });
         });
 
         area.querySelectorAll('.sf-avail-btn').forEach(function (btn) {
