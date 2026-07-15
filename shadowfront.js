@@ -61,7 +61,7 @@
             var [statusRes, membersRes, histSquads, histParts, signupRes] = await Promise.all([
                 db.from('event_status').select('event_name, is_active, session_id, start_at')
                     .in('event_name', [SQUAD_EVENT.squad1, SQUAD_EVENT.squad2]),
-                db.from('guild_members').select('pseudo, uid, overall_power, strongest_fleet').order('pseudo', { ascending: true }),
+                db.from('guild_members').select('pseudo, uid, overall_power').order('pseudo', { ascending: true }),
                 db.from('shadowfront_squads').select('pseudo, session_id').limit(100000),
                 db.from('event_participants').select('pseudo, participated, session_id, excused, late, sub_present').eq('event_name', EVENT_NAME).limit(100000),
                 db.from('shadowfront_signups').select('*').eq('week_start', currentWeek)

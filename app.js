@@ -1206,11 +1206,10 @@
         }
     }
 
-    async function renameGuildMember(oldPseudo, newPseudo, newUid, newPower, newFleet) {
+    async function renameGuildMember(oldPseudo, newPseudo, newUid, newPower) {
         newPseudo = (newPseudo || '').trim();
         newUid    = (newUid || '').trim();
         var powerVal = parseInt(newPower) || 0;
-        var fleetVal = parseInt(newFleet) || 0;
 
         var pseudoErr = window.RAD.validatePseudo(newPseudo);
         if (pseudoErr) { showToast(t(pseudoErr), 'error'); return false; }
@@ -1219,14 +1218,12 @@
 
         var member = guildMembers.find(function (m) { return m.pseudo === oldPseudo; });
         var oldPower = member ? parseInt(member.overall_power) || 0 : 0;
-        var oldFleet = member ? parseInt(member.strongest_fleet) || 0 : 0;
 
         var pseudoChanged = newPseudo.toLowerCase() !== oldPseudo.toLowerCase();
         var uidChanged    = member && (member.uid || '') !== newUid;
         var powerChanged  = oldPower !== powerVal;
-        var fleetChanged  = oldFleet !== fleetVal;
 
-        if (!pseudoChanged && !uidChanged && !powerChanged && !fleetChanged) return true;
+        if (!pseudoChanged && !uidChanged && !powerChanged) return true;
 
         if (pseudoChanged && guildMembers.some(function (m) { return m.pseudo.toLowerCase() === newPseudo.toLowerCase(); })) {
             showToast(t('toast_duplicate_member'), 'error');
@@ -1266,7 +1263,6 @@
             if (pseudoChanged) update.pseudo = newPseudo;
             if (uidChanged)    update.uid = newUid || null;
             update.overall_power = powerVal;
-            update.strongest_fleet = fleetVal;
 
             var res = await supabase.from('guild_members').update(update).eq('pseudo', oldPseudo);
             if (res.error) throw res.error;
@@ -1350,17 +1346,12 @@
         var initial = window.RAD.avatarInit(m.pseudo);
 
         var powerVal = parseInt(m.overall_power) || 0;
-        var fleetVal = parseInt(m.strongest_fleet) || 0;
         var tier = window.RAD.getPowerTier(powerVal, maxPower);
         var meta = window.RAD.getPowerTierMeta(tier);
         var formattedPower = window.RAD.formatPower(powerVal);
-        var formattedFleet = window.RAD.formatPower(fleetVal);
 
         var tierBadge = powerVal > 0 
             ? '<span class="gm-chip ' + meta.cls + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '0a; display: inline-flex; align-items: center; gap: 0.25rem;" title="' + meta.label + ' Tier"><span style="font-size: 0.8rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
-            : '';
-        var fleetBadge = fleetVal > 0
-            ? '<span class="gm-chip" style="font-size:0.75rem; padding:0.15rem 0.4rem; color: #c084fc; border: 1px solid rgba(192,132,252,0.25); background: rgba(192,132,252,0.04); display: inline-flex; align-items: center; gap: 0.25rem;" title="Strongest Fleet"><span style="font-size: 0.8rem;">🚀</span> ' + formattedFleet + '</span>'
             : '';
 
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
@@ -1371,7 +1362,6 @@
                         '<div class="gm-row" style="gap:.5rem; margin-top:4px; flex-wrap: wrap;">' +
                             '<span class="gm-dim gm-mono" style="font-size:.78rem;">UID ' + esc(uidVal) + '</span>' +
                             tierBadge +
-                            fleetBadge +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -1438,20 +1428,11 @@
                             '<input type="text" id="edit-uid" value="' + esc(member.uid || '') + '">' +
                         '</div>' +
                     '</div>' +
-                    '<div style="display: flex; gap: 1rem;">' +
-                        '<div class="input-group" style="flex: 1;">' +
-                            '<label for="edit-power">Overall Power</label>' +
-                            '<div class="input-wrapper">' +
-                                '<i class="ph ph-sword"></i>' +
-                                '<input type="number" id="edit-power" value="' + esc(member.overall_power || '') + '" placeholder="e.g. 80000000">' +
-                            '</div>' +
-                        '</div>' +
-                        '<div class="input-group" style="flex: 1;">' +
-                            '<label for="edit-fleet">Strongest Fleet</label>' +
-                            '<div class="input-wrapper">' +
-                                '<i class="ph ph-rocket"></i>' +
-                                '<input type="number" id="edit-fleet" value="' + esc(member.strongest_fleet || '') + '" placeholder="e.g. 15000000">' +
-                            '</div>' +
+                    '<div class="input-group">' +
+                        '<label for="edit-power">Overall Power</label>' +
+                        '<div class="input-wrapper">' +
+                            '<i class="ph ph-sword"></i>' +
+                            '<input type="number" id="edit-power" value="' + esc(member.overall_power || '') + '" placeholder="e.g. 80000000">' +
                         '</div>' +
                     '</div>' +
                     historyHtml +
@@ -1491,8 +1472,7 @@
             var newPseudo = document.getElementById('edit-pseudo').value;
             var newUid    = document.getElementById('edit-uid').value;
             var newPower  = document.getElementById('edit-power').value;
-            var newFleet  = document.getElementById('edit-fleet').value;
-            var ok = await renameGuildMember(member.pseudo, newPseudo, newUid, newPower, newFleet);
+            var ok = await renameGuildMember(member.pseudo, newPseudo, newUid, newPower);
             if (ok) close();
         });
     }
