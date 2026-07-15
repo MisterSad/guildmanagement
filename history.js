@@ -168,7 +168,7 @@
         var meta = EVENT_META[eventName] || { label: eventName, icon: 'ph-circle', hasScore: false, border: 'var(--border-soft)' };
 
         var query = db.from('event_participants')
-            .select('pseudo, participated, score, score_prep, score_pvp, appointed')
+            .select('pseudo, participated, score, score_prep, score_pvp, appointed, excused, late, sub_present')
             .eq('event_name', eventName)
             .eq('week_start', weekStart)
             .limit(100000);
@@ -190,6 +190,25 @@
         renderSessionModal(eventName, sessionId, weekStart, rows, meta, isDualScore);
     }
 
+    async function updateParticipantField(eventName, sessionId, weekStart, pseudo, field, value) {
+        var query = db.from('event_participants')
+            .update({ [field]: value })
+            .eq('event_name', eventName)
+            .eq('week_start', weekStart)
+            .eq('pseudo', pseudo);
+        if (sessionId) {
+            query = query.eq('session_id', sessionId);
+        } else {
+            query = query.is('session_id', null);
+        }
+        var updateRes = await query;
+        if (updateRes.error) {
+            window.RAD.showToast('Error: ' + updateRes.error.message, 'error');
+        } else {
+            window.RAD.showToast('Updated successfully', 'success');
+        }
+    }
+
     function renderSessionModal(eventName, sessionId, weekStart, rows, meta, isDualScore) {
         var existing = document.getElementById('history-modal');
         if (existing) existing.remove();
@@ -208,32 +227,94 @@
         });
 
         var isDtr = (eventName === 'Defend Trade Route');
+        var isAdmin = localStorage.getItem('rad_role') === 'admin' || localStorage.getItem('rad_role') === 'member';
 
-        var headerCols =
-            '<th>' + t('col_member') + '</th>' +
-            '<th class="gm-center">' + t('col_participated') + '</th>' +
-            (isDtr ? '<th class="gm-center">Appointed</th>' : '') +
-            (isDualScore
-                ? '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>'
-                : (meta.hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : ''));
+        var headerCols = '<th>' + t('col_member') + '</th>';
+        if (isAdmin) {
+            headerCols += '<th class="gm-center">' + t('col_participated') + '</th>' +
+                '<th class="gm-center">Late</th>' +
+                '<th class="gm-center">Excused</th>';
+            if (eventName === 'Shadowfront') {
+                headerCols += '<th class="gm-center">Sub Present</th>';
+            }
+            if (isDtr) {
+                headerCols += '<th class="gm-center">Appointed</th>';
+            }
+            if (isDualScore) {
+                headerCols += '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>';
+            } else if (meta.hasScore) {
+                headerCols += '<th class="gm-right">' + t('col_score') + '</th>';
+            }
+        } else {
+            headerCols += '<th class="gm-center">' + t('col_participated') + '</th>';
+            if (eventName === 'Shadowfront') {
+                headerCols += '<th class="gm-center">Late</th>' +
+                    '<th class="gm-center">Excused</th>' +
+                    '<th class="gm-center">Sub Present</th>';
+            }
+            if (isDtr) {
+                headerCols += '<th class="gm-center">Appointed</th>';
+            }
+            if (isDualScore) {
+                headerCols += '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>';
+            } else if (meta.hasScore) {
+                headerCols += '<th class="gm-right">' + t('col_score') + '</th>';
+            }
+        }
 
         var rowsHtml = sorted.map(function (r) {
             var initial = window.RAD.avatarInit(r.pseudo);
-            var participatedCell = r.participated > 0
-                ? '<i class="ph-fill ph-check-circle text-success"></i>'
-                : '<i class="ph ph-x-circle gm-dim"></i>';
-            var appointedCell = isDtr
-                ? '<td class="gm-center">' + (r.appointed ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>'
-                : '';
-            var scoreCells = isDualScore
-                ? '<td class="gm-right">' + (r.score_prep != null ? fmt(r.score_prep) : '—') + '</td>' +
-                  '<td class="gm-right">' + (r.score_pvp  != null ? fmt(r.score_pvp)  : '—') + '</td>'
-                : (meta.hasScore
-                    ? '<td class="gm-right">' + (r.score != null ? fmt(r.score) : '—') + '</td>'
-                    : '');
+            
+            var participatedCell = '';
+            var lateCell = '';
+            var excusedCell = '';
+            var subPresentCell = '';
+            var appointedCell = '';
+            var scoreCells = '';
+
+            if (isAdmin) {
+                participatedCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' + esc(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                lateCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' + esc(r.pseudo) + '"' + (r.late ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                excusedCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' + esc(r.pseudo) + '"' + (r.excused ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                
+                if (eventName === 'Shadowfront') {
+                    subPresentCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' + esc(r.pseudo) + '"' + (r.sub_present ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                }
+                if (isDtr) {
+                    appointedCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="appointed" data-pseudo="' + esc(r.pseudo) + '"' + (r.appointed ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                }
+                
+                if (isDualScore) {
+                    scoreCells = '<td class="gm-right"><input type="number" class="hist-edit-num gm-input" style="width: 80px; text-align: right; padding: 0.2rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-normal);" data-field="score_prep" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score_prep != null ? r.score_prep : '') + '"></td>' +
+                        '<td class="gm-right"><input type="number" class="hist-edit-num gm-input" style="width: 80px; text-align: right; padding: 0.2rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-normal);" data-field="score_pvp" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score_pvp != null ? r.score_pvp : '') + '"></td>';
+                } else if (meta.hasScore) {
+                    scoreCells = '<td class="gm-right"><input type="number" class="hist-edit-num gm-input" style="width: 80px; text-align: right; padding: 0.2rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-normal);" data-field="score" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score != null ? r.score : '') + '"></td>';
+                }
+            } else {
+                participatedCell = '<td class="gm-center">' + (r.participated > 0 ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+                
+                if (eventName === 'Shadowfront') {
+                    lateCell = '<td class="gm-center">' + (r.late ? '<i class="ph-fill ph-check-circle text-warning"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+                    excusedCell = '<td class="gm-center">' + (r.excused ? '<i class="ph-fill ph-check-circle text-info"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+                    subPresentCell = '<td class="gm-center">' + (r.sub_present ? '<i class="ph-fill ph-check-circle text-accent"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+                }
+                
+                if (isDtr) {
+                    appointedCell = '<td class="gm-center">' + (r.appointed ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+                }
+                
+                if (isDualScore) {
+                    scoreCells = '<td class="gm-right">' + (r.score_prep != null ? fmt(r.score_prep) : '—') + '</td>' +
+                        '<td class="gm-right">' + (r.score_pvp  != null ? fmt(r.score_pvp)  : '—') + '</td>';
+                } else if (meta.hasScore) {
+                    scoreCells = '<td class="gm-right">' + (r.score != null ? fmt(r.score) : '—') + '</td>';
+                }
+            }
+
             return '<tr>' +
                 '<td><div class="gm-row" style="gap:.5rem;"><div class="gm-avatar">' + esc(initial) + '</div><strong>' + esc(r.pseudo) + '</strong></div></td>' +
-                '<td class="gm-center">' + participatedCell + '</td>' +
+                participatedCell +
+                (eventName === 'Shadowfront' ? lateCell + excusedCell + subPresentCell : (isAdmin ? lateCell + excusedCell : '')) +
                 appointedCell +
                 scoreCells +
                 '</tr>';
@@ -249,7 +330,7 @@
         overlay.id = 'history-modal';
         overlay.className = 'confirm-overlay';
         overlay.innerHTML =
-            '<div class="confirm-card glass-card" style="max-width: 760px; width: 95vw;">' +
+            '<div class="confirm-card glass-card" style="max-width: 860px; width: 95vw;">' +
                 '<div class="gm-row" style="justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">' +
                     '<div>' +
                         '<h3 style="margin:0;"><i class="ph-fill ' + meta.icon + '" style="color:' + meta.border + ';"></i> ' + esc(meta.label) + '</h3>' +
@@ -276,6 +357,28 @@
             '</div>';
         document.body.appendChild(overlay);
         requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        if (isAdmin) {
+            overlay.querySelectorAll('.hist-edit-check').forEach(function (cb) {
+                cb.addEventListener('change', async function () {
+                    var pseudo = cb.getAttribute('data-pseudo');
+                    var field = cb.getAttribute('data-field');
+                    var val = cb.checked;
+                    if (field === 'participated') {
+                        val = cb.checked ? 1 : 0;
+                    }
+                    await updateParticipantField(eventName, sessionId, weekStart, pseudo, field, val);
+                });
+            });
+            overlay.querySelectorAll('.hist-edit-num').forEach(function (input) {
+                input.addEventListener('change', async function () {
+                    var pseudo = input.getAttribute('data-pseudo');
+                    var field = input.getAttribute('data-field');
+                    var val = input.value === '' ? null : parseInt(input.value);
+                    await updateParticipantField(eventName, sessionId, weekStart, pseudo, field, val);
+                });
+            });
+        }
 
         function close() {
             overlay.classList.remove('visible');

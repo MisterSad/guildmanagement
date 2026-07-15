@@ -525,9 +525,19 @@
                                 <span data-i18n="card_member_list">Members List</span>
                                 <span class="gm-count" id="guild-member-count">0</span>
                             </div>
-                            <div class="gm-input-with-icon" style="min-width: 220px; max-width: 360px; flex: 1;">
-                                <i class="ph ph-magnifying-glass gm-icon"></i>
-                                <input type="text" id="member-search-admin" class="gm-input" data-i18n-placeholder="search_placeholder" placeholder="Search username, UID...">
+                            <div style="display: flex; gap: 0.5rem; min-width: 220px; max-width: 480px; flex: 1;">
+                                <div class="gm-input-with-icon" style="flex: 2;">
+                                    <i class="ph ph-magnifying-glass gm-icon"></i>
+                                    <input type="text" id="member-search-admin" class="gm-input" data-i18n-placeholder="search_placeholder" placeholder="Search username, UID...">
+                                </div>
+                                <select id="member-tier-filter-admin" class="gm-input" style="flex: 1; min-width: 120px; padding: 0.25rem 0.5rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-md); color: var(--text-normal);">
+                                    <option value="ALL">All Tiers</option>
+                                    <option value="S">👑 Tier S</option>
+                                    <option value="A">🔥 Tier A</option>
+                                    <option value="B">💎 Tier B</option>
+                                    <option value="C">⭐ Tier C</option>
+                                    <option value="D">🛡️ Tier D</option>
+                                </select>
                             </div>
                         </div>
                         <div id="guild-member-list">
@@ -954,11 +964,19 @@
                             </div>
                         </div>
 
-                        <div class="search-bar-row slide-up">
-                            <div class="input-wrapper search-wrapper full-width">
+                        <div class="search-bar-row slide-up" style="display: flex; gap: 0.5rem; align-items: center;">
+                            <div class="input-wrapper search-wrapper" style="flex: 2; margin: 0;">
                                 <i class="ph ph-magnifying-glass"></i>
                                 <input type="text" id="member-search-member" data-i18n-placeholder="search_placeholder" placeholder="Search...">
                             </div>
+                            <select id="member-tier-filter-member" style="flex: 1; max-width: 140px; padding: 0.65rem 0.5rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-md); color: var(--text-normal); font-family: var(--font-family-body); font-size: 0.88rem;">
+                                <option value="ALL">All Tiers</option>
+                                <option value="S">👑 Tier S</option>
+                                <option value="A">🔥 Tier A</option>
+                                <option value="B">💎 Tier B</option>
+                                <option value="C">⭐ Tier C</option>
+                                <option value="D">🛡️ Tier D</option>
+                            </select>
                         </div>
                         <div class="account-grid list-view" id="guild-member-list-m">
                             <div class="empty-state">

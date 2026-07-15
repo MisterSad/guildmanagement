@@ -26,14 +26,17 @@
             squad2: { active: false, sessionId: null, startAt: null }
         },
         allMembers:   [],
+        membersData:  [],
         assignments:  [],
         participants: [],
-        history:      {},   // pseudo → { assigned, participated }
-        uidMap:       {}
+        history:      {},   // pseudo → { assigned, participated, excused_count, late_count, sub_present_count }
+        uidMap:       {},
+        signups:      [],   // signups for roster prep
+        maxPower:     0
     };
 
     var sfFilter      = 'all';      // 'all' | 'excellent' | 'good' | 'average' | 'poor' | 'none'
-    var sfActiveTab   = 'squads';   // 'squads' | 'tracking'
+    var sfActiveTab   = 'squads';   // 'squads' | 'prep' | 'running' | 'tracking'
     var sfActiveSquad = 'squad1';   // 'squad1' | 'squad2'
 
     // ── Public API ─────────────────────────────────────────────────────────────
@@ -54,12 +57,14 @@
     async function loadShadowfront() {
         if (!db) return;
         try {
-            var [statusRes, membersRes, histSquads, histParts] = await Promise.all([
+            var currentWeek = window.RAD.getWeekStart();
+            var [statusRes, membersRes, histSquads, histParts, signupRes] = await Promise.all([
                 db.from('event_status').select('event_name, is_active, session_id, start_at')
                     .in('event_name', [SQUAD_EVENT.squad1, SQUAD_EVENT.squad2]),
-                db.from('guild_members').select('pseudo, uid').order('pseudo', { ascending: true }),
+                db.from('guild_members').select('pseudo, uid, overall_power, strongest_fleet').order('pseudo', { ascending: true }),
                 db.from('shadowfront_squads').select('pseudo, session_id').limit(100000),
-                db.from('event_participants').select('pseudo, participated, session_id').eq('event_name', EVENT_NAME).limit(100000)
+                db.from('event_participants').select('pseudo, participated, session_id, excused, late, sub_present').eq('event_name', EVENT_NAME).limit(100000),
+                db.from('shadowfront_signups').select('*').eq('week_start', currentWeek)
             ]);
 
             ['squad1', 'squad2'].forEach(function (k) {
@@ -71,23 +76,53 @@
                 };
             });
 
-            sfState.allMembers = (membersRes.data || []).map(function (m) { return m.pseudo; });
+            sfState.membersData = membersRes.data || [];
+            sfState.allMembers = sfState.membersData.map(function (m) { return m.pseudo; });
             sfState.uidMap = {};
-            (membersRes.data || []).forEach(function (m) { sfState.uidMap[m.pseudo] = m.uid; });
+            sfState.membersData.forEach(function (m) { sfState.uidMap[m.pseudo] = m.uid; });
+            sfState.signups = signupRes.data || [];
+
+            var powers = sfState.membersData.map(function (m) { return parseInt(m.overall_power) || 0; });
+            sfState.maxPower = powers.length ? Math.max.apply(null, powers) : 0;
 
             var sids = currentSessionIds();
 
-            // Histoire : exclure les sessions de l'occurrence courante
+            // Histoire : exclure les sessions de l'occurrence courante et calculer les détails
             var hist = {};
+            var partMap = {};
+            (histParts.data || []).forEach(function (r) {
+                partMap[r.pseudo + '|' + r.session_id] = {
+                    participated: r.participated || 0,
+                    excused: !!r.excused,
+                    sub_present: !!r.sub_present,
+                    late: !!r.late
+                };
+            });
+
             (histSquads.data || []).forEach(function (r) {
                 if (sids.indexOf(r.session_id) !== -1) return;
-                if (!hist[r.pseudo]) hist[r.pseudo] = { assigned: 0, participated: 0 };
-                hist[r.pseudo].assigned++;
-            });
-            (histParts.data || []).forEach(function (r) {
-                if (sids.indexOf(r.session_id) !== -1) return;
-                if (!hist[r.pseudo]) hist[r.pseudo] = { assigned: 0, participated: 0 };
-                if (r.participated > 0) hist[r.pseudo].participated += r.participated;
+                if (!hist[r.pseudo]) hist[r.pseudo] = { assigned: 0, participated: 0, excused_count: 0, late_count: 0, sub_present_count: 0 };
+                
+                var partInfo = partMap[r.pseudo + '|' + r.session_id];
+                if (partInfo) {
+                    if (partInfo.excused) {
+                        hist[r.pseudo].excused_count++;
+                    } else if (partInfo.sub_present) {
+                        hist[r.pseudo].assigned++;
+                        hist[r.pseudo].participated++; // Remplaçant présent = participation valide
+                        hist[r.pseudo].sub_present_count++;
+                    } else {
+                        hist[r.pseudo].assigned++;
+                        if (partInfo.participated > 0) {
+                            hist[r.pseudo].participated++;
+                        }
+                        if (partInfo.late) {
+                            hist[r.pseudo].late_count++;
+                        }
+                    }
+                } else {
+                    hist[r.pseudo].assigned++;
+                }
             });
             sfState.history = hist;
 
@@ -434,121 +469,222 @@
                 '</div>' +
             '</div>';
 
-        if (!isActive) {
-            html +=
-                '<div class="gm-empty" style="margin-top: 2rem;">' +
-                    '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
-                    '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
-                    '<div class="gm-empty-hint">' + t('sf_squad_inactive_hint') + '</div>' +
-                '</div>';
-            area.innerHTML = html;
-            attachSFListeners(area);
-            return;
-        }
-
-        var assignedPseudos = sfState.assignments.map(function (a) { return a.pseudo; });
-        var unassigned = sfState.allMembers.filter(function (p) { return assignedPseudos.indexOf(p) === -1; });
-
-        var squadParticipants = sfState.assignments.filter(function (a) { return a.squad === sfActiveSquad && a.role === 'participant'; });
-        var squadReserves = sfState.assignments.filter(function (a) { return a.squad === sfActiveSquad && a.role === 'reserve'; });
-
-        var counts = { excellent: 0, good: 0, average: 0, poor: 0, none: 0 };
-        unassigned.forEach(function (p) { counts[categorise(p)]++; });
-
+        // 3. Sub-tabs navigation (always available)
         html +=
-            '<div class="sf-sub-tabs">' +
+            '<div class="sf-sub-tabs" style="margin-bottom: 1.5rem;">' +
                 '<button class="sf-sub-tab' + (sfActiveTab === 'squads' ? ' active' : '') + '" data-tab="squads"><i class="ph ph-users"></i> ' + t('sf_tab_composition') + '</button>' +
+                '<button class="sf-sub-tab' + (sfActiveTab === 'prep' ? ' active' : '') + '" data-tab="prep"><i class="ph ph-clipboard-text"></i> Roster Prep</button>' +
+                '<button class="sf-sub-tab' + (sfActiveTab === 'running' ? ' active' : '') + '" data-tab="running"><i class="ph ph-list-numbers"></i> Running Tab</button>' +
                 '<button class="sf-sub-tab' + (sfActiveTab === 'tracking' ? ' active' : '') + '" data-tab="tracking"><i class="ph ph-chart-bar"></i> ' + t('sf_tab_tracking') + '</button>' +
-            '</div>' +
-            '<div class="input-wrapper" style="margin-bottom: 1.5rem;">' +
-                '<i class="ph ph-magnifying-glass"></i>' +
-                '<input type="text" class="sf-search-input" placeholder="' + t('search_placeholder') + '">' +
             '</div>';
 
-        // ── Panel: Squads ──────────────────────────────────────────────────
-        html += '<div class="sf-sub-panel' + (sfActiveTab === 'squads' ? ' active' : '') + '">';
-        html += '<div class="sf-layout">';
+        if (sfActiveTab !== 'running') {
+            html +=
+                '<div class="input-wrapper" style="margin-bottom: 1.5rem;">' +
+                    '<i class="ph ph-magnifying-glass"></i>' +
+                    '<input type="text" class="sf-search-input" placeholder="' + t('search_placeholder') + '">' +
+                '</div>';
+        }
 
-        // Column 1: Unassigned
-        html +=
-            '<div class="sf-column sf-unassigned">' +
-            '<div class="sf-col-header"><i class="ph-fill ph-users-three"></i> ' + t('sf_unassigned') +
-                ' <span class="count-badge">' + unassigned.length + '</span></div>';
-
-        html +=
-            '<div class="sf-history-summary" style="display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; padding: 0.5rem 0.25rem;">' +
-                '<span class="sf-cat-badge sf-rate-badge excellent">🟢 ' + counts.excellent + '</span>' +
-                '<span class="sf-cat-badge sf-rate-badge good">🔵 ' + counts.good + '</span>' +
-                '<span class="sf-cat-badge sf-rate-badge average">🟡 ' + counts.average + '</span>' +
-                '<span class="sf-cat-badge sf-rate-badge poor">🔴 ' + counts.poor + '</span>' +
-                '<span class="sf-cat-badge sf-rate-badge none">⚫ ' + counts.none + '</span>' +
-            '</div>';
-
-        html +=
-            '<div class="sf-filter-tabs" style="padding: 0.5rem; justify-content: center; gap: 0.2rem;">' +
-                '<button class="sf-filter-btn' + (sfFilter === 'all'      ? ' active' : '') + '" data-filter="all">' + t('sf_filter_all') + '</button>' +
-                '<button class="sf-filter-btn' + (sfFilter === 'excellent'? ' active' : '') + '" data-filter="excellent">🟢 ' + t('sf_filter_excellent').split(' (')[0] + ' <span>' + counts.excellent + '</span></button>' +
-                '<button class="sf-filter-btn' + (sfFilter === 'good'     ? ' active' : '') + '" data-filter="good">🔵 ' + t('sf_filter_good').split(' (')[0] + ' <span>' + counts.good + '</span></button>' +
-                '<button class="sf-filter-btn' + (sfFilter === 'average'  ? ' active' : '') + '" data-filter="average">🟡 ' + t('sf_filter_average').split(' (')[0] + ' <span>' + counts.average + '</span></button>' +
-                '<button class="sf-filter-btn' + (sfFilter === 'poor'     ? ' active' : '') + '" data-filter="poor">🔴 ' + t('sf_filter_poor').split(' (')[0] + ' <span>' + counts.poor + '</span></button>' +
-                '<button class="sf-filter-btn' + (sfFilter === 'none'     ? ' active' : '') + '" data-filter="none">⚫ ' + t('sf_filter_none').split(' /')[0] + ' <span>' + counts.none + '</span></button>' +
-            '</div>';
-
-        var sortedUnassigned = unassigned.slice().sort(function (a, b) { return a.localeCompare(b); });
-        var filtered = sortedUnassigned.filter(function (p) {
-            return sfFilter === 'all' ? true : categorise(p) === sfFilter;
-        });
-
-        html += '<div class="sf-col-body" style="max-height: 480px; overflow-y: auto;">';
-        if (filtered.length === 0) {
-            html += '<div class="sf-empty">' + (unassigned.length === 0 ? t('sf_all_assigned') : t('sf_no_match_filter')) + '</div>';
-        } else {
-            filtered.forEach(function (pseudo) {
-                var cat   = categorise(pseudo);
-                var meta  = categoryMeta(cat);
-                var h     = sfState.history[pseudo] || { assigned: 0, participated: 0 };
-                var rateText = h.assigned > 0
-                    ? Math.round((h.participated / h.assigned) * 100) + '%'
-                    : 'N/A';
-                var stats = h.assigned > 0
-                    ? '<span class="sf-hist-stat">' + h.participated + '/' + h.assigned + '</span>'
-                    : '<span class="sf-hist-stat">—</span>';
-
-                var btns =
-                    '<div class="sf-squad-btns">' +
-                        '<button class="sf-btn sf-btn-p" data-pseudo="' + esc(pseudo) + '" data-squad="' + sfActiveSquad + '" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
-                        '<button class="sf-btn sf-btn-r" data-pseudo="' + esc(pseudo) + '" data-squad="' + sfActiveSquad + '" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
-                    '</div>';
-
+        // ── Panel: Composition (Squads) ───────────────────────────────────────
+        if (sfActiveTab === 'squads') {
+            if (!isActive) {
                 html +=
-                    '<div class="sf-member-row sf-member-' + cat + '" style="border-left: 3px solid ' + (cat === 'excellent' ? 'var(--success)' : cat === 'good' ? '#60a5fa' : cat === 'average' ? '#fb923c' : cat === 'poor' ? 'var(--error)' : 'var(--text-muted)') + ';">' +
-                        '<div class="sf-member-info" style="display: flex; align-items: center; gap: 0.4rem; min-width: 0; overflow: hidden; flex: 1;">' +
-                            '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">' + rateText + '</span>' +
-                            '<span class="sf-pseudo" style="margin-left: 0.2rem; font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="' + esc(pseudo) + '">' + esc(pseudo) + '</span>' +
-                            stats +
-                        '</div>' +
-                        '<div class="sf-actions">' + btns + '</div>' +
+                    '<div class="gm-empty" style="margin-top: 2rem;">' +
+                        '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
+                        '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
+                        '<div class="gm-empty-hint">' + t('sf_squad_inactive_hint') + '</div>' +
                     '</div>';
+                area.innerHTML = html;
+                attachSFListeners(area);
+                return;
+            }
+
+            var assignedPseudos = sfState.assignments.map(function (a) { return a.pseudo; });
+            var unassigned = sfState.allMembers.filter(function (p) { return assignedPseudos.indexOf(p) === -1; });
+
+            var squadParticipants = sfState.assignments.filter(function (a) { return a.squad === sfActiveSquad && a.role === 'participant'; });
+            var squadReserves = sfState.assignments.filter(function (a) { return a.squad === sfActiveSquad && a.role === 'reserve'; });
+
+            var counts = { excellent: 0, good: 0, average: 0, poor: 0, none: 0 };
+            unassigned.forEach(function (p) { counts[categorise(p)]++; });
+
+            html += '<div class="sf-sub-panel active">';
+            html += '<div class="sf-layout">';
+
+            // Column 1: Unassigned
+            html +=
+                '<div class="sf-column sf-unassigned">' +
+                '<div class="sf-col-header"><i class="ph-fill ph-users-three"></i> ' + t('sf_unassigned') +
+                    ' <span class="count-badge">' + unassigned.length + '</span></div>';
+
+            html +=
+                '<div class="sf-history-summary" style="display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; padding: 0.5rem 0.25rem;">' +
+                    '<span class="sf-cat-badge sf-rate-badge excellent">🟢 ' + counts.excellent + '</span>' +
+                    '<span class="sf-cat-badge sf-rate-badge good">🔵 ' + counts.good + '</span>' +
+                    '<span class="sf-cat-badge sf-rate-badge average">🟡 ' + counts.average + '</span>' +
+                    '<span class="sf-cat-badge sf-rate-badge poor">🔴 ' + counts.poor + '</span>' +
+                    '<span class="sf-cat-badge sf-rate-badge none">⚫ ' + counts.none + '</span>' +
+                '</div>';
+
+            html +=
+                '<div class="sf-filter-tabs" style="padding: 0.5rem; justify-content: center; gap: 0.2rem;">' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'all'      ? ' active' : '') + '" data-filter="all">' + t('sf_filter_all') + '</button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'excellent'? ' active' : '') + '" data-filter="excellent">🟢 ' + t('sf_filter_excellent').split(' (')[0] + ' <span>' + counts.excellent + '</span></button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'good'     ? ' active' : '') + '" data-filter="good">🔵 ' + t('sf_filter_good').split(' (')[0] + ' <span>' + counts.good + '</span></button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'average'  ? ' active' : '') + '" data-filter="average">🟡 ' + t('sf_filter_average').split(' (')[0] + ' <span>' + counts.average + '</span></button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'poor'     ? ' active' : '') + '" data-filter="poor">🔴 ' + t('sf_filter_poor').split(' (')[0] + ' <span>' + counts.poor + '</span></button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'none'     ? ' active' : '') + '" data-filter="none">⚫ ' + t('sf_filter_none').split(' /')[0] + ' <span>' + counts.none + '</span></button>' +
+                '</div>';
+
+            var sortedUnassigned = unassigned.slice().sort(function (a, b) { return a.localeCompare(b); });
+            var filtered = sortedUnassigned.filter(function (p) {
+                return sfFilter === 'all' ? true : categorise(p) === sfFilter;
             });
+
+            html += '<div class="sf-col-body" style="max-height: 480px; overflow-y: auto;">';
+            if (filtered.length === 0) {
+                html += '<div class="sf-empty">' + (unassigned.length === 0 ? t('sf_all_assigned') : t('sf_no_match_filter')) + '</div>';
+            } else {
+                filtered.forEach(function (pseudo) {
+                    var cat   = categorise(pseudo);
+                    var meta  = categoryMeta(cat);
+                    var h     = sfState.history[pseudo] || { assigned: 0, participated: 0, excused_count: 0 };
+                    var missed = h.assigned - h.participated;
+                    var rateText = h.assigned > 0
+                        ? Math.round((h.participated / h.assigned) * 100) + '%'
+                        : 'N/A';
+                    var stats = h.assigned > 0
+                        ? '<span class="sf-hist-stat">' + h.participated + '/' + h.assigned + '</span>'
+                        : '<span class="sf-hist-stat">—</span>';
+                    var tooltipText = h.assigned > 0
+                        ? h.participated + ' Play / ' + missed + ' Miss / ' + h.excused_count + ' Exc'
+                        : 'No history';
+
+                    var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
+                    var powerVal = member ? parseInt(member.overall_power) || 0 : 0;
+                    var pTier = window.RAD.getPowerTier(powerVal, sfState.maxPower);
+                    var pMeta = window.RAD.getPowerTierMeta(pTier);
+                    var formattedPower = powerVal > 0 ? window.RAD.formatPower(powerVal) : '';
+
+                    var powerBadge = powerVal > 0
+                        ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-left:0.25rem;"><span style="font-size:0.75rem;">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
+                        : '';
+
+                    var btns =
+                        '<div class="sf-squad-btns">' +
+                            '<button class="sf-btn sf-btn-p" data-pseudo="' + esc(pseudo) + '" data-squad="' + sfActiveSquad + '" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
+                            '<button class="sf-btn sf-btn-r" data-pseudo="' + esc(pseudo) + '" data-squad="' + sfActiveSquad + '" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
+                        '</div>';
+
+                    html +=
+                        '<div class="sf-member-row sf-member-' + cat + '" style="border-left: 3px solid ' + (cat === 'excellent' ? 'var(--success)' : cat === 'good' ? '#60a5fa' : cat === 'average' ? '#fb923c' : cat === 'poor' ? 'var(--error)' : 'var(--text-muted)') + ';">' +
+                            '<div class="sf-member-info" style="display: flex; align-items: center; gap: 0.4rem; min-width: 0; overflow: hidden; flex: 1;">' +
+                                '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">' + rateText + '</span>' +
+                                '<span class="sf-pseudo" title="' + esc(tooltipText) + '" style="margin-left: 0.2rem; font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(pseudo) + '</span>' +
+                                powerBadge +
+                                stats +
+                            '</div>' +
+                            '<div class="sf-actions">' + btns + '</div>' +
+                        '</div>';
+                });
+            }
+            html += '</div></div>'; // Column 1: Unassigned
+
+            // Columns 2 & 3: Participants & Reserves
+            html += renderSquadColumn(sfActiveSquad, squadParticipants, squadReserves);
+            html += '</div>'; // sf-layout
+            html += '</div>'; // active sub panel
         }
-        html += '</div></div>'; // Column 1: Unassigned
 
-        // Columns 2 & 3: Participants & Reserves
-        html += renderSquadColumn(sfActiveSquad, squadParticipants, squadReserves);
-        html += '</div>'; // sf-layout
-        html += '</div>'; // sf-sub-panel (squads)
+        // ── Panel: Roster Prep ─────────────────────────────────────────────────
+        else if (sfActiveTab === 'prep') {
+            html += '<div class="sf-sub-panel active">';
+            html += '<div class="sf-prep-panel" style="display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1rem;">';
+            
+            // Part 1: Availability registration (bulk select)
+            html += '<div class="glass-card" style="padding: 1.25rem; border:1px solid var(--card-border); border-radius:var(--radius-lg);">' +
+                '<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-clipboard-text"></i> Declare Availability (Current Week)</h3>' +
+                '<div style="max-height: 250px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem; padding: 0.25rem;">';
+            
+            sfState.membersData.forEach(function (m) {
+                var signup = sfState.signups.find(function (s) { return s.pseudo === m.pseudo; });
+                var avail = signup ? signup.availability : 'none';
+                
+                var tier = window.RAD.getPowerTier(m.overall_power, sfState.maxPower);
+                var meta = window.RAD.getPowerTierMeta(tier);
+                var formattedPower = window.RAD.formatPower(m.overall_power);
+                
+                var powerBadge = m.overall_power > 0 
+                    ? '<span class="gm-chip" style="font-size:0.7rem; padding:0.05rem 0.25rem; color:' + meta.color + '; border:1px solid ' + meta.color + '22; background: ' + meta.color + '05; display:inline-flex; align-items:center; gap:0.15rem;"><span style="font-size:0.75rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
+                    : '';
 
-        // ── Panel: Tracking ────────────────────────────────────────────────
-        html += '<div class="sf-sub-panel' + (sfActiveTab === 'tracking' ? ' active' : '') + '">';
-        var activeSessionId = sq.sessionId;
-        var squadTrackingParticipants = sfState.participants.filter(function (p) { return p.session_id === activeSessionId; });
+                html += '<div class="sf-prep-member-row" data-pseudo="' + esc(m.pseudo) + '" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.4rem 0.6rem; border-radius: var(--radius-md);">' +
+                    '<div style="display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; margin-right: 0.5rem;">' +
+                        '<span style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(m.pseudo) + '</span>' +
+                        '<div>' + powerBadge + '</div>' +
+                    '</div>' +
+                    '<div class="sf-prep-buttons" style="display: flex; gap: 0.15rem;">' +
+                        '<button class="gm-chip sf-avail-btn' + (avail === 'squad1' ? ' active gm-chip-accent' : '') + '" data-pseudo="' + esc(m.pseudo) + '" data-avail="squad1" style="font-size:0.72rem; padding:0.15rem 0.35rem; cursor:pointer;">S1</button>' +
+                        '<button class="gm-chip sf-avail-btn' + (avail === 'squad2' ? ' active gm-chip-accent' : '') + '" data-pseudo="' + esc(m.pseudo) + '" data-avail="squad2" style="font-size:0.72rem; padding:0.15rem 0.35rem; cursor:pointer;">S2</button>' +
+                        '<button class="gm-chip sf-avail-btn' + (avail === 'both' ? ' active gm-chip-accent' : '') + '" data-pseudo="' + esc(m.pseudo) + '" data-avail="both" style="font-size:0.72rem; padding:0.15rem 0.35rem; cursor:pointer;">Both</button>' +
+                        '<button class="gm-chip sf-avail-btn' + (avail === 'none' ? ' active' : '') + '" data-pseudo="' + esc(m.pseudo) + '" data-avail="none" style="font-size:0.72rem; padding:0.15rem 0.35rem; cursor:pointer; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border-soft);"><i class="ph ph-trash" style="font-size:0.7rem;"></i></button>' +
+                    '</div>' +
+                '</div>';
+            });
+            
+            html += '</div></div>';
 
-        if (squadTrackingParticipants.length > 0) {
-            html += renderTrackingTable(squadTrackingParticipants);
-        } else {
-            html += '<div class="empty-state">' + t('sf_no_one') + '</div>';
+            // Part 2: Availability groups Columns
+            var availS1 = sfState.signups.filter(function (s) { return s.availability === 'squad1'; }).map(function (s) { return s.pseudo; });
+            var availS2 = sfState.signups.filter(function (s) { return s.availability === 'squad2'; }).map(function (s) { return s.pseudo; });
+            var availBoth = sfState.signups.filter(function (s) { return s.availability === 'both'; }).map(function (s) { return s.pseudo; });
+            var availNone = sfState.allMembers.filter(function (pseudo) {
+                return !sfState.signups.some(function (s) { return s.pseudo === pseudo && s.availability !== 'none'; });
+            });
+
+            html += '<div style="display: flex; gap: 1rem; flex-wrap: wrap;">';
+            html += renderPrepColumn('Squad 1 Only', availS1, 'squad1');
+            html += renderPrepColumn('Squad 2 Only', availS2, 'squad2');
+            html += renderPrepColumn('Available Both', availBoth, 'both');
+            html += renderPrepColumn('Not Registered', availNone, 'none');
+            html += '</div>';
+
+            html += '</div></div>';
         }
-        html += '</div>';
+
+        // ── Panel: Running Tab ─────────────────────────────────────────────────
+        else if (sfActiveTab === 'running') {
+            html += '<div class="sf-sub-panel active">';
+            html += renderRunningTab();
+            html += '</div>';
+        }
+
+        // ── Panel: Tracking ────────────────────────────────────────────────────
+        else if (sfActiveTab === 'tracking') {
+            if (!isActive) {
+                html +=
+                    '<div class="gm-empty" style="margin-top: 2rem;">' +
+                        '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
+                        '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
+                        '<div class="gm-empty-hint">' + t('sf_squad_inactive_hint') + '</div>' +
+                    '</div>';
+                area.innerHTML = html;
+                attachSFListeners(area);
+                return;
+            }
+
+            html += '<div class="sf-sub-panel active">';
+            var activeSessionId = sq.sessionId;
+            var squadTrackingParticipants = sfState.participants.filter(function (p) { return p.session_id === activeSessionId; });
+
+            if (squadTrackingParticipants.length > 0) {
+                html += renderTrackingTable(squadTrackingParticipants);
+            } else {
+                html += '<div class="empty-state">' + t('sf_no_one') + '</div>';
+            }
+            html += '</div>';
+        }
 
         area.innerHTML = html;
         attachSFListeners(area);
@@ -597,10 +733,14 @@
     function renderAssignedRow(pseudo, isParticipant, isCommander) {
         var cat  = categorise(pseudo);
         var meta = categoryMeta(cat);
-        var h     = sfState.history[pseudo] || { assigned: 0, participated: 0 };
+        var h     = sfState.history[pseudo] || { assigned: 0, participated: 0, excused_count: 0 };
+        var missed = h.assigned - h.participated;
         var rateText = h.assigned > 0
             ? Math.round((h.participated / h.assigned) * 100) + '%'
             : 'N/A';
+        var tooltipText = h.assigned > 0
+            ? h.participated + ' Played / ' + missed + ' Missed / ' + h.excused_count + ' Excused'
+            : 'No previous matches';
 
         var cmdBtn = '';
         if (isParticipant) {
@@ -613,12 +753,157 @@
 
         return '<div class="sf-assigned-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem;">' +
             '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; margin-right: 0.25rem;">' + rateText + '</span>' +
-            '<span class="sf-pseudo" style="font-weight: 500; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(pseudo) + '</span>' +
+            '<span class="sf-pseudo" title="' + esc(tooltipText) + '" style="font-weight: 500; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(pseudo) + '</span>' +
             '<div style="display: flex; align-items: center; gap: 0.2rem;">' +
                 cmdBtn +
                 '<button class="sf-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove') + '"><i class="ph ph-x"></i></button>' +
             '</div>' +
         '</div>';
+    }
+
+    function renderPrepColumn(title, list, key) {
+        var headerColor = key === 'squad1' ? 'border-top: 3px solid #6366f1;' : key === 'squad2' ? 'border-top: 3px solid #8b5cf6;' : key === 'both' ? 'border-top: 3px solid #ec4899;' : 'border-top: 3px solid var(--border-soft);';
+        
+        var html = '<div class="sf-column" style="flex: 1; min-width: 240px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--radius-lg); padding: 0.75rem;' + headerColor + '">' +
+            '<div class="sf-col-header" style="font-weight:700; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center; font-size: 0.95rem;">' + esc(title) + ' <span class="count-badge">' + list.length + '</span></div>' +
+            '<div style="max-height: 400px; overflow-y:auto; display:flex; flex-direction:column; gap:0.4rem;">';
+        
+        if (list.length === 0) {
+            html += '<div class="sf-empty" style="font-size:0.8rem; padding:1.5rem 0.5rem; text-align: center;">No players</div>';
+        } else {
+            list.forEach(function (pseudo) {
+                var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
+                var power = member ? parseInt(member.overall_power) || 0 : 0;
+                var tier = window.RAD.getPowerTier(power, sfState.maxPower);
+                var meta = window.RAD.getPowerTierMeta(tier);
+                
+                var assignment = sfState.assignments.find(function (a) { return a.pseudo === pseudo; });
+                var assignedHtml = '';
+                var actionsHtml = '';
+                
+                if (assignment) {
+                    var squadName = assignment.squad === 'squad1' ? 'S1' : 'S2';
+                    var roleName = assignment.role === 'participant' ? 'P' : 'R';
+                    assignedHtml = '<span class="gm-chip" style="font-size:0.65rem; padding:0.15rem 0.35rem; background:rgba(16,185,129,0.1); color:var(--success); border:1px solid rgba(16,185,129,0.2); font-weight:700; border-radius: 4px;">Assigned (' + squadName + ' ' + roleName + ')</span>';
+                } else {
+                    actionsHtml = '<div style="display:flex; gap:0.2rem; margin-top:0.35rem; width: 100%; flex-wrap: wrap;">' +
+                        '<button class="gm-btn gm-btn-xs sf-quick-assign-btn" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="participant" title="Squad 1 Participant" style="font-size:0.68rem; padding:2px 4px; flex: 1; min-width: 45px;">+S1 P</button>' +
+                        '<button class="gm-btn gm-btn-xs sf-quick-assign-btn" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="reserve" title="Squad 1 Reserve" style="font-size:0.68rem; padding:2px 4px; flex: 1; min-width: 45px;">+S1 R</button>' +
+                        '<button class="gm-btn gm-btn-xs sf-quick-assign-btn" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="participant" title="Squad 2 Participant" style="font-size:0.68rem; padding:2px 4px; flex: 1; min-width: 45px;">+S2 P</button>' +
+                        '<button class="gm-btn gm-btn-xs sf-quick-assign-btn" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="reserve" title="Squad 2 Reserve" style="font-size:0.68rem; padding:2px 4px; flex: 1; min-width: 45px;">+S2 R</button>' +
+                        '</div>';
+                }
+
+                var powerText = power > 0 ? window.RAD.formatPower(power) : '—';
+                
+                html += '<div style="background:var(--bg-dim); border:1px solid var(--border-soft); padding:0.5rem; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:0.2rem; align-items:flex-start;">' +
+                    '<div style="width:100%; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">' +
+                        '<span style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; flex:1;" title="' + esc(pseudo) + '">' + esc(pseudo) + '</span>' +
+                        '<span style="font-size:0.75rem; font-weight:700; color:' + meta.color + ';"><span style="font-size:0.8rem;">' + meta.icon + '</span> ' + powerText + '</span>' +
+                    '</div>' +
+                    assignedHtml +
+                    actionsHtml +
+                    '</div>';
+            });
+        }
+        html += '</div></div>';
+        return html;
+    }
+
+    function renderRunningTab() {
+        var uniqueSessions = Array.from(new Set(
+            (sfState.participants || []).map(function (p) { return p.session_id; })
+                .concat(Object.keys(sfState.history).length ? [] : [])
+        )).concat(
+            Array.from(new Set(
+                (sfState.historicalParts || []).map(function (p) { return p.session_id; })
+            ))
+        );
+
+        uniqueSessions = Array.from(new Set(uniqueSessions)).filter(Boolean)
+            .sort(function (a, b) { return new Date(b).getTime() - new Date(a).getTime(); });
+        
+        var runningSessions = uniqueSessions.slice(0, 8); // Last 8 matches
+
+        var html = '<div class="sf-running-tab-panel" style="margin-top: 1rem; width:100%;">';
+        html += '<div style="font-weight:700; font-size:1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-list-numbers"></i> Running Tab (Last ' + runningSessions.length + ' Matches)</div>';
+
+        if (runningSessions.length === 0) {
+            html += '<div class="gm-empty"><i class="ph-duotone ph-clock gm-icon"></i><div class="gm-empty-title">No Shadowfront matches found in history</div></div>';
+            html += '</div>';
+            return html;
+        }
+
+        html += '<div class="participants-table-wrap" style="overflow-x: auto;"><table class="participants-table" style="width:100%; border-collapse: collapse;"><thead><tr>' +
+            '<th style="text-align: left; padding: 0.75rem;">' + t('col_member') + '</th>' +
+            '<th style="text-align: left; padding: 0.75rem;">Power Tier</th>';
+
+        runningSessions.forEach(function (sid) {
+            var dateStr = new Date(sid).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+            html += '<th style="text-align: center; padding: 0.75rem; white-space: nowrap; font-size:0.8rem;">' + dateStr + '</th>';
+        });
+
+        html += '<th style="text-align: center; padding: 0.75rem;">Stats (P/M/E)</th>';
+        html += '</tr></thead><tbody>';
+
+        var sortedMembers = sfState.membersData.slice().sort(function (a, b) {
+            return (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
+        });
+
+        sortedMembers.forEach(function (m) {
+            var tier = window.RAD.getPowerTier(m.overall_power, sfState.maxPower);
+            var meta = window.RAD.getPowerTierMeta(tier);
+            var formattedPower = window.RAD.formatPower(m.overall_power);
+            
+            var tierBadge = m.overall_power > 0 
+                ? '<span class="gm-chip" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:' + meta.color + '; border:1px solid ' + meta.color + '22; background: ' + meta.color + '05; display:inline-flex; align-items:center; gap:0.2rem;"><span style="font-size:0.75rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
+                : '—';
+
+            var played = 0;
+            var missed = 0;
+            var excused = 0;
+            var cellsHtml = '';
+
+            runningSessions.forEach(function (sid) {
+                var wasAssigned = (sfState.historicalSquads || []).some(function (s) { return s.pseudo === m.pseudo && s.session_id === sid; }) ||
+                    sfState.assignments.some(function (s) { return s.pseudo === m.pseudo && s.session_id === sid; });
+                var partRow = (sfState.historicalParts || []).find(function (p) { return p.pseudo === m.pseudo && p.session_id === sid; }) ||
+                    sfState.participants.find(function (p) { return p.pseudo === m.pseudo && p.session_id === sid; });
+
+                if (partRow) {
+                    if (partRow.excused) {
+                        excused++;
+                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">Excused</span></td>';
+                    } else if (partRow.sub_present) {
+                        played++;
+                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">Sub Pres</span></td>';
+                    } else if (partRow.participated > 0) {
+                        played++;
+                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">Present</span></td>';
+                    } else {
+                        missed++;
+                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(239,68,68,0.1); color: var(--error); border: 1px solid rgba(239,68,68,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">No Show</span></td>';
+                    }
+                } else {
+                    if (wasAssigned) {
+                        missed++;
+                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(239,68,68,0.1); color: var(--error); border: 1px solid rgba(239,68,68,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">No Show</span></td>';
+                    } else {
+                        cellsHtml += '<td style="text-align: center; padding: 0.5rem; color: var(--text-muted); font-weight: 300;">—</td>';
+                    }
+                }
+            });
+
+            html += '<tr style="border-bottom: 1px solid var(--border-soft);">' +
+                '<td style="padding: 0.75rem; font-weight: 600;">' + esc(m.pseudo) + '</td>' +
+                '<td style="padding: 0.75rem;">' + tierBadge + '</td>' +
+                cellsHtml +
+                '<td style="text-align: center; padding: 0.75rem; font-weight: 700; font-size:0.8rem;"><span style="color:var(--success);">' + played + 'P</span> / <span style="color:var(--error);">' + missed + 'M</span> / <span style="color:var(--warning);">' + excused + 'E</span></td>' +
+                '</tr>';
+        });
+
+        html += '</tbody></table></div></div>';
+        return html;
     }
 
     function renderTrackingTable(participants) {
@@ -643,6 +928,7 @@
                     '<th class="center">' + t('col_participated') + '</th>' +
                     '<th class="center">Late</th>' +
                     '<th class="center">Excused</th>' +
+                    '<th class="center">Sub Present</th>' +
                     '<th style="width: 140px; text-align: right;">Actions</th>' +
                 '</tr></thead><tbody>';
 
@@ -654,6 +940,7 @@
             var isChecked = p.participated > 0;
             var isLateChecked = !!p.late;
             var isExcusedChecked = !!p.excused;
+            var isSubPresentChecked = !!p.sub_present;
             
             var cat = categorise(p.pseudo);
             var meta = categoryMeta(cat);
@@ -697,12 +984,47 @@
                             '<span class="check-mark"><i class="ph ph-check"></i></span>' +
                         '</label>' +
                     '</td>' +
+                    '<td class="check-cell">' +
+                        '<label class="participation-check">' +
+                            '<input type="checkbox" class="sf-sub-present-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isSubPresentChecked ? ' checked' : '') + '>' +
+                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                        '</label>' +
+                    '</td>' +
                     '<td style="white-space: nowrap; text-align: right;">' + actionBtn + '<button class="delete-btn sf-delete-participant-btn" data-pseudo="' + esc(p.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button></td>' +
                 '</tr>';
         });
 
         html += '</tbody></table></div></div>';
         return html;
+    }
+
+    async function saveAvailability(pseudo, availability) {
+        if (!db) return;
+        var week = window.RAD.getWeekStart();
+        try {
+            if (availability === 'none') {
+                await db.from('shadowfront_signups').delete().eq('week_start', week).eq('pseudo', pseudo);
+            } else {
+                await db.from('shadowfront_signups').upsert({
+                    week_start: week,
+                    pseudo: pseudo,
+                    availability: availability
+                }, { onConflict: 'guild,week_start,pseudo' });
+            }
+            window.RAD.showToast(pseudo + '\'s availability updated', 'success');
+            await loadShadowfront();
+        } catch (err) {
+            console.error('saveAvailability failed', err);
+            window.RAD.showToast('Failed to save availability', 'error');
+        }
+    }
+
+    async function saveSubPresent(pseudo, value) {
+        if (!db) return;
+        var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
+        if (!p) return;
+        await db.from('event_participants').update({ sub_present: value })
+            .eq('event_name', EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
     }
 
     // ── Event listeners ────────────────────────────────────────────────────────
@@ -765,6 +1087,23 @@
         });
         area.querySelectorAll('.sf-commander-btn').forEach(function (btn) {
             btn.addEventListener('click', function () { toggleCommander(btn.getAttribute('data-pseudo')); });
+        });
+
+        area.querySelectorAll('.sf-avail-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pseudo = btn.getAttribute('data-pseudo');
+                var avail = btn.getAttribute('data-avail');
+                saveAvailability(pseudo, avail);
+            });
+        });
+
+        area.querySelectorAll('.sf-quick-assign-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pseudo = btn.getAttribute('data-pseudo');
+                var squad = btn.getAttribute('data-squad');
+                var role = btn.getAttribute('data-role');
+                assign(pseudo, squad, role);
+            });
         });
 
         area.querySelectorAll('.approve-sf-single-btn').forEach(function (btn) {
@@ -843,6 +1182,15 @@
                 });
             });
         });
+        area.querySelectorAll('.sf-sub-present-checkbox').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var pseudo = cb.getAttribute('data-pseudo');
+                saveSubPresent(pseudo, cb.checked).then(function () {
+                    var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
+                    if (pp) pp.sub_present = cb.checked;
+                });
+            });
+        });
         area.querySelectorAll('.sf-filter-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 sfFilter = btn.getAttribute('data-filter');
@@ -881,8 +1229,8 @@
         if (searchInput) {
             searchInput.addEventListener('input', function (e) {
                 var q = e.target.value.toLowerCase();
-                area.querySelectorAll('.sf-member-row, .sf-assigned-row').forEach(function (row) {
-                    var btn = row.querySelector('.sf-btn, .sf-remove-btn');
+                area.querySelectorAll('.sf-member-row, .sf-assigned-row, .sf-prep-member-row').forEach(function (row) {
+                    var btn = row.querySelector('.sf-btn, .sf-remove-btn, .sf-avail-btn');
                     var pseudo = btn ? btn.getAttribute('data-pseudo') : '';
                     var uid = sfState.uidMap[pseudo] || '';
                     var match = (pseudo.toLowerCase() + ' ' + uid.toLowerCase()).indexOf(q) !== -1;

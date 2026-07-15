@@ -47,7 +47,9 @@
                 'guild_config',
                 'push_subscriptions',
                 'event_reminders_sent',
-                'discord_notifications_sent'
+                'discord_notifications_sent',
+                'shadowfront_signups',
+                'player_name_history'
             ];
             if (tenantTables.indexOf(table) !== -1) {
                 var originalSelect = builder.select;
@@ -602,6 +604,36 @@
         }
     }
 
+    function formatPower(val) {
+        if (!val) return '—';
+        var num = parseInt(val) || 0;
+        if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B';
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return String(num);
+    }
+
+    function getPowerTier(power, maxPower) {
+        if (!power) return 'D';
+        var p = parseInt(power) || 0;
+        var m = parseInt(maxPower) || 0;
+        if (m === 0) return 'D';
+        var pct = p / m;
+        if (pct >= 0.8) return 'S';
+        if (pct >= 0.6) return 'A';
+        if (pct >= 0.4) return 'B';
+        if (pct >= 0.2) return 'C';
+        return 'D';
+    }
+
+    function getPowerTierMeta(tier) {
+        if (tier === 'S') return { cls: 'tier-s', label: 'Mythic', color: 'var(--accent)', icon: '👑' };
+        if (tier === 'A') return { cls: 'tier-a', label: 'Legendary', color: '#ef4444', icon: '🔥' }; // Red
+        if (tier === 'B') return { cls: 'tier-b', label: 'Epic', color: '#f97316', icon: '💎' }; // Orange
+        if (tier === 'C') return { cls: 'tier-c', label: 'Rare', color: '#3b82f6', icon: '⭐' }; // Blue
+        return { cls: 'tier-d', label: 'Common', color: 'var(--text-muted)', icon: '🛡️' };
+    }
+
     window.RAD = {
         db: db,
         t: t,
@@ -624,6 +656,9 @@
         attachNumberFormatter: attachNumberFormatter,
         avatarInit: avatarInit,
         MAX_NUMERIC: MAX_NUMERIC,
+        formatPower: formatPower,
+        getPowerTier: getPowerTier,
+        getPowerTierMeta: getPowerTierMeta,
         config: {
             get: getGuildConfig,
             set: setGuildConfig

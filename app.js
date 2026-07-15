@@ -1004,6 +1004,9 @@
             if (window.RAD_ARMSRACE && window.RAD_ARMSRACE.addMemberToActiveEvents) {
                 addedEvents += await window.RAD_ARMSRACE.addMemberToActiveEvents(pseudo);
             }
+            if (window.RAD_SHADOWFRONT && window.RAD_SHADOWFRONT.load) {
+                await window.RAD_SHADOWFRONT.load();
+            }
             if (addedEvents > 0) {
                 showToast(pseudo + ' ' + t('toast_member_added_active_events'), 'info');
             }
@@ -1022,6 +1025,10 @@
     if (searchAdmin) searchAdmin.addEventListener('input', renderGuildMembers);
     var searchMember = document.getElementById('member-search-member');
     if (searchMember) searchMember.addEventListener('input', renderGuildMembers);
+    var tierAdminSelect = document.getElementById('member-tier-filter-admin');
+    if (tierAdminSelect) tierAdminSelect.addEventListener('change', renderGuildMembers);
+    var tierMemberSelect = document.getElementById('member-tier-filter-member');
+    if (tierMemberSelect) tierMemberSelect.addEventListener('change', renderGuildMembers);
     if (bannedSearch) {
         bannedSearch.addEventListener('input', renderBannedPlayers);
     }
@@ -1034,7 +1041,17 @@
             if (res.error) throw res.error;
             guildMembers = guildMembers.filter(function (m) { return m.pseudo !== pseudo; });
             renderGuildMembers();
-            showToast(pseudo + ' ' + t('toast_member_removed'), 'success');
+            showToast(t('toast_member_removed'), 'success');
+
+            if (window.RAD_EVENTS && window.RAD_EVENTS.removeMemberFromActiveEvents) {
+                window.RAD_EVENTS.removeMemberFromActiveEvents(pseudo);
+            }
+            if (window.RAD_ARMSRACE && window.RAD_ARMSRACE.removeMemberFromActiveEvents) {
+                window.RAD_ARMSRACE.removeMemberFromActiveEvents(pseudo);
+            }
+            if (window.RAD_SHADOWFRONT && window.RAD_SHADOWFRONT.load) {
+                await window.RAD_SHADOWFRONT.load();
+            }
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
@@ -1186,22 +1203,27 @@
         }
     }
 
-    async function renameGuildMember(oldPseudo, newPseudo, newUid) {
+    async function renameGuildMember(oldPseudo, newPseudo, newUid, newPower, newFleet) {
         newPseudo = (newPseudo || '').trim();
         newUid    = (newUid || '').trim();
+        var powerVal = parseInt(newPower) || 0;
+        var fleetVal = parseInt(newFleet) || 0;
 
         var pseudoErr = window.RAD.validatePseudo(newPseudo);
         if (pseudoErr) { showToast(t(pseudoErr), 'error'); return false; }
         var uidErr = window.RAD.validateUid(newUid);
         if (uidErr) { showToast(t(uidErr), 'error'); return false; }
 
-        var pseudoChanged = newPseudo.toLowerCase() !== oldPseudo.toLowerCase();
-        var uidChanged    = (function () {
-            var current = guildMembers.find(function (m) { return m.pseudo === oldPseudo; });
-            return current && (current.uid || '') !== newUid;
-        })();
+        var member = guildMembers.find(function (m) { return m.pseudo === oldPseudo; });
+        var oldPower = member ? parseInt(member.overall_power) || 0 : 0;
+        var oldFleet = member ? parseInt(member.strongest_fleet) || 0 : 0;
 
-        if (!pseudoChanged && !uidChanged) return true;
+        var pseudoChanged = newPseudo.toLowerCase() !== oldPseudo.toLowerCase();
+        var uidChanged    = member && (member.uid || '') !== newUid;
+        var powerChanged  = oldPower !== powerVal;
+        var fleetChanged  = oldFleet !== fleetVal;
+
+        if (!pseudoChanged && !uidChanged && !powerChanged && !fleetChanged) return true;
 
         if (pseudoChanged && guildMembers.some(function (m) { return m.pseudo.toLowerCase() === newPseudo.toLowerCase(); })) {
             showToast(t('toast_duplicate_member'), 'error');
@@ -1226,10 +1248,22 @@
         }
 
         try {
-            // ON UPDATE CASCADE propagera le nouveau pseudo dans toutes les FK
+            // Log pseudo change history
+            if (pseudoChanged && member && member.uid) {
+                var histIns = await supabase.from('player_name_history').insert({
+                    uid: member.uid,
+                    old_pseudo: oldPseudo,
+                    new_pseudo: newPseudo,
+                    changed_by: localStorage.getItem('rad_user') || 'Admin'
+                });
+                if (histIns.error) console.error('Logging name history failed', histIns.error);
+            }
+
             var update = {};
             if (pseudoChanged) update.pseudo = newPseudo;
             if (uidChanged)    update.uid = newUid || null;
+            update.overall_power = powerVal;
+            update.strongest_fleet = fleetVal;
 
             var res = await supabase.from('guild_members').update(update).eq('pseudo', oldPseudo);
             if (res.error) throw res.error;
@@ -1249,11 +1283,23 @@
         var qAdmin  = qAdminInput  ? qAdminInput.value.toLowerCase()  : '';
         var qMember = qMemberInput ? qMemberInput.value.toLowerCase() : '';
 
+        var tierAdminFilter  = document.getElementById('member-tier-filter-admin');
+        var tierMemberFilter = document.getElementById('member-tier-filter-member');
+        var tAdmin  = tierAdminFilter  ? tierAdminFilter.value  : 'ALL';
+        var tMember = tierMemberFilter ? tierMemberFilter.value : 'ALL';
+
+        var powers = guildMembers.map(function (m) { return parseInt(m.overall_power) || 0; });
+        var maxPower = powers.length ? Math.max.apply(null, powers) : 0;
+
         var filteredAdmin = guildMembers.filter(function (m) {
-            return (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qAdmin) !== -1;
+            var matchSearch = (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qAdmin) !== -1;
+            var matchTier = (tAdmin === 'ALL') || (window.RAD.getPowerTier(m.overall_power, maxPower) === tAdmin);
+            return matchSearch && matchTier;
         });
         var filteredMember = guildMembers.filter(function (m) {
-            return (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qMember) !== -1;
+            var matchSearch = (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qMember) !== -1;
+            var matchTier = (tMember === 'ALL') || (window.RAD.getPowerTier(m.overall_power, maxPower) === tMember);
+            return matchSearch && matchTier;
         });
 
         if (guildMemberCount)  guildMemberCount.textContent  = filteredAdmin.length;
@@ -1261,12 +1307,12 @@
 
         if (guildMemberList) {
             guildMemberList.innerHTML = filteredAdmin.length
-                ? '<div class="gm-member-list">' + filteredAdmin.map(function (m, i) { return memberTileHtml(m, i, true); }).join('') + '</div>'
+                ? '<div class="gm-member-list">' + filteredAdmin.map(function (m, i) { return memberTileHtml(m, i, true, maxPower); }).join('') + '</div>'
                 : '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
         }
         if (guildMemberListM) {
             guildMemberListM.innerHTML = filteredMember.length
-                ? '<div class="gm-member-list">' + filteredMember.map(function (m, i) { return memberTileHtml(m, i, false); }).join('') + '</div>'
+                ? '<div class="gm-member-list">' + filteredMember.map(function (m, i) { return memberTileHtml(m, i, false, maxPower); }).join('') + '</div>'
                 : '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
         }
 
@@ -1291,7 +1337,7 @@
         });
     }
 
-    function memberTileHtml(m, i, withActions) {
+    function memberTileHtml(m, i, withActions, maxPower) {
         var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
         var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
         var uidVal = m.uid || '—';
@@ -1299,13 +1345,30 @@
             ? new Date(m.created_at).toLocaleDateString(locale, { day:'2-digit', month:'2-digit', year:'numeric' })
             : '—';
         var initial = window.RAD.avatarInit(m.pseudo);
+
+        var powerVal = parseInt(m.overall_power) || 0;
+        var fleetVal = parseInt(m.strongest_fleet) || 0;
+        var tier = window.RAD.getPowerTier(powerVal, maxPower);
+        var meta = window.RAD.getPowerTierMeta(tier);
+        var formattedPower = window.RAD.formatPower(powerVal);
+        var formattedFleet = window.RAD.formatPower(fleetVal);
+
+        var tierBadge = powerVal > 0 
+            ? '<span class="gm-chip ' + meta.cls + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '0a; display: inline-flex; align-items: center; gap: 0.25rem;" title="' + meta.label + ' Tier"><span style="font-size: 0.8rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
+            : '';
+        var fleetBadge = fleetVal > 0
+            ? '<span class="gm-chip" style="font-size:0.75rem; padding:0.15rem 0.4rem; color: #c084fc; border: 1px solid rgba(192,132,252,0.25); background: rgba(192,132,252,0.04); display: inline-flex; align-items: center; gap: 0.25rem;" title="Strongest Fleet"><span style="font-size: 0.8rem;">🚀</span> ' + formattedFleet + '</span>'
+            : '';
+
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
                     '<div class="gm-avatar">' + esc(initial) + '</div>' +
                     '<div class="gm-grow gm-truncate">' +
                         '<div class="gm-member-pseudo gm-truncate">' + esc(m.pseudo) + '</div>' +
-                        '<div class="gm-row" style="gap:.5rem; margin-top:2px;">' +
+                        '<div class="gm-row" style="gap:.5rem; margin-top:4px; flex-wrap: wrap;">' +
                             '<span class="gm-dim gm-mono" style="font-size:.78rem;">UID ' + esc(uidVal) + '</span>' +
+                            tierBadge +
+                            fleetBadge +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -1319,16 +1382,41 @@
             '</div>';
     }
 
-    // ─── Edit Member Dialog ───────────────────────────────────────────────────
-    function showEditMemberDialog(member) {
+    async function showEditMemberDialog(member) {
         var existing = document.getElementById('edit-member-overlay');
         if (existing) existing.remove();
+
+        var nameHistory = [];
+        if (member.uid) {
+            try {
+                var res = await supabase.from('player_name_history').select('*').eq('uid', member.uid).order('changed_at', { ascending: false });
+                if (!res.error) nameHistory = res.data || [];
+            } catch (err) {
+                console.error('Fetch name history failed', err);
+            }
+        }
 
         var overlay = document.createElement('div');
         overlay.id = 'edit-member-overlay';
         overlay.className = 'confirm-overlay';
+
+        var historyHtml = '';
+        if (nameHistory.length > 0) {
+            historyHtml = '<div style="margin-top: 1rem; border-top: 1px solid var(--border-soft); padding-top: 1rem; text-align: left;">' +
+                '<h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;"><i class="ph ph-clock-counter-clockwise"></i> ' + t('Name History') + '</h4>' +
+                '<div style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem;">' +
+                nameHistory.map(function (h) {
+                    var date = new Date(h.changed_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    return '<div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm);">' +
+                        '<span><strong>' + esc(h.old_pseudo) + '</strong> ➔ <strong>' + esc(h.new_pseudo) + '</strong> <span class="gm-dim" style="font-size:0.75rem;">(' + date + ' par ' + esc(h.changed_by) + ')</span></span>' +
+                        '<button type="button" class="delete-history-btn" data-id="' + h.id + '" style="background: none; border: none; color: var(--error); cursor: pointer; padding: 2px;"><i class="ph ph-trash"></i></button>' +
+                        '</div>';
+                }).join('') +
+                '</div></div>';
+        }
+
         overlay.innerHTML =
-            '<div class="confirm-card glass-card" style="max-width: 480px;">' +
+            '<div class="confirm-card glass-card" style="max-width: 480px; width: 95vw;">' +
                 '<div class="confirm-icon"><i class="ph-fill ph-pencil-simple text-accent"></i></div>' +
                 '<h3>' + t('edit_member_title') + '</h3>' +
                 '<p>' + t('edit_member_body') + '</p>' +
@@ -1347,6 +1435,23 @@
                             '<input type="text" id="edit-uid" value="' + esc(member.uid || '') + '">' +
                         '</div>' +
                     '</div>' +
+                    '<div style="display: flex; gap: 1rem;">' +
+                        '<div class="input-group" style="flex: 1;">' +
+                            '<label for="edit-power">Overall Power</label>' +
+                            '<div class="input-wrapper">' +
+                                '<i class="ph ph-sword"></i>' +
+                                '<input type="number" id="edit-power" value="' + esc(member.overall_power || '') + '" placeholder="e.g. 80000000">' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="input-group" style="flex: 1;">' +
+                            '<label for="edit-fleet">Strongest Fleet</label>' +
+                            '<div class="input-wrapper">' +
+                                '<i class="ph ph-rocket"></i>' +
+                                '<input type="number" id="edit-fleet" value="' + esc(member.strongest_fleet || '') + '" placeholder="e.g. 15000000">' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    historyHtml +
                     '<div class="confirm-actions">' +
                         '<button type="button" id="edit-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
                         '<button type="submit" class="primary-btn">' + t('confirm_ok') + '</button>' +
@@ -1365,11 +1470,26 @@
         document.getElementById('edit-cancel').addEventListener('click', close);
         overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
 
+        overlay.querySelectorAll('.delete-history-btn').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+                var id = btn.getAttribute('data-id');
+                var res = await supabase.from('player_name_history').delete().eq('id', id);
+                if (!res.error) {
+                    btn.closest('div').remove();
+                    showToast('History entry removed', 'success');
+                } else {
+                    showToast('Error removing history entry', 'error');
+                }
+            });
+        });
+
         document.getElementById('edit-member-form').addEventListener('submit', async function (e) {
             e.preventDefault();
             var newPseudo = document.getElementById('edit-pseudo').value;
             var newUid    = document.getElementById('edit-uid').value;
-            var ok = await renameGuildMember(member.pseudo, newPseudo, newUid);
+            var newPower  = document.getElementById('edit-power').value;
+            var newFleet  = document.getElementById('edit-fleet').value;
+            var ok = await renameGuildMember(member.pseudo, newPseudo, newUid, newPower, newFleet);
             if (ok) close();
         });
     }

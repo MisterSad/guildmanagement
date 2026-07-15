@@ -21,7 +21,8 @@
 
     window.RAD_ARMSRACE = { 
         load: loadArmsRace,
-        addMemberToActiveEvents: addMemberToActiveEvents
+        addMemberToActiveEvents: addMemberToActiveEvents,
+        removeMemberFromActiveEvents: removeMemberFromActiveEvents
     };
 
     function stageLabel(stageKey) { return stageKey === 'stageA' ? 'Stage A' : 'Stage B'; }
@@ -267,6 +268,16 @@
             console.error('addMemberToActiveEvents AR', err);
             return 0;
         }
+    }
+
+    function removeMemberFromActiveEvents(pseudo) {
+        ['stageA', 'stageB'].forEach(function(k) {
+            var stg = arState.stages[k];
+            if (stg.participants) {
+                stg.participants = stg.participants.filter(function(p) { return p.pseudo !== pseudo; });
+            }
+        });
+        if (arState.stages[arActiveStage].active) renderArmsRace();
     }
 
     function renderArmsRace() {

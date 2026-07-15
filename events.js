@@ -37,7 +37,11 @@
     var uidMap = {};
 
     // ── Public API ────────────────────────────────────────────────────────────
-    window.RAD_EVENTS = { loadEvent: loadEvent, addMemberToActiveEvents: addMemberToActiveEvents };
+    window.RAD_EVENTS = {
+        loadEvent: loadEvent,
+        addMemberToActiveEvents: addMemberToActiveEvents,
+        removeMemberFromActiveEvents: removeMemberFromActiveEvents
+    };
 
     // ── Load event (called when tab is clicked) ────────────────────────────
     async function loadEvent(tabKey) {
@@ -231,6 +235,19 @@
             console.error('addMemberToActiveEvents', err);
             return 0;
         }
+    }
+
+    function removeMemberFromActiveEvents(pseudo) {
+        Object.keys(state).forEach(function (tabKey) {
+            var s = state[tabKey];
+            if (s.participants) {
+                s.participants = s.participants.filter(function (p) { return p.pseudo !== pseudo; });
+                if (s.isActive) {
+                    renderStatus(tabKey);
+                    renderParticipants(tabKey);
+                }
+            }
+        });
     }
 
     // ── Fetch participants de la session active ──────────────────────────
