@@ -518,6 +518,12 @@
         var webhookGvg = await window.RAD.config.get('webhook_gvg');
         var webhookSvs = await window.RAD.config.get('webhook_svs');
         var discordRoleId = await window.RAD.config.get('discord_role_id');
+        var discordRoleIdArmsrace = await window.RAD.config.get('discord_role_id_armsrace');
+        var discordRoleIdDtr = await window.RAD.config.get('discord_role_id_dtr');
+        var discordRoleIdShadowfront = await window.RAD.config.get('discord_role_id_shadowfront');
+        var discordRoleIdCalamity = await window.RAD.config.get('discord_role_id_calamity');
+        var discordRoleIdGvg = await window.RAD.config.get('discord_role_id_gvg');
+        var discordRoleIdSvs = await window.RAD.config.get('discord_role_id_svs');
 
         // Notification configs
         var notifyArmsrace30 = await window.RAD.config.get('notify_armsrace_reminder_30');
@@ -553,6 +559,12 @@
         document.getElementById('webhook-gvg').value = webhookGvg;
         document.getElementById('webhook-svs').value = webhookSvs;
         document.getElementById('discord-role-id').value = discordRoleId || '';
+        document.getElementById('discord-role-id-armsrace').value = discordRoleIdArmsrace || '';
+        document.getElementById('discord-role-id-dtr').value = discordRoleIdDtr || '';
+        document.getElementById('discord-role-id-shadowfront').value = discordRoleIdShadowfront || '';
+        document.getElementById('discord-role-id-calamity').value = discordRoleIdCalamity || '';
+        document.getElementById('discord-role-id-gvg').value = discordRoleIdGvg || '';
+        document.getElementById('discord-role-id-svs').value = discordRoleIdSvs || '';
 
         var setCheckedState = function (id, value, defaultValue) {
             var el = document.getElementById(id);
@@ -611,6 +623,12 @@
                     window.RAD.config.set('webhook_gvg', showCalamityGvgSvs ? document.getElementById('webhook-gvg').value.trim() : ''),
                     window.RAD.config.set('webhook_svs', showCalamityGvgSvs ? document.getElementById('webhook-svs').value.trim() : ''),
                     window.RAD.config.set('discord_role_id', document.getElementById('discord-role-id').value.trim()),
+                    window.RAD.config.set('discord_role_id_armsrace', document.getElementById('discord-role-id-armsrace').value.trim()),
+                    window.RAD.config.set('discord_role_id_dtr', document.getElementById('discord-role-id-dtr').value.trim()),
+                    window.RAD.config.set('discord_role_id_shadowfront', document.getElementById('discord-role-id-shadowfront').value.trim()),
+                    window.RAD.config.set('discord_role_id_calamity', showCalamityGvgSvs ? document.getElementById('discord-role-id-calamity').value.trim() : ''),
+                    window.RAD.config.set('discord_role_id_gvg', showCalamityGvgSvs ? document.getElementById('discord-role-id-gvg').value.trim() : ''),
+                    window.RAD.config.set('discord_role_id_svs', showCalamityGvgSvs ? document.getElementById('discord-role-id-svs').value.trim() : ''),
 
                     // Notification Configs
                     window.RAD.config.set('notify_armsrace_reminder_30', document.getElementById('notify-armsrace-30').checked ? 'true' : 'false'),

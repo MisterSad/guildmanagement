@@ -225,10 +225,22 @@ serve(async (req) => {
                                 event.event_name === 'Shadowfront Squad 2';
         if (!isStandardEvent) continue;
 
-        const isDtrOrArmsRaceOrShadowfront = event.event_name === 'Defend Trade Route' ||
-                                             event.event_name.startsWith('ARMS RACE') ||
-                                             event.event_name.startsWith('Shadowfront Squad');
-        const eventGuildTag = isDtrOrArmsRaceOrShadowfront ? '@everyone' : guildTag;
+        let eventPrefix = '';
+        if (event.event_name.startsWith('ARMS RACE')) {
+          eventPrefix = 'armsrace';
+        } else if (event.event_name === 'Defend Trade Route') {
+          eventPrefix = 'dtr';
+        } else if (event.event_name.startsWith('Shadowfront Squad')) {
+          eventPrefix = 'shadowfront';
+        }
+
+        const eventSpecificRoleId = eventPrefix ? config[`discord_role_id_${eventPrefix}`] : null;
+        const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
+          ? eventSpecificRoleId
+          : config['discord_role_id'];
+        const eventGuildTag = (discordRoleId && discordRoleId.trim() !== '')
+          ? `<@&${discordRoleId.trim()}>`
+          : '@everyone';
 
         const startMs = new Date(event.start_at).getTime();
         const diffMs = startMs - now;
@@ -415,6 +427,14 @@ serve(async (req) => {
         isGvgActive = ageDays >= 0 && ageDays <= 7.5;
       }
       if (isGvgActive && guild !== 'OMEGA' && guild !== 'IMK') {
+        const eventSpecificRoleId = config['discord_role_id_gvg'];
+        const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
+          ? eventSpecificRoleId
+          : config['discord_role_id'];
+        const guildTag = (discordRoleId && discordRoleId.trim() !== '')
+          ? `<@&${discordRoleId.trim()}>`
+          : '@everyone';
+
         const isGvgPvpEnabled = config['notify_gvg_pvp'] === undefined || config['notify_gvg_pvp'] === 'true';
         if (isGvgPvpEnabled) {
           const dateUtc = new Date(now);
@@ -602,6 +622,14 @@ serve(async (req) => {
         isSvsActive = ageDays >= 0 && ageDays <= 7.5;
       }
       if (isSvsActive && guild !== 'OMEGA' && guild !== 'IMK') {
+        const eventSpecificRoleId = config['discord_role_id_svs'];
+        const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
+          ? eventSpecificRoleId
+          : config['discord_role_id'];
+        const guildTag = (discordRoleId && discordRoleId.trim() !== '')
+          ? `<@&${discordRoleId.trim()}>`
+          : '@everyone';
+
         const dateUtc = new Date(now);
         const curDay = dateUtc.getUTCDay();
         const curHour = dateUtc.getUTCHours();
@@ -851,6 +879,14 @@ serve(async (req) => {
 
       // 5. Calamity Befalls weekly reminders (10m before round)
       if (guild !== 'OMEGA' && guild !== 'IMK') {
+        const eventSpecificRoleId = config['discord_role_id_calamity'];
+        const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
+          ? eventSpecificRoleId
+          : config['discord_role_id'];
+        const guildTag = (discordRoleId && discordRoleId.trim() !== '')
+          ? `<@&${discordRoleId.trim()}>`
+          : '@everyone';
+
         const dateUtc = new Date(now);
         const curDay = dateUtc.getUTCDay();
         const curHour = dateUtc.getUTCHours();

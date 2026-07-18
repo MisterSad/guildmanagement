@@ -519,12 +519,25 @@
         var actionLabel = '';
         var color = 5763719; // Green
 
-        var guildTag = '@everyone';
+        var eventPrefix = '';
+        var nameUpper = eventName.toUpperCase();
+        if (nameUpper.indexOf('ARMS RACE') !== -1) eventPrefix = 'armsrace';
+        else if (nameUpper.indexOf('TRADE ROUTE') !== -1 || nameUpper.indexOf('DTR') !== -1) eventPrefix = 'dtr';
+        else if (nameUpper.indexOf('SHADOWFRONT') !== -1) eventPrefix = 'shadowfront';
+        else if (nameUpper.indexOf('CALAMITY') !== -1) eventPrefix = 'calamity';
+        else if (nameUpper.indexOf('GVG') !== -1) eventPrefix = 'gvg';
+        else if (nameUpper.indexOf('SVS') !== -1) eventPrefix = 'svs';
 
-        var isDtrOrArmsRaceOrShadowfront = eventName === 'Defend Trade Route' || 
-                                           eventName.indexOf('ARMS RACE') !== -1 ||
-                                           eventName.indexOf('Shadowfront Squad') !== -1;
-        var eventGuildTag = isDtrOrArmsRaceOrShadowfront ? '@everyone' : guildTag;
+        var eventSpecificRoleId = eventPrefix ? await getGuildConfig('discord_role_id_' + eventPrefix) : null;
+        var discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '') 
+            ? eventSpecificRoleId 
+            : await getGuildConfig('discord_role_id');
+
+        var guildTag = (discordRoleId && discordRoleId.trim() !== '')
+            ? '<@&' + discordRoleId.trim() + '>'
+            : '@everyone';
+
+        var eventGuildTag = guildTag;
 
         if (action === 'start') {
             actionLabel = '🚀 Scheduled / Live';
