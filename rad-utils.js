@@ -519,17 +519,7 @@
         var actionLabel = '';
         var color = 5763719; // Green
 
-        var discordRoleId = await getGuildConfig('discord_role_id');
-        var guildTags = {
-            ALPHA: '<@&1523751696235495587>',
-            OMEGA: '<@&1523751822139981976>',
-            IMK: '<@&1523751874791211128>',
-            YARR: '[YARR]',
-            BABE: '[BABE]'
-        };
-        var guildTag = (discordRoleId && discordRoleId.trim() !== '')
-            ? '<@&' + discordRoleId.trim() + '>'
-            : (guildTags[window.currentGuild || 'ALPHA'] || '@everyone');
+        var guildTag = '@everyone';
 
         var isDtrOrArmsRaceOrShadowfront = eventName === 'Defend Trade Route' || 
                                            eventName.indexOf('ARMS RACE') !== -1 ||

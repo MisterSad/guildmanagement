@@ -212,17 +212,7 @@ serve(async (req) => {
       const config = configsByGuild[guild];
       const events = (allEvents || []).filter(e => (e.guild || 'ALPHA') === guild);
 
-      const discordRoleId = config['discord_role_id'];
-      const guildTags: Record<string, string> = {
-        ALPHA: '<@&1523751696235495587>',
-        OMEGA: '<@&1523751822139981976>',
-        IMK: '<@&1523751874791211128>',
-        YARR: '[YARR]',
-        BABE: '[BABE]'
-      };
-      const guildTag = (discordRoleId && discordRoleId.trim() !== '')
-        ? `<@&${discordRoleId.trim()}>`
-        : (guildTags[guild] || '@everyone');
+      const guildTag = '@everyone';
 
       // Check standard events with a start_at time
       for (const event of events) {
@@ -418,7 +408,12 @@ serve(async (req) => {
 
       // 3. GvG Saturday notifications and reminders
       const gvgEvent = events.find(e => e.event_name === 'GvG');
-      const isGvgActive = gvgEvent && getWeekStart(gvgEvent.start_at || gvgEvent.session_id) === getWeekStart(now);
+      let isGvgActive = false;
+      if (gvgEvent) {
+        const sessionMs = new Date(gvgEvent.start_at || gvgEvent.session_id).getTime();
+        const ageDays = (now - sessionMs) / (24 * 3600 * 1000);
+        isGvgActive = ageDays >= 0 && ageDays <= 7.5;
+      }
       if (isGvgActive && guild !== 'OMEGA' && guild !== 'IMK') {
         const isGvgPvpEnabled = config['notify_gvg_pvp'] === undefined || config['notify_gvg_pvp'] === 'true';
         if (isGvgPvpEnabled) {
@@ -600,7 +595,12 @@ serve(async (req) => {
 
       // 4. SvS notifications and reminders
       const svsEvent = events.find(e => e.event_name === 'SvS');
-      const isSvsActive = svsEvent && getWeekStart(svsEvent.start_at || svsEvent.session_id) === getWeekStart(now);
+      let isSvsActive = false;
+      if (svsEvent) {
+        const sessionMs = new Date(svsEvent.start_at || svsEvent.session_id).getTime();
+        const ageDays = (now - sessionMs) / (24 * 3600 * 1000);
+        isSvsActive = ageDays >= 0 && ageDays <= 7.5;
+      }
       if (isSvsActive && guild !== 'OMEGA' && guild !== 'IMK') {
         const dateUtc = new Date(now);
         const curDay = dateUtc.getUTCDay();
