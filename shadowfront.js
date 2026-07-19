@@ -1070,21 +1070,21 @@
                         '</label>' +
                     '</td>' +
                     '<td class="check-cell">' +
-                        '<label class="participation-check">' +
+                        '<label class="check-toggle check-toggle-warning">' +
                             '<input type="checkbox" class="sf-late-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isLateChecked ? ' checked' : '') + '>' +
-                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                            '<span class="check-slider"></span>' +
                         '</label>' +
                     '</td>' +
                     '<td class="check-cell">' +
-                        '<label class="participation-check">' +
+                        '<label class="check-toggle check-toggle-info">' +
                             '<input type="checkbox" class="sf-excused-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isExcusedChecked ? ' checked' : '') + '>' +
-                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                            '<span class="check-slider"></span>' +
                         '</label>' +
                     '</td>' +
                     '<td class="check-cell">' +
-                        '<label class="participation-check">' +
+                        '<label class="check-toggle check-toggle-accent">' +
                             '<input type="checkbox" class="sf-sub-present-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isSubPresentChecked ? ' checked' : '') + '>' +
-                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                            '<span class="check-slider"></span>' +
                         '</label>' +
                     '</td>' +
                     '<td style="white-space: nowrap; text-align: right;">' + actionBtn + '<button class="delete-btn sf-delete-participant-btn" data-pseudo="' + esc(p.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button></td>' +
@@ -1255,6 +1255,14 @@
             });
         }
 
+        function refreshStats() {
+            var done = sfState.participants.filter(function (p) { return p.participated > 0; }).length;
+            var chip = area.querySelector('.event-stats .stat-chip.success');
+            if (chip) {
+                chip.innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated');
+            }
+        }
+
         area.querySelectorAll('.sf-participation-checkbox').forEach(function (cb) {
             cb.addEventListener('change', function () {
                 var next = cb.checked ? 1 : 0;
@@ -1262,10 +1270,11 @@
                 if (row) row.classList.toggle('participated', cb.checked);
 
                 var pseudo = cb.getAttribute('data-pseudo');
-                saveParticipation(pseudo, next).then(function () {
-                    var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
-                    if (pp) pp.participated = next;
-                });
+                var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
+                if (pp) pp.participated = next;
+                refreshStats();
+
+                saveParticipation(pseudo, next);
             });
         });
         area.querySelectorAll('.sf-late-checkbox').forEach(function (cb) {

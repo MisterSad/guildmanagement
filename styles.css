@@ -1078,6 +1078,17 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .check-toggle input:checked ~ .check-slider { background: rgba(16,185,129,0.3); border-color: var(--success); }
 .check-toggle input:checked ~ .check-slider::after { transform: translateX(18px); background: var(--success); }
 
+/* Color-coded toggle switches for Shadowfront */
+.check-toggle-warning input:checked ~ .check-slider { background: var(--warning-soft); border-color: var(--warning); }
+.check-toggle-warning input:checked ~ .check-slider::after { transform: translateX(18px); background: var(--warning); }
+
+.check-toggle-info input:checked ~ .check-slider { background: var(--info-soft); border-color: var(--info); }
+.check-toggle-info input:checked ~ .check-slider::after { transform: translateX(18px); background: var(--info); }
+
+.check-toggle-accent input:checked ~ .check-slider { background: var(--accent-soft); border-color: var(--accent); }
+.check-toggle-accent input:checked ~ .check-slider::after { transform: translateX(18px); background: var(--accent); }
+
+
 /* ─── Score Input ────────────────────────────────────────────────────────── */
 .score-input, .sf-score-input {
     width: 180px;
