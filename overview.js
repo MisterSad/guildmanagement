@@ -258,10 +258,10 @@
 
         var html =
             '<div class="gm-stat-grid">' +
-                statTile(t('overview_s_members'), fmt(stats.members), null, 'ph-users', false, '') +
-                statTile(t('overview_s_events'), String(stats.liveEvents), null, 'ph-sword', stats.liveEvents > 0, liveEventsMeta) +
-                statTile(t('overview_s_glory'), formatBigNumber(stats.gloryTotal), 'up', 'ph-trophy', false, t('overview_s_glory_meta')) +
-                statTile(t('overview_s_sanctions'), String(stats.sanctions), stats.sanctions > 0 ? 'down' : null, 'ph-warning-octagon', false, '') +
+                statTile(t('overview_s_members'), fmt(stats.members), null, 'ph-users', false, 'Active Guild Members', 'stat-theme-lime') +
+                statTile(t('overview_s_events'), String(stats.liveEvents), null, 'ph-swords', stats.liveEvents > 0, liveEventsMeta, 'stat-theme-coral') +
+                statTile(t('overview_s_glory'), formatBigNumber(stats.gloryTotal), 'up', 'ph-trophy', false, t('overview_s_glory_meta'), 'stat-theme-mint') +
+                statTile(t('overview_s_sanctions'), String(stats.sanctions), stats.sanctions > 0 ? 'down' : null, 'ph-warning-octagon', false, 'Recorded Warnings', 'stat-theme-lilac') +
             '</div>' +
             '<div class="gm-section">' +
                 '<div class="gm-section-head">' +
@@ -386,20 +386,25 @@
         }, 1000);
     }
 
-    function statTile(label, value, trend, icon, accent, meta) {
-        return '<div class="gm-stat-tile">' +
-            '<div class="gm-stat-tile-label">' +
-                '<i class="ph ' + icon + '" style="color:' + (accent ? 'var(--accent)' : 'var(--fg-dim)') + ';"></i>' +
-                esc(label) +
+    function statTile(label, value, trend, icon, accent, meta, themeClass) {
+        var themeCls = themeClass || 'stat-theme-lime';
+        return '<div class="gm-stat-tile ' + themeCls + '">' +
+            '<div class="gm-stat-tile-header">' +
+                '<div class="gm-stat-tile-label">' + esc(label) + '</div>' +
+                '<div class="gm-task-icon-squircle">' +
+                    '<i class="ph ' + icon + '"></i>' +
+                '</div>' +
             '</div>' +
             '<div class="gm-stat-tile-value">' + esc(value) + '</div>' +
-            (meta || trend
-                ? '<div class="gm-stat-tile-meta' + (trend === 'up' ? ' gm-up' : trend === 'down' ? ' gm-down' : '') + '">' +
-                    (trend === 'up' ? '<i class="ph ph-trend-up"></i>' : '') +
-                    (trend === 'down' ? '<i class="ph ph-trend-down"></i>' : '') +
-                    esc(meta || '') +
-                  '</div>'
-                : '') +
+            '<div class="gm-stat-tile-footer">' +
+                (meta || trend
+                    ? '<div class="gm-stat-tile-meta' + (trend === 'up' ? ' gm-up' : trend === 'down' ? ' gm-down' : '') + '">' +
+                        (trend === 'up' ? '<i class="ph ph-trend-up"></i> ' : '') +
+                        (trend === 'down' ? '<i class="ph ph-trend-down"></i> ' : '') +
+                        esc(meta || '') +
+                      '</div>'
+                    : '<div class="gm-stat-tile-meta">&nbsp;</div>') +
+            '</div>' +
         '</div>';
     }
 
