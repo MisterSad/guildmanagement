@@ -521,13 +521,17 @@ html, body {
 @media (max-width: 900px) {
     .gm-sidebar { display: none; }
     .gm-content {
-        padding: 1rem 1rem calc(var(--bottom-nav-h) + 1.5rem);
+        padding: 1rem 0.75rem calc(var(--bottom-nav-h) + 1.5rem);
+        overflow-x: hidden;
     }
-    .gm-topbar { padding: 0 1rem; }
+    .gm-topbar { padding: 0 0.85rem; }
     .gm-bottom-nav { display: block; }
     .gm-page-title { font-size: 1.35rem; }
 }
 @media (max-width: 480px) {
+    .gm-content {
+        padding: 0.85rem 0.5rem calc(var(--bottom-nav-h) + 1.25rem);
+    }
     .gm-login-card { padding: 1.5rem 1.25rem; }
 }
 
@@ -544,14 +548,14 @@ html, body {
 /* Stat grid : 2 cols sur mobile, 1 col en très petit */
 @media (max-width: 900px) {
     .gm-stat-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: .75rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .65rem;
     }
-    .gm-stat-tile { padding: .85rem .9rem; }
-    .gm-stat-tile-value { font-size: 1.4rem; }
+    .gm-stat-tile { padding: .85rem .8rem; }
+    .gm-stat-tile-value { font-size: 1.35rem; }
 }
 @media (max-width: 480px) {
-    .gm-stat-grid { grid-template-columns: 1fr 1fr; }
+    .gm-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Event banner s'empile en mobile */
