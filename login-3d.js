@@ -269,24 +269,49 @@
         });
     }
 
+    function attachCanvasToActiveView() {
+        const canvas = document.getElementById('login-3d-canvas');
+        if (!canvas) return;
+
+        const loginView = document.getElementById('login-view');
+        const portalView = document.getElementById('player-portal-view');
+
+        let targetView = null;
+        if (loginView && !loginView.classList.contains('hidden')) {
+            targetView = loginView;
+        } else if (portalView && !portalView.classList.contains('hidden')) {
+            targetView = portalView;
+        }
+
+        if (targetView && canvas.parentElement !== targetView) {
+            targetView.insertBefore(canvas, targetView.firstChild);
+            onWindowResize();
+        }
+    }
+
     // ─── Observe View Visiblity to pause GPU when logged in ───
     function setupVisibilityObserver() {
         const loginView = document.getElementById('login-view');
         const portalView = document.getElementById('player-portal-view');
 
-        const observer = new MutationObserver(() => {
+        const handleVisibilityChange = () => {
             const isLoginActive = loginView && !loginView.classList.contains('hidden');
             const isPortalActive = portalView && !portalView.classList.contains('hidden');
 
             if (isLoginActive || isPortalActive) {
+                attachCanvasToActiveView();
                 startLoop();
             } else {
                 stopLoop();
             }
-        });
+        };
+
+        const observer = new MutationObserver(handleVisibilityChange);
 
         if (loginView) observer.observe(loginView, { attributes: true, attributeFilter: ['class'] });
         if (portalView) observer.observe(portalView, { attributes: true, attributeFilter: ['class'] });
+
+        handleVisibilityChange();
     }
 
     // Initialize on DOM ready
