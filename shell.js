@@ -58,11 +58,11 @@
 
     // ── Events tabs-pill : injectée dans chaque event panel ─────────────────
     var EVENT_TABS = [
-        { id: 'event-svs',          icon: 'ph-sword',        label: 'SvS' },
+        { id: 'event-svs',          icon: 'ph-swords',       label: 'SvS' },
         { id: 'event-gvg',          icon: 'ph-flag-banner',  label: 'GvG' },
         { id: 'event-shadowfront',  icon: 'ph-ghost',        label: 'Shadowfront' },
-        { id: 'event-dtr',          icon: 'ph-rocket',       label: 'DTR' },
-        { id: 'event-arms-race',    icon: 'ph-target',       label: 'Arms Race' }
+        { id: 'event-dtr',          icon: 'ph-truck',        label: 'DTR' },
+        { id: 'event-arms-race',    icon: 'ph-crosshair',    label: 'Arms Race' }
     ];
 
     function renderEventsTabs() {

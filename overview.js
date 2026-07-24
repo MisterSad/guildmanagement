@@ -286,12 +286,19 @@
     }
 
     function getEventIcon(name) {
+        if (window.RAD && window.RAD.getEventIcon) {
+            return window.RAD.getEventIcon(name);
+        }
         if (!name) return 'ph-calendar-dot';
         var lower = name.toLowerCase();
-        if (lower.indexOf('svs') !== -1 || lower.indexOf('gvg') !== -1) return 'ph-sword';
+        if (lower.indexOf('svs') !== -1) return 'ph-swords';
+        if (lower.indexOf('gvg') !== -1) return 'ph-flag-banner';
         if (lower.indexOf('shadowfront') !== -1) return 'ph-ghost';
-        if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return 'ph-rocket';
-        if (lower.indexOf('arms') !== -1) return 'ph-target';
+        if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return 'ph-truck';
+        if (lower.indexOf('stage a') !== -1) return 'ph-crosshair';
+        if (lower.indexOf('stage b') !== -1) return 'ph-target';
+        if (lower.indexOf('arms') !== -1) return 'ph-crosshair';
+        if (lower.indexOf('glory') !== -1) return 'ph-trophy';
         return 'ph-calendar-dot';
     }
 

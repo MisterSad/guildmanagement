@@ -637,6 +637,21 @@
         return { cls: 'tier-d', label: 'Common', color: 'var(--text-muted)', icon: '🛡️' };
     }
 
+    function getEventIcon(name) {
+        if (!name) return 'ph-calendar-dot';
+        var lower = String(name).toLowerCase();
+        if (lower.indexOf('svs') !== -1) return 'ph-swords';
+        if (lower.indexOf('gvg') !== -1) return 'ph-flag-banner';
+        if (lower.indexOf('shadowfront') !== -1) return 'ph-ghost';
+        if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return 'ph-truck';
+        if (lower.indexOf('stage a') !== -1) return 'ph-crosshair';
+        if (lower.indexOf('stage b') !== -1) return 'ph-target';
+        if (lower.indexOf('arms') !== -1 || lower.indexOf('race') !== -1) return 'ph-crosshair';
+        if (lower.indexOf('glory') !== -1) return 'ph-trophy';
+        if (lower.indexOf('sanction') !== -1) return 'ph-warning-octagon';
+        return 'ph-calendar-dot';
+    }
+
     window.RAD = {
         db: db,
         t: t,
@@ -662,6 +677,7 @@
         formatPower: formatPower,
         getPowerTier: getPowerTier,
         getPowerTierMeta: getPowerTierMeta,
+        getEventIcon: getEventIcon,
         config: {
             get: getGuildConfig,
             set: setGuildConfig
