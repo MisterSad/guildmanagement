@@ -399,29 +399,81 @@
     margin-left: .35rem;
 }
 
-/* ─── Tabs (pill style) ─── */
+/* ─── Tabs (Full-Width Glassmorphic Navigation Bar) ─── */
 .gm-tabs-pill {
-    display: flex; gap: .35rem;
-    flex-wrap: wrap;
-    padding: 4px;
-    background: var(--bg-elev);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    background: oklch(0.18 0.024 250 / 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--border-soft);
-    border-radius: 10px;
-    width: fit-content; max-width: 100%;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
+.gm-tabs-pill::-webkit-scrollbar {
+    display: none;
+}
+
 .gm-tab-pill {
-    display: inline-flex; align-items: center; gap: .4rem;
-    padding: .45rem .9rem;
-    border-radius: 7px;
-    background: transparent; border: none;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: transparent;
+    border: 1px solid transparent;
     color: var(--fg-muted);
-    font-family: var(--font);
-    font-size: .82rem; font-weight: 500;
-    transition: background .15s, color .15s;
+    font-family: var(--font-display);
+    font-size: 0.88rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
+    text-align: center;
+    min-width: max-content;
 }
-.gm-tab-pill:hover { color: var(--fg); }
-.gm-tab-pill.gm-active { background: var(--bg-3); color: var(--fg); }
+
+.gm-tab-pill:hover {
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.gm-tab-pill.gm-active {
+    background: linear-gradient(135deg, var(--accent-lime), oklch(0.82 0.17 125)) !important;
+    color: #121722 !important;
+    font-weight: 700;
+    box-shadow: 0 4px 20px -4px oklch(0.88 0.19 125 / 0.35);
+}
+
+.gm-tab-pill.gm-active .ph,
+.gm-tab-pill.gm-active .ph-fill {
+    color: #121722 !important;
+    filter: none !important;
+}
+
+@media (max-width: 900px) {
+    .gm-tabs-pill {
+        padding: 5px;
+        gap: 5px;
+        border-radius: var(--radius-md);
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+    }
+    .gm-tab-pill {
+        flex: 0 0 auto;
+        padding: 0.65rem 0.95rem;
+        font-size: 0.82rem;
+    }
+}
 
 /* ─── Empty state ─── */
 .gm-empty {
