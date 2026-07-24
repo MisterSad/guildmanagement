@@ -31,50 +31,81 @@
 
         <!-- ─── Login View ──────────────────────────────────────── -->
         <div id="login-view" class="view active gm-login-wrap">
-            <form id="login-form" class="gm-login-card">
-                <div class="gm-login-brand-row">
-                    <div class="gm-avatar-xl" style="display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: var(--font-display);">FGF</div>
-                    <div class="gm-login-title" data-i18n="login_title">FGF GUILD MANAGEMENT</div>
-                    <div class="gm-login-sub" data-i18n="login_subtitle">Foundation Galactic Frontier</div>
-                </div>
-                <div class="gm-login-form">
-                    <div class="gm-login-field">
-                        <label for="username" data-i18n="login_label_id">Identifier</label>
-                        <div class="gm-input-with-icon">
-                            <i class="ph ph-user gm-icon"></i>
-                            <input type="text" id="username" class="gm-input" required
-                                data-i18n-placeholder="login_placeholder_id"
-                                placeholder="Your identifier" autocomplete="username">
+            <canvas id="login-3d-canvas"></canvas>
+
+            <div class="gm-login-grid">
+                <!-- Left Hero Branding -->
+                <div class="gm-login-hero-brand">
+                    <div class="gm-login-hero-tag">
+                        <span class="gm-live-dot"></span>
+                        <span>SECURE GATEWAY v3.0</span>
+                    </div>
+                    <h1 class="gm-login-hero-title">FOUNDATION GALACTIC FRONTIER</h1>
+                    <p class="gm-login-hero-sub">
+                        Plateforme unifiée de gestion stratégique de guilde, analyse de puissance, opérations de guerre et portail membres.
+                    </p>
+                    <div class="gm-login-hero-chips">
+                        <div class="gm-hero-chip">
+                            <i class="ph ph-cube"></i>
+                            <span>Rendu 3D WebGL</span>
+                        </div>
+                        <div class="gm-hero-chip">
+                            <i class="ph ph-shield-check"></i>
+                            <span>Accès Chiffré</span>
+                        </div>
+                        <div class="gm-hero-chip">
+                            <i class="ph ph-lightning"></i>
+                            <span>Temps Réel</span>
                         </div>
                     </div>
-                    <div class="gm-login-field">
-                        <label for="password" data-i18n="login_label_pass">Password</label>
-                        <div class="gm-input-with-icon gm-login-pwd-wrap">
-                            <i class="ph ph-lock gm-icon"></i>
-                            <input type="password" id="password" class="gm-input" required
-                                data-i18n-placeholder="login_placeholder_pass"
-                                placeholder="Your password" autocomplete="current-password">
-                            <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
-                                <i class="ph ph-eye"></i>
+                </div>
+
+                <!-- Right 3D Interactive Card -->
+                <form id="login-form" class="gm-login-card login-card">
+                    <div class="gm-login-brand-row">
+                        <div class="gm-login-avatar-3d">FGF</div>
+                        <div class="gm-login-title" data-i18n="login_title">FGF GUILD MANAGEMENT</div>
+                        <div class="gm-login-sub" data-i18n="login_subtitle">Foundation Galactic Frontier</div>
+                    </div>
+                    <div class="gm-login-form">
+                        <div class="gm-login-field">
+                            <label for="username" data-i18n="login_label_id">Identifier</label>
+                            <div class="gm-input-with-icon">
+                                <i class="ph ph-user gm-icon"></i>
+                                <input type="text" id="username" class="gm-input" required
+                                    data-i18n-placeholder="login_placeholder_id"
+                                    placeholder="Your identifier" autocomplete="username">
+                            </div>
+                        </div>
+                        <div class="gm-login-field">
+                            <label for="password" data-i18n="login_label_pass">Password</label>
+                            <div class="gm-input-with-icon gm-login-pwd-wrap">
+                                <i class="ph ph-lock gm-icon"></i>
+                                <input type="password" id="password" class="gm-input" required
+                                    data-i18n-placeholder="login_placeholder_pass"
+                                    placeholder="Your password" autocomplete="current-password">
+                                <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
+                                    <i class="ph ph-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="login-error" class="gm-login-error hidden">
+                            <i class="ph ph-warning-circle"></i>
+                            <span data-i18n="login_error">Invalid credentials.</span>
+                        </div>
+                        <button type="submit" id="login-btn" class="gm-btn gm-btn-primary gm-login-submit">
+                            <i class="ph ph-sign-in"></i>
+                            <span data-i18n="login_btn">Sign in</span>
+                        </button>
+                        <div class="gm-portal-switch-wrap">
+                            <button type="button" id="go-to-portal-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%;">
+                                <i class="ph ph-user-focus"></i>
+                                <span>Access Player Portal (Submit Scores)</span>
                             </button>
                         </div>
                     </div>
-                    <div id="login-error" class="gm-login-error hidden">
-                        <i class="ph ph-warning-circle"></i>
-                        <span data-i18n="login_error">Invalid credentials.</span>
-                    </div>
-                    <button type="submit" id="login-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                        <i class="ph ph-sign-in"></i>
-                        <span data-i18n="login_btn">Sign in</span>
-                    </button>
-                    <div style="text-align: center; margin-top: 1rem; border-top: 1px dashed var(--border-soft); padding-top: 1rem;">
-                        <button type="button" id="go-to-portal-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%;">
-                            <i class="ph ph-user-focus"></i>
-                            <span>Access Player Portal (Submit Scores)</span>
-                        </button>
-                    </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
 
         <!-- ─── Player Portal View ────────────────────────────── -->
@@ -1060,8 +1091,10 @@
     <!-- Toast Notification -->
     <div id="toast-container"></div>
 
-    <!-- Scripts: i18n first, then Supabase, then icons, then utils, then app logic -->
+    <!-- Scripts: i18n first, then Three.js 3D, Supabase, icons, utils, then app logic -->
     <script src="i18n.js?v=18"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="login-3d.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="rad-utils.js?v=7"></script>
