@@ -259,7 +259,7 @@
         var html =
             '<div class="gm-stat-grid">' +
                 statTile(t('overview_s_members'), fmt(stats.members), null, 'ph-users', false, 'Active Guild Members', 'stat-theme-lime') +
-                statTile(t('overview_s_events'), String(stats.liveEvents), null, 'ph-swords', stats.liveEvents > 0, liveEventsMeta, 'stat-theme-coral') +
+                statTile(t('overview_s_events'), String(stats.liveEvents), null, 'ph-clock', stats.liveEvents > 0, liveEventsMeta, 'stat-theme-coral') +
                 statTile(t('overview_s_glory'), formatBigNumber(stats.gloryTotal), 'up', 'ph-trophy', false, t('overview_s_glory_meta'), 'stat-theme-mint') +
                 statTile(t('overview_s_sanctions'), String(stats.sanctions), stats.sanctions > 0 ? 'down' : null, 'ph-warning-octagon', false, 'Recorded Warnings', 'stat-theme-lilac') +
             '</div>' +
