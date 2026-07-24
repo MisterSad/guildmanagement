@@ -332,25 +332,53 @@
     async function assign(pseudo, squad, role) {
         if (!db) return;
         var sq = sfState.squads[squad];
-        if (!sq || !sq.active || !sq.sessionId) {
-            window.RAD.showToast(t('sf_squad_inactive_hint'), 'error');
-            return;
+        if (!sq) return;
+
+        // Si la session n'existe pas encore, la créer automatiquement pour permettre l'assignation rétroactive ou en avance
+        if (!sq.sessionId) {
+            sq.sessionId = window.RAD.newSessionId();
+            sq.startAt = new Date().toISOString();
+            try {
+                await db.from('event_status').upsert({
+                    event_name: SQUAD_EVENT[squad],
+                    is_active: true,
+                    session_id: sq.sessionId,
+                    start_at: sq.startAt,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'guild,event_name' });
+                sq.active = true;
+            } catch (err) {
+                console.error('auto start squad session error', err);
+            }
         }
+
         var existing = sfState.assignments.filter(function (a) { return a.squad === squad && a.role === role; });
         var max = role === 'participant' ? PARTICIPANTS_MAX : RESERVES_MAX;
         if (existing.length >= max) { window.RAD.showToast(t('sf_squad_full'), 'error'); return; }
 
-        // Supprimer une précédente affectation dans la session de ce squad
-        await db.from('shadowfront_squads').delete()
-            .eq('session_id', sq.sessionId).eq('pseudo', pseudo);
+        var week = window.RAD.getWeekStart(sq.startAt || new Date(sq.sessionId));
 
-        await db.from('shadowfront_squads').insert({
-            week_start: window.RAD.getWeekStart(sq.startAt || new Date(sq.sessionId)),
+        // Supprimer une précédente affectation pour ce membre dans cette semaine pour éviter le conflit 409
+        try {
+            await db.from('shadowfront_squads').delete()
+                .eq('week_start', week).eq('pseudo', pseudo);
+        } catch (delErr) {
+            console.warn('delete old assignment error', delErr);
+        }
+
+        var upsertRes = await db.from('shadowfront_squads').upsert({
+            week_start: week,
             session_id: sq.sessionId,
             pseudo: pseudo,
             squad: squad,
             role: role
         });
+
+        if (upsertRes.error) {
+            console.error('shadowfront_squads upsert error', upsertRes.error);
+            window.RAD.showToast(t('toast_err_generic') + ' ' + upsertRes.error.message, 'error');
+            return;
+        }
 
         await syncParticipantRows(sq.sessionId);
         await loadShadowfront();
@@ -422,7 +450,9 @@
                     participated: 0
                 };
             });
-        if (toInsert.length > 0) await db.from('event_participants').insert(toInsert);
+        if (toInsert.length > 0) {
+            await db.from('event_participants').upsert(toInsert);
+        }
     }
 
     async function saveParticipation(pseudo, value) {
@@ -517,7 +547,7 @@
 
         // ── Panel: Composition (Squads) ───────────────────────────────────────
         if (sfActiveTab === 'squads') {
-            if (!isActive) {
+            if (!sq || !sq.sessionId) {
                 html +=
                     '<div class="gm-empty" style="margin-top: 2rem;">' +
                         '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
@@ -732,7 +762,7 @@
 
         // ── Panel: Tracking ────────────────────────────────────────────────────
         else if (sfActiveTab === 'tracking') {
-            if (!isActive) {
+            if (!sq || !sq.sessionId) {
                 html +=
                     '<div class="gm-empty" style="margin-top: 2rem;">' +
                         '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +

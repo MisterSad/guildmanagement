@@ -203,7 +203,7 @@
                 };
             });
 
-            var insRes = await db.from('event_participants').insert(rows);
+            var insRes = await db.from('event_participants').upsert(rows);
             if (insRes.error) throw insRes.error;
 
             // Sync UI : pour chaque onglet ouvert dont la session courante a été enrichie,
