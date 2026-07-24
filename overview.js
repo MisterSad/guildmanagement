@@ -398,25 +398,69 @@
     }
 
     function renderActivityCard(activity) {
-        if (!activity.length) {
+        if (!activity || !activity.length) {
             return '<div class="gm-empty"><i class="ph-duotone ph-clock-counter-clockwise gm-icon"></i>' +
                 '<div class="gm-empty-title">' + t('overview_no_activity') + '</div></div>';
         }
-        var html = '<div class="gm-card gm-card-padded gm-col" style="gap:.75rem;">';
+
+        var themeMap = {
+            'success': 'gm-task-card-lime',
+            'info': 'gm-task-card-cyan',
+            'danger': 'gm-task-card-lilac'
+        };
+
+        var html = '<div class="gm-timeline-container">';
+
         activity.forEach(function (a, i) {
-            var isLast = i === activity.length - 1;
+            var dateObj = new Date(a.when);
+            var timeStr = isNaN(dateObj.getTime())
+                ? ''
+                : pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes());
+
+            var themeClass = themeMap[a.color] || 'gm-task-card-dark';
+
+            var tagLabel = 'Activity';
+            if (a.icon === 'ph-play' || a.icon === 'ph-stop-circle') tagLabel = 'Event';
+            else if (a.icon === 'ph-warning-octagon') tagLabel = 'Sanction';
+            else if (a.icon === 'ph-user-plus') tagLabel = 'Member';
+
             html +=
-                '<div class="gm-row" style="gap:.75rem; padding:.4rem 0;' +
-                    (!isLast ? ' border-bottom: 1px solid var(--border-soft); padding-bottom: .85rem;' : '') + '">' +
-                    '<div style="width:36px; height:36px; border-radius:9px; background: var(--' + a.color + '-soft); color: var(--' + a.color + '); display:flex; align-items:center; justify-content:center; flex-shrink:0;">' +
-                        '<i class="ph ' + a.icon + '"></i>' +
+                '<div class="gm-timeline-item">' +
+                    '<div class="gm-timeline-time-col">' +
+                        '<div>' + esc(timeStr) + '</div>' +
+                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7;">UTC</div>' +
                     '</div>' +
-                    '<div class="gm-grow">' +
-                        '<div style="font-size:.9rem; font-weight:500;">' + esc(a.text) + '</div>' +
-                        '<div class="gm-dim" style="font-size:.78rem;">' + relativeTime(a.when) + '</div>' +
+                    '<div class="gm-timeline-line-col">' +
+                        '<div class="gm-timeline-dot"></div>' +
+                    '</div>' +
+                    '<div>' +
+                        '<div class="gm-task-card ' + themeClass + '">' +
+                            '<div class="gm-task-card-top">' +
+                                '<div class="gm-task-status-tag">' +
+                                    '<i class="ph ' + esc(a.icon) + '"></i>' +
+                                    '<span>' + esc(tagLabel) + '</span>' +
+                                '</div>' +
+                                '<span class="gm-task-countdown-badge">' +
+                                    esc(relativeTime(a.when)) +
+                                '</span>' +
+                            '</div>' +
+                            '<div class="gm-task-card-body">' +
+                                '<div class="gm-task-icon-squircle">' +
+                                    '<i class="ph ' + esc(a.icon) + '"></i>' +
+                                '</div>' +
+                                '<div class="gm-task-info">' +
+                                    '<div class="gm-task-title">' + esc(a.text) + '</div>' +
+                                    '<div class="gm-task-sub">' + esc(window.RAD.formatDateTimeUTC(a.when)) + '</div>' +
+                                '</div>' +
+                                '<button class="gm-task-action-btn" title="Activity Actions" aria-label="Activity actions">' +
+                                    '<i class="ph ph-dots-three-vertical"></i>' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>' +
                     '</div>' +
                 '</div>';
         });
+
         html += '</div>';
         return html;
     }
