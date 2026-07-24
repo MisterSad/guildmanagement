@@ -285,27 +285,71 @@
         startCountdownTicker();
     }
 
+    function getEventIcon(name) {
+        if (!name) return 'ph-calendar-dot';
+        var lower = name.toLowerCase();
+        if (lower.indexOf('svs') !== -1 || lower.indexOf('gvg') !== -1) return 'ph-sword';
+        if (lower.indexOf('shadowfront') !== -1) return 'ph-ghost';
+        if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return 'ph-rocket';
+        if (lower.indexOf('arms') !== -1) return 'ph-target';
+        return 'ph-calendar-dot';
+    }
+
     function renderUpcomingCard(upcoming) {
         if (!upcoming || !upcoming.length) {
             return '<div class="gm-empty"><i class="ph-duotone ph-calendar-x gm-icon"></i>' +
                 '<div class="gm-empty-title">' + t('overview_no_upcoming') + '</div></div>';
         }
-        var html = '<div class="gm-card gm-card-padded gm-col" style="gap:.75rem;">';
+
+        var themes = ['gm-task-card-lime', 'gm-task-card-cyan', 'gm-task-card-lilac'];
+        var html = '<div class="gm-timeline-container">';
+
         upcoming.forEach(function (u, i) {
-            var isLast = i === upcoming.length - 1;
+            var dateObj = new Date(u.when);
+            var timeStr = isNaN(dateObj.getTime())
+                ? ''
+                : pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes());
+
+            var iconClass = getEventIcon(u.name);
+            var themeClass = themes[i % themes.length];
+
             html +=
-                '<div class="gm-row" style="gap:.75rem; padding:.4rem 0;' +
-                    (!isLast ? ' border-bottom: 1px solid var(--border-soft); padding-bottom: .85rem;' : '') + '">' +
-                    '<div style="width:36px; height:36px; border-radius:9px; background: var(--accent-soft); color: var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0;">' +
-                        '<i class="ph ph-calendar-dot"></i>' +
+                '<div class="gm-timeline-item">' +
+                    '<div class="gm-timeline-time-col">' +
+                        '<div>' + esc(timeStr) + '</div>' +
+                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7;">UTC</div>' +
                     '</div>' +
-                    '<div class="gm-grow">' +
-                        '<div style="font-size:.9rem; font-weight:600;">' + esc(u.name) + '</div>' +
-                        '<div class="gm-dim" style="font-size:.78rem;">' + esc(window.RAD.formatDateTimeUTC(u.when)) + '</div>' +
+                    '<div class="gm-timeline-line-col">' +
+                        '<div class="gm-timeline-dot"></div>' +
                     '</div>' +
-                    '<span class="gm-chip gm-chip-accent gm-countdown gm-mono" data-deadline="' + esc(u.when) + '">' + esc(formatCountdown(u.when)) + '</span>' +
+                    '<div>' +
+                        '<div class="gm-task-card ' + themeClass + '">' +
+                            '<div class="gm-task-card-top">' +
+                                '<div class="gm-task-status-tag">' +
+                                    '<i class="ph ph-clock"></i>' +
+                                    '<span>Upcoming</span>' +
+                                '</div>' +
+                                '<span class="gm-task-countdown-badge gm-countdown" data-deadline="' + esc(u.when) + '">' +
+                                    esc(formatCountdown(u.when)) +
+                                '</span>' +
+                            '</div>' +
+                            '<div class="gm-task-card-body">' +
+                                '<div class="gm-task-icon-squircle">' +
+                                    '<i class="ph ' + iconClass + '"></i>' +
+                                '</div>' +
+                                '<div class="gm-task-info">' +
+                                    '<div class="gm-task-title">' + esc(u.name) + '</div>' +
+                                    '<div class="gm-task-sub">' + esc(window.RAD.formatDateTimeUTC(u.when)) + '</div>' +
+                                '</div>' +
+                                '<button class="gm-task-action-btn" title="Event Actions" aria-label="Event actions">' +
+                                    '<i class="ph ph-dots-three-vertical"></i>' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
                 '</div>';
         });
+
         html += '</div>';
         return html;
     }
