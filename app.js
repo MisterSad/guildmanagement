@@ -1381,30 +1381,28 @@
 
             roleOrder.forEach(function (role) {
                 var membersInRole = grouped[role];
-                // Sort members in this role
                 var sorted = sortMembers(membersInRole, sortVal);
 
                 if (sorted.length > 0) {
                     hasAnyMembers = true;
                 }
 
-                // Collapsed state
                 var isCollapsed = !!window.RAD_COLLAPSED_ROLES[role];
                 var iconClass = isCollapsed ? 'ph-caret-right' : 'ph-caret-down';
                 var displayStyle = isCollapsed ? 'none' : 'block';
 
-                html += '<div class="gm-role-group" data-role="' + role + '" style="border: 1px solid var(--border-soft); border-radius: var(--radius-md); background: var(--bg-card); overflow: hidden; text-align: left;">' +
-                            '<div class="gm-role-group-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--bg-1); cursor: pointer; user-select: none; border-bottom: 1px solid ' + (isCollapsed ? 'transparent' : 'var(--border-soft)') + ';" data-role="' + role + '">' +
-                                '<div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; color: var(--text-normal);">' +
-                                    '<i class="ph ' + iconClass + '" style="font-size: 1rem; color: var(--text-muted);"></i>' +
+                html += '<div class="gm-role-group" data-role="' + role + '">' +
+                            '<div class="gm-role-group-header" data-role="' + role + '">' +
+                                '<div class="gm-role-group-title">' +
+                                    '<i class="ph ' + iconClass + ' gm-role-chevron"></i>' +
                                     '<span>' + esc(roleNames[role]) + '</span>' +
-                                    '<span class="gm-count" style="margin-left: 0.25rem;">' + sorted.length + '</span>' +
+                                    '<span class="gm-role-count">' + sorted.length + '</span>' +
                                 '</div>' +
                             '</div>' +
-                            '<div class="gm-role-group-body" style="display: ' + displayStyle + '; padding: 0.5rem 0.75rem;">' +
+                            '<div class="gm-role-group-body" style="display: ' + displayStyle + ';">' +
                                 (sorted.length 
-                                    ? '<div class="gm-member-list" style="display: flex; flex-direction: column; gap: 0.5rem;">' + sorted.map(function (m, i) { return memberTileHtml(m, i, withActions, maxPower); }).join('') + '</div>'
-                                    : '<div class="gm-dim" style="font-size: 0.85rem; padding: 0.75rem; text-align: center;">No members in this role</div>') +
+                                    ? '<div class="gm-member-list">' + sorted.map(function (m, i) { return memberTileHtml(m, i, withActions, maxPower); }).join('') + '</div>'
+                                    : '<div class="gm-dim" style="font-size: 0.85rem; padding: 1rem; text-align: center;">No members in this role</div>') +
                             '</div>' +
                         '</div>';
             });
@@ -1473,30 +1471,33 @@
 
         var roleVal = m.role || 'R1';
         var roleStyles = {
-            'R5': { text: 'R5', color: '#f59e0b', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.3)', icon: '👑' },
-            'R4': { text: 'R4', color: '#ef4444', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.3)', icon: '⚔️' },
-            'R3': { text: 'R3', color: '#a855f7', bg: 'rgba(168,85,247,0.06)', border: 'rgba(168,85,247,0.3)', icon: '🛡️' },
-            'R2': { text: 'R2', color: '#3b82f6', bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.3)', icon: '👤' },
-            'R1': { text: 'R1', color: '#94a3b8', bg: 'rgba(148,163,184,0.06)', border: 'rgba(148,163,184,0.3)', icon: '🌱' }
+            'R5': { text: 'R5', color: '#ffd166', bg: 'rgba(255,209,102,0.12)', border: 'rgba(255,209,102,0.3)', icon: '👑' },
+            'R4': { text: 'R4', color: '#ffab76', bg: 'rgba(255,171,118,0.12)', border: 'rgba(255,171,118,0.3)', icon: '⚔️' },
+            'R3': { text: 'R3', color: '#e4b5f0', bg: 'rgba(228,181,240,0.12)', border: 'rgba(228,181,240,0.3)', icon: '🛡️' },
+            'R2': { text: 'R2', color: '#56c6f3', bg: 'rgba(86,198,243,0.12)', border: 'rgba(86,198,243,0.3)', icon: '👤' },
+            'R1': { text: 'R1', color: '#6ee7b7', bg: 'rgba(110,231,183,0.12)', border: 'rgba(110,231,183,0.3)', icon: '🌱' }
         };
         var rMeta = roleStyles[roleVal] || roleStyles.R1;
-        var roleBadgeHtml = '<span class="gm-chip" style="font-size:0.72rem; font-weight:700; padding:0.1rem 0.35rem; color:' + rMeta.color + '; border: 1px solid ' + rMeta.border + '; background:' + rMeta.bg + '; display:inline-flex; align-items:center; gap:0.2rem; border-radius:4px;" title="Role ' + rMeta.text + '">' + rMeta.icon + ' ' + rMeta.text + '</span>';
+        var roleBadgeHtml = '<span class="gm-role-chip" style="color:' + rMeta.color + '; border: 1px solid ' + rMeta.border + '; background:' + rMeta.bg + ';" title="Role ' + rMeta.text + '">' + rMeta.icon + ' ' + rMeta.text + '</span>';
 
-        var tierBadge = '<span class="gm-chip ' + meta.cls + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '0a; display: inline-flex; align-items: center; gap: 0.25rem;" title="' + meta.label + ' Tier"><span style="font-size: 0.8rem;">' + meta.icon + '</span> ' + formattedPower + '</span>';
+        var tierBadge = '<span class="gm-power-tier-chip" style="color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '12;" title="' + meta.label + ' Tier"><span>' + meta.icon + '</span> ' + formattedPower + '</span>';
 
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
-                    '<div class="gm-avatar">' + esc(initial) + '</div>' +
+                    '<div class="gm-avatar gm-avatar-squircle">' + esc(initial) + '</div>' +
                     '<div class="gm-grow gm-truncate">' +
-                        '<div class="gm-member-pseudo gm-truncate" style="display:flex; align-items:center; gap:0.35rem;">' + esc(m.pseudo) + ' ' + roleBadgeHtml + '</div>' +
-                        '<div class="gm-row" style="gap:.5rem; margin-top:4px; flex-wrap: wrap;">' +
-                            '<span class="gm-dim gm-mono" style="font-size:.78rem;">UID ' + esc(uidVal) + '</span>' +
+                        '<div class="gm-member-pseudo-row">' +
+                            '<span class="gm-member-pseudo">' + esc(m.pseudo) + '</span>' +
+                            roleBadgeHtml +
+                        '</div>' +
+                        '<div class="gm-member-sub-info">' +
+                            '<span class="gm-mono gm-uid-text">UID ' + esc(uidVal) + '</span>' +
                             tierBadge +
                         '</div>' +
                     '</div>' +
                 '</div>' +
-                '<div class="gm-row gm-dim" style="gap:.75rem; font-size:.8rem;">' +
-                    '<span class="gm-row" style="gap:.3rem;"><i class="ph ph-calendar-blank"></i> ' + dateStr + '</span>' +
+                '<div class="gm-member-date">' +
+                    '<i class="ph ph-calendar-blank"></i> <span>' + dateStr + '</span>' +
                 '</div>' +
                 (withActions ? '<div class="gm-member-actions">' +
                     '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('edit_title') + '"><i class="ph ph-pencil-simple"></i></button>' +

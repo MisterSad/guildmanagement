@@ -638,38 +638,185 @@
     display: flex; flex-direction: column;
     gap: .5rem;
 }
+/* ─── Role Groups & Member Cards (Members Page DA Overhaul) ─── */
+.gm-role-group {
+    background: oklch(0.18 0.024 250 / 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gm-role-group:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.gm-role-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.95rem 1.25rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border-soft);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+}
+
+.gm-role-group-header:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.gm-role-group-title {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--fg);
+}
+
+.gm-role-chevron {
+    font-size: 1.1rem;
+    color: var(--accent-lime);
+    transition: transform 0.2s ease;
+}
+
+.gm-role-count {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.78rem;
+    padding: 2px 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--fg-muted);
+}
+
+.gm-role-group-body {
+    padding: 0.75rem 1rem 1rem;
+}
+
+.gm-member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+/* ─── Member Tile Rows ─── */
 .gm-member-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 1rem;
+    gap: 1.25rem;
     align-items: center;
-    padding: .75rem 1rem;
-    background: var(--bg-elev);
+    padding: 0.85rem 1.15rem;
+    background: var(--bg-1);
     border: 1px solid var(--border-soft);
-    border-radius: var(--radius);
-    transition: border-color .15s, background .15s;
+    border-radius: var(--radius-lg);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
 }
-.gm-member-row:hover { border-color: var(--border); }
+
+.gm-member-row:hover {
+    transform: translateY(-2px);
+    border-color: oklch(0.88 0.19 125 / 0.35);
+    box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.45);
+}
+
 .gm-member-id {
-    display: flex; align-items: center; gap: .75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
     min-width: 0;
 }
+
+.gm-avatar-squircle {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent-lime), oklch(0.75 0.18 135));
+    color: var(--accent-lime-fg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
+}
+
+.gm-member-pseudo-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .gm-member-pseudo {
-    font-weight: 600;
-    font-size: .92rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.02rem;
     color: var(--fg);
 }
-.gm-member-actions {
-    display: flex; gap: .25rem;
+
+.gm-role-chip {
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    letter-spacing: 0.02em;
 }
+
+.gm-member-sub-info {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.gm-uid-text {
+    font-size: 0.78rem;
+    color: var(--fg-dim);
+}
+
+.gm-power-tier-chip {
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+.gm-member-date {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--fg-dim);
+}
+
+.gm-member-actions {
+    display: flex;
+    gap: 0.35rem;
+}
+
 @media (max-width: 900px) {
     .gm-member-row {
         grid-template-columns: 1fr auto;
-        row-gap: .5rem;
+        row-gap: 0.6rem;
     }
-    .gm-member-row > .gm-row.gm-dim {
+    .gm-member-date {
         grid-column: 1 / -1;
-        flex-wrap: wrap;
     }
 }
 
