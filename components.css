@@ -1484,37 +1484,37 @@
 
 .gm-task-card-lime {
     background: linear-gradient(135deg, var(--accent-lime), oklch(0.82 0.17 125)) !important;
-    color: var(--accent-lime-fg) !important;
+    color: #121722 !important;
     border: none !important;
 }
 
 .gm-task-card-cyan {
     background: linear-gradient(135deg, var(--accent-cyan), oklch(0.72 0.15 220)) !important;
-    color: var(--accent-cyan-fg) !important;
+    color: #0a192f !important;
     border: none !important;
 }
 
 .gm-task-card-lilac {
     background: linear-gradient(135deg, var(--accent-lilac), oklch(0.74 0.12 320)) !important;
-    color: var(--accent-lilac-fg) !important;
+    color: #211029 !important;
     border: none !important;
 }
 
 .gm-task-card-coral {
     background: linear-gradient(135deg, var(--accent-coral), oklch(0.72 0.15 50)) !important;
-    color: var(--accent-coral-fg) !important;
+    color: #2d1502 !important;
     border: none !important;
 }
 
 .gm-task-card-amber {
     background: linear-gradient(135deg, var(--accent-amber), oklch(0.78 0.15 85)) !important;
-    color: var(--accent-amber-fg) !important;
+    color: #271a00 !important;
     border: none !important;
 }
 
 .gm-task-card-mint {
     background: linear-gradient(135deg, var(--accent-mint), oklch(0.74 0.14 165)) !important;
-    color: var(--accent-mint-fg) !important;
+    color: #032014 !important;
     border: none !important;
 }
 
@@ -1522,6 +1522,94 @@
     background: var(--bg-elev) !important;
     border: 1px solid var(--border-soft) !important;
     color: var(--fg) !important;
+}
+
+/* Deep contrast overrides inside pastel cards */
+.gm-task-card-lime strong,
+.gm-task-card-cyan strong,
+.gm-task-card-lilac strong,
+.gm-task-card-coral strong,
+.gm-task-card-amber strong,
+.gm-task-card-mint strong,
+.gm-task-card-lime .gm-task-title,
+.gm-task-card-cyan .gm-task-title,
+.gm-task-card-lilac .gm-task-title,
+.gm-task-card-coral .gm-task-title,
+.gm-task-card-amber .gm-task-title,
+.gm-task-card-mint .gm-task-title,
+.gm-task-card-lime .gm-part-event-rate,
+.gm-task-card-cyan .gm-part-event-rate,
+.gm-task-card-lilac .gm-part-event-rate,
+.gm-task-card-coral .gm-part-event-rate,
+.gm-task-card-amber .gm-part-event-rate,
+.gm-task-card-mint .gm-part-event-rate {
+    color: inherit !important;
+}
+
+.gm-task-card-lime .gm-part-pct,
+.gm-task-card-cyan .gm-part-pct,
+.gm-task-card-lilac .gm-part-pct,
+.gm-task-card-coral .gm-part-pct,
+.gm-task-card-amber .gm-part-pct,
+.gm-task-card-mint .gm-part-pct {
+    color: rgba(0, 0, 0, 0.6) !important;
+    font-weight: 600;
+}
+
+.gm-task-card-lime .gm-part-event-meta,
+.gm-task-card-cyan .gm-part-event-meta,
+.gm-task-card-lilac .gm-part-event-meta,
+.gm-task-card-coral .gm-part-event-meta,
+.gm-task-card-amber .gm-part-event-meta,
+.gm-task-card-mint .gm-part-event-meta,
+.gm-task-card-lime .gm-task-sub,
+.gm-task-card-cyan .gm-task-sub,
+.gm-task-card-lilac .gm-task-sub,
+.gm-task-card-coral .gm-task-sub,
+.gm-task-card-amber .gm-task-sub,
+.gm-task-card-mint .gm-task-sub {
+    color: rgba(0, 0, 0, 0.72) !important;
+    font-weight: 600;
+}
+
+.gm-task-card-lime .gm-part-event-meta .ph,
+.gm-task-card-cyan .gm-part-event-meta .ph,
+.gm-task-card-lilac .gm-part-event-meta .ph,
+.gm-task-card-coral .gm-part-event-meta .ph,
+.gm-task-card-amber .gm-part-event-meta .ph,
+.gm-task-card-mint .gm-part-event-meta .ph {
+    color: rgba(0, 0, 0, 0.85) !important;
+    opacity: 1 !important;
+}
+
+.gm-task-card-lime .gm-chip,
+.gm-task-card-cyan .gm-chip,
+.gm-task-card-lilac .gm-chip,
+.gm-task-card-coral .gm-chip,
+.gm-task-card-amber .gm-chip,
+.gm-task-card-mint .gm-chip {
+    background: rgba(0, 0, 0, 0.16) !important;
+    color: rgba(0, 0, 0, 0.95) !important;
+    border: 1px solid rgba(0, 0, 0, 0.18) !important;
+    font-weight: 700;
+}
+
+.gm-task-card-lime .gm-part-bar,
+.gm-task-card-cyan .gm-part-bar,
+.gm-task-card-lilac .gm-part-bar,
+.gm-task-card-coral .gm-part-bar,
+.gm-task-card-amber .gm-part-bar,
+.gm-task-card-mint .gm-part-bar {
+    background: rgba(0, 0, 0, 0.18) !important;
+}
+
+.gm-task-card-lime .gm-part-bar-fill,
+.gm-task-card-cyan .gm-part-bar-fill,
+.gm-task-card-lilac .gm-part-bar-fill,
+.gm-task-card-coral .gm-part-bar-fill,
+.gm-task-card-amber .gm-part-bar-fill,
+.gm-task-card-mint .gm-part-bar-fill {
+    background: rgba(0, 0, 0, 0.85) !important;
 }
 
 .gm-task-card-top {
