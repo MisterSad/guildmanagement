@@ -87,11 +87,14 @@ html, body {
     position: sticky; top: 0; height: 100vh;
     z-index: 10;
     flex-shrink: 0;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 .gm-sidebar-brand {
     display: flex; align-items: center; gap: .85rem;
     padding: 0 .25rem .5rem;
     margin-bottom: 1.5rem;
+    box-sizing: border-box;
 }
 .gm-brand-mark {
     width: 44px; height: 44px;
@@ -107,7 +110,7 @@ html, body {
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .gm-brand-mark:hover {
-    transform: scale(1.06) rotate(6deg);
+    transform: scale(1.05) rotate(4deg);
 }
 .gm-brand-mark img {
     width: 100%; height: 100%;
@@ -121,6 +124,9 @@ html, body {
     line-height: 1.25;
     letter-spacing: -.01em;
     color: var(--fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .gm-brand-sub {
     font-size: .72rem; color: var(--fg-dim);
@@ -131,6 +137,9 @@ html, body {
     display: flex; flex-direction: column; gap: 6px;
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    padding-right: 2px;
 }
 .gm-nav-section-label {
     font-family: var(--font-display);
@@ -154,15 +163,21 @@ html, body {
     position: relative;
     cursor: pointer;
     width: 100%;
+    box-sizing: border-box;
+}
+.gm-nav-item span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .gm-nav-item:hover {
     background: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.06);
     color: var(--fg);
-    transform: translateX(4px);
+    padding-left: 1.1rem;
 }
 .gm-nav-item:active {
-    transform: translateX(2px) scale(0.98);
+    transform: scale(0.98);
 }
 .gm-nav-item.gm-active {
     background: linear-gradient(90deg, oklch(0.88 0.19 125 / 0.16), oklch(0.78 0.16 220 / 0.06)) !important;
@@ -178,14 +193,14 @@ html, body {
 .gm-nav-item.gm-active::before {
     content: "";
     position: absolute;
-    left: -5px; top: 50%;
+    left: 0; top: 50%;
     transform: translateY(-50%);
     width: 4px; height: 18px;
     background: var(--accent-lime);
-    border-radius: 4px;
+    border-radius: 0 4px 4px 0;
     box-shadow: 0 0 12px var(--accent-lime);
 }
-.gm-nav-item .ph, .gm-nav-item .ph-fill { font-size: 1.25rem; transition: transform 0.2s ease, color 0.2s ease; }
+.gm-nav-item .ph, .gm-nav-item .ph-fill { font-size: 1.25rem; flex-shrink: 0; transition: transform 0.2s ease, color 0.2s ease; }
 .gm-nav-item:hover .ph { transform: scale(1.1); color: var(--fg); }
 .gm-nav-badge {
     margin-left: auto;
@@ -193,6 +208,7 @@ html, body {
     font-family: var(--font);
     font-size: .7rem; font-weight: 700;
     padding: 1px 7px; border-radius: 9px;
+    flex-shrink: 0;
 }
 
 .gm-sidebar-foot {
@@ -203,6 +219,7 @@ html, body {
     background: var(--bg-1);
     border-radius: var(--radius-lg);
     transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
 }
 .gm-sidebar-foot:hover {
     border-color: var(--border);
