@@ -82,6 +82,21 @@
 
     function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
+    function getWeekNumber(ws) {
+        if (!ws) return '';
+        var d = new Date(ws.length === 10 ? ws + 'T12:00:00Z' : ws);
+        if (isNaN(d.getTime())) return '';
+        var target = new Date(d.valueOf());
+        var dayNr = (d.getUTCDay() + 6) % 7;
+        target.setUTCDate(target.getUTCDate() - dayNr + 3);
+        var firstThursday = target.valueOf();
+        target.setUTCMonth(0, 1);
+        if (target.getUTCDay() !== 4) {
+            target.setUTCMonth(0, 1 + ((4 - target.getUTCDay() + 7) % 7));
+        }
+        return 1 + Math.ceil((firstThursday - target) / 604800000);
+    }
+
     function renderHistory() {
         var area = document.querySelector('#event-history .history-area');
         if (!area) return;
@@ -110,22 +125,49 @@
 
         var cardsHtml = '<div class="gm-timeline-container">';
         filtered.forEach(function (s, i) {
-            var meta    = EVENT_META[s.event_name] || { icon: 'ph-circle', label: s.event_name, hasScore: false, border: 'var(--border-soft)' };
-            var when    = formatWhen(s.session_id, s.week_start);
-            var weekStr = window.RAD.formatWeek(s.week_start);
-            var ratio   = s.participants > 0 ? Math.round((s.participated_count / s.participants) * 100) : 0;
-            var themeClass = themes[i % themes.length];
+            var meta        = EVENT_META[s.event_name] || { icon: 'ph-circle', label: s.event_name, hasScore: false, border: 'var(--border-soft)' };
+            var isWeekly    = (s.event_name === 'SvS' || s.event_name === 'GvG');
+            var weekNum     = getWeekNumber(s.week_start);
+            var weekDisplay = 'Week ' + weekNum;
+            var ratio       = s.participants > 0 ? Math.round((s.participated_count / s.participants) * 100) : 0;
+            var themeClass  = themes[i % themes.length];
 
-            var dateObj = s.session_id ? new Date(s.session_id) : (s.week_start ? new Date(s.week_start) : null);
-            var timeStr = (dateObj && !isNaN(dateObj.getTime()))
-                ? pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1)
-                : '';
+            var leftTopStr   = '';
+            var leftSubStr   = '';
+            var subtitleText = '';
+
+            if (isWeekly) {
+                leftTopStr   = weekDisplay;
+                leftSubStr   = window.RAD.formatWeek(s.week_start);
+                subtitleText = weekDisplay + ' (' + window.RAD.formatWeek(s.week_start) + ')';
+            } else {
+                var dateObj = s.session_id ? new Date(s.session_id) : (s.week_start ? new Date(s.week_start + 'T12:00:00Z') : null);
+                if (dateObj && !isNaN(dateObj.getTime())) {
+                    leftTopStr = pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1) + '/' + dateObj.getUTCFullYear();
+                    if (s.session_id) {
+                        leftSubStr = pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes()) + ' UTC';
+                        subtitleText = dateObj.toLocaleDateString('fr-FR', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+                        }) + ' UTC';
+                    } else {
+                        leftSubStr = weekDisplay;
+                        subtitleText = dateObj.toLocaleDateString('fr-FR', {
+                            day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC'
+                        }) + ' · ' + weekDisplay;
+                    }
+                } else {
+                    leftTopStr   = weekDisplay;
+                    leftSubStr   = s.week_start || '';
+                    subtitleText = weekDisplay;
+                }
+            }
 
             cardsHtml +=
                 '<div class="gm-timeline-item">' +
                     '<div class="gm-timeline-time-col">' +
-                        '<div>' + esc(timeStr) + '</div>' +
-                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7;">' + esc(weekStr) + '</div>' +
+                        '<div style="font-size:0.85rem; font-weight:700;">' + esc(leftTopStr) + '</div>' +
+                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7; max-width:85px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(leftSubStr) + '</div>' +
                     '</div>' +
                     '<div class="gm-timeline-line-col">' +
                         '<div class="gm-timeline-dot"></div>' +
@@ -148,7 +190,7 @@
                                 '</div>' +
                                 '<div class="gm-task-info">' +
                                     '<div class="gm-task-title">' + esc(meta.label) + '</div>' +
-                                    '<div class="gm-task-sub">' + esc(when) + ' · ' + esc(weekStr) + '</div>' +
+                                    '<div class="gm-task-sub">' + esc(subtitleText) + '</div>' +
                                 '</div>' +
                                 '<button class="gm-task-action-btn" title="View Session Details" aria-label="View session details">' +
                                     '<i class="ph ph-caret-right" style="font-size:1.3rem;"></i>' +
