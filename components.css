@@ -642,16 +642,14 @@
     gap: .6rem;
     padding: .85rem 1rem;
     background: var(--bg-elev);
-    border: 1px solid var(--border-soft);
-    border-left: 3px solid var(--accent);
+    border: none;
     border-radius: var(--radius);
     cursor: pointer;
-    transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
 }
 .gm-history-card:hover {
     transform: translateY(-1px);
     background: var(--bg-elev-hover, var(--bg-elev));
-    border-color: var(--accent);
 }
 .gm-history-head {
     display: flex;
@@ -1343,7 +1341,8 @@
 }
 
 /* Task Card Component matching Mockup */
-.gm-task-card {
+.gm-task-card,
+.gm-history-card.gm-task-card {
     border-radius: var(--radius-lg);
     padding: 1.1rem 1.25rem;
     display: flex;
@@ -1354,32 +1353,40 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: var(--shadow-sm);
     cursor: pointer;
+    border: none !important;
+    border-left: none !important;
 }
 
-.gm-task-card:hover {
+.gm-task-card:hover,
+.gm-history-card.gm-task-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow);
+    border-color: transparent !important;
+    border-left-color: transparent !important;
 }
 
 .gm-task-card-lime {
-    background: linear-gradient(135deg, var(--accent-lime), oklch(0.82 0.17 125));
-    color: var(--accent-lime-fg);
+    background: linear-gradient(135deg, var(--accent-lime), oklch(0.82 0.17 125)) !important;
+    color: var(--accent-lime-fg) !important;
+    border: none !important;
 }
 
 .gm-task-card-cyan {
-    background: linear-gradient(135deg, var(--accent-cyan), oklch(0.72 0.15 220));
-    color: var(--accent-cyan-fg);
+    background: linear-gradient(135deg, var(--accent-cyan), oklch(0.72 0.15 220)) !important;
+    color: var(--accent-cyan-fg) !important;
+    border: none !important;
 }
 
 .gm-task-card-lilac {
-    background: linear-gradient(135deg, var(--accent-lilac), oklch(0.74 0.12 320));
-    color: var(--accent-lilac-fg);
+    background: linear-gradient(135deg, var(--accent-lilac), oklch(0.74 0.12 320)) !important;
+    color: var(--accent-lilac-fg) !important;
+    border: none !important;
 }
 
 .gm-task-card-dark {
-    background: var(--bg-elev);
-    border: 1px solid var(--border-soft);
-    color: var(--fg);
+    background: var(--bg-elev) !important;
+    border: 1px solid var(--border-soft) !important;
+    color: var(--fg) !important;
 }
 
 .gm-task-card-top {
