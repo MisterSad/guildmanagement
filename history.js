@@ -80,11 +80,13 @@
         renderHistory();
     }
 
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
     function renderHistory() {
         var area = document.querySelector('#event-history .history-area');
         if (!area) return;
 
-        var pillsHtml = '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;">' +
+        var pillsHtml = '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; margin-bottom:1.5rem;">' +
             FILTERS.map(function (f) {
                 var isActive = (f === activeFilter);
                 var label = (f === 'All') ? t('history_filter_all') : f;
@@ -104,26 +106,55 @@
             return;
         }
 
-        var cardsHtml = '<div class="gm-history-list">';
-        filtered.forEach(function (s) {
+        var themes = ['gm-task-card-lime', 'gm-task-card-cyan', 'gm-task-card-lilac'];
+
+        var cardsHtml = '<div class="gm-timeline-container">';
+        filtered.forEach(function (s, i) {
             var meta    = EVENT_META[s.event_name] || { icon: 'ph-circle', label: s.event_name, hasScore: false, border: 'var(--border-soft)' };
             var when    = formatWhen(s.session_id, s.week_start);
             var weekStr = window.RAD.formatWeek(s.week_start);
             var ratio   = s.participants > 0 ? Math.round((s.participated_count / s.participants) * 100) : 0;
+            var themeClass = themes[i % themes.length];
+
+            var dateObj = s.session_id ? new Date(s.session_id) : (s.week_start ? new Date(s.week_start) : null);
+            var timeStr = (dateObj && !isNaN(dateObj.getTime()))
+                ? pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1)
+                : '';
+
             cardsHtml +=
-                '<div class="gm-history-card" data-event="' + esc(s.event_name) + '" data-session="' + esc(s.session_id || '') + '" data-week="' + esc(s.week_start) + '" style="border-left-color:' + meta.border + ';">' +
-                    '<div class="gm-history-head">' +
-                        '<div class="gm-history-icon" style="color:' + meta.border + ';"><i class="ph-fill ' + meta.icon + '"></i></div>' +
-                        '<div class="gm-grow gm-truncate">' +
-                            '<div class="gm-history-title">' + esc(meta.label) + '</div>' +
-                            '<div class="gm-history-when gm-dim">' + esc(when) + '</div>' +
-                        '</div>' +
+                '<div class="gm-timeline-item">' +
+                    '<div class="gm-timeline-time-col">' +
+                        '<div>' + esc(timeStr) + '</div>' +
+                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7;">' + esc(weekStr) + '</div>' +
                     '</div>' +
-                    '<div class="gm-history-chips">' +
-                        '<span class="gm-chip"><i class="ph ph-calendar-blank"></i> ' + esc(weekStr) + '</span>' +
-                        '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + s.participants + '</span>' +
-                        '<span class="gm-chip gm-chip-success"><i class="ph-fill ph-check-circle"></i> ' + s.participated_count + ' (' + ratio + '%)</span>' +
-                        (s.total_score > 0 ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-trophy"></i> ' + fmt(s.total_score) + '</span>' : '') +
+                    '<div class="gm-timeline-line-col">' +
+                        '<div class="gm-timeline-dot"></div>' +
+                    '</div>' +
+                    '<div>' +
+                        '<div class="gm-task-card gm-history-card ' + themeClass + '" data-event="' + esc(s.event_name) + '" data-session="' + esc(s.session_id || '') + '" data-week="' + esc(s.week_start) + '">' +
+                            '<div class="gm-task-card-top">' +
+                                '<div class="gm-task-status-tag">' +
+                                    '<i class="ph ' + meta.icon + '"></i>' +
+                                    '<span>' + esc(meta.label) + '</span>' +
+                                '</div>' +
+                                '<div style="display:flex; gap:0.4rem; align-items:center;">' +
+                                    (s.total_score > 0 ? '<span class="gm-task-countdown-badge"><i class="ph-fill ph-trophy"></i> ' + fmt(s.total_score) + '</span>' : '') +
+                                    '<span class="gm-task-countdown-badge">' + s.participated_count + '/' + s.participants + ' (' + ratio + '%)</span>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="gm-task-card-body">' +
+                                '<div class="gm-task-icon-squircle">' +
+                                    '<i class="ph ' + meta.icon + '"></i>' +
+                                '</div>' +
+                                '<div class="gm-task-info">' +
+                                    '<div class="gm-task-title">' + esc(meta.label) + '</div>' +
+                                    '<div class="gm-task-sub">' + esc(when) + ' · ' + esc(weekStr) + '</div>' +
+                                '</div>' +
+                                '<button class="gm-task-action-btn" title="View Session Details" aria-label="View session details">' +
+                                    '<i class="ph ph-caret-right" style="font-size:1.3rem;"></i>' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>' +
                     '</div>' +
                 '</div>';
         });
