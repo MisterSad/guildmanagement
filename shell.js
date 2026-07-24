@@ -246,15 +246,12 @@
     function renderTopbar() {
         var el = document.querySelector('[data-gm-topbar]');
         if (!el) return;
-        var current = NAV_ITEMS.find(function (i) { return i.id === state.active; });
-        var title = current ? t(current.labelKey) : t('gm_brand');
 
         var brandHtml = state.mobile
             ? '<div class="gm-topbar-mobile-brand">' +
                 '<div class="gm-brand-mark">FGF</div>' +
-                '<div class="gm-topbar-title">' + title + '</div>' +
               '</div>'
-            : '<div class="gm-topbar-title">' + title + '</div>';
+            : '<div class="gm-topbar-brand"></div>';
 
         var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
 
