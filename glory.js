@@ -58,18 +58,29 @@
         if (!area) return;
 
         if (!members.length) {
-            area.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-ghost"></i><p>' + t('empty_members') + '</p></div>';
+            area.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
             return;
         }
 
         var totalGlory = Object.values(currMap).reduce(function (s, v) { return s + (v || 0); }, 0);
 
         var html =
-            '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between;">' +
-                '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap;">' +
-                    '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + members.length + ' ' + t('event_total') + '</span>' +
-                    '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-trophy"></i> ' + t('glory_total') + ' <span class="gm-mono total-glory-val">' + fmt(totalGlory) + '</span></span>' +
+            '<div class="gm-stat-grid" style="margin-bottom: 1.5rem;">' +
+                '<div class="gm-stat-tile stat-theme-lime">' +
+                    '<div class="gm-task-icon-squircle"><i class="ph ph-users"></i></div>' +
+                    '<div class="gm-stat-label">' + t('event_total') + '</div>' +
+                    '<div class="gm-stat-val">' + fmt(members.length) + '</div>' +
+                    '<div class="gm-stat-meta">Active Members Tracked</div>' +
                 '</div>' +
+                '<div class="gm-stat-tile stat-theme-mint">' +
+                    '<div class="gm-task-icon-squircle"><i class="ph ph-trophy"></i></div>' +
+                    '<div class="gm-stat-label">' + t('glory_total') + '</div>' +
+                    '<div class="gm-stat-val total-glory-val">' + fmt(totalGlory) + '</div>' +
+                    '<div class="gm-stat-meta">Guild Total This Week</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="gm-section-head" style="margin-bottom: 1rem; flex-wrap: wrap;">' +
+                '<div class="gm-section-title"><i class="ph ph-list-numbers"></i> Members Glory Log</div>' +
                 '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
                     '<i class="ph ph-magnifying-glass gm-icon"></i>' +
                     '<input type="text" class="gm-input glory-search-input" placeholder="' + t('search_placeholder') + '">' +
@@ -92,8 +103,8 @@
             html +=
                 '<tr class="participant-row" data-pseudo="' + esc(pseudo) + '">' +
                     '<td data-label="' + t('col_member') + '">' +
-                        '<div class="gm-row" style="gap:.6rem;">' +
-                            '<div class="gm-avatar">' + esc(initial) + '</div>' +
+                        '<div class="gm-member-id">' +
+                            '<div class="gm-avatar gm-avatar-squircle">' + esc(initial) + '</div>' +
                             '<strong>' + esc(pseudo) + '</strong>' +
                         '</div>' +
                     '</td>' +
@@ -170,7 +181,7 @@
 
         var cls = pct > 0 ? 'gm-chip-success' : pct < 0 ? 'gm-chip-danger' : '';
         var sign = pct > 0 ? '+' : '';
-        return '<span class="gm-chip ' + cls + '">' + sign + pct.toFixed(1) + '%</span>';
+        return '<span class="gm-chip ' + cls + '" style="font-family: var(--font-display); font-weight: 700; font-size: 0.82rem; padding: 2px 10px; border-radius: var(--radius-pill);">' + sign + pct.toFixed(1) + '%</span>';
     }
 
     function updateTotal(area) {
