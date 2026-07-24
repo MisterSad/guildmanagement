@@ -406,9 +406,12 @@
                 '<div class="gm-part-event-grid">';
             data.eventSummary.forEach(function (e) {
                 var rate = Math.round(e.rate * 100);
+                var themeClass = (window.RAD && window.RAD.getEventTheme) ? window.RAD.getEventTheme(e.name) : 'gm-task-card-dark';
+                var iconClass = (window.RAD && window.RAD.getEventIcon) ? window.RAD.getEventIcon(e.name) : 'ph-calendar-dot';
                 eventsHtml +=
-                    '<div class="gm-part-event-card">' +
+                    '<div class="gm-part-event-card ' + themeClass + '">' +
                         '<div class="gm-part-event-head">' +
+                            '<div class="gm-task-icon-squircle"><i class="ph ' + iconClass + '"></i></div>' +
                             '<strong>' + esc(e.name) + '</strong>' +
                             '<span class="gm-chip">×' + e.coeff + '</span>' +
                         '</div>' +

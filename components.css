@@ -741,84 +741,138 @@
 .gm-podium {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: .75rem;
+    gap: 1rem;
     align-items: end;
-    margin: 0 auto 1.5rem;
-    max-width: 600px;
+    margin: 0.5rem auto 1.75rem;
+    max-width: 680px;
 }
 .gm-podium-slot {
     display: flex; flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 1rem .5rem 0;
+    padding: 1.2rem 0.75rem 0;
     cursor: pointer;
-    transition: transform .15s;
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-xl);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
 }
-.gm-podium-slot:hover { transform: translateY(-2px); }
+.gm-podium-slot:hover {
+    transform: translateY(-4px);
+    border-color: var(--border);
+    box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.45);
+}
+.gm-podium-slot .gm-avatar {
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.4);
+    border: 2px solid transparent;
+}
 .gm-podium-name {
-    font-weight: 600;
-    font-size: .9rem;
-    margin-top: .5rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-top: 0.6rem;
     color: var(--fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 .gm-podium-score {
-    font-size: .78rem;
-    color: var(--fg-dim);
-    margin-bottom: .5rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 0.65rem;
     font-variant-numeric: tabular-nums;
 }
 .gm-podium-bar {
     width: 100%;
-    min-height: 50px;
-    border-radius: 8px 8px 0 0;
+    min-height: 55px;
+    border-radius: var(--radius) var(--radius) 0 0;
     display: flex; align-items: flex-start; justify-content: center;
 }
 .gm-podium-rank {
     font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.3rem;
+    font-weight: 800;
+    font-size: 1.4rem;
     color: white;
-    padding-top: 8px;
-}
-.gm-podium-slot.gm-gold .gm-podium-bar {
-    background: linear-gradient(180deg, oklch(0.78 0.16 75), oklch(0.58 0.14 60));
-    height: 90px;
-}
-.gm-podium-slot.gm-silver .gm-podium-bar {
-    background: linear-gradient(180deg, oklch(0.75 0.02 270), oklch(0.55 0.02 270));
-    height: 70px;
-}
-.gm-podium-slot.gm-bronze .gm-podium-bar {
-    background: linear-gradient(180deg, oklch(0.65 0.10 50), oklch(0.45 0.08 40));
-    height: 55px;
+    padding-top: 10px;
 }
 
-/* ─── Stats banners ─── */
+/* 🥇 Gold #1 */
+.gm-podium-slot.gm-gold {
+    background: linear-gradient(180deg, oklch(0.88 0.19 125 / 0.14), var(--bg-1)) !important;
+    border: 1px solid oklch(0.88 0.19 125 / 0.4) !important;
+    box-shadow: 0 0 25px oklch(0.88 0.19 125 / 0.18);
+}
+.gm-podium-slot.gm-gold .gm-podium-score { color: var(--accent-lime); }
+.gm-podium-slot.gm-gold .gm-avatar { border-color: var(--accent-lime); }
+.gm-podium-slot.gm-gold .gm-podium-bar {
+    background: linear-gradient(180deg, var(--accent-lime), oklch(0.72 0.16 125));
+    height: 95px;
+}
+.gm-podium-slot.gm-gold .gm-podium-rank { color: var(--accent-lime-fg); }
+
+/* 🥈 Silver #2 */
+.gm-podium-slot.gm-silver {
+    background: linear-gradient(180deg, oklch(0.78 0.16 220 / 0.12), var(--bg-1)) !important;
+    border: 1px solid oklch(0.78 0.16 220 / 0.35) !important;
+    box-shadow: 0 0 20px oklch(0.78 0.16 220 / 0.14);
+}
+.gm-podium-slot.gm-silver .gm-podium-score { color: var(--accent-cyan); }
+.gm-podium-slot.gm-silver .gm-avatar { border-color: var(--accent-cyan); }
+.gm-podium-slot.gm-silver .gm-podium-bar {
+    background: linear-gradient(180deg, var(--accent-cyan), oklch(0.65 0.14 220));
+    height: 75px;
+}
+.gm-podium-slot.gm-silver .gm-podium-rank { color: var(--accent-cyan-fg); }
+
+/* 🥉 Bronze #3 */
+.gm-podium-slot.gm-bronze {
+    background: linear-gradient(180deg, oklch(0.78 0.16 50 / 0.12), var(--bg-1)) !important;
+    border: 1px solid oklch(0.78 0.16 50 / 0.35) !important;
+    box-shadow: 0 0 20px oklch(0.78 0.16 50 / 0.14);
+}
+.gm-podium-slot.gm-bronze .gm-podium-score { color: var(--accent-coral); }
+.gm-podium-slot.gm-bronze .gm-avatar { border-color: var(--accent-coral); }
+.gm-podium-slot.gm-bronze .gm-podium-bar {
+    background: linear-gradient(180deg, var(--accent-coral), oklch(0.62 0.14 50));
+    height: 60px;
+}
+.gm-podium-slot.gm-bronze .gm-podium-rank { color: var(--accent-coral-fg); }
+
+/* ─── Stats banners & controls ─── */
 .gm-prince-banner {
     display: flex; align-items: center; gap: .75rem;
-    padding: .85rem 1.1rem;
+    padding: 0.95rem 1.2rem;
     margin-bottom: 1.25rem;
-    background: linear-gradient(135deg, oklch(0.30 0.06 75 / 0.18), oklch(0.30 0.06 270 / 0.18));
-    border: 1px solid oklch(0.78 0.13 75 / 0.25);
-    border-radius: var(--radius);
-    color: var(--accent);
-    font-weight: 600;
-    font-size: .9rem;
+    background: linear-gradient(135deg, oklch(0.85 0.17 85 / 0.15), oklch(0.78 0.16 50 / 0.12));
+    border: 1px solid oklch(0.85 0.17 85 / 0.35);
+    border-radius: var(--radius-lg);
+    color: var(--accent-amber);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: .92rem;
+    box-shadow: 0 4px 18px oklch(0.85 0.17 85 / 0.15);
 }
-.gm-prince-banner i { font-size: 1.2rem; }
+.gm-prince-banner i { font-size: 1.3rem; }
 
 .gm-formula-note {
-    display: flex; align-items: center; gap: .5rem;
-    padding: .6rem 1rem;
-    margin-bottom: 1rem;
-    background: oklch(0.20 0.022 270 / 0.5);
-    border: 1px dashed var(--border-soft);
-    border-radius: var(--radius);
+    display: flex; align-items: center; gap: .6rem;
+    padding: .75rem 1.1rem;
+    margin-bottom: 1.25rem;
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
     color: var(--fg-dim);
-    font-size: .85rem;
+    font-size: .86rem;
 }
+.gm-formula-note i { color: var(--accent-lime); font-size: 1.1rem; }
 .gm-formula-note strong {
-    color: var(--fg);
+    color: var(--accent-lime);
+    font-family: var(--font-display);
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
 
