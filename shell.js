@@ -209,9 +209,6 @@
         var html =
             '<div class="gm-sidebar-brand">' +
                 '<div class="gm-brand-mark">FGF</div>' +
-                '<div>' +
-                    '<div class="gm-brand-text">' + t('gm_brand') + '</div>' +
-                '</div>' +
             '</div>' +
             '<nav class="gm-sidebar-nav">' +
                 '<div class="gm-nav-section-label">' + t('gm_nav_play') + '</div>' +
