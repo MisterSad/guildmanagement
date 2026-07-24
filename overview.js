@@ -308,7 +308,6 @@
                 '<div class="gm-empty-title">' + t('overview_no_upcoming') + '</div></div>';
         }
 
-        var themes = ['gm-task-card-lime', 'gm-task-card-cyan', 'gm-task-card-lilac'];
         var html = '<div class="gm-timeline-container">';
 
         upcoming.forEach(function (u, i) {
@@ -318,7 +317,7 @@
                 : pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes());
 
             var iconClass = getEventIcon(u.name);
-            var themeClass = themes[i % themes.length];
+            var themeClass = (window.RAD && window.RAD.getEventTheme) ? window.RAD.getEventTheme(u.name) : 'gm-task-card-dark';
 
             html +=
                 '<div class="gm-timeline-item">' +
@@ -424,7 +423,10 @@
                 ? ''
                 : pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes());
 
-            var themeClass = themeMap[a.color] || 'gm-task-card-dark';
+            var themeClass = (window.RAD && window.RAD.getEventTheme) ? window.RAD.getEventTheme(a.text) : 'gm-task-card-dark';
+            if (themeClass === 'gm-task-card-dark' && a.color) {
+                themeClass = themeMap[a.color] || 'gm-task-card-dark';
+            }
 
             var tagLabel = 'Activity';
             if (a.icon === 'ph-play' || a.icon === 'ph-stop-circle') tagLabel = 'Event';

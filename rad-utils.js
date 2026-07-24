@@ -634,6 +634,19 @@
         return 'ph-calendar-dot';
     }
 
+    function getEventTheme(name) {
+        if (!name) return 'gm-task-card-dark';
+        var lower = String(name).toLowerCase();
+        if (lower.indexOf('svs') !== -1) return 'gm-task-card-lime';
+        if (lower.indexOf('gvg') !== -1) return 'gm-task-card-coral';
+        if (lower.indexOf('shadowfront') !== -1) return 'gm-task-card-lilac';
+        if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return 'gm-task-card-cyan';
+        if (lower.indexOf('arms') !== -1 || lower.indexOf('race') !== -1) return 'gm-task-card-amber';
+        if (lower.indexOf('glory') !== -1) return 'gm-task-card-mint';
+        if (lower.indexOf('sanction') !== -1) return 'gm-task-card-lilac';
+        return 'gm-task-card-dark';
+    }
+
     window.RAD = {
         db: db,
         t: t,
@@ -660,6 +673,7 @@
         getPowerTier: getPowerTier,
         getPowerTierMeta: getPowerTierMeta,
         getEventIcon: getEventIcon,
+        getEventTheme: getEventTheme,
         config: {
             get: getGuildConfig,
             set: setGuildConfig

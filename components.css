@@ -1383,6 +1383,24 @@
     border: none !important;
 }
 
+.gm-task-card-coral {
+    background: linear-gradient(135deg, var(--accent-coral), oklch(0.72 0.15 50)) !important;
+    color: var(--accent-coral-fg) !important;
+    border: none !important;
+}
+
+.gm-task-card-amber {
+    background: linear-gradient(135deg, var(--accent-amber), oklch(0.78 0.15 85)) !important;
+    color: var(--accent-amber-fg) !important;
+    border: none !important;
+}
+
+.gm-task-card-mint {
+    background: linear-gradient(135deg, var(--accent-mint), oklch(0.74 0.14 165)) !important;
+    color: var(--accent-mint-fg) !important;
+    border: none !important;
+}
+
 .gm-task-card-dark {
     background: var(--bg-elev) !important;
     border: 1px solid var(--border-soft) !important;
@@ -1469,6 +1487,21 @@
 .gm-task-card-lilac .gm-task-icon-squircle {
     background: #211029 !important;
     color: var(--accent-lilac) !important;
+}
+
+.gm-task-card-coral .gm-task-icon-squircle {
+    background: #2d1502 !important;
+    color: var(--accent-coral) !important;
+}
+
+.gm-task-card-amber .gm-task-icon-squircle {
+    background: #271a00 !important;
+    color: var(--accent-amber) !important;
+}
+
+.gm-task-card-mint .gm-task-icon-squircle {
+    background: #032014 !important;
+    color: var(--accent-mint) !important;
 }
 
 .gm-task-card-dark .gm-task-icon-squircle {

@@ -36,6 +36,21 @@
   --accent-lilac-soft: oklch(0.32 0.06 320);
   --accent-lilac-fg:   oklch(0.16 0.02 320);
 
+  /* 🟠 Warm Coral - GvG Accent (#ffab76) */
+  --accent-coral:      oklch(0.78 0.16 50);
+  --accent-coral-soft: oklch(0.32 0.07 50);
+  --accent-coral-fg:   oklch(0.16 0.02 50);
+
+  /* 🟡 Electric Amber - Arms Race Accent (#ffd166) */
+  --accent-amber:      oklch(0.85 0.17 85);
+  --accent-amber-soft: oklch(0.34 0.07 85);
+  --accent-amber-fg:   oklch(0.16 0.02 85);
+
+  /* 🟢 Emerald Mint - Glory Accent (#6ee7b7) */
+  --accent-mint:       oklch(0.82 0.15 165);
+  --accent-mint-soft:  oklch(0.32 0.07 165);
+  --accent-mint-fg:    oklch(0.16 0.02 165);
+
   /* Primary Default Accent -> Lime Green */
   --accent:      var(--accent-lime);
   --accent-2:    oklch(0.82 0.18 125);

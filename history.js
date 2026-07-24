@@ -121,8 +121,6 @@
             return;
         }
 
-        var themes = ['gm-task-card-lime', 'gm-task-card-cyan', 'gm-task-card-lilac'];
-
         var cardsHtml = '<div class="gm-timeline-container">';
         filtered.forEach(function (s, i) {
             var meta        = EVENT_META[s.event_name] || { icon: 'ph-calendar-dot', label: s.event_name, hasScore: false, border: 'var(--border-soft)' };
@@ -131,7 +129,7 @@
             var weekNum     = getWeekNumber(s.week_start);
             var weekDisplay = 'Week ' + weekNum;
             var ratio       = s.participants > 0 ? Math.round((s.participated_count / s.participants) * 100) : 0;
-            var themeClass  = themes[i % themes.length];
+            var themeClass  = (window.RAD && window.RAD.getEventTheme) ? window.RAD.getEventTheme(s.event_name) : 'gm-task-card-dark';
 
             var leftTopStr   = '';
             var leftSubStr   = '';
