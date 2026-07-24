@@ -460,67 +460,29 @@
         return true;
     }
 
-    async function notifyDiscordEvent(eventName, startAt, action) {
-        var eventPrefix = '';
-        if (eventName.indexOf('ARMS RACE') !== -1) {
-            eventPrefix = 'armsrace';
-        } else if (eventName === 'Defend Trade Route') {
-            eventPrefix = 'dtr';
-        } else if (eventName.indexOf('Shadowfront Squad') !== -1) {
-            eventPrefix = 'shadowfront';
-        } else if (eventName === 'GvG') {
-            eventPrefix = 'gvg';
-        } else if (eventName === 'SvS') {
-            eventPrefix = 'svs';
-        } else if (eventName.indexOf('Calamity') !== -1) {
-            eventPrefix = 'calamity';
+    function formatDiscordRoleMention(input) {
+        if (!input || typeof input !== 'string') return '@everyone';
+        var str = input.trim();
+        if (!str || str === '@everyone') return '@everyone';
+        if (str === '@here') return '@here';
+
+        var match = str.match(/\d{15,22}/);
+        if (match) {
+            return '<@&' + match[0] + '>';
         }
 
-        if (!eventPrefix) return;
-
-        var webhookUrl = await getGuildConfig('webhook_' + eventPrefix);
-        if (!webhookUrl || webhookUrl.trim() === '') return;
-
-        // Check if this type of notification is enabled
-        var configKey = 'notify_' + eventPrefix + '_';
-        if (action === 'start' || action === 'edit') {
-            configKey += 'start';
-        } else if (action === 'reminder_30') {
-            configKey += 'reminder_30';
-        } else if (action === 'reminder_5') {
-            configKey += 'reminder_5';
-        } else if (action === 'reminder_10') {
-            configKey += 'reminder_10';
-        } else {
-            configKey = ''; // unknown/fallback
+        if (str.indexOf('<@&') === 0 && str.indexOf('>') === str.length - 1) {
+            return str;
         }
 
-        if (configKey) {
-            var isNotificationEnabled = await getGuildConfig(configKey);
-            if (isNotificationEnabled === 'false') {
-                console.log('Discord notification for ' + eventName + ' (' + action + ') is disabled in configuration.');
-                return;
-            }
-        }
+        return str;
+    }
 
-        var allowedEvents = [
-            'ARMS RACE STAGE A',
-            'ARMS RACE STAGE B',
-            'Defend Trade Route',
-            'Shadowfront Squad 1',
-            'Shadowfront Squad 2'
-        ];
-        if (allowedEvents.indexOf(eventName) === -1) return;
-        
-        var dateFormatted = formatDateTimeUTC(startAt);
-        var content = '';
-        var embedTitle = '📢 Guild Event: ' + eventName;
-        var embedDesc = 'A guild event has been configured in the FGF Guild Management tool!';
-        var actionLabel = '';
-        var color = 5763719; // Green
+    async function notifyDiscordEvent(eventName, eventStart, action) {
+        if (!db) return;
 
         var eventPrefix = '';
-        var nameUpper = eventName.toUpperCase();
+        var nameUpper = String(eventName || '').toUpperCase();
         if (nameUpper.indexOf('ARMS RACE') !== -1) eventPrefix = 'armsrace';
         else if (nameUpper.indexOf('TRADE ROUTE') !== -1 || nameUpper.indexOf('DTR') !== -1) eventPrefix = 'dtr';
         else if (nameUpper.indexOf('SHADOWFRONT') !== -1) eventPrefix = 'shadowfront';
@@ -528,16 +490,33 @@
         else if (nameUpper.indexOf('GVG') !== -1) eventPrefix = 'gvg';
         else if (nameUpper.indexOf('SVS') !== -1) eventPrefix = 'svs';
 
+        var webhookUrl = eventPrefix ? await getGuildConfig('webhook_' + eventPrefix) : null;
+        if (!webhookUrl || webhookUrl.trim() === '') {
+            webhookUrl = await getGuildConfig('discord_webhook_url');
+        }
+        if (!webhookUrl || webhookUrl.trim() === '') return;
+
+        var dateObj = new Date(eventStart);
+        var dateFormatted = !isNaN(dateObj.getTime())
+            ? dateObj.toLocaleString('en-US', {
+                weekday: 'short', month: '2-digit', day: '2-digit', timeZone: 'UTC',
+                hour: '2-digit', minute: '2-digit', hour12: false
+              }) + ' UTC'
+            : String(eventStart);
+
         var eventSpecificRoleId = eventPrefix ? await getGuildConfig('discord_role_id_' + eventPrefix) : null;
+        var globalRoleId = await getGuildConfig('discord_role_id');
         var discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '') 
             ? eventSpecificRoleId 
-            : await getGuildConfig('discord_role_id');
+            : globalRoleId;
 
-        var guildTag = (discordRoleId && discordRoleId.trim() !== '')
-            ? '<@&' + discordRoleId.trim() + '>'
-            : '@everyone';
+        var eventGuildTag = formatDiscordRoleMention(discordRoleId);
 
-        var eventGuildTag = guildTag;
+        var actionLabel = '';
+        var content = '📢 **Guild Event Update:** ' + eventName + ' (' + action + ') ' + eventGuildTag;
+        var embedTitle = '📢 Guild Event: ' + eventName;
+        var embedDesc = 'A guild event schedule has been updated in the FGF Guild Management tool!';
+        var color = 5763719; // Green
 
         if (action === 'start') {
             actionLabel = '🚀 Scheduled / Live';
@@ -565,9 +544,12 @@
             var replacePlaceholders = function (str) {
                 if (!str) return str;
                 return str
+                    .replace(/@{guild_tag}/g, '{guild_tag}')
                     .replace(/{event_name}/g, eventName)
                     .replace(/{date}/g, dateFormatted)
-                    .replace(/{guild_tag}/g, eventGuildTag);
+                    .replace(/{guild_tag}/g, eventGuildTag)
+                    .replace(/<@(\d{15,22})>/g, '<@&$1>')
+                    .replace(/(^|\s)@(\d{15,22})($|\s)/g, '$1<@&$2>$3');
             };
 
             if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);

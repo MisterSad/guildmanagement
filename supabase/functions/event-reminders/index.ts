@@ -225,22 +225,39 @@ serve(async (req) => {
                                 event.event_name === 'Shadowfront Squad 2';
         if (!isStandardEvent) continue;
 
-        let eventPrefix = '';
-        if (event.event_name.startsWith('ARMS RACE')) {
-          eventPrefix = 'armsrace';
-        } else if (event.event_name === 'Defend Trade Route') {
-          eventPrefix = 'dtr';
-        } else if (event.event_name.startsWith('Shadowfront Squad')) {
-          eventPrefix = 'shadowfront';
+        function formatDiscordRoleMention(input: string | undefined | null): string {
+          if (!input || typeof input !== 'string') return '@everyone';
+          const str = input.trim();
+          if (!str || str === '@everyone') return '@everyone';
+          if (str === '@here') return '@here';
+
+          const match = str.match(/\d{15,22}/);
+          if (match) {
+            return `<@&${match[0]}>`;
+          }
+
+          if (str.startsWith('<@&') && str.endsWith('>')) {
+            return str;
+          }
+
+          return str;
         }
 
+        let eventPrefix = '';
+        const nameUpper = (event.event_name || '').toUpperCase();
+        if (nameUpper.includes('ARMS RACE')) eventPrefix = 'armsrace';
+        else if (nameUpper.includes('TRADE ROUTE') || nameUpper.includes('DTR')) eventPrefix = 'dtr';
+        else if (nameUpper.includes('SHADOWFRONT')) eventPrefix = 'shadowfront';
+        else if (nameUpper.includes('CALAMITY')) eventPrefix = 'calamity';
+        else if (nameUpper.includes('GVG')) eventPrefix = 'gvg';
+        else if (nameUpper.includes('SVS')) eventPrefix = 'svs';
+
         const eventSpecificRoleId = eventPrefix ? config[`discord_role_id_${eventPrefix}`] : null;
+        const globalRoleId = config['discord_role_id'];
         const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
           ? eventSpecificRoleId
-          : config['discord_role_id'];
-        const eventGuildTag = (discordRoleId && discordRoleId.trim() !== '')
-          ? `<@&${discordRoleId.trim()}>`
-          : '@everyone';
+          : globalRoleId;
+        const eventGuildTag = formatDiscordRoleMention(discordRoleId);
 
         const startMs = new Date(event.start_at).getTime();
         const diffMs = startMs - now;
@@ -353,9 +370,12 @@ serve(async (req) => {
             const replacePlaceholders = (str: string) => {
               if (!str) return str;
               return str
+                .replace(/@{guild_tag}/g, '{guild_tag}')
                 .replace(/{event_name}/g, event.event_name)
                 .replace(/{date}/g, dateFormatted)
-                .replace(/{guild_tag}/g, eventGuildTag);
+                .replace(/{guild_tag}/g, eventGuildTag)
+                .replace(/<@(\d{15,22})>/g, '<@&$1>')
+                .replace(/(^|\s)@(\d{15,22})($|\s)/g, '$1<@&$2>$3');
             };
 
             if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);
