@@ -1353,102 +1353,97 @@
     margin-bottom: 1.5rem;
 }
 
+/* ─── Timezone Clocks (Overview Page) ─── */
+.gm-overview-clocks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 2rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
 .gm-clock-card {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    background: var(--bg-1);
+    gap: 0.85rem;
+    background: oklch(0.18 0.024 250 / 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--border-soft);
-    border-radius: var(--radius-lg);
-    padding: 0.6rem 1rem;
-    min-width: 160px;
-    transition: border-color 0.2s, transform 0.2s, background-color 0.2s;
+    border-radius: var(--radius-xl);
+    padding: 0.85rem 1.1rem;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
     cursor: default;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .gm-clock-card:hover {
-    border-color: var(--border);
-    background: var(--bg-2);
-    transform: translateY(-2px);
+    border-color: oklch(0.88 0.19 125 / 0.35);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px -6px oklch(0.88 0.19 125 / 0.2);
 }
 
 .gm-clock-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
 }
 
 .gm-clock-name {
-    font-size: 0.88rem;
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-size: 0.92rem;
+    font-weight: 700;
     color: var(--fg);
-    line-height: 1.2;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .gm-clock-meta {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     color: var(--fg-dim);
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     line-height: 1.1;
+}
+
+.gm-clock-meta .gm-chip {
+    font-size: 0.68rem;
+    padding: 1px 6px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-soft);
+    color: var(--fg-muted);
 }
 
 .gm-clock-time {
     font-family: var(--font-mono);
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--accent);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--accent-lime);
     margin-left: auto;
     font-variant-numeric: tabular-nums;
+    filter: drop-shadow(0 0 8px oklch(0.88 0.19 125 / 0.35));
+    letter-spacing: -0.02em;
+    flex-shrink: 0;
 }
 
 .gm-avatar.gm-avatar-sm {
-    width: 30px;
-    height: 30px;
-    font-size: 0.75rem;
-}
-
-.gm-avatar.gm-avatar-accent {
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: var(--accent-fg);
-}
-
-.gm-avatar.gm-avatar-info {
-    background: linear-gradient(135deg, var(--info), var(--info-soft));
-    color: white;
-}
-
-.gm-avatar.gm-avatar-success {
-    background: linear-gradient(135deg, var(--success), var(--success-soft));
-    color: oklch(0.18 0.02 150);
-}
-
-.gm-avatar.gm-avatar-warning {
-    background: linear-gradient(135deg, var(--warning), var(--warning-soft));
-    color: oklch(0.18 0.02 80);
-}
-
-.gm-avatar.gm-avatar-danger {
-    background: linear-gradient(135deg, var(--danger), var(--danger-soft));
-    color: white;
-}
-
-@media (max-width: 900px) {
-    .gm-overview-clocks {
-        width: 100%;
-        margin-top: 0.75rem;
-    }
-    .gm-clock-card {
-        flex: 1 1 calc(50% - 0.35rem);
-        min-width: 140px;
-    }
-}
-
-@media (max-width: 480px) {
-    .gm-clock-card {
-        flex: 1 1 100%;
-    }
+    width: 36px;
+    height: 36px;
+    font-size: 0.82rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    border-radius: 11px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* ─── Timeline & Task Cards for Upcoming Events (Inspired by Mockup) ─────── */
