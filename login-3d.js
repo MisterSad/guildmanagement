@@ -158,13 +158,9 @@
 
     function updateCorePosition() {
         if (!coreGroup) return;
-        if (window.innerWidth > 960) {
-            coreGroup.position.x = -6.5;
-            coreGroup.position.y = 0;
-        } else {
-            coreGroup.position.x = 0;
-            coreGroup.position.y = 4;
-        }
+        // Center 3D core behind the animated login card
+        coreGroup.position.x = 0;
+        coreGroup.position.y = 0;
     }
 
     function onWindowResize() {
@@ -245,30 +241,30 @@
 
     // ─── 3D Card Tilt Controller ───
     function initCardTilt() {
-        const cards = document.querySelectorAll('.gm-login-card');
-        cards.forEach(card => {
-            card.addEventListener('mousemove', function (e) {
-                const rect = card.getBoundingClientRect();
+        const wrappers = document.querySelectorAll('.gm-animated-card-wrap, .gm-login-card');
+        wrappers.forEach(target => {
+            target.addEventListener('mousemove', function (e) {
+                const rect = target.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
 
                 const centerX = rect.width / 2;
                 const centerY = rect.height / 2;
 
-                const rotateX = ((y - centerY) / centerY) * -10; // max 10 deg
-                const rotateY = ((x - centerX) / centerX) * 10;  // max 10 deg
+                const rotateX = ((y - centerY) / centerY) * -8; // max 8 deg
+                const rotateY = ((x - centerX) / centerX) * 8;  // max 8 deg
 
-                card.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateZ(8px)`;
+                target.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.01, 1.01, 1.01)`;
                 
                 // Update Specular Highlight position
-                card.style.setProperty('--shine-x', `${(x / rect.width * 100).toFixed(1)}%`);
-                card.style.setProperty('--shine-y', `${(y / rect.height * 100).toFixed(1)}%`);
+                target.style.setProperty('--shine-x', `${(x / rect.width * 100).toFixed(1)}%`);
+                target.style.setProperty('--shine-y', `${(y / rect.height * 100).toFixed(1)}%`);
             });
 
-            card.addEventListener('mouseleave', function () {
-                card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)';
-                card.style.setProperty('--shine-x', '50%');
-                card.style.setProperty('--shine-y', '50%');
+            target.addEventListener('mouseleave', function () {
+                target.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+                target.style.setProperty('--shine-x', '50%');
+                target.style.setProperty('--shine-y', '50%');
             });
         });
     }

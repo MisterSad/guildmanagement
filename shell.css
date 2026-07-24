@@ -509,34 +509,27 @@ html, body {
     z-index: 10;
 }
 
-/* Hero & Card Grid Layout */
-.gm-login-grid {
-    display: grid;
-    grid-template-columns: 1.15fr 1fr;
-    gap: 3.5rem;
-    align-items: center;
-    max-width: 1100px;
-    width: 100%;
-    position: relative;
-    z-index: 2;
-    perspective: 1200px;
-}
-
-/* Left Hero Brand Section */
-.gm-login-hero-brand {
+/* Centered Container for Codehal Animated Style */
+.gm-login-centered-container {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1.25rem;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    position: relative;
+    z-index: 2;
+    max-width: 440px;
+    width: 100%;
+    perspective: 1200px;
 }
 
 .gm-login-hero-tag {
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.4rem 0.9rem;
-    background: oklch(0.22 0.026 250 / 0.6);
-    border: 1px solid oklch(0.88 0.19 125 / 0.3);
+    padding: 0.45rem 1rem;
+    background: oklch(0.22 0.026 250 / 0.7);
+    border: 1px solid oklch(0.88 0.19 125 / 0.35);
     border-radius: var(--radius-pill);
     font-family: var(--font-display);
     font-size: 0.78rem;
@@ -545,7 +538,7 @@ html, body {
     color: var(--accent-lime);
     text-transform: uppercase;
     backdrop-filter: blur(12px);
-    box-shadow: 0 4px 20px oklch(0.88 0.19 125 / 0.12);
+    box-shadow: 0 4px 24px oklch(0.88 0.19 125 / 0.18);
 }
 
 .gm-live-dot {
@@ -559,76 +552,78 @@ html, body {
 
 @keyframes gm-pulse-dot {
     0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.4); opacity: 0.5; }
+    50% { transform: scale(1.45); opacity: 0.4; }
 }
 
-.gm-login-hero-title {
-    font-family: var(--font-display);
-    font-size: 2.8rem;
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    background: linear-gradient(135deg, #ffffff 40%, var(--accent-cyan) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.gm-login-hero-sub {
-    font-size: 1.05rem;
-    color: var(--fg-muted);
-    line-height: 1.65;
-    max-width: 480px;
-}
-
-.gm-login-hero-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-top: 0.5rem;
-}
-
-.gm-hero-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.45rem 0.85rem;
-    background: oklch(0.20 0.025 250 / 0.5);
-    border: 1px solid var(--border-soft);
-    border-radius: var(--radius-md);
-    font-size: 0.82rem;
-    color: var(--fg-muted);
-    backdrop-filter: blur(8px);
-    transition: all 0.25s ease;
-}
-
-.gm-hero-chip:hover {
-    border-color: var(--accent-cyan);
-    color: var(--fg);
-    transform: translateY(-2px);
-}
-
-.gm-hero-chip i {
-    color: var(--accent-cyan);
-}
-
-/* Glassmorphic 3D Card */
-.gm-login-card {
-    background: oklch(0.20 0.026 250 / 0.75);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border: 1px solid oklch(0.38 0.03 250 / 0.5);
-    border-radius: var(--radius-xl);
-    padding: 2.25rem 2.5rem;
-    max-width: 440px;
+/* Rotating Gradient Animated Card Wrapper (Codehal Signature Style) */
+.gm-animated-card-wrap {
+    position: relative;
     width: 100%;
+    border-radius: 22px;
+    padding: 3px; /* Glowing border thickness */
+    overflow: hidden;
     box-shadow:
-        0 24px 64px oklch(0 0 0 / 0.55),
-        0 0 40px oklch(0.88 0.19 125 / 0.06),
-        inset 0 1px 0 oklch(1 0 0 / 0.12);
+        0 30px 70px oklch(0 0 0 / 0.65),
+        0 0 50px oklch(0.88 0.19 125 / 0.15);
+    transform-style: preserve-3d;
+    transition: transform 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Rotating Conic Gradient Beam */
+.gm-animated-card-wrap::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(
+        from 0deg,
+        transparent 0%,
+        var(--accent-lime) 20%,
+        transparent 40%,
+        var(--accent-cyan) 60%,
+        transparent 80%,
+        var(--accent-lilac) 90%,
+        transparent 100%
+    );
+    animation: gm-rotate-conic 4s linear infinite;
+    z-index: 0;
+}
+
+/* Soft Glow Shadow Layer */
+.gm-animated-card-wrap::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+    background: conic-gradient(
+        from 0deg,
+        var(--accent-lime),
+        var(--accent-cyan),
+        var(--accent-lilac),
+        var(--accent-lime)
+    );
+    animation: gm-rotate-conic 4s linear infinite;
+    filter: blur(26px);
+    opacity: 0.35;
+    z-index: -1;
+}
+
+@keyframes gm-rotate-conic {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Inner Glass Card */
+.gm-login-card {
+    background: oklch(0.18 0.024 250 / 0.92);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border-radius: 19px;
+    padding: 2.25rem 2.25rem;
+    width: 100%;
     position: relative;
     z-index: 2;
-    transform-style: preserve-3d;
-    transition: transform 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 /* Specular Reflection Glow */
