@@ -918,12 +918,20 @@
                 var m = slot.item;
                 var initial = window.RAD.avatarInit(m.pseudo);
                 var scoreDisplay = fmt(m.score) + ' ' + t('stats_pts');
+                var rankIcon = slot.rank === 1 ? 'ph-crown-fill' : slot.rank === 2 ? 'ph-medal-fill' : 'ph-trophy-fill';
+                
                 podHtml +=
-                    '<div class="gm-podium-slot ' + slot.cls + '" data-pseudo="' + esc(m.pseudo) + '">' +
-                        '<div class="gm-avatar gm-avatar-lg">' + esc(initial) + '</div>' +
-                        '<div class="gm-podium-name">' + esc(m.pseudo) + '</div>' +
-                        '<div class="gm-podium-score">' + scoreDisplay + '</div>' +
-                        '<div class="gm-podium-bar"><div class="gm-podium-rank">' + slot.rank + '</div></div>' +
+                    '<div class="gm-podium-card ' + slot.cls + '" data-pseudo="' + esc(m.pseudo) + '">' +
+                        '<div class="gm-podium-badge">' +
+                            '<i class="ph ' + rankIcon + '"></i> ' + slot.rank +
+                        '</div>' +
+                        '<div class="gm-podium-avatar-wrap">' +
+                            '<div class="gm-avatar gm-avatar-lg">' + esc(initial) + '</div>' +
+                        '</div>' +
+                        '<div class="gm-podium-info">' +
+                            '<div class="gm-podium-name">' + esc(m.pseudo) + '</div>' +
+                            '<div class="gm-podium-score-pill">' + scoreDisplay + '</div>' +
+                        '</div>' +
                     '</div>';
             });
             podHtml += '</div>';
@@ -990,7 +998,7 @@
             container.innerHTML = tabsHtml + bannerHtml + podHtml + tableHtml;
 
             wireStatsTabs(container);
-            container.querySelectorAll('.profile-btn, .gm-podium-slot').forEach(function (btn) {
+            container.querySelectorAll('.profile-btn, .gm-podium-card').forEach(function (btn) {
                 btn.addEventListener('click', function () { openProfile(btn.getAttribute('data-pseudo')); });
             });
             container.querySelectorAll('.gm-uid-copy').forEach(function (btn) {

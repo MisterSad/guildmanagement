@@ -737,110 +737,166 @@
     gap: .35rem;
 }
 
-/* ─── Podium (Stats top 3) ─── */
+/* ─── Modern Podium (Stats top 3) ─── */
 .gm-podium {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 1rem;
+    grid-template-columns: 1fr 1.08fr 1fr;
+    gap: 1.1rem;
     align-items: end;
-    margin: 0.5rem auto 1.75rem;
+    margin: 1rem auto 2rem;
     max-width: 680px;
 }
-.gm-podium-slot {
-    display: flex; flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 1.2rem 0.75rem 0;
-    cursor: pointer;
+
+.gm-podium-card {
     background: var(--bg-1);
     border: 1px solid var(--border-soft);
     border-radius: var(--radius-xl);
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    padding: 1.4rem 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
     position: relative;
     overflow: hidden;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
 }
-.gm-podium-slot:hover {
-    transform: translateY(-4px);
-    border-color: var(--border);
-    box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.45);
+
+.gm-podium-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5);
 }
-.gm-podium-slot .gm-avatar {
-    box-shadow: 0 0 16px rgba(0, 0, 0, 0.4);
-    border: 2px solid transparent;
+
+.gm-podium-badge {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.82rem;
+    padding: 3px 9px;
+    border-radius: var(--radius-pill);
+    line-height: 1;
 }
+
+.gm-podium-avatar-wrap {
+    margin-top: 0.5rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+}
+
+.gm-podium-avatar-wrap .gm-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 1.15rem;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.gm-podium-card.gm-gold .gm-avatar {
+    border: 2px solid var(--accent-lime);
+    box-shadow: 0 0 16px oklch(0.88 0.19 125 / 0.4);
+}
+
+.gm-podium-card.gm-silver .gm-avatar {
+    border: 2px solid var(--accent-cyan);
+    box-shadow: 0 0 16px oklch(0.78 0.16 220 / 0.4);
+}
+
+.gm-podium-card.gm-bronze .gm-avatar {
+    border: 2px solid var(--accent-coral);
+    box-shadow: 0 0 16px oklch(0.78 0.16 50 / 0.4);
+}
+
+.gm-podium-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+}
+
 .gm-podium-name {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 0.95rem;
-    margin-top: 0.6rem;
+    font-size: 1rem;
     color: var(--fg);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
 }
-.gm-podium-score {
+
+.gm-podium-score-pill {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 0.85rem;
-    margin-bottom: 0.65rem;
+    font-size: 0.82rem;
+    padding: 3px 12px;
+    border-radius: var(--radius-pill);
     font-variant-numeric: tabular-nums;
 }
-.gm-podium-bar {
-    width: 100%;
-    min-height: 55px;
-    border-radius: var(--radius) var(--radius) 0 0;
-    display: flex; align-items: flex-start; justify-content: center;
-}
-.gm-podium-rank {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.4rem;
-    color: white;
-    padding-top: 10px;
+
+/* 🥇 Gold #1 Card (Center, Tallest) */
+.gm-podium-card.gm-gold {
+    min-height: 190px;
+    background: linear-gradient(180deg, oklch(0.88 0.19 125 / 0.16) 0%, var(--bg-1) 100%) !important;
+    border: 1px solid oklch(0.88 0.19 125 / 0.45) !important;
+    box-shadow: 0 8px 30px -6px oklch(0.88 0.19 125 / 0.22);
 }
 
-/* 🥇 Gold #1 */
-.gm-podium-slot.gm-gold {
-    background: linear-gradient(180deg, oklch(0.88 0.19 125 / 0.14), var(--bg-1)) !important;
-    border: 1px solid oklch(0.88 0.19 125 / 0.4) !important;
-    box-shadow: 0 0 25px oklch(0.88 0.19 125 / 0.18);
+.gm-podium-card.gm-gold .gm-podium-badge {
+    background: var(--accent-lime);
+    color: var(--accent-lime-fg);
+    box-shadow: 0 0 12px oklch(0.88 0.19 125 / 0.4);
 }
-.gm-podium-slot.gm-gold .gm-podium-score { color: var(--accent-lime); }
-.gm-podium-slot.gm-gold .gm-avatar { border-color: var(--accent-lime); }
-.gm-podium-slot.gm-gold .gm-podium-bar {
-    background: linear-gradient(180deg, var(--accent-lime), oklch(0.72 0.16 125));
-    height: 95px;
-}
-.gm-podium-slot.gm-gold .gm-podium-rank { color: var(--accent-lime-fg); }
 
-/* 🥈 Silver #2 */
-.gm-podium-slot.gm-silver {
-    background: linear-gradient(180deg, oklch(0.78 0.16 220 / 0.12), var(--bg-1)) !important;
-    border: 1px solid oklch(0.78 0.16 220 / 0.35) !important;
-    box-shadow: 0 0 20px oklch(0.78 0.16 220 / 0.14);
+.gm-podium-card.gm-gold .gm-podium-score-pill {
+    background: rgba(210, 248, 114, 0.15);
+    color: var(--accent-lime);
+    border: 1px solid rgba(210, 248, 114, 0.3);
 }
-.gm-podium-slot.gm-silver .gm-podium-score { color: var(--accent-cyan); }
-.gm-podium-slot.gm-silver .gm-avatar { border-color: var(--accent-cyan); }
-.gm-podium-slot.gm-silver .gm-podium-bar {
-    background: linear-gradient(180deg, var(--accent-cyan), oklch(0.65 0.14 220));
-    height: 75px;
-}
-.gm-podium-slot.gm-silver .gm-podium-rank { color: var(--accent-cyan-fg); }
 
-/* 🥉 Bronze #3 */
-.gm-podium-slot.gm-bronze {
-    background: linear-gradient(180deg, oklch(0.78 0.16 50 / 0.12), var(--bg-1)) !important;
-    border: 1px solid oklch(0.78 0.16 50 / 0.35) !important;
-    box-shadow: 0 0 20px oklch(0.78 0.16 50 / 0.14);
+/* 🥈 Silver #2 Card (Left) */
+.gm-podium-card.gm-silver {
+    min-height: 168px;
+    background: linear-gradient(180deg, oklch(0.78 0.16 220 / 0.14) 0%, var(--bg-1) 100%) !important;
+    border: 1px solid oklch(0.78 0.16 220 / 0.38) !important;
+    box-shadow: 0 6px 24px -6px oklch(0.78 0.16 220 / 0.18);
 }
-.gm-podium-slot.gm-bronze .gm-podium-score { color: var(--accent-coral); }
-.gm-podium-slot.gm-bronze .gm-avatar { border-color: var(--accent-coral); }
-.gm-podium-slot.gm-bronze .gm-podium-bar {
-    background: linear-gradient(180deg, var(--accent-coral), oklch(0.62 0.14 50));
-    height: 60px;
+
+.gm-podium-card.gm-silver .gm-podium-badge {
+    background: var(--accent-cyan);
+    color: var(--accent-cyan-fg);
+    box-shadow: 0 0 12px oklch(0.78 0.16 220 / 0.4);
 }
-.gm-podium-slot.gm-bronze .gm-podium-rank { color: var(--accent-coral-fg); }
+
+.gm-podium-card.gm-silver .gm-podium-score-pill {
+    background: rgba(86, 198, 243, 0.15);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(86, 198, 243, 0.3);
+}
+
+/* 🥉 Bronze #3 Card (Right) */
+.gm-podium-card.gm-bronze {
+    min-height: 155px;
+    background: linear-gradient(180deg, oklch(0.78 0.16 50 / 0.14) 0%, var(--bg-1) 100%) !important;
+    border: 1px solid oklch(0.78 0.16 50 / 0.38) !important;
+    box-shadow: 0 6px 24px -6px oklch(0.78 0.16 50 / 0.18);
+}
+
+.gm-podium-card.gm-bronze .gm-podium-badge {
+    background: var(--accent-coral);
+    color: var(--accent-coral-fg);
+    box-shadow: 0 0 12px oklch(0.78 0.16 50 / 0.4);
+}
+
+.gm-podium-card.gm-bronze .gm-podium-score-pill {
+    background: rgba(255, 171, 118, 0.15);
+    color: var(--accent-coral);
+    border: 1px solid rgba(255, 171, 118, 0.3);
+}
 
 /* ─── Stats banners & controls ─── */
 .gm-prince-banner {
