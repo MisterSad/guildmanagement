@@ -1451,13 +1451,29 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.gm-task-card-dark .gm-task-icon-squircle {
-    background: var(--bg-2);
-    color: var(--accent-lime);
-}
-
 .gm-task-icon-squircle i {
     transform: rotate(-45deg);
+}
+
+/* Contrast optimization for theme squircle icon badges */
+.gm-task-card-lime .gm-task-icon-squircle {
+    background: #121722 !important;
+    color: var(--accent-lime) !important;
+}
+
+.gm-task-card-cyan .gm-task-icon-squircle {
+    background: #0a192f !important;
+    color: var(--accent-cyan) !important;
+}
+
+.gm-task-card-lilac .gm-task-icon-squircle {
+    background: #211029 !important;
+    color: var(--accent-lilac) !important;
+}
+
+.gm-task-card-dark .gm-task-icon-squircle {
+    background: var(--bg-2) !important;
+    color: var(--accent-lime) !important;
 }
 
 .gm-task-info {

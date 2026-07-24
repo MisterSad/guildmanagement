@@ -125,7 +125,8 @@
 
         var cardsHtml = '<div class="gm-timeline-container">';
         filtered.forEach(function (s, i) {
-            var meta        = EVENT_META[s.event_name] || { icon: 'ph-circle', label: s.event_name, hasScore: false, border: 'var(--border-soft)' };
+            var meta        = EVENT_META[s.event_name] || { icon: 'ph-calendar-dot', label: s.event_name, hasScore: false, border: 'var(--border-soft)' };
+            var iconClass   = (window.RAD && window.RAD.getEventIcon) ? window.RAD.getEventIcon(s.event_name) : (meta.icon || 'ph-calendar-dot');
             var isWeekly    = (s.event_name === 'SvS' || s.event_name === 'GvG');
             var weekNum     = getWeekNumber(s.week_start);
             var weekDisplay = 'Week ' + weekNum;
@@ -176,7 +177,7 @@
                         '<div class="gm-task-card gm-history-card ' + themeClass + '" data-event="' + esc(s.event_name) + '" data-session="' + esc(s.session_id || '') + '" data-week="' + esc(s.week_start) + '">' +
                             '<div class="gm-task-card-top">' +
                                 '<div class="gm-task-status-tag">' +
-                                    '<i class="ph ' + meta.icon + '"></i>' +
+                                    '<i class="ph ' + esc(iconClass) + '"></i>' +
                                     '<span>' + esc(meta.label) + '</span>' +
                                 '</div>' +
                                 '<div style="display:flex; gap:0.4rem; align-items:center;">' +
@@ -186,7 +187,7 @@
                             '</div>' +
                             '<div class="gm-task-card-body">' +
                                 '<div class="gm-task-icon-squircle">' +
-                                    '<i class="ph ' + meta.icon + '"></i>' +
+                                    '<i class="ph ' + esc(iconClass) + '"></i>' +
                                 '</div>' +
                                 '<div class="gm-task-info">' +
                                     '<div class="gm-task-title">' + esc(meta.label) + '</div>' +
