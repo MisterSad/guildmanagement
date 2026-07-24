@@ -257,6 +257,38 @@
             : t('overview_no_live');
 
         var html =
+            '<div class="gm-priority-grid">' +
+                '<div class="gm-priority-card gm-priority-card-lime">' +
+                    '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
+                        '<div class="gm-priority-icon-squircle"><i class="ph ph-sword"></i></div>' +
+                        '<span class="gm-chip" style="background:rgba(18,23,34,0.25); color:inherit; font-weight:700;">' + (stats.liveEvents > 0 ? stats.liveEvents + ' Live' : 'Active Events') + '</span>' +
+                    '</div>' +
+                    '<div>' +
+                        '<div class="gm-priority-title">First Priority</div>' +
+                        '<div class="gm-priority-sub">' + (stats.liveEvents > 0 ? esc(stats.liveEventNames.join(', ')) : 'Guild War & Events') + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="gm-priority-card gm-priority-card-cyan">' +
+                    '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
+                        '<div class="gm-priority-icon-squircle"><i class="ph ph-users-three"></i></div>' +
+                        '<span class="gm-chip" style="background:rgba(18,23,34,0.25); color:inherit; font-weight:700;">' + stats.members + ' Members</span>' +
+                    '</div>' +
+                    '<div>' +
+                        '<div class="gm-priority-title">Second Priority</div>' +
+                        '<div class="gm-priority-sub">Roster & Member Power</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="gm-priority-card gm-priority-card-lilac">' +
+                    '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
+                        '<div class="gm-priority-icon-squircle"><i class="ph ph-trophy"></i></div>' +
+                        '<span class="gm-chip" style="background:rgba(18,23,34,0.25); color:inherit; font-weight:700;">' + esc(formatBigNumber(stats.gloryTotal)) + '</span>' +
+                    '</div>' +
+                    '<div>' +
+                        '<div class="gm-priority-title">Third Priority</div>' +
+                        '<div class="gm-priority-sub">Weekly Glory Score Tracker</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
             '<div class="gm-stat-grid">' +
                 statTile(t('overview_s_members'), fmt(stats.members), null, 'ph-users', false, '') +
                 statTile(t('overview_s_events'), String(stats.liveEvents), null, 'ph-sword', stats.liveEvents > 0, liveEventsMeta) +
