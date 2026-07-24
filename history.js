@@ -101,11 +101,14 @@
         var area = document.querySelector('#event-history .history-area');
         if (!area) return;
 
-        var pillsHtml = '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; margin-bottom:1.5rem;">' +
+        var pillsHtml = '<div class="gm-tabs-pill" style="margin-bottom:1.5rem;">' +
             FILTERS.map(function (f) {
                 var isActive = (f === activeFilter);
                 var label = (f === 'All') ? t('history_filter_all') : f;
-                return '<button class="gm-chip history-filter' + (isActive ? ' gm-chip-accent active' : '') + '" data-filter="' + esc(f) + '">' + esc(label) + '</button>';
+                var iconClass = (f === 'All') ? 'ph-circles-four' : ((window.RAD && window.RAD.getEventIcon) ? window.RAD.getEventIcon(f) : 'ph-calendar-dot');
+                return '<button class="gm-tab-pill history-filter' + (isActive ? ' gm-active' : '') + '" data-filter="' + esc(f) + '">' +
+                    '<i class="ph ' + iconClass + '"></i> ' + esc(label) +
+                '</button>';
             }).join('') + '</div>';
 
         var filtered = sessions.filter(function (s) {
