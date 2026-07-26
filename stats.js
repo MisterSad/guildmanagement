@@ -145,11 +145,27 @@
                 return Promise.resolve(def);
             };
 
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+
+            var membersQ = db.from('guild_members').select('pseudo, uid');
+            var partsQ   = db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000);
+            var gloryQ   = db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000);
+            var squadsQ  = db.from('shadowfront_squads').select('pseudo, role, week_start').in('week_start', weeks).limit(100000);
+
+            if (currentG === 'ALPHA') {
+                membersQ = membersQ.or('guild.eq.ALPHA,guild.is.null');
+                partsQ   = partsQ.or('guild.eq.ALPHA,guild.is.null');
+                gloryQ   = gloryQ.or('guild.eq.ALPHA,guild.is.null');
+                squadsQ  = squadsQ.or('guild.eq.ALPHA,guild.is.null');
+            } else {
+                membersQ = membersQ.eq('guild', currentG);
+                partsQ   = partsQ.eq('guild', currentG);
+                gloryQ   = gloryQ.eq('guild', currentG);
+                squadsQ  = squadsQ.eq('guild', currentG);
+            }
+
             var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace] = await Promise.all([
-                db.from('guild_members').select('pseudo, uid'),
-                db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
-                db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000),
-                db.from('shadowfront_squads').select('pseudo, role, week_start').in('week_start', weeks).limit(100000),
+                membersQ, partsQ, gloryQ, squadsQ,
                 getConfigVal('coeff_svs', 5),
                 getConfigVal('coeff_gvg', 5),
                 getConfigVal('coeff_shadowfront', 3),
@@ -193,10 +209,19 @@
     // ── Mode SvS / GvG : classement brut par score d'événement ─────────────────
     async function loadEventRanking(eventName, week) {
         try {
-            var res = await db.from('event_participants')
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var query = db.from('event_participants')
                 .select('pseudo, score, score_prep, score_pvp, participated, is_pending')
                 .eq('event_name', eventName)
                 .eq('week_start', week);
+
+            if (currentG === 'ALPHA') {
+                query = query.or('guild.eq.ALPHA,guild.is.null');
+            } else {
+                query = query.eq('guild', currentG);
+            }
+
+            var res = await query;
             if (res.error) throw res.error;
 
             var agg = {};
@@ -233,19 +258,20 @@
         }
     }
 
-    // ── Participation : taux par événement + joueurs actifs / inactifs ─────────
-    // Période sélectionnable (4 / 8 dernières semaines ou tout l'historique).
-    // Un "slot" = une ligne event_participants : pour chaque slot d'un joueur on
-    // sait s'il a participé (participated > 0). Le taux par événement est la
-    // moyenne pondérée par slot — pas par session — pour rester comparable
-    // quand le nombre de membres varie entre semaines.
     async function loadParticipation() {
         try {
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
             var weeksFilter = null;
             if (participationPeriod === '4w')      weeksFilter = allWeeks.slice(0, 4);
             else if (participationPeriod === '8w') weeksFilter = allWeeks.slice(0, 8);
 
-            var membersRes = await db.from('guild_members').select('pseudo');
+            var membersQ = db.from('guild_members').select('pseudo');
+            if (currentG === 'ALPHA') {
+                membersQ = membersQ.or('guild.eq.ALPHA,guild.is.null');
+            } else {
+                membersQ = membersQ.eq('guild', currentG);
+            }
+            var membersRes = await membersQ;
             if (membersRes.error) throw membersRes.error;
             var members = (membersRes.data || []).map(function (m) { return m.pseudo; });
 
@@ -253,6 +279,11 @@
                 .select('pseudo, event_name, week_start, participated')
                 .neq('event_name', 'Glory')
                 .limit(100000);
+            if (currentG === 'ALPHA') {
+                query = query.or('guild.eq.ALPHA,guild.is.null');
+            } else {
+                query = query.eq('guild', currentG);
+            }
             if (weeksFilter) query = query.in('week_start', weeksFilter);
             var partsRes = await query;
             if (partsRes.error) throw partsRes.error;
