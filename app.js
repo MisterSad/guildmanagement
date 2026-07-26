@@ -160,12 +160,15 @@
             } else {
                 throw new Error('invalid');
             }
-        } catch (_) {
+        } catch (err) {
+            console.error('Login error details:', err);
             loginError.classList.remove('hidden');
             var card = document.querySelector('.login-card');
-            card.style.animation = 'none';
-            void card.offsetHeight;
-            card.style.animation = 'shake 0.4s ease-in-out';
+            if (card) {
+                card.style.animation = 'none';
+                void card.offsetHeight;
+                card.style.animation = 'shake 0.4s ease-in-out';
+            }
         } finally {
             btn.disabled = false;
             if (span) span.textContent = t('login_btn');
@@ -409,8 +412,11 @@
     async function fetchGuilds() {
         if (!supabase) return;
         try {
-            var { data, error } = await supabase.from('guilds').select('id, subscription_type, subscription_end, server_number').order('id');
-            if (error) throw error;
+            var res = await supabase.from('guilds').select('id, subscription_type, subscription_end, server_number').order('id');
+            if (res.error) {
+                res = await supabase.from('guilds').select('id, subscription_type, subscription_end').order('id');
+            }
+            var data = res.data;
             console.log('fetchGuilds returned data:', data);
             if (data && data.length > 0) {
                 window.guildsList = data.map(function (g) { return g.id; });
@@ -847,17 +853,18 @@
 
         if (!supabase) return;
         try {
-    async function renderGuildsSubscriptionList() {
-        var container = document.getElementById('guilds-list-container');
-        if (!container) return;
-
-        if (!supabase) return;
-        try {
-            var { data: guildsListRaw, error } = await supabase
+            var res = await supabase
                 .from('guilds')
                 .select('id, subscription_type, subscription_end, server_number')
                 .order('id');
-            if (error) throw error;
+            if (res.error) {
+                res = await supabase
+                    .from('guilds')
+                    .select('id, subscription_type, subscription_end')
+                    .order('id');
+            }
+            if (res.error) throw res.error;
+            var guildsListRaw = res.data;
             console.log('renderGuildsSubscriptionList fetched data:', guildsListRaw);
 
             if (!guildsListRaw || guildsListRaw.length === 0) {
