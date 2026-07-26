@@ -2082,3 +2082,99 @@
     transform: scale(1) translateY(0);
 }
 
+/* ─── Modern Discord Notifications Page DA ─── */
+.gm-discord-hero {
+    margin-bottom: 1.5rem;
+    padding: 1.6rem 1.8rem;
+    background: linear-gradient(135deg, oklch(0.60 0.22 270 / 0.18) 0%, oklch(0.55 0.20 290 / 0.10) 100%);
+    border: 1px solid oklch(0.60 0.22 270 / 0.35);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 8px 32px oklch(0.60 0.22 270 / 0.12);
+}
+
+.gm-discord-hero-inner {
+    display: flex;
+    align-items: center;
+    gap: 1.35rem;
+}
+
+.gm-discord-icon-badge {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: oklch(0.60 0.22 270 / 0.25);
+    border: 1.5px solid oklch(0.60 0.22 270 / 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5865F2;
+    font-size: 2rem;
+    flex-shrink: 0;
+    box-shadow: 0 0 20px oklch(0.60 0.22 270 / 0.3);
+}
+
+.notification-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+.notification-group {
+    background: var(--bg-1, #0f172a);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.notification-group:hover {
+    transform: translateY(-2px);
+    border-color: oklch(0.60 0.22 270 / 0.45);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.notification-group-title {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--fg);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.notification-group-title i {
+    font-size: 1.2rem;
+    color: #5865F2;
+}
+
+.notification-option {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    cursor: pointer;
+    font-size: 0.86rem;
+    color: var(--fg-dim);
+    user-select: none;
+    transition: color 0.15s ease;
+    padding: 0.2rem 0;
+}
+
+.notification-option:hover {
+    color: var(--fg);
+}
+
+.notification-option input[type="checkbox"] {
+    accent-color: #5865F2;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
