@@ -201,9 +201,9 @@
 
     function getSubscriptionCardHtml() {
         var activeGuild = window.currentGuild || 'ALPHA';
-        var cardTitle = 'Guilde ' + esc(activeGuild);
-        var cardDesc = 'Modèle Standard';
-        var pillLabel = 'Abonnement Actif';
+        var cardTitle = esc(activeGuild) + ' Guild';
+        var cardDesc = 'Standard Plan';
+        var pillLabel = 'Active Plan';
         var pillClass = '';
         var icon = 'ph-crown';
 
@@ -211,8 +211,8 @@
             var sub = window.guildsData[activeGuild];
             if (sub.type === 'Unlimited') {
                 cardTitle = esc(activeGuild) + ' • Unlimited';
-                cardDesc = 'Accès illimité pour l\'ensemble des membres.';
-                pillLabel = 'Illimité';
+                cardDesc = 'Unlimited access for all guild members.';
+                pillLabel = 'Unlimited';
                 pillClass = 'gm-sub-unlimited';
                 icon = 'ph-infinity';
             } else if (sub.type === 'Premium') {
@@ -221,22 +221,22 @@
                     var diff = endMs - Date.now();
                     if (diff <= 0) {
                         cardTitle = esc(activeGuild) + ' • Premium';
-                        cardDesc = 'Abonnement expiré. Modification désactivée.';
-                        pillLabel = 'Expiré';
+                        cardDesc = 'Subscription expired. Read-only mode active.';
+                        pillLabel = 'Expired';
                         pillClass = 'gm-sub-expired';
                         icon = 'ph-lock-keyhole';
                     } else {
                         var days = Math.floor(diff / (1000 * 60 * 60 * 24));
                         var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                         cardTitle = esc(activeGuild) + ' • Premium';
-                        cardDesc = 'Offre active • Expire dans ' + days + 'j ' + hours + 'h';
-                        pillLabel = 'Offre Premium';
+                        cardDesc = 'Active plan • Expires in ' + days + 'd ' + hours + 'h';
+                        pillLabel = 'Premium Tier';
                         icon = 'ph-sparkle';
                     }
                 } else {
                     cardTitle = esc(activeGuild) + ' • Premium';
-                    cardDesc = 'Abonnement expiré.';
-                    pillLabel = 'Expiré';
+                    cardDesc = 'Subscription expired.';
+                    pillLabel = 'Expired';
                     pillClass = 'gm-sub-expired';
                     icon = 'ph-lock-keyhole';
                 }
