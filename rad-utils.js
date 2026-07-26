@@ -32,6 +32,23 @@
         return false;
     }
 
+    function canWriteGuild(guildId) {
+        var activeG = guildId || getActiveGuild();
+        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin' || window.currentGuildRestriction === null);
+        
+        if (isSuperAdmin) {
+            // Rule 2: Super admin can visit all guilds but is base admin of ALPHA and can ONLY intervene on ALPHA
+            return activeG === 'ALPHA';
+        }
+
+        // Rule 1: Guild admin (R4) can write to their dedicated assigned guild if active
+        if (window.currentGuildRestriction) {
+            return activeG === window.currentGuildRestriction && !isGuildSubscriptionExpired(activeG);
+        }
+
+        return false;
+    }
+
     // Intercept database calls to automatically add the 'guild' filter
     if (db) {
         var originalFrom = db.from;
@@ -65,8 +82,8 @@
                 var originalDelete = builder.delete;
                 builder.delete = function () {
                     var currentG = getActiveGuild();
-                    if (isGuildSubscriptionExpired(currentG)) {
-                        return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
+                    if (!canWriteGuild(currentG)) {
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "Read-only access: Modifications are restricted on this guild." } }); } };
                     }
                     return originalDelete.apply(this, arguments).eq('guild', currentG);
                 };
@@ -74,8 +91,8 @@
                 var originalUpdate = builder.update;
                 builder.update = function (values, options) {
                     var currentG = getActiveGuild();
-                    if (isGuildSubscriptionExpired(currentG)) {
-                        return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
+                    if (!canWriteGuild(currentG)) {
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "Read-only access: Modifications are restricted on this guild." } }); } };
                     }
                     return originalUpdate.call(this, values, options).eq('guild', currentG);
                 };
@@ -83,8 +100,8 @@
                 var originalInsert = builder.insert;
                 builder.insert = function (values, options) {
                     var currentG = getActiveGuild();
-                    if (isGuildSubscriptionExpired(currentG)) {
-                        return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
+                    if (!canWriteGuild(currentG)) {
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "Read-only access: Modifications are restricted on this guild." } }); } };
                     }
                     if (Array.isArray(values)) {
                         values = values.map(function (v) {
@@ -99,8 +116,8 @@
                 var originalUpsert = builder.upsert;
                 builder.upsert = function (values, options) {
                     var currentG = getActiveGuild();
-                    if (isGuildSubscriptionExpired(currentG)) {
-                        return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
+                    if (!canWriteGuild(currentG)) {
+                        return { then: function(resolve) { resolve({ data: null, error: { message: "Read-only access: Modifications are restricted on this guild." } }); } };
                     }
                     if (Array.isArray(values)) {
                         values = values.map(function (v) {
@@ -666,6 +683,7 @@
         adminAccounts: adminAccounts,
         sessionInfo: sessionInfo,
         getActiveGuild: getActiveGuild,
+        canWriteGuild: canWriteGuild,
         escapeHTML: escapeHTML,
         getWeekStart: getWeekStart,
         getPrevWeekStart: getPrevWeekStart,

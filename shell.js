@@ -236,14 +236,17 @@
             }
         }
 
-        var readOnlyActive = isExpired && !isSuperAdmin;
+        var canWrite = (window.RAD && window.RAD.canWriteGuild) ? window.RAD.canWriteGuild(activeGuild) : true;
+        var readOnlyActive = !canWrite;
         var banner = document.getElementById('guild-warning-banner');
 
         if (readOnlyActive) {
             document.body.classList.add('guild-read-only');
             if (banner) {
-                banner.innerHTML = '<i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem;"></i>' +
-                    '<span><strong>Read-only access:</strong> The subscription for this guild has expired. Data modification is disabled.</span>';
+                var messageHtml = isSuperAdmin
+                    ? '<span><i class="ph-fill ph-eye" style="font-size: 1.2rem; margin-right: 0.5rem;"></i><strong>Mode Consultation (Lecture Seule) :</strong> Vous visitez la guilde <strong>' + esc(activeGuild) + '</strong>. Les modifications sont réservées au tenant <strong>ALPHA</strong>.</span>'
+                    : '<span><i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem; margin-right: 0.5rem;"></i><strong>Mode Lecture Seule :</strong> L\'abonnement pour cette guilde a expiré.</span>';
+                banner.innerHTML = messageHtml;
                 banner.style.display = 'flex';
             }
         } else {
