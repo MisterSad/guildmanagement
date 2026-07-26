@@ -149,8 +149,14 @@ function getWeekStart(date: Date | string | number): string {
 serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
   const xCronSecret = req.headers.get('x-cron-secret');
+  // FIX (C7): CRON_SECRET is now mandatory. If not configured, fail closed (500) rather
+  // than silently accepting all requests.
   const cronSecret = Deno.env.get('CRON_SECRET');
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && xCronSecret !== cronSecret) {
+  if (!cronSecret) {
+    console.error('SECURITY: CRON_SECRET env var is not set. Refusing all requests.');
+    return new Response(JSON.stringify({ error: 'Server misconfigured: CRON_SECRET not set' }), { status: 500 });
+  }
+  if (authHeader !== `Bearer ${cronSecret}` && xCronSecret !== cronSecret) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
@@ -207,6 +213,20 @@ serve(async (req) => {
     const now = Date.now();
     const results: any[] = [];
 
+    // FIX (A11): formatDiscordRoleMention defined here, outside all loops
+    function formatDiscordRoleMention(input: string | undefined | null): string {
+      if (!input || typeof input !== 'string') return '@everyone';
+      const str = input.trim();
+      if (!str || str === '@everyone') return '@everyone';
+      if (str === '@here') return '@here';
+      const match = str.match(/\d{15,22}/);
+      if (match) return `<@&${match[0]}>`;
+      if (str.startsWith('<@&') && str.endsWith('>')) return str;
+      return str;
+    }
+
+
+
     // Loop through each guild tenant
     for (const guild of GUILDS) {
       const config = configsByGuild[guild];
@@ -225,24 +245,7 @@ serve(async (req) => {
                                 event.event_name === 'Shadowfront Squad 2';
         if (!isStandardEvent) continue;
 
-        function formatDiscordRoleMention(input: string | undefined | null): string {
-          if (!input || typeof input !== 'string') return '@everyone';
-          const str = input.trim();
-          if (!str || str === '@everyone') return '@everyone';
-          if (str === '@here') return '@here';
-
-          const match = str.match(/\d{15,22}/);
-          if (match) {
-            return `<@&${match[0]}>`;
-          }
-
-          if (str.startsWith('<@&') && str.endsWith('>')) {
-            return str;
-          }
-
-          return str;
-        }
-
+        // FIX (A11): formatDiscordRoleMention moved outside the loop — was being redefined on every iteration.
         let eventPrefix = '';
         const nameUpper = (event.event_name || '').toUpperCase();
         if (nameUpper.includes('ARMS RACE')) eventPrefix = 'armsrace';

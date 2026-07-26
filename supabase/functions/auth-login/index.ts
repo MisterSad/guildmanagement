@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
   if (cErr) return json({ ok: false, error: "server_error" }, 500);
   
   const loginRow = Array.isArray(loginRes) ? loginRes[0] : loginRes;
-  if (!loginRow || !loginRow.role) return json({ ok: false, error: "invalid_credentials" }, 200);
+  if (!loginRow || !loginRow.role) return json({ ok: false, error: "invalid_credentials" }, 401);
 
   const canonicalId = loginRow.canonical_id;
   const role = loginRow.role;

@@ -1,7 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY      = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -16,21 +17,39 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function callerInfo(req: Request): { role: string | null; accountId: string | null } {
-  const auth = req.headers.get("Authorization") || "";
-  const m = auth.match(/^Bearer (.+)$/);
-  if (!m) return { role: null, accountId: null };
-  try {
-    let p = m[1].split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    p += "=".repeat((4 - (p.length % 4)) % 4);
-    const payload = JSON.parse(atob(p));
-    return {
-      role: payload?.app_metadata?.app_role ?? null,
-      accountId: payload?.app_metadata?.account_id ?? null,
-    };
-  } catch {
-    return { role: null, accountId: null };
-  }
+/**
+ * Validate the JWT cryptographically using Supabase's auth.getUser(),
+ * then fetch the caller's role and guild from the accounts table.
+ * This replaces the previous unsafe manual JWT decoding (C1 fix).
+ */
+async function getCallerInfo(
+  req: Request,
+  admin: ReturnType<typeof createClient>
+): Promise<{ role: string | null; accountId: string | null; guild: string | null }> {
+  const authHeader = req.headers.get("Authorization") || "";
+  const match = authHeader.match(/^Bearer (.+)$/);
+  if (!match) return { role: null, accountId: null, guild: null };
+
+  const jwt = match[1];
+  // Validate the JWT signature via Supabase auth endpoint (cryptographically safe)
+  const anonClient = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const { data: { user }, error } = await anonClient.auth.getUser(jwt);
+  if (error || !user) return { role: null, accountId: null, guild: null };
+
+  // Read the authoritative role and guild from the accounts table (not from JWT claims)
+  const { data: acc } = await admin
+    .from("accounts")
+    .select("id, role, guild")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (!acc) return { role: null, accountId: null, guild: null };
+
+  return {
+    role: acc.role ?? null,
+    accountId: acc.id ?? null,
+    guild: acc.guild ?? null,
+  };
 }
 
 async function emailFor(id: string): Promise<string> {
@@ -45,7 +64,7 @@ function randomSecret(): string {
   return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-async function isSubscriptionActive(admin: any, guildId: string | null): Promise<boolean> {
+async function isSubscriptionActive(admin: ReturnType<typeof createClient>, guildId: string | null): Promise<boolean> {
   if (!guildId) return true; // Super admin level / no guild restriction
   const { data } = await admin
     .from("guilds")
@@ -65,21 +84,13 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST")   return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  const info = callerInfo(req);
-  if (!info.role) return json({ ok: false, error: "forbidden" }, 403);
-
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
-  // Get caller's guild if R4
-  let callerGuild: string | null = null;
-  if (info.role === "R4") {
-    const { data: callerAcc } = await admin
-      .from("accounts")
-      .select("guild")
-      .eq("id", info.accountId)
-      .maybeSingle();
-    callerGuild = callerAcc?.guild ?? null;
-  }
+  // FIX (C1): JWT validated cryptographically via auth.getUser(), not by manual base64 decode
+  const info = await getCallerInfo(req, admin);
+  if (!info.role) return json({ ok: false, error: "forbidden" }, 403);
+
+  const callerGuild = info.guild;
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 400); }
@@ -97,25 +108,44 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await admin.rpc("gm_admin_list");
     if (error) return json({ ok: false, error: "server_error" }, 500);
 
+    // FIX (C8): gm_admin_list no longer returns passwords. No password field in the list response.
     let accountsList = data ?? [];
     if (info.role === "R4") {
       // Filter list: only show accounts of the same guild.
-      // ALPHA admin can also see Super Admin (R5, guild = null)
       accountsList = accountsList.filter((acc: any) => {
         if (acc.guild === callerGuild) return true;
-        if (callerGuild === "ALPHA" && acc.role === "R5") return true;
         return false;
-      });
-
-      // Obfuscate password for R5 (Super Admin) accounts
-      accountsList = accountsList.map((acc: any) => {
-        if (acc.role === "R5") {
-          return { ...acc, password: "" }; // Obfuscate password for Super Admin
-        }
-        return acc;
       });
     }
     return json({ ok: true, accounts: accountsList });
+  }
+
+  // FIX (C8): New action to retrieve a single account's password on demand.
+  // Caller must be R5, or R4 owning the same guild as the target account.
+  if (action === "get-password") {
+    const id = (body?.id ?? "").toString().trim();
+    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+
+    // Fetch target account info to validate permissions
+    const { data: targetAcc } = await admin
+      .from("accounts")
+      .select("role, guild")
+      .eq("id", id)
+      .maybeSingle();
+    if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+
+    if (info.role === "R4") {
+      // R4 admins cannot retrieve R5 passwords and can only retrieve passwords for their own guild
+      if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild) {
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
+    }
+
+    const { data: password, error: pErr } = await admin.rpc("gm_get_account_password", { p_id: id });
+    if (pErr) return json({ ok: false, error: "server_error" }, 500);
+    if (!password) return json({ ok: false, error: "not_found" }, 404);
+
+    return json({ ok: true, password });
   }
 
   if (action === "create") {
@@ -180,7 +210,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: uid, error } = await admin.rpc("gm_admin_delete", { p_id: id });
     if (error) return json({ ok: false, error: "server_error" }, 500);
-    if (uid) { try { await admin.auth.admin.deleteUser(uid as string); } catch (_) { /* ignore */ } }
+    if (uid) { try { await admin.auth.admin.deleteUser(uid as string); } catch (_) { /* GoTrue delete best-effort */ } }
     return json({ ok: true });
   }
 

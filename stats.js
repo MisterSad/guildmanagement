@@ -134,83 +134,97 @@
     // ── Mode Global / Prince : application de la formule pondérée ──────────────
     async function loadGlobalPeriod(weeks, opts) {
         opts = opts || {};
-        // Pour la Δgloire on a besoin de la semaine précédant la première du période
-        var refPrev = window.RAD.getPrevWeekStart(weeks[0]);
-        var glorySpan = [refPrev].concat(weeks);
+        try {
+            var refPrev = window.RAD.getPrevWeekStart(weeks[0]);
+            var glorySpan = [refPrev].concat(weeks);
 
-        var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace] = await Promise.all([
-            db.from('guild_members').select('pseudo, uid'),
-            db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
-            db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000),
-            db.from('shadowfront_squads').select('pseudo, role, week_start').in('week_start', weeks).limit(100000),
-            window.RAD.config.get('coeff_svs'),
-            window.RAD.config.get('coeff_gvg'),
-            window.RAD.config.get('coeff_shadowfront'),
-            window.RAD.config.get('coeff_dtr'),
-            window.RAD.config.get('coeff_armsrace')
-        ]);
+            var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace] = await Promise.all([
+                db.from('guild_members').select('pseudo, uid'),
+                db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
+                db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000),
+                db.from('shadowfront_squads').select('pseudo, role, week_start').in('week_start', weeks).limit(100000),
+                window.RAD.config.get('coeff_svs'),
+                window.RAD.config.get('coeff_gvg'),
+                window.RAD.config.get('coeff_shadowfront'),
+                window.RAD.config.get('coeff_dtr'),
+                window.RAD.config.get('coeff_armsrace')
+            ]);
 
-        var memberRows   = membersRes.data || [];
-        var members      = memberRows.map(function (m) { return m.pseudo; });
-        uidByPseudo = {};
-        memberRows.forEach(function (m) { uidByPseudo[m.pseudo] = m.uid || ''; });
-        var participants = deduplicateParticipants(partsRes.data || []);
-        var gloryByWeek  = buildGloryByWeek(gloryRes.data || [], glorySpan);
+            var memberRows   = membersRes.data || [];
+            var members      = memberRows.map(function (m) { return m.pseudo; });
+            uidByPseudo = {};
+            memberRows.forEach(function (m) { uidByPseudo[m.pseudo] = m.uid || ''; });
+            var participants = deduplicateParticipants(partsRes.data || []);
+            var gloryByWeek  = buildGloryByWeek(gloryRes.data || [], glorySpan);
 
-        var config = {
-            coeff_svs: parseInt(coeffSvs, 10) || 5,
-            coeff_gvg: parseInt(coeffGvg, 10) || 5,
-            coeff_shadowfront: parseInt(coeffShadowfront, 10) || 3,
-            coeff_dtr: parseInt(coeffDtr, 10) || 2,
-            coeff_armsrace: parseInt(coeffArmsrace, 10) || 1
-        };
+            var config = {
+                coeff_svs: parseInt(coeffSvs, 10) || 5,
+                coeff_gvg: parseInt(coeffGvg, 10) || 5,
+                coeff_shadowfront: parseInt(coeffShadowfront, 10) || 3,
+                coeff_dtr: parseInt(coeffDtr, 10) || 2,
+                coeff_armsrace: parseInt(coeffArmsrace, 10) || 1
+            };
 
-        if (members.length === 0) { renderEmpty(); return; }
+            if (members.length === 0) { renderEmpty(); return; }
 
-        var result = computeScores(members, participants, gloryByWeek, weeks, config, squadsRes.data || []);
-        leaderboardData = result.scores;
-        lastMaxPossible = result.maxPossible;
-        renderLeaderboard({
-            mode:         opts.princeBanner ? 'prince' : 'global',
-            range:        opts.range,
-            maxPossible:  result.maxPossible,
-            ranEvents:    result.ranEvents
-        });
+            var result = computeScores(members, participants, gloryByWeek, weeks, config, squadsRes.data || []);
+            leaderboardData = result.scores;
+            lastMaxPossible = result.maxPossible;
+            renderLeaderboard({
+                mode:         opts.princeBanner ? 'prince' : 'global',
+                range:        opts.range,
+                maxPossible:  result.maxPossible,
+                ranEvents:    result.ranEvents
+            });
+        } catch (err) {
+            console.error('stats loadGlobalPeriod error', err);
+            if (window.RAD && window.RAD.showToast) {
+                window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            }
+        }
     }
 
     // ── Mode SvS / GvG : classement brut par score d'événement ─────────────────
     async function loadEventRanking(eventName, week) {
-        var res = await db.from('event_participants')
-            .select('pseudo, score, score_prep, score_pvp, participated, is_pending')
-            .eq('event_name', eventName)
-            .eq('week_start', week);
+        try {
+            var res = await db.from('event_participants')
+                .select('pseudo, score, score_prep, score_pvp, participated, is_pending')
+                .eq('event_name', eventName)
+                .eq('week_start', week);
+            if (res.error) throw res.error;
 
-        var agg = {};
-        (res.data || []).forEach(function (r) {
-            if (r.is_pending) return;
-            if (!agg[r.pseudo]) agg[r.pseudo] = { pseudo: r.pseudo, score: 0, participated: 0 };
-            // SvS : on additionne prep + pvp pour les nouvelles saisies, score pour les legacy
-            agg[r.pseudo].score        += (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0);
-            agg[r.pseudo].participated += (r.participated || 0);
-        });
-
-        leaderboardData = Object.values(agg)
-            .filter(function (r) { return r.score > 0 || r.participated > 0; })
-            .map(function (r) {
-                return {
-                    pseudo:        r.pseudo,
-                    score:         r.score,
-                    events_done:   r.participated,
-                    is_event_mode: true
-                };
-            })
-            .sort(function (a, b) {
-                if (b.score !== a.score) return b.score - a.score;
-                return a.pseudo.localeCompare(b.pseudo);
+            var agg = {};
+            (res.data || []).forEach(function (r) {
+                if (r.is_pending) return;
+                if (!agg[r.pseudo]) agg[r.pseudo] = { pseudo: r.pseudo, score: 0, participated: 0 };
+                // SvS : on additionne prep + pvp pour les nouvelles saisies, score pour les legacy
+                agg[r.pseudo].score        += (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0);
+                agg[r.pseudo].participated += (r.participated || 0);
             });
 
-        lastMaxPossible = leaderboardData.length ? leaderboardData[0].score : 0;
-        renderLeaderboard({ mode: 'event', maxPossible: lastMaxPossible });
+            leaderboardData = Object.values(agg)
+                .filter(function (r) { return r.score > 0 || r.participated > 0; })
+                .map(function (r) {
+                    return {
+                        pseudo:        r.pseudo,
+                        score:         r.score,
+                        events_done:   r.participated,
+                        is_event_mode: true
+                    };
+                })
+                .sort(function (a, b) {
+                    if (b.score !== a.score) return b.score - a.score;
+                    return a.pseudo.localeCompare(b.pseudo);
+                });
+
+            lastMaxPossible = leaderboardData.length ? leaderboardData[0].score : 0;
+            renderLeaderboard({ mode: 'event', maxPossible: lastMaxPossible });
+        } catch (err) {
+            console.error('stats loadEventRanking error', err);
+            if (window.RAD && window.RAD.showToast) {
+                window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            }
+        }
     }
 
     // ── Participation : taux par événement + joueurs actifs / inactifs ─────────
@@ -220,19 +234,35 @@
     // moyenne pondérée par slot — pas par session — pour rester comparable
     // quand le nombre de membres varie entre semaines.
     async function loadParticipation() {
-        var weeksFilter = null;
-        if (participationPeriod === '4w')      weeksFilter = allWeeks.slice(0, 4);
-        else if (participationPeriod === '8w') weeksFilter = allWeeks.slice(0, 8);
+        try {
+            var weeksFilter = null;
+            if (participationPeriod === '4w')      weeksFilter = allWeeks.slice(0, 4);
+            else if (participationPeriod === '8w') weeksFilter = allWeeks.slice(0, 8);
 
-        var membersRes = await db.from('guild_members').select('pseudo');
-        var members = (membersRes.data || []).map(function (m) { return m.pseudo; });
+            var membersRes = await db.from('guild_members').select('pseudo');
+            if (membersRes.error) throw membersRes.error;
+            var members = (membersRes.data || []).map(function (m) { return m.pseudo; });
 
-        var query = db.from('event_participants')
-            .select('pseudo, event_name, week_start, participated')
-            .neq('event_name', 'Glory')
-            .limit(100000);
-        if (weeksFilter) query = query.in('week_start', weeksFilter);
-        var partsRes = await query;
+            var query = db.from('event_participants')
+                .select('pseudo, event_name, week_start, participated')
+                .neq('event_name', 'Glory')
+                .limit(100000);
+            if (weeksFilter) query = query.in('week_start', weeksFilter);
+            var partsRes = await query;
+            if (partsRes.error) throw partsRes.error;
+            var participants = deduplicateParticipants(partsRes.data || []);
+
+            var data = computeParticipation(members, participants);
+            data.period = participationPeriod;
+            data.weeksUsed = weeksFilter ? weeksFilter.length : allWeeks.length;
+            renderParticipationView(data);
+        } catch (err) {
+            console.error('stats loadParticipation error', err);
+            if (window.RAD && window.RAD.showToast) {
+                window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            }
+        }
+    }
         var participants = deduplicateParticipants(partsRes.data || []);
 
         var data = computeParticipation(members, participants);

@@ -80,7 +80,11 @@
         } catch (e) { return null; }
     }
 
+    var isEnabling = false;
+
     async function enable() {
+        if (isEnabling) return;
+        isEnabling = true;
         try {
             var perm = await Notification.requestPermission();
             if (perm !== 'granted') {
@@ -108,6 +112,8 @@
         } catch (e) {
             console.error('push enable', e);
             window.RAD.showToast(t('push_toast_err'), 'error');
+        } finally {
+            isEnabling = false;
         }
         renderAll();
     }

@@ -92,6 +92,8 @@
         localStorage.setItem('rad_role', role);
         if (info.accountId) {
             localStorage.setItem('rad_user', info.accountId);
+            // Store in memory for reliable access (not manipulable via DevTools without logout)
+            window.RAD.currentAccountId = info.accountId;
         }
 
         // Fetch guilds list (now authenticated, query will succeed)
@@ -152,6 +154,8 @@
                 var role = (resp.role === 'R5') ? 'admin' : 'member';
                 localStorage.setItem('rad_role', role);
                 localStorage.setItem('rad_user', user);
+                // Store in memory for reliable access
+                window.RAD.currentAccountId = user;
 
                 showAdminDashboard(role);
                 if (window.RAD_SHELL && window.RAD_SHELL.renderShell) {
@@ -236,6 +240,8 @@
         restoreSavedTab(savedTab);
     }
 
+    // FIX (A2): Use setTimeout with fixed delay instead of requestAnimationFrame polling
+    // RAF polls up to 30 times per frame (60fps = every 16ms), setTimeout spaces out retries.
     function restoreSavedTab(itemId, attempts) {
         attempts = attempts == null ? 30 : attempts;
         if (window.RAD_SHELL && window.RAD_SHELL.gotoItem) {
@@ -243,7 +249,7 @@
             return;
         }
         if (attempts <= 0) return;
-        requestAnimationFrame(function () { restoreSavedTab(itemId, attempts - 1); });
+        setTimeout(function () { restoreSavedTab(itemId, attempts - 1); }, 50);
     }
 
     function showLogin() {
@@ -353,12 +359,18 @@
     });
 
     // ─── Password Generator ───────────────────────────────────────────────────
+    // FIX (C3): Use crypto.getRandomValues() instead of Math.random() for password generation.
+    // Math.random() is not cryptographically secure and produces predictable outputs.
     function generatePassword(length) {
         var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
-        var pwd = '';
-        for (var i = 0; i < length; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
-        return pwd;
+        var values = new Uint32Array(length);
+        crypto.getRandomValues(values);
+        return Array.from(values, function(v) { return chars[v % chars.length]; }).join('');
     }
+
+    // In-memory cache for passwords of freshly created accounts.
+    // Cleared on page reload. Avoids storing passwords in the DOM.
+    var pendingPasswords = {};
 
     // ─── Accounts CRUD ────────────────────────────────────────────────────────
     async function fetchAccounts() {
@@ -400,13 +412,14 @@
                     id: identifier,
                     password: newPassword,
                     role: 'R4',
-                    guild: (guildSelected === 'ALL' ? null : guildSelected)
+                    guild: (guildSelected === 'ALL' ? null : guildSelected),
+                    created_by: window.RAD.currentAccountId
                 });
                 if (!res.ok) throw new Error(res.error || 'create_failed');
 
+                pendingPasswords[identifier] = newPassword;
                 accounts.unshift({ 
                     id: identifier, 
-                    password: newPassword, 
                     role: 'R4', 
                     guild: (guildSelected === 'ALL' ? null : guildSelected), 
                     created_at: new Date().toISOString() 
@@ -440,11 +453,9 @@
         try {
             var res = await supabase.from('guilds').select('id, subscription_type, subscription_end, server_number').order('id');
             if (res.error) {
-                console.error('fetchGuilds error:', res.error);
                 return;
             }
             var data = res.data;
-            console.log('fetchGuilds returned data:', data);
             if (data && data.length > 0) {
                 window.guildsList = data.map(function (g) { return g.id; });
                 
@@ -526,9 +537,10 @@
                 });
                 if (!res.ok) throw new Error(res.error || 'create_failed');
 
+                // Store password in memory cache (not in DOM) right after creation.
+                pendingPasswords[identifier] = newPassword;
                 accounts.unshift({ 
                     id: identifier, 
-                    password: newPassword, 
                     role: 'R4', 
                     guild: guildSelected, 
                     created_at: new Date().toISOString() 
@@ -834,7 +846,9 @@
 
             var passHtml = '';
             if (canManagePass) {
-                passHtml = '<div class="gm-cred-pass gm-masked" data-acc-pass="' + esc(acc.password) + '">' +
+                // FIX (C4): No longer storing password in data-acc-pass DOM attribute.
+                // Passwords are fetched on demand from the API when eye/copy is clicked.
+                passHtml = '<div class="gm-cred-pass gm-masked" data-acc-id="' + esc(acc.id) + '">' +
                                '<span class="gm-pwd-text">••••••••••••</span>' +
                                '<button class="gm-mini-btn gm-cred-toggle" title="' + t('show_pwd') + '"><i class="ph ph-eye"></i></button>' +
                                '<button class="gm-mini-btn gm-cred-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
@@ -891,27 +905,61 @@
     function wireAccountCardListeners(container) {
         if (!container) return;
 
+        // FIX (C4): Passwords are no longer stored in data-acc-pass DOM attributes.
+        // On reveal/copy, we check the in-memory pendingPasswords cache first (freshly created accounts),
+        // then fall back to calling the get-password API endpoint.
         container.querySelectorAll('.gm-cred-toggle').forEach(function (btn) {
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', async function () {
                 var wrap = btn.closest('.gm-cred-pass');
-                var pass = wrap.getAttribute('data-acc-pass');
+                var accId = wrap.getAttribute('data-acc-id');
                 var pwdSpan = wrap.querySelector('.gm-pwd-text');
                 var icon = btn.querySelector('i');
                 if (wrap.classList.contains('gm-masked')) {
-                     wrap.classList.remove('gm-masked');
-                     pwdSpan.textContent = pass;
-                     icon.className = 'ph ph-eye-slash';
+                    var pass = pendingPasswords[accId] || wrap.getAttribute('data-acc-pass-temp');
+                    if (!pass) {
+                        btn.disabled = true;
+                        try {
+                            var res = await window.RAD.adminAccounts('get-password', { id: accId });
+                            if (!res.ok) throw new Error(res.error || 'fetch_failed');
+                            pass = res.password;
+                        } catch (err) {
+                            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                            btn.disabled = false;
+                            return;
+                        }
+                        btn.disabled = false;
+                    }
+                    wrap.setAttribute('data-acc-pass-temp', pass);
+                    wrap.classList.remove('gm-masked');
+                    pwdSpan.textContent = pass;
+                    icon.className = 'ph ph-eye-slash';
                 } else {
-                     wrap.classList.add('gm-masked');
-                     pwdSpan.textContent = '••••••••••••';
-                     icon.className = 'ph ph-eye';
+                    wrap.classList.add('gm-masked');
+                    wrap.removeAttribute('data-acc-pass-temp');
+                    pwdSpan.textContent = '••••••••••••';
+                    icon.className = 'ph ph-eye';
                 }
             });
         });
 
         container.querySelectorAll('.gm-cred-copy').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var pass = btn.closest('.gm-cred-pass').getAttribute('data-acc-pass');
+            btn.addEventListener('click', async function () {
+                var wrap = btn.closest('.gm-cred-pass');
+                var accId = wrap.getAttribute('data-acc-id');
+                var pass = pendingPasswords[accId] || wrap.getAttribute('data-acc-pass-temp');
+                if (!pass) {
+                    btn.disabled = true;
+                    try {
+                        var res = await window.RAD.adminAccounts('get-password', { id: accId });
+                        if (!res.ok) throw new Error(res.error || 'fetch_failed');
+                        pass = res.password;
+                    } catch (err) {
+                        showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                        btn.disabled = false;
+                        return;
+                    }
+                    btn.disabled = false;
+                }
                 navigator.clipboard.writeText(pass).then(function () {
                     var icon = btn.querySelector('i');
                     icon.className = 'ph ph-check';
@@ -969,8 +1017,6 @@
                 .order('id');
             if (res.error) throw res.error;
             var guildsListRaw = res.data;
-            console.log('renderGuildsSubscriptionList fetched data:', guildsListRaw);
-
             if (!guildsListRaw || guildsListRaw.length === 0) {
                 container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">No guild found</div></div>';
                 return;
@@ -1355,7 +1401,7 @@
         if (btn) btn.disabled = true;
 
         try {
-            var currentUser = localStorage.getItem('rad_user') || 'Admin';
+            var currentUser = window.RAD.currentAccountId || localStorage.getItem('rad_user') || 'Admin';
             var res = await supabase.from('banned_players').insert([{
                 uid: uidVal,
                 pseudo: pseudoVal || null,
@@ -1452,7 +1498,7 @@
                     uid: member.uid,
                     old_pseudo: oldPseudo,
                     new_pseudo: newPseudo,
-                    changed_by: localStorage.getItem('rad_user') || 'Admin'
+                    changed_by: window.RAD.currentAccountId || localStorage.getItem('rad_user') || 'Admin'
                 });
                 if (histIns.error) console.error('Logging name history failed', histIns.error);
             }

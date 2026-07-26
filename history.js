@@ -402,6 +402,9 @@
         var deleteBtnHtml =
             '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' + t('delete_title') + '</span></button>';
 
+        var existingModal = document.getElementById('history-modal');
+        if (existingModal) existingModal.remove();
+
         var overlay = document.createElement('div');
         overlay.id = 'history-modal';
         overlay.className = 'confirm-overlay';
@@ -450,7 +453,8 @@
                 input.addEventListener('change', async function () {
                     var pseudo = input.getAttribute('data-pseudo');
                     var field = input.getAttribute('data-field');
-                    var val = input.value === '' ? null : parseInt(input.value);
+                    var parsed = parseInt(input.value, 10);
+                    var val = (input.value === '' || isNaN(parsed)) ? null : parsed;
                     await updateParticipantField(eventName, sessionId, weekStart, pseudo, field, val);
                 });
             });

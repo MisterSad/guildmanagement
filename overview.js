@@ -124,6 +124,9 @@
             renderPage(panel, stats, activity, upcoming);
         } catch (err) {
             console.error('overview load', err);
+            if (window.RAD && window.RAD.showToast) {
+                window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            }
         }
     }
 
