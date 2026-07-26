@@ -1653,19 +1653,33 @@
         var existing = document.getElementById('transfer-member-overlay');
         if (existing) existing.remove();
 
-        var currentG = window.currentGuild || 'ALPHA';
-        var currentServer = (window.guildsData && window.guildsData[currentG]) ? window.guildsData[currentG].server_number : null;
+        var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('rad_current_guild') || 'ALPHA';
+
+        // Fetch up-to-date guilds list and server numbers
+        var guildsData = {};
+        try {
+            var res = await supabase.from('guilds').select('id, server_number').order('id');
+            if (res.data && res.data.length > 0) {
+                res.data.forEach(function (g) {
+                    guildsData[g.id] = g.server_number || '';
+                });
+            }
+        } catch (err) {
+            console.error('Failed to fetch guilds for transfer', err);
+        }
+
+        var currentServer = guildsData[currentG] || (window.guildsData && window.guildsData[currentG] ? window.guildsData[currentG].server_number : null);
 
         var sisterGuilds = [];
-        if (window.guildsData) {
-            Object.keys(window.guildsData).forEach(function (g) {
-                if (g !== currentG && window.guildsData[g].server_number && window.guildsData[g].server_number === currentServer) {
+        if (currentServer) {
+            Object.keys(guildsData).forEach(function (g) {
+                if (g !== currentG && guildsData[g] && guildsData[g] === currentServer) {
                     sisterGuilds.push(g);
                 }
             });
         }
 
-        if (sisterGuilds.length === 0) {
+        if (!currentServer || sisterGuilds.length === 0) {
             showToast('No other guild exists on Server #' + (currentServer || '????') + '. Set a server number in Super Admin > Subscription Management & Server Numbers.', 'warning');
             return;
         }
