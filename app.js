@@ -409,18 +409,19 @@
     async function fetchGuilds() {
         if (!supabase) return;
         try {
-            var { data, error } = await supabase.from('guilds').select('id, subscription_type, subscription_end').order('id');
+            var { data, error } = await supabase.from('guilds').select('id, subscription_type, subscription_end, server_number').order('id');
             if (error) throw error;
             console.log('fetchGuilds returned data:', data);
             if (data && data.length > 0) {
                 window.guildsList = data.map(function (g) { return g.id; });
                 
-                // Save subscription info
+                // Save subscription & server number info
                 window.guildsData = {};
                 data.forEach(function (g) {
                     window.guildsData[g.id] = {
                         type: g.subscription_type || 'Unlimited',
-                        end: g.subscription_end || null
+                        end: g.subscription_end || null,
+                        server_number: g.server_number || ''
                     };
                 });
                 console.log('window.guildsData populated:', window.guildsData);
@@ -467,18 +468,26 @@
     if (createGuildForm) {
         createGuildForm.addEventListener('submit', async function (e) {
             e.preventDefault();
-            var input = document.getElementById('guild-name-input');
-            var guildName = input.value.trim().toUpperCase();
+            var nameInput = document.getElementById('guild-name-input');
+            var serverInput = document.getElementById('guild-server-input');
+            var guildName = nameInput ? nameInput.value.trim().toUpperCase() : '';
+            var serverNum = serverInput ? serverInput.value.trim() : '';
+
             if (!guildName) return;
 
-            // Simple validation
+            // Server number validation: 4 digits
+            if (!/^\d{4}$/.test(serverNum)) {
+                showToast('Server number must be exactly 4 digits (e.g. 1089).', 'error');
+                return;
+            }
+
             if (/[^A-Z0-9_]/.test(guildName)) {
-                showToast('Le nom de la guilde ne doit contenir que des lettres majuscules, des chiffres ou des tirets bas.', 'error');
+                showToast('Guild name must contain uppercase letters, numbers, or underscores.', 'error');
                 return;
             }
 
             if ((window.guildsList || []).indexOf(guildName) !== -1) {
-                showToast('Cette guilde existe déjà !', 'error');
+                showToast('This guild already exists!', 'error');
                 return;
             }
 
@@ -489,11 +498,15 @@
             if (span) span.textContent = 'Creating...';
 
             try {
-                var { error } = await supabase.from('guilds').insert({ id: guildName });
+                var { error } = await supabase.from('guilds').insert({
+                    id: guildName,
+                    server_number: serverNum
+                });
                 if (error) throw error;
                 
-                showToast('Guild ' + guildName + ' created successfully!', 'success');
-                input.value = '';
+                showToast('Guild ' + guildName + ' (Server #' + serverNum + ') created successfully!', 'success');
+                if (nameInput) nameInput.value = '';
+                if (serverInput) serverInput.value = '';
                 await fetchGuilds();
             } catch (err) {
                 showToast('Error creating guild: ' + err.message, 'error');
@@ -834,9 +847,15 @@
 
         if (!supabase) return;
         try {
+    async function renderGuildsSubscriptionList() {
+        var container = document.getElementById('guilds-list-container');
+        if (!container) return;
+
+        if (!supabase) return;
+        try {
             var { data: guildsListRaw, error } = await supabase
                 .from('guilds')
-                .select('id, subscription_type, subscription_end')
+                .select('id, subscription_type, subscription_end, server_number')
                 .order('id');
             if (error) throw error;
             console.log('renderGuildsSubscriptionList fetched data:', guildsListRaw);
@@ -851,6 +870,7 @@
                 var guildId = g.id;
                 var type = g.subscription_type || 'Unlimited';
                 var end = g.subscription_end;
+                var serverNum = g.server_number || '';
                 var dateVal = end ? end.split('T')[0] : '';
 
                 // Calculate countdown html
@@ -885,23 +905,29 @@
                     }
                 }
 
+                var serverTag = serverNum ? ' <span style="font-size:0.8rem; font-weight:500; color:var(--fg-dim);">(Server #' + esc(serverNum) + ')</span>' : '';
+
                 html +=
                     '<div class="gm-cred-card" data-guild-id="' + esc(guildId) + '">' +
                         '<div class="gm-row" style="justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">' +
                             '<div class="gm-cred-name" style="font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
-                                '<i class="ph ph-shield"></i> ' + esc(guildId) +
+                                '<i class="ph ph-shield"></i> ' + esc(guildId) + serverTag +
                             '</div>' +
                             '<div class="countdown-badge-wrapper">' + countdownHtml + '</div>' +
                         '</div>' +
                         '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
-                            '<div class="gm-col" style="flex: 1.2; gap: 0.25rem; min-width:120px;">' +
+                            '<div class="gm-col" style="flex: 1; gap: 0.25rem; min-width:100px;">' +
+                                '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Server #</label>' +
+                                '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' + esc(guildId) + '" value="' + esc(serverNum) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;" placeholder="e.g. 1089">' +
+                            '</div>' +
+                            '<div class="gm-col" style="flex: 1.2; gap: 0.25rem; min-width:110px;">' +
                                 '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Type</label>' +
                                 '<select class="gm-select gm-select-sm guild-sub-type" data-guild="' + esc(guildId) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
                                     '<option value="Unlimited"' + (type === 'Unlimited' ? ' selected' : '') + '>Unlimited</option>' +
                                     '<option value="Premium"' + (type === 'Premium' ? ' selected' : '') + '>Premium</option>' +
                                 '</select>' +
                             '</div>' +
-                            '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:120px; ' + (type === 'Unlimited' ? 'display: none;' : '') + '">' +
+                            '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:110px; ' + (type === 'Unlimited' ? 'display: none;' : '') + '">' +
                                 '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">End Date</label>' +
                                 '<input type="date" class="gm-input gm-input-sm guild-sub-end" data-guild="' + esc(guildId) + '" value="' + dateVal + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
                             '</div>' +
@@ -932,6 +958,7 @@
                     var card = container.querySelector('.gm-cred-card[data-guild-id="' + guildId + '"]');
                     var select = card.querySelector('.guild-sub-type');
                     var input = card.querySelector('.guild-sub-end');
+                    var serverNumInput = card.querySelector('.guild-server-number');
 
                     var type = select.value;
                     var endVal = null;
@@ -943,6 +970,12 @@
                         endVal = new Date(input.value + 'T23:59:59Z').toISOString();
                     }
 
+                    var serverNum = serverNumInput ? serverNumInput.value.trim() : '';
+                    if (serverNum && !/^\d{4}$/.test(serverNum)) {
+                        showToast('Server number must be exactly 4 digits (e.g. 1089).', 'error');
+                        return;
+                    }
+
                     btn.disabled = true;
                     var origText = btn.innerHTML;
                     btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i>...';
@@ -952,13 +985,14 @@
                             .from('guilds')
                             .update({
                                 subscription_type: type,
-                                subscription_end: endVal
+                                subscription_end: endVal,
+                                server_number: serverNum
                             })
                             .eq('id', guildId);
 
                         if (updateErr) throw updateErr;
 
-                        showToast('Subscription updated for guild ' + guildId, 'success');
+                        showToast('Guild ' + guildId + ' updated successfully!', 'success');
                         await fetchGuilds();
                         renderGuildsSubscriptionList();
                     } catch (err) {

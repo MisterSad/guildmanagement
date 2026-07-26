@@ -283,10 +283,15 @@
                             <span>New Guild</span>
                         </div>
                         <form id="create-guild-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
-                            <div class="gm-input-with-icon" style="flex:1; min-width: 220px;">
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
                                 <i class="ph ph-shield gm-icon"></i>
                                 <input type="text" id="guild-name-input" class="gm-input" required
                                     placeholder="Guild name (e.g. SIGMA)">
+                            </div>
+                            <div class="gm-input-with-icon" style="width: 160px;">
+                                <i class="ph ph-hash gm-icon"></i>
+                                <input type="text" id="guild-server-input" class="gm-input" maxlength="4" pattern="\d{4}" required
+                                    placeholder="Server # (e.g. 1089)">
                             </div>
                             <button type="submit" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-plus"></i>
@@ -302,6 +307,10 @@
                         </div>
                         <form id="guild-settings-form" class="gm-col" style="gap: 1.25rem;">
                             <div class="gm-row" style="gap: 1rem; flex-wrap: wrap;">
+                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="guild-server-number-setting">Server # (4 digits)</label>
+                                    <input type="text" id="guild-server-number-setting" class="gm-input" maxlength="4" pattern="\d{4}" placeholder="e.g. 1089">
+                                </div>
                                 <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-svs" data-i18n="label_coeff_svs">SvS Coeff</label>
                                     <input type="number" id="coeff-svs" class="gm-input" min="0" max="20" required>

@@ -255,7 +255,8 @@
 
         if (isSuperAdmin && !window.currentGuildRestriction) {
             var guildOptions = guilds.map(function(g) {
-                return '<option value="' + g + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + esc(g) + ' Guild</option>';
+                var sNum = (window.guildsData && window.guildsData[g] && window.guildsData[g].server_number) ? ' (#' + esc(window.guildsData[g].server_number) + ')' : '';
+                return '<option value="' + g + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + esc(g) + sNum + '</option>';
             }).join('');
             return '<div class="gm-sidebar-guild-select-wrapper">' +
                 '<select class="gm-sidebar-guild-select" data-gm-guild-select>' +
@@ -264,7 +265,8 @@
             '</div>';
         } else {
             var displayGuild = window.currentGuildRestriction || window.currentGuild || 'ALPHA';
-            return '<div class="gm-sidebar-guild-badge">' + esc(displayGuild) + ' Guild</div>';
+            var sNum = (window.guildsData && window.guildsData[displayGuild] && window.guildsData[displayGuild].server_number) ? ' #' + esc(window.guildsData[displayGuild].server_number) : '';
+            return '<div class="gm-sidebar-guild-badge">' + esc(displayGuild) + sNum + '</div>';
         }
     }
 
