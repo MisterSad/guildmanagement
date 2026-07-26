@@ -49,6 +49,7 @@
                 'event_reminders_sent',
                 'discord_notifications_sent',
                 'shadowfront_signups',
+                'shadowfront_squads',
                 'player_name_history'
             ];
             if (tenantTables.indexOf(table) !== -1) {

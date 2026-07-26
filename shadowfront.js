@@ -166,7 +166,10 @@
             }
 
             renderShadowfront();
-        } catch (err) { console.error('loadShadowfront', err); }
+        } catch (err) {
+            console.error('loadShadowfront', err);
+            renderShadowfront(); // render with whatever state we have so panel is never blank
+        }
     }
 
     // ── Start / End a squad ────────────────────────────────────────────────────

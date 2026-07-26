@@ -72,7 +72,10 @@
             }
 
             renderArmsRace();
-        } catch (err) { console.error('loadArmsRace', err); }
+        } catch (err) {
+            console.error('loadArmsRace', err);
+            renderArmsRace(); // render with whatever state we have so panel is never blank
+        }
     }
 
     async function startStage(stageKey, startAt) {
