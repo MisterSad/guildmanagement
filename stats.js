@@ -389,32 +389,51 @@
         var db = getDb();
         try {
             var memRes = await db.from('guild_members').select('pseudo').eq('guild', state.activeGuild);
-            var partRes = await db.from('event_participants').select('pseudo, participated').eq('guild', state.activeGuild).neq('event_name', 'Glory');
+            var partRes = await db.from('event_participants')
+                .select('pseudo, event_name, week_start, session_id, participated, is_pending')
+                .eq('guild', state.activeGuild)
+                .neq('event_name', 'Glory');
 
             var memberSet = new Set();
             (memRes.data || []).forEach(function (m) { if (m.pseudo) memberSet.add(m.pseudo); });
             (partRes.data || []).forEach(function (r) { if (r.pseudo) memberSet.add(r.pseudo); });
 
-            var statsByMember = {};
-            memberSet.forEach(function (m) {
-                statsByMember[m] = { attended: 0, total: 0 };
+            var membersList = Array.from(memberSet).sort(function (a, b) { return a.localeCompare(b); });
+            var validRows = (partRes.data || []).filter(function (r) { return !r.is_pending; });
+
+            // Unique tenant event instances
+            var tenantEventInstances = new Set();
+            validRows.forEach(function (r) {
+                var evKey = (r.event_name || '').trim() + '|' + (r.session_id || r.week_start || '');
+                if (evKey) tenantEventInstances.add(evKey);
+            });
+            var totalTenantEvents = tenantEventInstances.size;
+
+            var attendedSessionsByMember = {};
+            membersList.forEach(function (m) {
+                var norm = normalizePseudo(m);
+                attendedSessionsByMember[norm] = new Set();
             });
 
-            (partRes.data || []).forEach(function (r) {
-                if (statsByMember[r.pseudo]) {
-                    statsByMember[r.pseudo].total++;
-                    if (r.participated > 0) statsByMember[r.pseudo].attended++;
+            validRows.forEach(function (r) {
+                var norm = normalizePseudo(r.pseudo);
+                if (attendedSessionsByMember[norm]) {
+                    var evKey = (r.event_name || '').trim() + '|' + (r.session_id || r.week_start || '');
+                    if (r.participated > 0) {
+                        attendedSessionsByMember[norm].add(evKey);
+                    }
                 }
             });
 
-            state.leaderboardData = Object.keys(statsByMember).map(function (pseudo) {
-                var st = statsByMember[pseudo];
-                var rate = st.total > 0 ? st.attended / st.total : 0;
+            state.leaderboardData = membersList.map(function (pseudo) {
+                var norm = normalizePseudo(pseudo);
+                var attendedCount = attendedSessionsByMember[norm] ? attendedSessionsByMember[norm].size : 0;
+                var rate = totalTenantEvents > 0 ? attendedCount / totalTenantEvents : 0;
                 return {
                     pseudo: pseudo,
                     score: round1(rate * 100),
-                    events_done: st.attended,
-                    events_total: st.total,
+                    events_done: attendedCount,
+                    events_total: totalTenantEvents,
                     attendance_rate: rate,
                     glory_delta: 0,
                     glory_bonus: 0,
