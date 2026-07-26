@@ -208,10 +208,14 @@
         var db = getDb();
         if (!db) return;
         try {
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
             var scoreVal = (value === null || value === '') ? null : (typeof value === 'number' ? value : window.RAD.parseNumber(value));
             var res = await db.from('event_participants')
                 .update({ score: scoreVal, participated: 1 })
-                .eq('event_name', 'Glory').eq('week_start', week).eq('pseudo', pseudo);
+                .eq('guild', currentG)
+                .eq('event_name', 'Glory')
+                .eq('week_start', week)
+                .eq('pseudo', pseudo);
             if (res.error) throw res.error;
             if (icon) icon.classList.add('hidden');
         } catch (err) {
