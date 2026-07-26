@@ -476,4 +476,32 @@
         if (chips[2]) chips[2].innerHTML = '<i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent');
     }
 
+    // ── Document Event Delegation for Arms Race Start/End Buttons ─────────────
+    document.addEventListener('click', function (e) {
+        var startBtn = e.target.closest('.ar-stage-start-btn');
+        if (startBtn) {
+            e.preventDefault();
+            var stageKey = startBtn.getAttribute('data-stage') || arActiveStage;
+            window.RAD.pickEventStart({ eventLabel: 'Arms Race — Stage ' + stageKey.toUpperCase() }, function (startAt) {
+                if (!startAt) return;
+                startStage(stageKey, startAt);
+            });
+            return;
+        }
+
+        var endBtn = e.target.closest('.ar-stage-end-btn');
+        if (endBtn) {
+            e.preventDefault();
+            var stageKey = endBtn.getAttribute('data-stage') || arActiveStage;
+            window.showConfirm(
+                t('event_end'),
+                '<strong>Arms Race — Stage ' + stageKey.toUpperCase() + '</strong><br>' + t('event_ended'),
+                function () {
+                    endStage(stageKey);
+                }
+            );
+            return;
+        }
+    });
+
 })();

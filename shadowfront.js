@@ -1387,9 +1387,32 @@
                     row.style.display = match ? '' : 'none';
                 });
             });
+    // ── Document Event Delegation for Shadowfront Start/End Buttons ───────────
+    document.addEventListener('click', function (e) {
+        var startBtn = e.target.closest('.sf-squad-start-btn');
+        if (startBtn) {
+            e.preventDefault();
+            var squad = startBtn.getAttribute('data-squad') || sfActiveSquad;
+            window.RAD.pickEventStart({ eventLabel: 'Shadowfront — ' + squadLabel(squad) }, function (startAt) {
+                if (!startAt) return;
+                startSquad(squad, startAt);
+            });
+            return;
         }
-    }
 
-
+        var endBtn = e.target.closest('.sf-squad-end-btn');
+        if (endBtn) {
+            e.preventDefault();
+            var squad = endBtn.getAttribute('data-squad') || sfActiveSquad;
+            window.showConfirm(
+                t('event_end'),
+                '<strong>' + squadLabel(squad) + '</strong><br>' + t('sf_squad_ended'),
+                function () {
+                    endSquads([squad]);
+                }
+            );
+            return;
+        }
+    });
 
 })();
