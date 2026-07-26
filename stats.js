@@ -527,7 +527,7 @@
                 return;
             }
 
-            // Top 3 Podium avec la DA officielle (.gm-podium, .gm-podium-card, .gm-gold, .gm-silver, .gm-bronze)
+            // Top 3 3D Cylindrical Podium Stage (Inspired by Mockup)
             var podHtml = '';
             if (state.leaderboardData.length >= 3) {
                 var top1 = state.leaderboardData[0];
@@ -535,10 +535,16 @@
                 var top3 = state.leaderboardData[2];
 
                 podHtml =
-                    '<div class="gm-podium">' +
-                        renderPodiumCard(top2, 'silver', '2ND') +
-                        renderPodiumCard(top1, 'gold', '<i class="ph-fill ph-crown"></i> 1ST') +
-                        renderPodiumCard(top3, 'bronze', '3RD') +
+                    '<div class="gm-podium-stage-container">' +
+                        '<div class="gm-podium-stage">' +
+                            render3DPodiumColumn(top2, 'silver', '2') +
+                            render3DPodiumColumn(top1, 'gold', '1') +
+                            render3DPodiumColumn(top3, 'bronze', '3') +
+                        '</div>' +
+                        '<div class="gm-stats-leaderboard-banner">' +
+                            '<h3>CLIMB THE LEADERBOARD &amp; CLAIM GUILD GLORY</h3>' +
+                            '<p>Track live attendance, weekly score gains, and top guild contributors.</p>' +
+                        '</div>' +
                     '</div>';
             }
 
@@ -582,17 +588,18 @@
         });
     }
 
-    function renderPodiumCard(member, medalClass, badgeText) {
+    function render3DPodiumColumn(member, medalClass, rankNum) {
         if (!member) return '';
-        var initial = (window.RAD && window.RAD.avatarInit) ? window.RAD.avatarInit(member.pseudo) : member.pseudo.charAt(0).toUpperCase();
-        return '<div class="gm-podium-card gm-' + medalClass + '">' +
-            '<span class="gm-podium-badge">' + badgeText + '</span>' +
-            '<div class="gm-podium-avatar-wrap">' +
-                '<div class="gm-avatar gm-avatar-squircle">' + esc(initial) + '</div>' +
+        var initial = (window.RAD && window.RAD.avatarInit) ? window.RAD.avatarInit(member.pseudo) : (member.pseudo ? member.pseudo.charAt(0).toUpperCase() : '?');
+        return '<div class="gm-podium-column gm-' + medalClass + '">' +
+            '<div class="gm-podium-avatar-hex">' +
+                '<div class="gm-avatar">' + esc(initial) + '</div>' +
             '</div>' +
-            '<div class="gm-podium-info">' +
-                '<strong class="gm-podium-name">' + esc(member.pseudo) + '</strong>' +
-                '<span class="gm-podium-score-pill">' + fmt(member.score) + ' pts</span>' +
+            '<div class="gm-podium-player-name">' + esc(member.pseudo) + '</div>' +
+            '<div class="gm-podium-score-val">' + fmt(member.score) + ' pts</div>' +
+            '<div class="gm-podium-pedestal">' +
+                '<div class="gm-podium-pedestal-top"></div>' +
+                '<div class="gm-podium-hex-rank">' + rankNum + '</div>' +
             '</div>' +
         '</div>';
     }
