@@ -1802,9 +1802,18 @@
 
         document.body.insertAdjacentHTML('beforeend', html);
         var overlay = document.getElementById('transfer-member-overlay');
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function closeModal() {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 200);
+        }
 
         overlay.querySelectorAll('.gm-close-modal').forEach(function (btn) {
-            btn.addEventListener('click', function () { overlay.remove(); });
+            btn.addEventListener('click', closeModal);
+        });
+        overlay.addEventListener('click', function (ev) {
+            if (ev.target === overlay) closeModal();
         });
 
         var confirmBtn = document.getElementById('confirm-transfer-btn');
@@ -1829,7 +1838,7 @@
                     throw new Error((data && data.error) ? data.error : 'transfer_failed');
                 }
 
-                overlay.remove();
+                closeModal();
                 showToast(member.pseudo + ' transferred to ' + targetGuild + ' on Server #' + currentServer + '!', 'success');
                 await fetchGuildMembers();
             } catch (err) {

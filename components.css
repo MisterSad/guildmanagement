@@ -2045,3 +2045,40 @@
     opacity: 1;
 }
 
+/* ─── Floating Modal Overlay ─── */
+.gm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1.5rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.gm-modal-overlay.visible {
+    opacity: 1;
+}
+
+.gm-modal-overlay .gm-modal-card {
+    background: var(--bg-1, #0f172a);
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.12));
+    border-radius: var(--radius-xl, 16px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    padding: 1.75rem;
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gm-modal-overlay.visible .gm-modal-card {
+    transform: scale(1) translateY(0);
+}
+
