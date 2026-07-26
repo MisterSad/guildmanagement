@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=5">
     <link rel="stylesheet" href="tokens.css?v=3">
-    <link rel="stylesheet" href="components.css?v=9">
+    <link rel="stylesheet" href="components.css?v=10">
     <link rel="stylesheet" href="shell.css?v=6">
     <link rel="icon" type="image/png" href="favicon.png?v=2">
     <link rel="manifest" href="manifest.webmanifest">
@@ -294,82 +294,76 @@
             <!-- Tab: Discord Notifications (Guild Admin R4 & R5) -->
             <main class="dashboard-content tab-panel" id="admin-discord">
                 <div class="gm-page">
-                    <!-- Hero Banner -->
-                    <div class="gm-card glass-card gm-discord-hero">
-                        <div class="gm-discord-hero-inner">
-                            <div class="gm-discord-icon-badge">
-                                <i class="ph-fill ph-bell-ringing"></i>
-                            </div>
-                            <div>
-                                <h1 class="gm-page-title" style="margin:0; font-family:var(--font-display); font-size:1.45rem;">Discord Notifications</h1>
-                                <p class="gm-page-subtitle" style="margin:.3rem 0 0; color:var(--fg-dim); font-size:.9rem;">Configure real-time webhooks, role mentions, and automated event reminders for your guild</p>
-                            </div>
+                    <header class="gm-page-header">
+                        <div>
+                            <h1 class="gm-page-title">Discord Notifications</h1>
+                            <p class="gm-page-subtitle">Configure webhooks, role mentions, and event reminders for your guild</p>
                         </div>
-                    </div>
+                    </header>
 
-                    <form id="guild-settings-form" class="gm-col" style="gap: 1.5rem;">
+                    <form id="guild-settings-form" class="gm-col" style="gap: 1.25rem;">
                         <!-- Card 1: Guild Server & Event Coefficients -->
-                        <div class="gm-card glass-card" style="padding: 1.5rem;">
-                            <div style="display:flex; align-items:center; gap:.6rem; margin-bottom:1.25rem; font-family:var(--font-display); font-weight:700; font-size:1.05rem; color:var(--fg);">
-                                <i class="ph-duotone ph-sliders" style="font-size:1.3rem; color:var(--accent-cyan);"></i>
+                        <div class="gm-card gm-card-padded gm-section">
+                            <div class="gm-section-title" style="margin-bottom: 1.25rem;">
+                                <i class="ph ph-sliders"></i>
                                 <span>Guild Configuration &amp; Event Coefficients</span>
                             </div>
                             <div class="gm-row" style="gap: 1rem; flex-wrap: wrap;">
                                 <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
-                                    <label class="gm-label" style="font-size: 0.82rem; font-weight:600; color:var(--fg-dim);" for="guild-server-number-setting">Server # (4 digits)</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="guild-server-number-setting">Server # (4 digits)</label>
                                     <input type="text" id="guild-server-number-setting" class="gm-input" maxlength="4" pattern="\d{4}" placeholder="e.g. 1058">
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
-                                    <label class="gm-label" style="font-size: 0.82rem; font-weight:600; color:var(--fg-dim);" for="coeff-svs" data-i18n="label_coeff_svs">SvS Coeff</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-svs" data-i18n="label_coeff_svs">SvS Coeff</label>
                                     <input type="number" id="coeff-svs" class="gm-input" min="0" max="20" required>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
-                                    <label class="gm-label" style="font-size: 0.82rem; font-weight:600; color:var(--fg-dim);" for="coeff-gvg" data-i18n="label_coeff_gvg">GvG Coeff</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-gvg" data-i18n="label_coeff_gvg">GvG Coeff</label>
                                     <input type="number" id="coeff-gvg" class="gm-input" min="0" max="20" required>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
-                                    <label class="gm-label" style="font-size: 0.82rem; font-weight:600; color:var(--fg-dim);" for="coeff-shadowfront" data-i18n="label_coeff_shadowfront">Shadowfront Coeff</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-shadowfront" data-i18n="label_coeff_shadowfront">Shadowfront Coeff</label>
                                     <input type="number" id="coeff-shadowfront" class="gm-input" min="0" max="20" required>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
-                                    <label class="gm-label" style="font-size: 0.82rem; font-weight:600; color:var(--fg-dim);" for="coeff-dtr" data-i18n="label_coeff_dtr">DTR Coeff</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-dtr" data-i18n="label_coeff_dtr">DTR Coeff</label>
                                     <input type="number" id="coeff-dtr" class="gm-input" min="0" max="20" required>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
-                                    <label class="gm-label" style="font-size: 0.82rem; font-weight:600; color:var(--fg-dim);" for="coeff-armsrace" data-i18n="label_coeff_armsrace">Arms Race Coeff</label>
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-armsrace" data-i18n="label_coeff_armsrace">Arms Race Coeff</label>
                                     <input type="number" id="coeff-armsrace" class="gm-input" min="0" max="20" required>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Card 2: Global Discord Role Mention -->
-                        <div class="gm-card glass-card" style="padding: 1.5rem;">
-                            <div style="display:flex; align-items:center; gap:.6rem; margin-bottom:1rem; font-family:var(--font-display); font-weight:700; font-size:1.05rem; color:var(--fg);">
-                                <i class="ph-duotone ph-at" style="font-size:1.3rem; color:var(--accent-cyan);"></i>
+                        <div class="gm-card gm-card-padded gm-section">
+                            <div class="gm-section-title" style="margin-bottom: 1rem;">
+                                <i class="ph ph-at"></i>
                                 <span data-i18n="label_discord_notifications_config">Global Discord Role Mention</span>
                             </div>
                             <div class="gm-col" style="gap: 0.5rem;">
-                                <label class="gm-label" style="font-size: 0.82rem; font-weight: 600; color:var(--fg-dim);" for="discord-role-id" data-i18n="label_discord_role_id">Default Discord Role ID / Mention (tagged in all event alerts)</label>
+                                <label class="gm-dim" style="font-size: 0.85rem; font-weight: 500;" for="discord-role-id" data-i18n="label_discord_role_id">Default Discord Role ID / Mention (tagged in all event alerts)</label>
                                 <div style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
                                     <input type="text" id="discord-role-id" class="gm-input" style="max-width: 360px; font-family:var(--font-mono, monospace);" placeholder="e.g. 1523751822139981976 or @everyone">
-                                    <span class="gm-badge" style="background:var(--accent-cyan-soft); color:var(--accent-cyan); border:1px solid var(--accent-cyan-soft); font-size:.78rem; padding:5px 12px; border-radius:var(--radius-pill); font-weight:600;"><i class="ph ph-check-circle"></i> Formats as @Role automatically</span>
+                                    <span class="gm-badge" style="background:var(--accent-lime-soft); color:var(--accent-lime-fg); border:1px solid var(--accent-lime-soft); font-size:.78rem; padding:5px 12px; border-radius:var(--radius-pill); font-weight:600;"><i class="ph ph-check-circle"></i> Formats as @Role automatically</span>
                                 </div>
                                 <span style="font-size: 0.78rem; color: var(--fg-dim); margin-top: 0.25rem;" data-i18n="label_discord_role_id_hint">Tip: Get the Role ID in Discord by enabling Developer Mode, right-clicking the Role in Server Settings &gt; Roles, and selecting <strong>Copy Role ID</strong>.</span>
                             </div>
                         </div>
 
                         <!-- Card 3: Notification Webhooks & Event Channels Grid -->
-                        <div class="gm-card glass-card" style="padding: 1.5rem;">
-                            <div style="display:flex; align-items:center; gap:.6rem; margin-bottom:1.25rem; font-family:var(--font-display); font-weight:700; font-size:1.05rem; color:var(--fg);">
-                                <i class="ph-duotone ph-bell-simple-ringing" style="font-size:1.3rem; color:var(--accent-cyan);"></i>
+                        <div class="gm-card gm-card-padded gm-section">
+                            <div class="gm-section-title" style="margin-bottom: 1.25rem;">
+                                <i class="ph ph-bell-ringing"></i>
                                 <span>Event Channels &amp; Reminders</span>
                             </div>
 
                             <div class="notification-grid">
                                 <!-- Arms Race -->
-                                <div class="notification-group">
+                                <div class="notification-group event-armsrace">
                                     <div class="notification-group-title">
-                                        <i class="ph ph-sword"></i>
+                                        <i class="ph ph-crosshair"></i>
                                         <span data-i18n="label_armsrace_notifications">Arms Race</span>
                                         <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem;" data-custom-msg="armsrace" title="Customize messages">
                                             <i class="ph ph-note-pencil"></i>
@@ -394,7 +388,7 @@
                                 </div>
 
                                 <!-- Defend Trade Route -->
-                                <div class="notification-group">
+                                <div class="notification-group event-dtr">
                                     <div class="notification-group-title">
                                         <i class="ph ph-truck"></i>
                                         <span data-i18n="label_dtr_notifications">Defend Trade Route</span>
@@ -421,9 +415,9 @@
                                 </div>
 
                                 <!-- Shadowfront -->
-                                <div class="notification-group">
+                                <div class="notification-group event-shadowfront">
                                     <div class="notification-group-title">
-                                        <i class="ph ph-users-four"></i>
+                                        <i class="ph ph-ghost"></i>
                                         <span data-i18n="label_shadowfront_notifications">Shadowfront</span>
                                         <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem;" data-custom-msg="shadowfront" title="Customize messages">
                                             <i class="ph ph-note-pencil"></i>
@@ -448,7 +442,7 @@
                                 </div>
 
                                 <!-- Calamity Befalls -->
-                                <div class="notification-group" id="notification-group-calamity">
+                                <div class="notification-group event-calamity" id="notification-group-calamity">
                                     <div class="notification-group-title">
                                         <i class="ph ph-skull"></i>
                                         <span data-i18n="label_calamity_notifications">Calamity Befalls</span>
@@ -467,9 +461,9 @@
                                 </div>
 
                                 <!-- GvG Samedi -->
-                                <div class="notification-group" id="notification-group-gvg">
+                                <div class="notification-group event-gvg" id="notification-group-gvg">
                                     <div class="notification-group-title">
-                                        <i class="ph ph-flag"></i>
+                                        <i class="ph ph-flag-banner"></i>
                                         <span data-i18n="label_gvg_notifications">GvG</span>
                                         <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem;" data-custom-msg="gvg" title="Customize messages">
                                             <i class="ph ph-note-pencil"></i>
@@ -486,9 +480,9 @@
                                 </div>
 
                                 <!-- SvS PvP -->
-                                <div class="notification-group" id="notification-group-svs">
+                                <div class="notification-group event-svs" id="notification-group-svs">
                                     <div class="notification-group-title">
-                                        <i class="ph ph-shield-checkered"></i>
+                                        <i class="ph ph-swords"></i>
                                         <span data-i18n="label_svs_notifications">SvS</span>
                                         <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem;" data-custom-msg="svs" title="Customize messages">
                                             <i class="ph ph-note-pencil"></i>
@@ -514,9 +508,9 @@
                             </div>
                         </div>
 
-                        <!-- Sticky Action Bar -->
-                        <div class="gm-row" style="justify-content: flex-end; margin-top: 0.5rem;">
-                            <button type="submit" class="gm-btn gm-btn-primary gm-btn-lg" style="min-width: 220px; font-weight:700;">
+                        <!-- Action Bar -->
+                        <div class="gm-row" style="justify-content: flex-end;">
+                            <button type="submit" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-floppy-disk"></i>
                                 <span data-i18n="btn_save_config">Save Configuration</span>
                             </button>
