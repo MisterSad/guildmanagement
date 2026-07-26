@@ -253,13 +253,14 @@
         loginView.classList.add('active');
     }
 
-    window.RAD_APP = window.RAD_APP || {};
-    window.RAD_APP.onTabActivated = function (tabId) {
-        if (tabId === 'admin-members' || tabId === 'member-members') {
+    function triggerTabDataLoad(tabId) {
+        if (!tabId) return;
+        if (tabId === 'admin-members' || tabId === 'member-members' || tabId === 'member-home') {
             fetchGuildMembers();
         }
         if (tabId === 'admin-home') {
             fetchAccounts();
+            loadGuildSettings();
             populateAccountGuildSelect();
         }
         if (tabId === 'admin-discord') {
@@ -279,6 +280,35 @@
         if (tabId === 'gm-overview' && window.RAD_OVERVIEW) {
             window.RAD_OVERVIEW.load();
         }
+        if (tabId === 'event-svs' && window.RAD_EVENTS) {
+            window.RAD_EVENTS.loadEvent('SvS');
+        }
+        if (tabId === 'event-gvg' && window.RAD_EVENTS) {
+            window.RAD_EVENTS.loadEvent('GvG');
+        }
+        if (tabId === 'event-shadowfront' && window.RAD_SHADOWFRONT) {
+            window.RAD_SHADOWFRONT.load();
+        }
+        if (tabId === 'event-dtr' && window.RAD_EVENTS) {
+            window.RAD_EVENTS.loadEvent('Defend Trade Route');
+        }
+        if (tabId === 'event-arms-race' && window.RAD_ARMSRACE) {
+            window.RAD_ARMSRACE.load();
+        }
+        if (tabId === 'event-glory' && window.RAD_GLORY) {
+            window.RAD_GLORY.load();
+        }
+        if (tabId === 'event-history' && window.RAD_HISTORY) {
+            window.RAD_HISTORY.load();
+        }
+        if ((tabId === 'stats-admin' || tabId === 'stats-member') && window.RAD_STATS) {
+            window.RAD_STATS.load();
+        }
+    }
+
+    window.RAD_APP = window.RAD_APP || {};
+    window.RAD_APP.onTabActivated = function (tabId) {
+        triggerTabDataLoad(tabId);
     };
 
     // ─── Tab Navigation ───────────────────────────────────────────────────────
@@ -1955,44 +1985,7 @@
     function reloadActiveView() {
         var activePanel = document.querySelector('.tab-panel.active');
         if (!activePanel) return;
-        var tabId = activePanel.id;
-
-        if (tabId === 'admin-members' || tabId === 'member-members') {
-            fetchGuildMembers();
-        }
-        if (tabId === 'admin-home') {
-            fetchAccounts();
-            loadGuildSettings();
-        }
-        if (tabId === 'admin-banned') {
-            fetchBannedPlayers();
-        }
-        var activeTabBtn = document.querySelector('.nav-tab.active');
-        var eventName = activeTabBtn ? activeTabBtn.getAttribute('data-event-tab') : null;
-        if (eventName && ['SvS', 'GvG', 'Defend Trade Route'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
-            window.RAD_EVENTS.loadEvent(eventName);
-        }
-        if (eventName === 'ARMS RACE' && window.RAD_ARMSRACE) {
-            window.RAD_ARMSRACE.load();
-        }
-        if (eventName === 'Shadowfront' && window.RAD_SHADOWFRONT) {
-            window.RAD_SHADOWFRONT.load();
-        }
-        if (eventName === 'stats' && window.RAD_STATS) {
-            window.RAD_STATS.load();
-        }
-        if (eventName === 'glory' && window.RAD_GLORY) {
-            window.RAD_GLORY.load();
-        }
-        if (eventName === 'history' && window.RAD_HISTORY) {
-            window.RAD_HISTORY.load();
-        }
-        if (tabId === 'tab-sanctions' && window.RAD_SANCTIONS) {
-            window.RAD_SANCTIONS.load();
-        }
-        if (tabId === 'gm-overview' && window.RAD_OVERVIEW) {
-            window.RAD_OVERVIEW.load();
-        }
+        triggerTabDataLoad(activePanel.id);
     }
 
     window.addEventListener('rad-lang-change', function () {
