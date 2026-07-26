@@ -260,8 +260,12 @@
             };
         });
 
-        // Indexation des participations
-        partRows.forEach(function (p) {
+        // Indexation des participations (filtrer les événements en attente / brouillons)
+        var validPartRows = partRows.filter(function (p) {
+            return !p.is_pending;
+        });
+
+        validPartRows.forEach(function (p) {
             var norm = normalizePseudo(p.pseudo);
             var memberMatch = membersList.find(function (m) { return normalizePseudo(m) === norm; });
             if (!memberMatch) return;
@@ -270,7 +274,9 @@
             var evName = (p.event_name || '').trim();
             var coeff = COEFFS[evName] || 1;
 
-            if (p.participated > 0) {
+            var attended = (p.participated > 0) || (p.score > 0) || (p.score_prep > 0) || (p.score_pvp > 0);
+
+            if (attended) {
                 agg.eventsAttended++;
                 var baseScore = WEIGHTS.participation * coeff;
                 var perfScore = 0;
@@ -282,6 +288,8 @@
 
                 agg.eventsScore += (baseScore + perfScore);
             }
+            
+            // Increment eventsTotal ONLY for completed/validated events
             agg.eventsTotal++;
         });
 
