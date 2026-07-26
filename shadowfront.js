@@ -85,13 +85,30 @@
         }
         try {
             var currentWeek = window.RAD.getWeekStart();
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+
+            var statusQ   = db.from('event_status').select('event_name, is_active, session_id, start_at').in('event_name', [SQUAD_EVENT.squad1, SQUAD_EVENT.squad2]);
+            var membersQ  = db.from('guild_members').select('pseudo, uid, overall_power').order('pseudo', { ascending: true });
+            var squadsQ   = db.from('shadowfront_squads').select('pseudo, session_id').limit(100000);
+            var partsQ    = db.from('event_participants').select('pseudo, participated, session_id, excused, late, sub_present').eq('event_name', EVENT_NAME).limit(100000);
+            var signupsQ  = db.from('shadowfront_signups').select('*').eq('week_start', currentWeek);
+
+            if (currentG === 'ALPHA') {
+                statusQ  = statusQ.or('guild.eq.ALPHA,guild.is.null');
+                membersQ = membersQ.or('guild.eq.ALPHA,guild.is.null');
+                squadsQ  = squadsQ.or('guild.eq.ALPHA,guild.is.null');
+                partsQ   = partsQ.or('guild.eq.ALPHA,guild.is.null');
+                signupsQ = signupsQ.or('guild.eq.ALPHA,guild.is.null');
+            } else {
+                statusQ  = statusQ.eq('guild', currentG);
+                membersQ = membersQ.eq('guild', currentG);
+                squadsQ  = squadsQ.eq('guild', currentG);
+                partsQ   = partsQ.eq('guild', currentG);
+                signupsQ = signupsQ.eq('guild', currentG);
+            }
+
             var [statusRes, membersRes, histSquads, histParts, signupRes] = await Promise.all([
-                db.from('event_status').select('event_name, is_active, session_id, start_at')
-                    .in('event_name', [SQUAD_EVENT.squad1, SQUAD_EVENT.squad2]),
-                db.from('guild_members').select('pseudo, uid, overall_power').order('pseudo', { ascending: true }),
-                db.from('shadowfront_squads').select('pseudo, session_id').limit(100000),
-                db.from('event_participants').select('pseudo, participated, session_id, excused, late, sub_present').eq('event_name', EVENT_NAME).limit(100000),
-                db.from('shadowfront_signups').select('*').eq('week_start', currentWeek)
+                statusQ, membersQ, squadsQ, partsQ, signupsQ
             ]);
 
             ['squad1', 'squad2'].forEach(function (k) {

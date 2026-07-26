@@ -49,8 +49,16 @@
         if (!db || !TAB_TO_DB_EVENTS[tabKey]) return;
         try {
             var dbEvents = TAB_TO_DB_EVENTS[tabKey];
-            var res = await db.from('event_status').select('event_name, is_active, session_id, stage, start_at')
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var query = db.from('event_status').select('event_name, is_active, session_id, stage, start_at')
                 .in('event_name', dbEvents);
+
+            if (currentG === 'ALPHA') {
+                query = query.or('guild.eq.ALPHA,guild.is.null');
+            } else {
+                query = query.eq('guild', currentG);
+            }
+            var res = await query;
 
             var active = (res.data || []).find(function (r) { return r.is_active; });
             var s = state[tabKey];

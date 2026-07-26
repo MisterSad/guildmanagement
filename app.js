@@ -281,34 +281,34 @@
         if (tabId === 'admin-banned') {
             fetchBannedPlayers();
         }
-        if (tabId === 'tab-sanctions' && window.RAD_SANCTIONS) {
+        if ((tabId === 'tab-sanctions' || tabId === 'sanctions') && window.RAD_SANCTIONS) {
             window.RAD_SANCTIONS.load();
         }
-        if (tabId === 'gm-overview' && window.RAD_OVERVIEW) {
+        if ((tabId === 'gm-overview' || tabId === 'overview') && window.RAD_OVERVIEW) {
             window.RAD_OVERVIEW.load();
         }
-        if (tabId === 'event-svs' && window.RAD_EVENTS) {
+        if ((tabId === 'event-svs' || tabId === 'svs') && window.RAD_EVENTS) {
             window.RAD_EVENTS.loadEvent('SvS');
         }
-        if (tabId === 'event-gvg' && window.RAD_EVENTS) {
+        if ((tabId === 'event-gvg' || tabId === 'gvg') && window.RAD_EVENTS) {
             window.RAD_EVENTS.loadEvent('GvG');
         }
         if ((tabId === 'event-shadowfront' || tabId === 'Shadowfront' || tabId === 'shadowfront') && window.RAD_SHADOWFRONT) {
             window.RAD_SHADOWFRONT.load();
         }
-        if (tabId === 'event-dtr' && window.RAD_EVENTS) {
+        if ((tabId === 'event-dtr' || tabId === 'dtr') && window.RAD_EVENTS) {
             window.RAD_EVENTS.loadEvent('Defend Trade Route');
         }
         if ((tabId === 'event-arms-race' || tabId === 'ARMS RACE' || tabId === 'Arms Race' || tabId === 'armsrace') && window.RAD_ARMSRACE) {
             window.RAD_ARMSRACE.load();
         }
-        if (tabId === 'event-glory' && window.RAD_GLORY) {
+        if ((tabId === 'event-glory' || tabId === 'glory') && window.RAD_GLORY) {
             window.RAD_GLORY.load();
         }
-        if (tabId === 'event-history' && window.RAD_HISTORY) {
+        if ((tabId === 'event-history' || tabId === 'history') && window.RAD_HISTORY) {
             window.RAD_HISTORY.load();
         }
-        if ((tabId === 'stats-admin' || tabId === 'stats-member') && window.RAD_STATS) {
+        if ((tabId === 'stats-admin' || tabId === 'stats-member' || tabId === 'stats') && window.RAD_STATS) {
             window.RAD_STATS.load();
         }
     }

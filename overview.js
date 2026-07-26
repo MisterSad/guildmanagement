@@ -64,14 +64,30 @@
 
         try {
             var week = window.RAD.getWeekStart();
-            var [memCount, statusRows, gloryRows, sanctionsRows, recentMembers, recentSanctions] = await Promise.all([
-                db.from('guild_members').select('id', { count: 'exact', head: true }),
-                db.from('event_status').select('event_name, is_active, updated_at, session_id, start_at'),
-                db.from('event_participants').select('score').eq('event_name', 'Glory').eq('week_start', week),
-                db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5),
-                db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5),
-                // (sanctions déjà récupérées ci-dessus, on réutilise)
-                Promise.resolve(null)
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+
+            var memCountQ  = db.from('guild_members').select('id', { count: 'exact', head: true });
+            var statusQ    = db.from('event_status').select('event_name, is_active, updated_at, session_id, start_at');
+            var gloryQ     = db.from('event_participants').select('score').eq('event_name', 'Glory').eq('week_start', week);
+            var sanctionsQ = db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5);
+            var recentMemQ = db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5);
+
+            if (currentG === 'ALPHA') {
+                memCountQ  = memCountQ.or('guild.eq.ALPHA,guild.is.null');
+                statusQ    = statusQ.or('guild.eq.ALPHA,guild.is.null');
+                gloryQ     = gloryQ.or('guild.eq.ALPHA,guild.is.null');
+                sanctionsQ = sanctionsQ.or('guild.eq.ALPHA,guild.is.null');
+                recentMemQ = recentMemQ.or('guild.eq.ALPHA,guild.is.null');
+            } else {
+                memCountQ  = memCountQ.eq('guild', currentG);
+                statusQ    = statusQ.eq('guild', currentG);
+                gloryQ     = gloryQ.eq('guild', currentG);
+                sanctionsQ = sanctionsQ.eq('guild', currentG);
+                recentMemQ = recentMemQ.eq('guild', currentG);
+            }
+
+            var [memCount, statusRows, gloryRows, sanctionsRows, recentMembers] = await Promise.all([
+                memCountQ, statusQ, gloryQ, sanctionsQ, recentMemQ
             ]);
 
             var stats = {

@@ -16,7 +16,21 @@
         var db = getDb();
         if (!db) return;
 
-        var membersRes = await db.from('guild_members').select('pseudo').order('pseudo', { ascending: true });
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+
+        var membersQ = db.from('guild_members').select('pseudo').order('pseudo', { ascending: true });
+        var sanctionsQ = db.from('sanctions').select('*').order('created_at', { ascending: false });
+
+        if (currentG === 'ALPHA') {
+            membersQ   = membersQ.or('guild.eq.ALPHA,guild.is.null');
+            sanctionsQ = sanctionsQ.or('guild.eq.ALPHA,guild.is.null');
+        } else {
+            membersQ   = membersQ.eq('guild', currentG);
+            sanctionsQ = sanctionsQ.eq('guild', currentG);
+        }
+
+        var [membersRes, res] = await Promise.all([membersQ, sanctionsQ]);
+
         var datalist = document.getElementById('member-list-datalist');
         if (datalist && membersRes.data) {
             datalist.innerHTML = membersRes.data.map(function (m) {
@@ -24,7 +38,6 @@
             }).join('');
         }
 
-        var res = await db.from('sanctions').select('*').order('created_at', { ascending: false });
         sanctions = res.data || [];
         renderSanctions();
     }
