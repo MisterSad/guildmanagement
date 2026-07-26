@@ -91,12 +91,18 @@
     async function loadStats() {
         var db = getDb();
         if (!db) return;
+        if (!currentWeek && window.RAD && window.RAD.getWeekStart) {
+            currentWeek = window.RAD.getWeekStart();
+        }
         await fetchAllWeeks();
         renderControls();
         await refreshData();
     }
 
     async function refreshData() {
+        if (!currentWeek && window.RAD && window.RAD.getWeekStart) {
+            currentWeek = window.RAD.getWeekStart();
+        }
         if (currentMode === 'participation') {
             await loadParticipation();
             return;
@@ -110,6 +116,9 @@
             } else if (statsPeriod === '8w') {
                 weeksToLoad = allWeeks.slice(idx, idx + 8);
             }
+            if (!weeksToLoad.length || !weeksToLoad[0]) {
+                weeksToLoad = [window.RAD ? window.RAD.getWeekStart() : ''];
+            }
             await loadGlobalPeriod(weeksToLoad);
         } else if (currentMode === 'SvS' || currentMode === 'GvG') {
             await loadEventRanking(currentMode, currentWeek);
@@ -120,22 +129,36 @@
     }
 
     // ── Fetch des semaines disponibles ──────────────────────────────────────────
-    // RPC car SELECT direct est plafonné à 1 000 lignes côté PostgREST : avec
-    // plusieurs centaines de participants × semaines, certaines semaines
-    // disparaissaient du sélecteur.
     async function fetchAllWeeks() {
         var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
-        var res = await db.rpc('list_event_weeks', { p_guild: currentG });
-        var weeks = (res.data || []).map(function (r) { return r.week_start; });
-        weeks.sort(function (a, b) { return b.localeCompare(a); });
-        if (weeks.indexOf(currentWeek) === -1) weeks.unshift(currentWeek);
-        allWeeks = weeks;
+        if (!currentWeek && window.RAD && window.RAD.getWeekStart) {
+            currentWeek = window.RAD.getWeekStart();
+        }
+        try {
+            var res = await db.rpc('list_event_weeks', { p_guild: currentG });
+            var weeks = (res.data || []).map(function (r) { return r.week_start; });
+            weeks.sort(function (a, b) { return b.localeCompare(a); });
+            if (currentWeek && weeks.indexOf(currentWeek) === -1) weeks.unshift(currentWeek);
+            allWeeks = weeks.length ? weeks : (currentWeek ? [currentWeek] : [window.RAD.getWeekStart()]);
+            if (!currentWeek && allWeeks.length > 0) {
+                currentWeek = allWeeks[0];
+            }
+        } catch (e) {
+            console.warn('fetchAllWeeks fallback', e);
+            var fallbackW = currentWeek || (window.RAD ? window.RAD.getWeekStart() : '');
+            allWeeks = [fallbackW];
+            currentWeek = fallbackW;
+        }
     }
 
     // ── Mode Global / Prince : application de la formule pondérée ──────────────
     async function loadGlobalPeriod(weeks, opts) {
         opts = opts || {};
         try {
+            if (!weeks || !weeks.length || !weeks[0]) {
+                var defaultW = window.RAD ? window.RAD.getWeekStart() : '';
+                weeks = [defaultW];
+            }
             var refPrev = window.RAD.getPrevWeekStart(weeks[0]);
             var glorySpan = [refPrev].concat(weeks);
             var getConfigVal = function (key, def) {
