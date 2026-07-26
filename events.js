@@ -737,36 +737,4 @@
 
 
 
-    // ── Wire START / END buttons via document event delegation ──────────────
-    var SCHEDULED_TABS = ['Defend Trade Route'];
-
-    document.addEventListener('click', function (e) {
-        var startBtn = e.target.closest('.event-start-btn');
-        if (startBtn) {
-            var ev = startBtn.getAttribute('data-event');
-            if (ev && TAB_TO_DB_EVENTS[ev]) {
-                e.preventDefault();
-                if (SCHEDULED_TABS.indexOf(ev) !== -1) {
-                    window.RAD.pickEventStart({ eventLabel: ev }, function (startAt) {
-                        if (!startAt) return;
-                        startEvent(ev, ev, null, startAt);
-                    });
-                } else {
-                    startEvent(ev, ev, null);
-                }
-                return;
-            }
-        }
-
-        var endBtn = e.target.closest('.event-end-btn');
-        if (endBtn) {
-            var ev = endBtn.getAttribute('data-event');
-            if (ev && TAB_TO_DB_EVENTS[ev]) {
-                e.preventDefault();
-                endEvent(ev);
-                return;
-            }
-        }
-    });
-
 })();
