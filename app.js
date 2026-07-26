@@ -1062,18 +1062,28 @@
                     btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i>...';
 
                     try {
-                        var { error: updateErr } = await supabase
+                        var res = await supabase
                             .from('guilds')
                             .update({
                                 subscription_type: type,
                                 subscription_end: endVal,
                                 server_number: serverNum
                             })
-                            .eq('id', guildId);
+                            .eq('id', guildId)
+                            .select();
 
-                        if (updateErr) throw updateErr;
+                        if (res.error) throw res.error;
+                        if (!res.data || res.data.length === 0) {
+                            throw new Error('Update affected 0 rows (permission denied or guild not found).');
+                        }
 
-                        showToast('Guild ' + guildId + ' updated successfully!', 'success');
+                        if (window.guildsData && window.guildsData[guildId]) {
+                            window.guildsData[guildId].server_number = serverNum;
+                            window.guildsData[guildId].type = type;
+                            window.guildsData[guildId].end = endVal;
+                        }
+
+                        showToast('Guild ' + guildId + ' (Server #' + serverNum + ') updated successfully!', 'success');
                         await fetchGuilds();
                         renderGuildsSubscriptionList();
                     } catch (err) {
