@@ -779,7 +779,7 @@
                 var isR5 = (acc.role === 'R5');
                 // Super Admin account ONLY shown when activeG is ALPHA
                 if (isR5) {
-                    return activeG === 'ALPHA';
+                    return true;
                 }
                 return accGuild === activeG;
             });

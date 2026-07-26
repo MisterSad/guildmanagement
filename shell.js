@@ -221,7 +221,7 @@
     }
 
     function checkSubscriptionStatus() {
-        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
+        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin' || window.currentGuildRestriction === null);
         var isExpired = false;
         var activeGuild = window.currentGuild || 'ALPHA';
         if (window.guildsData && window.guildsData[activeGuild]) {
