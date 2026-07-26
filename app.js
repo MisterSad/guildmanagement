@@ -202,37 +202,13 @@
         var roleLabel = document.getElementById('nav-user-role');
         var nameLabel = document.getElementById('nav-user-name');
 
-        var createAccountCard = document.getElementById('create-account-card');
-        var activeAccountsCard = document.getElementById('active-accounts-card');
-        var createGuildCard = document.getElementById('create-guild-card');
-
-        // Allow both roles (R4/member and R5/admin) to view home & banned tabs
-        if (adminHomeBtn) adminHomeBtn.style.display = '';
-        if (adminBannedBtn) adminBannedBtn.style.display = '';
-
         var isR5 = (role !== 'member');
-        var activeGuildsCard = document.getElementById('active-guilds-card');
 
-        if (createAccountCard) createAccountCard.style.display = '';
-        if (activeAccountsCard) activeAccountsCard.style.display = '';
         if (isR5) {
-            if (createGuildCard) createGuildCard.style.display = '';
-            if (activeGuildsCard) activeGuildsCard.style.display = '';
             renderGuildsSubscriptionList();
-        } else {
-            if (createGuildCard) createGuildCard.style.display = 'none';
-            if (activeGuildsCard) activeGuildsCard.style.display = 'none';
         }
 
-        var guildSelect = document.getElementById('account-guild');
-        if (guildSelect) {
-            if (role === 'member') {
-                guildSelect.value = window.currentGuildRestriction || '';
-                guildSelect.disabled = true;
-            } else {
-                guildSelect.disabled = false;
-            }
-        }
+        populateAccountGuildSelect();
 
         if (role === 'member') { // R4
             if (roleLabel) {
@@ -447,27 +423,74 @@
     }
 
     function populateAccountGuildSelect() {
-        var select = document.getElementById('account-guild');
-        if (!select) return;
-        var currentVal = select.value;
-        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
-        
-        var html = '';
-        if (isSuperAdmin) {
-            html += '<option value="ALL">All Guilds (Admin)</option>';
-            (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
-                html += '<option value="' + g + '">' + g + '</option>';
-            });
-            select.innerHTML = html;
-            select.value = currentVal || 'ALL';
-            select.disabled = false;
-        } else {
+        var selectR4 = document.getElementById('account-guild');
+        if (selectR4) {
             var myGuild = window.currentGuildRestriction || window.currentGuild || 'ALPHA';
-            html += '<option value="' + myGuild + '">' + myGuild + '</option>';
-            select.innerHTML = html;
-            select.value = myGuild;
-            select.disabled = true;
+            selectR4.innerHTML = '<option value="' + myGuild + '">' + myGuild + '</option>';
+            selectR4.value = myGuild;
+            selectR4.disabled = true;
         }
+
+        var selectR5 = document.getElementById('superadmin-account-guild');
+        if (selectR5) {
+            var html = '';
+            (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
+                var sNum = (window.guildsData && window.guildsData[g] && window.guildsData[g].server_number) ? ' (#' + window.guildsData[g].server_number + ')' : '';
+                html += '<option value="' + g + '">' + g + sNum + '</option>';
+            });
+            selectR5.innerHTML = html;
+        }
+    }
+
+    var createAdminAccountForm = document.getElementById('create-admin-account-form');
+    if (createAdminAccountForm) {
+        createAdminAccountForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var idInput = document.getElementById('superadmin-account-id');
+            var identifier = idInput ? idInput.value.trim() : '';
+            if (!identifier) return;
+
+            var guildInput = document.getElementById('superadmin-account-guild');
+            var guildSelected = guildInput ? guildInput.value : null;
+
+            if (accounts.some(function (a) { return a.id.toLowerCase() === identifier.toLowerCase(); })) {
+                showToast(t('toast_duplicate_account'), 'error');
+                return;
+            }
+
+            var btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            var span = btn.querySelector('span');
+            var origText = span ? span.textContent : '';
+            if (span) span.textContent = 'Creating...';
+
+            var newPassword = generatePassword(12);
+            try {
+                var res = await window.RAD.adminAccounts('create', {
+                    id: identifier,
+                    password: newPassword,
+                    role: 'R4',
+                    guild: guildSelected
+                });
+                if (!res.ok) throw new Error(res.error || 'create_failed');
+
+                accounts.unshift({ 
+                    id: identifier, 
+                    password: newPassword, 
+                    role: 'R4', 
+                    guild: guildSelected, 
+                    created_at: new Date().toISOString() 
+                });
+                renderAccounts();
+                if (idInput) idInput.value = '';
+                showToast('Admin account ' + identifier + ' created for guild ' + guildSelected + '!', 'success');
+            } catch (err) {
+                showToast(err.message || 'Error creating admin account', 'error');
+            } finally {
+                btn.disabled = false;
+                if (span) span.textContent = origText;
+            }
+        });
     }
 
     var createGuildForm = document.getElementById('create-guild-form');

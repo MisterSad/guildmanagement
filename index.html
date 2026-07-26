@@ -239,13 +239,13 @@
                 </div>
             </header>
 
-            <!-- Tab: Admin Home (Comptes & accès) -->
-            <main class="dashboard-content tab-panel active" id="admin-home">
+            <!-- Tab: Admin Accounts & Access (R4 Guild Admin) -->
+            <main class="dashboard-content tab-panel" id="admin-home">
                 <div class="gm-page">
                     <header class="gm-page-header">
                         <div>
                             <h1 class="gm-page-title" data-i18n="admin_title">Accounts &amp; Access</h1>
-                            <p class="gm-page-subtitle" data-i18n="admin_subtitle">Create and manage dashboard access</p>
+                            <p class="gm-page-subtitle">Create and manage access accounts for your guild</p>
                         </div>
                     </header>
 
@@ -264,10 +264,6 @@
                             <div class="gm-input-with-icon" style="flex:1; min-width: 160px;">
                                 <i class="ph ph-shield gm-icon"></i>
                                 <select id="account-guild" class="gm-select gm-input" style="padding-left: 2.25rem;">
-                                    <option value="ALL">All Guilds (Admin)</option>
-                                    <option value="ALPHA">ALPHA</option>
-                                    <option value="OMEGA">OMEGA</option>
-                                    <option value="IMK">IMK</option>
                                 </select>
                             </div>
                             <button type="submit" class="gm-btn gm-btn-primary">
@@ -277,33 +273,38 @@
                         </form>
                     </div>
 
-                    <div class="gm-card gm-card-padded gm-section" id="create-guild-card">
-                        <div class="gm-section-title" style="margin-bottom: 1rem;">
-                            <i class="ph ph-shield-plus"></i>
-                            <span>New Guild</span>
+                    <div class="gm-section" id="active-accounts-card">
+                        <div class="gm-section-head">
+                            <div class="gm-section-title">
+                                <i class="ph ph-users-three"></i>
+                                <span data-i18n="card_active_accounts">Active Accounts</span>
+                                <span class="gm-count" id="account-count">0</span>
+                            </div>
                         </div>
-                        <form id="create-guild-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
-                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
-                                <i class="ph ph-shield gm-icon"></i>
-                                <input type="text" id="guild-name-input" class="gm-input" required
-                                    placeholder="Guild name (e.g. SIGMA)">
+                        <div id="account-list">
+                            <div class="gm-empty">
+                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <div class="gm-empty-title" data-i18n="empty_accounts">No accounts generated</div>
                             </div>
-                            <div class="gm-input-with-icon" style="width: 160px;">
-                                <i class="ph ph-hash gm-icon"></i>
-                                <input type="text" id="guild-server-input" class="gm-input" maxlength="4" pattern="\d{4}" required
-                                    placeholder="Server # (e.g. 1089)">
-                            </div>
-                            <button type="submit" class="gm-btn gm-btn-primary">
-                                <i class="ph ph-plus"></i>
-                                <span>Create Guild</span>
-                            </button>
-                        </form>
+                        </div>
                     </div>
+                </div>
+            </main>
+
+            <!-- Tab: Discord Notifications (Guild Admin R4 & R5) -->
+            <main class="dashboard-content tab-panel" id="admin-discord">
+                <div class="gm-page">
+                    <header class="gm-page-header">
+                        <div>
+                            <h1 class="gm-page-title">Discord Notifications</h1>
+                            <p class="gm-page-subtitle">Configure webhooks, role mentions, and event reminders for your guild</p>
+                        </div>
+                    </header>
 
                     <div class="gm-card gm-card-padded gm-section" id="guild-settings-card">
                         <div class="gm-section-title" style="margin-bottom: 1.25rem;">
-                            <i class="ph ph-gear"></i>
-                            <span data-i18n="card_guild_settings">Guild Configuration &amp; Coefficients</span>
+                            <i class="ph ph-bell-ringing"></i>
+                            <span>Guild Configuration &amp; Discord Notifications</span>
                         </div>
                         <form id="guild-settings-form" class="gm-col" style="gap: 1.25rem;">
                             <div class="gm-row" style="gap: 1rem; flex-wrap: wrap;">
@@ -504,28 +505,49 @@
                             </div>
                         </form>
                     </div>
+                </div>
+            </main>
 
-                    <div class="gm-section" id="active-accounts-card">
-                        <div class="gm-section-head">
-                            <div class="gm-section-title">
-                                <i class="ph ph-users-three"></i>
-                                <span data-i18n="card_active_accounts">Active Accounts</span>
-                                <span class="gm-count" id="account-count">0</span>
-                            </div>
+            <!-- Tab: Super Admin Accounts & Access (R5 Super Admin) -->
+            <main class="dashboard-content tab-panel" id="admin-superadmin">
+                <div class="gm-page">
+                    <header class="gm-page-header">
+                        <div>
+                            <h1 class="gm-page-title">Accounts &amp; Access (Super Admin)</h1>
+                            <p class="gm-page-subtitle">Manage guild creation, subscriptions, and admin access accounts</p>
                         </div>
-                        <div id="account-list">
-                            <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
-                                <div class="gm-empty-title" data-i18n="empty_accounts">No accounts generated</div>
-                            </div>
+                    </header>
+
+                    <!-- 1. Create New Guild -->
+                    <div class="gm-card gm-card-padded gm-section" id="create-guild-card">
+                        <div class="gm-section-title" style="margin-bottom: 1rem;">
+                            <i class="ph ph-shield-plus"></i>
+                            <span>New Guild</span>
                         </div>
+                        <form id="create-guild-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
+                                <i class="ph ph-shield gm-icon"></i>
+                                <input type="text" id="guild-name-input" class="gm-input" required
+                                    placeholder="Guild name (e.g. SIGMA)">
+                            </div>
+                            <div class="gm-input-with-icon" style="width: 160px;">
+                                <i class="ph ph-hash gm-icon"></i>
+                                <input type="text" id="guild-server-input" class="gm-input" maxlength="4" pattern="\d{4}" required
+                                    placeholder="Server # (e.g. 1089)">
+                            </div>
+                            <button type="submit" class="gm-btn gm-btn-primary">
+                                <i class="ph ph-plus"></i>
+                                <span>Create Guild</span>
+                            </button>
+                        </form>
                     </div>
 
-                    <div class="gm-section" id="active-guilds-card" style="display: none; margin-top: 1.5rem;">
+                    <!-- 2. Subscription Management -->
+                    <div class="gm-section" id="active-guilds-card" style="margin-top: 1.5rem;">
                         <div class="gm-section-head">
                             <div class="gm-section-title">
                                 <i class="ph ph-shield"></i>
-                                <span>Subscription Management (Guilds)</span>
+                                <span>Subscription Management &amp; Server Numbers</span>
                             </div>
                         </div>
                         <div id="guilds-list-container">
@@ -534,6 +556,30 @@
                                 <div class="gm-empty-title">Loading subscriptions...</div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- 3. Create Admin Account for a Given Guild -->
+                    <div class="gm-card gm-card-padded gm-section" id="create-admin-account-card" style="margin-top: 1.5rem;">
+                        <div class="gm-section-title" style="margin-bottom: 1rem;">
+                            <i class="ph ph-user-plus"></i>
+                            <span>Create Admin Account for Guild</span>
+                        </div>
+                        <form id="create-admin-account-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
+                            <div class="gm-input-with-icon" style="flex:2; min-width: 200px;">
+                                <i class="ph ph-identification-card gm-icon"></i>
+                                <input type="text" id="superadmin-account-id" class="gm-input" required
+                                    placeholder="Admin username (e.g. OfficerAlpha)">
+                            </div>
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
+                                <i class="ph ph-shield gm-icon"></i>
+                                <select id="superadmin-account-guild" class="gm-select gm-input" style="padding-left: 2.25rem;" required>
+                                </select>
+                            </div>
+                            <button type="submit" class="gm-btn gm-btn-primary">
+                                <i class="ph ph-key"></i>
+                                <span>Create Admin Account</span>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </main>

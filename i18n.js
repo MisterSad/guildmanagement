@@ -322,6 +322,8 @@
             gm_nav_superadmin:     'Super Admin',
             gm_nav_overview:       'Overview',
             gm_nav_accounts:       'Accounts & access',
+            gm_nav_discord:        'Discord notifications',
+            gm_nav_superadmin_accounts: 'Accounts & access',
             gm_nav_config:         'Configuration',
             gm_nav_members:        'Members',
             gm_nav_events:         'Events',
