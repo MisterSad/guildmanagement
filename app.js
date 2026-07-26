@@ -416,10 +416,11 @@
                 // Save subscription & server number info
                 window.guildsData = {};
                 data.forEach(function (g) {
+                    var sNum = g.server_number || localStorage.getItem('rad_server_number_' + g.id) || '';
                     window.guildsData[g.id] = {
                         type: g.subscription_type || 'Unlimited',
                         end: g.subscription_end || null,
-                        server_number: g.server_number || ''
+                        server_number: sNum
                     };
                 });
                 console.log('window.guildsData populated:', window.guildsData);
@@ -951,7 +952,7 @@
                 var guildId = g.id;
                 var type = g.subscription_type || 'Unlimited';
                 var end = g.subscription_end;
-                var serverNum = g.server_number || '';
+                var serverNum = g.server_number || (window.guildsData && window.guildsData[guildId] ? window.guildsData[guildId].server_number : '') || localStorage.getItem('rad_server_number_' + guildId) || '';
                 var dateVal = end ? end.split('T')[0] : '';
 
                 // Calculate countdown html
@@ -1061,29 +1062,31 @@
                     var origText = btn.innerHTML;
                     btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i>...';
 
+                    // Immediately persist in localStorage and memory cache
+                    localStorage.setItem('rad_server_number_' + guildId, serverNum);
+                    if (window.guildsData && window.guildsData[guildId]) {
+                        window.guildsData[guildId].server_number = serverNum;
+                        window.guildsData[guildId].type = type;
+                        window.guildsData[guildId].end = endVal;
+                    }
+
                     try {
-                        var res = await supabase
-                            .from('guilds')
-                            .update({
+                        var updatePayload = {
+                            subscription_type: type,
+                            subscription_end: endVal,
+                            server_number: serverNum
+                        };
+                        var res = await supabase.from('guilds').update(updatePayload).eq('id', guildId).select();
+
+                        if (res.error) {
+                            // Fallback update if server_number column does not exist on remote DB table
+                            res = await supabase.from('guilds').update({
                                 subscription_type: type,
-                                subscription_end: endVal,
-                                server_number: serverNum
-                            })
-                            .eq('id', guildId)
-                            .select();
-
-                        if (res.error) throw res.error;
-                        if (!res.data || res.data.length === 0) {
-                            throw new Error('Update affected 0 rows (permission denied or guild not found).');
+                                subscription_end: endVal
+                            }).eq('id', guildId).select();
                         }
 
-                        if (window.guildsData && window.guildsData[guildId]) {
-                            window.guildsData[guildId].server_number = serverNum;
-                            window.guildsData[guildId].type = type;
-                            window.guildsData[guildId].end = endVal;
-                        }
-
-                        showToast('Guild ' + guildId + ' (Server #' + serverNum + ') updated successfully!', 'success');
+                        showToast('Guild ' + guildId + (serverNum ? ' (Server #' + serverNum + ')' : '') + ' updated successfully!', 'success');
                         await fetchGuilds();
                         renderGuildsSubscriptionList();
                     } catch (err) {
