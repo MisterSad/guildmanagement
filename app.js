@@ -425,9 +425,10 @@
                 });
                 console.log('window.guildsData populated:', window.guildsData);
                 
-                // Re-render topbar if shell is loaded
-                if (window.RAD_SHELL && window.RAD_SHELL.renderTopbar) {
-                    window.RAD_SHELL.renderTopbar();
+                // Re-render topbar & sidebar if shell is loaded
+                if (window.RAD_SHELL) {
+                    if (window.RAD_SHELL.renderTopbar) window.RAD_SHELL.renderTopbar();
+                    if (window.RAD_SHELL.renderSidebar) window.RAD_SHELL.renderSidebar();
                 }
                 
                 // Update account creation select

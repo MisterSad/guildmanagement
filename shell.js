@@ -199,6 +199,62 @@
         return 'Admin';
     }
 
+    function getSubscriptionCardHtml() {
+        var activeGuild = window.currentGuild || 'ALPHA';
+        var cardTitle = 'Guilde ' + esc(activeGuild);
+        var cardDesc = 'Modèle Standard';
+        var pillLabel = 'Abonnement Actif';
+        var pillClass = '';
+        var icon = 'ph-crown';
+
+        if (window.guildsData && window.guildsData[activeGuild]) {
+            var sub = window.guildsData[activeGuild];
+            if (sub.type === 'Unlimited') {
+                cardTitle = esc(activeGuild) + ' • Unlimited';
+                cardDesc = 'Accès illimité pour l\'ensemble des membres.';
+                pillLabel = 'Illimité';
+                pillClass = 'gm-sub-unlimited';
+                icon = 'ph-infinity';
+            } else if (sub.type === 'Premium') {
+                if (sub.end) {
+                    var endMs = new Date(sub.end).getTime();
+                    var diff = endMs - Date.now();
+                    if (diff <= 0) {
+                        cardTitle = esc(activeGuild) + ' • Premium';
+                        cardDesc = 'Abonnement expiré. Modification désactivée.';
+                        pillLabel = 'Expiré';
+                        pillClass = 'gm-sub-expired';
+                        icon = 'ph-lock-keyhole';
+                    } else {
+                        var days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                        var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        cardTitle = esc(activeGuild) + ' • Premium';
+                        cardDesc = 'Offre active • Expire dans ' + days + 'j ' + hours + 'h';
+                        pillLabel = 'Offre Premium';
+                        icon = 'ph-sparkle';
+                    }
+                } else {
+                    cardTitle = esc(activeGuild) + ' • Premium';
+                    cardDesc = 'Abonnement expiré.';
+                    pillLabel = 'Expiré';
+                    pillClass = 'gm-sub-expired';
+                    icon = 'ph-lock-keyhole';
+                }
+            }
+        }
+
+        return '<div class="gm-sidebar-sub-card">' +
+            '<div class="gm-sub-card-badge-avatar">' +
+                '<i class="ph-fill ' + icon + '"></i>' +
+            '</div>' +
+            '<div class="gm-sub-card-title">' + cardTitle + '</div>' +
+            '<div class="gm-sub-card-subtext">' + cardDesc + '</div>' +
+            '<div class="gm-sub-card-pill ' + pillClass + '">' +
+                '<i class="ph-fill ' + icon + '"></i> ' + pillLabel +
+            '</div>' +
+        '</div>';
+    }
+
     function renderSidebar() {
         var el = document.querySelector('[data-gm-sidebar]');
         if (!el) return;
@@ -206,9 +262,19 @@
         var playItems = visible.filter(function (i) { return i.section === 'play'; });
         var adminItems = visible.filter(function (i) { return i.section === 'admin'; });
 
+        var userAvatarInitials = esc(window.RAD.avatarInit(getUserName()));
+
         var html =
-            '<div class="gm-sidebar-brand">' +
-                '<div class="gm-brand-mark">FGF</div>' +
+            '<div class="gm-sidebar-header">' +
+                '<div class="gm-sidebar-user-row">' +
+                    '<div class="gm-user-avatar-ring">' +
+                        '<div class="gm-user-avatar">' + userAvatarInitials + '</div>' +
+                    '</div>' +
+                    '<div class="gm-sidebar-user-info">' +
+                        '<div class="gm-sidebar-user-name">' + esc(getUserName()) + '</div>' +
+                        '<div class="gm-sidebar-user-role">' + getUserRoleLong() + '</div>' +
+                    '</div>' +
+                '</div>' +
             '</div>' +
             '<nav class="gm-sidebar-nav">' +
                 '<div class="gm-nav-section-label">' + t('gm_nav_play') + '</div>' +
@@ -216,13 +282,8 @@
                 '<div class="gm-nav-section-label">' + t('gm_nav_admin') + '</div>' +
                 adminItems.map(navItemHtml).join('') +
             '</nav>' +
-            '<div class="gm-sidebar-foot">' +
-                '<div class="gm-user-avatar">' + window.RAD.escapeHTML(window.RAD.avatarInit(getUserName())) + '</div>' +
-                '<div class="gm-user-meta">' +
-                    '<div class="gm-user-name">' + window.RAD.escapeHTML(getUserName()) + '</div>' +
-                    '<div class="gm-user-role">' + getUserRoleLong() + '</div>' +
-                '</div>' +
-            '</div>';
+            getSubscriptionCardHtml();
+
         el.innerHTML = html;
 
         el.querySelectorAll('[data-gm-nav-item]').forEach(function (btn) {
@@ -355,7 +416,8 @@
                 localStorage.setItem('rad_current_guild', newGuild);
                 window.currentGuild = newGuild;
                 
-                // Re-render the topbar immediately to update the subscription status chip and read-only mode!
+                // Re-render topbar & sidebar immediately to update subscription status and card!
+                renderSidebar();
                 renderTopbar();
                 
                 if (window.RAD_APP && window.RAD_APP.reloadActiveView) {
@@ -445,8 +507,6 @@
 
     function wireLangSwitcher() {
         // Re-render quand i18n change
-        // (RAD_I18N.setLang appelle déjà applyTranslations sur le DOM existant.
-        // Pour notre shell, on a re-render manuellement après chaque setLang.)
     }
 
     // ── Navigation : déléguée à app.js via les anciennes .nav-tab ───────────
@@ -488,6 +548,7 @@
         var mq = window.matchMedia('(max-width: ' + BREAKPOINT_MOBILE + 'px)');
         mq.addEventListener('change', function (e) {
             state.mobile = e.matches;
+            renderSidebar();
             renderTopbar();
             if (!e.matches) closeDrawer();
         });
@@ -496,6 +557,7 @@
     // Update countdown periodically every 30 seconds to keep remaining time fresh
     setInterval(function () {
         if (state.active) {
+            renderSidebar();
             renderTopbar();
         }
     }, 30000);
@@ -503,6 +565,7 @@
     window.RAD_SHELL = {
         gotoItem: gotoItem,
         renderShell: renderShell,
+        renderSidebar: renderSidebar,
         renderTopbar: renderTopbar
     };
 
