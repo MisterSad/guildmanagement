@@ -17,13 +17,14 @@
     window.guildsList = ['ALPHA', 'OMEGA', 'IMK'];
 
     function isGuildSubscriptionExpired(guildId) {
-        if (localStorage.getItem('rad_role') === 'admin') {
-            return false; // Super admin is never restricted
+        var role = localStorage.getItem('rad_role');
+        if (role === 'admin' || role === 'R5' || window.currentGuildRestriction === null) {
+            return false; // Super admin (or unrestricted officer) is never restricted
         }
         if (!guildId) return false;
         if (!window.guildsData || !window.guildsData[guildId]) return false;
         var sub = window.guildsData[guildId];
-        if (sub.type === 'Unlimited') return false;
+        if (!sub || sub.type === 'Unlimited') return false;
         if (sub.type === 'Premium') {
             if (!sub.end) return true; // Premium without end date is expired
             return new Date(sub.end).getTime() < Date.now();
@@ -54,7 +55,11 @@
             if (tenantTables.indexOf(table) !== -1) {
                 var originalSelect = builder.select;
                 builder.select = function () {
-                    return originalSelect.apply(this, arguments).eq('guild', window.currentGuild || 'ALPHA');
+                    var currentG = window.currentGuild || 'ALPHA';
+                    if (currentG === 'ALPHA') {
+                        return originalSelect.apply(this, arguments).or('guild.eq.ALPHA,guild.is.null');
+                    }
+                    return originalSelect.apply(this, arguments).eq('guild', currentG);
                 };
 
                 var originalDelete = builder.delete;
