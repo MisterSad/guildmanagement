@@ -443,13 +443,24 @@
         var select = document.getElementById('account-guild');
         if (!select) return;
         var currentVal = select.value;
+        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
         
-        var html = '<option value="ALL">Toutes les guildes (Admin)</option>';
-        (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
-            html += '<option value="' + g + '">' + g + '</option>';
-        });
-        select.innerHTML = html;
-        select.value = currentVal || 'ALL';
+        var html = '';
+        if (isSuperAdmin) {
+            html += '<option value="ALL">All Guilds (Admin)</option>';
+            (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
+                html += '<option value="' + g + '">' + g + '</option>';
+            });
+            select.innerHTML = html;
+            select.value = currentVal || 'ALL';
+            select.disabled = false;
+        } else {
+            var myGuild = window.currentGuildRestriction || window.currentGuild || 'ALPHA';
+            html += '<option value="' + myGuild + '">' + myGuild + '</option>';
+            select.innerHTML = html;
+            select.value = myGuild;
+            select.disabled = true;
+        }
     }
 
     var createGuildForm = document.getElementById('create-guild-form');

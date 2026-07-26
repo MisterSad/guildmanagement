@@ -27,14 +27,23 @@
         { id: 'glory',     tabId: 'event-glory', icon: 'ph-trophy',          labelKey: 'gm_nav_glory',     section: 'play',  panels: ['event-glory'] },
         { id: 'history',   tabId: 'event-history', icon: 'ph-clock-counter-clockwise', labelKey: 'gm_nav_history', section: 'play',  panels: ['event-history'] },
         { id: 'stats',     tabId: 'stats-admin', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
+        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
         { id: 'sanctions', tabId: 'tab-sanctions', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
-        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'superadmin', r5Only: true, panels: ['admin-home'] },
         { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'superadmin', r5Only: true, panels: ['admin-banned'] }
     ];
 
     function visibleNavItems() {
         var role = getUserRole();
-        return NAV_ITEMS.filter(function (i) { return !i.r5Only || role === 'R5'; });
+        var items = [];
+        NAV_ITEMS.forEach(function (i) {
+            if (i.r5Only && role !== 'R5') return;
+            var copy = Object.assign({}, i);
+            if (copy.id === 'accounts') {
+                copy.section = (role === 'R5') ? 'superadmin' : 'admin';
+            }
+            items.push(copy);
+        });
+        return items;
     }
 
     var BREAKPOINT_MOBILE = 900;
