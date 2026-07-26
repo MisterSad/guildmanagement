@@ -131,22 +131,24 @@
     // ── Fetch des semaines disponibles ──────────────────────────────────────────
     async function fetchAllWeeks() {
         var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
-        if (!currentWeek && window.RAD && window.RAD.getWeekStart) {
-            currentWeek = window.RAD.getWeekStart();
-        }
         try {
             var res = await db.rpc('list_event_weeks', { p_guild: currentG });
             var weeks = (res.data || []).map(function (r) { return r.week_start; }).filter(Boolean);
             weeks.sort(function (a, b) { return b.localeCompare(a); });
-            if (currentWeek && weeks.indexOf(currentWeek) === -1) weeks.unshift(currentWeek);
-            allWeeks = weeks.length ? weeks : (currentWeek ? [currentWeek] : [window.RAD.getWeekStart()]);
-            if (!currentWeek && allWeeks.length > 0) {
-                currentWeek = allWeeks[0];
+            if (weeks.length > 0) {
+                allWeeks = weeks;
+                if (!currentWeek || weeks.indexOf(currentWeek) === -1) {
+                    currentWeek = weeks[0];
+                }
+            } else {
+                var defaultW = window.RAD ? window.RAD.getWeekStart() : '';
+                allWeeks = defaultW ? [defaultW] : [];
+                currentWeek = defaultW;
             }
         } catch (e) {
             console.warn('fetchAllWeeks fallback', e);
-            var fallbackW = currentWeek || (window.RAD ? window.RAD.getWeekStart() : '');
-            allWeeks = [fallbackW];
+            var fallbackW = window.RAD ? window.RAD.getWeekStart() : '';
+            allWeeks = fallbackW ? [fallbackW] : [];
             currentWeek = fallbackW;
         }
     }
