@@ -260,9 +260,23 @@
             };
         });
 
-        // Indexation des participations (filtrer les événements en attente / brouillons)
+        // Indexation des participations par joueur et par instance d'événement unique
         var validPartRows = partRows.filter(function (p) {
             return !p.is_pending;
+        });
+
+        // 1. Calculer le nombre total d'événements uniques tenus par cette guilde sur la période
+        var tenantEventInstances = new Set();
+        validPartRows.forEach(function (p) {
+            var evKey = (p.event_name || '').trim() + '|' + (p.session_id || p.week_start || '');
+            if (evKey) tenantEventInstances.add(evKey);
+        });
+        var totalTenantEvents = tenantEventInstances.size;
+
+        var attendedSessionsByMember = {};
+        membersList.forEach(function (pseudo) {
+            var norm = normalizePseudo(pseudo);
+            attendedSessionsByMember[norm] = new Set();
         });
 
         validPartRows.forEach(function (p) {
@@ -273,24 +287,33 @@
             var agg = aggMap[memberMatch];
             var evName = (p.event_name || '').trim();
             var coeff = COEFFS[evName] || 1;
+            var evKey = evName + '|' + (p.session_id || p.week_start || '');
 
             var attended = (p.participated > 0) || (p.score > 0) || (p.score_prep > 0) || (p.score_pvp > 0);
 
             if (attended) {
-                agg.eventsAttended++;
-                var baseScore = WEIGHTS.participation * coeff;
-                var perfScore = 0;
+                if (!attendedSessionsByMember[norm].has(evKey)) {
+                    attendedSessionsByMember[norm].add(evKey);
+                    agg.eventsAttended++;
 
-                if (evName === 'SvS' || evName === 'GvG') {
-                    var rawSc = (p.score || 0) + (p.score_prep || 0) + (p.score_pvp || 0);
-                    perfScore = rawSc > 0 ? (WEIGHTS.performance * coeff) : 0;
+                    var baseScore = WEIGHTS.participation * coeff;
+                    var perfScore = 0;
+
+                    if (evName === 'SvS' || evName === 'GvG') {
+                        var rawSc = (p.score || 0) + (p.score_prep || 0) + (p.score_pvp || 0);
+                        perfScore = rawSc > 0 ? (WEIGHTS.performance * coeff) : 0;
+                    }
+
+                    agg.eventsScore += (baseScore + perfScore);
                 }
-
-                agg.eventsScore += (baseScore + perfScore);
             }
-            
-            // Increment eventsTotal ONLY for completed/validated events
-            agg.eventsTotal++;
+        });
+
+        // Assigner le nombre total d'événements unique de la guilde à chaque membre
+        membersList.forEach(function (pseudo) {
+            if (aggMap[pseudo]) {
+                aggMap[pseudo].eventsTotal = totalTenantEvents;
+            }
         });
 
         var scores = membersList.map(function (pseudo) {
