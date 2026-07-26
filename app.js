@@ -732,104 +732,124 @@
     }
 
     function renderAccounts() {
-        var targets = [
-            { container: document.getElementById('account-list'), countEl: document.getElementById('account-count') },
-            { container: document.getElementById('superadmin-account-list'), countEl: document.getElementById('superadmin-account-count') }
-        ];
+        var activeG = window.currentGuild || 'ALPHA';
+        var isSuperAdminUser = (localStorage.getItem('rad_role') === 'admin');
 
-        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
-        var listToRender = accounts.slice();
-        if (isSuperAdmin) {
-            listToRender.sort(function (a, b) {
-                var gA = a.guild || '';
-                var gB = b.guild || '';
-                if (gA !== gB) {
-                    return gA.localeCompare(gB);
+        // Target 1: Admin Section (#account-list) - accounts for current active guild only
+        var containerR4 = document.getElementById('account-list');
+        var countR4 = document.getElementById('account-count');
+        if (containerR4) {
+            var listR4 = accounts.filter(function (acc) {
+                var accGuild = acc.guild || 'ALPHA';
+                var isR5 = (acc.role === 'R5');
+                // Super Admin account ONLY shown when activeG is ALPHA
+                if (isR5) {
+                    return activeG === 'ALPHA';
                 }
-                return a.id.localeCompare(b.id);
+                return accGuild === activeG;
             });
+            renderAccountCardsToContainer(containerR4, countR4, listR4, isSuperAdminUser);
         }
 
-        targets.forEach(function (target) {
-            var container = target.container;
-            var countEl = target.countEl;
-            if (!container) return;
-            if (countEl) countEl.textContent = listToRender.length;
+        // Target 2: Super Admin Section (#superadmin-account-list) - all R4 admin accounts across guilds
+        var containerR5 = document.getElementById('superadmin-account-list');
+        var countR5 = document.getElementById('superadmin-account-count');
+        if (containerR5) {
+            var listR5 = accounts.filter(function (acc) {
+                return acc.role !== 'R5';
+            });
+            listR5.sort(function (a, b) {
+                var gA = a.guild || '';
+                var gB = b.guild || '';
+                if (gA !== gB) return gA.localeCompare(gB);
+                return a.id.localeCompare(b.id);
+            });
+            renderAccountCardsToContainer(containerR5, countR5, listR5, isSuperAdminUser);
+        }
+    }
 
-            if (listToRender.length === 0) {
-                container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_accounts') + '</div></div>';
-                return;
+    function renderAccountCardsToContainer(container, countEl, listToRender, isSuperAdminUser) {
+        if (!container) return;
+        if (countEl) countEl.textContent = listToRender.length;
+
+        if (listToRender.length === 0) {
+            container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_accounts') + '</div></div>';
+            return;
+        }
+
+        var html = '<div class="gm-cred-grid">';
+        listToRender.forEach(function (acc) {
+            var role = acc.role || 'R4';
+            var roleLabel = role === 'R5' ? 'Super Admin' : 'Admin';
+            var chipCls = role === 'R5' ? 'gm-chip-accent' : 'gm-chip-info';
+            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+            var guildLabel = acc.guild ? 'Guild: ' + acc.guild : 'All Guilds';
+            var guildCls = acc.guild ? 'gm-chip-warning' : 'gm-chip-success';
+
+            var isSuperAdminAccount = (role === 'R5');
+            
+            // Password management permission:
+            // Super Admin account password CANNOT be viewed/copied by regular R4 admins!
+            var canManagePass = isSuperAdminUser || !isSuperAdminAccount;
+            
+            // Delete permission:
+            // Super Admin account CANNOT be deleted by regular R4 admins!
+            var canDelete = isSuperAdminUser || !isSuperAdminAccount;
+
+            var passHtml = '';
+            if (canManagePass) {
+                passHtml = '<div class="gm-cred-pass gm-masked" data-acc-pass="' + esc(acc.password) + '">' +
+                               '<span class="gm-pwd-text">••••••••••••</span>' +
+                               '<button class="gm-mini-btn gm-cred-toggle" title="' + t('show_pwd') + '"><i class="ph ph-eye"></i></button>' +
+                               '<button class="gm-mini-btn gm-cred-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
+                           '</div>';
+            } else {
+                passHtml = '<div class="gm-cred-pass gm-masked" style="opacity: 0.6; cursor: not-allowed;" title="Protected Super Admin Account">' +
+                               '<span class="gm-pwd-text">••••••••••••</span>' +
+                           '</div>';
             }
 
-            var html = '<div class="gm-cred-grid">';
-            listToRender.forEach(function (acc) {
-                var role = acc.role || 'R4';
-                var roleLabel = role === 'R5' ? 'Super Admin' : 'Admin';
-                var chipCls = role === 'R5' ? 'gm-chip-accent' : 'gm-chip-info';
-                var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
-                var guildLabel = acc.guild ? 'Guild: ' + acc.guild : 'All Guilds';
-                var guildCls = acc.guild ? 'gm-chip-warning' : 'gm-chip-success';
+            var deleteHtml = '';
+            if (canDelete) {
+                deleteHtml = '<button class="gm-mini-btn gm-danger gm-cred-delete" data-id="' + esc(acc.id) + '" title="' + t('delete_title') + '" style="margin-left:auto;">' +
+                                 '<i class="ph ph-trash"></i>' +
+                             '</button>';
+            }
 
-                var isSuperAdminAccount = (role === 'R5');
-                var isCurrentUserR4 = (localStorage.getItem('rad_role') === 'member');
-                var canManagePass = !(isSuperAdminAccount && isCurrentUserR4);
-                var canDelete = !(isSuperAdminAccount && isCurrentUserR4);
+            var guildSelectHtml = '';
+            if (acc.role !== 'R5' && isSuperAdminUser) {
+                var options = '<option value="ALL"' + (!acc.guild ? ' selected' : '') + '>All Guilds</option>';
+                (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
+                    options += '<option value="' + g + '"' + (acc.guild === g ? ' selected' : '') + '>' + g + '</option>';
+                });
+                guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
+                                      options +
+                                  '</select>';
+            } else {
+                guildSelectHtml = '<span class="gm-chip ' + guildCls + '" style="font-size: 0.7rem;">' + esc(guildLabel) + '</span>';
+            }
 
-                var passHtml = '';
-                if (canManagePass) {
-                    passHtml = '<div class="gm-cred-pass gm-masked" data-acc-pass="' + esc(acc.password) + '">' +
-                                   '<span class="gm-pwd-text">••••••••••••</span>' +
-                                   '<button class="gm-mini-btn gm-cred-toggle" title="' + t('show_pwd') + '"><i class="ph ph-eye"></i></button>' +
-                                   '<button class="gm-mini-btn gm-cred-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
-                               '</div>';
-                } else {
-                    passHtml = '<div class="gm-cred-pass gm-masked" style="opacity: 0.6; cursor: not-allowed;" title="Unauthorized">' +
-                                   '<span class="gm-pwd-text">••••••••••••</span>' +
-                               '</div>';
-                }
-
-                var deleteHtml = '';
-                if (canDelete) {
-                    deleteHtml = '<button class="gm-mini-btn gm-danger gm-cred-delete" data-id="' + esc(acc.id) + '" title="' + t('delete_title') + '" style="margin-left:auto;">' +
-                                     '<i class="ph ph-trash"></i>' +
-                                 '</button>';
-                }
-
-                var guildSelectHtml = '';
-                if (acc.role !== 'R5' && localStorage.getItem('rad_role') === 'admin') {
-                    var options = '<option value="ALL"' + (!acc.guild ? ' selected' : '') + '>All Guilds</option>';
-                    (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
-                        options += '<option value="' + g + '"' + (acc.guild === g ? ' selected' : '') + '>' + g + '</option>';
-                    });
-                    guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
-                                          options +
-                                      '</select>';
-                } else {
-                    guildSelectHtml = '<span class="gm-chip ' + guildCls + '" style="font-size: 0.7rem;">' + esc(guildLabel) + '</span>';
-                }
-
-                html +=
-                    '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
-                        '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
-                            '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
-                            '<div class="gm-row" style="gap: 0.25rem; align-items: center;">' +
-                                '<span class="gm-chip ' + chipCls + '">' + esc(roleLabel) + '</span>' +
-                                guildSelectHtml +
-                            '</div>' +
+            html +=
+                '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
+                    '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
+                        '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
+                        '<div class="gm-row" style="gap: 0.25rem; align-items: center;">' +
+                            '<span class="gm-chip ' + chipCls + '">' + esc(roleLabel) + '</span>' +
+                            guildSelectHtml +
                         '</div>' +
-                        passHtml +
-                        '<div class="gm-row gm-dim" style="font-size:.75rem;">' +
-                            '<i class="ph ph-calendar-blank"></i>' +
-                            '<span>' + t('cred_created') + ' ' + dateStr + '</span>' +
-                            deleteHtml +
-                        '</div>' +
-                    '</div>';
-            });
-            html += '</div>';
-            container.innerHTML = html;
-
-            wireAccountCardListeners(container);
+                    '</div>' +
+                    passHtml +
+                    '<div class="gm-row gm-dim" style="font-size:.75rem;">' +
+                        '<i class="ph ph-calendar-blank"></i>' +
+                        '<span>' + t('cred_created') + ' ' + dateStr + '</span>' +
+                        deleteHtml +
+                    '</div>' +
+                '</div>';
         });
+        html += '</div>';
+        container.innerHTML = html;
+
+        wireAccountCardListeners(container);
     }
 
     function wireAccountCardListeners(container) {
