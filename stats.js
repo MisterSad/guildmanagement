@@ -172,16 +172,14 @@
                 coeff_armsrace: parseInt(coeffArmsrace, 10) || 1
             };
 
-            if (members.length === 0) { renderEmpty(); return; }
-
             var result = computeScores(members, participants, gloryByWeek, weeks, config, squadsRes.data || []);
-            leaderboardData = result.scores;
-            lastMaxPossible = result.maxPossible;
+            leaderboardData = result ? (result.scores || []) : [];
+            lastMaxPossible = result ? (result.maxPossible || 1) : 1;
             renderLeaderboard({
                 mode:         opts.princeBanner ? 'prince' : 'global',
                 range:        opts.range,
-                maxPossible:  result.maxPossible,
-                ranEvents:    result.ranEvents
+                maxPossible:  lastMaxPossible,
+                ranEvents:    result ? result.ranEvents : {}
             });
         } catch (err) {
             console.error('stats loadGlobalPeriod error', err);

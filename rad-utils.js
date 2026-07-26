@@ -70,15 +70,6 @@
                 'player_name_history'
             ];
             if (tenantTables.indexOf(table) !== -1) {
-                var originalSelect = builder.select;
-                builder.select = function () {
-                    var currentG = getActiveGuild();
-                    if (currentG === 'ALPHA') {
-                        return originalSelect.apply(this, arguments).or('guild.eq.ALPHA,guild.is.null');
-                    }
-                    return originalSelect.apply(this, arguments).eq('guild', currentG);
-                };
-
                 var originalDelete = builder.delete;
                 builder.delete = function () {
                     var currentG = getActiveGuild();
