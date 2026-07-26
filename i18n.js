@@ -222,6 +222,7 @@
             stats_period_1w:       '1 Week',
             stats_period_4w:       '4 Weeks',
             stats_period_8w:       '8 Weeks',
+            stats_period_all:      'All Time (Total)',
             stats_score:           'Score /20',
             stats_events:          'Events',
             stats_glory:           'Glory',

@@ -66,13 +66,13 @@
 
     // ── State ──────────────────────────────────────────────────────────────────
     var currentWeek     = window.RAD ? window.RAD.getWeekStart() : '';
-    var statsPeriod     = '1w';
+    var statsPeriod     = 'all'; // Default to 'all' for full historical aggregate stats
     var allWeeks        = [];
     var leaderboardData = [];
     var lastMaxPossible = 0;
     var uidByPseudo     = {};
     var currentMode     = 'global'; // 'global' | 'SvS' | 'GvG' | 'prince' | 'participation'
-    var participationPeriod = '8w'; // '4w' | '8w' | 'all'
+    var participationPeriod = 'all'; // '4w' | '8w' | 'all'
 
     // Liste des onglets — recalculée à chaque render pour respecter la langue.
     function statsModes() {
@@ -110,11 +110,15 @@
         if (currentMode === 'global') {
             var idx = allWeeks.indexOf(currentWeek);
             if (idx === -1) idx = 0;
-            var weeksToLoad = [currentWeek];
-            if (statsPeriod === '4w') {
+            var weeksToLoad = allWeeks.length ? allWeeks : [currentWeek];
+            if (statsPeriod === '1w') {
+                weeksToLoad = [currentWeek];
+            } else if (statsPeriod === '4w') {
                 weeksToLoad = allWeeks.slice(idx, idx + 4);
             } else if (statsPeriod === '8w') {
                 weeksToLoad = allWeeks.slice(idx, idx + 8);
+            } else if (statsPeriod === 'all') {
+                weeksToLoad = allWeeks.length ? allWeeks : [currentWeek];
             }
             if (!weeksToLoad.length || !weeksToLoad[0]) {
                 weeksToLoad = [window.RAD ? window.RAD.getWeekStart() : ''];
@@ -895,9 +899,10 @@
             }).join('');
 
             var periods = [
-                { key: '1w', label: t('stats_period_1w') || '1 Semaine' },
-                { key: '4w', label: t('stats_period_4w') || '4 Semaines' },
-                { key: '8w', label: t('stats_period_8w') || '8 Semaines' }
+                { key: 'all', label: t('stats_period_all') || 'Tout l\'historique' },
+                { key: '1w',  label: t('stats_period_1w')  || '1 Semaine' },
+                { key: '4w',  label: t('stats_period_4w')  || '4 Semaines' },
+                { key: '8w',  label: t('stats_period_8w')  || '8 Semaines' }
             ];
             
             var periodOptHtml = periods.map(function (p) {
