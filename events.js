@@ -5,7 +5,7 @@
  */
 (function () {
 
-    var db   = window.RAD ? window.RAD.db : null;
+    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
     var t    = window.RAD ? window.RAD.t  : function (k) { return k; };
     var esc  = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
     var fmt  = window.RAD ? window.RAD.formatNumber : function (n) { return String(n); };
@@ -45,6 +45,7 @@
 
     // ── Load event (called when tab is clicked) ────────────────────────────
     async function loadEvent(tabKey) {
+        var db = getDb();
         if (!db || !TAB_TO_DB_EVENTS[tabKey]) return;
         try {
             var dbEvents = TAB_TO_DB_EVENTS[tabKey];
@@ -79,6 +80,7 @@
 
     // ── Démarrage d'une nouvelle session ──────────────────────────────────
     async function startEvent(tabKey, dbEventName, stage, startAt) {
+        var db = getDb();
         if (!db) return;
         var sessionId = window.RAD.newSessionId();
         try {
@@ -114,6 +116,7 @@
 
     // ── Arrêt de la session courante ──────────────────────────────────────
     async function endEvent(tabKey) {
+        var db = getDb();
         if (!db) return;
         var s = state[tabKey];
         if (!s.activeEventName) return;
@@ -145,6 +148,7 @@
     // Utilise la RPC populate_event_participants pour contourner les problèmes
     // de schema cache PostgREST et garantir l'exécution atomique côté DB.
     async function populateParticipants(tabKey) {
+        var db = getDb();
         if (!db) return;
         var s = state[tabKey];
         if (!s.activeEventName || !s.sessionId) return;
@@ -252,6 +256,7 @@
 
     // ── Fetch participants de la session active ──────────────────────────
     async function fetchParticipants(tabKey) {
+        var db = getDb();
         if (!db) return;
         var s = state[tabKey];
         if (!s.activeEventName || !s.sessionId) return;
@@ -270,6 +275,7 @@
 
     // ── Save participation / score ────────────────────────────────────────
     async function saveParticipation(tabKey, pseudo, value) {
+        var db = getDb();
         if (!db) return;
         var s = state[tabKey];
         await db.from('event_participants').update({ participated: value })
@@ -279,6 +285,7 @@
     }
 
     async function saveAppointed(tabKey, pseudo, value) {
+        var db = getDb();
         if (!db) return;
         var s = state[tabKey];
         await db.from('event_participants').update({ appointed: value })
@@ -294,6 +301,7 @@
     // SvS has two scores (Preparation Stage + PvP Day) ; ce helper update une
     // colonne arbitraire de event_participants.
     async function saveScoreField(tabKey, pseudo, field, value) {
+        var db = getDb();
         if (!db) return;
         var s = state[tabKey];
         var num = window.RAD.parseNumber(value);
@@ -316,6 +324,7 @@
     var SCHEDULED_TABS = ['Defend Trade Route'];
 
     async function editEventSchedule(tabKey) {
+        var db = getDb();
         if (!db) return;
         var s = state[tabKey];
         if (!s.activeEventName || !s.sessionId) return;
@@ -366,6 +375,7 @@
     }
 
     function deleteEventSession(tabKey) {
+        var db = getDb();
         if (!db) return;
         var s = state[tabKey];
         if (!s.activeEventName || !s.sessionId) return;

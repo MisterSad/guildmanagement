@@ -4,7 +4,7 @@
  */
 (function () {
 
-    var db  = window.RAD ? window.RAD.db : null;
+    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
     var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
     var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
 
@@ -13,6 +13,7 @@
     var sanctions = [];
 
     async function loadSanctions() {
+        var db = getDb();
         if (!db) return;
 
         var membersRes = await db.from('guild_members').select('pseudo').order('pseudo', { ascending: true });

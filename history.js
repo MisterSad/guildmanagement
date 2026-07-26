@@ -4,7 +4,7 @@
  */
 (function () {
 
-    var db  = window.RAD ? window.RAD.db : null;
+    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
     var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
     var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
     var fmt = window.RAD ? window.RAD.formatNumber : function (n) { return String(n); };
@@ -27,6 +27,7 @@
     window.RAD_HISTORY = { load: loadHistory };
 
     async function loadHistory() {
+        var db = getDb();
         if (!db) return;
         var res = await db.rpc('list_event_sessions', { p_guild: window.currentGuild || 'ALPHA' });
         if (res.error) {

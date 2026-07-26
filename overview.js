@@ -16,7 +16,7 @@
 
     if (!window.RAD) return;
 
-    var db  = window.RAD.db;
+    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
     var t   = window.RAD.t;
     var esc = window.RAD.escapeHTML;
     var fmt = window.RAD.formatNumber;

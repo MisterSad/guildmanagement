@@ -10,7 +10,7 @@
  */
 (function () {
 
-    var db  = window.RAD ? window.RAD.db : null;
+    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
     var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
     var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
 
@@ -78,6 +78,7 @@
 
     // ── Load ───────────────────────────────────────────────────────────────────
     async function loadShadowfront() {
+        var db = getDb();
         if (!db) return;
         try {
             var currentWeek = window.RAD.getWeekStart();
@@ -170,6 +171,7 @@
 
     // ── Start / End a squad ────────────────────────────────────────────────────
     async function startSquad(squad, startAt) {
+        var db = getDb();
         if (!db) return;
         var sessionId = window.RAD.newSessionId();
         try {
@@ -197,6 +199,7 @@
     }
 
     async function endSquads(squads) {
+        var db = getDb();
         if (!db) return;
         for (var i = 0; i < squads.length; i++) {
             var squad = squads[i];
@@ -218,6 +221,7 @@
     }
 
     async function editSquadSchedule(squad) {
+        var db = getDb();
         if (!db) return;
         var sq = sfState.squads[squad];
         if (!sq || !sq.active || !sq.sessionId) return;
@@ -271,6 +275,7 @@
     }
 
     function deleteSquadSession(squad) {
+        var db = getDb();
         if (!db) return;
         var sq = sfState.squads[squad];
         if (!sq || !sq.sessionId) return;
@@ -330,6 +335,7 @@
 
     // ── Assign / Unassign ──────────────────────────────────────────────────────
     async function assign(pseudo, squad, role) {
+        var db = getDb();
         if (!db) return;
         var sq = sfState.squads[squad];
         if (!sq) return;
@@ -385,6 +391,7 @@
     }
 
     async function unassign(pseudo) {
+        var db = getDb();
         if (!db) return;
         var a = sfState.assignments.find(function (x) { return x.pseudo === pseudo; });
         if (!a) {
@@ -400,6 +407,7 @@
     }
 
     async function toggleCommander(pseudo) {
+        var db = getDb();
         if (!db) return;
         var assignment = sfState.assignments.find(function (a) { return a.pseudo === pseudo; });
         if (!assignment) return;
@@ -456,6 +464,7 @@
     }
 
     async function saveParticipation(pseudo, value) {
+        var db = getDb();
         if (!db) return;
         var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
         if (!p) return;
@@ -464,6 +473,7 @@
     }
 
     async function saveLate(pseudo, value) {
+        var db = getDb();
         if (!db) return;
         var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
         if (!p) return;
@@ -472,6 +482,7 @@
     }
 
     async function saveExcused(pseudo, value) {
+        var db = getDb();
         if (!db) return;
         var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
         if (!p) return;
@@ -1126,6 +1137,7 @@
     }
 
     async function saveAvailability(pseudo, availability) {
+        var db = getDb();
         if (!db) return;
         var week = window.RAD.getWeekStart();
         try {
@@ -1147,6 +1159,7 @@
     }
 
     async function saveSubPresent(pseudo, value) {
+        var db = getDb();
         if (!db) return;
         var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
         if (!p) return;

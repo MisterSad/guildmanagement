@@ -3,7 +3,7 @@
  */
 (function () {
 
-    var db  = window.RAD ? window.RAD.db : null;
+    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
     var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
     var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
 
@@ -28,6 +28,7 @@
     function stageLabel(stageKey) { return stageKey === 'stageA' ? 'Stage A' : 'Stage B'; }
 
     async function loadArmsRace() {
+        var db = getDb();
         if (!db) return;
         try {
             var [statusRes, membersRes] = await Promise.all([
@@ -75,6 +76,7 @@
     }
 
     async function startStage(stageKey, startAt) {
+        var db = getDb();
         if (!db) return;
         var sessionId = window.RAD.newSessionId();
         var evName = STAGE_EVENTS[stageKey];
@@ -117,6 +119,7 @@
     }
 
     async function endStage(stageKey) {
+        var db = getDb();
         if (!db) return;
         var stg = arState.stages[stageKey];
         if (!stg.active) return;
@@ -140,6 +143,7 @@
     }
 
     async function editStageSchedule(stageKey) {
+        var db = getDb();
         if (!db) return;
         var stg = arState.stages[stageKey];
         if (!stg || !stg.active || !stg.sessionId) return;
@@ -190,6 +194,7 @@
     }
 
     function deleteStageSession(stageKey) {
+        var db = getDb();
         if (!db) return;
         var stg = arState.stages[stageKey];
         if (!stg || !stg.sessionId) return;
@@ -221,6 +226,7 @@
     }
 
     async function saveParticipation(pseudo, value) {
+        var db = getDb();
         if (!db) return;
         var stg = arState.stages[arActiveStage];
         await db.from('event_participants').update({ participated: value })

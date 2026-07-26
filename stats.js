@@ -13,7 +13,7 @@
  */
 (function () {
 
-    var db  = window.RAD ? window.RAD.db : null;
+    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
     var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
     var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
     var fmt = window.RAD ? window.RAD.formatNumber : function (n) { return String(n); };
@@ -89,6 +89,7 @@
     window.RAD_STATS = { load: loadStats };
 
     async function loadStats() {
+        var db = getDb();
         if (!db) return;
         await fetchAllWeeks();
         renderControls();
