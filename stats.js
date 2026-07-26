@@ -415,10 +415,10 @@
             }).join('');
 
             var periodOpts = [
-                { key: 'all', label: t('stats_period_all') || 'Tout l\'historique' },
-                { key: '1w',  label: t('stats_period_1w')  || '1 Semaine' },
-                { key: '4w',  label: t('stats_period_4w')  || '4 Semaines' },
-                { key: '8w',  label: t('stats_period_8w')  || '8 Semaines' }
+                { key: 'all', label: t('stats_period_all') || 'All Time (Total)' },
+                { key: '1w',  label: t('stats_period_1w')  || '1 Week' },
+                { key: '4w',  label: t('stats_period_4w')  || '4 Weeks' },
+                { key: '8w',  label: t('stats_period_8w')  || '8 Weeks' }
             ].map(function (p) {
                 return '<option value="' + p.key + '"' + (p.key === state.statsPeriod ? ' selected' : '') + '>' + esc(p.label) + '</option>';
             }).join('');
@@ -456,7 +456,6 @@
             { key: 'global',        label: t('stats_tab_global')        || 'Global', icon: 'ph-globe' },
             { key: 'SvS',           label: t('stats_tab_svs')           || 'SvS', icon: 'ph-sword' },
             { key: 'GvG',           label: t('stats_tab_gvg')           || 'GvG', icon: 'ph-flag-banner' },
-            { key: 'prince',        label: t('stats_tab_prince')        || 'Prince', icon: 'ph-crown' },
             { key: 'participation', label: t('stats_tab_participation') || 'Participation', icon: 'ph-chart-bar' }
         ];
 
@@ -467,24 +466,12 @@
             }).join('') +
         '</div>';
 
-        var formulaBanner = state.currentMode === 'global' ?
-            '<div class="gm-formula-note">' +
-                '<i class="ph-duotone ph-calculator"></i> ' +
-                '<span>Formule : <strong>SvS/GvG (5x) + Shadowfront (3x) + DTR (2x) + Arms Race (1x) + Gloire Δ + Assiduité</strong></span>' +
-            '</div>' : '';
-
-        var princeBanner = state.currentMode === 'prince' ?
-            '<div class="gm-prince-banner">' +
-                '<i class="ph-duotone ph-crown text-amber"></i> ' +
-                '<span><strong>Prince de la Guerre</strong> — Calcul sur les 2 dernières semaines glissantes</span>' +
-            '</div>' : '';
-
         containers.forEach(function (container) {
             if (!state.leaderboardData || !state.leaderboardData.length) {
-                container.innerHTML = tabsHtml + formulaBanner + princeBanner +
+                container.innerHTML = tabsHtml +
                     '<div class="gm-empty" style="padding:3.5rem 1.5rem; text-align:center; background:var(--bg-1); border-radius:var(--radius-xl); border:1px dashed var(--border-soft); margin-top:1rem;">' +
                         '<i class="ph-duotone ph-chart-bar gm-icon" style="font-size:2.8rem; color:var(--fg-dim); margin-bottom:.5rem; display:block;"></i>' +
-                        '<div class="gm-empty-title" style="font-size:1.15rem; font-weight:700; color:var(--fg);">' + (t('stats_no_data') || 'Aucune statistique disponible pour cette sélection.') + '</div>' +
+                        '<div class="gm-empty-title" style="font-size:1.15rem; font-weight:700; color:var(--fg);">' + (t('stats_no_data') || 'No statistics available for this selection.') + '</div>' +
                     '</div>';
                 wireModeTabs(container);
                 return;
@@ -512,9 +499,9 @@
                         '<table class="gm-table" style="width:100%; border-collapse:collapse;">' +
                             '<thead><tr>' +
                                 '<th class="gm-center" style="width:65px;">#</th>' +
-                                '<th>' + (t('col_member') || 'Membre') + '</th>' +
-                                '<th class="gm-center">' + (t('stats_events') || 'Événements') + '</th>' +
-                                '<th class="gm-center">' + (t('stats_glory_delta') || 'Gloire Δ') + '</th>' +
+                                '<th>' + (t('col_member') || 'Member') + '</th>' +
+                                '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
+                                '<th class="gm-center">' + (t('stats_glory_delta') || 'Glory Δ') + '</th>' +
                                 '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>' +
                             '</tr></thead><tbody>';
 
@@ -540,7 +527,7 @@
 
             tableHtml += '</tbody></table></div></div>';
 
-            container.innerHTML = tabsHtml + formulaBanner + princeBanner + podHtml + tableHtml;
+            container.innerHTML = tabsHtml + podHtml + tableHtml;
             wireModeTabs(container);
         });
     }
