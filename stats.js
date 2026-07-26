@@ -447,7 +447,7 @@
         });
     }
 
-    // ── Render Leaderboard (Onglets Mode, Podium, Tableau) ─────────────────────
+    // ── Render Leaderboard (Onglets Mode, Podium DA, Tableau DA) ───────────────
     function renderLeaderboard() {
         var containers = document.querySelectorAll('.stats-leaderboard-area');
         if (!containers || !containers.length) return;
@@ -467,18 +467,30 @@
             }).join('') +
         '</div>';
 
+        var formulaBanner = state.currentMode === 'global' ?
+            '<div class="gm-formula-note">' +
+                '<i class="ph-duotone ph-calculator"></i> ' +
+                '<span>Formule : <strong>SvS/GvG (5x) + Shadowfront (3x) + DTR (2x) + Arms Race (1x) + Gloire Δ + Assiduité</strong></span>' +
+            '</div>' : '';
+
+        var princeBanner = state.currentMode === 'prince' ?
+            '<div class="gm-prince-banner">' +
+                '<i class="ph-duotone ph-crown text-amber"></i> ' +
+                '<span><strong>Prince de la Guerre</strong> — Calcul sur les 2 dernières semaines glissantes</span>' +
+            '</div>' : '';
+
         containers.forEach(function (container) {
             if (!state.leaderboardData || !state.leaderboardData.length) {
-                container.innerHTML = tabsHtml +
-                    '<div class="gm-empty" style="padding:3rem 1.5rem; text-align:center; background:rgba(255,255,255,0.02); border-radius:1rem; border:1px dashed rgba(255,255,255,0.1);">' +
-                        '<i class="ph-duotone ph-chart-bar gm-icon" style="font-size:2.5rem; color:var(--text-muted); margin-bottom:.5rem;"></i>' +
-                        '<div class="gm-empty-title" style="font-size:1.1rem; font-weight:600; color:var(--text-primary);">' + (t('stats_no_data') || 'Aucune statistique disponible pour cette sélection.') + '</div>' +
+                container.innerHTML = tabsHtml + formulaBanner + princeBanner +
+                    '<div class="gm-empty" style="padding:3.5rem 1.5rem; text-align:center; background:var(--bg-1); border-radius:var(--radius-xl); border:1px dashed var(--border-soft); margin-top:1rem;">' +
+                        '<i class="ph-duotone ph-chart-bar gm-icon" style="font-size:2.8rem; color:var(--fg-dim); margin-bottom:.5rem; display:block;"></i>' +
+                        '<div class="gm-empty-title" style="font-size:1.15rem; font-weight:700; color:var(--fg);">' + (t('stats_no_data') || 'Aucune statistique disponible pour cette sélection.') + '</div>' +
                     '</div>';
                 wireModeTabs(container);
                 return;
             }
 
-            // Top 3 Podium
+            // Top 3 Podium avec la DA officielle (.gm-podium, .gm-podium-card, .gm-gold, .gm-silver, .gm-bronze)
             var podHtml = '';
             if (state.leaderboardData.length >= 3) {
                 var top1 = state.leaderboardData[0];
@@ -486,61 +498,65 @@
                 var top3 = state.leaderboardData[2];
 
                 podHtml =
-                    '<div class="gm-podium" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-bottom:1.5rem;">' +
-                        renderPodiumCard(top2, 2, '🥈') +
-                        renderPodiumCard(top1, 1, '🥇') +
-                        renderPodiumCard(top3, 3, '🥉') +
+                    '<div class="gm-podium">' +
+                        renderPodiumCard(top2, 'silver', '2ND') +
+                        renderPodiumCard(top1, 'gold', '<i class="ph-fill ph-crown"></i> 1ST') +
+                        renderPodiumCard(top3, 'bronze', '3RD') +
                     '</div>';
             }
 
-            // Tableau de Classement
+            // Tableau de Classement Officiel (.gm-card, .glass-card, .gm-table)
             var tableHtml =
                 '<div class="gm-card glass-card" style="padding:1.25rem;">' +
                     '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
                         '<table class="gm-table" style="width:100%; border-collapse:collapse;">' +
                             '<thead><tr>' +
-                                '<th style="text-align:center; width:60px;">#</th>' +
+                                '<th class="gm-center" style="width:65px;">#</th>' +
                                 '<th>' + (t('col_member') || 'Membre') + '</th>' +
-                                '<th style="text-align:center;">' + (t('stats_events') || 'Événements') + '</th>' +
-                                '<th style="text-align:center;">' + (t('stats_glory_delta') || 'Gloire Δ') + '</th>' +
-                                '<th style="text-align:right;">' + (t('stats_score_pts') || 'Score Pts') + '</th>' +
+                                '<th class="gm-center">' + (t('stats_events') || 'Événements') + '</th>' +
+                                '<th class="gm-center">' + (t('stats_glory_delta') || 'Gloire Δ') + '</th>' +
+                                '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>' +
                             '</tr></thead><tbody>';
 
             state.leaderboardData.forEach(function (m, idx) {
                 var rank = idx + 1;
                 var initial = (window.RAD && window.RAD.avatarInit) ? window.RAD.avatarInit(m.pseudo) : (m.pseudo ? m.pseudo.charAt(0).toUpperCase() : '?');
-                var rankBadge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+                var rankBadge = rank === 1 ? '<span class="gm-rank-badge">🥇</span>' : rank === 2 ? '<span class="gm-rank-badge">🥈</span>' : rank === 3 ? '<span class="gm-rank-badge">🥉</span>' : '<span class="gm-rank-num">' + rank + '</span>';
 
                 tableHtml +=
-                    '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">' +
-                        '<td style="text-align:center; font-weight:700;">' + rankBadge + '</td>' +
+                    '<tr style="border-bottom:1px solid var(--border-soft);">' +
+                        '<td class="gm-center" style="font-weight:700;">' + rankBadge + '</td>' +
                         '<td>' +
-                            '<div style="display:flex; align-items:center; gap:.75rem;">' +
-                                '<div class="gm-avatar" style="width:36px; height:36px; border-radius:50%; background:var(--accent-glow, #6366f1); display:flex; align-items:center; justify-content:center; font-weight:700;">' + esc(initial) + '</div>' +
-                                '<strong style="color:var(--text-primary);">' + esc(m.pseudo) + '</strong>' +
+                            '<div class="gm-member-id" style="display:flex; align-items:center; gap:.75rem;">' +
+                                '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size:1rem; font-weight:700;">' + esc(initial) + '</div>' +
+                                '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(m.pseudo) + '</strong>' +
                             '</div>' +
                         '</td>' +
-                        '<td style="text-align:center;">' + m.events_done + '/' + m.events_total + '</td>' +
-                        '<td style="text-align:center; color:var(--text-muted);">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '—') + '</td>' +
-                        '<td style="text-align:right; font-weight:700; color:var(--accent);">' + fmt(m.score) + '</td>' +
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + '/' + m.events_total + '</td>' +
+                        '<td class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '—') + '</td>' +
+                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + fmt(m.score) + ' pts</span></td>' +
                     '</tr>';
             });
 
             tableHtml += '</tbody></table></div></div>';
 
-            container.innerHTML = tabsHtml + podHtml + tableHtml;
+            container.innerHTML = tabsHtml + formulaBanner + princeBanner + podHtml + tableHtml;
             wireModeTabs(container);
         });
     }
 
-    function renderPodiumCard(member, rank, medal) {
+    function renderPodiumCard(member, medalClass, badgeText) {
         if (!member) return '';
         var initial = (window.RAD && window.RAD.avatarInit) ? window.RAD.avatarInit(member.pseudo) : member.pseudo.charAt(0).toUpperCase();
-        return '<div class="gm-card glass-card" style="padding:1.25rem; text-align:center; border:1px solid rgba(255,255,255,0.1);">' +
-            '<div style="font-size:2rem; margin-bottom:.25rem;">' + medal + '</div>' +
-            '<div class="gm-avatar" style="width:48px; height:48px; border-radius:50%; margin:0 auto .5rem; background:var(--accent-glow, #6366f1); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.2rem;">' + esc(initial) + '</div>' +
-            '<h3 style="margin:0 0 .25rem; font-size:1.1rem; color:var(--text-primary);">' + esc(member.pseudo) + '</h3>' +
-            '<div style="font-size:1.25rem; font-weight:800; color:var(--accent);">' + fmt(member.score) + ' pts</div>' +
+        return '<div class="gm-podium-card gm-' + medalClass + '">' +
+            '<span class="gm-podium-badge">' + badgeText + '</span>' +
+            '<div class="gm-podium-avatar-wrap">' +
+                '<div class="gm-avatar gm-avatar-squircle">' + esc(initial) + '</div>' +
+            '</div>' +
+            '<div class="gm-podium-info">' +
+                '<strong class="gm-podium-name">' + esc(member.pseudo) + '</strong>' +
+                '<span class="gm-podium-score-pill">' + fmt(member.score) + ' pts</span>' +
+            '</div>' +
         '</div>';
     }
 
