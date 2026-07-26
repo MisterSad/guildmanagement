@@ -161,12 +161,12 @@
     async function loadGlobalPeriod(weeks, opts) {
         opts = opts || {};
         try {
-            if (!weeks || !weeks.length || !weeks[0]) {
-                var defaultW = window.RAD ? window.RAD.getWeekStart() : '';
-                weeks = [defaultW];
-            }
-            var refPrev = window.RAD.getPrevWeekStart(weeks[0]);
-            var glorySpan = [refPrev].concat(weeks);
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var isAllTime = (statsPeriod === 'all' || !weeks || !weeks.length || weeks.length > 20);
+
+            var refPrev = (weeks && weeks.length && weeks[0]) ? window.RAD.getPrevWeekStart(weeks[0]) : '';
+            var glorySpan = refPrev ? [refPrev].concat(weeks) : [];
+
             var getConfigVal = function (key, def) {
                 if (window.RAD && window.RAD.config && window.RAD.config.get) {
                     return window.RAD.config.get(key).catch(function () { return def; });
@@ -174,13 +174,19 @@
                 return Promise.resolve(def);
             };
 
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var membersQ = db.from('guild_members').select('pseudo, uid').eq('guild', currentG);
+            var partsQ   = db.from('event_participants').select('*').eq('guild', currentG).neq('event_name', 'Glory').limit(100000);
+            var gloryQ   = db.from('event_participants').select('pseudo, score, week_start').eq('guild', currentG).eq('event_name', 'Glory').limit(100000);
+            var squadsQ  = db.from('shadowfront_squads').select('pseudo, role, week_start').eq('guild', currentG).limit(100000);
+
+            if (!isAllTime && weeks && weeks.length > 0) {
+                partsQ  = partsQ.in('week_start', weeks);
+                gloryQ  = gloryQ.in('week_start', glorySpan);
+                squadsQ = squadsQ.in('week_start', weeks);
+            }
 
             var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace] = await Promise.all([
-                db.from('guild_members').select('pseudo, uid').eq('guild', currentG),
-                db.from('event_participants').select('*').eq('guild', currentG).in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
-                db.from('event_participants').select('pseudo, score, week_start').eq('guild', currentG).eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000),
-                db.from('shadowfront_squads').select('pseudo, role, week_start').eq('guild', currentG).in('week_start', weeks).limit(100000),
+                membersQ, partsQ, gloryQ, squadsQ,
                 getConfigVal('coeff_svs', 5),
                 getConfigVal('coeff_gvg', 5),
                 getConfigVal('coeff_shadowfront', 3),
@@ -189,11 +195,27 @@
             ]);
 
             var memberRows   = membersRes.data || [];
-            var members      = memberRows.map(function (m) { return m.pseudo; });
+            var rawParts     = partsRes.data || [];
+            var rawGlory     = gloryRes.data || [];
+            var rawSquads    = squadsRes.data || [];
+
+            // Combine ALL member pseudos (guild_members + event_participants + glory + squads)
+            var memberSet = new Set();
+            memberRows.forEach(function (m) { if (m.pseudo) memberSet.add(m.pseudo); });
+            rawParts.forEach(function (r) { if (r.pseudo) memberSet.add(r.pseudo); });
+            rawGlory.forEach(function (r) { if (r.pseudo) memberSet.add(r.pseudo); });
+            rawSquads.forEach(function (r) { if (r.pseudo) memberSet.add(r.pseudo); });
+
+            var members = Array.from(memberSet).sort(function (a, b) { return a.localeCompare(b); });
             uidByPseudo = {};
-            memberRows.forEach(function (m) { uidByPseudo[m.pseudo] = m.uid || ''; });
-            var participants = deduplicateParticipants(partsRes.data || []);
-            var gloryByWeek  = buildGloryByWeek(gloryRes.data || [], glorySpan);
+            memberRows.forEach(function (m) { if (m.pseudo) uidByPseudo[m.pseudo] = m.uid || ''; });
+
+            var participants = deduplicateParticipants(rawParts);
+            var actualWeeks = isAllTime 
+                ? Array.from(new Set(rawParts.map(function(r){ return r.week_start; }).concat(rawGlory.map(function(r){ return r.week_start; })).filter(Boolean))).sort()
+                : weeks;
+
+            var gloryByWeek  = buildGloryByWeek(rawGlory, actualWeeks);
 
             var config = {
                 coeff_svs: parseInt(coeffSvs, 10) || 5,
@@ -203,7 +225,7 @@
                 coeff_armsrace: parseInt(coeffArmsrace, 10) || 1
             };
 
-            var result = computeScores(members, participants, gloryByWeek, weeks, config, squadsRes.data || []);
+            var result = computeScores(members, participants, gloryByWeek, actualWeeks.length ? actualWeeks : [''], config, rawSquads);
             leaderboardData = result ? (result.scores || []) : [];
             lastMaxPossible = result ? (result.maxPossible || 1) : 1;
             renderLeaderboard({
