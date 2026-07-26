@@ -242,16 +242,16 @@
             }
         }
 
+        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin' || window.currentGuildRestriction === null);
         var canWrite = (window.RAD && window.RAD.canWriteGuild) ? window.RAD.canWriteGuild(activeGuild) : true;
-        var readOnlyActive = !canWrite;
+        // Never show read-only banner when navigating as Super Admin
+        var readOnlyActive = !canWrite && !isSuperAdmin;
         var banner = document.getElementById('guild-warning-banner');
 
         if (readOnlyActive) {
             document.body.classList.add('guild-read-only');
             if (banner) {
-                var messageHtml = isSuperAdmin
-                    ? '<span><i class="ph-fill ph-eye" style="font-size: 1.2rem; margin-right: 0.5rem;"></i><strong>Mode Consultation (Lecture Seule) :</strong> Vous visitez la guilde <strong>' + esc(activeGuild) + '</strong>. Les modifications sont réservées au tenant <strong>ALPHA</strong>.</span>'
-                    : '<span><i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem; margin-right: 0.5rem;"></i><strong>Mode Lecture Seule :</strong> L\'abonnement pour cette guilde a expiré.</span>';
+                var messageHtml = '<span><i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem; margin-right: 0.5rem;"></i><strong>Mode Lecture Seule :</strong> L\'abonnement pour cette guilde a expiré.</span>';
                 banner.innerHTML = messageHtml;
                 banner.style.display = 'flex';
             }
