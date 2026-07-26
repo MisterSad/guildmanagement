@@ -79,7 +79,10 @@
     // ── Load ───────────────────────────────────────────────────────────────────
     async function loadShadowfront() {
         var db = getDb();
-        if (!db) return;
+        if (!db) {
+            renderShadowfront();
+            return;
+        }
         try {
             var currentWeek = window.RAD.getWeekStart();
             var [statusRes, membersRes, histSquads, histParts, signupRes] = await Promise.all([

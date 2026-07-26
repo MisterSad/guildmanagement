@@ -101,6 +101,12 @@
 
                     renderEventsTabs();
 
+                    if (tabId === 'event-arms-race' && window.RAD_ARMSRACE && window.RAD_ARMSRACE.load) {
+                        window.RAD_ARMSRACE.load();
+                    } else if (tabId === 'event-shadowfront' && window.RAD_SHADOWFRONT && window.RAD_SHADOWFRONT.load) {
+                        window.RAD_SHADOWFRONT.load();
+                    }
+
                     if (window.RAD_APP && window.RAD_APP.onTabActivated) {
                         window.RAD_APP.onTabActivated(tabId);
                     }

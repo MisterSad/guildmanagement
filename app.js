@@ -293,13 +293,13 @@
         if (tabId === 'event-gvg' && window.RAD_EVENTS) {
             window.RAD_EVENTS.loadEvent('GvG');
         }
-        if (tabId === 'event-shadowfront' && window.RAD_SHADOWFRONT) {
+        if ((tabId === 'event-shadowfront' || tabId === 'Shadowfront' || tabId === 'shadowfront') && window.RAD_SHADOWFRONT) {
             window.RAD_SHADOWFRONT.load();
         }
         if (tabId === 'event-dtr' && window.RAD_EVENTS) {
             window.RAD_EVENTS.loadEvent('Defend Trade Route');
         }
-        if (tabId === 'event-arms-race' && window.RAD_ARMSRACE) {
+        if ((tabId === 'event-arms-race' || tabId === 'ARMS RACE' || tabId === 'Arms Race' || tabId === 'armsrace') && window.RAD_ARMSRACE) {
             window.RAD_ARMSRACE.load();
         }
         if (tabId === 'event-glory' && window.RAD_GLORY) {

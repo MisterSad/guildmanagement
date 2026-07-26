@@ -29,7 +29,10 @@
 
     async function loadArmsRace() {
         var db = getDb();
-        if (!db) return;
+        if (!db) {
+            renderArmsRace();
+            return;
+        }
         try {
             var [statusRes, membersRes] = await Promise.all([
                 db.from('event_status').select('event_name, is_active, session_id, start_at')
