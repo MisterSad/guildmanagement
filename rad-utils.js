@@ -156,7 +156,9 @@
     }
 
     function formatWeek(ws) {
-        var d = new Date(ws + 'T12:00:00Z');
+        if (!ws) return '';
+        var d = new Date(ws.length === 10 ? ws + 'T12:00:00Z' : ws);
+        if (isNaN(d.getTime())) return String(ws || '');
         var end = new Date(d); end.setUTCDate(end.getUTCDate() + 6);
         var opts = { day: '2-digit', month: '2-digit', timeZone: 'UTC' };
         var endOpts = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' };

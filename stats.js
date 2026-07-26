@@ -136,7 +136,7 @@
         }
         try {
             var res = await db.rpc('list_event_weeks', { p_guild: currentG });
-            var weeks = (res.data || []).map(function (r) { return r.week_start; });
+            var weeks = (res.data || []).map(function (r) { return r.week_start; }).filter(Boolean);
             weeks.sort(function (a, b) { return b.localeCompare(a); });
             if (currentWeek && weeks.indexOf(currentWeek) === -1) weeks.unshift(currentWeek);
             allWeeks = weeks.length ? weeks : (currentWeek ? [currentWeek] : [window.RAD.getWeekStart()]);
