@@ -1418,6 +1418,7 @@
                     var match = (pseudo.toLowerCase() + ' ' + uid.toLowerCase()).indexOf(q) !== -1;
                     row.style.display = match ? '' : 'none';
                 });
+            });
         }
     }
 
