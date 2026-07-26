@@ -91,8 +91,19 @@
                 btn.addEventListener('click', function () {
                     var tabId = btn.getAttribute('data-gm-event-tab');
                     localStorage.setItem('rad_active_event_tab', tabId);
-                    var legacy = document.querySelector('.nav-tab[data-tab="' + tabId + '"]');
-                    if (legacy) legacy.click();
+
+                    var dashboard = document.getElementById('dashboard-view');
+                    if (dashboard) {
+                        dashboard.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+                        var panel = document.getElementById(tabId);
+                        if (panel) panel.classList.add('active');
+                    }
+
+                    renderEventsTabs();
+
+                    if (window.RAD_APP && window.RAD_APP.onTabActivated) {
+                        window.RAD_APP.onTabActivated(tabId);
+                    }
                 });
             });
         });

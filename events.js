@@ -725,31 +725,36 @@
 
 
 
-    // ── Wire START / END buttons ──────────────────────────────────────────
-    // Ces événements demandent un jour + heure de début (UTC) au lancement :
-    // alimente l'agenda Overview et les futurs rappels.
+    // ── Wire START / END buttons via document event delegation ──────────────
     var SCHEDULED_TABS = ['Defend Trade Route'];
 
-    document.querySelectorAll('.event-start-btn[data-event]').forEach(function (btn) {
-        var ev = btn.getAttribute('data-event');
-        if (!TAB_TO_DB_EVENTS[ev]) return;
-
-        btn.addEventListener('click', function () {
-            if (SCHEDULED_TABS.indexOf(ev) !== -1) {
-                window.RAD.pickEventStart({ eventLabel: ev }, function (startAt) {
-                    if (!startAt) return; // annulé ⇒ on ne démarre pas
-                    startEvent(ev, ev, null, startAt);
-                });
-            } else {
-                startEvent(ev, ev, null);
+    document.addEventListener('click', function (e) {
+        var startBtn = e.target.closest('.event-start-btn');
+        if (startBtn) {
+            var ev = startBtn.getAttribute('data-event');
+            if (ev && TAB_TO_DB_EVENTS[ev]) {
+                e.preventDefault();
+                if (SCHEDULED_TABS.indexOf(ev) !== -1) {
+                    window.RAD.pickEventStart({ eventLabel: ev }, function (startAt) {
+                        if (!startAt) return;
+                        startEvent(ev, ev, null, startAt);
+                    });
+                } else {
+                    startEvent(ev, ev, null);
+                }
+                return;
             }
-        });
-    });
+        }
 
-    document.querySelectorAll('.event-end-btn[data-event]').forEach(function (btn) {
-        var ev = btn.getAttribute('data-event');
-        if (!TAB_TO_DB_EVENTS[ev]) return;
-        btn.addEventListener('click', function () { endEvent(ev); });
+        var endBtn = e.target.closest('.event-end-btn');
+        if (endBtn) {
+            var ev = endBtn.getAttribute('data-event');
+            if (ev && TAB_TO_DB_EVENTS[ev]) {
+                e.preventDefault();
+                endEvent(ev);
+                return;
+            }
+        }
     });
 
 })();
