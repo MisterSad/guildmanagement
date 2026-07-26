@@ -90,6 +90,7 @@
             slot.querySelectorAll('[data-gm-event-tab]').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     var tabId = btn.getAttribute('data-gm-event-tab');
+                    localStorage.setItem('rad_active_event_tab', tabId);
                     var legacy = document.querySelector('.nav-tab[data-tab="' + tabId + '"]');
                     if (legacy) legacy.click();
                 });
@@ -561,21 +562,31 @@
     function gotoItem(itemId) {
         var item = NAV_ITEMS.find(function (i) { return i.id === itemId; });
         if (!item) return;
-        var legacyTab = document.querySelector('.nav-tab[data-tab="' + item.tabId + '"]');
+        localStorage.setItem('rad_active_tab', itemId);
+
+        var targetTabId = item.tabId;
+        if (itemId === 'events') {
+            var savedEventTab = localStorage.getItem('rad_active_event_tab');
+            if (savedEventTab && item.panels.indexOf(savedEventTab) !== -1) {
+                targetTabId = savedEventTab;
+            }
+        }
+
+        var legacyTab = document.querySelector('.nav-tab[data-tab="' + targetTabId + '"]');
         if (legacyTab) {
             legacyTab.click();
         } else {
             var dashboard = document.getElementById('dashboard-view');
             if (dashboard) {
                 dashboard.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
-                var panel = document.getElementById(item.tabId);
+                var panel = document.getElementById(targetTabId);
                 if (panel) {
                     panel.classList.add('active');
                 }
             }
         }
         if (window.RAD_APP && window.RAD_APP.onTabActivated) {
-            window.RAD_APP.onTabActivated(item.tabId);
+            window.RAD_APP.onTabActivated(targetTabId);
         }
     }
 
@@ -590,7 +601,12 @@
             if (!activePanel) return;
             var pid = activePanel.id;
             var item = NAV_ITEMS.find(function (i) { return i.panels.indexOf(pid) !== -1; });
-            if (!item || item.id === state.active) return;
+            if (!item) return;
+            localStorage.setItem('rad_active_tab', item.id);
+            if (item.panels.length > 1) {
+                localStorage.setItem('rad_active_event_tab', pid);
+            }
+            if (item.id === state.active) return;
             state.active = item.id;
             renderSidebar();
             renderTopbar();

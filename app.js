@@ -232,17 +232,18 @@
             loadGuildSettings();
             fetchGuildMembers();
         }
-        // Default landing : Overview (R4 et R5)
-        // Retry car gm-overview nav-tab est créé par shell.js après notre code.
-        clickWhenReady('.nav-tab[data-tab="gm-overview"]');
+        var savedTab = localStorage.getItem('rad_active_tab') || 'overview';
+        restoreSavedTab(savedTab);
     }
 
-    function clickWhenReady(selector, attempts) {
+    function restoreSavedTab(itemId, attempts) {
         attempts = attempts == null ? 30 : attempts;
-        var el = document.querySelector(selector);
-        if (el) { el.click(); return; }
+        if (window.RAD_SHELL && window.RAD_SHELL.gotoItem) {
+            window.RAD_SHELL.gotoItem(itemId);
+            return;
+        }
         if (attempts <= 0) return;
-        requestAnimationFrame(function () { clickWhenReady(selector, attempts - 1); });
+        requestAnimationFrame(function () { restoreSavedTab(itemId, attempts - 1); });
     }
 
     function showLogin() {
