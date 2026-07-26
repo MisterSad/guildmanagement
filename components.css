@@ -1009,7 +1009,7 @@
     font-family: var(--font-display);
     font-weight: 800;
     font-size: 0.9rem;
-    margin-bottom: 0.6rem;
+    margin-bottom: 1.5rem;
     font-variant-numeric: tabular-nums;
 }
 
@@ -1020,15 +1020,16 @@
 /* 3D Cylindrical Pedestals */
 .gm-podium-pedestal {
     width: 100%;
-    border-radius: 40px 40px 16px 16px;
+    border-radius: 50% / 18px; /* Creates the curved bottom */
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    padding-top: 1rem;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    padding-top: 1.5rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
+    border: none !important;
 }
 
 .gm-podium-column:hover .gm-podium-pedestal {
@@ -1038,11 +1039,13 @@
 /* Top Ring Lid for 3D Effect */
 .gm-podium-pedestal-top {
     position: absolute;
-    top: -10px;
-    left: 5%;
-    width: 90%;
-    height: 20px;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 36px;
+    margin-top: -18px;
     border-radius: 50%;
+    z-index: 1;
 }
 
 /* Gold #1 Cylinder (Center) */
@@ -1053,15 +1056,23 @@
 }
 
 .gm-podium-column.gm-gold .gm-podium-pedestal {
-    height: 130px;
-    background: linear-gradient(180deg, oklch(0.88 0.19 125 / 0.35) 0%, oklch(0.88 0.19 125 / 0.08) 50%, var(--bg-1) 100%);
-    border: 1px solid oklch(0.88 0.19 125 / 0.5);
+    height: 140px;
+    background: 
+      linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%),
+      linear-gradient(to right,
+        #131c03 0%,
+        #3b520c 20%,
+        #d2f872 40%,
+        #789c1d 60%,
+        #293b08 85%,
+        #0d1402 100%
+      );
 }
 
 .gm-podium-column.gm-gold .gm-podium-pedestal-top {
-    background: linear-gradient(180deg, oklch(0.88 0.19 125 / 0.6), oklch(0.88 0.19 125 / 0.2));
-    border: 1px solid oklch(0.88 0.19 125 / 0.8);
-    box-shadow: 0 0 15px oklch(0.88 0.19 125 / 0.4);
+    background: linear-gradient(135deg, #e7fdab 0%, #a4cc29 100%);
+    box-shadow: inset 0 -3px 8px rgba(0,0,0,0.4), inset 0 3px 8px rgba(255,255,255,0.6);
+    border: 1px solid #e7fdab;
 }
 
 /* Silver #2 Cylinder (Left) */
@@ -1072,15 +1083,23 @@
 }
 
 .gm-podium-column.gm-silver .gm-podium-pedestal {
-    height: 100px;
-    background: linear-gradient(180deg, oklch(0.78 0.16 220 / 0.30) 0%, oklch(0.78 0.16 220 / 0.06) 50%, var(--bg-1) 100%);
-    border: 1px solid oklch(0.78 0.16 220 / 0.45);
+    height: 110px;
+    background: 
+      linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 100%),
+      linear-gradient(to right,
+        #04161f 0%,
+        #10415a 20%,
+        #56c6f3 40%,
+        #278ab4 60%,
+        #0b3145 85%,
+        #020b10 100%
+      );
 }
 
 .gm-podium-column.gm-silver .gm-podium-pedestal-top {
-    background: linear-gradient(180deg, oklch(0.78 0.16 220 / 0.5), oklch(0.78 0.16 220 / 0.18));
-    border: 1px solid oklch(0.78 0.16 220 / 0.7);
-    box-shadow: 0 0 12px oklch(0.78 0.16 220 / 0.35);
+    background: linear-gradient(135deg, #9fdef8 0%, #35a3d0 100%);
+    box-shadow: inset 0 -3px 8px rgba(0,0,0,0.4), inset 0 3px 8px rgba(255,255,255,0.6);
+    border: 1px solid #9fdef8;
 }
 
 /* Bronze #3 Cylinder (Right) */
@@ -1091,15 +1110,23 @@
 }
 
 .gm-podium-column.gm-bronze .gm-podium-pedestal {
-    height: 80px;
-    background: linear-gradient(180deg, oklch(0.78 0.16 50 / 0.28) 0%, oklch(0.78 0.16 50 / 0.06) 50%, var(--bg-1) 100%);
-    border: 1px solid oklch(0.78 0.16 50 / 0.45);
+    height: 90px;
+    background: 
+      linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 100%),
+      linear-gradient(to right,
+        #240e03 0%,
+        #632609 20%,
+        #ffab76 40%,
+        #c7682d 60%,
+        #4a1c06 85%,
+        #170902 100%
+      );
 }
 
 .gm-podium-column.gm-bronze .gm-podium-pedestal-top {
-    background: linear-gradient(180deg, oklch(0.78 0.16 50 / 0.5), oklch(0.78 0.16 50 / 0.18));
-    border: 1px solid oklch(0.78 0.16 50 / 0.7);
-    box-shadow: 0 0 12px oklch(0.78 0.16 50 / 0.35);
+    background: linear-gradient(135deg, #ffd3b5 0%, #d4773d 100%);
+    box-shadow: inset 0 -3px 8px rgba(0,0,0,0.4), inset 0 3px 8px rgba(255,255,255,0.6);
+    border: 1px solid #ffd3b5;
 }
 
 /* Hexagonal / Shield Rank Badge */
