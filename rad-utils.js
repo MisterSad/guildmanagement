@@ -465,12 +465,7 @@
         var currentG = getActiveGuild();
         if (db) {
             try {
-                var query = db.from('guild_config').select('value').eq('key', key);
-                if (currentG === 'ALPHA') {
-                    query = query.or('guild.eq.ALPHA,guild.is.null');
-                } else {
-                    query = query.eq('guild', currentG);
-                }
+                var query = db.from('guild_config').select('value').eq('key', key).eq('guild', currentG);
                 var res = await query.maybeSingle();
                 if (res && res.error) {
                     console.error('guild_config select error for key ' + key + ':', res.error);

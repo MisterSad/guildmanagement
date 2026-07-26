@@ -39,13 +39,8 @@
                 .in('event_name', [STAGE_EVENTS.stageA, STAGE_EVENTS.stageB]);
             var membersQ = db.from('guild_members').select('pseudo, uid');
 
-            if (currentG === 'ALPHA') {
-                statusQ  = statusQ.or('guild.eq.ALPHA,guild.is.null');
-                membersQ = membersQ.or('guild.eq.ALPHA,guild.is.null');
-            } else {
-                statusQ  = statusQ.eq('guild', currentG);
-                membersQ = membersQ.eq('guild', currentG);
-            }
+            statusQ  = statusQ.eq('guild', currentG);
+            membersQ = membersQ.eq('guild', currentG);
 
             var [statusRes, membersRes] = await Promise.all([statusQ, membersQ]);
 

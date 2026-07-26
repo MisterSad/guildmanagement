@@ -93,19 +93,11 @@
             var partsQ    = db.from('event_participants').select('pseudo, participated, session_id, excused, late, sub_present').eq('event_name', EVENT_NAME).limit(100000);
             var signupsQ  = db.from('shadowfront_signups').select('*').eq('week_start', currentWeek);
 
-            if (currentG === 'ALPHA') {
-                statusQ  = statusQ.or('guild.eq.ALPHA,guild.is.null');
-                membersQ = membersQ.or('guild.eq.ALPHA,guild.is.null');
-                squadsQ  = squadsQ.or('guild.eq.ALPHA,guild.is.null');
-                partsQ   = partsQ.or('guild.eq.ALPHA,guild.is.null');
-                signupsQ = signupsQ.or('guild.eq.ALPHA,guild.is.null');
-            } else {
-                statusQ  = statusQ.eq('guild', currentG);
-                membersQ = membersQ.eq('guild', currentG);
-                squadsQ  = squadsQ.eq('guild', currentG);
-                partsQ   = partsQ.eq('guild', currentG);
-                signupsQ = signupsQ.eq('guild', currentG);
-            }
+            statusQ  = statusQ.eq('guild', currentG);
+            membersQ = membersQ.eq('guild', currentG);
+            squadsQ  = squadsQ.eq('guild', currentG);
+            partsQ   = partsQ.eq('guild', currentG);
+            signupsQ = signupsQ.eq('guild', currentG);
 
             var [statusRes, membersRes, histSquads, histParts, signupRes] = await Promise.all([
                 statusQ, membersQ, squadsQ, partsQ, signupsQ
