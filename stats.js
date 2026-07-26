@@ -91,6 +91,9 @@
     async function loadStats() {
         var db = getDb();
         if (!db) return;
+        if (window.RAD && window.RAD.ensureAuthSession) {
+            await window.RAD.ensureAuthSession();
+        }
         if (!currentWeek && window.RAD && window.RAD.getWeekStart) {
             currentWeek = window.RAD.getWeekStart();
         }
@@ -158,9 +161,12 @@
     }
 
     // ── Mode Global / Prince : application de la formule pondérée ──────────────
-    async function loadGlobalPeriod(weeks, opts) {
+    async function loadGlobalPeriod(weeks, opts, isRetry) {
         opts = opts || {};
         try {
+            if (window.RAD && window.RAD.ensureAuthSession) {
+                await window.RAD.ensureAuthSession();
+            }
             var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
             var isAllTime = (statsPeriod === 'all' || !weeks || !weeks.length || weeks.length > 20);
 
@@ -193,6 +199,12 @@
                 getConfigVal('coeff_dtr', 2),
                 getConfigVal('coeff_armsrace', 1)
             ]);
+
+            if ((membersRes.error || partsRes.error) && !isRetry) {
+                console.warn('loadGlobalPeriod query error, retrying with auth session...', membersRes.error || partsRes.error);
+                await new Promise(function (res) { setTimeout(res, 350); });
+                return loadGlobalPeriod(weeks, opts, true);
+            }
 
             var memberRows   = membersRes.data || [];
             var rawParts     = partsRes.data || [];

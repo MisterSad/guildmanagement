@@ -282,6 +282,20 @@
         try { await db.auth.signOut(); } catch (_) {}
     }
 
+    async function ensureAuthSession() {
+        if (!db) return null;
+        try {
+            var s = await db.auth.getSession();
+            if (s && s.data && s.data.session) return s.data.session;
+            await new Promise(function (resolve) { setTimeout(resolve, 300); });
+            s = await db.auth.getSession();
+            return (s && s.data) ? s.data.session : null;
+        } catch (e) {
+            console.warn('ensureAuthSession error', e);
+            return null;
+        }
+    }
+
     // Opérations admin sur les comptes (R5 only — vérifié côté serveur via le
     // JWT). La session courante est jointe automatiquement par supabase-js.
     async function adminAccounts(action, payload) {
@@ -681,6 +695,7 @@
         t: t,
         login: login,
         logout: logout,
+        ensureAuthSession: ensureAuthSession,
         adminAccounts: adminAccounts,
         sessionInfo: sessionInfo,
         getActiveGuild: getActiveGuild,
