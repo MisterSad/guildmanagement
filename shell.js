@@ -592,21 +592,17 @@
             }
         }
 
-        var legacyTab = document.querySelector('.nav-tab[data-tab="' + targetTabId + '"]');
-        if (legacyTab) {
-            legacyTab.click();
-        } else {
-            var dashboard = document.getElementById('dashboard-view');
-            if (dashboard) {
-                dashboard.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
-                var panel = document.getElementById(targetTabId);
-                if (panel) {
-                    panel.classList.add('active');
-                }
+        var dashboard = document.getElementById('dashboard-view');
+        if (dashboard) {
+            dashboard.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+            var panel = document.getElementById(targetTabId);
+            if (panel) {
+                panel.classList.add('active');
             }
-            if (window.RAD_APP && window.RAD_APP.onTabActivated) {
-                window.RAD_APP.onTabActivated(targetTabId);
-            }
+        }
+
+        if (window.RAD_APP && window.RAD_APP.onTabActivated) {
+            window.RAD_APP.onTabActivated(targetTabId);
         }
     }
 

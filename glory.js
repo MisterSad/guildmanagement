@@ -37,7 +37,11 @@
                 .map(function (p) { return { guild: currentG, event_name: 'Glory', week_start: week, pseudo: p, participated: 1, score: null }; });
 
             if (toInsert.length > 0 && window.RAD && window.RAD.canWriteGuild && window.RAD.canWriteGuild()) {
-                await db.from('event_participants').upsert(toInsert, { onConflict: 'guild,event_name,week_start,pseudo' });
+                try {
+                    await db.from('event_participants').insert(toInsert);
+                } catch (insertErr) {
+                    console.warn('Glory insert warning', insertErr);
+                }
                 toInsert.forEach(function (item) { currMap[item.pseudo] = null; });
             }
 
@@ -54,7 +58,7 @@
 
             renderGlory(members, currMap, prevMap, week);
         } catch (err) {
-            console.error('loadGlory', err);
+            console.error('loadGlory error:', err);
             renderGlory([], {}, {}, week);
         }
     }
