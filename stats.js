@@ -137,6 +137,7 @@
         opts = opts || {};
         try {
             var refPrev = window.RAD.getPrevWeekStart(weeks[0]);
+            var glorySpan = [refPrev].concat(weeks);
             var getConfigVal = function (key, def) {
                 if (window.RAD && window.RAD.config && window.RAD.config.get) {
                     return window.RAD.config.get(key).catch(function () { return def; });
