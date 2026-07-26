@@ -1285,7 +1285,8 @@
     async function fetchBannedPlayers() {
         if (!supabase) return;
         try {
-            var res = await supabase.from('banned_players').select('*').order('created_at', { ascending: false });
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var res = await supabase.from('banned_players').select('*').eq('guild', currentG).order('created_at', { ascending: false });
             if (res.error) throw res.error;
             bannedPlayers = res.data || [];
             renderBannedPlayers();
@@ -1381,8 +1382,10 @@
         if (btn) btn.disabled = true;
 
         try {
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
             var currentUser = window.RAD.currentAccountId || localStorage.getItem('rad_user') || 'Admin';
             var res = await supabase.from('banned_players').insert([{
+                guild: currentG,
                 uid: uidVal,
                 pseudo: pseudoVal || null,
                 reason: reasonVal || null,
@@ -1399,7 +1402,7 @@
             // Check if member is in guild and delete
             var member = guildMembers.find(function (m) { return m.uid === uidVal; });
             if (member) {
-                var delRes = await supabase.from('guild_members').delete().eq('uid', uidVal);
+                var delRes = await supabase.from('guild_members').delete().eq('uid', uidVal).eq('guild', currentG);
                 if (!delRes.error) {
                     guildMembers = guildMembers.filter(function (m) { return m.uid !== uidVal; });
                     renderGuildMembers();
@@ -1418,7 +1421,8 @@
 
     async function deleteBannedPlayer(uid) {
         try {
-            var res = await supabase.from('banned_players').delete().eq('uid', uid);
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var res = await supabase.from('banned_players').delete().eq('uid', uid).eq('guild', currentG);
             if (res.error) throw res.error;
             showToast(t('toast_player_unbanned_ok'), 'success');
             await fetchBannedPlayers();

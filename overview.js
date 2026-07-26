@@ -72,19 +72,11 @@
             var sanctionsQ = db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5);
             var recentMemQ = db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5);
 
-            if (currentG === 'ALPHA') {
-                memCountQ  = memCountQ.or('guild.eq.ALPHA,guild.is.null');
-                statusQ    = statusQ.or('guild.eq.ALPHA,guild.is.null');
-                gloryQ     = gloryQ.or('guild.eq.ALPHA,guild.is.null');
-                sanctionsQ = sanctionsQ.or('guild.eq.ALPHA,guild.is.null');
-                recentMemQ = recentMemQ.or('guild.eq.ALPHA,guild.is.null');
-            } else {
-                memCountQ  = memCountQ.eq('guild', currentG);
-                statusQ    = statusQ.eq('guild', currentG);
-                gloryQ     = gloryQ.eq('guild', currentG);
-                sanctionsQ = sanctionsQ.eq('guild', currentG);
-                recentMemQ = recentMemQ.eq('guild', currentG);
-            }
+            memCountQ  = memCountQ.eq('guild', currentG);
+            statusQ    = statusQ.eq('guild', currentG);
+            gloryQ     = gloryQ.eq('guild', currentG);
+            sanctionsQ = sanctionsQ.eq('guild', currentG);
+            recentMemQ = recentMemQ.eq('guild', currentG);
 
             var [memCount, statusRows, gloryRows, sanctionsRows, recentMembers] = await Promise.all([
                 memCountQ, statusQ, gloryQ, sanctionsQ, recentMemQ

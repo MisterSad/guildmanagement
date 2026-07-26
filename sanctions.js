@@ -18,16 +18,8 @@
 
         var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
 
-        var membersQ = db.from('guild_members').select('pseudo').order('pseudo', { ascending: true });
-        var sanctionsQ = db.from('sanctions').select('*').order('created_at', { ascending: false });
-
-        if (currentG === 'ALPHA') {
-            membersQ   = membersQ.or('guild.eq.ALPHA,guild.is.null');
-            sanctionsQ = sanctionsQ.or('guild.eq.ALPHA,guild.is.null');
-        } else {
-            membersQ   = membersQ.eq('guild', currentG);
-            sanctionsQ = sanctionsQ.eq('guild', currentG);
-        }
+        var membersQ = db.from('guild_members').select('pseudo').eq('guild', currentG).order('pseudo', { ascending: true });
+        var sanctionsQ = db.from('sanctions').select('*').eq('guild', currentG).order('created_at', { ascending: false });
 
         var [membersRes, res] = await Promise.all([membersQ, sanctionsQ]);
 
