@@ -102,6 +102,7 @@
         if (window.RAD_SHELL && window.RAD_SHELL.renderShell) {
             window.RAD_SHELL.renderShell();
         }
+        reloadActiveView();
     })();
 
     // ─── Auth ─────────────────────────────────────────────────────────────────
@@ -220,6 +221,7 @@
 
             loadGuildSettings();
             fetchAccounts();
+            fetchGuildMembers();
         } else { // R5
             if (roleLabel) {
                 roleLabel.textContent = 'Super Admin :';
@@ -228,6 +230,7 @@
 
             fetchAccounts();
             loadGuildSettings();
+            fetchGuildMembers();
         }
         // Default landing : Overview (R4 et R5)
         // Retry car gm-overview nav-tab est créé par shell.js après notre code.
