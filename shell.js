@@ -27,9 +27,9 @@
         { id: 'glory',     tabId: 'event-glory', icon: 'ph-trophy',          labelKey: 'gm_nav_glory',     section: 'play',  panels: ['event-glory'] },
         { id: 'history',   tabId: 'event-history', icon: 'ph-clock-counter-clockwise', labelKey: 'gm_nav_history', section: 'play',  panels: ['event-history'] },
         { id: 'stats',     tabId: 'stats-admin', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
-        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
         { id: 'sanctions', tabId: 'tab-sanctions', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
-        { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] }
+        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'superadmin', r5Only: true, panels: ['admin-home'] },
+        { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'superadmin', r5Only: true, panels: ['admin-banned'] }
     ];
 
     function visibleNavItems() {
@@ -325,8 +325,23 @@
         var visible = visibleNavItems();
         var playItems = visible.filter(function (i) { return i.section === 'play'; });
         var adminItems = visible.filter(function (i) { return i.section === 'admin'; });
+        var superAdminItems = visible.filter(function (i) { return i.section === 'superadmin'; });
 
         var userAvatarInitials = esc(window.RAD.avatarInit(getUserName()));
+
+        var navHtml = '';
+        if (playItems.length > 0) {
+            navHtml += '<div class="gm-nav-section-label">' + t('gm_nav_play') + '</div>' +
+                playItems.map(navItemHtml).join('');
+        }
+        if (adminItems.length > 0) {
+            navHtml += '<div class="gm-nav-section-label">' + t('gm_nav_admin') + '</div>' +
+                adminItems.map(navItemHtml).join('');
+        }
+        if (superAdminItems.length > 0) {
+            navHtml += '<div class="gm-nav-section-label">' + t('gm_nav_superadmin') + '</div>' +
+                superAdminItems.map(navItemHtml).join('');
+        }
 
         var html =
             '<div class="gm-sidebar-header">' +
@@ -344,10 +359,7 @@
                 '</div>' +
             '</div>' +
             '<nav class="gm-sidebar-nav">' +
-                '<div class="gm-nav-section-label">' + t('gm_nav_play') + '</div>' +
-                playItems.map(navItemHtml).join('') +
-                '<div class="gm-nav-section-label">' + t('gm_nav_admin') + '</div>' +
-                adminItems.map(navItemHtml).join('') +
+                navHtml +
             '</nav>' +
             getSubscriptionCardHtml();
 

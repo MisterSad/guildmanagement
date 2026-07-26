@@ -319,6 +319,7 @@
             gm_brand_sub:          'Foundation Galactic Frontier',
             gm_nav_play:           'Activity',
             gm_nav_admin:          'Admin',
+            gm_nav_superadmin:     'Super Admin',
             gm_nav_overview:       'Overview',
             gm_nav_accounts:       'Accounts & access',
             gm_nav_config:         'Configuration',
