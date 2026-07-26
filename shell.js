@@ -29,7 +29,7 @@
         { id: 'stats',     tabId: 'stats-admin', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
         { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
         { id: 'sanctions', tabId: 'tab-sanctions', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
-        { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'superadmin', r5Only: true, panels: ['admin-banned'] }
+        { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] }
     ];
 
     function visibleNavItems() {
