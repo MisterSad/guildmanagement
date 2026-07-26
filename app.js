@@ -440,7 +440,8 @@
         try {
             var res = await supabase.from('guilds').select('id, subscription_type, subscription_end, server_number').order('id');
             if (res.error) {
-                res = await supabase.from('guilds').select('id, subscription_type, subscription_end').order('id');
+                console.error('fetchGuilds error:', res.error);
+                return;
             }
             var data = res.data;
             console.log('fetchGuilds returned data:', data);
@@ -966,12 +967,6 @@
                 .from('guilds')
                 .select('id, subscription_type, subscription_end, server_number')
                 .order('id');
-            if (res.error) {
-                res = await supabase
-                    .from('guilds')
-                    .select('id, subscription_type, subscription_end')
-                    .order('id');
-            }
             if (res.error) throw res.error;
             var guildsListRaw = res.data;
             console.log('renderGuildsSubscriptionList fetched data:', guildsListRaw);
@@ -1108,16 +1103,12 @@
                         var updatePayload = {
                             subscription_type: type,
                             subscription_end: endVal,
-                            server_number: serverNum
+                            server_number: serverNum || null
                         };
                         var res = await supabase.from('guilds').update(updatePayload).eq('id', guildId).select();
 
                         if (res.error) {
-                            // Fallback update if server_number column does not exist on remote DB table
-                            res = await supabase.from('guilds').update({
-                                subscription_type: type,
-                                subscription_end: endVal
-                            }).eq('id', guildId).select();
+                            throw new Error(res.error.message || JSON.stringify(res.error));
                         }
 
                         showToast('Guild ' + guildId + (serverNum ? ' (Server #' + serverNum + ')' : '') + ' updated successfully!', 'success');
@@ -1703,19 +1694,31 @@
         var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('rad_current_guild') || 'ALPHA';
 
         // Fetch up-to-date guilds list and server numbers
+        // Merge DB data with localStorage fallback (DB may have null if save failed previously)
         var guildsData = {};
         try {
             var res = await supabase.from('guilds').select('id, server_number').order('id');
             if (res.data && res.data.length > 0) {
                 res.data.forEach(function (g) {
-                    guildsData[g.id] = g.server_number || '';
+                    // Prefer DB value, fallback to localStorage, fallback to window.guildsData
+                    var dbVal = g.server_number || '';
+                    var lsVal = localStorage.getItem('rad_server_number_' + g.id) || '';
+                    var memVal = (window.guildsData && window.guildsData[g.id]) ? (window.guildsData[g.id].server_number || '') : '';
+                    guildsData[g.id] = dbVal || lsVal || memVal;
                 });
             }
         } catch (err) {
             console.error('Failed to fetch guilds for transfer', err);
         }
 
-        var currentServer = guildsData[currentG] || (window.guildsData && window.guildsData[currentG] ? window.guildsData[currentG].server_number : null);
+        // If guildsData is empty or all blank, fall back entirely to window.guildsData
+        if (Object.keys(guildsData).length === 0 && window.guildsData) {
+            Object.keys(window.guildsData).forEach(function (g) {
+                guildsData[g] = window.guildsData[g].server_number || '';
+            });
+        }
+
+        var currentServer = guildsData[currentG] || null;
 
         var sisterGuilds = [];
         if (currentServer) {
