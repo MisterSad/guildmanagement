@@ -2567,6 +2567,8 @@
         });
     }
 
-    window.RAD_APP = { showToast: showToast, reloadActiveView: reloadActiveView };
+    window.RAD_APP = window.RAD_APP || {};
+    window.RAD_APP.showToast = showToast;
+    window.RAD_APP.reloadActiveView = reloadActiveView;
 
 })();
