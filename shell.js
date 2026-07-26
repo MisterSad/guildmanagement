@@ -199,6 +199,66 @@
         return 'Admin';
     }
 
+    function checkSubscriptionStatus() {
+        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
+        var isExpired = false;
+        var activeGuild = window.currentGuild || 'ALPHA';
+        if (window.guildsData && window.guildsData[activeGuild]) {
+            var sub = window.guildsData[activeGuild];
+            if (sub.type === 'Premium') {
+                if (sub.end) {
+                    var diff = new Date(sub.end).getTime() - Date.now();
+                    if (diff <= 0) isExpired = true;
+                } else {
+                    isExpired = true;
+                }
+            }
+        }
+
+        var readOnlyActive = isExpired && !isSuperAdmin;
+        var banner = document.getElementById('guild-warning-banner');
+
+        if (readOnlyActive) {
+            document.body.classList.add('guild-read-only');
+            if (banner) {
+                banner.innerHTML = '<i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem;"></i>' +
+                    '<span><strong>Read-only access:</strong> The subscription for this guild has expired. Data modification is disabled.</span>';
+                banner.style.display = 'flex';
+            }
+        } else {
+            document.body.classList.remove('guild-read-only');
+            if (banner) {
+                banner.style.display = 'none';
+                banner.innerHTML = '';
+            }
+        }
+        return isExpired;
+    }
+
+    function renderGuildSelectorHtml() {
+        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
+        var guilds = window.guildsList || ['ALPHA', 'OMEGA', 'IMK'];
+        if (window.currentGuildRestriction) {
+            guilds = [window.currentGuildRestriction];
+            window.currentGuild = window.currentGuildRestriction;
+            localStorage.setItem('rad_current_guild', window.currentGuildRestriction);
+        }
+
+        if (isSuperAdmin && !window.currentGuildRestriction) {
+            var guildOptions = guilds.map(function(g) {
+                return '<option value="' + g + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + esc(g) + ' Guild</option>';
+            }).join('');
+            return '<div class="gm-sidebar-guild-select-wrapper">' +
+                '<select class="gm-sidebar-guild-select" data-gm-guild-select>' +
+                    guildOptions +
+                '</select>' +
+            '</div>';
+        } else {
+            var displayGuild = window.currentGuildRestriction || window.currentGuild || 'ALPHA';
+            return '<div class="gm-sidebar-guild-badge">' + esc(displayGuild) + ' Guild</div>';
+        }
+    }
+
     function getSubscriptionCardHtml() {
         var activeGuild = window.currentGuild || 'ALPHA';
         var cardTitle = esc(activeGuild) + ' Guild';
@@ -249,6 +309,7 @@
             '</div>' +
             '<div class="gm-sub-card-title">' + cardTitle + '</div>' +
             '<div class="gm-sub-card-subtext">' + cardDesc + '</div>' +
+            renderGuildSelectorHtml() +
             '<div class="gm-sub-card-pill ' + pillClass + '">' +
                 '<i class="ph-fill ' + icon + '"></i> ' + pillLabel +
             '</div>' +
@@ -258,6 +319,9 @@
     function renderSidebar() {
         var el = document.querySelector('[data-gm-sidebar]');
         if (!el) return;
+
+        checkSubscriptionStatus();
+
         var visible = visibleNavItems();
         var playItems = visible.filter(function (i) { return i.section === 'play'; });
         var adminItems = visible.filter(function (i) { return i.section === 'admin'; });
@@ -274,6 +338,9 @@
                         '<div class="gm-sidebar-user-name">' + esc(getUserName()) + '</div>' +
                         '<div class="gm-sidebar-user-role">' + getUserRoleLong() + '</div>' +
                     '</div>' +
+                    '<button class="gm-sidebar-logout" data-gm-logout title="' + t('nav_logout_title') + '">' +
+                        '<i class="ph ph-sign-out"></i>' +
+                    '</button>' +
                 '</div>' +
             '</div>' +
             '<nav class="gm-sidebar-nav">' +
@@ -291,6 +358,30 @@
                 gotoItem(btn.getAttribute('data-gm-nav-item'));
             });
         });
+
+        var gSel = el.querySelector('[data-gm-guild-select]');
+        if (gSel) {
+            gSel.addEventListener('change', function () {
+                var newGuild = gSel.value;
+                localStorage.setItem('rad_current_guild', newGuild);
+                window.currentGuild = newGuild;
+                renderSidebar();
+                renderTopbar();
+                if (window.RAD_APP && window.RAD_APP.reloadActiveView) {
+                    window.RAD_APP.reloadActiveView();
+                } else {
+                    window.location.reload();
+                }
+            });
+        }
+
+        var lo = el.querySelector('[data-gm-logout]');
+        if (lo) {
+            lo.addEventListener('click', function () {
+                var legacy = document.getElementById('logout-btn');
+                if (legacy) legacy.click();
+            });
+        }
     }
 
     function navItemHtml(item) {
@@ -307,6 +398,8 @@
     function renderTopbar() {
         var el = document.querySelector('[data-gm-topbar]');
         if (!el) return;
+
+        checkSubscriptionStatus();
 
         var brandHtml = state.mobile
             ? '<div class="gm-topbar-mobile-brand">' +
@@ -330,76 +423,8 @@
             ? 'padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
             : 'display: none; padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
 
-        // Check subscription status
-        var isExpired = false;
-        var subHtml = '';
-        var activeGuild = window.currentGuild || 'ALPHA';
-        if (window.guildsData && window.guildsData[activeGuild]) {
-            var sub = window.guildsData[activeGuild];
-            if (sub.type === 'Unlimited') {
-                subHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-infinity"></i> Unlimited</span>';
-            } else if (sub.type === 'Premium') {
-                if (sub.end) {
-                    var endMs = new Date(sub.end).getTime();
-                    var nowMs = Date.now();
-                    var diff = endMs - nowMs;
-                    if (diff <= 0) {
-                        isExpired = true;
-                        subHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-lock-keyhole"></i> Expired</span>';
-                    } else {
-                        var secs = Math.floor(diff / 1000);
-                        var mins = Math.floor(secs / 60);
-                        var hours = Math.floor(mins / 60);
-                        var days = Math.floor(hours / 24);
-
-                        var timeStr = '';
-                        if (days > 0) {
-                            timeStr = days + 'd ' + (hours % 24) + 'h';
-                        } else if (hours > 0) {
-                            timeStr = hours + 'h ' + (mins % 60) + 'm';
-                        } else {
-                            timeStr = mins + 'm';
-                        }
-                        subHtml = '<span class="gm-chip gm-chip-warning" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-right: 0.5rem;"><i class="ph ph-clock"></i> ' + timeStr + '</span>';
-                    }
-                } else {
-                    isExpired = true;
-                    subHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">Expired</span>';
-                }
-            }
-        }
-
-        // Toggle Read-Only logic
-        var readOnlyActive = isExpired && !isSuperAdmin;
-        var banner = document.getElementById('guild-warning-banner');
-
-        if (readOnlyActive) {
-            document.body.classList.add('guild-read-only');
-            if (banner) {
-                banner.innerHTML = '<i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem;"></i>' +
-                    '<span><strong>Read-only access:</strong> The subscription for this guild has expired. Data modification is disabled.</span>';
-                banner.style.display = 'flex';
-            }
-        } else {
-            document.body.classList.remove('guild-read-only');
-            if (banner) {
-                banner.style.display = 'none';
-                banner.innerHTML = '';
-            }
-        }
-
-        var chipHtml = '';
-        if (!isSuperAdmin) {
-            var displayGuild = window.currentGuildRestriction || window.currentGuild || 'ALPHA';
-            chipHtml = '<span class="gm-chip gm-chip-info" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">' + esc(displayGuild) + '</span>';
-        } else if (window.currentGuildRestriction) {
-            chipHtml = '<span class="gm-chip gm-chip-info" style="font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">' + esc(window.currentGuildRestriction) + '</span>';
-        }
-
         var html = brandHtml +
             '<div class="gm-topbar-actions">' +
-                chipHtml +
-                subHtml +
                 '<select id="guild-selector" class="gm-select" style="' + selectStyle + '">' +
                     guildOptions +
                 '</select>' +

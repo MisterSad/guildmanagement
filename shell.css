@@ -225,6 +225,26 @@ html, body {
     flex-shrink: 0;
 }
 
+/* ── Sidebar Logout Button ── */
+.gm-sidebar-logout {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--fg-dim);
+    width: 34px; height: 34px;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.gm-sidebar-logout:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--danger);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
 /* ── Bottom Guild Subscription Model Card ── */
 .gm-sidebar-sub-card {
     margin-top: auto;
@@ -268,8 +288,44 @@ html, body {
     font-size: 0.76rem;
     color: oklch(0.85 0.02 250 / 0.85);
     line-height: 1.35;
-    margin-bottom: 0.85rem;
+    margin-bottom: 0.75rem;
 }
+
+/* ── Sidebar Guild Selector ── */
+.gm-sidebar-guild-select-wrapper {
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+.gm-sidebar-guild-select {
+    width: 100%;
+    padding: 0.42rem 0.75rem;
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    background: oklch(0.18 0.03 250 / 0.85);
+    border: 1px solid oklch(0.35 0.08 250 / 0.6);
+    color: var(--fg);
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s ease;
+    text-align: center;
+}
+.gm-sidebar-guild-select:hover, .gm-sidebar-guild-select:focus {
+    border-color: var(--accent-lime);
+}
+.gm-sidebar-guild-badge {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    font-weight: 700;
+    font-size: 0.8rem;
+    border-radius: var(--radius-pill);
+    background: oklch(0.22 0.03 250);
+    color: var(--accent-cyan);
+    border: 1px solid var(--border-soft);
+    margin-bottom: 0.75rem;
+}
+
 .gm-sub-card-pill {
     display: inline-flex;
     align-items: center;
@@ -311,6 +367,11 @@ html, body {
     -webkit-backdrop-filter: none;
     border-bottom: none;
     position: sticky; top: 0; z-index: 5;
+}
+@media (min-width: 901px) {
+    .gm-topbar {
+        display: none !important;
+    }
 }
 .gm-topbar-title {
     font-family: var(--font-display);
