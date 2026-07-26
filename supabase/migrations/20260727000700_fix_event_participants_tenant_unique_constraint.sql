@@ -13,7 +13,6 @@ BEGIN
       AND COALESCE(a.guild, 'ALPHA') = COALESCE(b.guild, 'ALPHA')
       AND a.event_name = b.event_name
       AND a.week_start IS NOT DISTINCT FROM b.week_start
-      AND a.session_id IS NOT DISTINCT FROM b.session_id
       AND a.pseudo = b.pseudo;
 
     -- Add UNIQUE constraint for no-session events (Glory)

@@ -6,6 +6,7 @@
 -- SECURITY FIX (C4): Frontend stored password in HTML attribute, visible via DevTools.
 
 -- 1. Replace gm_admin_list to no longer return the password column
+DROP FUNCTION IF EXISTS public.gm_admin_list();
 CREATE OR REPLACE FUNCTION public.gm_admin_list()
 RETURNS TABLE(id text, role text, guild text, auth_user_id uuid, created_at timestamptz)
 LANGUAGE sql
