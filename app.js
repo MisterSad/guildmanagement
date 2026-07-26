@@ -1142,9 +1142,10 @@
             console.error('Ban check failed', err);
         }
         try {
-            var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal }]);
+            var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('rad_current_guild') || 'ALPHA';
+            var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal, guild: currentG }]);
             if (res.error) throw res.error;
-            guildMembers.push({ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal, created_at: new Date().toISOString() });
+            guildMembers.push({ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal, guild: currentG, created_at: new Date().toISOString() });
             if (input) input.value = '';
             if (uidInput) uidInput.value = '';
             if (powerInput) powerInput.value = '';
@@ -1455,15 +1456,21 @@
         var powers = guildMembers.map(function (m) { return parseInt(m.overall_power) || 0; });
         var maxPower = powers.length ? Math.max.apply(null, powers) : 0;
 
+        var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('rad_current_guild') || 'ALPHA';
+
         var filteredAdmin = guildMembers.filter(function (m) {
+            var memberG = m.guild || 'ALPHA';
+            var matchGuild = (memberG === currentG);
             var matchSearch = (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qAdmin) !== -1;
             var matchTier = (tAdmin === 'ALL') || (window.RAD.getPowerTier(m.overall_power, maxPower) === tAdmin);
-            return matchSearch && matchTier;
+            return matchGuild && matchSearch && matchTier;
         });
         var filteredMember = guildMembers.filter(function (m) {
+            var memberG = m.guild || 'ALPHA';
+            var matchGuild = (memberG === currentG);
             var matchSearch = (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qMember) !== -1;
             var matchTier = (tMember === 'ALL') || (window.RAD.getPowerTier(m.overall_power, maxPower) === tMember);
-            return matchSearch && matchTier;
+            return matchGuild && matchSearch && matchTier;
         });
 
         function sortMembers(list, sortVal) {
