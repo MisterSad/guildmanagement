@@ -17,7 +17,7 @@
     var TAB_TO_DB_EVENTS = {
         'SvS':                ['SvS'],
         'GvG':                ['GvG'],
-        'Defend Trade Route': ['Defend Trade Route']
+        'Defend Trade Route': ['Defend Trade Route', 'DTR']
     };
 
     var PANEL_MAP = {
@@ -426,6 +426,20 @@
             badge.className = 'event-status-badge gm-chip' + (s.isActive ? ' gm-chip-success active' : '');
             badge.innerHTML = '<span class="gm-dot"></span> ' +
                 (s.isActive ? t('event_active') : t('event_inactive'));
+        }
+
+        var statusLine = panel.querySelector('.gm-event-status-line');
+        if (statusLine) {
+            var dimSpan = statusLine.querySelector('.gm-dim-time');
+            if (!dimSpan) {
+                dimSpan = document.createElement('span');
+                dimSpan.className = 'gm-dim gm-dim-time';
+                dimSpan.style.fontSize = '0.8rem';
+                dimSpan.style.color = 'var(--text-muted)';
+                dimSpan.style.marginLeft = '0.5rem';
+                statusLine.appendChild(dimSpan);
+            }
+            dimSpan.textContent = (s.isActive && s.startAt) ? ' · ' + window.RAD.formatDateTimeUTC(s.startAt) : '';
         }
 
         if (actionsDiv) {
