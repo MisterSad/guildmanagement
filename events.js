@@ -83,10 +83,11 @@
         var db = getDb();
         if (!db) return;
         var sessionId = window.RAD.newSessionId();
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         try {
             var statusRes = await db.from('event_status').upsert(
                 {
-                    guild:      window.currentGuild || 'ALPHA',
+                    guild:      currentG,
                     event_name: dbEventName,
                     is_active:  true,
                     session_id: sessionId,
@@ -115,11 +116,12 @@
         if (!db) return;
         var s = state[tabKey];
         if (!s.activeEventName) return;
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
 
         try {
             var statusRes = await db.from('event_status').upsert(
                 {
-                    guild:      window.currentGuild || 'ALPHA',
+                    guild:      currentG,
                     event_name: s.activeEventName,
                     is_active:  false,
                     session_id: s.sessionId, // on garde la dernière, pour info
@@ -176,6 +178,7 @@
     // dont les participants sont liés aux assignations de squad).
     // Retourne le nombre d'events mis à jour.
     async function addMemberToActiveEvents(pseudo) {
+        var db = getDb();
         if (!db || !pseudo) return 0;
 
         var dbEventNames = [];
@@ -193,8 +196,10 @@
             var active = (statusRes.data || []).filter(function (r) { return r.session_id; });
             if (active.length === 0) return 0;
 
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
             var rows = active.map(function (r) {
                 return {
+                    guild:        currentG,
                     event_name:   r.event_name,
                     session_id:   r.session_id,
                     week_start:   window.RAD.getWeekStart(r.start_at || new Date(r.session_id)),

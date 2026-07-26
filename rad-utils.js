@@ -55,7 +55,7 @@
             if (tenantTables.indexOf(table) !== -1) {
                 var originalSelect = builder.select;
                 builder.select = function () {
-                    var currentG = window.currentGuild || 'ALPHA';
+                    var currentG = getActiveGuild();
                     if (currentG === 'ALPHA') {
                         return originalSelect.apply(this, arguments).or('guild.eq.ALPHA,guild.is.null');
                     }
@@ -64,48 +64,50 @@
 
                 var originalDelete = builder.delete;
                 builder.delete = function () {
-                    if (isGuildSubscriptionExpired(window.currentGuild)) {
+                    var currentG = getActiveGuild();
+                    if (isGuildSubscriptionExpired(currentG)) {
                         return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
                     }
-                    return originalDelete.apply(this, arguments).eq('guild', window.currentGuild || 'ALPHA');
+                    return originalDelete.apply(this, arguments).eq('guild', currentG);
                 };
 
                 var originalUpdate = builder.update;
                 builder.update = function (values, options) {
-                    if (isGuildSubscriptionExpired(window.currentGuild)) {
+                    var currentG = getActiveGuild();
+                    if (isGuildSubscriptionExpired(currentG)) {
                         return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
                     }
-                    return originalUpdate.call(this, values, options).eq('guild', window.currentGuild || 'ALPHA');
+                    return originalUpdate.call(this, values, options).eq('guild', currentG);
                 };
 
                 var originalInsert = builder.insert;
                 builder.insert = function (values, options) {
-                    if (isGuildSubscriptionExpired(window.currentGuild)) {
+                    var currentG = getActiveGuild();
+                    if (isGuildSubscriptionExpired(currentG)) {
                         return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
                     }
-                    var guildVal = window.currentGuild || 'ALPHA';
                     if (Array.isArray(values)) {
                         values = values.map(function (v) {
-                            return Object.assign({ guild: guildVal }, v);
+                            return Object.assign({}, v, { guild: v && v.guild ? v.guild : currentG });
                         });
                     } else if (values && typeof values === 'object') {
-                        values = Object.assign({ guild: guildVal }, values);
+                        values = Object.assign({}, values, { guild: values.guild ? values.guild : currentG });
                     }
                     return originalInsert.call(this, values, options);
                 };
 
                 var originalUpsert = builder.upsert;
                 builder.upsert = function (values, options) {
-                    if (isGuildSubscriptionExpired(window.currentGuild)) {
+                    var currentG = getActiveGuild();
+                    if (isGuildSubscriptionExpired(currentG)) {
                         return { then: function(resolve) { resolve({ data: null, error: { message: "The subscription for this guild has expired. Read-only access only." } }); } };
                     }
-                    var guildVal = window.currentGuild || 'ALPHA';
                     if (Array.isArray(values)) {
                         values = values.map(function (v) {
-                            return Object.assign({ guild: guildVal }, v);
+                            return Object.assign({}, v, { guild: v && v.guild ? v.guild : currentG });
                         });
                     } else if (values && typeof values === 'object') {
-                        values = Object.assign({ guild: guildVal }, values);
+                        values = Object.assign({}, values, { guild: values.guild ? values.guild : currentG });
                     }
                     return originalUpsert.call(this, values, options);
                 };
@@ -652,6 +654,10 @@
         return 'gm-task-card-dark';
     }
 
+    function getActiveGuild() {
+        return window.currentGuildRestriction || window.currentGuild || localStorage.getItem('rad_current_guild') || 'ALPHA';
+    }
+
     window.RAD = {
         db: db,
         t: t,
@@ -659,6 +665,7 @@
         logout: logout,
         adminAccounts: adminAccounts,
         sessionInfo: sessionInfo,
+        getActiveGuild: getActiveGuild,
         escapeHTML: escapeHTML,
         getWeekStart: getWeekStart,
         getPrevWeekStart: getPrevWeekStart,

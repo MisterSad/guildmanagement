@@ -177,10 +177,11 @@
         var db = getDb();
         if (!db) return;
         var sessionId = window.RAD.newSessionId();
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         try {
             var res = await db.from('event_status').upsert(
                 {
-                    guild:      window.currentGuild || 'ALPHA',
+                    guild:      currentG,
                     event_name: SQUAD_EVENT[squad],
                     is_active:  true,
                     session_id: sessionId,
@@ -205,12 +206,13 @@
     async function endSquads(squads) {
         var db = getDb();
         if (!db) return;
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         for (var i = 0; i < squads.length; i++) {
             var squad = squads[i];
             try {
                 await db.from('event_status').upsert(
                     {
-                        guild:      window.currentGuild || 'ALPHA',
+                        guild:      currentG,
                         event_name: SQUAD_EVENT[squad],
                         is_active:  false,
                         session_id: sfState.squads[squad].sessionId, // gardé pour l'historique
@@ -345,12 +347,15 @@
         var sq = sfState.squads[squad];
         if (!sq) return;
 
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+
         // Si la session n'existe pas encore, la créer automatiquement pour permettre l'assignation rétroactive ou en avance
         if (!sq.sessionId) {
             sq.sessionId = window.RAD.newSessionId();
             sq.startAt = new Date().toISOString();
             try {
                 await db.from('event_status').upsert({
+                    guild: currentG,
                     event_name: SQUAD_EVENT[squad],
                     is_active: true,
                     session_id: sq.sessionId,
@@ -378,6 +383,7 @@
         }
 
         var upsertRes = await db.from('shadowfront_squads').upsert({
+            guild: currentG,
             week_start: week,
             session_id: sq.sessionId,
             pseudo: pseudo,
@@ -439,7 +445,9 @@
 
     // ── Sync participant rows ──────────────────────────────────────────────────
     async function syncParticipantRows(sessionId) {
+        var db = getDb();
         if (!db || !sessionId) return;
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         var existingRes = await db.from('event_participants').select('pseudo')
             .eq('event_name', EVENT_NAME).eq('session_id', sessionId);
         var existing = new Set((existingRes.data || []).map(function (r) { return r.pseudo; }));
@@ -456,6 +464,7 @@
             .filter(function (p) { return !existing.has(p); })
             .map(function (p) {
                 return {
+                    guild: currentG,
                     event_name: EVENT_NAME,
                     week_start: week,
                     session_id: sessionId,
@@ -1145,11 +1154,13 @@
         var db = getDb();
         if (!db) return;
         var week = window.RAD.getWeekStart();
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         try {
             if (availability === 'none') {
                 await db.from('shadowfront_signups').delete().eq('week_start', week).eq('pseudo', pseudo);
             } else {
                 await db.from('shadowfront_signups').upsert({
+                    guild: currentG,
                     week_start: week,
                     pseudo: pseudo,
                     availability: availability

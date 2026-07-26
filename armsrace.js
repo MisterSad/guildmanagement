@@ -59,13 +59,29 @@
                     .order('pseudo', { ascending: true });
                 var parts = partRes.data || [];
                 
-                ['stageA', 'stageB'].forEach(function(k) {
+                for (var i = 0; i < ['stageA', 'stageB'].length; i++) {
+                    var k = ['stageA', 'stageB'][i];
                     var evName = STAGE_EVENTS[k];
                     var sid = arState.stages[k].sessionId;
                     arState.stages[k].participants = parts.filter(function(p) {
                         return p.event_name === evName && p.session_id === sid;
                     });
-                });
+
+                    // Self-heal: active stage with 0 participants ⇒ trigger populate_event_participants
+                    if (arState.stages[k].active && sid && arState.stages[k].participants.length === 0) {
+                        var week = window.RAD.getWeekStart(arState.stages[k].startAt);
+                        await db.rpc('populate_event_participants', {
+                            p_event_name: evName,
+                            p_session_id: sid,
+                            p_week_start: week
+                        });
+                        var healRes = await db.from('event_participants').select('*')
+                            .eq('event_name', evName)
+                            .eq('session_id', sid)
+                            .order('pseudo', { ascending: true });
+                        arState.stages[k].participants = healRes.data || [];
+                    }
+                }
             } else {
                 arState.stages.stageA.participants = [];
                 arState.stages.stageB.participants = [];
@@ -84,11 +100,12 @@
         var sessionId = window.RAD.newSessionId();
         var evName = STAGE_EVENTS[stageKey];
         var stageLetter = stageKey === 'stageA' ? 'A' : 'B';
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         
         try {
             var res = await db.from('event_status').upsert(
                 {
-                    guild:      window.currentGuild || 'ALPHA',
+                    guild:      currentG,
                     event_name: evName,
                     is_active:  true,
                     session_id: sessionId,
@@ -127,10 +144,12 @@
         if (!db) return;
         var stg = arState.stages[stageKey];
         if (!stg.active) return;
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         
         try {
             await db.from('event_status').upsert(
                 {
+                    guild:      currentG,
                     event_name: STAGE_EVENTS[stageKey],
                     is_active:  false,
                     session_id: stg.sessionId,
@@ -240,14 +259,17 @@
     }
 
     async function addMemberToActiveEvents(pseudo) {
+        var db = getDb();
         if (!db || !pseudo) return 0;
         try {
             var active = ['stageA', 'stageB'].filter(function(k) { return arState.stages[k].active && arState.stages[k].sessionId; });
             if (active.length === 0) return 0;
             
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
             var rows = active.map(function(k) {
                 var stg = arState.stages[k];
                 return {
+                    guild: currentG,
                     event_name: STAGE_EVENTS[k],
                     session_id: stg.sessionId,
                     week_start: window.RAD.getWeekStart(stg.startAt || new Date(stg.sessionId)),
