@@ -14,44 +14,49 @@
     async function loadGlory() {
         var db = getDb();
         if (!db) return;
-        var week     = window.RAD.getWeekStart();
-        var prevWeek = window.RAD.getPrevWeekStart(week);
+        var week = window.RAD.getWeekStart();
+        try {
+            var prevWeek = window.RAD.getPrevWeekStart(week);
 
-        var [membersRes, currRes, prevRes] = await Promise.all([
-            db.from('guild_members').select('pseudo').order('pseudo', { ascending: true }),
-            db.from('event_participants').select('pseudo,score').eq('event_name', 'Glory').eq('week_start', week),
-            db.from('event_participants').select('pseudo,score').eq('event_name', 'Glory').eq('week_start', prevWeek)
-        ]);
+            var [membersRes, currRes, prevRes] = await Promise.all([
+                db.from('guild_members').select('pseudo').order('pseudo', { ascending: true }),
+                db.from('event_participants').select('pseudo,score').eq('event_name', 'Glory').eq('week_start', week),
+                db.from('event_participants').select('pseudo,score').eq('event_name', 'Glory').eq('week_start', prevWeek)
+            ]);
 
-        var members  = (membersRes.data || []).map(function (m) { return m.pseudo; });
-        var currMap  = {};
-        var prevMap  = {};
-        (currRes.data || []).forEach(function (r) { currMap[r.pseudo] = r.score; });
-        (prevRes.data || []).forEach(function (r) { prevMap[r.pseudo] = r.score; });
+            var members  = (membersRes.data || []).map(function (m) { return m.pseudo; });
+            var currMap  = {};
+            var prevMap  = {};
+            (currRes.data || []).forEach(function (r) { currMap[r.pseudo] = r.score; });
+            (prevRes.data || []).forEach(function (r) { prevMap[r.pseudo] = r.score; });
 
-        var existing = new Set(Object.keys(currMap));
-        var toInsert = members
-            .filter(function (p) { return !existing.has(p); })
-            .map(function (p) { return { event_name: 'Glory', week_start: week, pseudo: p, participated: 1, score: null }; });
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var existing = new Set(Object.keys(currMap));
+            var toInsert = members
+                .filter(function (p) { return !existing.has(p); })
+                .map(function (p) { return { guild: currentG, event_name: 'Glory', week_start: week, pseudo: p, participated: 1, score: null }; });
 
-        if (toInsert.length > 0) {
-            await db.from('event_participants').insert(toInsert);
-            toInsert.forEach(function (item) { currMap[item.pseudo] = null; });
-        }
-
-        // Tri par ordre décroissant de la gloire de la semaine précédente
-        members.sort(function (a, b) {
-            var valA = prevMap[a] != null ? (typeof prevMap[a] === 'number' ? prevMap[a] : parseInt(prevMap[a], 10)) : -1;
-            var valB = prevMap[b] != null ? (typeof prevMap[b] === 'number' ? prevMap[b] : parseInt(prevMap[b], 10)) : -1;
-            if (isNaN(valA)) valA = -1;
-            if (isNaN(valB)) valB = -1;
-            if (valB !== valA) {
-                return valB - valA;
+            if (toInsert.length > 0 && window.RAD && window.RAD.canWriteGuild && window.RAD.canWriteGuild()) {
+                await db.from('event_participants').upsert(toInsert, { onConflict: 'guild,event_name,week_start,pseudo' });
+                toInsert.forEach(function (item) { currMap[item.pseudo] = null; });
             }
-            return a.localeCompare(b);
-        });
 
-        renderGlory(members, currMap, prevMap, week);
+            members.sort(function (a, b) {
+                var valA = prevMap[a] != null ? (typeof prevMap[a] === 'number' ? prevMap[a] : parseInt(prevMap[a], 10)) : -1;
+                var valB = prevMap[b] != null ? (typeof prevMap[b] === 'number' ? prevMap[b] : parseInt(prevMap[b], 10)) : -1;
+                if (isNaN(valA)) valA = -1;
+                if (isNaN(valB)) valB = -1;
+                if (valB !== valA) {
+                    return valB - valA;
+                }
+                return a.localeCompare(b);
+            });
+
+            renderGlory(members, currMap, prevMap, week);
+        } catch (err) {
+            console.error('loadGlory', err);
+            renderGlory([], {}, {}, week);
+        }
     }
 
     function renderGlory(members, currMap, prevMap, week) {

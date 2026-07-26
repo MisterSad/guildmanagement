@@ -124,7 +124,8 @@
     // plusieurs centaines de participants × semaines, certaines semaines
     // disparaissaient du sélecteur.
     async function fetchAllWeeks() {
-        var res = await db.rpc('list_event_weeks', { p_guild: window.currentGuild || 'ALPHA' });
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var res = await db.rpc('list_event_weeks', { p_guild: currentG });
         var weeks = (res.data || []).map(function (r) { return r.week_start; });
         weeks.sort(function (a, b) { return b.localeCompare(a); });
         if (weeks.indexOf(currentWeek) === -1) weeks.unshift(currentWeek);

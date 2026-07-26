@@ -29,56 +29,61 @@
     async function loadHistory() {
         var db = getDb();
         if (!db) return;
-        var res = await db.rpc('list_event_sessions', { p_guild: window.currentGuild || 'ALPHA' });
-        if (res.error) {
-            console.error('list_event_sessions', res.error);
-            window.RAD.showToast(t('toast_err_generic') + ' ' + res.error.message, 'error');
-            return;
-        }
-        sessions = res.data || [];
-
-        // Manual fetch for Glory since it has no session_id and might not be returned by the RPC
-        var hasGlory = sessions.some(function(s) { return s.event_name === 'Glory'; });
-        if (!hasGlory) {
-            var gloryRes = await db.from('event_participants')
-                .select('week_start, participated, score')
-                .eq('event_name', 'Glory');
-            
-            if (!gloryRes.error && gloryRes.data && gloryRes.data.length > 0) {
-                var gloryMap = {};
-                gloryRes.data.forEach(function(row) {
-                    var ws = row.week_start;
-                    if (!gloryMap[ws]) {
-                        gloryMap[ws] = {
-                            event_name: 'Glory',
-                            session_id: null,
-                            week_start: ws,
-                            participants: 0,
-                            participated_count: 0,
-                            total_score: 0
-                        };
-                    }
-                    gloryMap[ws].participants++;
-                    if (row.participated > 0) {
-                        gloryMap[ws].participated_count++;
-                    }
-                    if (row.score > 0) {
-                        gloryMap[ws].total_score += row.score;
-                    }
-                });
-                var glorySessions = Object.values(gloryMap);
-                sessions = sessions.concat(glorySessions);
-                
-                // Re-sort sessions by date descending
-                sessions.sort(function(a, b) {
-                    var timeA = a.session_id ? new Date(a.session_id).getTime() : new Date(a.week_start).getTime();
-                    var timeB = b.session_id ? new Date(b.session_id).getTime() : new Date(b.week_start).getTime();
-                    return timeB - timeA;
-                });
+        try {
+            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var res = await db.rpc('list_event_sessions', { p_guild: currentG });
+            if (res.error) {
+                console.error('list_event_sessions', res.error);
+                renderHistory();
+                return;
             }
-        }
+            sessions = res.data || [];
 
-        renderHistory();
+            // Manual fetch for Glory since it has no session_id and might not be returned by the RPC
+            var hasGlory = sessions.some(function(s) { return s.event_name === 'Glory'; });
+            if (!hasGlory) {
+                var gloryRes = await db.from('event_participants')
+                    .select('week_start, participated, score')
+                    .eq('event_name', 'Glory');
+                
+                if (!gloryRes.error && gloryRes.data && gloryRes.data.length > 0) {
+                    var gloryMap = {};
+                    gloryRes.data.forEach(function(row) {
+                        var ws = row.week_start;
+                        if (!gloryMap[ws]) {
+                            gloryMap[ws] = {
+                                event_name: 'Glory',
+                                session_id: null,
+                                week_start: ws,
+                                participants: 0,
+                                participated_count: 0,
+                                total_score: 0
+                            };
+                        }
+                        gloryMap[ws].participants++;
+                        if (row.participated > 0) {
+                            gloryMap[ws].participated_count++;
+                        }
+                        if (row.score > 0) {
+                            gloryMap[ws].total_score += row.score;
+                        }
+                    });
+                    var glorySessions = Object.values(gloryMap);
+                    sessions = sessions.concat(glorySessions);
+                    
+                    // Re-sort sessions by date descending
+                    sessions.sort(function(a, b) {
+                        var timeA = a.session_id ? new Date(a.session_id).getTime() : new Date(a.week_start).getTime();
+                        var timeB = b.session_id ? new Date(b.session_id).getTime() : new Date(b.week_start).getTime();
+                        return timeB - timeA;
+                    });
+                }
+            }
+            renderHistory();
+        } catch (err) {
+            console.error('loadHistory', err);
+            renderHistory();
+        }
     }
 
     function pad2(n) { return (n < 10 ? '0' : '') + n; }

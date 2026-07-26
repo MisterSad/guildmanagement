@@ -604,9 +604,9 @@
                     panel.classList.add('active');
                 }
             }
-        }
-        if (window.RAD_APP && window.RAD_APP.onTabActivated) {
-            window.RAD_APP.onTabActivated(targetTabId);
+            if (window.RAD_APP && window.RAD_APP.onTabActivated) {
+                window.RAD_APP.onTabActivated(targetTabId);
+            }
         }
     }
 
