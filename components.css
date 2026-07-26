@@ -2086,10 +2086,10 @@
 .gm-discord-hero {
     margin-bottom: 1.5rem;
     padding: 1.6rem 1.8rem;
-    background: linear-gradient(135deg, oklch(0.60 0.22 270 / 0.18) 0%, oklch(0.55 0.20 290 / 0.10) 100%);
-    border: 1px solid oklch(0.60 0.22 270 / 0.35);
+    background: linear-gradient(135deg, oklch(0.78 0.16 220 / 0.14) 0%, oklch(0.82 0.13 320 / 0.08) 100%);
+    border: 1px solid var(--accent-cyan-soft);
     border-radius: var(--radius-xl);
-    box-shadow: 0 8px 32px oklch(0.60 0.22 270 / 0.12);
+    box-shadow: 0 8px 32px oklch(0.78 0.16 220 / 0.08);
 }
 
 .gm-discord-hero-inner {
@@ -2102,15 +2102,15 @@
     width: 60px;
     height: 60px;
     border-radius: 16px;
-    background: oklch(0.60 0.22 270 / 0.25);
-    border: 1.5px solid oklch(0.60 0.22 270 / 0.5);
+    background: var(--accent-cyan-soft);
+    border: 1.5px solid var(--accent-cyan);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #5865F2;
+    color: var(--accent-cyan);
     font-size: 2rem;
     flex-shrink: 0;
-    box-shadow: 0 0 20px oklch(0.60 0.22 270 / 0.3);
+    box-shadow: 0 0 20px oklch(0.78 0.16 220 / 0.25);
 }
 
 .notification-grid {
@@ -2121,7 +2121,7 @@
 }
 
 .notification-group {
-    background: var(--bg-1, #0f172a);
+    background: var(--bg-1);
     border: 1px solid var(--border-soft);
     border-radius: var(--radius-lg);
     padding: 1.25rem;
@@ -2133,7 +2133,7 @@
 
 .notification-group:hover {
     transform: translateY(-2px);
-    border-color: oklch(0.60 0.22 270 / 0.45);
+    border-color: var(--accent-cyan);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
@@ -2151,7 +2151,7 @@
 
 .notification-group-title i {
     font-size: 1.2rem;
-    color: #5865F2;
+    color: var(--accent-cyan);
 }
 
 .notification-option {
@@ -2171,7 +2171,7 @@
 }
 
 .notification-option input[type="checkbox"] {
-    accent-color: #5865F2;
+    accent-color: var(--accent-lime);
     width: 18px;
     height: 18px;
     border-radius: 4px;
