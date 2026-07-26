@@ -250,6 +250,34 @@
         loginView.classList.add('active');
     }
 
+    window.RAD_APP = window.RAD_APP || {};
+    window.RAD_APP.onTabActivated = function (tabId) {
+        if (tabId === 'admin-members' || tabId === 'member-members') {
+            fetchGuildMembers();
+        }
+        if (tabId === 'admin-home') {
+            fetchAccounts();
+            populateAccountGuildSelect();
+        }
+        if (tabId === 'admin-discord') {
+            loadGuildSettings();
+        }
+        if (tabId === 'admin-superadmin') {
+            renderGuildsSubscriptionList();
+            fetchAccounts();
+            populateAccountGuildSelect();
+        }
+        if (tabId === 'admin-banned') {
+            fetchBannedPlayers();
+        }
+        if (tabId === 'tab-sanctions' && window.RAD_SANCTIONS) {
+            window.RAD_SANCTIONS.load();
+        }
+        if (tabId === 'gm-overview' && window.RAD_OVERVIEW) {
+            window.RAD_OVERVIEW.load();
+        }
+    };
+
     // ─── Tab Navigation ───────────────────────────────────────────────────────
     document.querySelectorAll('.nav-tab').forEach(function (tabBtn) {
         tabBtn.addEventListener('click', function () {
@@ -257,23 +285,17 @@
             var viewId = tabBtn.getAttribute('data-view');
             var viewEl = document.getElementById(viewId);
 
-            viewEl.querySelectorAll('.nav-tab').forEach(function (b) { b.classList.remove('active'); });
-            tabBtn.classList.add('active');
+            if (viewEl) {
+                viewEl.querySelectorAll('.nav-tab').forEach(function (b) { b.classList.remove('active'); });
+                tabBtn.classList.add('active');
 
-            viewEl.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
-            var panel = document.getElementById(tabId);
-            if (panel) panel.classList.add('active');
+                viewEl.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+                var panel = document.getElementById(tabId);
+                if (panel) panel.classList.add('active');
+            }
 
-            if (tabId === 'admin-members' || tabId === 'member-members') {
-                fetchGuildMembers();
-            }
-            if (tabId === 'admin-home') {
-                fetchAccounts();
-                loadGuildSettings();
-            }
-            if (tabId === 'admin-banned') {
-                fetchBannedPlayers();
-            }
+            window.RAD_APP.onTabActivated(tabId);
+
             var eventName = tabBtn.getAttribute('data-event-tab');
             if (eventName && ['SvS', 'GvG', 'Defend Trade Route'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
                 window.RAD_EVENTS.loadEvent(eventName);
@@ -292,12 +314,6 @@
             }
             if (eventName === 'history' && window.RAD_HISTORY) {
                 window.RAD_HISTORY.load();
-            }
-            if (tabId === 'tab-sanctions' && window.RAD_SANCTIONS) {
-                window.RAD_SANCTIONS.load();
-            }
-            if (tabId === 'gm-overview' && window.RAD_OVERVIEW) {
-                window.RAD_OVERVIEW.load();
             }
         });
     });

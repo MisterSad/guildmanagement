@@ -28,7 +28,7 @@
         { id: 'history',   tabId: 'event-history', icon: 'ph-clock-counter-clockwise', labelKey: 'gm_nav_history', section: 'play',  panels: ['event-history'] },
         { id: 'stats',     tabId: 'stats-admin', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
 
-        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', r4Only: true, panels: ['admin-home'] },
+        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
         { id: 'discord',   tabId: 'admin-discord', icon: 'ph-bell-ringing',   labelKey: 'gm_nav_discord',   section: 'admin', panels: ['admin-discord'] },
         { id: 'sanctions', tabId: 'tab-sanctions', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
         { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] },
@@ -41,7 +41,6 @@
         var items = [];
         NAV_ITEMS.forEach(function (i) {
             if (i.r5Only && role !== 'R5') return;
-            if (i.r4Only && role === 'R5') return;
             items.push(Object.assign({}, i));
         });
         return items;
@@ -563,8 +562,21 @@
         var item = NAV_ITEMS.find(function (i) { return i.id === itemId; });
         if (!item) return;
         var legacyTab = document.querySelector('.nav-tab[data-tab="' + item.tabId + '"]');
-        if (legacyTab) legacyTab.click();
-        // Le MutationObserver s'occupe de mettre à jour notre état actif.
+        if (legacyTab) {
+            legacyTab.click();
+        } else {
+            var dashboard = document.getElementById('dashboard-view');
+            if (dashboard) {
+                dashboard.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+                var panel = document.getElementById(item.tabId);
+                if (panel) {
+                    panel.classList.add('active');
+                }
+            }
+        }
+        if (window.RAD_APP && window.RAD_APP.onTabActivated) {
+            window.RAD_APP.onTabActivated(item.tabId);
+        }
     }
 
     // ── Observer le panel actif courant pour syncer l'item actif ────────────
