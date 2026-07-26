@@ -137,18 +137,23 @@
         opts = opts || {};
         try {
             var refPrev = window.RAD.getPrevWeekStart(weeks[0]);
-            var glorySpan = [refPrev].concat(weeks);
+            var getConfigVal = function (key, def) {
+                if (window.RAD && window.RAD.config && window.RAD.config.get) {
+                    return window.RAD.config.get(key).catch(function () { return def; });
+                }
+                return Promise.resolve(def);
+            };
 
             var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace] = await Promise.all([
                 db.from('guild_members').select('pseudo, uid'),
                 db.from('event_participants').select('*').in('week_start', weeks).neq('event_name', 'Glory').limit(100000),
                 db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').in('week_start', glorySpan).limit(100000),
                 db.from('shadowfront_squads').select('pseudo, role, week_start').in('week_start', weeks).limit(100000),
-                window.RAD.config.get('coeff_svs'),
-                window.RAD.config.get('coeff_gvg'),
-                window.RAD.config.get('coeff_shadowfront'),
-                window.RAD.config.get('coeff_dtr'),
-                window.RAD.config.get('coeff_armsrace')
+                getConfigVal('coeff_svs', 5),
+                getConfigVal('coeff_gvg', 5),
+                getConfigVal('coeff_shadowfront', 3),
+                getConfigVal('coeff_dtr', 2),
+                getConfigVal('coeff_armsrace', 1)
             ]);
 
             var memberRows   = membersRes.data || [];
@@ -179,6 +184,7 @@
             });
         } catch (err) {
             console.error('stats loadGlobalPeriod error', err);
+            renderEmpty();
             if (window.RAD && window.RAD.showToast) {
                 window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
             }
@@ -1078,17 +1084,22 @@
     // dans la guilde, et conserve le breakdown par événement. Permet ensuite de
     // dériver des métriques d'évolution réelle (tendance mobile, présence cumulée,
     // évolution par événement) au lieu d'un simple snapshot.
-    async function openProfile(pseudo) {
+        var getConfigVal = function (key, def) {
+            if (window.RAD && window.RAD.config && window.RAD.config.get) {
+                return window.RAD.config.get(key).catch(function () { return def; });
+            }
+            return Promise.resolve(def);
+        };
         var [membersRes, partsRes, gloryRes, squadsRes, coeffSvs, coeffGvg, coeffShadowfront, coeffDtr, coeffArmsrace] = await Promise.all([
             db.from('guild_members').select('pseudo'),
             db.from('event_participants').select('*').neq('event_name', 'Glory').limit(100000),
             db.from('event_participants').select('pseudo, score, week_start').eq('event_name', 'Glory').limit(100000),
             db.from('shadowfront_squads').select('pseudo, role, week_start').limit(100000),
-            window.RAD.config.get('coeff_svs'),
-            window.RAD.config.get('coeff_gvg'),
-            window.RAD.config.get('coeff_shadowfront'),
-            window.RAD.config.get('coeff_dtr'),
-            window.RAD.config.get('coeff_armsrace')
+            getConfigVal('coeff_svs', 5),
+            getConfigVal('coeff_gvg', 5),
+            getConfigVal('coeff_shadowfront', 3),
+            getConfigVal('coeff_dtr', 2),
+            getConfigVal('coeff_armsrace', 1)
         ]);
         var allMembers = (membersRes.data || []).map(function (m) { return m.pseudo; });
         var allParts   = deduplicateParticipants(partsRes.data || []);

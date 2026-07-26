@@ -335,26 +335,6 @@
             }
 
             window.RAD_APP.onTabActivated(tabId);
-
-            var eventName = tabBtn.getAttribute('data-event-tab');
-            if (eventName && ['SvS', 'GvG', 'Defend Trade Route'].indexOf(eventName) !== -1 && window.RAD_EVENTS) {
-                window.RAD_EVENTS.loadEvent(eventName);
-            }
-            if (eventName === 'ARMS RACE' && window.RAD_ARMSRACE) {
-                window.RAD_ARMSRACE.load();
-            }
-            if (eventName === 'Shadowfront' && window.RAD_SHADOWFRONT) {
-                window.RAD_SHADOWFRONT.load();
-            }
-            if (eventName === 'stats' && window.RAD_STATS) {
-                window.RAD_STATS.load();
-            }
-            if (eventName === 'glory' && window.RAD_GLORY) {
-                window.RAD_GLORY.load();
-            }
-            if (eventName === 'history' && window.RAD_HISTORY) {
-                window.RAD_HISTORY.load();
-            }
         });
     });
 
