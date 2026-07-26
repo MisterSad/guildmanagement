@@ -42,7 +42,6 @@
                 'banned_players',
                 'event_status',
                 'event_participants',
-                'shadowfront_squads',
                 'sanctions',
                 'weekly_scores',
                 'guild_config',
