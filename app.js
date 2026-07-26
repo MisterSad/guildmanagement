@@ -1561,6 +1561,14 @@
             });
         });
 
+        document.querySelectorAll('.guild-transfer-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pseudo = btn.getAttribute('data-pseudo');
+                var member = guildMembers.find(function (m) { return m.pseudo === pseudo; });
+                if (member) showTransferMemberDialog(member);
+            });
+        });
+
         document.querySelectorAll('.guild-edit-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var pseudo = btn.getAttribute('data-pseudo');
@@ -1627,10 +1635,112 @@
                     '<i class="ph ph-calendar-blank"></i> <span>' + dateStr + '</span>' +
                 '</div>' +
                 (withActions ? '<div class="gm-member-actions">' +
+                    '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-transfer-btn" data-pseudo="' + esc(m.pseudo) + '" data-uid="' + esc(uidVal) + '" title="Transfer member to another guild on same server" style="color: var(--accent);"><i class="ph ph-arrows-left-right"></i></button>' +
                     '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('edit_title') + '"><i class="ph ph-pencil-simple"></i></button>' +
                     '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-delete-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('delete_title') + '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
                 '</div>' : '') +
             '</div>';
+    }
+
+    async function showTransferMemberDialog(member) {
+        var existing = document.getElementById('transfer-member-overlay');
+        if (existing) existing.remove();
+
+        var currentG = window.currentGuild || 'ALPHA';
+        var currentServer = (window.guildsData && window.guildsData[currentG]) ? window.guildsData[currentG].server_number : null;
+
+        var sisterGuilds = [];
+        if (window.guildsData) {
+            Object.keys(window.guildsData).forEach(function (g) {
+                if (g !== currentG && window.guildsData[g].server_number && window.guildsData[g].server_number === currentServer) {
+                    sisterGuilds.push(g);
+                }
+            });
+        }
+
+        if (sisterGuilds.length === 0) {
+            showToast('No other guild exists on Server #' + (currentServer || '????') + '. Set a server number in Super Admin > Subscription Management & Server Numbers.', 'warning');
+            return;
+        }
+
+        var optionsHtml = sisterGuilds.map(function (g) {
+            return '<option value="' + esc(g) + '">' + esc(g) + ' (Server #' + esc(currentServer) + ')</option>';
+        }).join('');
+
+        var html =
+            '<div id="transfer-member-overlay" class="gm-modal-overlay">' +
+                '<div class="gm-modal-card" style="max-width: 480px; width: 90%; position: relative;">' +
+                    '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
+                        '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                            '<i class="ph ph-arrows-left-right" style="font-size: 1.5rem; color: var(--accent);"></i>' +
+                            '<h3 style="margin:0; font-size: 1.2rem;">Transfer Member</h3>' +
+                        '</div>' +
+                        '<button type="button" class="gm-mini-btn gm-close-modal"><i class="ph ph-x"></i></button>' +
+                    '</div>' +
+                    '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:1rem;">' +
+                        '<div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">' +
+                            '<div><strong>Player:</strong> <span style="color: var(--accent); font-weight: 700;">' + esc(member.pseudo) + '</span> (UID: ' + esc(member.uid) + ')</div>' +
+                            '<div style="font-size: 0.85rem; color: var(--text-dim); margin-top: 0.25rem;">Current Guild: <strong>' + esc(currentG) + '</strong> (Server #' + esc(currentServer) + ')</div>' +
+                        '</div>' +
+                        '<div class="gm-form-group">' +
+                            '<label class="gm-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild on Server #' + esc(currentServer) + ':</label>' +
+                            '<select id="transfer-target-guild" class="gm-select gm-input">' +
+                                optionsHtml +
+                            '</select>' +
+                        '</div>' +
+                        '<div style="background: var(--info-soft); color: var(--info); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--info-soft); font-size: 0.8rem; line-height: 1.4;">' +
+                            '<i class="ph ph-info" style="margin-right: 4px;"></i>' +
+                            'This player will disappear from ' + esc(currentG) + ' and join the target guild. All historical point logs, event records, and sanctions are kept for past activity tracking.' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top: 1.5rem;">' +
+                        '<button type="button" class="gm-btn gm-btn-ghost gm-close-modal">Cancel</button>' +
+                        '<button type="button" id="confirm-transfer-btn" class="gm-btn gm-btn-primary">' +
+                            '<i class="ph ph-arrows-left-right"></i>' +
+                            '<span>Confirm Transfer</span>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+        var overlay = document.getElementById('transfer-member-overlay');
+
+        overlay.querySelectorAll('.gm-close-modal').forEach(function (btn) {
+            btn.addEventListener('click', function () { overlay.remove(); });
+        });
+
+        var confirmBtn = document.getElementById('confirm-transfer-btn');
+        confirmBtn.addEventListener('click', async function () {
+            var targetSelect = document.getElementById('transfer-target-guild');
+            var targetGuild = targetSelect ? targetSelect.value : null;
+            if (!targetGuild) return;
+
+            confirmBtn.disabled = true;
+            var span = confirmBtn.querySelector('span');
+            if (span) span.textContent = 'Transferring...';
+
+            try {
+                var res = await supabase.rpc('transfer_guild_member', {
+                    p_uid: member.uid,
+                    p_target_guild: targetGuild
+                });
+
+                if (res.error) throw res.error;
+                var data = res.data;
+                if (!data || !data.ok) {
+                    throw new Error((data && data.error) ? data.error : 'transfer_failed');
+                }
+
+                overlay.remove();
+                showToast(member.pseudo + ' transferred to ' + targetGuild + ' on Server #' + currentServer + '!', 'success');
+                await fetchGuildMembers();
+            } catch (err) {
+                showToast('Error transferring member: ' + err.message, 'error');
+                confirmBtn.disabled = false;
+                if (span) span.textContent = 'Confirm Transfer';
+            }
+        });
     }
 
     async function showEditMemberDialog(member) {
