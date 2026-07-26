@@ -59,6 +59,7 @@
         // Skeleton
         renderShell(panel);
 
+        var db = getDb();
         if (!db) return;
 
         try {

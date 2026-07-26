@@ -196,6 +196,7 @@
     }
 
     async function saveGlory(pseudo, value, week, icon) {
+        var db = getDb();
         if (!db) return;
         try {
             var scoreVal = (value === null || value === '') ? null : (typeof value === 'number' ? value : window.RAD.parseNumber(value));

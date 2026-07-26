@@ -98,6 +98,8 @@
             btn.disabled = true;
 
             try {
+                var db = getDb();
+                if (!db) return;
                 var res = await db.from('sanctions').insert([{
                     pseudo: pseudo,
                     comment: comment,
@@ -132,6 +134,8 @@
     }
 
     async function deleteSanction(id) {
+        var db = getDb();
+        if (!db) return;
         try {
             var res = await db.from('sanctions').delete().eq('id', id);
             if (res.error) throw res.error;

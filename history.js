@@ -470,6 +470,8 @@
                     '<strong>' + esc(meta.label) + '</strong><br>' + t('confirm_delete_session_body'),
                     async function () {
                         try {
+                            var db = getDb();
+                            if (!db) return;
                             // 1. Delete matching participants in event_participants
                             var query = db.from('event_participants').delete()
                                 .eq('event_name', eventName)
