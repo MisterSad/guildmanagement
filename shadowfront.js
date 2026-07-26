@@ -177,6 +177,7 @@
         try {
             var res = await db.from('event_status').upsert(
                 {
+                    guild:      window.currentGuild || 'ALPHA',
                     event_name: SQUAD_EVENT[squad],
                     is_active:  true,
                     session_id: sessionId,
@@ -206,6 +207,7 @@
             try {
                 await db.from('event_status').upsert(
                     {
+                        guild:      window.currentGuild || 'ALPHA',
                         event_name: SQUAD_EVENT[squad],
                         is_active:  false,
                         session_id: sfState.squads[squad].sessionId, // gardé pour l'historique

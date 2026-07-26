@@ -86,6 +86,7 @@
         try {
             var statusRes = await db.from('event_status').upsert(
                 {
+                    guild:      window.currentGuild || 'ALPHA',
                     event_name: dbEventName,
                     is_active:  true,
                     session_id: sessionId,
@@ -96,14 +97,7 @@
                 { onConflict: 'guild,event_name' }
             );
             if (statusRes.error) throw statusRes.error;
-
-            state[tabKey].activeEventName = dbEventName;
-            state[tabKey].sessionId       = sessionId;
-            state[tabKey].stage           = stage || null;
-            state[tabKey].startAt         = startAt || null;
-            state[tabKey].isActive        = true;
-            renderStatus(tabKey);
-            await populateParticipants(tabKey);
+            window.RAD.showToast(t('event_session_started'), 'success');
 
             if (window.RAD.notifyDiscordEvent) {
                 window.RAD.notifyDiscordEvent(dbEventName, startAt || sessionId, 'start');
@@ -112,6 +106,7 @@
             console.error('startEvent', err);
             window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
+        await loadEvent(tabKey);
     }
 
     // ── Arrêt de la session courante ──────────────────────────────────────
@@ -120,9 +115,11 @@
         if (!db) return;
         var s = state[tabKey];
         if (!s.activeEventName) return;
+
         try {
-            await db.from('event_status').upsert(
+            var statusRes = await db.from('event_status').upsert(
                 {
+                    guild:      window.currentGuild || 'ALPHA',
                     event_name: s.activeEventName,
                     is_active:  false,
                     session_id: s.sessionId, // on garde la dernière, pour info

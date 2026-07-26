@@ -85,6 +85,7 @@
         try {
             var res = await db.from('event_status').upsert(
                 {
+                    guild:      window.currentGuild || 'ALPHA',
                     event_name: evName,
                     is_active:  true,
                     session_id: sessionId,
