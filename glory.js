@@ -19,21 +19,11 @@
             var prevWeek = window.RAD.getPrevWeekStart(week);
             var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
 
-            var membersQuery = db.from('guild_members').select('pseudo').order('pseudo', { ascending: true });
-            var currQuery    = db.from('event_participants').select('pseudo,score').eq('event_name', 'Glory').eq('week_start', week);
-            var prevQuery    = db.from('event_participants').select('pseudo,score').eq('event_name', 'Glory').eq('week_start', prevWeek);
-
-            if (currentG === 'ALPHA') {
-                membersQuery = membersQuery.or('guild.eq.ALPHA,guild.is.null');
-                currQuery    = currQuery.or('guild.eq.ALPHA,guild.is.null');
-                prevQuery    = prevQuery.or('guild.eq.ALPHA,guild.is.null');
-            } else {
-                membersQuery = membersQuery.eq('guild', currentG);
-                currQuery    = currQuery.eq('guild', currentG);
-                prevQuery    = prevQuery.eq('guild', currentG);
-            }
-
-            var [membersRes, currRes, prevRes] = await Promise.all([membersQuery, currQuery, prevQuery]);
+            var [membersRes, currRes, prevRes] = await Promise.all([
+                db.from('guild_members').select('pseudo').eq('guild', currentG).order('pseudo', { ascending: true }),
+                db.from('event_participants').select('pseudo,score').eq('guild', currentG).eq('event_name', 'Glory').eq('week_start', week),
+                db.from('event_participants').select('pseudo,score').eq('guild', currentG).eq('event_name', 'Glory').eq('week_start', prevWeek)
+            ]);
 
             var members  = (membersRes.data || []).map(function (m) { return m.pseudo; });
             var currMap  = {};

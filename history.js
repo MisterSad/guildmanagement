@@ -42,15 +42,10 @@
             // Manual fetch for Glory since it has no session_id and might not be returned by the RPC
             var hasGlory = sessions.some(function(s) { return s.event_name === 'Glory'; });
             if (!hasGlory) {
-                var gloryQuery = db.from('event_participants')
+                var gloryRes = await db.from('event_participants')
                     .select('week_start, participated, score')
+                    .eq('guild', currentG)
                     .eq('event_name', 'Glory');
-                if (currentG === 'ALPHA') {
-                    gloryQuery = gloryQuery.or('guild.eq.ALPHA,guild.is.null');
-                } else {
-                    gloryQuery = gloryQuery.eq('guild', currentG);
-                }
-                var gloryRes = await gloryQuery;
                 
                 if (!gloryRes.error && gloryRes.data && gloryRes.data.length > 0) {
                     var gloryMap = {};
