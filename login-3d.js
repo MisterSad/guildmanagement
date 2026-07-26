@@ -30,6 +30,31 @@
     let windowHalfX = window.innerWidth / 2;
     let windowHalfY = window.innerHeight / 2;
 
+    function createEnvironmentMap() {
+        const envCanvas = document.createElement('canvas');
+        envCanvas.width = 512;
+        envCanvas.height = 256;
+        const ctx = envCanvas.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 256);
+        grad.addColorStop(0, '#050a10');
+        grad.addColorStop(0.5, '#1a2b42');
+        grad.addColorStop(1, '#050a10');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,512,256);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.filter = 'blur(3px)';
+        for(let i=0; i<30; i++) {
+            ctx.beginPath();
+            ctx.arc(Math.random()*512, Math.random()*256, Math.random()*5 + 1, 0, Math.PI*2);
+            ctx.fill();
+        }
+        
+        const envTex = new THREE.CanvasTexture(envCanvas);
+        envTex.mapping = THREE.EquirectangularReflectionMapping;
+        return envTex;
+    }
+
     function init3D() {
         const canvas = document.getElementById('login-3d-canvas');
         if (!canvas || typeof THREE === 'undefined') return;
@@ -51,7 +76,13 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.15;
+        renderer.toneMappingExposure = 1.25;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+        scene.environment = pmremGenerator.fromEquirectangular(createEnvironmentMap()).texture;
 
         // 4. Create Procedural Texture Maps for Realistic Metallic Panels & Rivets
         createProceduralHullTextures();
@@ -82,53 +113,60 @@
     // ─── Procedural Canvas Texture Generator for Armor Panel Seams & Rivets ───
     function createProceduralHullTextures() {
         const cvs = document.createElement('canvas');
-        cvs.width = 512;
-        cvs.height = 512;
+        cvs.width = 1024;
+        cvs.height = 1024;
         const ctx = cvs.getContext('2d');
 
-        // Base metallic gray
-        ctx.fillStyle = '#808080';
-        ctx.fillRect(0, 0, 512, 512);
+        ctx.fillStyle = '#7a7a7a';
+        ctx.fillRect(0, 0, 1024, 1024);
 
-        // Draw Panel Seam Lines
-        ctx.strokeStyle = '#202020';
-        ctx.lineWidth = 4;
+        const imgData = ctx.getImageData(0,0,1024,1024);
+        for(let i=0; i<imgData.data.length; i+=4) {
+            const noise = (Math.random() - 0.5) * 16;
+            imgData.data[i] = Math.min(255, Math.max(0, imgData.data[i] + noise));
+            imgData.data[i+1] = Math.min(255, Math.max(0, imgData.data[i+1] + noise));
+            imgData.data[i+2] = Math.min(255, Math.max(0, imgData.data[i+2] + noise));
+        }
+        ctx.putImageData(imgData, 0, 0);
 
-        for (let x = 0; x < 512; x += 64) {
+        ctx.strokeStyle = 'rgba(15,15,15, 0.9)';
+        const step = 128;
+        for (let x = 0; x < 1024; x += step) {
             ctx.beginPath();
+            ctx.lineWidth = (x % (step*2) === 0) ? 6 : 3;
             ctx.moveTo(x, 0);
-            ctx.lineTo(x, 512);
+            ctx.lineTo(x, 1024);
             ctx.stroke();
         }
-        for (let y = 0; y < 512; y += 64) {
+        for (let y = 0; y < 1024; y += step) {
             ctx.beginPath();
+            ctx.lineWidth = (y % (step*2) === 0) ? 6 : 3;
             ctx.moveTo(0, y);
-            ctx.lineTo(512, y);
+            ctx.lineTo(1024, y);
             ctx.stroke();
         }
 
-        // Draw Rivets along seams
-        ctx.fillStyle = '#ffffff';
-        for (let x = 32; x < 512; x += 64) {
-            for (let y = 32; y < 512; y += 64) {
-                ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fill();
+        ctx.fillStyle = '#e5e5e5';
+        for (let x = step/2; x < 1024; x += step) {
+            for (let y = step/2; y < 1024; y += step) {
+                ctx.beginPath(); ctx.arc(x - 24, y - 24, 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(x + 24, y - 24, 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(x - 24, y + 24, 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(x + 24, y + 24, 3, 0, Math.PI * 2); ctx.fill();
             }
         }
 
-        // Add Noise Scratches
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        for (let i = 0; i < 600; i++) {
-            const rx = Math.random() * 512;
-            const ry = Math.random() * 512;
-            ctx.fillRect(rx, ry, Math.random() * 12 + 2, 2);
+        ctx.fillStyle = 'rgba(20,20,20,0.35)';
+        for (let i = 0; i < 2500; i++) {
+            const rx = Math.random() * 1024;
+            const ry = Math.random() * 1024;
+            ctx.fillRect(rx, ry, Math.random() * 20 + 2, Math.random() * 2 + 1);
         }
 
         hullBumpTexture = new THREE.CanvasTexture(cvs);
         hullBumpTexture.wrapS = THREE.RepeatWrapping;
         hullBumpTexture.wrapT = THREE.RepeatWrapping;
-        hullBumpTexture.repeat.set(4, 4);
+        hullBumpTexture.repeat.set(2, 2);
 
         hullRoughnessTexture = hullBumpTexture.clone();
     }
@@ -140,16 +178,30 @@
         // Key Sun Light (Deep Space High-Contrast Key)
         sunLight = new THREE.DirectionalLight(0xfff5ea, 3.2);
         sunLight.position.set(20, 25, 18);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 100;
+        sunLight.shadow.camera.left = -25;
+        sunLight.shadow.camera.right = 25;
+        sunLight.shadow.camera.top = 25;
+        sunLight.shadow.camera.bottom = -25;
+        sunLight.shadow.bias = -0.001;
         scene.add(sunLight);
 
         // Lime Rim Light (#d2f872)
         pointLight1 = new THREE.PointLight(0xd2f872, 3.5, 75);
         pointLight1.position.set(18, 14, 16);
+        pointLight1.castShadow = true;
+        pointLight1.shadow.bias = -0.002;
         scene.add(pointLight1);
 
         // Cyan Rim Light (#56c6f3)
         pointLight2 = new THREE.PointLight(0x56c6f3, 4.0, 75);
         pointLight2.position.set(-18, -16, 14);
+        pointLight2.castShadow = true;
+        pointLight2.shadow.bias = -0.002;
         scene.add(pointLight2);
     }
 
@@ -319,6 +371,13 @@
         stationGroup.rotation.x = Math.PI / 3;
         stationGroup.rotation.y = Math.PI / 8;
 
+        stationGroup.traverse(child => {
+            if (child.isMesh && child.material.type !== 'MeshBasicMaterial' && child.material.type !== 'MeshPhongMaterial') {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+
         scene.add(stationGroup);
     }
 
@@ -465,6 +524,14 @@
         ship.add(shieldMesh);
 
         ship.scale.set(0.68, 0.68, 0.68);
+        
+        ship.traverse(child => {
+            if (child.isMesh && child !== shieldMesh && child.material.type !== 'MeshBasicMaterial') {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        
         return {
             group: ship,
             shieldMesh: shieldMesh,
@@ -512,6 +579,12 @@
         }
 
         alienGroup.scale.set(0.8, 0.8, 0.8);
+        alienGroup.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
         return alienGroup;
     }
 
