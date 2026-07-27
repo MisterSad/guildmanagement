@@ -551,7 +551,7 @@
                     (isSvsOrGvg
                         ? '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>'
                         : (hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : '')) +
-                    '<th class="gm-center">Actions</th>' +
+                    (pendingCount > 0 ? '<th class="gm-center">Actions</th>' : '') +
                 '</tr></thead><tbody>';
 
         participants.forEach(function (p) {
@@ -601,7 +601,7 @@
                         : (hasScore ? '<td class="gm-right" data-label="' + t('col_score') + '">' +
                               '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? fmt(p.score) : '') + '" placeholder="—" data-pseudo="' + esc(p.pseudo) + '">' +
                           '</td>' : '')) +
-                    '<td class="gm-center" data-label="Actions">' + actionBtn + '</td>' +
+                    (pendingCount > 0 ? '<td class="gm-center" data-label="Actions">' + actionBtn + '</td>' : '') +
                 '</tr>';
         });
 
