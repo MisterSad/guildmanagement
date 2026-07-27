@@ -360,10 +360,10 @@
                 }
                 
                 if (isDualScore) {
-                    scoreCells = '<td class="gm-right"><input type="number" class="hist-edit-num gm-input" style="width: 80px; text-align: right; padding: 0.2rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-normal);" data-field="score_prep" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score_prep != null ? r.score_prep : '') + '"></td>' +
-                        '<td class="gm-right"><input type="number" class="hist-edit-num gm-input" style="width: 80px; text-align: right; padding: 0.2rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-normal);" data-field="score_pvp" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score_pvp != null ? r.score_pvp : '') + '"></td>';
+                    scoreCells = '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_prep" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score_prep != null ? fmt(r.score_prep) : '') + '"></td>' +
+                        '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_pvp" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score_pvp != null ? fmt(r.score_pvp) : '') + '"></td>';
                 } else if (meta.hasScore) {
-                    scoreCells = '<td class="gm-right"><input type="number" class="hist-edit-num gm-input" style="width: 80px; text-align: right; padding: 0.2rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-normal);" data-field="score" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score != null ? r.score : '') + '"></td>';
+                    scoreCells = '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score != null ? fmt(r.score) : '') + '"></td>';
                 }
             } else {
                 if (hasParticipated) {
@@ -451,11 +451,11 @@
                 });
             });
             overlay.querySelectorAll('.hist-edit-num').forEach(function (input) {
+                window.RAD.attachNumberFormatter(input);
                 input.addEventListener('change', async function () {
                     var pseudo = input.getAttribute('data-pseudo');
                     var field = input.getAttribute('data-field');
-                    var parsed = parseInt(input.value, 10);
-                    var val = (input.value === '' || isNaN(parsed)) ? null : parsed;
+                    var val = window.RAD.parseNumber(input.value);
                     await updateParticipantField(eventName, sessionId, weekStart, pseudo, field, val);
                 });
             });
