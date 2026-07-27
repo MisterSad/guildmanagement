@@ -2472,6 +2472,92 @@
         });
     }
 
+    var portalTransferSelect = document.getElementById('portal-transfer-select');
+    var portalTransferBtn    = document.getElementById('portal-transfer-btn');
+    var portalTransferMsg    = document.getElementById('portal-transfer-msg');
+
+    async function loadPortalTransferGuilds(uid) {
+        if (!portalTransferSelect) return;
+        portalTransferSelect.innerHTML = '<option value="">Loading guilds...</option>';
+        portalTransferBtn.disabled = true;
+        if (portalTransferMsg) portalTransferMsg.style.display = 'none';
+
+        try {
+            var { data, error } = await supabase.functions.invoke('member-portal', {
+                body: { action: 'get-transfer-guilds', payload: { uid: uid } }
+            });
+            if (error || !data || !data.ok) {
+                portalTransferSelect.innerHTML = '<option value="">Error loading guilds</option>';
+                return;
+            }
+            if (!data.guilds || data.guilds.length === 0) {
+                portalTransferSelect.innerHTML = '<option value="">No other guilds on this server</option>';
+                return;
+            }
+            
+            var html = '<option value="">Select Target Guild...</option>';
+            data.guilds.forEach(function (g) {
+                html += '<option value="' + esc(g.id) + '">' + esc(g.name) + '</option>';
+            });
+            portalTransferSelect.innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            portalTransferSelect.innerHTML = '<option value="">Error loading guilds</option>';
+        }
+    }
+
+    if (portalTransferSelect && portalTransferBtn) {
+        portalTransferSelect.addEventListener('change', function () {
+            portalTransferBtn.disabled = !this.value;
+        });
+
+        portalTransferBtn.addEventListener('click', async function () {
+            if (!portalActiveUid) return;
+            var targetGuild = portalTransferSelect.value;
+            if (!targetGuild) return;
+
+            portalTransferBtn.disabled = true;
+            portalTransferSelect.disabled = true;
+            var span = portalTransferBtn.querySelector('span');
+            var origText = span ? span.textContent : '';
+            if (span) span.textContent = 'Sending...';
+            if (portalTransferMsg) portalTransferMsg.style.display = 'none';
+
+            try {
+                var { data, error } = await supabase.functions.invoke('member-portal', {
+                    body: { action: 'submit-transfer-request', payload: { uid: portalActiveUid, targetGuild: targetGuild } }
+                });
+
+                if (error || !data || !data.ok) {
+                    var errCode = (data && data.error) ? data.error : (error ? error.message : 'unknown');
+                    if (errCode === 'already_pending') {
+                        showPortalTransferMsg('You already have a pending transfer request.', 'error');
+                    } else if (errCode === 'same_guild') {
+                        showPortalTransferMsg('You cannot transfer to your current guild.', 'error');
+                    } else {
+                        showPortalTransferMsg('Transfer request failed (' + errCode + ').', 'error');
+                    }
+                } else {
+                    showPortalTransferMsg('Transfer request sent! Waiting for approval.', 'success');
+                }
+            } catch (err) {
+                console.error(err);
+                showPortalTransferMsg('An error occurred.', 'error');
+            } finally {
+                if (span) span.textContent = origText;
+                portalTransferBtn.disabled = !portalTransferSelect.value;
+                portalTransferSelect.disabled = false;
+            }
+        });
+    }
+
+    function showPortalTransferMsg(msg, type) {
+        if (!portalTransferMsg) return;
+        portalTransferMsg.textContent = msg;
+        portalTransferMsg.style.color = type === 'error' ? 'var(--danger)' : 'var(--success)';
+        portalTransferMsg.style.display = 'block';
+    }
+
     function renderPortalActiveSessions(uid, sessions) {
         var container = document.getElementById('portal-active-sessions-container');
         if (!sessions || sessions.length === 0) {
