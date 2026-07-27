@@ -920,20 +920,11 @@
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
 
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-
-                const rotateX = ((y - centerY) / centerY) * -8;
-                const rotateY = ((x - centerX) / centerX) * 8;
-
-                target.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.01, 1.01, 1.01)`;
-
                 target.style.setProperty('--shine-x', `${(x / rect.width * 100).toFixed(1)}%`);
                 target.style.setProperty('--shine-y', `${(y / rect.height * 100).toFixed(1)}%`);
             });
 
             target.addEventListener('mouseleave', function () {
-                target.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
                 target.style.setProperty('--shine-x', '50%');
                 target.style.setProperty('--shine-y', '50%');
             });

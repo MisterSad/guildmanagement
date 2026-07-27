@@ -674,8 +674,6 @@ html, body {
     box-shadow:
         0 30px 70px oklch(0 0 0 / 0.65),
         0 0 50px oklch(0.88 0.19 125 / 0.15);
-    transform-style: preserve-3d;
-    transition: transform 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* Rotating Conic Gradient Beam */
