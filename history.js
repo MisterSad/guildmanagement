@@ -270,7 +270,7 @@
         }
 
         var rows = res.data || [];
-        var isDualScore = (eventName === 'SvS' || eventName === 'GvG') && rows.some(function (r) { return r.score_prep != null || r.score_pvp != null; });
+        var isDualScore = (eventName === 'SvS' || eventName === 'GvG');
         renderSessionModal(eventName, sessionId, weekStart, rows, meta, isDualScore);
     }
 
