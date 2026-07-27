@@ -361,15 +361,15 @@
             var scoreCells = '';
 
             if (isAdmin) {
-                participatedCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' + esc(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
-                lateCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' + esc(r.pseudo) + '"' + (r.late ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
-                excusedCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' + esc(r.pseudo) + '"' + (r.excused ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                participatedCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="participation-checkbox hist-edit-check" data-field="participated" data-pseudo="' + esc(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                lateCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="participation-checkbox hist-edit-check" data-field="late" data-pseudo="' + esc(r.pseudo) + '"' + (r.late ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                excusedCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="participation-checkbox hist-edit-check" data-field="excused" data-pseudo="' + esc(r.pseudo) + '"' + (r.excused ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
                 
                 if (eventName === 'Shadowfront') {
-                    subPresentCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' + esc(r.pseudo) + '"' + (r.sub_present ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                    subPresentCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="participation-checkbox hist-edit-check" data-field="sub_present" data-pseudo="' + esc(r.pseudo) + '"' + (r.sub_present ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
                 }
                 if (isDtr) {
-                    appointedCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="appointed" data-pseudo="' + esc(r.pseudo) + '"' + (r.appointed ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
+                    appointedCell = '<td class="gm-center"><label class="participation-check" style="margin: auto;"><input type="checkbox" class="participation-checkbox hist-edit-check" data-field="appointed" data-pseudo="' + esc(r.pseudo) + '"' + (r.appointed ? ' checked' : '') + '><span class="check-mark"><i class="ph ph-check"></i></span></label></td>';
                 }
                 
                 if (isDualScore) {
