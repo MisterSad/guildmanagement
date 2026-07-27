@@ -318,36 +318,22 @@
         var isAdmin = localStorage.getItem('rad_role') === 'admin' || localStorage.getItem('rad_role') === 'member';
 
         var headerCols = '<th>' + t('col_member') + '</th>';
-        if (isAdmin) {
-            headerCols += '<th class="gm-center">' + t('col_participated') + '</th>' +
-                '<th class="gm-center">Late</th>' +
-                '<th class="gm-center">Excused</th>';
-            if (eventName === 'Shadowfront') {
-                headerCols += '<th class="gm-center">Sub Present</th>';
-            }
-            if (isDtr) {
-                headerCols += '<th class="gm-center">Appointed</th>';
-            }
-            if (isDualScore) {
-                headerCols += '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>';
-            } else if (meta.hasScore) {
-                headerCols += '<th class="gm-right">' + t('col_score') + '</th>';
-            }
-        } else {
+        var hasParticipated = (eventName !== 'Glory');
+        if (hasParticipated) {
             headerCols += '<th class="gm-center">' + t('col_participated') + '</th>';
-            if (eventName === 'Shadowfront') {
-                headerCols += '<th class="gm-center">Late</th>' +
-                    '<th class="gm-center">Excused</th>' +
-                    '<th class="gm-center">Sub Present</th>';
-            }
-            if (isDtr) {
-                headerCols += '<th class="gm-center">Appointed</th>';
-            }
-            if (isDualScore) {
-                headerCols += '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>';
-            } else if (meta.hasScore) {
-                headerCols += '<th class="gm-right">' + t('col_score') + '</th>';
-            }
+        }
+        if (eventName === 'Shadowfront') {
+            headerCols += '<th class="gm-center">Late</th>' +
+                '<th class="gm-center">Excused</th>' +
+                '<th class="gm-center">Sub Present</th>';
+        }
+        if (isDtr) {
+            headerCols += '<th class="gm-center">Appointed</th>';
+        }
+        if (isDualScore) {
+            headerCols += '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>';
+        } else if (meta.hasScore) {
+            headerCols += '<th class="gm-right">' + t('col_score') + '</th>';
         }
 
         var rowsHtml = sorted.map(function (r) {
@@ -361,11 +347,12 @@
             var scoreCells = '';
 
             if (isAdmin) {
-                participatedCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' + esc(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-                lateCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' + esc(r.pseudo) + '"' + (r.late ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-                excusedCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' + esc(r.pseudo) + '"' + (r.excused ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-                
+                if (hasParticipated) {
+                    participatedCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' + esc(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
+                }
                 if (eventName === 'Shadowfront') {
+                    lateCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' + esc(r.pseudo) + '"' + (r.late ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
+                    excusedCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' + esc(r.pseudo) + '"' + (r.excused ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
                     subPresentCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' + esc(r.pseudo) + '"' + (r.sub_present ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
                 }
                 if (isDtr) {
@@ -379,7 +366,9 @@
                     scoreCells = '<td class="gm-right"><input type="number" class="hist-edit-num gm-input" style="width: 80px; text-align: right; padding: 0.2rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-normal);" data-field="score" data-pseudo="' + esc(r.pseudo) + '" value="' + (r.score != null ? r.score : '') + '"></td>';
                 }
             } else {
-                participatedCell = '<td class="gm-center">' + (r.participated > 0 ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+                if (hasParticipated) {
+                    participatedCell = '<td class="gm-center">' + (r.participated > 0 ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+                }
                 
                 if (eventName === 'Shadowfront') {
                     lateCell = '<td class="gm-center">' + (r.late ? '<i class="ph-fill ph-check-circle text-warning"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
@@ -402,7 +391,7 @@
             return '<tr>' +
                 '<td><div class="gm-row" style="gap:.5rem;"><div class="gm-avatar">' + esc(initial) + '</div><strong>' + esc(r.pseudo) + '</strong></div></td>' +
                 participatedCell +
-                (eventName === 'Shadowfront' ? lateCell + excusedCell + subPresentCell : (isAdmin ? lateCell + excusedCell : '')) +
+                lateCell + excusedCell + subPresentCell +
                 appointedCell +
                 scoreCells +
                 '</tr>';
