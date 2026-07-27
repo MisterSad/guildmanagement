@@ -200,7 +200,6 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 
 .login-card {
     width: 100%;
-    max-width: 420px;
     padding: 2.5rem 2rem;
 }
 
