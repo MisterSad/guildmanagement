@@ -1131,9 +1131,9 @@
                     '</td>' +
                     '<td><span class="squad-chip ' + (assignment ? assignment.squad : '') + '">' + squadLbl + '</span></td>' +
                     '<td class="check-cell">' +
-                        '<label class="participation-check">' +
+                        '<label class="check-toggle">' +
                             '<input type="checkbox" class="participation-checkbox sf-participation-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
-                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                            '<span class="check-slider"></span>' +
                         '</label>' +
                     '</td>' +
                     '<td class="check-cell">' +

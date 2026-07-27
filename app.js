@@ -2430,9 +2430,9 @@
             fieldsHtml += 
                 '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
                     '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
-                        '<div class="participation-check">' +
+                        '<div class="check-toggle">' +
                             '<input type="checkbox" class="participation-checkbox portal-check-participated" ' + (isChecked ? 'checked' : '') + '>' +
-                            '<span class="check-mark" style="width:20px; height:20px; font-size:0.8rem;"><i class="ph ph-check"></i></span>' +
+                            '<span class="check-slider"></span>' +
                         '</div>' +
                         '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">I participated in this event</span>' +
                     '</label>' +
@@ -2442,9 +2442,9 @@
                 fieldsHtml += 
                     '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
                         '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
-                            '<div class="participation-check">' +
+                            '<div class="check-toggle">' +
                                 '<input type="checkbox" class="participation-checkbox portal-check-appointed" ' + (isAppointedChecked ? 'checked' : '') + '>' +
-                                '<span class="check-mark" style="width:20px; height:20px; font-size:0.8rem;"><i class="ph ph-check"></i></span>' +
+                                '<span class="check-slider"></span>' +
                             '</div>' +
                             '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">Appointed</span>' +
                         '</label>' +
@@ -2455,18 +2455,18 @@
                 fieldsHtml += 
                     '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
                         '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
-                            '<div class="participation-check">' +
+                            '<div class="check-toggle">' +
                                 '<input type="checkbox" class="participation-checkbox portal-check-late" ' + (isLateChecked ? 'checked' : '') + '>' +
-                                '<span class="check-mark" style="width:20px; height:20px; font-size:0.8rem;"><i class="ph ph-check"></i></span>' +
+                                '<span class="check-slider"></span>' +
                             '</div>' +
                             '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">Late</span>' +
                         '</label>' +
                     '</div>' +
                     '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
                         '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
-                            '<div class="participation-check">' +
+                            '<div class="check-toggle">' +
                                 '<input type="checkbox" class="participation-checkbox portal-check-excused" ' + (isExcusedChecked ? 'checked' : '') + '>' +
-                                '<span class="check-mark" style="width:20px; height:20px; font-size:0.8rem;"><i class="ph ph-check"></i></span>' +
+                                '<span class="check-slider"></span>' +
                             '</div>' +
                             '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">Excused</span>' +
                         '</label>' +

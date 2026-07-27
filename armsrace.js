@@ -417,9 +417,9 @@
                         '</div>' +
                     '</td>' +
                     '<td class="gm-center" data-label="' + t('col_participated') + '">' +
-                        '<label class="participation-check">' +
+                        '<label class="check-toggle">' +
                             '<input type="checkbox" class="participation-checkbox" data-pseudo="' + esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
-                            '<span class="check-mark"><i class="ph ph-check"></i></span>' +
+                            '<span class="check-slider"></span>' +
                         '</label>' +
                     '</td>' +
                 '</tr>';
