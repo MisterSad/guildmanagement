@@ -1190,9 +1190,21 @@
             showToast(t('toast_duplicate_member'), 'error');
             return;
         }
-        if (guildMembers.some(function (m) { return m.uid && String(m.uid).trim() === String(uidVal).trim(); })) {
-            showToast(t('toast_duplicate_uid'), 'error');
-            return;
+
+        try {
+            var uidCheck = await supabase.rpc('check_uid_exists_globally', { p_uid: String(uidVal).trim() });
+            if (uidCheck.error) throw uidCheck.error;
+            if (uidCheck.data) {
+                showToast('Player ID is already in use by another guild. Use Transfer instead.', 'error');
+                return;
+            }
+        } catch (err) {
+            console.error('Global UID check failed', err);
+            // Fallback to local check if RPC fails
+            if (guildMembers.some(function (m) { return m.uid && String(m.uid).trim() === String(uidVal).trim(); })) {
+                showToast(t('toast_duplicate_uid'), 'error');
+                return;
+            }
         }
 
         try {

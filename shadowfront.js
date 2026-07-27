@@ -401,7 +401,7 @@
             pseudo: pseudo,
             squad: squad,
             role: role
-        });
+        }, { onConflict: 'guild,session_id,pseudo' });
 
         if (upsertRes.error) {
             console.error('shadowfront_squads upsert error', upsertRes.error);
@@ -485,7 +485,7 @@
                 };
             });
         if (toInsert.length > 0) {
-            await db.from('event_participants').upsert(toInsert);
+            await db.from('event_participants').upsert(toInsert, { onConflict: 'guild,event_name,session_id,pseudo' });
         }
     }
 

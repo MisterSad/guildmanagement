@@ -247,6 +247,8 @@
     }
 
     async function openSessionDetail(eventName, sessionId, weekStart) {
+        var db = getDb();
+        if (!db) return;
         var meta = EVENT_META[eventName] || { label: eventName, icon: 'ph-circle', hasScore: false, border: 'var(--border-soft)' };
 
         var query = db.from('event_participants')
@@ -273,8 +275,12 @@
     }
 
     async function updateParticipantField(eventName, sessionId, weekStart, pseudo, field, value) {
+        var db = getDb();
+        if (!db) return;
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         var query = db.from('event_participants')
             .update({ [field]: value })
+            .eq('guild', currentG)
             .eq('event_name', eventName)
             .eq('week_start', weekStart)
             .eq('pseudo', pseudo);

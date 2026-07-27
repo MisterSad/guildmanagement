@@ -213,7 +213,7 @@
                 };
             });
 
-            var insRes = await db.from('event_participants').upsert(rows);
+            var insRes = await db.from('event_participants').upsert(rows, { onConflict: 'guild,event_name,session_id,pseudo' });
             if (insRes.error) throw insRes.error;
 
             // Sync UI : pour chaque onglet ouvert dont la session courante a été enrichie,
