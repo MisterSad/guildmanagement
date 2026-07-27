@@ -2487,7 +2487,8 @@
                 body: { action: 'get-transfer-guilds', payload: { uid: uid } }
             });
             if (error || !data || !data.ok) {
-                portalTransferSelect.innerHTML = '<option value="">Error loading guilds</option>';
+                var errDesc = (data && data.error) ? data.error : (error ? error.message : 'unknown');
+                portalTransferSelect.innerHTML = '<option value="">Error loading guilds (' + window.RAD.escapeHTML(errDesc) + ')</option>';
                 return;
             }
             if (!data.guilds || data.guilds.length === 0) {
