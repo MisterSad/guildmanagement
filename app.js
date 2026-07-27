@@ -2498,7 +2498,8 @@
             
             var html = '<option value="">Select Target Guild...</option>';
             data.guilds.forEach(function (g) {
-                html += '<option value="' + esc(g.id) + '">' + esc(g.name) + '</option>';
+                var displayName = g.name ? g.name : g.id;
+                html += '<option value="' + window.RAD.escapeHTML(g.id) + '">' + window.RAD.escapeHTML(displayName) + '</option>';
             });
             portalTransferSelect.innerHTML = html;
         } catch (err) {

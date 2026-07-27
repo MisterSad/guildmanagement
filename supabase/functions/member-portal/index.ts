@@ -206,11 +206,13 @@ Deno.serve(async (req: Request) => {
     // Get all other guilds on the same server
     const { data: guilds, error: guildsErr } = await admin
       .from("guilds")
-      .select("id, name")
+      .select("id")
       .eq("server_number", sourceGuild.server_number)
       .neq("id", member.guild);
 
-    if (guildsErr) return json({ ok: false, error: "db_error" }, 500);
+    if (guildsErr) {
+        return json({ ok: false, error: "db_error: " + guildsErr.message }, 200);
+    }
 
     return json({ ok: true, guilds: guilds });
   }
@@ -229,7 +231,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (error) {
-      return json({ ok: false, error: "rpc_failed", message: error.message }, 500);
+      return json({ ok: false, error: "rpc_failed: " + error.message, message: error.message }, 200);
     }
 
     return json(data); // Returns the jsonb output from the RPC
