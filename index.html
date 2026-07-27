@@ -157,6 +157,26 @@
                                 </div>
                             </div>
 
+                            <div style="background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.75rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                                <label style="font-size: 0.8rem; color: var(--fg-dim); font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="display: flex; align-items: center; gap: 0.35rem;">
+                                        <i class="ph ph-swap text-info"></i> Request Guild Transfer
+                                    </span>
+                                </label>
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem;" id="portal-transfer-wrap">
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <select id="portal-transfer-select" class="gm-input" style="flex: 1; height: 36px; font-size: 0.875rem;">
+                                            <option value="">Select Target Guild...</option>
+                                        </select>
+                                        <button type="button" id="portal-transfer-btn" class="gm-btn gm-btn-primary gm-btn-sm" style="height: 36px; padding: 0 0.85rem; font-size: 0.85rem;" disabled>
+                                            <i class="ph ph-paper-plane-tilt"></i>
+                                            <span>Send</span>
+                                        </button>
+                                    </div>
+                                    <div id="portal-transfer-msg" style="font-size: 0.75rem; color: var(--success); display: none;"></div>
+                                </div>
+                            </div>
+
                             <div id="portal-active-sessions-container" class="gm-col" style="gap: 1.25rem;">
                                 <!-- Active events will be injected here -->
                             </div>
@@ -660,6 +680,28 @@
                                 <span data-i18n="btn_add">Add</span>
                             </button>
                         </form>
+                    </div>
+
+                    <div class="gm-card gm-card-padded gm-section" id="admin-pending-transfers-section" style="display: none; border-color: var(--accent); background: rgba(59,130,246,0.05);">
+                        <div class="gm-section-title" style="margin-bottom: .75rem; color: var(--accent);">
+                            <i class="ph ph-swap"></i>
+                            <span>Pending Transfers</span>
+                            <span class="gm-count" id="pending-transfers-count">0</span>
+                        </div>
+                        <div class="gm-table-wrap">
+                            <table class="gm-table gm-resp-table">
+                                <thead>
+                                    <tr>
+                                        <th>Player</th>
+                                        <th>UID</th>
+                                        <th>Source Guild</th>
+                                        <th class="gm-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-pending-transfers-list">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="gm-section">

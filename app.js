@@ -1154,18 +1154,85 @@
         }
     }
 
-    // ─── Guild Members CRUD ───────────────────────────────────────────────────
+    // ─── Guild Members & Transfers ──────────────────────────────────────────
+    var pendingTransfers = [];
+
     async function fetchGuildMembers() {
         if (!supabase) return;
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         try {
-            var res = await supabase.from('guild_members').select('*').order('pseudo', { ascending: true });
+            var [res, transfersRes] = await Promise.all([
+                supabase.from('guild_members').select('*').order('pseudo', { ascending: true }),
+                supabase.from('guild_transfers').select('id, uid, pseudo, source_guild').eq('target_guild', currentG).eq('status', 'pending').order('created_at', { ascending: true })
+            ]);
+            
             if (res.error) throw res.error;
             guildMembers = res.data || [];
+            
+            if (!transfersRes.error) {
+                pendingTransfers = transfersRes.data || [];
+            }
+            
+            renderPendingTransfers();
             renderGuildMembers();
         } catch (err) {
             showToast(t('toast_err_fetch_members') + ' ' + err.message, 'error');
         }
     }
+
+    function renderPendingTransfers() {
+        var section = document.getElementById('admin-pending-transfers-section');
+        var list = document.getElementById('admin-pending-transfers-list');
+        var count = document.getElementById('pending-transfers-count');
+        if (!section || !list || !count) return;
+
+        if (pendingTransfers.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = '';
+        count.textContent = pendingTransfers.length;
+
+        var html = '';
+        pendingTransfers.forEach(function (t) {
+            html += '<tr>' +
+                '<td data-label="Player"><div class="gm-member-name"><div class="gm-avatar gm-avatar-sm gm-avatar-info">' + esc(window.RAD.avatarInit(t.pseudo)) + '</div>' + esc(t.pseudo) + '</div></td>' +
+                '<td data-label="UID"><div class="gm-uid-badge">' + esc(t.uid) + '</div></td>' +
+                '<td data-label="Source Guild">' + esc(t.source_guild) + '</td>' +
+                '<td class="gm-center" data-label="Actions" style="white-space: nowrap;">' +
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" onclick="window.RAD.resolveTransfer(\\'' + t.id + '\\', \\'approve\\')" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" onclick="window.RAD.resolveTransfer(\\'' + t.id + '\\', \\'reject\\')" title="Reject Transfer"><i class="ph ph-x"></i></button>' +
+                '</td>' +
+            '</tr>';
+        });
+        list.innerHTML = html;
+    }
+
+    window.RAD = window.RAD || {};
+    window.RAD.resolveTransfer = async function(transferId, action) {
+        if (!supabase) return;
+        var confirmMsg = action === 'approve' ? 'Approve this transfer and add player to your guild?' : 'Reject this transfer request?';
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            var { data, error } = await supabase.rpc('resolve_guild_transfer', {
+                p_transfer_id: transferId,
+                p_action: action
+            });
+
+            if (error || !data || !data.ok) {
+                var errStr = (data && data.error) ? data.error : (error ? error.message : 'unknown');
+                showToast('Failed to ' + action + ' transfer: ' + errStr, 'error');
+            } else {
+                showToast('Transfer ' + action + 'd successfully.', 'success');
+                fetchGuildMembers();
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Error processing transfer.', 'error');
+        }
+    };
 
     async function handleAddMember(inputId, uidInputId, powerInputId, roleInputId) {
         var input  = document.getElementById(inputId);
@@ -2353,6 +2420,9 @@
             avatarEl.className = 'gm-avatar gm-avatar-md gm-avatar-accent';
 
             renderPortalActiveSessions(uid, data.sessions);
+            
+            // Fetch guilds for transfer
+            loadPortalTransferGuilds(uid);
         } catch (err) {
             console.error(err);
             portalLookupError.querySelector('span').textContent = 'An error occurred during verification.';

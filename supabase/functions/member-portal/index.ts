@@ -180,5 +180,60 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true });
   }
 
+  if (action === "get-transfer-guilds") {
+    const uid = (payload?.uid ?? "").toString().trim();
+    if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
+
+    // Get player's current guild and its server number
+    const { data: member, error: mErr } = await admin
+      .from("guild_members")
+      .select("guild")
+      .eq("uid", uid)
+      .maybeSingle();
+
+    if (mErr || !member) return json({ ok: false, error: "player_not_found" }, 200);
+
+    const { data: sourceGuild, error: gErr } = await admin
+      .from("guilds")
+      .select("server_number")
+      .eq("id", member.guild)
+      .maybeSingle();
+
+    if (gErr || !sourceGuild || !sourceGuild.server_number) {
+      return json({ ok: false, error: "server_not_found" }, 200);
+    }
+
+    // Get all other guilds on the same server
+    const { data: guilds, error: guildsErr } = await admin
+      .from("guilds")
+      .select("id, name")
+      .eq("server_number", sourceGuild.server_number)
+      .neq("id", member.guild);
+
+    if (guildsErr) return json({ ok: false, error: "db_error" }, 500);
+
+    return json({ ok: true, guilds: guilds });
+  }
+
+  if (action === "submit-transfer-request") {
+    const uid = (payload?.uid ?? "").toString().trim();
+    const targetGuild = (payload?.targetGuild ?? "").toString().trim();
+
+    if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
+    if (!targetGuild) return json({ ok: false, error: "missing_target_guild" }, 400);
+
+    // Call the RPC to handle the complex logic securely
+    const { data, error } = await admin.rpc("request_guild_transfer", {
+      p_uid: uid,
+      p_target_guild: targetGuild
+    });
+
+    if (error) {
+      return json({ ok: false, error: "rpc_failed", message: error.message }, 500);
+    }
+
+    return json(data); // Returns the jsonb output from the RPC
+  }
+
   return json({ ok: false, error: "unknown_action" }, 400);
 });

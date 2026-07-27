@@ -71,6 +71,7 @@
             var gloryQ     = db.from('event_participants').select('score').eq('event_name', 'Glory').eq('week_start', week);
             var sanctionsQ = db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5);
             var recentMemQ = db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5);
+            var transfersQ = db.from('guild_transfers').select('pseudo, source_guild, target_guild, resolved_at').eq('status', 'approved').or('source_guild.eq.' + currentG + ',target_guild.eq.' + currentG).order('resolved_at', { ascending: false }).limit(5);
 
             memCountQ  = memCountQ.eq('guild', currentG);
             statusQ    = statusQ.eq('guild', currentG);
@@ -78,8 +79,8 @@
             sanctionsQ = sanctionsQ.eq('guild', currentG);
             recentMemQ = recentMemQ.eq('guild', currentG);
 
-            var [memCount, statusRows, gloryRows, sanctionsRows, recentMembers] = await Promise.all([
-                memCountQ, statusQ, gloryQ, sanctionsQ, recentMemQ
+            var [memCount, statusRows, gloryRows, sanctionsRows, recentMembers, transfersRows] = await Promise.all([
+                memCountQ, statusQ, gloryQ, sanctionsQ, recentMemQ, transfersQ
             ]);
 
             var stats = {
@@ -115,6 +116,16 @@
                     color: 'success',
                     text: m.pseudo + ' ' + t('overview_member_added'),
                     when: m.created_at
+                });
+            });
+            (transfersRows.data || []).forEach(function (t) {
+                var isIncoming = t.target_guild === currentG;
+                var text = isIncoming ? t.pseudo + ' transferred from ' + t.source_guild : t.pseudo + ' transferred to ' + t.target_guild;
+                activity.push({
+                    icon: 'ph-swap',
+                    color: isIncoming ? 'success' : 'warning',
+                    text: text,
+                    when: t.resolved_at
                 });
             });
             activity.sort(function (a, b) {
