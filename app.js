@@ -1201,8 +1201,8 @@
                 '<td data-label="UID"><div class="gm-uid-badge">' + esc(t.uid) + '</div></td>' +
                 '<td data-label="Source Guild">' + esc(t.source_guild) + '</td>' +
                 '<td class="gm-center" data-label="Actions" style="white-space: nowrap;">' +
-                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" onclick="window.RAD.resolveTransfer(\\'' + t.id + '\\', \\'approve\\')" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
-                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" onclick="window.RAD.resolveTransfer(\\'' + t.id + '\\', \\'reject\\')" title="Reject Transfer"><i class="ph ph-x"></i></button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" onclick="window.RAD.resolveTransfer(\'' + t.id + '\', \'approve\')" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" onclick="window.RAD.resolveTransfer(\'' + t.id + '\', \'reject\')" title="Reject Transfer"><i class="ph ph-x"></i></button>' +
                 '</td>' +
             '</tr>';
         });
