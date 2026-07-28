@@ -530,6 +530,12 @@
         }
         if (!webhookUrl || webhookUrl.trim() === '') return;
 
+        if ((action === 'start' || action === 'edit') && eventPrefix) {
+            var creationEnabled = await getGuildConfig('notify_' + eventPrefix + '_creation');
+            if (creationEnabled === 'false' || creationEnabled === false) return;
+        }
+
+
         var dateObj = new Date(eventStart);
         var dateFormatted = !isNaN(dateObj.getTime())
             ? dateObj.toLocaleString('en-US', {

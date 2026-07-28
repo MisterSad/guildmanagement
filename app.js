@@ -627,14 +627,17 @@
         var notifyArmsrace30 = await window.RAD.config.get('notify_armsrace_reminder_30');
         var notifyArmsrace5 = await window.RAD.config.get('notify_armsrace_reminder_5');
         var notifyArmsraceStart = await window.RAD.config.get('notify_armsrace_start');
+        var notifyArmsraceCreation = await window.RAD.config.get('notify_armsrace_creation');
 
         var notifyDtr30 = await window.RAD.config.get('notify_dtr_reminder_30');
         var notifyDtr5 = await window.RAD.config.get('notify_dtr_reminder_5');
         var notifyDtrStart = await window.RAD.config.get('notify_dtr_start');
+        var notifyDtrCreation = await window.RAD.config.get('notify_dtr_creation');
 
         var notifyShadowfront30 = await window.RAD.config.get('notify_shadowfront_reminder_30');
         var notifyShadowfront5 = await window.RAD.config.get('notify_shadowfront_reminder_5');
         var notifyShadowfrontStart = await window.RAD.config.get('notify_shadowfront_start');
+        var notifyShadowfrontCreation = await window.RAD.config.get('notify_shadowfront_creation');
 
         var notifyCalamity10 = await window.RAD.config.get('notify_calamity_10');
         var notifyGvgPvp = await window.RAD.config.get('notify_gvg_pvp');
@@ -674,14 +677,17 @@
             }
         };
 
+        setCheckedState('notify-armsrace-creation', notifyArmsraceCreation, true);
         setCheckedState('notify-armsrace-30', notifyArmsrace30, true);
         setCheckedState('notify-armsrace-5', notifyArmsrace5, true);
         setCheckedState('notify-armsrace-start', notifyArmsraceStart, true);
 
+        setCheckedState('notify-dtr-creation', notifyDtrCreation, true);
         setCheckedState('notify-dtr-30', notifyDtr30, true);
         setCheckedState('notify-dtr-5', notifyDtr5, true);
         setCheckedState('notify-dtr-start', notifyDtrStart, true);
 
+        setCheckedState('notify-shadowfront-creation', notifyShadowfrontCreation, true);
         setCheckedState('notify-shadowfront-30', notifyShadowfront30, true);
         setCheckedState('notify-shadowfront-5', notifyShadowfront5, true);
         setCheckedState('notify-shadowfront-start', notifyShadowfrontStart, true);
@@ -729,14 +735,17 @@
                     window.RAD.config.set('discord_role_id_svs', showCalamityGvgSvs ? document.getElementById('discord-role-id-svs').value.trim() : ''),
 
                     // Notification Configs
+                    window.RAD.config.set('notify_armsrace_creation', document.getElementById('notify-armsrace-creation').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_armsrace_reminder_30', document.getElementById('notify-armsrace-30').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_armsrace_reminder_5', document.getElementById('notify-armsrace-5').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_armsrace_start', document.getElementById('notify-armsrace-start').checked ? 'true' : 'false'),
 
+                    window.RAD.config.set('notify_dtr_creation', document.getElementById('notify-dtr-creation').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_dtr_reminder_30', document.getElementById('notify-dtr-30').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_dtr_reminder_5', document.getElementById('notify-dtr-5').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_dtr_start', document.getElementById('notify-dtr-start').checked ? 'true' : 'false'),
 
+                    window.RAD.config.set('notify_shadowfront_creation', document.getElementById('notify-shadowfront-creation').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_shadowfront_reminder_30', document.getElementById('notify-shadowfront-30').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_shadowfront_reminder_5', document.getElementById('notify-shadowfront-5').checked ? 'true' : 'false'),
                     window.RAD.config.set('notify_shadowfront_start', document.getElementById('notify-shadowfront-start').checked ? 'true' : 'false'),

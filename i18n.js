@@ -398,6 +398,7 @@
             notify_15m:                      '15 min before',
             notify_5m:                       '5 min before',
             notify_start:                    'Event Start',
+            notify_creation:                 'Creation & Updates',
             notify_calamity_reminder:        '10 min reminder (Rounds)',
             notify_gvg_pvp_desc:             'Enable Day 6',
             notify_svs_pvp_desc:             'Enable Day 6',
