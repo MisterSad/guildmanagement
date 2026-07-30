@@ -36,7 +36,7 @@
     };
 
     var sfFilter      = 'all';      // 'all' | 'excellent' | 'good' | 'average' | 'poor' | 'none'
-    var sfActiveTab   = 'squads';   // 'squads' | 'prep' | 'running' | 'tracking'
+    var sfActiveTab   = 'prep';     // 'prep' | 'squads' | 'tracking' | 'running'
     var sfActiveSquad = 'squad1';   // 'squad1' | 'squad2'
 
     // ── Public API ─────────────────────────────────────────────────────────────
@@ -573,10 +573,10 @@
         // 3. Sub-tabs navigation (always available)
         html +=
             '<div class="sf-sub-tabs" style="margin-bottom: 1.5rem;">' +
-                '<button class="sf-sub-tab' + (sfActiveTab === 'squads' ? ' active' : '') + '" data-tab="squads"><i class="ph ph-users"></i> ' + t('sf_tab_composition') + '</button>' +
-                '<button class="sf-sub-tab' + (sfActiveTab === 'prep' ? ' active' : '') + '" data-tab="prep"><i class="ph ph-clipboard-text"></i> Roster Prep</button>' +
+                '<button class="sf-sub-tab' + (sfActiveTab === 'prep' ? ' active' : '') + '" data-tab="prep"><i class="ph ph-clipboard-text"></i> Step 1: Roster Prep</button>' +
+                '<button class="sf-sub-tab' + (sfActiveTab === 'squads' ? ' active' : '') + '" data-tab="squads"><i class="ph ph-users"></i> Step 2: Squad Composition</button>' +
+                '<button class="sf-sub-tab' + (sfActiveTab === 'tracking' ? ' active' : '') + '" data-tab="tracking"><i class="ph ph-chart-bar"></i> Step 3: Participation Tracking</button>' +
                 '<button class="sf-sub-tab' + (sfActiveTab === 'running' ? ' active' : '') + '" data-tab="running"><i class="ph ph-list-numbers"></i> Running Tab</button>' +
-                '<button class="sf-sub-tab' + (sfActiveTab === 'tracking' ? ' active' : '') + '" data-tab="tracking"><i class="ph ph-chart-bar"></i> ' + t('sf_tab_tracking') + '</button>' +
             '</div>';
 
         if (sfActiveTab !== 'running') {
