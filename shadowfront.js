@@ -189,7 +189,7 @@
         var db = getDb();
         if (!db) return;
         var sq = sfState.squads[squad];
-        var sessionId = (sq && sq.sessionId) ? sq.sessionId : window.RAD.newSessionId();
+        var sessionId = (sq && sq.active && sq.sessionId) ? sq.sessionId : window.RAD.newSessionId();
         var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         try {
             var res = await db.from('event_status').upsert(
