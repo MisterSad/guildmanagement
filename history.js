@@ -104,25 +104,87 @@
         return 1 + Math.ceil((firstThursday - target) / 604800000);
     }
 
+    function getCategoryEventNames(filterKey) {
+        if (filterKey === 'SvS') return ['SvS'];
+        if (filterKey === 'GvG') return ['GvG'];
+        if (filterKey === 'Shadowfront') return ['Shadowfront', 'Shadowfront Squad 1', 'Shadowfront Squad 2'];
+        if (filterKey === 'DTR') return ['Defend Trade Route'];
+        if (filterKey === 'Arms Race') return ['ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
+        if (filterKey === 'Glory') return ['Glory'];
+        return [filterKey];
+    }
+
+    async function deleteCategoryHistory(filterKey, count) {
+        var eventNames = getCategoryEventNames(filterKey);
+        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+
+        window.showConfirm(
+            'Delete all ' + filterKey + ' history',
+            'Are you sure you want to delete all <strong>' + count + '</strong> session(s) in category <strong>' + esc(filterKey) + '</strong>? This action cannot be undone.',
+            async function () {
+                try {
+                    var db = getDb();
+                    if (!db) return;
+
+                    // 1. Delete from event_participants
+                    var delPartRes = await db.from('event_participants')
+                        .delete()
+                        .eq('guild', currentG)
+                        .in('event_name', eventNames);
+                    if (delPartRes.error) throw delPartRes.error;
+
+                    // 2. If Shadowfront, also delete shadowfront_squads for this guild
+                    if (filterKey === 'Shadowfront') {
+                        var delSquadRes = await db.from('shadowfront_squads')
+                            .delete()
+                            .eq('guild', currentG);
+                        if (delSquadRes.error) throw delSquadRes.error;
+                    }
+
+                    // 3. Delete from event_status
+                    var delStatusRes = await db.from('event_status')
+                        .delete()
+                        .eq('guild', currentG)
+                        .in('event_name', eventNames);
+                    if (delStatusRes.error) throw delStatusRes.error;
+
+                    window.RAD.showToast(t('toast_session_deleted'), 'success');
+                    await loadHistory();
+                } catch (err) {
+                    console.error('deleteCategoryHistory error', err);
+                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                }
+            }
+        );
+    }
+
     function renderHistory() {
         var area = document.querySelector('#event-history .history-area');
         if (!area) return;
-
-        var pillsHtml = '<div class="gm-tabs-pill" style="margin-bottom:1.5rem;">' +
-            FILTERS.map(function (f) {
-                var isActive = (f === activeFilter);
-                var label = (f === 'All') ? t('history_filter_all') : f;
-                var iconClass = (f === 'All') ? 'ph-circles-four' : ((window.RAD && window.RAD.getEventIcon) ? window.RAD.getEventIcon(f) : 'ph-calendar-dot');
-                return '<button class="gm-tab-pill history-filter' + (isActive ? ' gm-active' : '') + '" data-filter="' + esc(f) + '">' +
-                    '<i class="ph ' + iconClass + '"></i> ' + esc(label) +
-                '</button>';
-            }).join('') + '</div>';
 
         var filtered = sessions.filter(function (s) {
             if (activeFilter === 'All') return true;
             var meta = EVENT_META[s.event_name];
             return meta && meta.filterKey === activeFilter;
         });
+
+        var pillsHtml = '<div class="gm-tabs-pill-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">' +
+            '<div class="gm-tabs-pill" style="margin:0;">' +
+                FILTERS.map(function (f) {
+                    var isActive = (f === activeFilter);
+                    var label = (f === 'All') ? t('history_filter_all') : f;
+                    var iconClass = (f === 'All') ? 'ph-circles-four' : ((window.RAD && window.RAD.getEventIcon) ? window.RAD.getEventIcon(f) : 'ph-calendar-dot');
+                    return '<button class="gm-tab-pill history-filter' + (isActive ? ' gm-active' : '') + '" data-filter="' + esc(f) + '">' +
+                        '<i class="ph ' + iconClass + '"></i> ' + esc(label) +
+                    '</button>';
+                }).join('') +
+            '</div>' +
+            (activeFilter !== 'All' && filtered.length > 0 ?
+                '<button class="gm-btn gm-btn-danger history-clear-category-btn" style="font-size:0.82rem; padding:0.4rem 0.85rem; display:inline-flex; align-items:center; gap:0.4rem;" data-filter="' + esc(activeFilter) + '" data-count="' + filtered.length + '">' +
+                    '<i class="ph ph-trash"></i> <span>Delete ' + esc(activeFilter) + ' history (' + filtered.length + ')</span>' +
+                '</button>' : ''
+            ) +
+        '</div>';
 
         if (filtered.length === 0) {
             area.innerHTML = pillsHtml +
@@ -233,6 +295,14 @@
                 renderHistory();
             });
         });
+        var clearCategoryBtn = document.querySelector('#event-history .history-clear-category-btn');
+        if (clearCategoryBtn) {
+            clearCategoryBtn.addEventListener('click', function () {
+                var filterKey = clearCategoryBtn.getAttribute('data-filter');
+                var count = clearCategoryBtn.getAttribute('data-count');
+                deleteCategoryHistory(filterKey, count);
+            });
+        }
     }
 
     function wireCards() {
