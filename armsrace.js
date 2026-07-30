@@ -104,7 +104,8 @@
     async function startStage(stageKey, startAt) {
         var db = getDb();
         if (!db) return;
-        var sessionId = window.RAD.newSessionId();
+        var stg = arState.stages[stageKey];
+        var sessionId = (stg && stg.sessionId) ? stg.sessionId : window.RAD.newSessionId();
         var evName = STAGE_EVENTS[stageKey];
         var stageLetter = stageKey === 'stageA' ? 'A' : 'B';
         var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';

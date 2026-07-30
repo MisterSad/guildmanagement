@@ -188,7 +188,8 @@
     async function startSquad(squad, startAt) {
         var db = getDb();
         if (!db) return;
-        var sessionId = window.RAD.newSessionId();
+        var sq = sfState.squads[squad];
+        var sessionId = (sq && sq.sessionId) ? sq.sessionId : window.RAD.newSessionId();
         var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
         try {
             var res = await db.from('event_status').upsert(
@@ -203,6 +204,10 @@
                 { onConflict: 'guild,event_name' }
             );
             if (res.error) throw res.error;
+
+            // Sync all assigned members to event_participants
+            await syncParticipantRows(sessionId);
+
             window.RAD.showToast(squadLabel(squad) + ' — ' + t('sf_squad_started'), 'success');
 
             if (window.RAD.notifyDiscordEvent) {
