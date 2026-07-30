@@ -589,18 +589,6 @@
 
         // ── Panel: Composition (Squads) ───────────────────────────────────────
         if (sfActiveTab === 'squads') {
-            if (!sq || !sq.sessionId) {
-                html +=
-                    '<div class="gm-empty" style="margin-top: 2rem;">' +
-                        '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
-                        '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
-                        '<div class="gm-empty-hint">' + t('sf_squad_inactive_hint') + '</div>' +
-                    '</div>';
-                area.innerHTML = html;
-                attachSFListeners(area);
-                return;
-            }
-
             var assignedPseudos = sfState.assignments.map(function (a) { return a.pseudo; });
 
             // Provisional participants for the active squad
