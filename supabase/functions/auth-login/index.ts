@@ -31,7 +31,7 @@ function randomSecret(): string {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST")   return json({ ok: false, error: "method_not_allowed" }, 405);
+  if (req.method !== "POST")   return json({ ok: false, error: "method_not_allowed" }, 200);
 
   let id = "", password = "";
   try {
@@ -39,17 +39,17 @@ Deno.serve(async (req: Request) => {
     id = (body?.id ?? "").toString().trim();
     password = (body?.password ?? "").toString();
   } catch {
-    return json({ ok: false, error: "bad_request" }, 400);
+    return json({ ok: false, error: "bad_request" }, 200);
   }
-  if (!id || !password) return json({ ok: false, error: "missing_credentials" }, 400);
+  if (!id || !password) return json({ ok: false, error: "missing_credentials" }, 200);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
   const { data: loginRes, error: cErr } = await admin.rpc("gm_check_login", { p_id: id, p_password: password });
-  if (cErr) return json({ ok: false, error: "server_error" }, 500);
+  if (cErr) return json({ ok: false, error: "server_error" }, 200);
   
   const loginRow = Array.isArray(loginRes) ? loginRes[0] : loginRes;
-  if (!loginRow || !loginRow.role) return json({ ok: false, error: "invalid_credentials" }, 401);
+  if (!loginRow || !loginRow.role) return json({ ok: false, error: "invalid_credentials" }, 200);
 
   const canonicalId = loginRow.canonical_id;
   const role = loginRow.role;
@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
   const meta = { app_role: role, account_id: canonicalId };
   const email = await emailFor(canonicalId);
   const { data: shadow, error: sErr } = await admin.rpc("gm_get_shadow", { p_id: canonicalId });
-  if (sErr) return json({ ok: false, error: "server_error" }, 500);
+  if (sErr) return json({ ok: false, error: "server_error" }, 200);
   const row = Array.isArray(shadow) ? shadow[0] : shadow;
   let secret: string | null = row?.gotrue_secret ?? null;
 
@@ -70,19 +70,19 @@ Deno.serve(async (req: Request) => {
     if (cuErr || !uid) {
       const { data: list } = await admin.auth.admin.listUsers();
       const existing = list?.users?.find((u: { email?: string }) => u.email === email);
-      if (!existing) return json({ ok: false, error: "provision_failed" }, 500);
+      if (!existing) return json({ ok: false, error: "provision_failed" }, 200);
       uid = existing.id;
       await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
     }
     const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: canonicalId, p_auth_user_id: uid, p_secret: secret });
-    if (aErr) return json({ ok: false, error: "server_error" }, 500);
+    if (aErr) return json({ ok: false, error: "server_error" }, 200);
   } else {
     await admin.auth.admin.updateUserById(row.auth_user_id, { app_metadata: meta });
   }
 
   const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
   const { data: signIn, error: siErr } = await anon.auth.signInWithPassword({ email, password: secret! });
-  if (siErr || !signIn?.session) return json({ ok: false, error: "session_failed" }, 500);
+  if (siErr || !signIn?.session) return json({ ok: false, error: "session_failed" }, 200);
 
   return json({
     ok: true,

@@ -88,25 +88,25 @@ Deno.serve(async (req: Request) => {
 
   // FIX (C1): JWT validated cryptographically via auth.getUser(), not by manual base64 decode
   const info = await getCallerInfo(req, admin);
-  if (!info.role) return json({ ok: false, error: "forbidden" }, 403);
+  if (!info.role) return json({ ok: false, error: "forbidden" }, 200);
 
   const callerGuild = info.guild;
 
   let body: Record<string, unknown>;
-  try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 400); }
+  try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 200); }
   const action = (body?.action ?? "").toString();
 
   // Verify subscription status for non-Super Admin (R4) callers on mutations
-  if (info.role === "R4" && action !== "list") {
+  if (info.role === "R4" && action !== "list" && action !== "get-password") {
     const active = await isSubscriptionActive(admin, callerGuild);
     if (!active) {
-      return json({ ok: false, error: "subscription_expired" }, 403);
+      return json({ ok: false, error: "subscription_expired" }, 200);
     }
   }
 
   if (action === "list") {
     const { data, error } = await admin.rpc("gm_admin_list");
-    if (error) return json({ ok: false, error: "server_error" }, 500);
+    if (error) return json({ ok: false, error: "server_error" }, 200);
 
     // FIX (C8): gm_admin_list no longer returns passwords. No password field in the list response.
     let accountsList = data ?? [];
@@ -124,7 +124,7 @@ Deno.serve(async (req: Request) => {
   // Caller must be R5, or R4 owning the same guild as the target account.
   if (action === "get-password") {
     const id = (body?.id ?? "").toString().trim();
-    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+    if (!id) return json({ ok: false, error: "missing_fields" }, 200);
 
     // Fetch target account info to validate permissions
     const { data: targetAcc } = await admin
@@ -132,18 +132,18 @@ Deno.serve(async (req: Request) => {
       .select("role, guild")
       .eq("id", id)
       .maybeSingle();
-    if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+    if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
 
     if (info.role === "R4") {
       // R4 admins cannot retrieve R5 passwords and can only retrieve passwords for their own guild
       if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild) {
-        return json({ ok: false, error: "forbidden" }, 403);
+        return json({ ok: false, error: "forbidden" }, 200);
       }
     }
 
     const { data: password, error: pErr } = await admin.rpc("gm_get_account_password", { p_id: id });
-    if (pErr) return json({ ok: false, error: "server_error" }, 500);
-    if (!password) return json({ ok: false, error: "not_found" }, 404);
+    if (pErr) return json({ ok: false, error: "server_error" }, 200);
+    if (!password) return json({ ok: false, error: "not_found" }, 200);
 
     return json({ ok: true, password });
   }
@@ -151,7 +151,7 @@ Deno.serve(async (req: Request) => {
   if (action === "create") {
     const id = (body?.id ?? "").toString().trim();
     const password = (body?.password ?? "").toString();
-    if (!id || !password) return json({ ok: false, error: "missing_fields" }, 400);
+    if (!id || !password) return json({ ok: false, error: "missing_fields" }, 200);
 
     let accRole = "R4";
     let accGuild = (body?.guild ?? null) as string | null;
@@ -159,14 +159,14 @@ Deno.serve(async (req: Request) => {
     if (info.role === "R4") {
       accRole = "R4";
       if (!callerGuild) {
-        return json({ ok: false, error: "forbidden" }, 403);
+        return json({ ok: false, error: "forbidden" }, 200);
       }
       accGuild = callerGuild;
     } else {
       accRole = (body?.role ?? "R4").toString();
       accGuild = accGuild === "ALL" ? null : accGuild;
       if (accRole === "R4" && (!accGuild || accGuild === "ALL")) {
-        return json({ ok: false, error: "r4_must_have_guild" }, 400);
+        return json({ ok: false, error: "r4_must_have_guild" }, 200);
       }
     }
 
@@ -180,21 +180,21 @@ Deno.serve(async (req: Request) => {
     if (cuErr || !uid) {
       const { data: list } = await admin.auth.admin.listUsers();
       const ex = list?.users?.find((u: { email?: string }) => u.email === email);
-      if (!ex) return json({ ok: false, error: "provision_failed" }, 500);
+      if (!ex) return json({ ok: false, error: "provision_failed" }, 200);
       uid = ex.id;
       await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
     }
     const { error: uErr } = await admin.rpc("gm_admin_upsert", { p_id: id, p_password: password, p_role: accRole, p_guild: accGuild });
-    if (uErr) return json({ ok: false, error: "server_error" }, 500);
+    if (uErr) return json({ ok: false, error: "server_error" }, 200);
 
     const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: id, p_auth_user_id: uid, p_secret: secret });
-    if (aErr) return json({ ok: false, error: "server_error" }, 500);
+    if (aErr) return json({ ok: false, error: "server_error" }, 200);
     return json({ ok: true });
   }
 
   if (action === "delete") {
     const id = (body?.id ?? "").toString().trim();
-    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+    if (!id) return json({ ok: false, error: "missing_fields" }, 200);
 
     if (info.role === "R4") {
       const { data: targetAcc } = await admin
@@ -202,14 +202,14 @@ Deno.serve(async (req: Request) => {
         .select("role, guild")
         .eq("id", id)
         .maybeSingle();
-      if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+      if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
       if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild) {
-        return json({ ok: false, error: "forbidden" }, 403);
+        return json({ ok: false, error: "forbidden" }, 200);
       }
     }
 
     const { data: uid, error } = await admin.rpc("gm_admin_delete", { p_id: id });
-    if (error) return json({ ok: false, error: "server_error" }, 500);
+    if (error) return json({ ok: false, error: "server_error" }, 200);
     if (uid) { try { await admin.auth.admin.deleteUser(uid as string); } catch (_) { /* GoTrue delete best-effort */ } }
     return json({ ok: true });
   }
@@ -217,25 +217,25 @@ Deno.serve(async (req: Request) => {
   if (action === "update-guild") {
     const id = (body?.id ?? "").toString().trim();
     const guild = (body?.guild ?? null) as string | null;
-    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+    if (!id) return json({ ok: false, error: "missing_fields" }, 200);
 
     const { data: targetAcc } = await admin
       .from("accounts")
       .select("role, guild")
       .eq("id", id)
       .maybeSingle();
-    if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+    if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
 
     if (info.role === "R4") {
       if (!callerGuild) {
-        return json({ ok: false, error: "forbidden" }, 403);
+        return json({ ok: false, error: "forbidden" }, 200);
       }
       if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild || guild !== callerGuild) {
-        return json({ ok: false, error: "forbidden" }, 403);
+        return json({ ok: false, error: "forbidden" }, 200);
       }
     } else {
       if (targetAcc.role === "R4" && (!guild || guild === "ALL")) {
-        return json({ ok: false, error: "r4_must_have_guild" }, 400);
+        return json({ ok: false, error: "r4_must_have_guild" }, 200);
       }
     }
 
@@ -244,9 +244,9 @@ Deno.serve(async (req: Request) => {
       .from("accounts")
       .update({ guild: targetGuild })
       .eq("id", id);
-    if (error) return json({ ok: false, error: "server_error" }, 500);
+    if (error) return json({ ok: false, error: "server_error" }, 200);
     return json({ ok: true });
   }
 
-  return json({ ok: false, error: "unknown_action" }, 400);
+  return json({ ok: false, error: "unknown_action" }, 200);
 });
