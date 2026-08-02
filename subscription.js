@@ -135,7 +135,7 @@
     function planCardHtml(plan) {
         var featured = plan.tag ? ' gm-sub-plan-featured' : '';
         return '<div class="gm-card gm-card-padded gm-sub-plan-card' + featured + '" style="flex:1; min-width:180px; max-width:220px; display:flex; flex-direction:column; gap:.4rem; position:relative;">' +
-            (plan.tag ? '<span style="position:absolute; top:-10px; right:12px; background:var(--accent); color:#fff; font-size:.65rem; font-weight:800; padding:2px 8px; border-radius:99px; letter-spacing:.04em;">' + esc(plan.tag) + '</span>' : '') +
+            (plan.tag ? '<span style="position:absolute; top:-10px; right:12px; background:var(--accent); color:var(--accent-fg); font-size:.65rem; font-weight:800; padding:2px 8px; border-radius:99px; letter-spacing:.04em;">' + esc(plan.tag) + '</span>' : '') +
             '<div class="gm-dim" style="font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;">' + esc(plan.label) + '</div>' +
             '<div style="font-size:1.6rem; font-weight:800; font-variant-numeric:tabular-nums; color:var(--fg);">€' + esc(plan.price) + '</div>' +
             '<div class="gm-dim" style="font-size:.75rem; margin-bottom:.35rem;">' + (plan.period === 'one-time' ? (t('gm_sub_one_time') || 'one-time payment') : esc(plan.period)) + '</div>' +
