@@ -925,7 +925,10 @@
             var span = generateBtn.querySelector('span');
             if (span) span.textContent = 'Saving...';
             try {
-                var res = await window.GM.adminAccounts('set-join-code', { code: generatedCode });
+                var res = await window.GM.adminAccounts('set-join-code', {
+                    code: generatedCode,
+                    guild: window.currentGuild || window.GM.getActiveGuild() || 'ALPHA'
+                });
                 if (!res.ok) throw new Error(res.error || 'set_code_failed');
                 if (resultVal) resultVal.textContent = generatedCode;
                 if (resultBox) resultBox.classList.remove('hidden');
