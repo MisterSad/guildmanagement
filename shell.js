@@ -33,7 +33,8 @@
         { id: 'sanctions', tabId: 'tab-sanctions', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
         { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] },
 
-        { id: 'superadmin-accounts', tabId: 'admin-superadmin', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] }
+        { id: 'superadmin-accounts', tabId: 'admin-superadmin', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
+        { id: 'settings', tabId: 'tab-settings', icon: 'ph-gear', labelKey: 'gm_nav_settings', section: 'superadmin', r5Only: true, panels: ['tab-settings'] }
     ];
 
     function visibleNavItems() {

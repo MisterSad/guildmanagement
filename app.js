@@ -276,6 +276,9 @@
         if (tabId === 'admin-banned') {
             fetchBannedPlayers();
         }
+        if (tabId === 'tab-settings' && window.GM_SETTINGS) {
+            window.GM_SETTINGS.load();
+        }
         if ((tabId === 'tab-sanctions' || tabId === 'sanctions') && window.GM_SANCTIONS) {
             window.GM_SANCTIONS.load();
         }

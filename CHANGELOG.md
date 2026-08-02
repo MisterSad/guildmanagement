@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-02
 
+### Added
+- **Settings tab (super admin only)**: New `tab-settings` panel visible only to `super_admin`, backed by the `gm_cross_guild_ranking` RPC (SECURITY DEFINER, guarded by `is_super_admin()`). Shows every player across all guilds with current power and participation rates for SvS, GvG, Shadowfront, Glory and overall (all event types except Glory, matching the stats module's participation semantics). Sortable columns, search and guild filter; client-side guard renders a "Super admin only" state for other roles.
+- **Unit test suite**: coverage for the new ranking module (sorting, filtering, escaping, error/retry, access guard) — 77 tests total.
+
+## [Unreleased] - 2026-08-02
+
 ### Changed
 - **Semantic Account Roles**: Replaced the legacy numeric roles (`R5`/`R4`) with semantic roles (`super_admin`/`guild_admin`/`member`) across the database (accounts, 12 functions, 5 RLS policies, constraints), the `admin-accounts` edge function and the frontend. The client normalizes legacy stored values for backwards compatibility; existing sessions keep working until token refresh.
 - **Rename RAD → GM**: The shared module is now `gm-utils.js` and all globals/keys are prefixed `GM_` (`window.GM`, `localStorage gm_*`). A one-time shim migrates legacy `rad_*` localStorage keys on load. All asset cache busters bumped.
