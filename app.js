@@ -48,9 +48,10 @@
     (async function restoreSession() {
         var localRole = localStorage.getItem('gm_role');
         var localUser = localStorage.getItem('gm_user');
+        var portalSession = localStorage.getItem('gm_portal_session') === '1';
 
         // Restauration synchrone immédiate pour éviter le flash de l'écran de connexion
-        if (localRole) {
+        if (localRole && !portalSession) {
             showAdminDashboard(localRole);
         }
 
@@ -62,6 +63,35 @@
             }
             return;
         }
+
+        // Player-portal session: restore the portal directly, full page.
+        if (portalSession && info.role === 'member') {
+            localStorage.setItem('gm_role', 'member');
+            if (info.accountId) {
+                localStorage.setItem('gm_user', info.accountId);
+                window.GM.currentAccountId = info.accountId;
+            }
+            window.currentGuildRestriction = null;
+            localStorage.removeItem('gm_guild_restriction');
+
+            loginView.classList.add('hidden');
+            if (memberView) memberView.classList.add('hidden');
+            dashboardView.classList.add('hidden');
+            dashboardView.classList.remove('active');
+            playerPortalView.classList.remove('hidden');
+            portalStepLookup.classList.add('hidden');
+            portalStepForm.classList.remove('hidden');
+            playerPortalView.classList.add('portal-connected');
+            var portalContainer = document.querySelector('.gm-portal-container');
+            if (portalContainer) portalContainer.classList.add('portal-wide');
+            if (window.GM_PORTAL) {
+                window.GM_PORTAL.loadDashboard();
+            }
+            return;
+        }
+
+        // Non-portal session: clear the portal marker.
+        localStorage.removeItem('gm_portal_session');
 
         // Fetch guild restriction if guild_admin
         if (info.role === 'guild_admin' && info.accountId) {
@@ -253,6 +283,7 @@
         localStorage.removeItem('gm_user');
         localStorage.removeItem('gm_current_guild');
         localStorage.removeItem('gm_guild_restriction');
+        localStorage.removeItem('gm_portal_session');
         window.currentGuildRestriction = null;
         showLogin();
         showToast(t('toast_logout'), 'info');
@@ -2582,6 +2613,7 @@
     document.querySelectorAll('.portal-back-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             // Sign out of the portal session so the next player signs in with their own account
+            localStorage.removeItem('gm_portal_session');
             playerPortalView.classList.remove('portal-connected');
             var portalContainer = document.querySelector('.gm-portal-container');
             if (portalContainer) portalContainer.classList.remove('portal-wide');
@@ -2616,6 +2648,12 @@
                 portalLookupError.classList.remove('hidden');
                 return;
             }
+
+            // Mark this session as a player-portal session so a page refresh
+            // restores the portal instead of the admin dashboard.
+            localStorage.setItem('gm_portal_session', '1');
+            localStorage.setItem('gm_role', 'member');
+            localStorage.setItem('gm_user', id);
 
             var { data, error } = await supabase.functions.invoke('member-portal', {
                 body: { action: 'get-active-sessions', payload: {} }

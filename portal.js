@@ -171,6 +171,7 @@
 
         root.querySelectorAll('[data-portal-exit]').forEach(function (btn) {
             btn.addEventListener('click', function () {
+                localStorage.removeItem('gm_portal_session');
                 window.GM.logout().then(function () {
                     var portalView = document.getElementById('player-portal-view');
                     var loginView = document.getElementById('login-view');
