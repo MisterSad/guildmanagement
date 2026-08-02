@@ -1,50 +1,50 @@
 :page_with_curl: **CHANGELOG — SHADOWFRONT** :page_with_curl:
 
-**2026-08-02 — Refonte complète (UI/UX + partage Discord)**
+**2026-08-02 — Full rework (UI/UX + Discord sharing)**
 
-L'outil suit désormais le déroulé réel de l'événement : les joueurs déclarent leur dispo **en jeu**, l'admin la saisit ici, compose les squads avec l'historique de fiabilité, puis suit la participation.
+The tool now follows the real in-game event flow: players declare their availability **in-game**, the admin records it here, composes the squads using the reliability history, then tracks participation.
 
-:one: **Nouveau parcours en 3 étapes guidées**
+:one: **New guided 3-step flow**
 
-L'ancien écran (4 onglets plats) devient un parcours logique :
-1. **Availability** — on saisit qui est disponible
-2. **Squad Composition** — on compose les squads finaux
-3. **Participation Tracking** — on suit la participation
+The old screen (4 flat tabs) is now a logical path:
+1. **Availability** — record who is available
+2. **Squad Composition** — build the final squads
+3. **Participation Tracking** — track attendance
 
-Chaque étape se déverrouille dans l'ordre : impossible de composer sans joueurs saisis, ni de tracker sans squad lancé.
+Each step unlocks in order: you cannot compose without recorded players, and you cannot track without a launched squad.
 
-:two: **Étape 1 — Availability, pensée pour l'admin**
+:two: **Step 1 — Availability, built for the admin**
 
-- La déclaration ne se fait plus dans l'outil mais **en jeu**. L'admin recueille ici les joueurs disponibles.
-- **Deux pools côte à côte** (Squad One / Squad Two — Available) avec taux de participation et puissance : l'équilibrage se voit d'un coup d'œil.
-- **Saisie en masse** : recherche + cases à cocher + « Add to Squad One/Two » en un clic.
-- Le modèle « Both / None » disparaît : une déclaration en jeu concerne un créneau précis, donc un seul squad.
+- Availability is no longer declared in the tool, but **in-game**. The admin records the available players here.
+- **Two side-by-side pools** (Squad One / Squad Two — Available) with participation rate and power: balancing both squads at a glance.
+- **Bulk entry**: search + checkboxes + "Add to Squad One/Two" in one click.
+- The "Both / None" model is gone: an in-game declaration is for a specific slot, so a single squad.
 
-:three: **Étape 2 — Squad Composition, guidée par l'historique**
+:three: **Step 2 — Squad Composition, guided by history**
 
-- **Seuls les joueurs déclarés** apparaissent dans le pool.
-- **Tri par taux de participation par défaut** (bascule Taux / Puissance), catégories de fiabilité 🟢🔵🟡🔴 et filtres.
-- **Récap en tête** : pool restant, participants /20, réserves /10, taux de participation moyen.
-- Étoiles commandant (max 3) conservées.
+- **Only declared players** appear in the pool.
+- **Sorted by participation rate by default** (Rate / Power toggle), reliability categories 🟢🔵🟡🔴 and filters.
+- **Summary bar on top**: remaining pool, participants /20, substitutes /10, average participation rate.
+- Commander stars (max 3) kept.
 
-:warning: **Composition avant lancement (correction importante)**
+:warning: **Compose before launch (important fix)**
 
-Assigner un joueur ne **lance plus l'événement par accident** (l'ancien code activait la session au premier assignement, avec notifications Discord prématurées).
-- La session reste **inactive** pendant la composition ; seul « Start » active l'événement.
-- Terminer un squad clôture la session ; le prochain lancement démarre une nouvelle session propre, l'historique reste intact.
+Assigning a player **no longer starts the event by accident** (the old code activated the session on the first assignment, with premature Discord notifications).
+- The session stays **inactive** while composing; only "Start" activates the event.
+- Ending a squad closes the session; the next start begins a fresh session, history stays intact.
 
-:paperplane: **Partage de la composition sur Discord**
+:paperplane: **Share the composition on Discord**
 
-Nouveau bouton **« Share on Discord »** : un message avec les deux squads (participants, 👑 commandants, réserves, compteurs) envoyé sur le webhook Shadowfront configuré. Idéal pour annoncer les compositions à la guilde.
+New **"Share on Discord"** button: one message with both squads (participants, 👑 commanders, substitutes, counters) sent to the configured Shadowfront webhook. Perfect for announcing the rosters to the guild.
 
-:chart_with_upwards_trend: **Étape 3 — Tracking rapide**
+:chart_with_upwards_trend: **Step 3 — Fast tracking**
 
-- Boutons **« All present » / « All absent »** pour les retours de masse.
-- Indicateur **« Saved »** discret à chaque enregistrement.
-- Flux « Pending / Approve » supprimé (il servait à des auto-déclarations qui n'existent plus).
+- **"All present" / "All absent"** bulk buttons for mass updates.
+- Subtle **"Saved"** indicator on every autosave.
+- "Pending / Approve" flow removed (it handled player self-declarations that no longer exist).
 
-:wastebasket: **Suppressions**
+:wastebasket: **Removals**
 
-- **Running Tab** : matrice historique incomplète (l'historique n'était en fait jamais chargé) et redondante avec les badges de taux. L'historique vit désormais dans les badges de fiabilité.
+- **Running Tab**: incomplete history matrix (history was actually never loaded) and redundant with the rate badges. History now lives in the reliability badges.
 
-:white_check_mark: **Tests** : 96 tests unitaires, dont 5 nouveaux dédiés à cette refonte.
+:white_check_mark: **Tests**: 96 unit tests, including 5 new ones dedicated to this rework.
