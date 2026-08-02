@@ -2451,3 +2451,48 @@
 @media (max-width: 980px) {
     .gm-portal-container.portal-wide { max-width: 96vw !important; }
 }
+
+/* ─── Connected portal: full page, no 3D login background ─────────────── */
+#player-portal-view.portal-connected {
+    background: var(--bg-0);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+#player-portal-view.portal-connected #login-3d-canvas { display: none !important; }
+#player-portal-view.portal-connected .gm-login-hero-tag { display: none; }
+#player-portal-view.portal-connected::before { display: none; }
+#player-portal-view.portal-connected .gm-login-centered-container {
+    max-width: 1120px !important;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 1rem;
+}
+#player-portal-view.portal-connected .gm-animated-card-wrap {
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+    overflow: visible;
+}
+#player-portal-view.portal-connected .gm-animated-card-wrap::before,
+#player-portal-view.portal-connected .gm-animated-card-wrap::after { display: none; }
+#player-portal-view.portal-connected .gm-login-card {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    max-width: none;
+    width: 100%;
+}
+#player-portal-view.portal-connected .gm-login-brand-row { display: none; }
+#player-portal-view.portal-connected .gm-login-form { padding: 0; margin: 0; }
+#player-portal-view.portal-connected #portal-step-form {
+    max-height: none !important;
+    overflow-y: visible;
+    padding: 0;
+}

@@ -2560,6 +2560,7 @@
     document.getElementById('go-to-portal-btn').addEventListener('click', function () {
         loginView.classList.add('hidden');
         playerPortalView.classList.remove('hidden');
+        playerPortalView.classList.remove('portal-connected');
         portalStepLookup.classList.remove('hidden');
         portalStepForm.classList.add('hidden');
         portalLookupError.classList.add('hidden');
@@ -2571,6 +2572,7 @@
 
     document.getElementById('portal-go-register-btn').addEventListener('click', function () {
         playerPortalView.classList.add('hidden');
+        playerPortalView.classList.remove('portal-connected');
         loginView.classList.remove('hidden');
         showRegisterForm(true);
         var portalContainer = document.querySelector('.gm-portal-container');
@@ -2580,6 +2582,7 @@
     document.querySelectorAll('.portal-back-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             // Sign out of the portal session so the next player signs in with their own account
+            playerPortalView.classList.remove('portal-connected');
             var portalContainer = document.querySelector('.gm-portal-container');
             if (portalContainer) portalContainer.classList.remove('portal-wide');
             window.GM.logout().then(function () {
@@ -2633,6 +2636,7 @@
             // Successfully fetched data
             portalStepLookup.classList.add('hidden');
             portalStepForm.classList.remove('hidden');
+            playerPortalView.classList.add('portal-connected');
             var portalContainer = document.querySelector('.gm-portal-container');
             if (portalContainer) portalContainer.classList.add('portal-wide');
             if (window.GM_PORTAL) {

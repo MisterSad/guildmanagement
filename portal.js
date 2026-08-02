@@ -439,11 +439,13 @@
                     var portalView = document.getElementById('player-portal-view');
                     var loginView = document.getElementById('login-view');
                     if (portalView) portalView.classList.add('hidden');
+                    if (portalView) portalView.classList.remove('portal-connected');
                     if (loginView) loginView.classList.remove('hidden');
                 }).catch(function () {
                     var portalView = document.getElementById('player-portal-view');
                     var loginView = document.getElementById('login-view');
                     if (portalView) portalView.classList.add('hidden');
+                    if (portalView) portalView.classList.remove('portal-connected');
                     if (loginView) loginView.classList.remove('hidden');
                 });
             });
