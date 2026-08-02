@@ -16,6 +16,7 @@
         { key: '1m', label: '1 Month',  price: '6.99',  period: 'one-time', tag: null },
         { key: '3m', label: '3 Months', price: '16.99', period: 'one-time', tag: 'Save 19%' },
         { key: '6m', label: '6 Months', price: '27.99', period: 'one-time', tag: 'Save 33%' },
+        { key: '12m', label: '12 Months', price: '47.99', period: 'one-time', tag: 'Save 43%' },
         { key: 'lifetime', label: 'Lifetime', price: '89.00', period: 'one-time', tag: 'Best value' }
     ];
 
@@ -92,7 +93,7 @@
         if (sub.type === 'Lifetime') {
             icon = 'ph-infinity';
             label = 'Lifetime';
-            desc = 'Lifetime access — never expires.';
+            desc = 'Lifetime access - never expires.';
         } else if (sub.type === 'Unlimited') {
             icon = 'ph-infinity';
             label = 'Unlimited';
@@ -104,7 +105,7 @@
                 var hours = Math.floor(((endMs - Date.now()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 icon = 'ph-sparkle';
                 label = 'Active';
-                desc = 'Active until ' + esc(sub.end.split('T')[0]) + ' — ' + days + 'd ' + hours + 'h remaining.';
+                desc = 'Active until ' + esc(sub.end.split('T')[0]) + ' - ' + days + 'd ' + hours + 'h remaining.';
             } else {
                 icon = 'ph-lock-keyhole';
                 label = 'Expired';
@@ -121,7 +122,7 @@
                 '<i class="ph-fill ' + icon + '"></i>' +
             '</div>' +
             '<div style="flex:1; min-width:200px;">' +
-                '<div class="gm-member-pseudo" style="font-weight:700; font-size:1.05rem;">' + esc(guildId) + ' — ' + label + '</div>' +
+                '<div class="gm-member-pseudo" style="font-weight:700; font-size:1.05rem;">' + esc(guildId) + ' - ' + label + '</div>' +
                 '<div class="gm-dim" style="font-size:.85rem;">' + desc + '</div>' +
             '</div>' +
             '<div style="display:flex; gap:.5rem; align-items:center;">' +
@@ -257,11 +258,11 @@
 
         if (applied) {
             await refreshGuildsData();
-            showToast(t('gm_sub_success') || 'Subscription activated — thank you!', 'success');
+            showToast(t('gm_sub_success') || 'Subscription activated - thank you!', 'success');
         } else {
             // Webhook will apply it shortly; refresh anyway so the user sees the truth.
             await refreshGuildsData();
-            showToast(t('gm_sub_waiting') || 'Payment received — activation in progress…', 'info');
+            showToast(t('gm_sub_waiting') || 'Payment received - activation in progress…', 'info');
         }
 
         var slot = document.getElementById('subscription-widget');
@@ -309,10 +310,11 @@
         html +=
             '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1rem;">' +
                 '<div class="gm-dim" style="font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:.75rem;">' + (t('gm_sub_plans_title') || 'Subscription plans') + '</div>' +
-                '<div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:stretch;">' +
+                '<div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:stretch; justify-content:center;">' +
                     PLANS.map(planCardHtml).join('') +
                 '</div>' +
-                '<div class="gm-dim" style="font-size:.75rem; margin-top:.9rem;">' + (t('gm_sub_billing_note') || 'Secured by Revolut — card, Apple Pay, Google Pay and Revolut Pay.') + '</div>' +
+                '<div class="gm-dim" style="font-size:.75rem; margin-top:.9rem;">' + (t('gm_sub_methods') || 'Accepted payments: Card, Apple Pay, Google Pay and Revolut Pay.') + '</div>' +
+                '<div class="gm-dim" style="font-size:.75rem; margin-top:.25rem;"><i class="ph ph-shield-check"></i> ' + (t('gm_sub_security') || 'Payments are processed and secured by Revolut. The site administrator never has access to your bank details.') + '</div>' +
             '</div>' +
             '<div id="subscription-widget" class="gm-sub-widget" style="display:none;"></div>';
 

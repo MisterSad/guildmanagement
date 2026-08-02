@@ -10,6 +10,7 @@ export const PLANS: Record<string, { label: string; days: number | null; cents: 
   "1m": { label: "1 Month", days: 30, cents: 699 },
   "3m": { label: "3 Months", days: 90, cents: 1699 },
   "6m": { label: "6 Months", days: 180, cents: 2799 },
+  "12m": { label: "12 Months", days: 365, cents: 4799 },
   lifetime: { label: "Lifetime", days: null, cents: 8900 },
 };
 

@@ -312,7 +312,7 @@
                 icon = 'ph-infinity';
             } else if (sub.type === 'Lifetime') {
                 cardTitle = esc(activeGuild) + ' • Lifetime';
-                cardDesc = 'Lifetime access — never expires.';
+                cardDesc = 'Lifetime access - never expires.';
                 pillLabel = 'Lifetime';
                 pillClass = 'gm-sub-unlimited';
                 icon = 'ph-infinity';

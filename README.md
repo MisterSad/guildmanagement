@@ -38,9 +38,10 @@ tests/                  Vitest unit tests
 ## Subscriptions (Revolut)
 
 Guild admins (and the super admin, per tenant) can purchase subscription
-extensions in the **Subscription** tab. Payments run through the Revolut
-Merchant Web SDK (embedded checkout: card, Revolut Pay, Apple Pay, Google Pay)
-and are confirmed server-side only:
+extensions in the **Subscription** tab. Plans: 1 Month €6.99, 3 Months €16.99,
+6 Months €27.99, 12 Months €47.99, Lifetime €89.00. Payments run through the
+Revolut Merchant Web SDK (embedded checkout: card, Revolut Pay, Apple Pay,
+Google Pay) and are confirmed server-side only:
 
 1. `gm-create-order` creates the Revolut order (server-side, amount in cents)
    and records it in `gm_payments` (status `pending`).

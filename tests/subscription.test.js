@@ -74,40 +74,49 @@ afterEach(() => {
 });
 
 describe('GM_SUBSCRIPTION self-service subscriptions', () => {
-    it('renders the four plans with their prices', async () => {
+    it('renders the five plans with their prices', async () => {
         await SUB.load();
         const texts = container().textContent;
-        expect(planKeys()).toEqual(['1m', '3m', '6m', 'lifetime']);
+        expect(planKeys()).toEqual(['1m', '3m', '6m', '12m', 'lifetime']);
         expect(texts).toContain('€6.99');
         expect(texts).toContain('€16.99');
         expect(texts).toContain('€27.99');
+        expect(texts).toContain('€47.99');
         expect(texts).toContain('€89.00');
     });
 
     it('shows the active status for a Premium subscription with a future end', async () => {
         await SUB.load();
-        expect(container().textContent).toContain('ALPHA — Active');
+        expect(container().textContent).toContain('ALPHA - Active');
         expect(container().textContent).toContain('Active until 2026-12-31');
     });
 
     it('shows the Lifetime status', async () => {
         window.guildsData.ALPHA = { type: 'Lifetime', end: null, server_number: '' };
         await SUB.load();
-        expect(container().textContent).toContain('ALPHA — Lifetime');
+        expect(container().textContent).toContain('ALPHA - Lifetime');
         expect(container().textContent).toContain('never expires');
     });
 
     it('shows the Unlimited status', async () => {
         window.guildsData.ALPHA = { type: 'Unlimited', end: null, server_number: '' };
         await SUB.load();
-        expect(container().textContent).toContain('ALPHA — Unlimited');
+        expect(container().textContent).toContain('ALPHA - Unlimited');
     });
 
     it('shows the expired state for a Premium subscription with a past end', async () => {
         window.guildsData.ALPHA = { type: 'Premium', end: '2020-01-01T00:00:00.000Z', server_number: '' };
         await SUB.load();
-        expect(container().textContent).toContain('ALPHA — Expired');
+        expect(container().textContent).toContain('ALPHA - Expired');
         expect(container().textContent).toContain('Renew below');
+    });
+
+    it('mentions the accepted payment methods and Revolut security', async () => {
+        await SUB.load();
+        const texts = container().textContent;
+        expect(texts).toContain('Card, Apple Pay, Google Pay and Revolut Pay');
+        expect(texts).toContain('processed and secured by Revolut');
+        expect(texts).toContain('never has access to your bank details');
     });
 
     it('shows a denied state for non-admin roles', async () => {
