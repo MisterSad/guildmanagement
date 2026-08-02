@@ -29,6 +29,7 @@
         { id: 'stats',     tabId: 'stats-admin', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
 
         { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
+        { id: 'subscription', tabId: 'tab-subscription', icon: 'ph-credit-card', labelKey: 'gm_nav_subscription', section: 'admin', adminOnly: true, panels: ['tab-subscription'] },
         { id: 'discord',   tabId: 'admin-discord', icon: 'ph-bell-ringing',   labelKey: 'gm_nav_discord',   section: 'admin', panels: ['admin-discord'] },
         { id: 'sanctions', tabId: 'tab-sanctions', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
         { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] },
@@ -42,6 +43,7 @@
         var items = [];
         NAV_ITEMS.forEach(function (i) {
             if (i.r5Only && role !== 'super_admin') return;
+            if (i.adminOnly && role !== 'super_admin' && role !== 'guild_admin') return;
             items.push(Object.assign({}, i));
         });
         return items;
@@ -306,6 +308,12 @@
                 cardTitle = esc(activeGuild) + ' • Unlimited';
                 cardDesc = 'Unlimited access for all guild members.';
                 pillLabel = 'Unlimited';
+                pillClass = 'gm-sub-unlimited';
+                icon = 'ph-infinity';
+            } else if (sub.type === 'Lifetime') {
+                cardTitle = esc(activeGuild) + ' • Lifetime';
+                cardDesc = 'Lifetime access — never expires.';
+                pillLabel = 'Lifetime';
                 pillClass = 'gm-sub-unlimited';
                 icon = 'ph-infinity';
             } else if (sub.type === 'Premium') {

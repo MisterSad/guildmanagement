@@ -82,7 +82,7 @@
         if (!guildId) return false;
         if (!window.guildsData || !window.guildsData[guildId]) return false;
         var sub = window.guildsData[guildId];
-        if (!sub || sub.type === 'Unlimited') return false;
+        if (!sub || sub.type === 'Unlimited' || sub.type === 'Lifetime') return false;
         if (sub.type === 'Premium') {
             if (!sub.end) return true; // Premium without end date is expired
             return new Date(sub.end).getTime() < Date.now();

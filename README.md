@@ -29,10 +29,44 @@ stats.js / sanctions.js / overview.js / push.js
 login-3d.js             three.js login background
 sw.js                   Service worker
 supabase/functions/     Edge Functions: auth-login, admin-accounts,
-                        member-portal, event-reminders
+                        member-portal, event-reminders, gm-create-order,
+                        gm-order-status, gm-revolut-webhook
 supabase/migrations/    SQL migrations (roles, RLS policies, functions)
 tests/                  Vitest unit tests
 ```
+
+## Subscriptions (Revolut)
+
+Guild admins (and the super admin, per tenant) can purchase subscription
+extensions in the **Subscription** tab. Payments run through the Revolut
+Merchant Web SDK (embedded checkout: card, Revolut Pay, Apple Pay, Google Pay)
+and are confirmed server-side only:
+
+1. `gm-create-order` creates the Revolut order (server-side, amount in cents)
+   and records it in `gm_payments` (status `pending`).
+2. `gm-revolut-webhook` (public, HMAC-verified) applies the extension on
+   `ORDER_COMPLETED` via the idempotent `gm_apply_subscription_payment` RPC —
+   time plans extend from `max(now, current end)` (stacking), the Lifetime plan
+   switches the guild to `subscription_type = 'Lifetime'`.
+3. `gm-order-status` lets the client confirm quickly after checkout and
+   refresh the UI; the webhook remains the source of truth.
+
+Required Supabase secrets (Dashboard → Edge Functions → Secrets):
+
+```
+REVOLUT_SECRET_KEY              # Revolut Business API key (server side)
+REVOLUT_PUBLIC_KEY              # Revolut public key (pk_...), widget
+REVOLUT_ENV                     # 'sandbox' | 'prod' (default: prod)
+REVOLUT_WEBHOOK_SIGNING_SECRET  # HMAC secret, generated when registering the webhook
+```
+
+Register the webhook in Revolut Business (Merchant API → Webhooks) pointing to:
+
+```
+https://<project-ref>.functions.supabase.co/gm-revolut-webhook
+```
+
+deployed with `--no-verify-jwt` (the signature is verified inside the function).
 
 ## Roles & access
 

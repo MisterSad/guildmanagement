@@ -276,6 +276,9 @@
         if (tabId === 'admin-banned') {
             fetchBannedPlayers();
         }
+        if (tabId === 'tab-subscription' && window.GM_SUBSCRIPTION) {
+            window.GM_SUBSCRIPTION.load();
+        }
         if (tabId === 'tab-settings' && window.GM_SETTINGS) {
             window.GM_SETTINGS.load();
         }
@@ -1021,6 +1024,8 @@
                 var countdownHtml = '';
                 if (type === 'Unlimited') {
                     countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Unlimited</span>';
+                } else if (type === 'Lifetime') {
+                    countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Lifetime</span>';
                 } else {
                     if (end) {
                         var endMs = new Date(end).getTime();
@@ -1069,9 +1074,10 @@
                                 '<select class="gm-select gm-select-sm guild-sub-type" data-guild="' + esc(guildId) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
                                     '<option value="Unlimited"' + (type === 'Unlimited' ? ' selected' : '') + '>Unlimited</option>' +
                                     '<option value="Premium"' + (type === 'Premium' ? ' selected' : '') + '>Premium</option>' +
+                                    '<option value="Lifetime"' + (type === 'Lifetime' ? ' selected' : '') + '>Lifetime</option>' +
                                 '</select>' +
                             '</div>' +
-                            '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:110px; ' + (type === 'Unlimited' ? 'display: none;' : '') + '">' +
+                            '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:110px; ' + (type !== 'Premium' ? 'display: none;' : '') + '">' +
                                 '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">End Date</label>' +
                                 '<input type="date" class="gm-input gm-input-sm guild-sub-end" data-guild="' + esc(guildId) + '" value="' + dateVal + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
                             '</div>' +

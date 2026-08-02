@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-02
 
 ### Added
+- **Self-service subscriptions (Revolut)**: new Subscription tab visible to `guild_admin` and `super_admin` (per tenant), with four plans — 1 Month €6.99, 3 Months €16.99, 6 Months €27.99, Lifetime €89.00. Checkout runs through the Revolut Merchant Web SDK embedded checkout (card, Revolut Pay, Apple Pay, Google Pay), orders are created server-side by the `gm-create-order` edge function and recorded in a new `gm_payments` table. `gm-revolut-webhook` (HMAC-verified, public) applies completed payments atomically and idempotently (`gm_apply_subscription_payment` RPC): time plans extend the guild's `subscription_end` from `max(now, current end)` so renewals stack; the Lifetime plan switches the guild to a new `Lifetime` subscription type that never expires. `gm-order-status` lets the UI confirm payments immediately after checkout while the webhook stays the source of truth. The super admin's manual grant UI (Unlimited/Premium + date) is unchanged and now also supports the `Lifetime` type.
+- **Unit tests**: coverage for the subscription module (plans, status rendering, widget wiring, payment polling, error states) — 90 tests total.
+
+## [Unreleased] - 2026-08-02
+
+### Added
 - **Settings tab (super admin only)**: New `tab-settings` panel visible only to `super_admin`, backed by the `gm_cross_guild_ranking` RPC (SECURITY DEFINER, guarded by `is_super_admin()`). Shows every player across all guilds with current power and participation rates for SvS, GvG, Shadowfront, Glory and overall (all event types except Glory, matching the stats module's participation semantics). Sortable columns, search and guild filter; client-side guard renders a "Super admin only" state for other roles.
 - **Unit test suite**: coverage for the new ranking module (sorting, filtering, escaping, error/retry, access guard) — 77 tests total.
 
