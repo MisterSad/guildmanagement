@@ -2624,6 +2624,15 @@
 .portal-row .gm-input { flex: 1; }
 .portal-msg { font-size: 0.75rem; display: none; }
 
+.portal-timezone-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.74rem;
+    color: var(--fg-muted);
+}
+.portal-timezone-hint i { color: var(--accent); }
+
 /* ─── Absence declaration ─────────────────────────────────────────────── */
 .portal-absence-form { max-width: 560px; }
 .portal-absence-fields {
@@ -2722,6 +2731,68 @@
 }
 .gm-absence-card-dates { font-size: 0.78rem; color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 0.35rem; }
 .gm-absence-card-note { font-size: 0.74rem; color: var(--fg-muted); }
+
+/* ─── Admin: timezone chip + coverage histogram ───────────────────────── */
+.gm-tz-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    padding: 0.18rem 0.5rem;
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+    margin-left: 0.35rem;
+    background: rgba(34,211,238,0.10);
+    color: #22d3ee;
+    border: 1px solid rgba(34,211,238,0.30);
+}
+
+.gm-tz-histogram {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+.gm-tz-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.gm-tz-bar-label {
+    width: 42px;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+    font-variant-numeric: tabular-nums;
+}
+.gm-tz-bar-track {
+    flex: 1;
+    height: 14px;
+    background: var(--bg-2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.gm-tz-bar {
+    height: 100%;
+    background: var(--accent-cyan);
+    border-radius: 4px;
+    min-width: 2px;
+    transition: width 0.3s ease;
+}
+.gm-tz-bar-peak {
+    background: var(--accent-lime);
+    box-shadow: 0 0 10px oklch(0.88 0.19 125 / 0.4);
+}
+.gm-tz-bar-count {
+    width: 24px;
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+}
 
 /* ─── Responsive: mobile ──────────────────────────────────────────────── */
 @media (max-width: 600px) {

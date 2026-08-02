@@ -53,7 +53,7 @@ async function getIdentity(
 async function getPlayer(admin: ReturnType<typeof createClient>, uid: string) {
   const { data, error } = await admin
     .from("guild_members")
-    .select("pseudo, guild, overall_power")
+    .select("pseudo, guild, overall_power, timezone_offset")
     .eq("uid", uid)
     .maybeSingle();
   if (error || !data) return null;
@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
 
     // 3. For each active session, retrieve the player's participant entry
     if (!activeSessions || activeSessions.length === 0) {
-      return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, sessions: [] });
+      return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, timezone_offset: member.timezone_offset ?? null, sessions: [] });
     }
 
     const sessionIds = activeSessions.map(s => s.session_id);
@@ -126,7 +126,7 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-    return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, sessions });
+    return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, timezone_offset: member.timezone_offset ?? null, sessions });
   }
 
   if (action === "submit-scores") {
@@ -365,6 +365,22 @@ Deno.serve(async (req: Request) => {
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "delete_failed" }, 200);
+    return json({ ok: true });
+  }
+
+  if (action === "update-timezone") {
+    const offset = parseInt(payload?.offset, 10);
+    if (isNaN(offset) || offset < -12 || offset > 14) {
+      return json({ ok: false, error: "invalid_offset" }, 400);
+    }
+
+    const { data, error } = await admin.rpc("gm_update_player_timezone", {
+      p_uid: uid,
+      p_offset: offset,
+    });
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
+    if (!row || !row.ok) return json({ ok: false, error: row?.error || "update_failed" }, 200);
     return json({ ok: true });
   }
 

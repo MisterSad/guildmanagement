@@ -88,7 +88,8 @@
         portalState.player = {
             pseudo: profile.pseudo,
             guild: profile.guild,
-            overall_power: profile.overall_power
+            overall_power: profile.overall_power,
+            timezone_offset: profile.timezone_offset != null ? profile.timezone_offset : null
         };
         portalState.sessions = profile.sessions || [];
         portalState.history = history.ok ? (history.events || {}) : null;
@@ -762,6 +763,16 @@
                 '</div>' +
 
                 '<div class="portal-card">' +
+                    '<div class="portal-card-title"><i class="ph ph-clock"></i> My Timezone</div>' +
+                    '<div class="portal-row">' +
+                        '<select id="portal-timezone-select" class="gm-input"></select>' +
+                        '<button type="button" id="portal-timezone-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
+                    '</div>' +
+                    '<div class="portal-msg" id="portal-timezone-msg"></div>' +
+                    '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Helps officers plan events when most players are available.</div>' +
+                '</div>' +
+
+                '<div class="portal-card">' +
                     '<div class="portal-card-title"><i class="ph ph-swap"></i> Request Guild Transfer</div>' +
                     '<div class="portal-row">' +
                         '<select id="portal-transfer-select" class="gm-input"><option value="">Select Target Guild...</option></select>' +
@@ -825,6 +836,51 @@
                 if (span) span.textContent = origText;
             }
         });
+
+        // Timezone
+        var tzSelect = document.getElementById('portal-timezone-select');
+        var tzBtn = document.getElementById('portal-timezone-btn');
+        var tzMsg = document.getElementById('portal-timezone-msg');
+        if (tzSelect) {
+            var tzOptions = '';
+            for (var o = -12; o <= 14; o++) {
+                var label = 'UTC' + (o === 0 ? '' : (o > 0 ? '+' + o : o));
+                tzOptions += '<option value="' + o + '">' + label + '</option>';
+            }
+            tzSelect.innerHTML = tzOptions;
+            var currentTz = (portalState.player.timezone_offset != null) ? portalState.player.timezone_offset : null;
+            if (currentTz != null) tzSelect.value = String(currentTz);
+        }
+        if (tzBtn && tzSelect) {
+            tzBtn.addEventListener('click', async function () {
+                var offset = parseInt(tzSelect.value, 10);
+                if (isNaN(offset)) return;
+                tzBtn.disabled = true;
+                var span = tzBtn.querySelector('span');
+                var origText = span ? span.textContent : '';
+                if (span) span.textContent = 'Saving...';
+                try {
+                    var res = await invoke('update-timezone', { offset: offset });
+                    if (!res.ok) throw new Error(res.error || 'update_failed');
+                    portalState.player.timezone_offset = offset;
+                    if (tzMsg) {
+                        tzMsg.textContent = 'Timezone saved. Your officers can now see when you are available.';
+                        tzMsg.style.color = 'var(--success)';
+                        tzMsg.style.display = 'block';
+                    }
+                    window.GM.showToast('Timezone updated!', 'success');
+                } catch (err) {
+                    if (tzMsg) {
+                        tzMsg.textContent = 'Failed to save: ' + err.message;
+                        tzMsg.style.color = 'var(--danger)';
+                        tzMsg.style.display = 'block';
+                    }
+                } finally {
+                    tzBtn.disabled = false;
+                    if (span) span.textContent = origText;
+                }
+            });
+        }
 
         // Transfer
         var transferSelect = document.getElementById('portal-transfer-select');

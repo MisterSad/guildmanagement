@@ -1845,6 +1845,7 @@
         var sortMember = sortMemberSelect ? sortMemberSelect.value : 'power_desc';
 
         renderAbsenceSummary();
+        renderTimezoneCoverage();
 
         var powers = guildMembers.map(function (m) { return parseInt(m.overall_power) || 0; });
         var maxPower = powers.length ? Math.max.apply(null, powers) : 0;
@@ -2018,6 +2019,7 @@
         var tierBadge = '<span class="gm-power-tier-chip" style="color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '12;" title="' + meta.label + ' Tier"><span>' + meta.icon + '</span> ' + formattedPower + '</span>';
 
         var absenceBadge = absenceBadgeHtml(m);
+        var timezoneChip = timezoneChipHtml(m);
 
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
@@ -2027,6 +2029,7 @@
                             '<span class="gm-member-pseudo">' + esc(m.pseudo) + '</span>' +
                             roleBadgeHtml +
                             absenceBadge +
+                            timezoneChip +
                         '</div>' +
                         '<div class="gm-member-sub-info">' +
                             '<span class="gm-mono gm-uid-text">UID ' + esc(uidVal) + '</span>' +
@@ -2062,6 +2065,16 @@
         var range = esc(match.start_date) + ' → ' + esc(match.end_date);
         return '<span class="gm-absence-chip" style="color:' + color + '; border: 1px solid ' + border + '; background:' + bg + ';" title="' + kindLabel + ' ' + range + (match.note ? ' — ' + esc(match.note) : '') + '">' +
                     '<i class="ph ' + (active ? 'ph-user-minus' : 'ph-hourglass') + '"></i> ' + (active ? kindLabel : kindLabel + ' soon') +
+                '</span>';
+    }
+
+    // Timezone chip on a member tile (declared by the player via the portal).
+    function timezoneChipHtml(m) {
+        var offset = m.timezone_offset;
+        if (offset == null || isNaN(offset)) return '';
+        var label = 'UTC' + (offset === 0 ? '' : (offset > 0 ? '+' + offset : offset));
+        return '<span class="gm-tz-chip" title="Local timezone (declared by the player)">' +
+                    '<i class="ph ph-clock"></i> ' + esc(label) +
                 '</span>';
     }
 
@@ -2120,6 +2133,54 @@
                         (a.note ? '<div class="gm-absence-card-note">' + esc(a.note) + '</div>' : '') +
                     '</div>';
         });
+        html += '</div>';
+        listEl.innerHTML = html;
+    }
+
+    // Timezone coverage: histogram of the players' current local hour.
+    function renderTimezoneCoverage() {
+        var section = document.getElementById('admin-timezone-section');
+        var listEl = document.getElementById('admin-timezone-list');
+        var countEl = document.getElementById('admin-timezone-count');
+        if (!section || !listEl || !countEl) return;
+
+        var withTz = guildMembers.filter(function (m) {
+            return m.timezone_offset != null && !isNaN(m.timezone_offset) && (m.guild || 'ALPHA') === (window.currentGuildRestriction || window.currentGuild || 'ALPHA');
+        });
+        if (withTz.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = '';
+        countEl.textContent = withTz.length + '/' + guildMembers.length;
+
+        // Current local hour per player
+        var nowUtcHours = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
+        var buckets = {};
+        withTz.forEach(function (m) {
+            var localHour = Math.floor(((nowUtcHours + m.timezone_offset) % 24 + 24) % 24);
+            if (!buckets[localHour]) buckets[localHour] = [];
+            buckets[localHour].push(m);
+        });
+
+        var maxCount = 0;
+        Object.keys(buckets).forEach(function (h) { if (buckets[h].length > maxCount) maxCount = buckets[h].length; });
+        if (maxCount <= 0) maxCount = 1;
+
+        var html = '<div class="gm-tz-histogram">';
+        for (var h = 0; h < 24; h++) {
+            var list = buckets[h] || [];
+            var pct = Math.round((list.length / maxCount) * 100);
+            var isPeak = list.length === maxCount && list.length > 0;
+            var label = String(h).padStart(2, '0') + ':00';
+            var names = list.map(function (m) { return m.pseudo; }).join(', ');
+            html += '<div class="gm-tz-bar-row"' + (names ? ' title="' + esc(names) + '"' : '') + '>' +
+                        '<span class="gm-tz-bar-label">' + label + '</span>' +
+                        '<div class="gm-tz-bar-track"><div class="gm-tz-bar' + (isPeak ? ' gm-tz-bar-peak' : '') + '" style="width:' + pct + '%;"></div></div>' +
+                        '<span class="gm-tz-bar-count">' + list.length + '</span>' +
+                    '</div>';
+        }
         html += '</div>';
         listEl.innerHTML = html;
     }
