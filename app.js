@@ -937,6 +937,15 @@
     }
 
     // ─── Guild Join Code (player self-registration) ───────────────────────────
+    // The plain code is kept in localStorage (per guild) so it stays visible
+    // when the tab is revisited or the page reloads. It is a shared invite
+    // code meant to be broadcast to players (like a Discord invite), not a
+    // secret credential; the DB only ever stores its SHA-256 hash.
+    function joinCodeStorageKey() {
+        var guild = window.currentGuild || window.GM.getActiveGuild() || 'ALPHA';
+        return 'gm_join_code_plain_' + guild;
+    }
+
     function wireJoinCode() {
         var generateBtn = document.getElementById('join-code-generate-btn');
         var copyBtn = document.getElementById('join-code-copy-btn');
@@ -945,18 +954,31 @@
         var infoEl = document.getElementById('join-code-info');
         if (!generateBtn) return;
 
-        var generatedCode = '';
         var hasCode = false;
+        var storedCode = '';
+        try { storedCode = localStorage.getItem(joinCodeStorageKey()) || ''; } catch (_) {}
 
         (window.GM.config.get('join_code_hash')).then(function (hash) {
             hasCode = !!hash;
             var label = document.getElementById('join-code-btn-label');
             if (label) label.textContent = hasCode ? 'Regenerate Code' : 'Generate Code';
-            if (infoEl) infoEl.textContent = hasCode ? 'A join code is already set for this guild.' : 'No join code set yet. Players cannot register until you generate one.';
+            if (infoEl) {
+                if (storedCode) {
+                    infoEl.textContent = 'Share this code with your players. Anyone with it can register.';
+                } else if (hasCode) {
+                    infoEl.textContent = 'A join code is already set but was generated elsewhere. Regenerate to get a new one.';
+                } else {
+                    infoEl.textContent = 'No join code set yet. Players cannot register until you generate one.';
+                }
+            }
+            // Re-show the stored code so admins never lose it
+            if (storedCode && resultVal) resultVal.textContent = storedCode;
+            if (storedCode && resultBox) resultBox.classList.remove('hidden');
+            if (storedCode && copyBtn) copyBtn.classList.remove('hidden');
         }).catch(function () {});
 
         generateBtn.addEventListener('click', async function () {
-            generatedCode = window.GM.generateJoinCode('FGF');
+            var generatedCode = window.GM.generateJoinCode('FGF');
             generateBtn.disabled = true;
             var span = generateBtn.querySelector('span');
             if (span) span.textContent = 'Saving...';
@@ -966,10 +988,13 @@
                     guild: window.currentGuild || window.GM.getActiveGuild() || 'ALPHA'
                 });
                 if (!res.ok) throw new Error(res.error || 'set_code_failed');
+                // Persist the plain code for this guild
+                try { localStorage.setItem(joinCodeStorageKey(), generatedCode); } catch (_) {}
+                storedCode = generatedCode;
                 if (resultVal) resultVal.textContent = generatedCode;
                 if (resultBox) resultBox.classList.remove('hidden');
                 if (copyBtn) copyBtn.classList.remove('hidden');
-                if (infoEl) infoEl.textContent = 'Share this code with your players. It will not be shown again.';
+                if (infoEl) infoEl.textContent = 'Share this code with your players. Anyone with it can register.';
                 showToast('Join code generated.', 'success');
             } catch (err) {
                 showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -980,9 +1005,10 @@
         });
 
         if (copyBtn) copyBtn.addEventListener('click', function () {
-            if (!generatedCode) return;
+            var code = storedCode || (resultVal ? resultVal.textContent : '') || '';
+            if (!code) return;
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(generatedCode).then(function () {
+                navigator.clipboard.writeText(code).then(function () {
                     showToast('Join code copied.', 'success');
                 }).catch(function () {});
             }
