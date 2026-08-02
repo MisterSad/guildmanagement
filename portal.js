@@ -519,24 +519,35 @@
         var panel = document.getElementById('portal-panel-events');
         if (!panel) return;
 
+        var sessions = portalState.sessions || [];
+        var submittedCount = sessions.filter(function (s) { return s.current_data && s.current_data.is_pending; }).length;
+        var doneCount = sessions.filter(function (s) { return s.current_data && s.current_data.is_pending; }).length;
+
         var headerHtml =
             '<header class="gm-page-header">' +
                 '<div>' +
                     '<h1 class="gm-page-title">Active Events</h1>' +
-                    '<p class="gm-page-subtitle">Submit your participation and scores for the guild\'s current events</p>' +
+                    '<p class="gm-page-subtitle">Tell the officers you took part and submit your scores</p>' +
                 '</div>' +
             '</header>';
 
-        if (!portalState.sessions || portalState.sessions.length === 0) {
-            panel.innerHTML = headerHtml + '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, you will be able to submit your scores here.</div></div>';
+        if (!sessions || sessions.length === 0) {
+            panel.innerHTML = headerHtml + '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, it will show up here for you to fill in.</div></div>';
             return;
         }
 
+        var summaryHtml =
+            '<div class="portal-events-summary">' +
+                '<div class="portal-events-summary-item"><span class="portal-events-summary-value">' + sessions.length + '</span><span class="portal-events-summary-label">Active events</span></div>' +
+                '<div class="portal-events-summary-item"><span class="portal-events-summary-value">' + (sessions.length - submittedCount) + '</span><span class="portal-events-summary-label">To submit</span></div>' +
+                '<div class="portal-events-summary-item"><span class="portal-events-summary-value">' + submittedCount + '</span><span class="portal-events-summary-label">Submitted</span></div>' +
+            '</div>';
+
         var html = '';
-        portalState.sessions.forEach(function (sess) {
+        sessions.forEach(function (sess) {
             html += renderEventCard(sess);
         });
-        panel.innerHTML = headerHtml + '<div class="portal-events-grid">' + html + '</div>';
+        panel.innerHTML = headerHtml + summaryHtml + '<div class="portal-events-grid">' + html + '</div>';
         wireEventCards(panel);
     }
 
@@ -546,7 +557,7 @@
         var isDtr = eventName === 'Defend Trade Route';
         var isShadowfront = eventName === 'Shadowfront';
         var icon = window.GM.getEventIcon(eventName);
-        var theme = window.GM.getEventTheme(eventName);
+        var accent = eventAccent(eventName);
 
         var EVENTS_WITHOUT_SCORE = ['Defend Trade Route', 'Shadowfront', 'ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
         var hasScore = EVENTS_WITHOUT_SCORE.indexOf(eventName) === -1;
@@ -556,63 +567,105 @@
         var isLateChecked = !!curr.late;
         var isExcusedChecked = !!curr.excused;
         var isAppointedChecked = !!curr.appointed;
+        var isPending = !!curr.is_pending;
 
-        var fieldsHtml = '';
-
-        fieldsHtml +=
-            '<div class="portal-field">' +
-                '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-participated" ' + (isChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>I participated in this event</span></label>' +
-            '</div>';
-
-        if (isDtr) {
-            fieldsHtml +=
-                '<div class="portal-field">' +
-                    '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-appointed" ' + (isAppointedChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>Appointed</span></label>' +
-                '</div>';
-        }
-
-        if (isShadowfront) {
-            fieldsHtml +=
-                '<div class="portal-field">' +
-                    '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-late" ' + (isLateChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>Late</span></label>' +
-                '</div>' +
-                '<div class="portal-field">' +
-                    '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-excused" ' + (isExcusedChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>Excused</span></label>' +
-                '</div>';
-        }
-
-        if (hasScore) {
-            if (isSvsOrGvg) {
-                fieldsHtml +=
-                    '<div class="portal-field"><label class="portal-field-label">Day 1 to 5 score</label><input type="text" class="gm-input gm-input-sm portal-score-prep" value="' + esc(curr.score_prep != null ? curr.score_prep : '') + '" placeholder="e.g. 150000"></div>' +
-                    '<div class="portal-field"><label class="portal-field-label">Day 6 score</label><input type="text" class="gm-input gm-input-sm portal-score-pvp" value="' + esc(curr.score_pvp != null ? curr.score_pvp : '') + '" placeholder="e.g. 50000"></div>';
-            } else {
-                fieldsHtml +=
-                    '<div class="portal-field"><label class="portal-field-label">Score</label><input type="text" class="gm-input gm-input-sm portal-score" value="' + esc(curr.score != null ? curr.score : '') + '" placeholder="e.g. 45000"></div>';
-            }
-        }
-
-        var statusBadge = curr.is_pending
-            ? '<span class="gm-chip" style="margin-left:auto; background:rgba(245,158,11,0.12); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending approval</span>'
-            : '';
+        // Status pill
+        var statusHtml = isPending
+            ? '<span class="portal-status portal-status-pending"><i class="ph ph-hourglass"></i> Awaiting approval</span>'
+            : '<span class="portal-status portal-status-todo"><i class="ph ph-pencil-line"></i> Not submitted yet</span>';
 
         var startLabel = sess.start_at ? window.GM.formatDateTimeUTC(sess.start_at) : '';
 
-        return '<div class="portal-event-card ' + theme + '" data-event="' + esc(eventName) + '" data-session="' + esc(sess.session_id) + '">' +
-                    '<div class="portal-event-head">' +
-                        '<div class="portal-event-title"><i class="ph ' + icon + '"></i> ' + esc(eventName) + '</div>' +
-                        statusBadge +
+        // Main participation toggle
+        var fieldsHtml =
+            '<div class="portal-participation-box">' +
+                '<label class="portal-participation-toggle">' +
+                    '<div class="check-toggle">' +
+                        '<input type="checkbox" class="participation-checkbox portal-check-participated" ' + (isChecked ? 'checked' : '') + '>' +
+                        '<span class="check-slider"></span>' +
                     '</div>' +
-                    (startLabel ? '<div class="portal-event-sub"><i class="ph ph-clock"></i> ' + esc(startLabel) + '</div>' : '') +
-                    '<div class="portal-event-fields">' + fieldsHtml + '</div>' +
-                    '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm portal-submit-event-btn"><i class="ph ph-paper-plane-right"></i><span>Submit Scores</span></button>' +
+                    '<div class="portal-participation-text">' +
+                        '<span class="portal-participation-title">I participated in this event</span>' +
+                        '<span class="portal-participation-hint">Mark this to tell the officers you were there</span>' +
+                    '</div>' +
+                '</label>' +
+            '</div>';
+
+        // Event-specific details (optional)
+        var detailsHtml = '';
+        if (isDtr || isShadowfront) {
+            detailsHtml = '<div class="portal-details-label">Details (optional)</div><div class="portal-details-row">';
+            if (isDtr) {
+                detailsHtml +=
+                    '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-appointed" ' + (isAppointedChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>I was appointed</span></label>';
+            }
+            if (isShadowfront) {
+                detailsHtml +=
+                    '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-late" ' + (isLateChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>I was late</span></label>' +
+                    '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-excused" ' + (isExcusedChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>I was excused</span></label>';
+            }
+            detailsHtml += '</div>';
+        }
+
+        // Score inputs with live total
+        var scoreHtml = '';
+        if (hasScore) {
+            scoreHtml = '<div class="portal-score-section">';
+            if (isSvsOrGvg) {
+                scoreHtml +=
+                    '<div class="portal-score-fields">' +
+                        '<div class="portal-field"><label class="portal-field-label">Days 1-5 score</label><input type="text" class="gm-input gm-input-sm portal-score-prep" value="' + esc(curr.score_prep != null ? curr.score_prep : '') + '" placeholder="e.g. 150000"></div>' +
+                        '<div class="portal-field"><label class="portal-field-label">Day 6 score</label><input type="text" class="gm-input gm-input-sm portal-score-pvp" value="' + esc(curr.score_pvp != null ? curr.score_pvp : '') + '" placeholder="e.g. 50000"></div>' +
+                    '</div>' +
+                    '<div class="portal-score-total"><span class="portal-score-total-label">Total</span><span class="portal-score-total-value" data-total>0</span></div>';
+            } else {
+                scoreHtml +=
+                    '<div class="portal-score-fields">' +
+                        '<div class="portal-field"><label class="portal-field-label">Score</label><input type="text" class="gm-input gm-input-sm portal-score" value="' + esc(curr.score != null ? curr.score : '') + '" placeholder="e.g. 45000"></div>' +
+                    '</div>' +
+                    '<div class="portal-score-total"><span class="portal-score-total-label">Score</span><span class="portal-score-total-value" data-total>0</span></div>';
+            }
+            scoreHtml += '</div>';
+        }
+
+        var submitBtnHtml = isPending
+            ? '<button type="button" class="gm-btn gm-btn-success gm-btn-sm portal-submit-event-btn" disabled><i class="ph ph-check-circle"></i><span>Submitted</span></button>'
+            : '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm portal-submit-event-btn"><i class="ph ph-paper-plane-right"></i><span>Submit</span></button>';
+
+        return '<div class="portal-event-card' + (isPending ? ' portal-event-submitted' : '') + '" data-event="' + esc(eventName) + '" data-session="' + esc(sess.session_id) + '">' +
+                    '<div class="portal-event-head">' +
+                        '<div class="portal-event-icon" style="background:' + accent + '1f; color:' + accent + ';"><i class="ph ' + icon + '"></i></div>' +
+                        '<div class="portal-event-head-info">' +
+                            '<div class="portal-event-title">' + esc(eventName) + '</div>' +
+                            (startLabel ? '<div class="portal-event-sub"><i class="ph ph-clock"></i> ' + esc(startLabel) + '</div>' : '') +
+                        '</div>' +
+                        statusHtml +
+                    '</div>' +
+                    '<div class="portal-event-fields">' + fieldsHtml + detailsHtml + scoreHtml + '</div>' +
+                    submitBtnHtml +
                 '</div>';
     }
 
     function wireEventCards(panel) {
         panel.querySelectorAll('.portal-score, .portal-score-prep, .portal-score-pvp').forEach(function (inp) {
             window.GM.attachNumberFormatter(inp);
+            inp.addEventListener('input', function () { updateCardTotal(inp.closest('.portal-event-card')); });
         });
+
+        // Live total per card
+        panel.querySelectorAll('.portal-event-card').forEach(function (card) {
+            updateCardTotal(card);
+        });
+
+        function updateCardTotal(card) {
+            var totalEl = card.querySelector('[data-total]');
+            if (!totalEl) return;
+            var prep = window.GM.parseNumber(card.querySelector('.portal-score-prep')?.value || '');
+            var pvp = window.GM.parseNumber(card.querySelector('.portal-score-pvp')?.value || '');
+            var single = window.GM.parseNumber(card.querySelector('.portal-score')?.value || '');
+            var total = (prep || 0) + (pvp || 0) + (single || 0);
+            totalEl.textContent = window.GM.formatNumber(total || 0);
+        }
 
         panel.querySelectorAll('.portal-check-appointed').forEach(function (cb) {
             cb.addEventListener('change', function () {
@@ -639,6 +692,15 @@
                 var scorePrepVal = card.querySelector('.portal-score-prep')?.value;
                 var scorePvpVal = card.querySelector('.portal-score-pvp')?.value;
 
+                // Nothing to submit: participation unchecked and no scores
+                if (!participated && !appointed && !late && !excused &&
+                    !(scoreVal && scoreVal.replace(/[^0-9]/g, '')) &&
+                    !(scorePrepVal && scorePrepVal.replace(/[^0-9]/g, '')) &&
+                    !(scorePvpVal && scorePvpVal.replace(/[^0-9]/g, ''))) {
+                    window.GM.showToast('Nothing to submit. Check participation or enter a score.', 'warning');
+                    return;
+                }
+
                 var payload = {
                     event_name: eventName,
                     session_id: sessionId,
@@ -659,15 +721,12 @@
                 try {
                     var res = await invoke('submit-scores', payload);
                     if (!res.ok) throw new Error(res.error || 'submit_failed');
-                    window.GM.showToast('Scores submitted! Pending officer approval.', 'success');
-                    var badge = card.querySelector('.gm-chip');
-                    if (!badge) {
-                        card.querySelector('.portal-event-head').insertAdjacentHTML('beforeend', '<span class="gm-chip" style="margin-left:auto; background:rgba(245,158,11,0.12); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending approval</span>');
-                    }
+                    window.GM.showToast('Submitted! An officer will confirm it shortly.', 'success');
+                    // Refresh the panel so statuses and the summary update
+                    renderEventsPanel();
                 } catch (err) {
                     console.error(err);
                     window.GM.showToast('Submission failed. Check your parameters.', 'error');
-                } finally {
                     btn.disabled = false;
                     if (span) span.textContent = origText;
                 }

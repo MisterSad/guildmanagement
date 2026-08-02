@@ -494,7 +494,7 @@
         }
         var tc = document.getElementById('toast-container');
         if (!tc) return;
-        var icons = { success: 'ph-check-circle', error: 'ph-warning-circle', info: 'ph-info' };
+        var icons = { success: 'ph-check-circle', error: 'ph-warning-circle', warning: 'ph-warning', info: 'ph-info' };
         var toast = document.createElement('div');
         toast.className = 'toast ' + (type || 'info');
 
