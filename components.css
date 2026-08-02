@@ -2317,6 +2317,49 @@
     width: 100%;
 }
 
+.portal-participation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.portal-participation-tile {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+.portal-participation-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.9rem 1rem 1rem;
+    text-align: center;
+}
+.portal-participation-rate {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+.portal-participation-sub {
+    font-size: 0.72rem;
+    color: var(--fg-muted);
+    font-weight: 600;
+}
+.portal-participation-badges {
+    display: flex;
+    gap: 0.3rem;
+    margin-top: 0.35rem;
+}
+
 .portal-period {
     display: flex;
     align-items: center;
@@ -2460,6 +2503,7 @@
 @media (max-width: 600px) {
     .portal-stats { grid-template-columns: repeat(2, 1fr); }
     .portal-charts-grid { grid-template-columns: 1fr; }
+    .portal-participation-grid { grid-template-columns: 1fr; }
     .portal-events-grid { grid-template-columns: 1fr; }
     .portal-settings-grid { grid-template-columns: 1fr; }
     .portal-chart-list { grid-template-columns: 1fr; }

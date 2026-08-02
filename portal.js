@@ -263,6 +263,8 @@
 
         var chartsHtml = '';
         var chartKeys = keys.filter(function (k) { return hist[k].has_score; });
+        var tileKeys = keys.filter(function (k) { return !hist[k].has_score; });
+
         if (chartKeys.length === 0) {
             chartsHtml = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-chart-bar gm-icon"></i><div class="gm-empty-title">No scored events for this period.</div><div class="gm-empty-sub">Progression charts appear for events with scores (SvS, GvG, Glory).</div></div>';
         } else {
@@ -270,6 +272,17 @@
                 var ev = hist[key];
                 chartsHtml += renderChartCard(key, ev, idx);
             });
+        }
+
+        // Events without scores get a compact participation-rate tile instead.
+        var tilesHtml2 = '';
+        if (tileKeys.length > 0) {
+            tilesHtml2 =
+                '<div class="portal-participation-grid">' +
+                    tileKeys.map(function (key) {
+                        return renderParticipationTile(key, hist[key]);
+                    }).join('') +
+                '</div>';
         }
 
         panel.innerHTML =
@@ -281,6 +294,7 @@
                 periodHtml +
             '</header>' +
             tilesHtml +
+            tilesHtml2 +
             '<div class="portal-charts-grid">' + chartsHtml + '</div>';
 
         // Period selector wiring
@@ -347,6 +361,31 @@
                         '<span class="lg"><span class="sw" style="background:#f87171;"></span>Absent</span>' +
                     '</div>' +
                     '<div class="portal-chart-list">' + historyHtml + '</div>' +
+                '</div>';
+    }
+
+    // ─── Participation tile for events without scores ──────────────────────
+    function renderParticipationTile(eventKey, ev) {
+        var icon = window.GM.getEventIcon(eventKey);
+        var accent = eventAccent(eventKey);
+        var attended = ev.attended || 0;
+
+        var recentBadges = '';
+        (ev.history || []).slice(0, 4).forEach(function (h) {
+            recentBadges += h.participated || h.sub_present
+                ? '<span class="portal-badge" style="background:rgba(52,211,153,0.18); color:#34d399; border-color:rgba(52,211,153,0.45);">P</span>'
+                : (h.excused ? '<span class="portal-badge" style="background:rgba(251,191,36,0.15); color:#fbbf24; border-color:rgba(251,191,36,0.45);">E</span>'
+                   : '<span class="portal-badge" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.45);">A</span>');
+        });
+
+        return '<div class="portal-participation-tile">' +
+                    '<div class="portal-chart-accent" style="background:' + accent + ';"></div>' +
+                    '<div class="portal-participation-body">' +
+                        '<div class="portal-chart-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + esc(eventKey) + '</div>' +
+                        '<div class="portal-participation-rate">' + esc(ev.rate) + '%</div>' +
+                        '<div class="portal-participation-sub">' + esc(attended) + '/' + esc(ev.count) + ' attended</div>' +
+                        '<div class="portal-participation-badges">' + recentBadges + '</div>' +
+                    '</div>' +
                 '</div>';
     }
 
