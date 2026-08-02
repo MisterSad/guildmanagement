@@ -2425,6 +2425,7 @@
 .portal-chart-legend { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--fg-muted); font-weight: 600; }
 .portal-chart-legend .lg { display: inline-flex; align-items: center; gap: 0.35rem; }
 .portal-chart-legend .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid rgba(255,255,255,0.5); }
+.portal-chart-legend .portal-legend-hint { color: var(--fg-dim); font-weight: 500; margin-left: auto; }
 
 .portal-chart-list {
     display: grid;

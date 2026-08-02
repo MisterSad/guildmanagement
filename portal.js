@@ -359,6 +359,7 @@
                         '<span class="lg"><span class="sw" style="background:#34d399;"></span>Participated</span>' +
                         '<span class="lg"><span class="sw" style="background:#fbbf24;"></span>Excused</span>' +
                         '<span class="lg"><span class="sw" style="background:#f87171;"></span>Absent</span>' +
+                        '<span class="lg portal-legend-hint"><i class="ph ph-chart-bar"></i> Bar height = score</span>' +
                     '</div>' +
                     '<div class="portal-chart-list">' + historyHtml + '</div>' +
                 '</div>';
@@ -424,7 +425,7 @@
         };
         var maxScore = 0;
         list.forEach(function (h) { if ((h.score || 0) > maxScore) maxScore = h.score; });
-        if (maxScore <= 0) maxScore = 1;
+        var anyScore = maxScore > 0;
 
         // Baseline
         ctx.strokeStyle = 'rgba(255,255,255,0.22)';
@@ -433,6 +434,40 @@
         ctx.moveTo(padL, padT + chartH + 0.5);
         ctx.lineTo(w - padR, padT + chartH + 0.5);
         ctx.stroke();
+
+        if (!anyScore) {
+            // No scores recorded for this event: show participation dots instead
+            // of flat bars, and say so explicitly.
+            var dotR = Math.min(9, barW * 0.38);
+            list.forEach(function (h, i) {
+                var x = padL + i * (barW + gap) + barW / 2;
+                var cy = padT + chartH / 2;
+
+                var key = (h.participated || h.sub_present) ? 'ok' : (h.excused ? 'excused' : 'miss');
+                ctx.fillStyle = colors[key].fill;
+                ctx.beginPath();
+                ctx.arc(x, cy, dotR, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = colors[key].border;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                var label = (h.week_start || h.session_id || '').toString().slice(5, 10);
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, x, padT + chartH + 17);
+            });
+
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.font = '700 13px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('No scores recorded', w / 2, padT + 12);
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.font = '11px Inter, sans-serif';
+            ctx.fillText('Colored dots show participation', w / 2, padT + 28);
+            return;
+        }
 
         list.forEach(function (h, i) {
             var x = padL + i * (barW + gap);
@@ -451,6 +486,14 @@
             ctx.strokeStyle = c.border;
             ctx.lineWidth = 1;
             ctx.stroke();
+
+            // Score value above the bar (only when a score was recorded)
+            if (h.score > 0) {
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.font = '700 11px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(window.GM.formatNumber(h.score), x + barW / 2, y - 5);
+            }
 
             // Date label
             var label = (h.week_start || h.session_id || '').toString().slice(5, 10);
