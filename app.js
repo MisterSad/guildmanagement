@@ -134,7 +134,7 @@
 
         // Always update the dashboard and shell to reflect fresh authenticated data
         showAdminDashboard(role);
-        if (window.GM_SHELL && window.GM_SHELL.renderShell) {
+        if (role !== 'member' && window.GM_SHELL && window.GM_SHELL.renderShell) {
             window.GM_SHELL.renderShell();
         }
         reloadActiveView();
@@ -191,7 +191,7 @@
                 window.GM.currentAccountId = user;
 
                 showAdminDashboard(role);
-                if (window.GM_SHELL && window.GM_SHELL.renderShell) {
+                if (role !== 'member' && window.GM_SHELL && window.GM_SHELL.renderShell) {
                     window.GM_SHELL.renderShell();
                 }
                 showToast(role === 'super_admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
@@ -298,6 +298,25 @@
     function showAdminDashboard(role) {
         role = window.GM.normalizeRole(role || localStorage.getItem('gm_role'));
         loginView.classList.add('hidden');
+
+        // Player accounts never see the admin dashboard: open the Player Portal.
+        if (role === 'member') {
+            dashboardView.classList.add('hidden');
+            dashboardView.classList.remove('active');
+            if (memberView) memberView.classList.add('hidden');
+            localStorage.setItem('gm_portal_session', '1');
+            playerPortalView.classList.remove('hidden');
+            portalStepLookup.classList.add('hidden');
+            portalStepForm.classList.remove('hidden');
+            playerPortalView.classList.add('portal-connected');
+            var portalContainer = document.querySelector('.gm-portal-container');
+            if (portalContainer) portalContainer.classList.add('portal-wide');
+            if (window.GM_PORTAL) {
+                window.GM_PORTAL.loadDashboard();
+            }
+            return;
+        }
+
         if (memberView) memberView.classList.add('hidden');
         dashboardView.classList.remove('hidden');
         dashboardView.classList.add('active');
