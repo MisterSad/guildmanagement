@@ -2311,8 +2311,8 @@
 .portal-stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-muted); margin-top: 0.2rem; }
 
 .portal-charts-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
     width: 100%;
 }
@@ -2503,7 +2503,6 @@
 /* ─── Responsive: mobile ──────────────────────────────────────────────── */
 @media (max-width: 600px) {
     .portal-stats { grid-template-columns: repeat(2, 1fr); }
-    .portal-charts-grid { grid-template-columns: 1fr; }
     .portal-participation-grid { grid-template-columns: 1fr; }
     .portal-events-grid { grid-template-columns: 1fr; }
     .portal-settings-grid { grid-template-columns: 1fr; }
