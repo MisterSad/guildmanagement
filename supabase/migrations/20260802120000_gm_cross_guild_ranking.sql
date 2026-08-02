@@ -49,63 +49,63 @@ BEGIN
 
   RETURN QUERY
   WITH ep AS (
-    SELECT guild,
-           pseudo,
-           event_name,
-           COALESCE(NULLIF(session_id, ''), week_start::text) AS skey,
-           (participated > 0) AS attended,
-           (event_name = 'Glory') AS is_glory
-    FROM public.event_participants
-    WHERE is_pending = false
-      AND COALESCE(NULLIF(session_id, ''), week_start::text) IS NOT NULL
+    SELECT ep0.guild,
+           ep0.pseudo,
+           ep0.event_name,
+           COALESCE(NULLIF(ep0.session_id, ''), ep0.week_start::text) AS skey,
+           (ep0.participated > 0) AS attended,
+           (ep0.event_name = 'Glory') AS is_glory
+    FROM public.event_participants ep0
+    WHERE ep0.is_pending = false
+      AND COALESCE(NULLIF(ep0.session_id, ''), ep0.week_start::text) IS NOT NULL
   ),
   sess AS (
-    SELECT DISTINCT guild, event_name, skey FROM ep
+    SELECT DISTINCT e.guild, e.event_name, e.skey FROM ep e
   ),
   sess_totals AS (
-    SELECT guild,
-           count(*) FILTER (WHERE event_name = 'SvS')         AS svs_tot,
-           count(*) FILTER (WHERE event_name = 'GvG')         AS gvg_tot,
-           count(*) FILTER (WHERE event_name = 'Shadowfront') AS sh_tot,
-           count(*) FILTER (WHERE event_name = 'Glory')       AS gl_tot,
-           count(*) FILTER (WHERE event_name <> 'Glory')      AS g_tot
-    FROM sess
-    GROUP BY guild
+    SELECT s.guild,
+           count(*) FILTER (WHERE s.event_name = 'SvS')         AS svs_tot,
+           count(*) FILTER (WHERE s.event_name = 'GvG')         AS gvg_tot,
+           count(*) FILTER (WHERE s.event_name = 'Shadowfront') AS sh_tot,
+           count(*) FILTER (WHERE s.event_name = 'Glory')       AS gl_tot,
+           count(*) FILTER (WHERE s.event_name <> 'Glory')      AS g_tot
+    FROM sess s
+    GROUP BY s.guild
   ),
   player_stats AS (
-    SELECT guild,
-           lower(btrim(pseudo)) AS nkey,
-           count(DISTINCT skey) FILTER (WHERE event_name = 'SvS' AND attended)         AS svs_att,
-           count(DISTINCT skey) FILTER (WHERE event_name = 'GvG' AND attended)         AS gvg_att,
-           count(DISTINCT skey) FILTER (WHERE event_name = 'Shadowfront' AND attended) AS sh_att,
-           count(DISTINCT skey) FILTER (WHERE event_name = 'Glory' AND attended)       AS gl_att,
-           count(DISTINCT skey) FILTER (WHERE NOT is_glory AND attended)               AS g_att
-    FROM ep
-    GROUP BY guild, lower(btrim(pseudo))
+    SELECT e.guild,
+           lower(btrim(e.pseudo)) AS nkey,
+           count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'SvS' AND e.attended)         AS svs_att,
+           count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'GvG' AND e.attended)         AS gvg_att,
+           count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'Shadowfront' AND e.attended) AS sh_att,
+           count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'Glory' AND e.attended)       AS gl_att,
+           count(DISTINCT e.skey) FILTER (WHERE NOT e.is_glory AND e.attended)               AS g_att
+    FROM ep e
+    GROUP BY e.guild, lower(btrim(e.pseudo))
   ),
   roster AS (
-    SELECT DISTINCT ON (guild, lower(btrim(pseudo)))
-           guild, pseudo, overall_power AS power
-    FROM public.guild_members
-    ORDER BY guild, lower(btrim(pseudo)), created_at DESC, id DESC
+    SELECT DISTINCT ON (m.guild, lower(btrim(m.pseudo)))
+           m.guild, m.pseudo, m.overall_power AS power
+    FROM public.guild_members m
+    ORDER BY m.guild, lower(btrim(m.pseudo)), m.created_at DESC, m.id DESC
   )
   SELECT r.pseudo,
          r.guild,
          COALESCE(r.power, 0)::bigint,
          COALESCE(ps.svs_att, 0)::integer,
-         st.svs_tot,
+         st.svs_tot::integer,
          CASE WHEN st.svs_tot > 0 THEN round(100.0 * COALESCE(ps.svs_att, 0) / st.svs_tot, 1) END,
          COALESCE(ps.gvg_att, 0)::integer,
-         st.gvg_tot,
+         st.gvg_tot::integer,
          CASE WHEN st.gvg_tot > 0 THEN round(100.0 * COALESCE(ps.gvg_att, 0) / st.gvg_tot, 1) END,
          COALESCE(ps.sh_att, 0)::integer,
-         st.sh_tot,
+         st.sh_tot::integer,
          CASE WHEN st.sh_tot > 0 THEN round(100.0 * COALESCE(ps.sh_att, 0) / st.sh_tot, 1) END,
          COALESCE(ps.gl_att, 0)::integer,
-         st.gl_tot,
+         st.gl_tot::integer,
          CASE WHEN st.gl_tot > 0 THEN round(100.0 * COALESCE(ps.gl_att, 0) / st.gl_tot, 1) END,
          COALESCE(ps.g_att, 0)::integer,
-         st.g_tot,
+         st.g_tot::integer,
          CASE WHEN st.g_tot > 0 THEN round(100.0 * COALESCE(ps.g_att, 0) / st.g_tot, 1) END
   FROM roster r
   LEFT JOIN player_stats ps ON ps.guild = r.guild AND ps.nkey = lower(btrim(r.pseudo))

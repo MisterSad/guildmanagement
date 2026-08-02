@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
 - **Settings tab (super admin only)**: New `tab-settings` panel visible only to `super_admin`, backed by the `gm_cross_guild_ranking` RPC (SECURITY DEFINER, guarded by `is_super_admin()`). Shows every player across all guilds with current power and participation rates for SvS, GvG, Shadowfront, Glory and overall (all event types except Glory, matching the stats module's participation semantics). Sortable columns, search and guild filter; client-side guard renders a "Super admin only" state for other roles.
 - **Unit test suite**: coverage for the new ranking module (sorting, filtering, escaping, error/retry, access guard) — 77 tests total.
 
+### Fixed
+- **Cross-guild ranking RPC**: the `gm_cross_guild_ranking` function failed at runtime with `column reference "guild" is ambiguous` — the `RETURNS TABLE` OUT parameters (`pseudo`, `guild`, …) act as PL/pgSQL variables and collided with unqualified column references in the query body. All column references are now qualified with table aliases; the session totals (`count(*)`) are cast to `integer` to match the declared result type. Validated on live data (653 players) and redeployed.
+
 ## [Unreleased] - 2026-08-02
 
 ### Changed
