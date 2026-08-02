@@ -93,7 +93,8 @@ begin
     update public.guild_members
     set guild = p_target_guild
     where uid = v_uid
-      and pseudo = v_pseudo;
+      and pseudo = v_pseudo
+      and guild = v_source_guild;
 
     update public.accounts
     set guild = p_target_guild
