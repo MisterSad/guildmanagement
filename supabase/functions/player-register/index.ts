@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
     id = (body?.id ?? "").toString().trim();
     password = (body?.password ?? "").toString();
     uid = (body?.uid ?? "").toString().trim();
-    code = (body?.code ?? "").toString().trim();
+    code = (body?.code ?? "").toString().trim().toUpperCase();
   } catch {
     return json({ ok: false, error: "bad_request" }, 400);
   }

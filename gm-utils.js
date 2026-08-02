@@ -386,7 +386,7 @@
                     id: (id || '').trim(),
                     password: password || '',
                     uid: (uid || '').trim(),
-                    code: (code || '').trim()
+                    code: (code || '').trim().toUpperCase()
                 }
             });
         } catch (e) {
