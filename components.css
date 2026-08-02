@@ -2331,16 +2331,20 @@
 .portal-chart-title { font-size: 0.95rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.4rem; }
 .portal-chart-title i { color: var(--accent); }
 .portal-chart-meta { font-size: 0.75rem; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
-.portal-chart-canvas { width: 100%; height: auto; border-radius: var(--radius-sm); background: rgba(0,0,0,0.25); }
+.portal-chart-canvas { width: 100%; height: auto; border-radius: var(--radius-sm); background: linear-gradient(180deg, oklch(0.14 0.02 250 / 0.9), oklch(0.10 0.015 250 / 0.95)); border: 1px solid var(--border-soft); }
+
+.portal-chart-legend { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; font-size: 0.72rem; color: var(--fg-dim); }
+.portal-chart-legend .lg { display: inline-flex; align-items: center; gap: 0.3rem; }
+.portal-chart-legend .sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; border: 1px solid rgba(255,255,255,0.4); }
 
 .portal-chart-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 0.3rem 1.5rem;
 }
-.portal-chart-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--fg-dim); }
-.portal-chart-row-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.portal-chart-row-score { font-variant-numeric: tabular-nums; color: var(--fg); }
+.portal-chart-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--fg); }
+.portal-chart-row-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-muted); }
+.portal-chart-row-score { font-variant-numeric: tabular-nums; color: var(--fg); font-weight: 600; }
 
 .portal-events-grid {
     display: grid;

@@ -250,7 +250,7 @@
         var attended = ev.attended || 0;
 
         var historyHtml = '';
-        (ev.history || []).slice(0, 12).forEach(function (h) {
+        (ev.history || []).slice(0, 8).forEach(function (h) {
             var label = h.week_start || h.session_id || '?';
             var badge = h.participated || h.sub_present
                 ? '<span class="gm-chip gm-chip-success" style="font-size:0.6rem;">P</span>'
@@ -269,7 +269,12 @@
                         '<div class="portal-chart-title"><i class="ph ' + icon + '"></i> ' + esc(eventKey) + '</div>' +
                         '<div class="portal-chart-meta">' + esc(attended) + '/' + esc(ev.count) + ' attended (' + esc(ev.rate) + '%)</div>' +
                     '</div>' +
-                    '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="260"></canvas>' +
+                    '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="180"></canvas>' +
+                    '<div class="portal-chart-legend">' +
+                        '<span class="lg"><span class="sw" style="background:#34d399;"></span>Participated</span>' +
+                        '<span class="lg"><span class="sw" style="background:#fbbf24;"></span>Excused</span>' +
+                        '<span class="lg"><span class="sw" style="background:#f87171;"></span>Absent</span>' +
+                    '</div>' +
                     '<div class="portal-chart-list">' + historyHtml + '</div>' +
                 '</div>';
     }
@@ -284,14 +289,14 @@
 
         var list = (ev.history || []).slice(0, 24).reverse();
         if (list.length === 0) {
-            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.fillStyle = 'rgba(255,255,255,0.55)';
             ctx.font = '14px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('No data', w / 2, h / 2);
             return;
         }
 
-        var padL = 10, padR = 10, padT = 22, padB = 30;
+        var padL = 10, padR = 10, padT = 20, padB = 28;
         var chartW = w - padL - padR;
         var chartH = h - padT - padB;
         var barW = Math.max(12, Math.min(56, (chartW / list.length) * 0.72));
@@ -301,13 +306,18 @@
             gap = list.length > 1 ? (chartW - barW * list.length) / (list.length - 1) : 0;
         }
 
-        var colors = { ok: 'rgba(52,211,153,0.85)', miss: 'rgba(248,113,113,0.7)', excused: 'rgba(251,191,36,0.8)' };
+        // High-contrast palette (solid fills + light border on dark canvas)
+        var colors = {
+            ok: { fill: '#34d399', border: 'rgba(255,255,255,0.55)' },
+            miss: { fill: '#f87171', border: 'rgba(255,255,255,0.55)' },
+            excused: { fill: '#fbbf24', border: 'rgba(255,255,255,0.55)' }
+        };
         var maxScore = 0;
         list.forEach(function (h) { if ((h.score || 0) > maxScore) maxScore = h.score; });
         if (maxScore <= 0) maxScore = 1;
 
         // Baseline
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.22)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(padL, padT + chartH + 0.5);
@@ -319,25 +329,32 @@
             var barH = Math.max(3, (chartH - 6) * ((h.score || 0) / maxScore));
             var y = padT + chartH - barH;
 
-            var color = (h.participated || h.sub_present) ? colors.ok : (h.excused ? colors.excused : colors.miss);
-            ctx.fillStyle = color;
+            var key = (h.participated || h.sub_present) ? 'ok' : (h.excused ? 'excused' : 'miss');
+            var c = colors[key];
+
+            ctx.fillStyle = c.fill;
             ctx.beginPath();
             ctx.roundRect ? ctx.roundRect(x, y, barW, barH, 4) : ctx.rect(x, y, barW, barH);
             ctx.fill();
 
+            // Light border for definition against the dark canvas
+            ctx.strokeStyle = c.border;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
             // Date label
             var label = (h.week_start || h.session_id || '').toString().slice(5, 10);
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
             ctx.font = '11px Inter, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(label, x + barW / 2, padT + chartH + 18);
+            ctx.fillText(label, x + barW / 2, padT + chartH + 17);
         });
 
         // Score markers (max / mid)
-        ctx.fillStyle = 'rgba(255,255,255,0.32)';
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
         ctx.font = '11px Inter, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(window.GM.formatNumber(maxScore), padL, padT + 12);
+        ctx.fillText(window.GM.formatNumber(maxScore), padL, padT + 10);
         ctx.textAlign = 'right';
         ctx.fillText('0', w - padR, padT + chartH + 14);
     }
