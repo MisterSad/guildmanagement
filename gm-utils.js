@@ -92,7 +92,8 @@
 
     function canWriteGuild(guildId) {
         var activeG = guildId || getActiveGuild();
-        var isSuper = (isSuperAdmin() || window.currentGuildRestriction === null);
+        var role = roleFromStorage();
+        var isSuper = (role === 'super_admin');
 
         if (isSuper) {
             // Rule 2: Super admin can visit all guilds but is base admin of ALPHA and can ONLY intervene on ALPHA
@@ -100,8 +101,15 @@
         }
 
         // Rule 1: Guild admin can write to their dedicated assigned guild if active
-        if (window.currentGuildRestriction) {
-            return activeG === window.currentGuildRestriction && !isGuildSubscriptionExpired(activeG);
+        if (role === 'guild_admin') {
+            var restricted = window.currentGuildRestriction;
+            // If the restriction is missing (e.g. accounts fetch failed on an
+            // older session), fall back to the active guild selection so the
+            // admin can still work in their own guild.
+            if (!restricted) {
+                restricted = window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
+            }
+            return activeG === restricted && !isGuildSubscriptionExpired(activeG);
         }
 
         return false;
