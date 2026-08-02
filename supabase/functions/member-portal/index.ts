@@ -262,5 +262,51 @@ Deno.serve(async (req: Request) => {
     return json(data); // Returns the jsonb output from the RPC
   }
 
+  if (action === "get-history") {
+    // Player's participation history, grouped per event type, for charts.
+    const member = await getPlayer(admin, uid);
+    if (!member) return json({ ok: false, error: "player_not_found" }, 200);
+
+    const { data: rows, error: hErr } = await admin
+      .from("event_participants")
+      .select("event_name, session_id, week_start, participated, score, score_prep, score_pvp, late, excused, sub_present, appointed")
+      .eq("pseudo", member.pseudo)
+      .order("week_start", { ascending: false });
+
+    if (hErr) return json({ ok: false, error: "db_error", message: hErr.message }, 500);
+
+    // Keep most recent 60 rows per player; group by event_name (case-insensitive).
+    const byEvent: Record<string, any[]> = {};
+    (rows || []).forEach((r: any) => {
+      const key = (r.event_name || "Other").toUpperCase();
+      if (!byEvent[key]) byEvent[key] = [];
+      byEvent[key].push({
+        session_id: r.session_id,
+        week_start: r.week_start,
+        participated: r.participated > 0,
+        score: (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0),
+        late: !!r.late,
+        excused: !!r.excused,
+        sub_present: !!r.sub_present,
+        appointed: !!r.appointed
+      });
+    });
+
+    const summary: Record<string, any> = {};
+    Object.keys(byEvent).forEach((key) => {
+      const list = byEvent[key];
+      const total = list.length;
+      const attended = list.filter((r: any) => r.participated || r.sub_present).length;
+      summary[key] = {
+        count: total,
+        attended: attended,
+        rate: total > 0 ? Math.round((attended / total) * 100) : 0,
+        history: list.slice(0, 60)
+      };
+    });
+
+    return json({ ok: true, events: summary, overall: (rows || []).length });
+  }
+
   return json({ ok: false, error: "unknown_action" }, 400);
 });

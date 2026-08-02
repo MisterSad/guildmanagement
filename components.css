@@ -2286,3 +2286,168 @@
 }
 
 
+
+/* ─── Player Portal Dashboard ──────────────────────────────────────────── */
+.portal-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.portal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1rem 1.1rem;
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+}
+
+.portal-header-info { flex: 1; min-width: 0; }
+.portal-header-name { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+.portal-header-guild { font-size: 0.78rem; color: var(--fg-dim); display: flex; align-items: center; gap: 0.3rem; margin-top: 0.15rem; }
+.portal-header-power { text-align: right; }
+.portal-header-power-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-muted); }
+.portal-header-power-value { font-size: 1.1rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.portal-tabs {
+    display: flex;
+    gap: 0.4rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 0.3rem;
+    overflow-x: auto;
+}
+
+.portal-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+.portal-tab:hover { color: var(--fg); background: rgba(255,255,255,0.04); }
+.portal-tab.active { background: var(--accent); color: var(--accent-fg, #101018); }
+
+.portal-panel { display: flex; flex-direction: column; gap: 1rem; }
+
+.portal-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+}
+
+.portal-stat {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 0.85rem;
+    text-align: center;
+}
+.portal-stat-value { font-size: 1.15rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.portal-stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-muted); margin-top: 0.2rem; }
+
+.portal-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 0.75rem;
+}
+
+.portal-chart-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.portal-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.portal-chart-title { font-size: 0.85rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.4rem; }
+.portal-chart-title i { color: var(--accent); }
+.portal-chart-meta { font-size: 0.72rem; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.portal-chart-canvas { width: 100%; height: auto; border-radius: var(--radius-sm); background: rgba(0,0,0,0.25); }
+
+.portal-chart-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.portal-chart-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.72rem; color: var(--fg-dim); }
+.portal-chart-row-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portal-chart-row-score { font-variant-numeric: tabular-nums; color: var(--fg); }
+
+.portal-event-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 0.9rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.portal-event-head { display: flex; align-items: center; gap: 0.5rem; }
+.portal-event-title { font-size: 0.9rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.4rem; }
+.portal-event-title i { color: var(--accent); }
+.portal-event-sub { font-size: 0.72rem; color: var(--fg-muted); display: flex; align-items: center; gap: 0.3rem; }
+.portal-event-fields { display: flex; flex-direction: column; gap: 0.55rem; }
+
+.portal-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.portal-field-label { font-size: 0.75rem; color: var(--fg-dim); }
+.portal-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.88rem;
+    color: var(--fg-dim);
+    font-weight: 500;
+}
+
+.portal-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.75rem;
+}
+
+.portal-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.portal-card-title { font-size: 0.85rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.4rem; }
+.portal-card-title i { color: var(--accent); }
+.portal-row { display: flex; gap: 0.5rem; align-items: center; }
+.portal-row .gm-input { flex: 1; }
+.portal-msg { font-size: 0.75rem; display: none; }
+
+/* ─── Responsive: mobile ──────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .portal-stats { grid-template-columns: repeat(2, 1fr); }
+    .portal-charts-grid { grid-template-columns: 1fr; }
+    .portal-settings-grid { grid-template-columns: 1fr; }
+    .portal-header { flex-wrap: wrap; }
+    .portal-header-power { text-align: left; width: 100%; }
+    .portal-tab span { display: none; }
+    .portal-tab { flex: 1; }
+}
+
+/* Portal container widens once the dashboard is shown (step 2 visible) */
+.gm-portal-container.portal-wide { max-width: 920px !important; width: 100%; }
+.portal-wide .gm-login-card { max-width: 100%; width: 100%; }
+@media (max-width: 980px) {
+    .gm-portal-container.portal-wide { max-width: 96vw !important; }
+}

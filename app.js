@@ -2565,17 +2565,23 @@
         portalLookupError.classList.add('hidden');
         portalIdInput.value = '';
         portalPasswordInput.value = '';
+        var portalContainer = document.querySelector('.gm-portal-container');
+        if (portalContainer) portalContainer.classList.remove('portal-wide');
     });
 
     document.getElementById('portal-go-register-btn').addEventListener('click', function () {
         playerPortalView.classList.add('hidden');
         loginView.classList.remove('hidden');
         showRegisterForm(true);
+        var portalContainer = document.querySelector('.gm-portal-container');
+        if (portalContainer) portalContainer.classList.remove('portal-wide');
     });
 
     document.querySelectorAll('.portal-back-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             // Sign out of the portal session so the next player signs in with their own account
+            var portalContainer = document.querySelector('.gm-portal-container');
+            if (portalContainer) portalContainer.classList.remove('portal-wide');
             window.GM.logout().then(function () {
                 playerPortalView.classList.add('hidden');
                 loginView.classList.remove('hidden');
@@ -2627,25 +2633,14 @@
             // Successfully fetched data
             portalStepLookup.classList.add('hidden');
             portalStepForm.classList.remove('hidden');
-
-            document.getElementById('portal-user-pseudo').textContent = data.pseudo;
-            document.getElementById('portal-user-guild').textContent = data.guild;
-
-            // Pre-populate combat power
-            var powerInputEl = document.getElementById('portal-user-power');
-            if (powerInputEl) {
-                powerInputEl.value = data.overall_power || '';
+            var portalContainer = document.querySelector('.gm-portal-container');
+            if (portalContainer) portalContainer.classList.add('portal-wide');
+            if (window.GM_PORTAL) {
+                window.GM_PORTAL.loadDashboard();
+            } else {
+                portalLookupError.querySelector('span').textContent = 'Portal module not loaded. Please reload the page.';
+                portalLookupError.classList.remove('hidden');
             }
-            
-            var initials = window.GM.avatarInit(data.pseudo);
-            var avatarEl = document.getElementById('portal-user-avatar');
-            avatarEl.textContent = initials;
-            avatarEl.className = 'gm-avatar gm-avatar-md gm-avatar-accent';
-
-            renderPortalActiveSessions(data.sessions);
-            
-            // Fetch guilds for transfer
-            loadPortalTransferGuilds();
         } catch (err) {
             console.error(err);
             portalLookupError.querySelector('span').textContent = 'An error occurred during verification.';
@@ -2655,314 +2650,6 @@
             if (span) span.textContent = origText;
         }
     });
-
-    var portalUpdatePowerBtn = document.getElementById('portal-update-power-btn');
-    if (portalUpdatePowerBtn) {
-        portalUpdatePowerBtn.addEventListener('click', async function () {
-            var powerInputEl = document.getElementById('portal-user-power');
-            var powerVal = powerInputEl ? parseInt(powerInputEl.value, 10) : 0;
-            if (isNaN(powerVal) || powerVal < 0) {
-                showToast('Please enter a valid power number.', 'error');
-                return;
-            }
-
-            portalUpdatePowerBtn.disabled = true;
-            var origText = portalUpdatePowerBtn.innerHTML;
-            portalUpdatePowerBtn.innerHTML = '<i class="ph ph-circle-notch animate-spin"></i> Saving...';
-
-            try {
-                var { data, error } = await supabase.functions.invoke('member-portal', {
-                    body: { action: 'update-power', payload: { power: powerVal } }
-                });
-                if (error || !data || !data.ok) {
-                    throw new Error(error ? error.message : 'Update failed');
-                }
-                showToast('Your combat power has been updated successfully!', 'success');
-            } catch (err) {
-                console.error(err);
-                showToast('Failed to update combat power: ' + err.message, 'error');
-            } finally {
-                portalUpdatePowerBtn.disabled = false;
-                portalUpdatePowerBtn.innerHTML = origText;
-            }
-        });
-    }
-
-    var portalTransferSelect = document.getElementById('portal-transfer-select');
-    var portalTransferBtn    = document.getElementById('portal-transfer-btn');
-    var portalTransferMsg    = document.getElementById('portal-transfer-msg');
-
-    async function loadPortalTransferGuilds() {
-        if (!portalTransferSelect) return;
-        portalTransferSelect.innerHTML = '<option value="">Loading guilds...</option>';
-        portalTransferBtn.disabled = true;
-        if (portalTransferMsg) portalTransferMsg.style.display = 'none';
-
-        try {
-            var { data, error } = await supabase.functions.invoke('member-portal', {
-                body: { action: 'get-transfer-guilds', payload: {} }
-            });
-            if (error || !data || !data.ok) {
-                var errDesc = (data && data.error) ? data.error : (error ? error.message : 'unknown');
-                portalTransferSelect.innerHTML = '<option value="">Error loading guilds (' + window.GM.escapeHTML(errDesc) + ')</option>';
-                return;
-            }
-            if (!data.guilds || data.guilds.length === 0) {
-                portalTransferSelect.innerHTML = '<option value="">No other guilds on this server</option>';
-                return;
-            }
-            
-            var html = '<option value="">Select Target Guild...</option>';
-            data.guilds.forEach(function (g) {
-                var displayName = g.name ? g.name : g.id;
-                html += '<option value="' + window.GM.escapeHTML(g.id) + '">' + window.GM.escapeHTML(displayName) + '</option>';
-            });
-            portalTransferSelect.innerHTML = html;
-        } catch (err) {
-            console.error(err);
-            portalTransferSelect.innerHTML = '<option value="">Error loading guilds</option>';
-        }
-    }
-
-    if (portalTransferSelect && portalTransferBtn) {
-        portalTransferSelect.addEventListener('change', function () {
-            portalTransferBtn.disabled = !this.value;
-        });
-
-        portalTransferBtn.addEventListener('click', async function () {
-            var targetGuild = portalTransferSelect.value;
-            if (!targetGuild) return;
-
-            portalTransferBtn.disabled = true;
-            portalTransferSelect.disabled = true;
-            var span = portalTransferBtn.querySelector('span');
-            var origText = span ? span.textContent : '';
-            if (span) span.textContent = 'Sending...';
-            if (portalTransferMsg) portalTransferMsg.style.display = 'none';
-
-            try {
-                var { data, error } = await supabase.functions.invoke('member-portal', {
-                    body: { action: 'submit-transfer-request', payload: { targetGuild: targetGuild } }
-                });
-
-                if (error || !data || !data.ok) {
-                    var errCode = (data && data.error) ? data.error : (error ? error.message : 'unknown');
-                    if (errCode === 'already_pending') {
-                        showPortalTransferMsg('You already have a pending transfer request.', 'error');
-                    } else if (errCode === 'same_guild') {
-                        showPortalTransferMsg('You cannot transfer to your current guild.', 'error');
-                    } else {
-                        showPortalTransferMsg('Transfer request failed (' + errCode + ').', 'error');
-                    }
-                } else {
-                    showPortalTransferMsg('Transfer request sent! Waiting for approval.', 'success');
-                }
-            } catch (err) {
-                console.error(err);
-                showPortalTransferMsg('An error occurred.', 'error');
-            } finally {
-                if (span) span.textContent = origText;
-                portalTransferBtn.disabled = !portalTransferSelect.value;
-                portalTransferSelect.disabled = false;
-            }
-        });
-    }
-
-    function showPortalTransferMsg(msg, type) {
-        if (!portalTransferMsg) return;
-        portalTransferMsg.textContent = msg;
-        portalTransferMsg.style.color = type === 'error' ? 'var(--danger)' : 'var(--success)';
-        portalTransferMsg.style.display = 'block';
-    }
-
-    function renderPortalActiveSessions(sessions) {
-        var container = document.getElementById('portal-active-sessions-container');
-        if (!sessions || sessions.length === 0) {
-            container.innerHTML = '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: 1.8rem;"></i><div class="gm-empty-title" style="font-size: 0.85rem;">No active events for your guild.</div></div>';
-            return;
-        }
-
-        var html = '';
-        sessions.forEach(function (sess, idx) {
-            var eventName = sess.event_name;
-            var isSvsOrGvg = eventName === 'SvS' || eventName === 'GvG';
-            var isDtr = eventName === 'Defend Trade Route';
-            var isShadowfront = eventName === 'Shadowfront';
-            
-            var EVENTS_WITHOUT_SCORE = ['Defend Trade Route', 'Shadowfront', 'ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
-            var hasScore = EVENTS_WITHOUT_SCORE.indexOf(eventName) === -1;
-
-            var curr = sess.current_data || {};
-            var isChecked = curr.participated > 0;
-            var isLateChecked = !!curr.late;
-            var isExcusedChecked = !!curr.excused;
-            var isAppointedChecked = !!curr.appointed;
-
-            var fieldsHtml = '';
-
-            fieldsHtml += 
-                '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
-                    '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
-                        '<div class="check-toggle">' +
-                            '<input type="checkbox" class="participation-checkbox portal-check-participated" ' + (isChecked ? 'checked' : '') + '>' +
-                            '<span class="check-slider"></span>' +
-                        '</div>' +
-                        '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">I participated in this event</span>' +
-                    '</label>' +
-                '</div>';
-
-            if (isDtr) {
-                fieldsHtml += 
-                    '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
-                        '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
-                            '<div class="check-toggle">' +
-                                '<input type="checkbox" class="participation-checkbox portal-check-appointed" ' + (isAppointedChecked ? 'checked' : '') + '>' +
-                                '<span class="check-slider"></span>' +
-                            '</div>' +
-                            '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">Appointed</span>' +
-                        '</label>' +
-                    '</div>';
-            }
-
-            if (isShadowfront) {
-                fieldsHtml += 
-                    '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
-                        '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
-                            '<div class="check-toggle">' +
-                                '<input type="checkbox" class="participation-checkbox portal-check-late" ' + (isLateChecked ? 'checked' : '') + '>' +
-                                '<span class="check-slider"></span>' +
-                            '</div>' +
-                            '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">Late</span>' +
-                        '</label>' +
-                    '</div>' +
-                    '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
-                        '<label style="display:flex; align-items:center; cursor:pointer; gap:0.6rem; user-select:none;">' +
-                            '<div class="check-toggle">' +
-                                '<input type="checkbox" class="participation-checkbox portal-check-excused" ' + (isExcusedChecked ? 'checked' : '') + '>' +
-                                '<span class="check-slider"></span>' +
-                            '</div>' +
-                            '<span style="font-size:0.88rem; color:var(--fg-dim); font-weight:500;">Excused</span>' +
-                        '</label>' +
-                    '</div>';
-            }
-
-            if (hasScore) {
-                if (isSvsOrGvg) {
-                    fieldsHtml += 
-                        '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
-                            '<label style="font-size:0.75rem; color:var(--fg-dim); margin-bottom:0.2rem;">Day 1 to 5 score</label>' +
-                            '<input type="text" class="gm-input gm-input-sm portal-score-prep" value="' + (curr.score_prep != null ? curr.score_prep : '') + '" placeholder="e.g. 150000">' +
-                        '</div>' +
-                        '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
-                            '<label style="font-size:0.75rem; color:var(--fg-dim); margin-bottom:0.2rem;">Day 6 score</label>' +
-                            '<input type="text" class="gm-input gm-input-sm portal-score-pvp" value="' + (curr.score_pvp != null ? curr.score_pvp : '') + '" placeholder="e.g. 50000">' +
-                        '</div>';
-                } else {
-                    fieldsHtml += 
-                        '<div class="gm-login-field" style="margin-bottom:0.5rem;">' +
-                            '<label style="font-size:0.75rem; color:var(--fg-dim); margin-bottom:0.2rem;">Score</label>' +
-                            '<input type="text" class="gm-input gm-input-sm portal-score" value="' + (curr.score != null ? curr.score : '') + '" placeholder="e.g. 45000">' +
-                        '</div>';
-                }
-            }
-
-            var statusBadge = curr.is_pending 
-                ? '<span class="gm-chip" style="margin-left:auto; background:rgba(245,158,11,0.12); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending approval</span>'
-                : '';
-
-            html += 
-                '<div class="portal-event-card" data-event="' + esc(eventName) + '" data-session="' + esc(sess.session_id) + '" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:8px; padding:0.75rem 1rem;">' +
-                    '<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">' +
-                        '<strong style="font-size:0.9rem; color:var(--accent);">' + esc(eventName) + '</strong>' +
-                        statusBadge +
-                    '</div>' +
-                    '<div class="gm-col" style="gap:0.4rem;">' +
-                        fieldsHtml +
-                    '</div>' +
-                    '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm portal-submit-event-btn" style="margin-top:0.75rem; width:100%; font-size:0.78rem; padding:0.35rem 0.5rem;">' +
-                        '<i class="ph ph-paper-plane-right"></i>' +
-                        '<span>Submit Scores</span>' +
-                    '</button>' +
-                '</div>';
-        });
-
-        container.innerHTML = html;
-
-        container.querySelectorAll('.portal-score, .portal-score-prep, .portal-score-pvp').forEach(function (inp) {
-            window.GM.attachNumberFormatter(inp);
-        });
-
-        container.querySelectorAll('.portal-check-appointed').forEach(function (cb) {
-            cb.addEventListener('change', function () {
-                if (cb.checked) {
-                    var card = cb.closest('.portal-event-card');
-                    var partCb = card ? card.querySelector('.portal-check-participated') : null;
-                    if (partCb) {
-                        partCb.checked = true;
-                    }
-                }
-            });
-        });
-
-        container.querySelectorAll('.portal-submit-event-btn').forEach(function (btn) {
-            btn.addEventListener('click', async function () {
-                var card = btn.closest('.portal-event-card');
-                var eventName = card.getAttribute('data-event');
-                var sessionId = card.getAttribute('data-session');
-
-                var participated = card.querySelector('.portal-check-participated')?.checked;
-                var appointed = card.querySelector('.portal-check-appointed')?.checked;
-                var late = card.querySelector('.portal-check-late')?.checked;
-                var excused = card.querySelector('.portal-check-excused')?.checked;
-
-                var scoreVal = card.querySelector('.portal-score')?.value;
-                var scorePrepVal = card.querySelector('.portal-score-prep')?.value;
-                var scorePvpVal = card.querySelector('.portal-score-pvp')?.value;
-
-                var payload = {
-                    event_name: eventName,
-                    session_id: sessionId,
-                    participated: participated,
-                    appointed: appointed,
-                    late: late,
-                    excused: excused,
-                    score: scoreVal !== undefined ? window.GM.parseNumber(scoreVal) : undefined,
-                    score_prep: scorePrepVal !== undefined ? window.GM.parseNumber(scorePrepVal) : undefined,
-                    score_pvp: scorePvpVal !== undefined ? window.GM.parseNumber(scorePvpVal) : undefined
-                };
-
-                btn.disabled = true;
-                var span = btn.querySelector('span');
-                var origText = span ? span.textContent : '';
-                if (span) span.textContent = 'Submitting...';
-
-                try {
-                    var { data, error } = await supabase.functions.invoke('member-portal', {
-                        body: { action: 'submit-scores', payload: payload }
-                    });
-
-                    if (error || !data || !data.ok) {
-                        showToast('Submission failed. Check your parameters.', 'error');
-                        return;
-                    }
-
-                    showToast('Scores submitted successfully! Pending officer approval.', 'success');
-                    
-                    var badge = card.querySelector('.gm-chip');
-                    if (!badge) {
-                        var header = card.querySelector('div');
-                        header.insertAdjacentHTML('beforeend', '<span class="gm-chip" style="margin-left:auto; background:rgba(245,158,11,0.12); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending approval</span>');
-                    }
-                } catch (err) {
-                    console.error(err);
-                    showToast('An error occurred during submission.', 'error');
-                } finally {
-                    btn.disabled = false;
-                    if (span) span.textContent = origText;
-                }
-            });
-        });
-    }
 
     window.GM_APP = window.GM_APP || {};
     window.GM_APP.showToast = showToast;
