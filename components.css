@@ -83,6 +83,12 @@
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     color: var(--accent);
 }
+.gm-join-code-empty {
+    border-style: solid;
+    border-color: var(--border-soft);
+    background: var(--bg-2);
+    color: var(--fg-muted);
+}
 
 .gm-btn-ghost {
     background: transparent;

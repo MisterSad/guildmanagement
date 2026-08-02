@@ -958,23 +958,36 @@
         var storedCode = '';
         try { storedCode = localStorage.getItem(joinCodeStorageKey()) || ''; } catch (_) {}
 
+        function setLabel(text) {
+            var label = document.getElementById('join-code-btn-label');
+            if (label) label.textContent = text;
+        }
+
+        function showCode(code) {
+            if (!resultVal) return;
+            resultVal.textContent = code || 'No code yet';
+            if (code) {
+                resultBox.classList.remove('gm-join-code-empty');
+                copyBtn.classList.remove('hidden');
+            } else {
+                resultBox.classList.add('gm-join-code-empty');
+                copyBtn.classList.add('hidden');
+            }
+        }
+
         (window.GM.config.get('join_code_hash')).then(function (hash) {
             hasCode = !!hash;
-            var label = document.getElementById('join-code-btn-label');
-            if (label) label.textContent = hasCode ? 'Regenerate Code' : 'Generate Code';
-            if (infoEl) {
-                if (storedCode) {
-                    infoEl.textContent = 'Share this code with your players. Anyone with it can register.';
-                } else if (hasCode) {
-                    infoEl.textContent = 'A join code is already set but was generated elsewhere. Regenerate to get a new one.';
-                } else {
-                    infoEl.textContent = 'No join code set yet. Players cannot register until you generate one.';
-                }
+            setLabel(hasCode ? 'Regenerate Code' : 'Generate Code');
+            if (storedCode) {
+                showCode(storedCode);
+                if (infoEl) infoEl.textContent = 'This is your current code. Share it with your players, or regenerate for a new one.';
+            } else if (hasCode) {
+                showCode('');
+                if (infoEl) infoEl.textContent = 'A code is already set but was generated elsewhere. Regenerate to get a new one, then share it.';
+            } else {
+                showCode('');
+                if (infoEl) infoEl.textContent = 'No join code set yet. Generate one so players can register.';
             }
-            // Re-show the stored code so admins never lose it
-            if (storedCode && resultVal) resultVal.textContent = storedCode;
-            if (storedCode && resultBox) resultBox.classList.remove('hidden');
-            if (storedCode && copyBtn) copyBtn.classList.remove('hidden');
         }).catch(function () {});
 
         generateBtn.addEventListener('click', async function () {
@@ -988,13 +1001,11 @@
                     guild: window.currentGuild || window.GM.getActiveGuild() || 'ALPHA'
                 });
                 if (!res.ok) throw new Error(res.error || 'set_code_failed');
-                // Persist the plain code for this guild
                 try { localStorage.setItem(joinCodeStorageKey(), generatedCode); } catch (_) {}
                 storedCode = generatedCode;
-                if (resultVal) resultVal.textContent = generatedCode;
-                if (resultBox) resultBox.classList.remove('hidden');
-                if (copyBtn) copyBtn.classList.remove('hidden');
-                if (infoEl) infoEl.textContent = 'Share this code with your players. Anyone with it can register.';
+                hasCode = true;
+                showCode(generatedCode);
+                if (infoEl) infoEl.textContent = 'New code generated and saved. Share it with your players, or regenerate for another one.';
                 showToast('Join code generated.', 'success');
             } catch (err) {
                 showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -1006,7 +1017,7 @@
 
         if (copyBtn) copyBtn.addEventListener('click', function () {
             var code = storedCode || (resultVal ? resultVal.textContent : '') || '';
-            if (!code) return;
+            if (!code || code === 'No code yet') return;
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(code).then(function () {
                     showToast('Join code copied.', 'success');
