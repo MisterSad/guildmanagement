@@ -93,11 +93,10 @@
     function canWriteGuild(guildId) {
         var activeG = guildId || getActiveGuild();
         var role = roleFromStorage();
-        var isSuper = (role === 'super_admin');
 
-        if (isSuper) {
-            // Rule 2: Super admin can visit all guilds but is base admin of ALPHA and can ONLY intervene on ALPHA
-            return activeG === 'ALPHA';
+        // Super admin may write to every guild.
+        if (role === 'super_admin') {
+            return true;
         }
 
         // Rule 1: Guild admin can write to their dedicated assigned guild if active

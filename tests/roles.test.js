@@ -113,10 +113,10 @@ describe('getRoleInfo', () => {
 });
 
 describe('canWriteGuild (server-agnostic client rules)', () => {
-    it('super admin can only write to ALPHA', () => {
+    it('super admin can write to every guild', () => {
         localStorage.setItem('gm_role', 'super_admin');
         expect(GM.canWriteGuild('ALPHA')).toBe(true);
-        expect(GM.canWriteGuild('OMEGA')).toBe(false);
+        expect(GM.canWriteGuild('OMEGA')).toBe(true);
     });
     it('guild admin writes only to their restricted guild', () => {
         localStorage.setItem('gm_role', 'guild_admin');

@@ -235,3 +235,50 @@ describe('localStorage rad_* → gm_* migration shim', () => {
         expect(localStorage.getItem('rad_current_guild')).toBeNull();
     });
 });
+
+describe('canWriteGuild (role-based write access)', () => {
+    beforeEach(() => {
+        clearStorage();
+        window.currentGuildRestriction = null;
+        window.currentGuild = 'ALPHA';
+        window.guildsData = {
+            ALPHA: { type: 'Unlimited' },
+            OMEGA: { type: 'Unlimited' },
+            IMK: { type: 'Premium', end: new Date(Date.now() + 86400000).toISOString() },
+            BABE: { type: 'Premium', end: new Date(Date.now() - 86400000).toISOString() },
+        };
+    });
+
+    it('super_admin can write to every guild', () => {
+        setStorage({ gm_role: 'super_admin' });
+        expect(GM.canWriteGuild('ALPHA')).toBe(true);
+        expect(GM.canWriteGuild('OMEGA')).toBe(true);
+        expect(GM.canWriteGuild('IMK')).toBe(true);
+    });
+
+    it('guild_admin can write to their own guild when the subscription is active', () => {
+        setStorage({ gm_role: 'guild_admin' });
+        window.currentGuildRestriction = 'IMK';
+        expect(GM.canWriteGuild('IMK')).toBe(true);
+        expect(GM.canWriteGuild('ALPHA')).toBe(false);
+    });
+
+    it('guild_admin cannot write when the subscription is expired', () => {
+        setStorage({ gm_role: 'guild_admin' });
+        window.currentGuildRestriction = 'BABE';
+        expect(GM.canWriteGuild('BABE')).toBe(false);
+    });
+
+    it('guild_admin falls back to the active guild when restriction is missing', () => {
+        setStorage({ gm_role: 'guild_admin' });
+        window.currentGuildRestriction = null;
+        window.currentGuild = 'OMEGA';
+        expect(GM.canWriteGuild('OMEGA')).toBe(true);
+    });
+
+    it('member can never write', () => {
+        setStorage({ gm_role: 'member' });
+        expect(GM.canWriteGuild('ALPHA')).toBe(false);
+        expect(GM.canWriteGuild('OMEGA')).toBe(false);
+    });
+});
