@@ -250,7 +250,7 @@
         var attended = ev.attended || 0;
 
         var historyHtml = '';
-        (ev.history || []).slice(0, 8).forEach(function (h) {
+        (ev.history || []).slice(0, 12).forEach(function (h) {
             var label = h.week_start || h.session_id || '?';
             var badge = h.participated || h.sub_present
                 ? '<span class="gm-chip gm-chip-success" style="font-size:0.6rem;">P</span>'
@@ -267,9 +267,9 @@
         return '<div class="portal-chart-card ' + theme + '">' +
                     '<div class="portal-chart-head">' +
                         '<div class="portal-chart-title"><i class="ph ' + icon + '"></i> ' + esc(eventKey) + '</div>' +
-                        '<div class="portal-chart-meta">' + esc(attended) + '/' + esc(ev.count) + ' (' + esc(ev.rate) + '%)</div>' +
+                        '<div class="portal-chart-meta">' + esc(attended) + '/' + esc(ev.count) + ' attended (' + esc(ev.rate) + '%)</div>' +
                     '</div>' +
-                    '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="600" height="160"></canvas>' +
+                    '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="260"></canvas>' +
                     '<div class="portal-chart-list">' + historyHtml + '</div>' +
                 '</div>';
     }
@@ -282,50 +282,64 @@
         var w = canvas.width, h = canvas.height;
         ctx.clearRect(0, 0, w, h);
 
-        var list = (ev.history || []).slice(0, 8).reverse();
+        var list = (ev.history || []).slice(0, 24).reverse();
         if (list.length === 0) {
             ctx.fillStyle = 'rgba(255,255,255,0.35)';
-            ctx.font = '12px Inter, sans-serif';
+            ctx.font = '14px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('No data', w / 2, h / 2);
             return;
         }
 
-        var padL = 6, padR = 6, padT = 14, padB = 22;
+        var padL = 10, padR = 10, padT = 22, padB = 30;
         var chartW = w - padL - padR;
         var chartH = h - padT - padB;
-        var barW = Math.min(34, (chartW / list.length) * 0.6);
+        var barW = Math.max(12, Math.min(56, (chartW / list.length) * 0.72));
         var gap = list.length > 1 ? (chartW - barW * list.length) / (list.length - 1) : 0;
+        if (gap < 4) {
+            barW = Math.max(8, chartW / list.length * 0.6);
+            gap = list.length > 1 ? (chartW - barW * list.length) / (list.length - 1) : 0;
+        }
 
         var colors = { ok: 'rgba(52,211,153,0.85)', miss: 'rgba(248,113,113,0.7)', excused: 'rgba(251,191,36,0.8)' };
         var maxScore = 0;
         list.forEach(function (h) { if ((h.score || 0) > maxScore) maxScore = h.score; });
         if (maxScore <= 0) maxScore = 1;
 
+        // Baseline
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padL, padT + chartH + 0.5);
+        ctx.lineTo(w - padR, padT + chartH + 0.5);
+        ctx.stroke();
+
         list.forEach(function (h, i) {
             var x = padL + i * (barW + gap);
-            var barH = Math.max(3, (chartH - 4) * ((h.score || 0) / maxScore));
+            var barH = Math.max(3, (chartH - 6) * ((h.score || 0) / maxScore));
             var y = padT + chartH - barH;
 
             var color = (h.participated || h.sub_present) ? colors.ok : (h.excused ? colors.excused : colors.miss);
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.roundRect ? ctx.roundRect(x, y, barW, barH, 3) : ctx.rect(x, y, barW, barH);
+            ctx.roundRect ? ctx.roundRect(x, y, barW, barH, 4) : ctx.rect(x, y, barW, barH);
             ctx.fill();
 
             // Date label
             var label = (h.week_start || h.session_id || '').toString().slice(5, 10);
-            ctx.fillStyle = 'rgba(255,255,255,0.45)';
-            ctx.font = '9px Inter, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '11px Inter, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(label, x + barW / 2, padT + chartH + 12);
+            ctx.fillText(label, x + barW / 2, padT + chartH + 18);
         });
 
         // Score markers (max / mid)
-        ctx.fillStyle = 'rgba(255,255,255,0.28)';
-        ctx.font = '9px Inter, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.32)';
+        ctx.font = '11px Inter, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(window.GM.formatNumber(maxScore), padL, padT + 8);
+        ctx.fillText(window.GM.formatNumber(maxScore), padL, padT + 12);
+        ctx.textAlign = 'right';
+        ctx.fillText('0', w - padR, padT + chartH + 14);
     }
 
     // ─── Panel 2: Active Events (score submission) ─────────────────────────
