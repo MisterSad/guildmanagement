@@ -269,7 +269,6 @@
 
         var chartsHtml = '';
         var chartKeys = keys.filter(function (k) { return hist[k].has_score; });
-        var tileKeys = keys.filter(function (k) { return !hist[k].has_score; });
 
         if (chartKeys.length === 0) {
             chartsHtml = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-chart-bar gm-icon"></i><div class="gm-empty-title">No scored events for this period.</div><div class="gm-empty-sub">Progression charts appear for events with scores (SvS, GvG, Glory).</div></div>';
@@ -281,11 +280,24 @@
         }
 
         // Events without scores get a compact participation-rate tile instead.
+        // Fixed display order: Arms Race A, Arms Race B, then DTR, then the rest.
         var tilesHtml2 = '';
-        if (tileKeys.length > 0) {
+        var tileKeys = keys.filter(function (k) { return !hist[k].has_score; });
+        var tileOrder = ['ARMS RACE STAGE A', 'ARMS RACE STAGE B', 'DEFEND TRADE ROUTE'];
+        var orderedTiles = [];
+        tileOrder.forEach(function (pref) {
+            var i = tileKeys.indexOf(pref);
+            if (i !== -1) {
+                orderedTiles.push(tileKeys[i]);
+                tileKeys.splice(i, 1);
+            }
+        });
+        orderedTiles = orderedTiles.concat(tileKeys);
+
+        if (orderedTiles.length > 0) {
             tilesHtml2 =
                 '<div class="portal-participation-grid">' +
-                    tileKeys.map(function (key) {
+                    orderedTiles.map(function (key) {
                         return renderParticipationTile(key, hist[key]);
                     }).join('') +
                 '</div>';
