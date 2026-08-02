@@ -1129,17 +1129,24 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     font-variant-numeric: tabular-nums;
 }
 
-/* ─── Shadowfront Sub Tabs ─────────────────────────────────────────────────── */
-.sf-sub-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--card-border); padding-bottom: 0.5rem; }
-.sf-sub-tab { padding: 0.5rem 1rem; background: transparent; border: none; color: var(--text-muted); font-family: var(--font-family); font-size: 0.875rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-md) var(--radius-md) 0 0; transition: var(--transition); display: flex; align-items: center; gap: 0.4rem; }
-.sf-sub-tab:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.05); }
-.sf-sub-tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+/* ─── Shadowfront Stepper ─────────────────────────────────────────────────── */
+.sf-stepper { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; padding: 0.75rem 1rem; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); flex-wrap: wrap; }
+.sf-step { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: transparent; border: 1px solid var(--card-border); border-radius: var(--radius-md); color: var(--text-muted); font-family: var(--font-family); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: var(--transition); }
+.sf-step:hover { color: var(--text-main); border-color: var(--primary); }
+.sf-step.active { color: var(--primary); background: rgba(99,102,241,0.12); border-color: var(--primary); }
+.sf-step.disabled { opacity: 0.45; cursor: not-allowed; }
+.sf-step.disabled:hover { color: var(--text-muted); border-color: var(--card-border); }
+.sf-step-icon { display: inline-flex; }
+.sf-step-label { white-space: nowrap; }
+.sf-step-lock { display: inline-flex; color: var(--text-muted); }
+.sf-step-sep { flex: 1; min-width: 12px; max-width: 48px; height: 1px; background: var(--card-border); }
 .sf-sub-panel { display: none; }
 .sf-sub-panel.active { display: block; }
 
 /* ─── Shadowfront Squad Layout ───────────────────────────────────────────── */
 .sf-layout { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
 @media (max-width: 900px) { .sf-layout { grid-template-columns: 1fr; } }
+.sf-sort-toggle .sf-sort-active { color: var(--primary); background: rgba(99,102,241,0.15); border-color: var(--primary); }
 .sf-column { background: rgba(0,0,0,0.15); border: 1px solid var(--card-border); border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column; }
 .sf-col-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1rem; font-weight: 600; font-size: 0.9rem; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--card-border); }
 .sf-col-header.squad-header.squad1 { background: rgba(99,102,241,0.15); border-bottom-color: rgba(99,102,241,0.3); color: #a5b4fc; }
@@ -2002,11 +2009,11 @@ body.guild-read-only .gm-content #guild-settings-card button[type="submit"] {
     display: none !important;
 }
 
-body.guild-read-only .gm-content button:not(.sf-sub-tab):not(.sf-main-tab):not(.stats-mode-tab):not(.sf-filter-btn):not([id*="search"]):not([class*="search"]),
+body.guild-read-only .gm-content button:not(.sf-step):not(.sf-main-tab):not(.stats-mode-tab):not(.sf-filter-btn):not([id*="search"]):not([class*="search"]),
 body.guild-read-only .gm-content input:not([id*="search"]):not([class*="search"]),
 body.guild-read-only .gm-content select:not([id*="search"]):not([class*="search"]),
 body.guild-read-only .gm-content textarea,
-body.guild-read-only .gm-content .gm-btn:not(.sf-sub-tab):not(.sf-main-tab):not(.stats-mode-tab):not(.sf-filter-btn):not([id*="search"]):not([class*="search"]),
+body.guild-read-only .gm-content .gm-btn:not(.sf-step):not(.sf-main-tab):not(.stats-mode-tab):not(.sf-filter-btn):not([id*="search"]):not([class*="search"]),
 body.guild-read-only .gm-content .gm-mini-btn:not([id*="search"]):not([class*="search"]),
 body.guild-read-only .gm-content .sf-squad-cell,
 body.guild-read-only .gm-content .sf-slot,

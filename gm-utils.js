@@ -577,6 +577,33 @@
         return str;
     }
 
+    async function resolveDiscordWebhook(eventPrefix) {
+        var webhookUrl = eventPrefix ? await getGuildConfig('webhook_' + eventPrefix) : null;
+        if (!webhookUrl || webhookUrl.trim() === '') {
+            webhookUrl = await getGuildConfig('discord_webhook_url');
+        }
+        return (webhookUrl && webhookUrl.trim() !== '') ? webhookUrl : null;
+    }
+
+    async function sendDiscordWebhook(eventPrefix, body) {
+        if (!getClient()) return false;
+
+        var webhookUrl = await resolveDiscordWebhook(eventPrefix);
+        if (!webhookUrl) return false;
+
+        try {
+            await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            return true;
+        } catch (e) {
+            console.error('Discord webhook notify failed', e);
+            return false;
+        }
+    }
+
     async function notifyDiscordEvent(eventName, eventStart, action) {
         if (!getClient()) return;
 
@@ -589,11 +616,7 @@
         else if (nameUpper.indexOf('GVG') !== -1) eventPrefix = 'gvg';
         else if (nameUpper.indexOf('SVS') !== -1) eventPrefix = 'svs';
 
-        var webhookUrl = eventPrefix ? await getGuildConfig('webhook_' + eventPrefix) : null;
-        if (!webhookUrl || webhookUrl.trim() === '') {
-            webhookUrl = await getGuildConfig('discord_webhook_url');
-        }
-        if (!webhookUrl || webhookUrl.trim() === '') return;
+        if (!await resolveDiscordWebhook(eventPrefix)) return;
 
         if ((action === 'start' || action === 'edit') && eventPrefix) {
             var creationEnabled = await getGuildConfig('notify_' + eventPrefix + '_creation');
@@ -683,15 +706,7 @@
             }]
         };
 
-        try {
-            await fetch(webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-        } catch (e) {
-            console.error('Discord webhook notify failed', e);
-        }
+        await sendDiscordWebhook(eventPrefix, body);
     }
 
     function formatPower(val) {
@@ -795,7 +810,8 @@
             get: getGuildConfig,
             set: setGuildConfig
         },
-        notifyDiscordEvent: notifyDiscordEvent
+        notifyDiscordEvent: notifyDiscordEvent,
+        sendDiscordWebhook: sendDiscordWebhook
     };
 
 })();

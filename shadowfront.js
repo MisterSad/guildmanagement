@@ -36,8 +36,10 @@
     };
 
     var sfFilter      = 'all';      // 'all' | 'excellent' | 'good' | 'average' | 'poor' | 'none'
-    var sfActiveTab   = 'prep';     // 'prep' | 'squads' | 'tracking' | 'running'
+    var sfActiveTab   = 'availability'; // 'availability' | 'composition' | 'tracking'
     var sfActiveSquad = 'squad1';   // 'squad1' | 'squad2'
+    var sfSort        = 'rate';     // 'rate' | 'power'
+    var sfSelected    = {};         // pseudo → true (multi-select in Availability step)
 
     // ── Public API ─────────────────────────────────────────────────────────────
     window.GM_SHADOWFRONT = { load: loadShadowfront };
@@ -189,7 +191,7 @@
         var db = getDb();
         if (!db) return;
         var sq = sfState.squads[squad];
-        var sessionId = (sq && sq.active && sq.sessionId) ? sq.sessionId : window.GM.newSessionId();
+        var sessionId = (sq && sq.sessionId) ? sq.sessionId : window.GM.newSessionId();
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
             var res = await db.from('event_status').upsert(
@@ -232,8 +234,8 @@
                         guild:      currentG,
                         event_name: SQUAD_EVENT[squad],
                         is_active:  false,
-                        session_id: sfState.squads[squad].sessionId, // gardé pour l'historique
-                        start_at:   null,                             // retire de l'agenda / rappels
+                        session_id: null, // session clôturée; un nouveau start crée une nouvelle session
+                        start_at:   null, // retire de l'agenda / rappels
                         updated_at: new Date().toISOString()
                     },
                     { onConflict: 'guild,event_name' }
@@ -338,6 +340,79 @@
         );
     }
 
+    // ── Share composition on Discord ───────────────────────────────────────────
+    function discordEscape(s) {
+        return String(s || '').replace(/([*_~`>])/g, '\\$1');
+    }
+
+    async function shareCompositionOnDiscord() {
+        var db = getDb();
+        if (!db) return;
+
+        var squadField = function (squadKey) {
+            var members = sfState.assignments.filter(function (a) { return a.squad === squadKey; });
+            var participants = members.filter(function (a) { return a.role === 'participant'; });
+            var reserves = members.filter(function (a) { return a.role === 'reserve'; });
+
+            var fmtList = function (list) {
+                return list.length === 0
+                    ? 'None yet'
+                    : list.map(function (a) {
+                        return (a.is_commander ? '👑 ' : '') + discordEscape(a.pseudo);
+                    }).join('\n');
+            };
+
+            return {
+                participants: participants,
+                reserves: reserves,
+                participantsText: fmtList(participants),
+                reservesText: fmtList(reserves)
+            };
+        };
+
+        var s1 = squadField('squad1');
+        var s2 = squadField('squad2');
+
+        var body = {
+            content: '📋 **Shadowfront — Squad Composition**',
+            embeds: [{
+                title: 'Shadowfront Squads',
+                color: 9442302, // Lilac (#8B5CF6)
+                fields: [
+                    {
+                        name: t('sf_squad1') + ' — ' + t('sf_participants') + ' (' + s1.participants.length + '/20)',
+                        value: s1.participantsText,
+                        inline: true
+                    },
+                    {
+                        name: t('sf_squad1') + ' — ' + t('sf_reserves') + ' (' + s1.reserves.length + '/10)',
+                        value: s1.reservesText,
+                        inline: true
+                    },
+                    {
+                        name: t('sf_squad2') + ' — ' + t('sf_participants') + ' (' + s2.participants.length + '/20)',
+                        value: s2.participantsText,
+                        inline: true
+                    },
+                    {
+                        name: t('sf_squad2') + ' — ' + t('sf_reserves') + ' (' + s2.reserves.length + '/10)',
+                        value: s2.reservesText,
+                        inline: true
+                    }
+                ],
+                timestamp: new Date().toISOString(),
+                footer: { text: 'FGF Guild Management Tool' }
+            }]
+        };
+
+        var sent = await window.GM.sendDiscordWebhook('shadowfront', body);
+        if (sent) {
+            window.GM.showToast(t('sf_share_discord_sent'), 'success');
+        } else {
+            window.GM.showToast(t('sf_share_discord_failed'), 'error');
+        }
+    }
+
     // ── Catégorisation ─────────────────────────────────────────────────────────
     function categorise(pseudo) {
         var h = sfState.history[pseudo];
@@ -366,22 +441,20 @@
 
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
-        // Si la session n'existe pas encore, la créer automatiquement pour permettre l'assignation rétroactive ou en avance
+        // Si la session n'existe pas encore, la créer automatiquement (inactive) pour permettre la composition avant le lancement
         if (!sq.sessionId) {
             sq.sessionId = window.GM.newSessionId();
-            sq.startAt = new Date().toISOString();
             try {
                 await db.from('event_status').upsert({
                     guild: currentG,
                     event_name: SQUAD_EVENT[squad],
-                    is_active: true,
+                    is_active: false,
                     session_id: sq.sessionId,
-                    start_at: sq.startAt,
+                    start_at: null,
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'guild,event_name' });
-                sq.active = true;
             } catch (err) {
-                console.error('auto start squad session error', err);
+                console.error('auto create squad session error', err);
             }
         }
 
@@ -570,108 +643,121 @@
                 '</div>' +
             '</div>';
 
-        // 3. Sub-tabs navigation (always available)
-        html +=
-            '<div class="sf-sub-tabs" style="margin-bottom: 1.5rem;">' +
-                '<button class="sf-sub-tab' + (sfActiveTab === 'prep' ? ' active' : '') + '" data-tab="prep"><i class="ph ph-clipboard-text"></i> Step 1: Roster Prep</button>' +
-                '<button class="sf-sub-tab' + (sfActiveTab === 'squads' ? ' active' : '') + '" data-tab="squads"><i class="ph ph-users"></i> Step 2: Squad Composition</button>' +
-                '<button class="sf-sub-tab' + (sfActiveTab === 'tracking' ? ' active' : '') + '" data-tab="tracking"><i class="ph ph-chart-bar"></i> Step 3: Participation Tracking</button>' +
-                '<button class="sf-sub-tab' + (sfActiveTab === 'running' ? ' active' : '') + '" data-tab="running"><i class="ph ph-list-numbers"></i> Running Tab</button>' +
-            '</div>';
+        // 3. Stepper navigation (3 steps)
+        var hasAnyDeclared   = sfState.signups.length > 0;
+        var hasAnyAssignment = sfState.assignments.length > 0;
+        var hasActiveSession = activeSquadKeys().length > 0;
 
-        if (sfActiveTab !== 'running') {
-            html +=
-                '<div class="input-wrapper" style="margin-bottom: 1.5rem;">' +
-                    '<i class="ph ph-magnifying-glass"></i>' +
-                    '<input type="text" class="sf-search-input" placeholder="' + t('search_placeholder') + '">' +
-                '</div>';
+        if ((sfActiveTab === 'tracking' && !hasActiveSession) ||
+            (sfActiveTab === 'composition' && !hasAnyDeclared && !hasAnyAssignment)) {
+            sfActiveTab = 'availability';
         }
 
-        // ── Panel: Composition (Squads) ───────────────────────────────────────
-        if (sfActiveTab === 'squads') {
+        var stepBtn = function (key, icon, label, enabled) {
+            return '<button class="sf-step' + (sfActiveTab === key ? ' active' : '') + (enabled ? '' : ' disabled') + '" data-tab="' + key + '"' + (enabled ? '' : ' disabled') + '>' +
+                '<span class="sf-step-icon"><i class="ph ' + icon + '"></i></span>' +
+                '<span class="sf-step-label">' + label + '</span>' +
+                (enabled ? '' : '<span class="sf-step-lock"><i class="ph ph-lock-simple"></i></span>') +
+            '</button>';
+        };
+
+        html +=
+            '<div class="sf-stepper" style="margin-bottom: 1.5rem;">' +
+                stepBtn('availability', 'ph-clipboard-text', t('sf_step_availability'), true) +
+                '<span class="sf-step-sep"></span>' +
+                stepBtn('composition', 'ph-users-three', t('sf_step_composition'), hasAnyDeclared || hasAnyAssignment) +
+                '<span class="sf-step-sep"></span>' +
+                stepBtn('tracking', 'ph-chart-bar', t('sf_step_tracking'), hasActiveSession) +
+            '</div>';
+
+        html +=
+            '<div class="input-wrapper" style="margin-bottom: 1.5rem;">' +
+                '<i class="ph ph-magnifying-glass"></i>' +
+                '<input type="text" class="sf-search-input" placeholder="' + t('search_placeholder') + '">' +
+            '</div>';
+
+        // ── Panel: Composition ──────────────────────────────────────────────────
+        if (sfActiveTab === 'composition') {
             var assignedPseudos = sfState.assignments.map(function (a) { return a.pseudo; });
 
-            // Provisional participants for the active squad
-            var provisionalActive = sfState.signups.filter(function (s) {
+            // Declared pool for the active squad (declared but not yet confirmed)
+            var poolPseudos = sfState.signups.filter(function (s) {
                 var matches = (s.availability === sfActiveSquad || s.availability === 'both');
-                if (!matches) return false;
-                return assignedPseudos.indexOf(s.pseudo) === -1;
-            }).map(function (s) {
-                return {
-                    pseudo: s.pseudo,
-                    squad: sfActiveSquad,
-                    role: 'participant',
-                    is_commander: false,
-                    isProvisional: true
-                };
-            });
+                return matches && assignedPseudos.indexOf(s.pseudo) === -1;
+            }).map(function (s) { return s.pseudo; });
 
-            // Confirmed assignments for the active squad
             var confirmedParticipants = sfState.assignments.filter(function (a) {
                 return a.squad === sfActiveSquad && a.role === 'participant';
             });
             var confirmedReserves = sfState.assignments.filter(function (a) {
                 return a.squad === sfActiveSquad && a.role === 'reserve';
             });
-
-            // Combine and sort participants and reserves
-            var squadParticipants = sortSquadList(confirmedParticipants.concat(provisionalActive));
+            var squadParticipants = sortSquadList(confirmedParticipants);
             var squadReserves = sortSquadList(confirmedReserves);
 
-            // Determine all provisionally assigned pseudos across both squads
-            var provisionalAllPseudos = sfState.signups.filter(function (s) {
-                var hasProvisionalAvailability = (s.availability === 'squad1' || s.availability === 'squad2' || s.availability === 'both');
-                if (!hasProvisionalAvailability) return false;
-                return assignedPseudos.indexOf(s.pseudo) === -1;
-            }).map(function (s) { return s.pseudo; });
+            var rateOf = function (pseudo) {
+                var h = sfState.history[pseudo];
+                return (h && h.assigned > 0) ? (h.participated / h.assigned) : 0;
+            };
 
-            var unassigned = sfState.allMembers.filter(function (p) {
-                var isManuallyAssigned = assignedPseudos.indexOf(p) !== -1;
-                var isProvisionallyAssigned = provisionalAllPseudos.indexOf(p) !== -1;
-                return !isManuallyAssigned && !isProvisionallyAssigned;
+            var rateSum = 0, rateCount = 0;
+            confirmedParticipants.forEach(function (a) {
+                if (sfState.history[a.pseudo] && sfState.history[a.pseudo].assigned > 0) {
+                    rateSum += rateOf(a.pseudo);
+                    rateCount++;
+                }
             });
-
-            var counts = { excellent: 0, good: 0, average: 0, poor: 0, none: 0 };
-            unassigned.forEach(function (p) { counts[categorise(p)]++; });
+            var avgRate = rateCount > 0 ? Math.round((rateSum / rateCount) * 100) + '%' : 'N/A';
 
             html += '<div class="sf-sub-panel active">';
+            html += '<div class="sf-compose-bar" style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem;">' +
+                '<div class="sf-compose-summary" style="display:flex; gap:0.5rem; flex-wrap:wrap;">' +
+                    '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + t('sf_pool') + ': ' + poolPseudos.length + '</span>' +
+                    '<span class="stat-chip"><i class="ph-fill ph-shield-check"></i> ' + t('sf_participants') + ': ' + confirmedParticipants.length + '/20</span>' +
+                    '<span class="stat-chip"><i class="ph-fill ph-clock-countdown"></i> ' + t('sf_reserves') + ': ' + confirmedReserves.length + '/10</span>' +
+                    '<span class="stat-chip"><i class="ph-fill ph-chart-line"></i> ' + t('sf_avg_rate') + ': ' + avgRate + '</span>' +
+                '</div>' +
+                '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
+                    '<div class="sf-sort-toggle" style="display:flex; gap:0.25rem;">' +
+                        '<button class="gm-btn gm-btn-xs sf-sort-btn' + (sfSort === 'rate' ? ' sf-sort-active' : '') + '" data-sort="rate" title="' + t('sf_sort_rate') + '"><i class="ph ph-chart-pie"></i> ' + t('sf_sort_rate') + '</button>' +
+                        '<button class="gm-btn gm-btn-xs sf-sort-btn' + (sfSort === 'power' ? ' sf-sort-active' : '') + '" data-sort="power" title="' + t('sf_sort_power') + '"><i class="ph ph-lightning"></i> ' + t('sf_sort_power') + '</button>' +
+                    '</div>' +
+                    '<button class="gm-btn sf-share-discord-btn" style="display: inline-flex; align-items: center; gap: 0.4rem;"><i class="ph ph-paper-plane-tilt"></i> ' + t('sf_share_discord') + '</button>' +
+                '</div>' +
+            '</div>';
             html += '<div class="sf-layout">';
 
-            // Column 1: Unassigned
+            // Column 1: Declared pool (not confirmed yet)
             html +=
                 '<div class="sf-column sf-unassigned">' +
-                '<div class="sf-col-header"><i class="ph-fill ph-users-three"></i> ' + t('sf_unassigned') +
-                    ' <span class="count-badge">' + unassigned.length + '</span></div>';
-
-            html +=
-                '<div class="sf-history-summary" style="display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; padding: 0.5rem 0.25rem;">' +
-                    '<span class="sf-cat-badge sf-rate-badge excellent">🟢 ' + counts.excellent + '</span>' +
-                    '<span class="sf-cat-badge sf-rate-badge good">🔵 ' + counts.good + '</span>' +
-                    '<span class="sf-cat-badge sf-rate-badge average">🟡 ' + counts.average + '</span>' +
-                    '<span class="sf-cat-badge sf-rate-badge poor">🔴 ' + counts.poor + '</span>' +
-                    '<span class="sf-cat-badge sf-rate-badge none">⚫ ' + counts.none + '</span>' +
-                '</div>';
+                '<div class="sf-col-header"><i class="ph-fill ph-users-three"></i> ' + t('sf_pool') +
+                    ' <span class="count-badge">' + poolPseudos.length + '</span></div>';
 
             html +=
                 '<div class="sf-filter-tabs" style="padding: 0.5rem; justify-content: center; gap: 0.2rem;">' +
                     '<button class="sf-filter-btn' + (sfFilter === 'all'      ? ' active' : '') + '" data-filter="all">' + t('sf_filter_all') + '</button>' +
-                    '<button class="sf-filter-btn' + (sfFilter === 'excellent'? ' active' : '') + '" data-filter="excellent">🟢 ' + t('sf_filter_excellent').split(' (')[0] + ' <span>' + counts.excellent + '</span></button>' +
-                    '<button class="sf-filter-btn' + (sfFilter === 'good'     ? ' active' : '') + '" data-filter="good">🔵 ' + t('sf_filter_good').split(' (')[0] + ' <span>' + counts.good + '</span></button>' +
-                    '<button class="sf-filter-btn' + (sfFilter === 'average'  ? ' active' : '') + '" data-filter="average">🟡 ' + t('sf_filter_average').split(' (')[0] + ' <span>' + counts.average + '</span></button>' +
-                    '<button class="sf-filter-btn' + (sfFilter === 'poor'     ? ' active' : '') + '" data-filter="poor">🔴 ' + t('sf_filter_poor').split(' (')[0] + ' <span>' + counts.poor + '</span></button>' +
-                    '<button class="sf-filter-btn' + (sfFilter === 'none'     ? ' active' : '') + '" data-filter="none">⚫ ' + t('sf_filter_none').split(' /')[0] + ' <span>' + counts.none + '</span></button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'excellent'? ' active' : '') + '" data-filter="excellent">🟢 ' + t('sf_filter_excellent').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'excellent') + '</span></button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'good'     ? ' active' : '') + '" data-filter="good">🔵 ' + t('sf_filter_good').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'good') + '</span></button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'average'  ? ' active' : '') + '" data-filter="average">🟡 ' + t('sf_filter_average').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'average') + '</span></button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'poor'     ? ' active' : '') + '" data-filter="poor">🔴 ' + t('sf_filter_poor').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'poor') + '</span></button>' +
+                    '<button class="sf-filter-btn' + (sfFilter === 'none'     ? ' active' : '') + '" data-filter="none">⚫ ' + t('sf_filter_none').split(' /')[0] + ' <span>' + countRate(poolPseudos, 'none') + '</span></button>' +
                 '</div>';
 
-            var sortedUnassigned = unassigned.slice().sort(function (a, b) { return getMemberPower(b) - getMemberPower(a); });
-            var filtered = sortedUnassigned.filter(function (p) {
+            var sortedPool = poolPseudos.slice().sort(function (a, b) {
+                if (sfSort === 'power') return getMemberPower(b) - getMemberPower(a);
+                var ra = rateOf(a), rb = rateOf(b);
+                if (rb !== ra) return rb - ra;
+                return getMemberPower(b) - getMemberPower(a);
+            });
+            var filteredPool = sortedPool.filter(function (p) {
                 return sfFilter === 'all' ? true : categorise(p) === sfFilter;
             });
 
             html += '<div class="sf-col-body" style="max-height: 480px; overflow-y: auto;">';
-            if (filtered.length === 0) {
-                html += '<div class="sf-empty">' + (unassigned.length === 0 ? t('sf_all_assigned') : t('sf_no_match_filter')) + '</div>';
+            if (filteredPool.length === 0) {
+                html += '<div class="sf-empty">' + (poolPseudos.length === 0 ? t('sf_pool_empty') : t('sf_no_match_filter')) + '</div>';
             } else {
-                filtered.forEach(function (pseudo) {
+                filteredPool.forEach(function (pseudo) {
                     var cat   = categorise(pseudo);
                     var meta  = categoryMeta(cat);
                     var h     = sfState.history[pseudo] || { assigned: 0, participated: 0, excused_count: 0 };
@@ -714,7 +800,7 @@
                         '</div>';
                 });
             }
-            html += '</div></div>'; // Column 1: Unassigned
+            html += '</div></div>'; // Column 1: Pool
 
             // Columns 2 & 3: Participants & Reserves
             html += renderSquadColumn(sfActiveSquad, squadParticipants, squadReserves);
@@ -722,72 +808,60 @@
             html += '</div>'; // active sub panel
         }
 
-        // ── Panel: Roster Prep ─────────────────────────────────────────────────
-        else if (sfActiveTab === 'prep') {
+        // ── Panel: Availability ─────────────────────────────────────────────────
+        else if (sfActiveTab === 'availability') {
             html += '<div class="sf-sub-panel active">';
-            html += '<div class="sf-prep-panel" style="display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1rem;">';
-            
-            // Part 1: Availability registration (bulk select)
-            html += '<div class="glass-card" style="padding: 1.25rem; border:1px solid var(--card-border); border-radius:var(--radius-lg);">' +
-                '<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-clipboard-text"></i> Declare Availability (Current Week)</h3>' +
-                '<div style="max-height: 250px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem; padding: 0.25rem;">';
-            
-            var sortedMembers = sfState.membersData.slice().sort(function (a, b) {
+            html += '<div class="glass-card" style="padding: 1rem 1.25rem; border:1px solid var(--card-border); border-radius:var(--radius-lg); margin-bottom: 1.5rem; display:flex; align-items:center; gap:0.75rem;">' +
+                '<i class="ph-fill ph-info" style="font-size:1.2rem; color:var(--primary); flex-shrink:0;"></i>' +
+                '<div style="font-size:0.9rem; color:var(--text-muted);">' + t('sf_availability_hint') + '</div>' +
+            '</div>';
+            html += '<div class="sf-layout">';
+
+            // Columns 1 & 2: Declared pools per squad
+            html += renderAvailabilityPool('squad1');
+            html += renderAvailabilityPool('squad2');
+
+            // Column 3: Member entry (multi-select + bulk add)
+            var selectedCount = Object.keys(sfSelected).filter(function (p) { return sfSelected[p]; }).length;
+            html +=
+                '<div class="sf-column sf-entry">' +
+                '<div class="sf-col-header"><i class="ph-fill ph-user-plus"></i> ' + t('sf_members') +
+                    ' <span class="count-badge">' + sfState.allMembers.length + '</span></div>' +
+                '<div class="sf-bulk-bar" style="display:flex; gap:0.35rem; padding:0.5rem; flex-wrap:wrap; align-items:center; border-bottom:1px solid var(--card-border);">' +
+                    '<span class="gm-chip sf-selected-count" style="font-size:0.72rem; padding:0.15rem 0.35rem;">' + t('sf_n_selected').replace('{n}', selectedCount) + '</span>' +
+                    '<button class="gm-btn gm-btn-xs sf-bulk-add-btn" data-squad="squad1" style="font-size:0.72rem; flex:1; min-width:90px;"><i class="ph ph-plus"></i> ' + t('sf_add_s1') + '</button>' +
+                    '<button class="gm-btn gm-btn-xs sf-bulk-add-btn" data-squad="squad2" style="font-size:0.72rem; flex:1; min-width:90px;"><i class="ph ph-plus"></i> ' + t('sf_add_s2') + '</button>' +
+                '</div>' +
+                '<div class="sf-col-body" style="max-height: 480px; overflow-y: auto;">';
+
+            var entrySorted = sfState.membersData.slice().sort(function (a, b) {
                 return (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
             });
-            sortedMembers.forEach(function (m) {
+            entrySorted.forEach(function (m) {
                 var signup = sfState.signups.find(function (s) { return s.pseudo === m.pseudo; });
                 var avail = signup ? signup.availability : 'none';
-                
                 var tier = window.GM.getPowerTier(m.overall_power, sfState.maxPower);
                 var meta = window.GM.getPowerTierMeta(tier);
-                var formattedPower = window.GM.formatPower(m.overall_power);
-                
-                var powerBadge = m.overall_power > 0 
-                    ? '<span class="gm-chip" style="font-size:0.7rem; padding:0.05rem 0.25rem; color:' + meta.color + '; border:1px solid ' + meta.color + '22; background: ' + meta.color + '05; display:inline-flex; align-items:center; gap:0.15rem;"><span style="font-size:0.75rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
+                var powerBadge = m.overall_power > 0
+                    ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + meta.color + '; border:1px solid ' + meta.color + '22; background:' + meta.color + '05; display:inline-flex; align-items:center; gap:0.15rem;"><span style="font-size:0.75rem;">' + meta.icon + '</span> ' + window.GM.formatPower(m.overall_power) + '</span>'
+                    : '';
+                var declaredChip = avail !== 'none'
+                    ? '<span class="gm-chip" style="font-size:0.65rem; padding:0.05rem 0.25rem; background:rgba(16,185,129,0.1); color:var(--success); border:1px solid rgba(16,185,129,0.2);">' + (avail === 'both' ? 'S1+S2' : (avail === 'squad1' ? 'S1' : 'S2')) + '</span>'
                     : '';
 
-                var rateBadge = getParticipationBadgeHtml(m.pseudo);
-
-                html += '<div class="sf-prep-member-row" data-pseudo="' + esc(m.pseudo) + '" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.4rem 0.6rem; border-radius: var(--radius-md);">' +
-                    '<div style="display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; margin-right: 0.5rem;">' +
-                        '<span style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.35rem;">' + rateBadge + esc(m.pseudo) + '</span>' +
-                        '<div>' + powerBadge + '</div>' +
-                    '</div>' +
-                    '<div class="sf-prep-buttons" style="display: flex; gap: 0.15rem;">' +
-                        '<button class="gm-chip sf-avail-btn' + (avail === 'squad1' ? ' active gm-chip-accent' : '') + '" data-pseudo="' + esc(m.pseudo) + '" data-avail="squad1" style="font-size:0.72rem; padding:0.15rem 0.35rem; cursor:pointer;">S1</button>' +
-                        '<button class="gm-chip sf-avail-btn' + (avail === 'squad2' ? ' active gm-chip-accent' : '') + '" data-pseudo="' + esc(m.pseudo) + '" data-avail="squad2" style="font-size:0.72rem; padding:0.15rem 0.35rem; cursor:pointer;">S2</button>' +
-                        '<button class="gm-chip sf-avail-btn' + (avail === 'both' ? ' active gm-chip-accent' : '') + '" data-pseudo="' + esc(m.pseudo) + '" data-avail="both" style="font-size:0.72rem; padding:0.15rem 0.35rem; cursor:pointer;">Both</button>' +
-                        '<button class="gm-chip sf-avail-btn' + (avail === 'none' ? ' active' : '') + '" data-pseudo="' + esc(m.pseudo) + '" data-avail="none" style="font-size:0.72rem; padding:0.15rem 0.35rem; cursor:pointer; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border-soft);"><i class="ph ph-trash" style="font-size:0.7rem;"></i></button>' +
-                    '</div>' +
-                '</div>';
-            });
-            
-            html += '</div></div>';
-
-            // Part 2: Availability groups Columns
-            var availS1 = sfState.signups.filter(function (s) { return s.availability === 'squad1'; }).map(function (s) { return s.pseudo; });
-            var availS2 = sfState.signups.filter(function (s) { return s.availability === 'squad2'; }).map(function (s) { return s.pseudo; });
-            var availBoth = sfState.signups.filter(function (s) { return s.availability === 'both'; }).map(function (s) { return s.pseudo; });
-            var availNone = sfState.allMembers.filter(function (pseudo) {
-                return !sfState.signups.some(function (s) { return s.pseudo === pseudo && s.availability !== 'none'; });
+                html +=
+                    '<div class="sf-entry-row" data-pseudo="' + esc(m.pseudo) + '" style="display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.04);">' +
+                        '<input type="checkbox" class="sf-select-cb" data-pseudo="' + esc(m.pseudo) + '"' + (sfSelected[m.pseudo] ? ' checked' : '') + ' style="flex-shrink:0; accent-color:var(--primary);">' +
+                        getParticipationBadgeHtml(m.pseudo) +
+                        '<span class="sf-pseudo" style="flex:1; font-size:0.83rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.pseudo) + '</span>' +
+                        powerBadge +
+                        declaredChip +
+                    '</div>';
             });
 
-            html += '<div style="display: flex; gap: 1rem; flex-wrap: wrap;">';
-            html += renderPrepColumn('Squad 1 Only', availS1, 'squad1');
-            html += renderPrepColumn('Squad 2 Only', availS2, 'squad2');
-            html += renderPrepColumn('Available Both', availBoth, 'both');
-            html += renderPrepColumn('Not Registered', availNone, 'none');
-            html += '</div>';
-
-            html += '</div></div>';
-        }
-
-        // ── Panel: Running Tab ─────────────────────────────────────────────────
-        else if (sfActiveTab === 'running') {
-            html += '<div class="sf-sub-panel active">';
-            html += renderRunningTab();
-            html += '</div>';
+            html += '</div></div>'; // Column 3: Entry
+            html += '</div>'; // sf-layout
+            html += '</div>'; // active sub panel
         }
 
         // ── Panel: Tracking ────────────────────────────────────────────────────
@@ -820,6 +894,55 @@
         attachSFListeners(area);
     }
 
+    function renderAvailabilityPool(squadKey) {
+        var declared = sfState.signups.filter(function (s) {
+            return s.availability === squadKey || s.availability === 'both';
+        }).map(function (s) { return s.pseudo; });
+
+        var sorted = declared.slice().sort(function (a, b) {
+            return getMemberPower(b) - getMemberPower(a);
+        });
+
+        var html =
+            '<div class="sf-column sf-avail-pool">' +
+            '<div class="sf-col-header squad-header ' + squadKey + '"><i class="ph-fill ph-users-three"></i> ' + squadLabel(squadKey) + ' — ' + t('sf_declared') +
+                ' <span class="count-badge">' + declared.length + '</span></div>' +
+            '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
+
+        if (sorted.length === 0) {
+            html += '<div class="sf-empty">' + t('sf_pool_empty') + '</div>';
+        } else {
+            sorted.forEach(function (pseudo) {
+                var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
+                var powerVal = member ? parseInt(member.overall_power) || 0 : 0;
+                var pTier = window.GM.getPowerTier(powerVal, sfState.maxPower);
+                var pMeta = window.GM.getPowerTierMeta(pTier);
+                var powerBadge = powerVal > 0
+                    ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem;"><span style="font-size:0.75rem;">' + pMeta.icon + '</span> ' + window.GM.formatPower(powerVal) + '</span>'
+                    : '';
+
+                html +=
+                    '<div class="sf-member-row" style="display:flex; align-items:center; gap:0.4rem; padding:0.45rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.04);">' +
+                        '<span style="flex:1; display:flex; align-items:center; gap:0.4rem; min-width:0; overflow:hidden;">' +
+                            getParticipationBadgeHtml(pseudo) +
+                            '<span class="sf-pseudo" style="font-size:0.83rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(pseudo) + '</span>' +
+                            powerBadge +
+                        '</span>' +
+                        '<button class="sf-btn sf-avail-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove_avail') + '" style="background:none; border:none; color:var(--fg-dim); cursor:pointer; padding:0.2rem;"><i class="ph ph-x"></i></button>' +
+                    '</div>';
+            });
+        }
+
+        html += '</div></div>';
+        return html;
+    }
+
+    function countRate(pseudos, cat) {
+        var n = 0;
+        pseudos.forEach(function (p) { if (categorise(p) === cat) n++; });
+        return n;
+    }
+
     function renderSquadColumn(squad, participants, reserves) {
         var sq = sfState.squads[squad];
         var pFull = participants.length >= PARTICIPANTS_MAX;
@@ -838,7 +961,7 @@
         if (participants.length === 0) {
             html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
         } else {
-            participants.forEach(function (a) { html += renderAssignedRow(a.pseudo, true, a.is_commander, a.isProvisional); });
+            participants.forEach(function (a) { html += renderAssignedRow(a.pseudo, true, a.is_commander); });
         }
         html += '</div></div>';
 
@@ -853,14 +976,14 @@
         if (reserves.length === 0) {
             html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
         } else {
-            reserves.forEach(function (a) { html += renderAssignedRow(a.pseudo, false, a.is_commander, a.isProvisional); });
+            reserves.forEach(function (a) { html += renderAssignedRow(a.pseudo, false, a.is_commander); });
         }
         html += '</div></div>';
 
         return html;
     }
 
-    function renderAssignedRow(pseudo, isParticipant, isCommander, isProvisional) {
+    function renderAssignedRow(pseudo, isParticipant, isCommander) {
         var cat  = categorise(pseudo);
         var meta = categoryMeta(cat);
         var h     = sfState.history[pseudo] || { assigned: 0, participated: 0, excused_count: 0 };
@@ -873,7 +996,7 @@
             : 'No previous matches';
 
         var cmdBtn = '';
-        if (isParticipant && !isProvisional) {
+        if (isParticipant) {
             var iconClass = isCommander ? 'ph-fill ph-star' : 'ph ph-star';
             var starColor = isCommander ? 'color: #eab308; cursor: pointer;' : 'color: var(--fg-dim); cursor: pointer;';
             cmdBtn = '<button class="sf-commander-btn" data-pseudo="' + esc(pseudo) + '" title="Toggle Commander" style="background: none; border: none; padding: 0.2rem; margin-right: 0.25rem;' + starColor + '">' +
@@ -890,186 +1013,24 @@
             ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-right: 0.25rem;"><span style="font-size:0.75rem;">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
             : '';
 
-        var confirmBtn = '';
         var rowStyle = 'display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem; border-radius: 6px; background: rgba(0,0,0,0.15); border: 1px solid transparent; gap: 0.4rem; font-size: 0.85rem;';
-        if (isProvisional) {
-            rowStyle = 'display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem; border-radius: 6px; background: rgba(245,158,11,0.03); border: 1px dashed rgba(245,158,11,0.3); gap: 0.4rem; font-size: 0.85rem;';
-            confirmBtn = '<button class="sf-confirm-btn" data-pseudo="' + esc(pseudo) + '" data-squad="' + sfActiveSquad + '" title="Confirm Assignment" style="width: 22px; height: 22px; border-radius: 4px; border: none; background: rgba(16,185,129,0.15); color: var(--success); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: var(--transition); margin-right: 0.25rem;"><i class="ph ph-check-bold"></i></button>';
-        }
-
-        var removeTitle = isProvisional ? 'Remove Availability' : t('sf_remove');
 
         return '<div class="sf-assigned-row" style="' + rowStyle + '">' +
             '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; margin-right: 0.25rem;">' + rateText + '</span>' +
             '<span class="sf-pseudo" title="' + esc(tooltipText) + '" style="font-weight: 500; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.25rem;">' + 
-                esc(pseudo) + 
-                (isProvisional ? '<span style="font-size:0.65rem; color:var(--warning); font-style:italic; font-weight:normal;">(Provisoire)</span>' : '') +
+                esc(pseudo) +
             '</span>' +
             powerBadge +
             '<div style="display: flex; align-items: center; gap: 0.2rem;">' +
-                confirmBtn +
                 cmdBtn +
-                '<button class="sf-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + removeTitle + '"><i class="ph ph-x"></i></button>' +
+                '<button class="sf-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove') + '"><i class="ph ph-x"></i></button>' +
             '</div>' +
         '</div>';
     }
 
-    function renderPrepColumn(title, list, key) {
-        var headerColor = key === 'squad1' ? 'border-top: 3px solid #6366f1;' : key === 'squad2' ? 'border-top: 3px solid #8b5cf6;' : key === 'both' ? 'border-top: 3px solid #ec4899;' : 'border-top: 3px solid var(--border-soft);';
-        
-        var html = '<div class="sf-column" style="flex: 1; min-width: 240px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--radius-lg); padding: 0.75rem;' + headerColor + '">' +
-            '<div class="sf-col-header" style="font-weight:700; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center; font-size: 0.95rem;">' + esc(title) + ' <span class="count-badge">' + list.length + '</span></div>' +
-            '<div style="max-height: 400px; overflow-y:auto; display:flex; flex-direction:column; gap:0.4rem;">';
-        
-        if (list.length === 0) {
-            html += '<div class="sf-empty" style="font-size:0.8rem; padding:1.5rem 0.5rem; text-align: center;">No players</div>';
-        } else {
-            var sortedList = list.slice().sort(function (a, b) {
-                return getMemberPower(b) - getMemberPower(a);
-            });
-            sortedList.forEach(function (pseudo) {
-                var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
-                var power = member ? parseInt(member.overall_power) || 0 : 0;
-                var tier = window.GM.getPowerTier(power, sfState.maxPower);
-                var meta = window.GM.getPowerTierMeta(tier);
-                
-                var assignment = sfState.assignments.find(function (a) { return a.pseudo === pseudo; });
-                var assignedHtml = '';
-                var actionsHtml = '';
-                
-                if (assignment) {
-                    var squadName = assignment.squad === 'squad1' ? 'S1' : 'S2';
-                    var roleName = assignment.role === 'participant' ? 'P' : 'R';
-                    assignedHtml = '<span class="gm-chip" style="font-size:0.65rem; padding:0.15rem 0.35rem; background:rgba(16,185,129,0.1); color:var(--success); border:1px solid rgba(16,185,129,0.2); font-weight:700; border-radius: 4px;">Assigned (' + squadName + ' ' + roleName + ')</span>';
-                } else {
-                    actionsHtml = '<div style="display:flex; gap:0.2rem; margin-top:0.35rem; width: 100%; flex-wrap: wrap;">' +
-                        '<button class="gm-btn gm-btn-xs sf-quick-assign-btn" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="participant" title="Squad 1 Participant" style="font-size:0.68rem; padding:2px 4px; flex: 1; min-width: 45px;">+S1 P</button>' +
-                        '<button class="gm-btn gm-btn-xs sf-quick-assign-btn" data-pseudo="' + esc(pseudo) + '" data-squad="squad1" data-role="reserve" title="Squad 1 Reserve" style="font-size:0.68rem; padding:2px 4px; flex: 1; min-width: 45px;">+S1 R</button>' +
-                        '<button class="gm-btn gm-btn-xs sf-quick-assign-btn" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="participant" title="Squad 2 Participant" style="font-size:0.68rem; padding:2px 4px; flex: 1; min-width: 45px;">+S2 P</button>' +
-                        '<button class="gm-btn gm-btn-xs sf-quick-assign-btn" data-pseudo="' + esc(pseudo) + '" data-squad="squad2" data-role="reserve" title="Squad 2 Reserve" style="font-size:0.68rem; padding:2px 4px; flex: 1; min-width: 45px;">+S2 R</button>' +
-                        '</div>';
-                }
-
-                var powerText = power > 0 ? window.GM.formatPower(power) : '—';
-                var rateBadge = getParticipationBadgeHtml(pseudo);
-                
-                html += '<div style="background:var(--bg-dim); border:1px solid var(--border-soft); padding:0.5rem; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:0.2rem; align-items:flex-start;">' +
-                    '<div style="width:100%; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">' +
-                        '<span style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; flex:1; display:flex; align-items:center; gap:0.3rem;" title="' + esc(pseudo) + '">' + rateBadge + esc(pseudo) + '</span>' +
-                        '<span style="font-size:0.75rem; font-weight:700; color:' + meta.color + ';"><span style="font-size:0.8rem;">' + meta.icon + '</span> ' + powerText + '</span>' +
-                    '</div>' +
-                    assignedHtml +
-                    actionsHtml +
-                    '</div>';
-            });
-        }
-        html += '</div></div>';
-        return html;
-    }
-
-    function renderRunningTab() {
-        var uniqueSessions = Array.from(new Set(
-            (sfState.participants || []).map(function (p) { return p.session_id; })
-                .concat(Object.keys(sfState.history).length ? [] : [])
-        )).concat(
-            Array.from(new Set(
-                (sfState.historicalParts || []).map(function (p) { return p.session_id; })
-            ))
-        );
-
-        uniqueSessions = Array.from(new Set(uniqueSessions)).filter(Boolean)
-            .sort(function (a, b) { return new Date(b).getTime() - new Date(a).getTime(); });
-        
-        var runningSessions = uniqueSessions.slice(0, 8); // Last 8 matches
-
-        var html = '<div class="sf-running-tab-panel" style="margin-top: 1rem; width:100%;">';
-        html += '<div style="font-weight:700; font-size:1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-list-numbers"></i> Running Tab (Last ' + runningSessions.length + ' Matches)</div>';
-
-        if (runningSessions.length === 0) {
-            html += '<div class="gm-empty"><i class="ph-duotone ph-clock gm-icon"></i><div class="gm-empty-title">No Shadowfront matches found in history</div></div>';
-            html += '</div>';
-            return html;
-        }
-
-        html += '<div class="participants-table-wrap" style="overflow-x: auto;"><table class="participants-table" style="width:100%; border-collapse: collapse;"><thead><tr>' +
-            '<th style="text-align: left; padding: 0.75rem;">' + t('col_member') + '</th>' +
-            '<th style="text-align: left; padding: 0.75rem;">Power Tier</th>';
-
-        runningSessions.forEach(function (sid) {
-            var dateStr = new Date(sid).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-            html += '<th style="text-align: center; padding: 0.75rem; white-space: nowrap; font-size:0.8rem;">' + dateStr + '</th>';
-        });
-
-        html += '<th style="text-align: center; padding: 0.75rem;">Stats (P/M/E)</th>';
-        html += '</tr></thead><tbody>';
-
-        var sortedMembers = sfState.membersData.slice().sort(function (a, b) {
-            return (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
-        });
-
-        sortedMembers.forEach(function (m) {
-            var tier = window.GM.getPowerTier(m.overall_power, sfState.maxPower);
-            var meta = window.GM.getPowerTierMeta(tier);
-            var formattedPower = window.GM.formatPower(m.overall_power);
-            
-            var tierBadge = m.overall_power > 0 
-                ? '<span class="gm-chip" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:' + meta.color + '; border:1px solid ' + meta.color + '22; background: ' + meta.color + '05; display:inline-flex; align-items:center; gap:0.2rem;"><span style="font-size:0.75rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
-                : '—';
-
-            var played = 0;
-            var missed = 0;
-            var excused = 0;
-            var cellsHtml = '';
-
-            runningSessions.forEach(function (sid) {
-                var wasAssigned = (sfState.historicalSquads || []).some(function (s) { return s.pseudo === m.pseudo && s.session_id === sid; }) ||
-                    sfState.assignments.some(function (s) { return s.pseudo === m.pseudo && s.session_id === sid; });
-                var partRow = (sfState.historicalParts || []).find(function (p) { return p.pseudo === m.pseudo && p.session_id === sid; }) ||
-                    sfState.participants.find(function (p) { return p.pseudo === m.pseudo && p.session_id === sid; });
-
-                if (partRow) {
-                    if (partRow.excused) {
-                        excused++;
-                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">Excused</span></td>';
-                    } else if (partRow.sub_present) {
-                        played++;
-                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">Sub Pres</span></td>';
-                    } else if (partRow.participated > 0) {
-                        played++;
-                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">Present</span></td>';
-                    } else {
-                        missed++;
-                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(239,68,68,0.1); color: var(--error); border: 1px solid rgba(239,68,68,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">No Show</span></td>';
-                    }
-                } else {
-                    if (wasAssigned) {
-                        missed++;
-                        cellsHtml += '<td style="text-align: center; padding: 0.5rem;"><span class="gm-chip" style="background: rgba(239,68,68,0.1); color: var(--error); border: 1px solid rgba(239,68,68,0.2); font-size:0.75rem; padding:0.1rem 0.35rem;">No Show</span></td>';
-                    } else {
-                        cellsHtml += '<td style="text-align: center; padding: 0.5rem; color: var(--text-muted); font-weight: 300;">—</td>';
-                    }
-                }
-            });
-
-            html += '<tr style="border-bottom: 1px solid var(--border-soft);">' +
-                '<td style="padding: 0.75rem; font-weight: 600;">' + esc(m.pseudo) + '</td>' +
-                '<td style="padding: 0.75rem;">' + tierBadge + '</td>' +
-                cellsHtml +
-                '<td style="text-align: center; padding: 0.75rem; font-weight: 700; font-size:0.8rem;"><span style="color:var(--success);">' + played + 'P</span> / <span style="color:var(--error);">' + missed + 'M</span> / <span style="color:var(--warning);">' + excused + 'E</span></td>' +
-                '</tr>';
-        });
-
-        html += '</tbody></table></div></div>';
-        return html;
-    }
 
     function renderTrackingTable(participants) {
         var done = participants.reduce(function (s, p) { return s + (p.participated || 0); }, 0);
-
-        var pendingCount = participants.reduce(function (s, p) { return s + (p.is_pending ? 1 : 0); }, 0);
-        var approveAllBtn = pendingCount > 0
-            ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success approve-sf-all-btn" style="margin-left: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> Approve All (' + pendingCount + ')</button>'
-            : '';
 
         var html =
             '<div class="sf-tracking">' +
@@ -1077,7 +1038,9 @@
                 '<div class="event-stats" style="margin-bottom: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">' +
                     '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
                     '<span class="stat-chip success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
-                    approveAllBtn +
+                    '<button type="button" class="gm-btn gm-btn-sm sf-all-present-btn" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> ' + t('sf_all_present') + '</button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm sf-all-absent-btn" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;"><i class="ph ph-square"></i> ' + t('sf_all_absent') + '</button>' +
+                    '<span class="sf-saved-flash" style="opacity:0; transition: opacity 0.3s; font-size:0.78rem; color:var(--success);"></span>' +
                 '</div>' +
                 '<div class="participants-table-wrap"><table class="participants-table"><thead><tr>' +
                     '<th>' + t('col_member') + '</th>' +
@@ -1086,7 +1049,7 @@
                     '<th class="center">Late</th>' +
                     '<th class="center">Excused</th>' +
                     '<th class="center">Sub Present</th>' +
-                    '<th style="width: 140px; text-align: right;">Actions</th>' +
+                    '<th style="width: 60px; text-align: right;">Actions</th>' +
                 '</tr></thead><tbody>';
 
         participants.forEach(function (p) {
@@ -1098,7 +1061,7 @@
             var isLateChecked = !!p.late;
             var isExcusedChecked = !!p.excused;
             var isSubPresentChecked = !!p.sub_present;
-            
+
             var cat = categorise(p.pseudo);
             var meta = categoryMeta(cat);
             var h = sfState.history[p.pseudo] || { assigned: 0, participated: 0 };
@@ -1106,21 +1069,13 @@
                 ? Math.round((h.participated / h.assigned) * 100) + '%'
                 : 'N/A';
 
-            var rowClass = 'participant-row' + (isChecked ? ' participated' : '') + (p.is_pending ? ' pending-approval-row' : '');
-            var rowStyle = p.is_pending ? 'background: rgba(245, 158, 11, 0.05); border-left: 3px solid var(--warning);' : '';
-
-            var actionBtn = p.is_pending
-                ? '<button type="button" class="gm-btn gm-btn-success approve-sf-single-btn" data-pseudo="' + esc(p.pseudo) + '" style="font-size:0.75rem; padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem; margin-right:0.4rem; border:none; border-radius:4px; cursor:pointer;"><i class="ph ph-check"></i> Approve</button>'
-                : '';
+            var rowClass = 'participant-row' + (isChecked ? ' participated' : '');
 
             html +=
-                '<tr class="' + rowClass + '" style="' + rowStyle + '">' +
+                '<tr class="' + rowClass + '">' +
                     '<td class="pseudo-cell" style="display: flex; align-items: center; gap: 0.5rem;">' +
                         '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem;">' + rateText + '</span>' +
-                        '<strong style="font-size: 0.88rem; display:inline-flex; align-items:center; gap:0.4rem;">' + 
-                            esc(p.pseudo) + 
-                            (p.is_pending ? '<span class="gm-chip" style="font-size:0.65rem; padding:0.05rem 0.25rem; background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending</span>' : '') +
-                        '</strong>' +
+                        '<strong style="font-size: 0.88rem;">' + esc(p.pseudo) + '</strong>' +
                     '</td>' +
                     '<td><span class="squad-chip ' + (assignment ? assignment.squad : '') + '">' + squadLbl + '</span></td>' +
                     '<td class="check-cell">' +
@@ -1147,12 +1102,63 @@
                             '<span class="check-slider"></span>' +
                         '</label>' +
                     '</td>' +
-                    '<td style="white-space: nowrap; text-align: right;">' + actionBtn + '<button class="delete-btn sf-delete-participant-btn" data-pseudo="' + esc(p.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button></td>' +
+                    '<td style="white-space: nowrap; text-align: right;"><button class="delete-btn sf-delete-participant-btn" data-pseudo="' + esc(p.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button></td>' +
                 '</tr>';
         });
 
         html += '</tbody></table></div></div>';
         return html;
+    }
+
+    async function bulkAddAvailability(squad) {
+        var db = getDb();
+        if (!db) return;
+        var week = window.GM.getWeekStart();
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        var pseudos = Object.keys(sfSelected).filter(function (p) { return sfSelected[p]; });
+        if (pseudos.length === 0) return;
+
+        try {
+            await db.from('shadowfront_signups').upsert(
+                pseudos.map(function (pseudo) {
+                    return { guild: currentG, week_start: week, pseudo: pseudo, availability: squad };
+                }),
+                { onConflict: 'guild,week_start,pseudo' }
+            );
+            sfSelected = {};
+            window.GM.showToast(t('sf_avail_bulk').replace('{n}', pseudos.length).replace('{squad}', squadLabel(squad)), 'success');
+            await loadShadowfront();
+        } catch (err) {
+            console.error('bulkAddAvailability failed', err);
+            window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        }
+    }
+
+    async function bulkSetParticipation(value) {
+        var db = getDb();
+        if (!db) return;
+        var sq = sfState.squads[sfActiveSquad];
+        if (!sq || !sq.sessionId) return;
+        try {
+            await db.from('event_participants').update({ participated: value })
+                .eq('event_name', EVENT_NAME).eq('session_id', sq.sessionId);
+            sfState.participants.forEach(function (p) {
+                if (p.session_id === sq.sessionId) p.participated = value;
+            });
+            renderShadowfront();
+            flashSaved();
+        } catch (err) {
+            console.error('bulkSetParticipation failed', err);
+            window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        }
+    }
+
+    function flashSaved() {
+        var el = document.querySelector('#event-shadowfront .sf-saved-flash');
+        if (!el) return;
+        el.textContent = t('sf_saved');
+        el.style.opacity = '1';
+        setTimeout(function () { el.style.opacity = '0'; }, 1500);
     }
 
     async function saveAvailability(pseudo, availability) {
@@ -1249,74 +1255,39 @@
         area.querySelectorAll('.sf-commander-btn').forEach(function (btn) {
             btn.addEventListener('click', function () { toggleCommander(btn.getAttribute('data-pseudo')); });
         });
-        area.querySelectorAll('.sf-confirm-btn').forEach(function (btn) {
+
+        area.querySelectorAll('.sf-select-cb').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var pseudo = cb.getAttribute('data-pseudo');
+                sfSelected[pseudo] = cb.checked;
+                if (!cb.checked) delete sfSelected[pseudo];
+                renderShadowfront();
+            });
+        });
+        area.querySelectorAll('.sf-bulk-add-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                var pseudo = btn.getAttribute('data-pseudo');
-                var squad = btn.getAttribute('data-squad');
-                assign(pseudo, squad, 'participant');
+                bulkAddAvailability(btn.getAttribute('data-squad'));
             });
         });
-
-        area.querySelectorAll('.sf-avail-btn').forEach(function (btn) {
+        area.querySelectorAll('.sf-avail-remove-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                var pseudo = btn.getAttribute('data-pseudo');
-                var avail = btn.getAttribute('data-avail');
-                saveAvailability(pseudo, avail);
+                saveAvailability(btn.getAttribute('data-pseudo'), 'none');
             });
         });
-
-        area.querySelectorAll('.sf-quick-assign-btn').forEach(function (btn) {
+        area.querySelectorAll('.sf-sort-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                var pseudo = btn.getAttribute('data-pseudo');
-                var squad = btn.getAttribute('data-squad');
-                var role = btn.getAttribute('data-role');
-                assign(pseudo, squad, role);
+                sfSort = btn.getAttribute('data-sort');
+                renderShadowfront();
             });
         });
 
-        area.querySelectorAll('.approve-sf-single-btn').forEach(function (btn) {
-            btn.addEventListener('click', async function () {
-                var pseudo = btn.getAttribute('data-pseudo');
-                btn.disabled = true;
-                btn.textContent = '...';
-                try {
-                    await db.from('event_participants').update({ is_pending: false })
-                        .eq('event_name', EVENT_NAME)
-                        .in('session_id', sfState.squads.squad1.sessionId ? [sfState.squads.squad1.sessionId, sfState.squads.squad2.sessionId].filter(Boolean) : [sfState.squads.squad2.sessionId].filter(Boolean))
-                        .eq('pseudo', pseudo);
-                    
-                    var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
-                    if (pp) pp.is_pending = false;
-                    renderShadowfront();
-                } catch (err) {
-                    window.GM_APP.showToast('Failed to approve submission.', 'error');
-                    btn.disabled = false;
-                    btn.textContent = 'Approve';
-                }
-            });
-        });
-
-        var approveAllBtnEl = area.querySelector('.approve-sf-all-btn');
-        if (approveAllBtnEl) {
-            approveAllBtnEl.addEventListener('click', async function () {
-                approveAllBtnEl.disabled = true;
-                approveAllBtnEl.textContent = 'Approving...';
-                try {
-                    await db.from('event_participants').update({ is_pending: false })
-                        .eq('event_name', EVENT_NAME)
-                        .in('session_id', sfState.squads.squad1.sessionId ? [sfState.squads.squad1.sessionId, sfState.squads.squad2.sessionId].filter(Boolean) : [sfState.squads.squad2.sessionId].filter(Boolean))
-                        .eq('is_pending', true);
-                    
-                    sfState.participants.forEach(function (p) {
-                        if (p.is_pending) p.is_pending = false;
-                    });
-                    renderShadowfront();
-                } catch (err) {
-                    window.GM_APP.showToast('Failed to approve all submissions.', 'error');
-                    approveAllBtnEl.disabled = false;
-                    approveAllBtnEl.textContent = 'Approve All';
-                }
-            });
+        var allPresentBtn = area.querySelector('.sf-all-present-btn');
+        if (allPresentBtn) {
+            allPresentBtn.addEventListener('click', function () { bulkSetParticipation(1); });
+        }
+        var allAbsentBtn = area.querySelector('.sf-all-absent-btn');
+        if (allAbsentBtn) {
+            allAbsentBtn.addEventListener('click', function () { bulkSetParticipation(0); });
         }
 
         function refreshStats() {
@@ -1338,7 +1309,7 @@
                 if (pp) pp.participated = next;
                 refreshStats();
 
-                saveParticipation(pseudo, next);
+                saveParticipation(pseudo, next).then(flashSaved);
             });
         });
         area.querySelectorAll('.sf-late-checkbox').forEach(function (cb) {
@@ -1347,6 +1318,7 @@
                 saveLate(pseudo, cb.checked).then(function () {
                     var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
                     if (pp) pp.late = cb.checked;
+                    flashSaved();
                 });
             });
         });
@@ -1356,6 +1328,7 @@
                 saveExcused(pseudo, cb.checked).then(function () {
                     var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
                     if (pp) pp.excused = cb.checked;
+                    flashSaved();
                 });
             });
         });
@@ -1365,6 +1338,7 @@
                 saveSubPresent(pseudo, cb.checked).then(function () {
                     var pp = sfState.participants.find(function (p) { return p.pseudo === pseudo; });
                     if (pp) pp.sub_present = cb.checked;
+                    flashSaved();
                 });
             });
         });
@@ -1395,7 +1369,12 @@
             });
         });
 
-        area.querySelectorAll('.sf-sub-tab').forEach(function (btn) {
+        var shareBtn = area.querySelector('.sf-share-discord-btn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', shareCompositionOnDiscord);
+        }
+
+        area.querySelectorAll('.sf-step').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 sfActiveTab = btn.getAttribute('data-tab');
                 renderShadowfront();
@@ -1406,8 +1385,8 @@
         if (searchInput) {
             searchInput.addEventListener('input', function (e) {
                 var q = e.target.value.toLowerCase();
-                area.querySelectorAll('.sf-member-row, .sf-assigned-row, .sf-prep-member-row').forEach(function (row) {
-                    var btn = row.querySelector('.sf-btn, .sf-remove-btn, .sf-avail-btn');
+                area.querySelectorAll('.sf-member-row, .sf-assigned-row, .sf-entry-row').forEach(function (row) {
+                    var btn = row.querySelector('.sf-btn, .sf-remove-btn, .sf-select-cb');
                     var pseudo = btn ? btn.getAttribute('data-pseudo') : '';
                     var uid = sfState.uidMap[pseudo] || '';
                     var match = (pseudo.toLowerCase() + ' ' + uid.toLowerCase()).indexOf(q) !== -1;
