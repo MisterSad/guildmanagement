@@ -245,18 +245,31 @@
     }
 
     // ─── Chart card (canvas bar chart per event type) ──────────────────────
+    // Event color is used only as a decorative accent strip; the card itself
+    // keeps the dark neutral surface so the canvas and text stay high-contrast.
+    function eventAccent(eventKey) {
+        var lower = String(eventKey).toLowerCase();
+        if (lower.indexOf('svs') !== -1) return '#a3e635';
+        if (lower.indexOf('gvg') !== -1) return '#fb7185';
+        if (lower.indexOf('shadowfront') !== -1) return '#c4b5fd';
+        if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return '#22d3ee';
+        if (lower.indexOf('arms') !== -1 || lower.indexOf('race') !== -1) return '#fbbf24';
+        if (lower.indexOf('glory') !== -1) return '#34d399';
+        return '#94a3b8';
+    }
+
     function renderChartCard(eventKey, ev, idx) {
         var icon = window.GM.getEventIcon(eventKey);
-        var theme = window.GM.getEventTheme(eventKey);
+        var accent = eventAccent(eventKey);
         var attended = ev.attended || 0;
 
         var historyHtml = '';
         (ev.history || []).slice(0, 8).forEach(function (h) {
             var label = h.week_start || h.session_id || '?';
             var badge = h.participated || h.sub_present
-                ? '<span class="gm-chip gm-chip-success" style="font-size:0.6rem;">P</span>'
-                : (h.excused ? '<span class="gm-chip gm-chip-warning" style="font-size:0.6rem;">E</span>'
-                   : '<span class="gm-chip" style="font-size:0.6rem;">A</span>');
+                ? '<span class="portal-badge" style="background:rgba(52,211,153,0.18); color:#34d399; border-color:rgba(52,211,153,0.45);">P</span>'
+                : (h.excused ? '<span class="portal-badge" style="background:rgba(251,191,36,0.15); color:#fbbf24; border-color:rgba(251,191,36,0.45);">E</span>'
+                   : '<span class="portal-badge" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.45);">A</span>');
             historyHtml +=
                 '<div class="portal-chart-row">' +
                     '<span class="portal-chart-row-label">' + esc(String(label).slice(0, 10)) + '</span>' +
@@ -265,9 +278,10 @@
                 '</div>';
         });
 
-        return '<div class="portal-chart-card ' + theme + '">' +
+        return '<div class="portal-chart-card">' +
+                    '<div class="portal-chart-accent" style="background:' + accent + ';"></div>' +
                     '<div class="portal-chart-head">' +
-                        '<div class="portal-chart-title"><i class="ph ' + icon + '"></i> ' + esc(eventKey) + '</div>' +
+                        '<div class="portal-chart-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + esc(eventKey) + '</div>' +
                         '<div class="portal-chart-meta">' + esc(attended) + '/' + esc(ev.count) + ' attended (' + esc(ev.rate) + '%)</div>' +
                     '</div>' +
                     '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="180"></canvas>' +
