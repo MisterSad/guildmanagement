@@ -58,7 +58,7 @@ Players don't need an account: they enter their in-game UID and can update their
 Members can opt in to push notifications on their device and receive event reminders even when they're not in the app.
 
 ### Multi-guild support
-One platform, many guilds. Each guild is completely isolated, and super admins can switch between guilds, manage accounts, and consult a cross-guild leaderboard of every player's power and participation.
+One platform, many guilds. Each guild is completely isolated, with its own members, events, settings, and subscription — no interference between them.
 
 ### Subscriptions
 Each guild subscribes independently, with plans from one month to lifetime, purchased securely in the app. Renewals stack on the remaining time, and if a subscription expires the guild switches to read-only until it renews.
@@ -80,7 +80,6 @@ Each guild subscribes independently, with plans from one month to lifetime, purc
 
 | Role | What they can do |
 |------|------------------|
-| **Super Admin** | Oversees all guilds, creates guilds, manages accounts, grants subscriptions, cross-guild leaderboard. |
 | **Guild Admin** | Full management of their guild: events, squads, members, sanctions, Discord settings, subscription. |
 | **Member** | Read-only access: overview, members, stats, history. |
 | **Player (portal)** | No account needed — submits scores, updates power, requests transfers via their in-game UID. |
