@@ -2311,11 +2311,48 @@
 .portal-stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-muted); margin-top: 0.2rem; }
 
 .portal-charts-grid {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
     width: 100%;
 }
+
+.portal-period {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.portal-period-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+}
+.portal-period-btns {
+    display: inline-flex;
+    gap: 0.3rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    padding: 0.2rem;
+}
+.portal-period-btn {
+    background: transparent;
+    border: none;
+    color: var(--fg-muted);
+    font-family: var(--font);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.portal-period-btn:hover { color: var(--fg); background: rgba(255,255,255,0.05); }
+.portal-period-btn.active { background: var(--accent); color: var(--accent-fg, #101018); }
 
 .portal-chart-card {
     background: var(--bg-1);
@@ -2422,6 +2459,7 @@
 /* ─── Responsive: mobile ──────────────────────────────────────────────── */
 @media (max-width: 600px) {
     .portal-stats { grid-template-columns: repeat(2, 1fr); }
+    .portal-charts-grid { grid-template-columns: 1fr; }
     .portal-events-grid { grid-template-columns: 1fr; }
     .portal-settings-grid { grid-template-columns: 1fr; }
     .portal-chart-list { grid-template-columns: 1fr; }

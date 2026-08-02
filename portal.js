@@ -15,8 +15,43 @@
         sessions: [],       // active event sessions
         history: null,      // per-event history from get-history
         activeTab: 'dashboard',
+        period: 'all',      // 'all' | '8w' | '4w' | '1w'
         chartsDrawn: false
     };
+
+    // Period presets, in weeks. 'all' keeps everything.
+    var PERIODS = [
+        { key: 'all', label: 'All Time' },
+        { key: '8w', label: '8 Weeks' },
+        { key: '4w', label: '4 Weeks' },
+        { key: '1w', label: '1 Week' }
+    ];
+
+    // Return only the history rows inside the selected period (weeks).
+    function filterHistoryByPeriod(history) {
+        var weeks = { all: null, '8w': 8, '4w': 4, '1w': 1 }[portalState.period];
+        if (weeks === null) return history;
+
+        var cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 7 * weeks);
+
+        var filtered = {};
+        Object.keys(history || {}).forEach(function (key) {
+            var list = (history[key].history || []).filter(function (h) {
+                if (!h.week_start) return true; // keep rows without a week (session-only)
+                var d = new Date(h.week_start + 'T00:00:00');
+                return !isNaN(d.getTime()) && d >= cutoff;
+            });
+            var attended = list.filter(function (h) { return h.participated || h.sub_present; }).length;
+            filtered[key] = {
+                count: list.length,
+                attended: attended,
+                rate: list.length > 0 ? Math.round((attended / list.length) * 100) : 0,
+                history: list
+            };
+        });
+        return filtered;
+    }
 
     // ─── Invoke the member-portal edge function with the current session ────
     function invoke(action, payload) {
@@ -198,7 +233,7 @@
         var panel = document.getElementById('portal-panel-dashboard');
         if (!panel) return;
 
-        var hist = portalState.history || {};
+        var hist = filterHistoryByPeriod(portalState.history);
         var keys = Object.keys(hist);
         var totalCount = 0, totalAttended = 0;
         keys.forEach(function (k) {
@@ -215,9 +250,19 @@
                 '<div class="portal-stat"><div class="portal-stat-value">' + esc(window.GM.formatPower(portalState.player.overall_power)) + '</div><div class="portal-stat-label">Current power</div></div>' +
             '</div>';
 
+        var periodHtml =
+            '<div class="portal-period">' +
+                '<span class="portal-period-label"><i class="ph ph-calendar"></i> Period</span>' +
+                '<div class="portal-period-btns">' +
+                    PERIODS.map(function (p) {
+                        return '<button type="button" class="portal-period-btn' + (portalState.period === p.key ? ' active' : '') + '" data-period="' + p.key + '">' + esc(p.label) + '</button>';
+                    }).join('') +
+                '</div>' +
+            '</div>';
+
         var chartsHtml = '';
         if (keys.length === 0) {
-            chartsHtml = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-chart-bar gm-icon"></i><div class="gm-empty-title">No history yet.</div><div class="gm-empty-sub">Your progression charts will appear here after your first events.</div></div>';
+            chartsHtml = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-chart-bar gm-icon"></i><div class="gm-empty-title">No history for this period.</div><div class="gm-empty-sub">Your progression charts will appear here after your first events.</div></div>';
         } else {
             keys.forEach(function (key, idx) {
                 var ev = hist[key];
@@ -231,12 +276,21 @@
                     '<h1 class="gm-page-title">My Progress</h1>' +
                     '<p class="gm-page-subtitle">Your participation across every guild event type</p>' +
                 '</div>' +
+                periodHtml +
             '</header>' +
             tilesHtml +
             '<div class="portal-charts-grid">' + chartsHtml + '</div>';
-        portalState.chartsDrawn = true;
+
+        // Period selector wiring
+        panel.querySelectorAll('.portal-period-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                portalState.period = btn.getAttribute('data-period');
+                renderDashboardPanel();
+            });
+        });
 
         // Draw charts after insertion
+        portalState.chartsDrawn = true;
         window.requestAnimationFrame(function () {
             keys.forEach(function (key, idx) {
                 drawChart(key, hist[key], idx);
