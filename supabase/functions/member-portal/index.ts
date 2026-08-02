@@ -317,5 +317,56 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, events: summary, overall: (rows || []).length });
   }
 
+  if (action === "get-absences") {
+    // Player's own absence declarations.
+    const { data, error } = await admin.rpc("gm_get_player_absences", { p_uid: uid });
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    return json({ ok: true, absences: data ?? [] });
+  }
+
+  if (action === "set-absence") {
+    // Declare (or edit) an absence / reduced-activity period for the player.
+    const startDate = (payload?.start_date ?? "").toString().trim();
+    const endDate = (payload?.end_date ?? "").toString().trim();
+    const kind = (payload?.kind ?? "full").toString().trim();
+    const note = (payload?.note ?? "").toString().trim();
+    const absenceId = payload?.id ? (payload.id).toString().trim() : null;
+
+    if (!startDate || !endDate) return json({ ok: false, error: "missing_dates" }, 400);
+    if (kind !== "full" && kind !== "reduced") return json({ ok: false, error: "invalid_kind" }, 400);
+
+    const member = await getPlayer(admin, uid);
+    if (!member) return json({ ok: false, error: "player_not_found" }, 400);
+
+    const { data, error } = await admin.rpc("gm_upsert_player_absence", {
+      p_guild: member.guild,
+      p_pseudo: member.pseudo,
+      p_uid: uid,
+      p_id: absenceId,
+      p_start_date: startDate,
+      p_end_date: endDate,
+      p_kind: kind,
+      p_note: note || null,
+    });
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
+    if (!row || !row.ok) return json({ ok: false, error: row?.error || "save_failed" }, 200);
+    return json({ ok: true });
+  }
+
+  if (action === "delete-absence") {
+    const absenceId = (payload?.id ?? "").toString().trim();
+    if (!absenceId) return json({ ok: false, error: "missing_id" }, 400);
+
+    const { data, error } = await admin.rpc("gm_delete_player_absence", {
+      p_id: absenceId,
+      p_uid: uid,
+    });
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
+    if (!row || !row.ok) return json({ ok: false, error: row?.error || "delete_failed" }, 200);
+    return json({ ok: true });
+  }
+
   return json({ ok: false, error: "unknown_action" }, 400);
 });

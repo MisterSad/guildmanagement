@@ -1398,9 +1398,10 @@
         if (!supabase) return;
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
-            var [res, transfersRes] = await Promise.all([
+            var [res, transfersRes, absencesRes] = await Promise.all([
                 supabase.from('guild_members').select('*').order('pseudo', { ascending: true }),
-                supabase.from('guild_transfers').select('id, uid, pseudo, source_guild').eq('target_guild', currentG).eq('status', 'pending').order('created_at', { ascending: true })
+                supabase.from('guild_transfers').select('id, uid, pseudo, source_guild').eq('target_guild', currentG).eq('status', 'pending').order('created_at', { ascending: true }),
+                supabase.from('player_absences').select('*').eq('guild', currentG)
             ]);
             
             if (res.error) throw res.error;
@@ -1408,6 +1409,12 @@
             
             if (!transfersRes.error) {
                 pendingTransfers = transfersRes.data || [];
+            }
+
+            if (!absencesRes.error) {
+                window.guildAbsences = absencesRes.data || [];
+            } else {
+                window.guildAbsences = [];
             }
             
             renderPendingTransfers();
@@ -1837,6 +1844,8 @@
         var sortAdmin  = sortAdminSelect  ? sortAdminSelect.value  : 'power_desc';
         var sortMember = sortMemberSelect ? sortMemberSelect.value : 'power_desc';
 
+        renderAbsenceSummary();
+
         var powers = guildMembers.map(function (m) { return parseInt(m.overall_power) || 0; });
         var maxPower = powers.length ? Math.max.apply(null, powers) : 0;
 
@@ -2008,6 +2017,8 @@
 
         var tierBadge = '<span class="gm-power-tier-chip" style="color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '12;" title="' + meta.label + ' Tier"><span>' + meta.icon + '</span> ' + formattedPower + '</span>';
 
+        var absenceBadge = absenceBadgeHtml(m);
+
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
                     '<div class="gm-avatar gm-avatar-squircle">' + esc(initial) + '</div>' +
@@ -2015,6 +2026,7 @@
                         '<div class="gm-member-pseudo-row">' +
                             '<span class="gm-member-pseudo">' + esc(m.pseudo) + '</span>' +
                             roleBadgeHtml +
+                            absenceBadge +
                         '</div>' +
                         '<div class="gm-member-sub-info">' +
                             '<span class="gm-mono gm-uid-text">UID ' + esc(uidVal) + '</span>' +
@@ -2031,6 +2043,85 @@
                     '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-delete-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('delete_title') + '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
                 '</div>' : '') +
             '</div>';
+    }
+
+    // Absence badge for a member tile (active or upcoming declaration).
+    function absenceBadgeHtml(m) {
+        var absences = window.guildAbsences || [];
+        if (absences.length === 0) return '';
+        var now = new Date();
+        var match = absences.find(function (a) {
+            return a.uid === m.uid && new Date(a.end_date + 'T23:59:59') >= now;
+        });
+        if (!match) return '';
+        var active = new Date(match.start_date + 'T00:00:00') <= now;
+        var kindLabel = match.kind === 'reduced' ? 'Reduced activity' : 'Absent';
+        var color = active ? '#f87171' : '#fbbf24';
+        var bg = active ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)';
+        var border = active ? 'rgba(248,113,113,0.35)' : 'rgba(251,191,36,0.35)';
+        var range = esc(match.start_date) + ' → ' + esc(match.end_date);
+        return '<span class="gm-absence-chip" style="color:' + color + '; border: 1px solid ' + border + '; background:' + bg + ';" title="' + kindLabel + ' ' + range + (match.note ? ' — ' + esc(match.note) : '') + '">' +
+                    '<i class="ph ' + (active ? 'ph-user-minus' : 'ph-hourglass') + '"></i> ' + (active ? kindLabel : kindLabel + ' soon') +
+                '</span>';
+    }
+
+    // Absence summary section: active/upcoming declarations visible to admins.
+    function renderAbsenceSummary() {
+        var section = document.getElementById('admin-absences-section');
+        var listEl = document.getElementById('admin-absences-list');
+        var countEl = document.getElementById('admin-absences-count');
+        if (!section || !listEl || !countEl) return;
+
+        var absences = window.guildAbsences || [];
+        var now = new Date();
+        var relevant = absences.filter(function (a) {
+            return new Date(a.end_date + 'T23:59:59') >= now;
+        });
+        // Sort: active first, then by start date ascending
+        relevant.sort(function (a, b) {
+            var aActive = new Date(a.start_date + 'T00:00:00') <= now ? 0 : 1;
+            var bActive = new Date(b.start_date + 'T00:00:00') <= now ? 0 : 1;
+            if (aActive !== bActive) return aActive - bActive;
+            return a.start_date.localeCompare(b.start_date);
+        });
+
+        if (relevant.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = '';
+        countEl.textContent = relevant.length;
+
+        var membersByUid = {};
+        guildMembers.forEach(function (m) { membersByUid[m.uid] = m; });
+
+        var html = '<div class="gm-absence-grid">';
+        relevant.forEach(function (a) {
+            var member = membersByUid[a.uid];
+            var start = new Date(a.start_date + 'T00:00:00');
+            var end = new Date(a.end_date + 'T23:59:59');
+            var active = start <= now;
+            var kindLabel = a.kind === 'reduced' ? 'Reduced activity' : 'Full absence';
+            var color = active ? '#f87171' : '#fbbf24';
+            var bg = active ? 'rgba(248,113,113,0.10)' : 'rgba(251,191,36,0.10)';
+            var border = active ? 'rgba(248,113,113,0.35)' : 'rgba(251,191,36,0.35)';
+
+            html += '<div class="gm-absence-card">' +
+                        '<div class="gm-absence-card-head">' +
+                            '<div class="gm-avatar gm-avatar-sm" style="background:' + bg + '; color:' + color + ';">' + esc(window.GM.avatarInit(member ? member.pseudo : (a.pseudo || '?'))) + '</div>' +
+                            '<div class="gm-grow">' +
+                                '<div class="gm-absence-card-name">' + esc(member ? member.pseudo : (a.pseudo || a.uid)) + '</div>' +
+                                '<div class="gm-absence-card-kind" style="color:' + color + ';">' + esc(kindLabel) + '</div>' +
+                            '</div>' +
+                            '<span class="gm-absence-card-status" style="color:' + color + '; border: 1px solid ' + border + '; background:' + bg + ';">' + (active ? 'Active' : 'Upcoming') + '</span>' +
+                        '</div>' +
+                        '<div class="gm-absence-card-dates"><i class="ph ph-calendar-dots"></i> ' + esc(a.start_date) + ' → ' + esc(a.end_date) + '</div>' +
+                        (a.note ? '<div class="gm-absence-card-note">' + esc(a.note) + '</div>' : '') +
+                    '</div>';
+        });
+        html += '</div>';
+        listEl.innerHTML = html;
     }
 
     async function showTransferMemberDialog(member) {

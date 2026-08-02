@@ -107,6 +107,7 @@
         var navItems = [
             { id: 'dashboard', icon: 'ph-chart-line-up', label: 'My Progress' },
             { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
+            { id: 'absence', icon: 'ph-user-minus', label: 'Absence' },
             { id: 'settings', icon: 'ph-sliders-horizontal', label: 'Account' }
         ];
 
@@ -164,6 +165,7 @@
                         '<div class="gm-page">' +
                             '<div id="portal-panel-dashboard" class="gm-page portal-panel"></div>' +
                             '<div id="portal-panel-events" class="gm-page portal-panel hidden"></div>' +
+                            '<div id="portal-panel-absence" class="gm-page portal-panel hidden"></div>' +
                             '<div id="portal-panel-settings" class="gm-page portal-panel hidden"></div>' +
                         '</div>' +
                     '</div>' +
@@ -190,12 +192,15 @@
             root.querySelectorAll('[data-portal-nav]').forEach(function (b) {
                 b.classList.toggle('gm-active', b.getAttribute('data-portal-nav') === tabId);
             });
-            ['dashboard', 'events', 'settings'].forEach(function (name) {
+            ['dashboard', 'events', 'absence', 'settings'].forEach(function (name) {
                 var panel = document.getElementById('portal-panel-' + name);
                 if (panel) panel.classList.toggle('hidden', name !== portalState.activeTab);
             });
             if (portalState.activeTab === 'dashboard' && !portalState.chartsDrawn) {
                 renderDashboardPanel();
+            }
+            if (portalState.activeTab === 'absence') {
+                renderAbsencePanel();
             }
         }
 
@@ -882,6 +887,160 @@
                 }
             });
         }
+    }
+
+    // ─── Panel: Absence declaration ────────────────────────────────────────
+    function renderAbsencePanel() {
+        var panel = document.getElementById('portal-panel-absence');
+        if (!panel) return;
+
+        panel.innerHTML =
+            '<header class="gm-page-header">' +
+                '<div>' +
+                    '<h1 class="gm-page-title">Absence</h1>' +
+                    '<p class="gm-page-subtitle">Let your officers know you will be away or less active. This is visible to your guild admins.</p>' +
+                '</div>' +
+            '</header>' +
+            '<div id="portal-absence-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading...</div></div></div>';
+
+        loadAbsencePanel();
+    }
+
+    async function loadAbsencePanel() {
+        var body = document.getElementById('portal-absence-body');
+        if (!body) return;
+
+        var res = await invoke('get-absences', {});
+        if (!res.ok) {
+            body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your absences.</div></div>';
+            return;
+        }
+
+        var absences = res.absences || [];
+        var now = new Date();
+        var hasActive = absences.some(function (a) {
+            return new Date(a.end_date + 'T23:59:59') >= now && new Date(a.start_date + 'T00:00:00') <= now;
+        });
+        var hasUpcoming = absences.some(function (a) {
+            return new Date(a.start_date + 'T00:00:00') > now;
+        });
+
+        // Declaration form
+        var formHtml =
+            '<div class="portal-card portal-absence-form">' +
+                '<div class="portal-card-title"><i class="ph ph-calendar-plus"></i> Declare a period</div>' +
+                '<div class="portal-absence-fields">' +
+                    '<div class="portal-field"><label class="portal-field-label">Type</label>' +
+                        '<select id="portal-absence-kind" class="gm-input">' +
+                            '<option value="full">Full absence</option>' +
+                            '<option value="reduced">Reduced activity</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="portal-field"><label class="portal-field-label">From</label>' +
+                        '<input type="date" id="portal-absence-start" class="gm-input">' +
+                    '</div>' +
+                    '<div class="portal-field"><label class="portal-field-label">To</label>' +
+                        '<input type="date" id="portal-absence-end" class="gm-input">' +
+                    '</div>' +
+                    '<div class="portal-field"><label class="portal-field-label">Note (optional)</label>' +
+                        '<input type="text" id="portal-absence-note" class="gm-input" placeholder="e.g. exams, work, holidays" maxlength="120">' +
+                    '</div>' +
+                '</div>' +
+                '<div id="portal-absence-msg" class="portal-msg"></div>' +
+                '<button type="button" id="portal-absence-save-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
+            '</div>';
+
+        // Existing declarations
+        var listHtml = '';
+        if (absences.length === 0) {
+            listHtml = '<div class="gm-empty" style="padding:1.5rem 0;"><i class="ph-duotone ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No declared absences.</div></div>';
+        } else {
+            listHtml = '<div class="portal-absence-list">' + absences.map(function (a) {
+                var start = new Date(a.start_date + 'T00:00:00');
+                var end = new Date(a.end_date + 'T23:59:59');
+                var status = end < now
+                    ? '<span class="portal-absence-badge portal-absence-badge-past">Past</span>'
+                    : (start > now ? '<span class="portal-absence-badge portal-absence-badge-upcoming">Upcoming</span>'
+                       : '<span class="portal-absence-badge portal-absence-badge-active">Active</span>');
+                var kindLabel = a.kind === 'reduced' ? 'Reduced activity' : 'Full absence';
+                return '<div class="portal-absence-item" data-id="' + esc(a.id) + '">' +
+                            '<div class="portal-absence-item-head">' +
+                                '<div class="portal-absence-item-title"><i class="ph ' + (a.kind === 'reduced' ? 'ph-gauge' : 'ph-user-minus') + '"></i> ' + esc(kindLabel) + '</div>' +
+                                status +
+                            '</div>' +
+                            '<div class="portal-absence-item-dates">' + esc(a.start_date) + ' → ' + esc(a.end_date) + '</div>' +
+                            (a.note ? '<div class="portal-absence-item-note">' + esc(a.note) + '</div>' : '') +
+                            '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm portal-absence-delete-btn" data-id="' + esc(a.id) + '"><i class="ph ph-trash"></i><span>Remove</span></button>' +
+                        '</div>';
+            }).join('') + '</div>';
+        }
+
+        var noticeHtml = hasActive || hasUpcoming
+            ? '<div class="portal-absence-notice"><i class="ph ph-info"></i> Officers can see your declaration in the guild panel.</div>'
+            : '';
+
+        body.innerHTML = formHtml + '<div class="portal-absence-section-title">Your declarations</div>' + listHtml + noticeHtml;
+
+        // Wire the form
+        var kindEl = document.getElementById('portal-absence-kind');
+        var startEl = document.getElementById('portal-absence-start');
+        var endEl = document.getElementById('portal-absence-end');
+        var noteEl = document.getElementById('portal-absence-note');
+        var saveBtn = document.getElementById('portal-absence-save-btn');
+        var msgEl = document.getElementById('portal-absence-msg');
+
+        function setMsg(text, type) {
+            if (!msgEl) return;
+            msgEl.textContent = text;
+            msgEl.style.color = type === 'error' ? 'var(--danger)' : 'var(--success)';
+            msgEl.style.display = 'block';
+        }
+
+        if (saveBtn) saveBtn.addEventListener('click', async function () {
+            var start = startEl.value;
+            var end = endEl.value;
+            if (!start || !end) {
+                setMsg('Pick a start and an end date.', 'error');
+                return;
+            }
+            if (end < start) {
+                setMsg('The end date cannot be before the start date.', 'error');
+                return;
+            }
+            saveBtn.disabled = true;
+            var span = saveBtn.querySelector('span');
+            var origText = span ? span.textContent : '';
+            if (span) span.textContent = 'Saving...';
+            try {
+                var res = await invoke('set-absence', {
+                    start_date: start,
+                    end_date: end,
+                    kind: kindEl.value,
+                    note: noteEl.value.trim()
+                });
+                if (!res.ok) throw new Error(res.error || 'save_failed');
+                setMsg('Absence declared. Your officers can now see it.', 'success');
+                loadAbsencePanel();
+            } catch (err) {
+                setMsg('Failed to save: ' + err.message, 'error');
+                saveBtn.disabled = false;
+                if (span) span.textContent = origText;
+            }
+        });
+
+        body.querySelectorAll('.portal-absence-delete-btn').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+                btn.disabled = true;
+                try {
+                    var res = await invoke('delete-absence', { id: btn.getAttribute('data-id') });
+                    if (!res.ok) throw new Error(res.error || 'delete_failed');
+                    loadAbsencePanel();
+                } catch (err) {
+                    window.GM.showToast('Failed to remove: ' + err.message, 'error');
+                    btn.disabled = false;
+                }
+            });
+        });
     }
 
     // ─── Public API ────────────────────────────────────────────────────────
