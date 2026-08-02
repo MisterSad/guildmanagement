@@ -2473,6 +2473,8 @@
     max-width: none;
     width: 100%;
 }
+#player-portal-view.portal-connected .gm-login-card::after { display: none; }
+#player-portal-view.portal-connected .gm-login-card::before { display: none; }
 #player-portal-view.portal-connected .gm-login-brand-row { display: none; }
 #player-portal-view.portal-connected .gm-login-form { padding: 0; margin: 0; }
 #player-portal-view.portal-connected #portal-step-form {

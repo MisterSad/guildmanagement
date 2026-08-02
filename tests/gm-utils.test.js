@@ -149,6 +149,80 @@ describe('guild config (localStorage + DB fallback)', () => {
     });
 });
 
+describe('forceRefreshPortalSession (refresh-token fallback)', () => {
+    beforeEach(() => {
+        clearStorage();
+        window.currentGuildRestriction = null;
+        window.currentGuild = 'ALPHA';
+        GM.db = null;
+    });
+
+    afterEach(() => {
+        GM.db = null;
+        delete globalThis.fetch;
+    });
+
+    it('returns null when no session is stored', async () => {
+        expect(await GM.forceRefreshPortalSession()).toBeNull();
+    });
+
+    it('returns null when supabase-js storage entry is missing', async () => {
+        setStorage({ some_other_key: 'x' });
+        expect(await GM.forceRefreshPortalSession()).toBeNull();
+    });
+
+    it('exchanges the stored refresh token and re-injects the session', async () => {
+        setStorage({
+            'sb-vgweufzwmfwplusskmuf-auth-token': JSON.stringify({
+                access_token: 'old.access.token',
+                refresh_token: 'rt-abc'
+            })
+        });
+
+        let setSessionArgs = null;
+        GM.db = {
+            auth: {
+                setSession: async (args) => {
+                    setSessionArgs = args;
+                    return { error: null };
+                }
+            }
+        };
+
+        const makeJwt = (payload) => {
+            const b64 = (o) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            return 'header.' + b64(payload) + '.sig';
+        };
+
+        globalThis.fetch = async () => ({
+            json: async () => ({
+                access_token: makeJwt({ app_metadata: { app_role: 'member', account_id: 'HawkEyePlayer' } }),
+                refresh_token: 'rt-new'
+            })
+        });
+
+        const info = await GM.forceRefreshPortalSession();
+        expect(info).toEqual({ role: 'member', accountId: 'HawkEyePlayer' });
+        expect(setSessionArgs).toEqual({
+            access_token: expect.stringContaining('.'),
+            refresh_token: 'rt-new'
+        });
+    });
+
+    it('returns null when the refresh endpoint fails', async () => {
+        setStorage({
+            'sb-vgweufzwmfwplusskmuf-auth-token': JSON.stringify({
+                access_token: 'a.b.c',
+                refresh_token: 'rt-bad'
+            })
+        });
+        GM.db = { auth: { setSession: async () => ({ error: null }) } };
+
+        globalThis.fetch = async () => ({ json: async () => ({ error: 'invalid_grant' }) });
+        expect(await GM.forceRefreshPortalSession()).toBeNull();
+    });
+});
+
 describe('localStorage rad_* → gm_* migration shim', () => {
     it('migrates legacy keys on load and removes the originals', async () => {
         clearStorage();

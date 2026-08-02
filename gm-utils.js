@@ -432,6 +432,61 @@
         }
     }
 
+    // Fallback for player-portal sessions: supabase-js may fail to restore the
+    // session on a hard reload (storage race, expired access token, ...). Read
+    // the refresh token straight from the supabase-js storage entry and exchange
+    // it against the GoTrue endpoint, then re-inject the session into the client.
+    function storageKeyForProject() {
+        // supabase-js default: `sb-<projectRef>-auth-token`
+        var m = SUPABASE_URL.match(/https:\/\/([a-z0-9]+)\.supabase\.co/);
+        return m ? 'sb-' + m[1] + '-auth-token' : null;
+    }
+
+    async function forceRefreshPortalSession() {
+        var c = getClient();
+        if (!c) return null;
+        var key = storageKeyForProject();
+        if (!key) return null;
+
+        var raw = null;
+        try { raw = localStorage.getItem(key); } catch (_) { return null; }
+        if (!raw) return null;
+
+        var stored = null;
+        try {
+            // supabase-js stores a JSON object: { access_token, refresh_token, ... }
+            stored = typeof raw === 'string' && raw.charAt(0) === '{' ? JSON.parse(raw) : null;
+            if (!stored && raw.charAt(0) !== '{') {
+                stored = JSON.parse(decodeURIComponent(raw));
+            }
+        } catch (_) { return null; }
+
+        var refreshToken = stored && (stored.refresh_token || (stored.currentSession && stored.currentSession.refresh_token));
+        if (!refreshToken) return null;
+
+        try {
+            var resp = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: refreshToken })
+            });
+            var data = await resp.json();
+            if (!data.access_token) return null;
+            var s = await c.auth.setSession({
+                access_token: data.access_token,
+                refresh_token: data.refresh_token
+            });
+            if (s.error) return null;
+            var p = data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            p += '='.repeat((4 - p.length % 4) % 4);
+            var claims = JSON.parse(decodeURIComponent(escape(atob(p))));
+            var am = claims.app_metadata || {};
+            return { role: normalizeRole(am.app_role || 'member'), accountId: am.account_id || null };
+        } catch (_) {
+            return null;
+        }
+    }
+
     function showToast(message, type) {
         if (window.GM_APP && window.GM_APP.showToast) {
             window.GM_APP.showToast(message, type);
@@ -818,6 +873,7 @@
         registerPlayer: registerPlayer,
         generateJoinCode: generateJoinCode,
         sessionInfo: sessionInfo,
+        forceRefreshPortalSession: forceRefreshPortalSession,
         normalizeRole: normalizeRole,
         roleFromStorage: roleFromStorage,
         isSuperAdmin: isSuperAdmin,

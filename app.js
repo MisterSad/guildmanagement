@@ -56,6 +56,11 @@
         }
 
         var info = await window.GM.sessionInfo();
+        if (!info && portalSession) {
+            // supabase-js could not restore the session on reload: try a manual
+            // refresh-token exchange against GoTrue and re-inject the session.
+            info = await window.GM.forceRefreshPortalSession();
+        }
         if (!info) {
             // Si pas de session valide Supabase mais qu'on avait des infos locales, on force la déconnexion
             if (localRole || localUser) {
