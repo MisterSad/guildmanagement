@@ -4,20 +4,20 @@
  */
 (function () {
 
-    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
-    var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
-    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
-    var fmt = window.RAD ? window.RAD.formatNumber : function (n) { return String(n); };
+    function getDb() { return (window.GM && window.GM.db) ? window.GM.db : null; }
+    var t   = window.GM ? window.GM.t  : function (k) { return k; };
+    var esc = window.GM ? window.GM.escapeHTML : function (s) { return s; };
+    var fmt = window.GM ? window.GM.formatNumber : function (n) { return String(n); };
 
-    window.RAD_GLORY = { load: loadGlory };
+    window.GM_GLORY = { load: loadGlory };
 
     async function loadGlory() {
         var db = getDb();
         if (!db) return;
-        var week = window.RAD.getWeekStart();
+        var week = window.GM.getWeekStart();
         try {
-            var prevWeek = window.RAD.getPrevWeekStart(week);
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var prevWeek = window.GM.getPrevWeekStart(week);
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
             var [membersRes, currRes, prevRes] = await Promise.all([
                 db.from('guild_members').select('pseudo').eq('guild', currentG).order('pseudo', { ascending: true }),
@@ -36,7 +36,7 @@
                 .filter(function (p) { return !existing.has(p); })
                 .map(function (p) { return { guild: currentG, event_name: 'Glory', week_start: week, pseudo: p, participated: 1, score: null }; });
 
-            if (toInsert.length > 0 && window.RAD && window.RAD.canWriteGuild && window.RAD.canWriteGuild()) {
+            if (toInsert.length > 0 && window.GM && window.GM.canWriteGuild && window.GM.canWriteGuild()) {
                 try {
                     await db.from('event_participants').insert(toInsert);
                 } catch (insertErr) {
@@ -108,7 +108,7 @@
         members.forEach(function (pseudo) {
             var curr = currMap[pseudo] != null ? currMap[pseudo] : '';
             var prev = prevMap[pseudo] != null ? prevMap[pseudo] : null;
-            var initial = window.RAD.avatarInit(pseudo);
+            var initial = window.GM.avatarInit(pseudo);
 
             html +=
                 '<tr class="participant-row" data-pseudo="' + esc(pseudo) + '">' +
@@ -151,11 +151,11 @@
         }
 
         area.querySelectorAll('.glory-input').forEach(function (inp) {
-            window.RAD.attachNumberFormatter(inp);
+            window.GM.attachNumberFormatter(inp);
             var timer;
             inp.addEventListener('input', function () {
                 var prev = inp.getAttribute('data-prev');
-                var curr = window.RAD.parseNumber(inp.value);
+                var curr = window.GM.parseNumber(inp.value);
                 var row  = inp.closest('tr');
 
                 var currCell = row.querySelector('.glory-curr-val');
@@ -183,7 +183,7 @@
 
     function buildEvolutionPctBadge(curr, prev) {
         if (curr === null || curr === '' || prev === null || prev === 0) return '<span class="gm-dim">—</span>';
-        var c = typeof curr === 'number' ? curr : window.RAD.parseNumber(curr);
+        var c = typeof curr === 'number' ? curr : window.GM.parseNumber(curr);
         var p = typeof prev === 'number' ? prev : parseInt(prev, 10);
         if (c === null || isNaN(p) || p === 0) return '<span class="gm-dim">—</span>';
         var diff = c - p;
@@ -197,7 +197,7 @@
     function updateTotal(area) {
         var total = 0;
         area.querySelectorAll('.glory-input').forEach(function (inp) {
-            var n = window.RAD.parseNumber(inp.value);
+            var n = window.GM.parseNumber(inp.value);
             total += (n || 0);
         });
         var valSpan = area.querySelector('.total-glory-val');
@@ -208,8 +208,8 @@
         var db = getDb();
         if (!db) return;
         try {
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
-            var scoreVal = (value === null || value === '') ? null : (typeof value === 'number' ? value : window.RAD.parseNumber(value));
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+            var scoreVal = (value === null || value === '') ? null : (typeof value === 'number' ? value : window.GM.parseNumber(value));
             var res = await db.from('event_participants')
                 .update({ score: scoreVal, participated: 1 })
                 .eq('guild', currentG)
@@ -221,7 +221,7 @@
         } catch (err) {
             console.error('saveGlory', err);
             if (icon) icon.classList.add('hidden');
-            window.RAD.showToast(t('toast_err_generic') + ' Glory', 'error');
+            window.GM.showToast(t('toast_err_generic') + ' Glory', 'error');
         }
     }
 

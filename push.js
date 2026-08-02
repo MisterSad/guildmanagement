@@ -1,7 +1,7 @@
 /**
  * push.js — Web Push opt-in (anonymous per-device).
  *
- * Registers the service worker, exposes RAD_PUSH.mount(container) to render
+ * Registers the service worker, exposes GM_PUSH.mount(container) to render
  * an opt-in control whose label reflects the current state, and stores the
  * subscription server-side via the save_push_subscription RPC.
  *
@@ -12,8 +12,8 @@
 
     var VAPID_PUBLIC = 'BKJ-mf-as7Si__DvBVRPN8EdpqnjihviHfkHZSvB_HgK5V68dG85WT8oDLvkE9_AQQw7gQqs7jeOn_a2ofrpBvo';
 
-    var t   = window.RAD ? window.RAD.t : function (k) { return k; };
-    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
+    var t   = window.GM ? window.GM.t : function (k) { return k; };
+    var esc = window.GM ? window.GM.escapeHTML : function (s) { return s; };
 
     var swReg = null;
 
@@ -88,11 +88,11 @@
         try {
             var perm = await Notification.requestPermission();
             if (perm !== 'granted') {
-                window.RAD.showToast(t(perm === 'denied' ? 'push_blocked' : 'push_toast_err'), 'error');
+                window.GM.showToast(t(perm === 'denied' ? 'push_blocked' : 'push_toast_err'), 'error');
                 return;
             }
             var reg = await getReg();
-            if (!reg) { window.RAD.showToast(t('push_toast_err'), 'error'); return; }
+            if (!reg) { window.GM.showToast(t('push_toast_err'), 'error'); return; }
             var sub = await reg.pushManager.getSubscription();
             if (!sub) {
                 sub = await reg.pushManager.subscribe({
@@ -101,17 +101,17 @@
                 });
             }
             var j = sub.toJSON();
-            var res = await window.RAD.db.rpc('save_push_subscription', {
+            var res = await window.GM.db.rpc('save_push_subscription', {
                 p_endpoint: j.endpoint,
                 p_p256dh:   j.keys && j.keys.p256dh,
                 p_auth:     j.keys && j.keys.auth,
                 p_ua:       (navigator.userAgent || '').slice(0, 300)
             });
             if (res.error) throw res.error;
-            window.RAD.showToast(t('push_toast_on'), 'success');
+            window.GM.showToast(t('push_toast_on'), 'success');
         } catch (e) {
             console.error('push enable', e);
-            window.RAD.showToast(t('push_toast_err'), 'error');
+            window.GM.showToast(t('push_toast_err'), 'error');
         } finally {
             isEnabling = false;
         }
@@ -122,7 +122,7 @@
         try {
             var sub = await currentSubscription();
             if (sub) await sub.unsubscribe();
-            window.RAD.showToast(t('push_toast_off'), 'info');
+            window.GM.showToast(t('push_toast_off'), 'info');
         } catch (e) { console.error('push disable', e); }
         renderAll();
     }
@@ -167,7 +167,7 @@
         mounted.forEach(function (el) { render(el); });
     }
 
-    window.RAD_PUSH = {
+    window.GM_PUSH = {
         mount: function (container) {
             if (!container) return;
             if (mounted.indexOf(container) === -1) mounted.push(container);

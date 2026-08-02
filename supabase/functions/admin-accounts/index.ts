@@ -96,8 +96,8 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 200); }
   const action = (body?.action ?? "").toString();
 
-  // Verify subscription status for non-Super Admin (R4) callers on mutations
-  if (info.role === "R4" && action !== "list" && action !== "get-password") {
+  // Verify subscription status for non-Super Admin (guild_admin) callers on mutations
+  if (info.role === "guild_admin" && action !== "list" && action !== "get-password") {
     const active = await isSubscriptionActive(admin, callerGuild);
     if (!active) {
       return json({ ok: false, error: "subscription_expired" }, 200);
@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
 
     // FIX (C8): gm_admin_list no longer returns passwords. No password field in the list response.
     let accountsList = data ?? [];
-    if (info.role === "R4") {
+    if (info.role === "guild_admin") {
       // Filter list: only show accounts of the same guild.
       accountsList = accountsList.filter((acc: any) => {
         if (acc.guild === callerGuild) return true;
@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // FIX (C8): New action to retrieve a single account's password on demand.
-  // Caller must be R5, or R4 owning the same guild as the target account.
+  // Caller must be super_admin, or a guild_admin owning the same guild as the target account.
   if (action === "get-password") {
     const id = (body?.id ?? "").toString().trim();
     if (!id) return json({ ok: false, error: "missing_fields" }, 200);
@@ -134,9 +134,9 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
 
-    if (info.role === "R4") {
-      // R4 admins cannot retrieve R5 passwords and can only retrieve passwords for their own guild
-      if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild) {
+    if (info.role === "guild_admin") {
+      // Guild admins cannot retrieve super_admin passwords and can only retrieve passwords for their own guild
+      if (targetAcc.role === "super_admin" || targetAcc.guild !== callerGuild) {
         return json({ ok: false, error: "forbidden" }, 200);
       }
     }
@@ -153,20 +153,20 @@ Deno.serve(async (req: Request) => {
     const password = (body?.password ?? "").toString();
     if (!id || !password) return json({ ok: false, error: "missing_fields" }, 200);
 
-    let accRole = "R4";
+    let accRole = "guild_admin";
     let accGuild = (body?.guild ?? null) as string | null;
 
-    if (info.role === "R4") {
-      accRole = "R4";
+    if (info.role === "guild_admin") {
+      accRole = "guild_admin";
       if (!callerGuild) {
         return json({ ok: false, error: "forbidden" }, 200);
       }
       accGuild = callerGuild;
     } else {
-      accRole = (body?.role ?? "R4").toString();
+      accRole = (body?.role ?? "guild_admin").toString();
       accGuild = accGuild === "ALL" ? null : accGuild;
-      if (accRole === "R4" && (!accGuild || accGuild === "ALL")) {
-        return json({ ok: false, error: "r4_must_have_guild" }, 200);
+      if (accRole === "guild_admin" && (!accGuild || accGuild === "ALL")) {
+        return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
       }
     }
 
@@ -196,14 +196,14 @@ Deno.serve(async (req: Request) => {
     const id = (body?.id ?? "").toString().trim();
     if (!id) return json({ ok: false, error: "missing_fields" }, 200);
 
-    if (info.role === "R4") {
+    if (info.role === "guild_admin") {
       const { data: targetAcc } = await admin
         .from("accounts")
         .select("role, guild")
         .eq("id", id)
         .maybeSingle();
       if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
-      if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild) {
+      if (targetAcc.role === "super_admin" || targetAcc.guild !== callerGuild) {
         return json({ ok: false, error: "forbidden" }, 200);
       }
     }
@@ -226,16 +226,16 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
 
-    if (info.role === "R4") {
+    if (info.role === "guild_admin") {
       if (!callerGuild) {
         return json({ ok: false, error: "forbidden" }, 200);
       }
-      if (targetAcc.role === "R5" || targetAcc.guild !== callerGuild || guild !== callerGuild) {
+      if (targetAcc.role === "super_admin" || targetAcc.guild !== callerGuild || guild !== callerGuild) {
         return json({ ok: false, error: "forbidden" }, 200);
       }
     } else {
-      if (targetAcc.role === "R4" && (!guild || guild === "ALL")) {
-        return json({ ok: false, error: "r4_must_have_guild" }, 200);
+      if (targetAcc.role === "guild_admin" && (!guild || guild === "ALL")) {
+        return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
       }
     }
 

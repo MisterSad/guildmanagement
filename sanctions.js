@@ -4,11 +4,11 @@
  */
 (function () {
 
-    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
-    var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
-    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
+    function getDb() { return (window.GM && window.GM.db) ? window.GM.db : null; }
+    var t   = window.GM ? window.GM.t  : function (k) { return k; };
+    var esc = window.GM ? window.GM.escapeHTML : function (s) { return s; };
 
-    window.RAD_SANCTIONS = { load: loadSanctions };
+    window.GM_SANCTIONS = { load: loadSanctions };
 
     var sanctions = [];
 
@@ -16,7 +16,7 @@
         var db = getDb();
         if (!db) return;
 
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
         var membersQ = db.from('guild_members').select('pseudo').eq('guild', currentG).order('pseudo', { ascending: true });
         var sanctionsQ = db.from('sanctions').select('*').eq('guild', currentG).order('created_at', { ascending: false });
@@ -47,7 +47,7 @@
         }
 
         var html = '<div class="gm-sanction-list">';
-        var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
+        var lang = (window.GM_I18N && window.GM_I18N.getLang) ? window.GM_I18N.getLang() : 'en';
         var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
 
         sanctions.forEach(function (s) {
@@ -55,7 +55,7 @@
                 day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
             });
             var author = s.created_by || '—';
-            var initial = window.RAD.avatarInit(s.pseudo);
+            var initial = window.GM.avatarInit(s.pseudo);
             html +=
                 '<div class="gm-sanction-row">' +
                     '<div class="gm-row" style="gap:.5rem;">' +
@@ -108,7 +108,7 @@
                 var res = await db.from('sanctions').insert([{
                     pseudo: pseudo,
                     comment: comment,
-                    created_by: localStorage.getItem('rad_user') || 'Admin'
+                    created_by: localStorage.getItem('gm_user') || 'Admin'
                 }]).select();
 
                 if (res.error) throw res.error;
@@ -116,13 +116,13 @@
                 pseudoInput.value = '';
                 commentInput.value = '';
 
-                window.RAD.showToast(t('toast_sanction_added'), 'success');
+                window.GM.showToast(t('toast_sanction_added'), 'success');
 
                 await loadSanctions();
                 checkRecidivist(pseudo);
 
             } catch (err) {
-                window.RAD.showToast(err.message, 'error');
+                window.GM.showToast(err.message, 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -133,7 +133,13 @@
         var count = sanctions.filter(function (s) { return s.pseudo === pseudo; }).length;
         if (count >= 3) {
             setTimeout(function () {
-                alert(t('alert_recidivist') + '\n(' + pseudo + ' : ' + count + ' sanctions)');
+                if (window.showConfirm) {
+                    window.showConfirm(
+                        t('alert_recidivist'),
+                        '<strong>' + esc(pseudo) + '</strong> : ' + count + ' ' + t('nav_sanctions'),
+                        function () {}
+                    );
+                }
             }, 500);
         }
     }
@@ -145,9 +151,9 @@
             var res = await db.from('sanctions').delete().eq('id', id);
             if (res.error) throw res.error;
             await loadSanctions();
-            window.RAD.showToast(t('toast_sanction_deleted'), 'success');
+            window.GM.showToast(t('toast_sanction_deleted'), 'success');
         } catch (err) {
-            window.RAD.showToast(err.message, 'error');
+            window.GM.showToast(err.message, 'error');
         }
     }
     window.addEventListener('rad-lang-change', function () {

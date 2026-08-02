@@ -1,7 +1,8 @@
 /**
  * FGF GUILD MANAGEMENT TOOL – i18n module
+ * English-only (the app UI is fully in English).
  * Usage:  t('key')          → translated string
- *         setLang('en')     → switch language + re-render
+ *         setLang(lang)     → no-op (kept for API compatibility)
  *         applyTranslations() → update all [data-i18n] elements
  */
 (function () {
@@ -435,7 +436,7 @@
     // ── Public API ─────────────────────────────────────────────────────────────
     var currentLang = 'en';
 
-    window.RAD_I18N = {
+    window.GM_I18N = {
         t: function (key) {
             return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key])
                 || key;
@@ -445,7 +446,7 @@
             // English-only: do nothing
         },
         applyTranslations: function () {
-            var t = window.RAD_I18N.t;
+            var t = window.GM_I18N.t;
             // Text content
             document.querySelectorAll('[data-i18n]').forEach(function (el) {
                 el.textContent = t(el.getAttribute('data-i18n'));

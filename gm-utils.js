@@ -1,24 +1,82 @@
 /**
- * rad-utils.js — Utilitaires partagés (DB, i18n, dates, escape, toast).
+ * gm-utils.js — Utilitaires partagés (DB, i18n, dates, escape, toast).
  * Doit être chargé AVANT les autres scripts métier (app.js, events.js, …).
  */
 (function () {
+
+    // ── Migration localStorage : anciennes clés 'rad_*' → 'gm_*' ───────────
+    // Copie toute clé encore préfixée par l'ancien nom de l'app puis la
+    // supprime. Doit s'exécuter avant toute lecture par les scripts métier.
+    try {
+        var keys = [];
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf('rad_') === 0) keys.push(k);
+        }
+        for (var j = 0; j < keys.length; j++) {
+            var v = localStorage.getItem(keys[j]);
+            localStorage.setItem('gm_' + keys[j].substring(4), v);
+            localStorage.removeItem(keys[j]);
+        }
+    } catch (e) { /* localStorage indisponible (sans permis) : ignoré */ }
 
     var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
     var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
 
     var db = null;
     try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
-    catch (e) { console.error('rad-utils: supabase init', e); }
+    catch (e) { console.error('gm-utils: supabase init', e); }
 
-    var localRestriction = localStorage.getItem('rad_guild_restriction');
+    // Runtime client accessor: modules may swap window.GM.db (tests, hot-swap).
+    // The load-time interception below wraps the initial client; runtime calls
+    // go through here so the same behavior applies to any client.
+    function getClient() {
+        return (window.GM && window.GM.db) ? window.GM.db : null;
+    }
+
+    var localRestriction = localStorage.getItem('gm_guild_restriction');
     window.currentGuildRestriction = localRestriction || null;
-    window.currentGuild = localRestriction || localStorage.getItem('rad_current_guild') || 'ALPHA';
+    window.currentGuild = localRestriction || localStorage.getItem('gm_current_guild') || 'ALPHA';
     window.guildsList = ['ALPHA', 'OMEGA', 'IMK'];
 
+    // ── Rôles : modèle sémantique (super_admin / guild_admin / member) ─────
+    // Les anciennes valeurs numériques (R5/R4) et 'admin' sont normalisées
+    // pour la compatibilité avec les sessions persistées en localStorage.
+    function normalizeRole(r) {
+        if (r === 'R5' || r === 'admin') return 'super_admin';
+        if (r === 'R4') return 'guild_admin';
+        if (r === 'super_admin' || r === 'guild_admin' || r === 'member') return r;
+        return 'member';
+    }
+
+    // Rôle courant synchrone (localStorage + restriction). Un rôle 'member'
+    // stocké avec une restriction de guilde désigne un ancien compte R4.
+    function roleFromStorage() {
+        var role = normalizeRole(localStorage.getItem('gm_role'));
+        if (role === 'member' && window.currentGuildRestriction) role = 'guild_admin';
+        return role;
+    }
+
+    function isSuperAdmin() {
+        return roleFromStorage() === 'super_admin';
+    }
+
+    // Rôle courant asynchrone, priorité au JWT (app_metadata), fallback storage.
+    async function getRoleInfo() {
+        var info = await sessionInfo();
+        var role = (info && info.role) ? info.role : roleFromStorage();
+        return {
+            role: role,
+            isSuperAdmin: role === 'super_admin',
+            isGuildAdmin: role === 'guild_admin',
+            isAdmin: role === 'super_admin' || role === 'guild_admin',
+            guild: window.currentGuildRestriction
+        };
+    }
+
     function isGuildSubscriptionExpired(guildId) {
-        var role = localStorage.getItem('rad_role');
-        if (role === 'admin' || role === 'R5' || window.currentGuildRestriction === null) {
+        var role = roleFromStorage();
+        if (role === 'super_admin' || window.currentGuildRestriction === null) {
             return false; // Super admin (or unrestricted officer) is never restricted
         }
         if (!guildId) return false;
@@ -34,14 +92,14 @@
 
     function canWriteGuild(guildId) {
         var activeG = guildId || getActiveGuild();
-        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin' || window.currentGuildRestriction === null);
-        
-        if (isSuperAdmin) {
+        var isSuper = (isSuperAdmin() || window.currentGuildRestriction === null);
+
+        if (isSuper) {
             // Rule 2: Super admin can visit all guilds but is base admin of ALPHA and can ONLY intervene on ALPHA
             return activeG === 'ALPHA';
         }
 
-        // Rule 1: Guild admin (R4) can write to their dedicated assigned guild if active
+        // Rule 1: Guild admin can write to their dedicated assigned guild if active
         if (window.currentGuildRestriction) {
             return activeG === window.currentGuildRestriction && !isGuildSubscriptionExpired(activeG);
         }
@@ -125,7 +183,7 @@
     }
 
     function t(key) {
-        return window.RAD_I18N ? window.RAD_I18N.t(key) : key;
+        return window.GM_I18N ? window.GM_I18N.t(key) : key;
     }
 
     function escapeHTML(s) {
@@ -260,16 +318,17 @@
     // vraie session Supabase (JWT signé par le projet) que supabase-js gère
     // et rafraîchit ensuite automatiquement pour toutes les requêtes.
     async function login(id, password) {
-        if (!db) return { ok: false, error: 'no_client' };
+        var c = getClient();
+        if (!c) return { ok: false, error: 'no_client' };
         var r;
         try {
-            r = await db.functions.invoke('auth-login', { body: { id: id, password: password } });
+            r = await c.functions.invoke('auth-login', { body: { id: id, password: password } });
         } catch (e) {
             return { ok: false, error: 'request_failed' };
         }
         var data = r && r.data;
         if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
-        var s = await db.auth.setSession({
+        var s = await c.auth.setSession({
             access_token: data.access_token,
             refresh_token: data.refresh_token
         });
@@ -278,17 +337,19 @@
     }
 
     async function logout() {
-        if (!db) return;
-        try { await db.auth.signOut(); } catch (_) {}
+        var c = getClient();
+        if (!c) return;
+        try { await c.auth.signOut(); } catch (_) {}
     }
 
     async function ensureAuthSession() {
-        if (!db) return null;
+        var c = getClient();
+        if (!c) return null;
         try {
-            var s = await db.auth.getSession();
+            var s = await c.auth.getSession();
             if (s && s.data && s.data.session) return s.data.session;
             await new Promise(function (resolve) { setTimeout(resolve, 300); });
-            s = await db.auth.getSession();
+            s = await c.auth.getSession();
             return (s && s.data) ? s.data.session : null;
         } catch (e) {
             console.warn('ensureAuthSession error', e);
@@ -299,11 +360,12 @@
     // Opérations admin sur les comptes (R5 only — vérifié côté serveur via le
     // JWT). La session courante est jointe automatiquement par supabase-js.
     async function adminAccounts(action, payload) {
-        if (!db) return { ok: false, error: 'no_client' };
+        var c = getClient();
+        if (!c) return { ok: false, error: 'no_client' };
         var body = Object.assign({ action: action }, payload || {});
         var r;
         try {
-            r = await db.functions.invoke('admin-accounts', { body: body });
+            r = await c.functions.invoke('admin-accounts', { body: body });
         } catch (e) {
             return { ok: false, error: 'request_failed' };
         }
@@ -316,9 +378,10 @@
     // supabase-js) — survit à une fermeture d'onglet, contrairement à
     // sessionStorage. Lit les claims app_metadata du JWT.
     async function sessionInfo() {
-        if (!db) return null;
+        var c = getClient();
+        if (!c) return null;
         var res;
-        try { res = await db.auth.getSession(); } catch (_) { return null; }
+        try { res = await c.auth.getSession(); } catch (_) { return null; }
         var session = res && res.data && res.data.session;
         if (!session || !session.access_token) return null;
         try {
@@ -326,15 +389,15 @@
             p += '='.repeat((4 - p.length % 4) % 4);
             var claims = JSON.parse(decodeURIComponent(escape(atob(p))));
             var am = claims.app_metadata || {};
-            return { role: am.app_role || 'R4', accountId: am.account_id || null };
+            return { role: normalizeRole(am.app_role || 'guild_admin'), accountId: am.account_id || null };
         } catch (e) {
-            return { role: 'R4', accountId: null };
+            return { role: 'guild_admin', accountId: null };
         }
     }
 
     function showToast(message, type) {
-        if (window.RAD_APP && window.RAD_APP.showToast) {
-            window.RAD_APP.showToast(message, type);
+        if (window.GM_APP && window.GM_APP.showToast) {
+            window.GM_APP.showToast(message, type);
             return;
         }
         var tc = document.getElementById('toast-container');
@@ -364,7 +427,7 @@
         if (!iso) return '';
         var d = new Date(iso);
         if (isNaN(d.getTime())) return '';
-        var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
+        var lang = (window.GM_I18N && window.GM_I18N.getLang) ? window.GM_I18N.getLang() : 'en';
         var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
         var date = d.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC' });
         return date + ' · ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ' UTC';
@@ -463,9 +526,10 @@
 
     async function getGuildConfig(key) {
         var currentG = getActiveGuild();
-        if (db) {
+        var c = getClient();
+        if (c) {
             try {
-                var query = db.from('guild_config').select('value').eq('key', key).eq('guild', currentG);
+                var query = c.from('guild_config').select('value').eq('key', key).eq('guild', currentG);
                 var res = await query.maybeSingle();
                 if (res && res.error) {
                     console.error('guild_config select error for key ' + key + ':', res.error);
@@ -475,15 +539,16 @@
                 console.warn('guild_config table fetch error, falling back to LocalStorage', e);
             }
         }
-        var local = localStorage.getItem('rad_config_' + currentG + '_' + key);
+        var local = localStorage.getItem('gm_config_' + currentG + '_' + key);
         return local !== null ? local : (localConfigFallback[key] !== undefined ? localConfigFallback[key] : '');
     }
 
     async function setGuildConfig(key, value) {
         var currentG = getActiveGuild();
-        localStorage.setItem('rad_config_' + currentG + '_' + key, value);
-        if (db) {
-            var res = await db.from('guild_config').upsert(
+        localStorage.setItem('gm_config_' + currentG + '_' + key, value);
+        var c = getClient();
+        if (c) {
+            var res = await c.from('guild_config').upsert(
                 { guild: currentG, key: key, value: value, updated_at: new Date().toISOString() },
                 { onConflict: 'guild,key' }
             );
@@ -513,7 +578,7 @@
     }
 
     async function notifyDiscordEvent(eventName, eventStart, action) {
-        if (!db) return;
+        if (!getClient()) return;
 
         var eventPrefix = '';
         var nameUpper = String(eventName || '').toUpperCase();
@@ -688,10 +753,10 @@
     }
 
     function getActiveGuild() {
-        return window.currentGuildRestriction || window.currentGuild || localStorage.getItem('rad_current_guild') || 'ALPHA';
+        return window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
     }
 
-    window.RAD = {
+    window.GM = {
         db: db,
         t: t,
         login: login,
@@ -699,7 +764,12 @@
         ensureAuthSession: ensureAuthSession,
         adminAccounts: adminAccounts,
         sessionInfo: sessionInfo,
+        normalizeRole: normalizeRole,
+        roleFromStorage: roleFromStorage,
+        isSuperAdmin: isSuperAdmin,
+        getRoleInfo: getRoleInfo,
         getActiveGuild: getActiveGuild,
+        isGuildSubscriptionExpired: isGuildSubscriptionExpired,
         canWriteGuild: canWriteGuild,
         escapeHTML: escapeHTML,
         getWeekStart: getWeekStart,

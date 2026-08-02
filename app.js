@@ -1,17 +1,13 @@
+/**
+ * app.js — Cœur de l'application : sessions, comptes, membres, navigation
+ * et handlers globaux du dashboard. Charge les modules métier (stats,
+ * sanctions, overview, …) à la demande selon l'onglet actif.
+ */
 (function () {
 
-    function t(key) { return window.RAD_I18N.t(key); }
-    var supabase = window.RAD ? window.RAD.db : null;
-    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
-
-    // ─── CSS Injections ───────────────────────────────────────────────────────
-    var style = document.createElement('style');
-    style.textContent =
-        '@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}' +
-        '.text-success{color:var(--success)}' +
-        '.ph-spin{animation:spin 1s linear infinite}' +
-        '@keyframes spin{to{transform:rotate(360deg)}}';
-    document.head.appendChild(style);
+    function t(key) { return window.GM_I18N.t(key); }
+    var supabase = window.GM ? window.GM.db : null;
+    var esc = window.GM ? window.GM.escapeHTML : function (s) { return s; };
 
     // ─── DOM References ───────────────────────────────────────────────────────
     var loginView         = document.getElementById('login-view');
@@ -40,23 +36,23 @@
     var accounts      = [];
     var guildMembers  = [];
     var bannedPlayers = [];
-    window.RAD_COLLAPSED_ROLES = { R5: false, R4: false, R3: false, R2: false, R1: false };
+    window.GM_COLLAPSED_ROLES = { R5: false, R4: false, R3: false, R2: false, R1: false };
 
     // ─── Boot ─────────────────────────────────────────────────────────────────
-    window.RAD_I18N.applyTranslations();
+    window.GM_I18N.applyTranslations();
 
     // Restaure depuis la session Supabase persistée (survit au rechargement
     // et à la fermeture d'onglet tant que le refresh token est valide).
     (async function restoreSession() {
-        var localRole = localStorage.getItem('rad_role');
-        var localUser = localStorage.getItem('rad_user');
+        var localRole = localStorage.getItem('gm_role');
+        var localUser = localStorage.getItem('gm_user');
 
         // Restauration synchrone immédiate pour éviter le flash de l'écran de connexion
         if (localRole) {
             showAdminDashboard(localRole);
         }
 
-        var info = await window.RAD.sessionInfo();
+        var info = await window.GM.sessionInfo();
         if (!info) {
             // Si pas de session valide Supabase mais qu'on avait des infos locales, on force la déconnexion
             if (localRole || localUser) {
@@ -65,35 +61,35 @@
             return;
         }
 
-        // Fetch guild restriction if R4
-        if (info.role === 'R4' && info.accountId) {
+        // Fetch guild restriction if guild_admin
+        if (info.role === 'guild_admin' && info.accountId) {
             try {
                 var { data } = await supabase.from('accounts').select('guild').eq('id', info.accountId).maybeSingle();
                 if (data && data.guild) {
                     window.currentGuildRestriction = data.guild;
                     window.currentGuild = data.guild;
-                    localStorage.setItem('rad_current_guild', data.guild);
-                    localStorage.setItem('rad_guild_restriction', data.guild);
+                    localStorage.setItem('gm_current_guild', data.guild);
+                    localStorage.setItem('gm_guild_restriction', data.guild);
                 } else {
                     window.currentGuildRestriction = null;
-                    localStorage.removeItem('rad_guild_restriction');
+                    localStorage.removeItem('gm_guild_restriction');
                 }
             } catch (err) {
                 console.error('Failed to restore account guild restriction:', err);
                 window.currentGuildRestriction = null;
-                localStorage.removeItem('rad_guild_restriction');
+                localStorage.removeItem('gm_guild_restriction');
             }
         } else {
             window.currentGuildRestriction = null;
-            localStorage.removeItem('rad_guild_restriction');
+            localStorage.removeItem('gm_guild_restriction');
         }
 
-        var role = info.role === 'R5' ? 'admin' : 'member';
-        localStorage.setItem('rad_role', role);
+        var role = info.role; // already normalized (super_admin | guild_admin | member)
+        localStorage.setItem('gm_role', role);
         if (info.accountId) {
-            localStorage.setItem('rad_user', info.accountId);
+            localStorage.setItem('gm_user', info.accountId);
             // Store in memory for reliable access (not manipulable via DevTools without logout)
-            window.RAD.currentAccountId = info.accountId;
+            window.GM.currentAccountId = info.accountId;
         }
 
         // Fetch guilds list (now authenticated, query will succeed)
@@ -101,8 +97,8 @@
 
         // Always update the dashboard and shell to reflect fresh authenticated data
         showAdminDashboard(role);
-        if (window.RAD_SHELL && window.RAD_SHELL.renderShell) {
-            window.RAD_SHELL.renderShell();
+        if (window.GM_SHELL && window.GM_SHELL.renderShell) {
+            window.GM_SHELL.renderShell();
         }
         reloadActiveView();
     })();
@@ -119,7 +115,7 @@
         if (span) span.textContent = t('login_btn_loading');
 
         try {
-            var resp = await window.RAD.login(user, pass);
+            var resp = await window.GM.login(user, pass);
 
             if (resp.ok) {
                 loginError.classList.add('hidden');
@@ -128,40 +124,40 @@
                 // Fetch guilds list
                 await fetchGuilds();
 
-                // Fetch guild restriction for new logins if R4
-                if (resp.role === 'R4') {
+                // Fetch guild restriction for new logins if guild_admin
+                if (window.GM.normalizeRole(resp.role) === 'guild_admin') {
                     try {
                         var { data } = await supabase.from('accounts').select('guild').eq('id', user).maybeSingle();
                         if (data && data.guild) {
                             window.currentGuildRestriction = data.guild;
                             window.currentGuild = data.guild;
-                            localStorage.setItem('rad_current_guild', data.guild);
-                            localStorage.setItem('rad_guild_restriction', data.guild);
+                            localStorage.setItem('gm_current_guild', data.guild);
+                            localStorage.setItem('gm_guild_restriction', data.guild);
                         } else {
                             window.currentGuildRestriction = null;
-                            localStorage.removeItem('rad_guild_restriction');
+                            localStorage.removeItem('gm_guild_restriction');
                         }
                     } catch (err) {
                         console.error('Failed to load login guild restriction:', err);
                         window.currentGuildRestriction = null;
-                        localStorage.removeItem('rad_guild_restriction');
+                        localStorage.removeItem('gm_guild_restriction');
                     }
                 } else {
                     window.currentGuildRestriction = null;
-                    localStorage.removeItem('rad_guild_restriction');
+                    localStorage.removeItem('gm_guild_restriction');
                 }
 
-                var role = (resp.role === 'R5') ? 'admin' : 'member';
-                localStorage.setItem('rad_role', role);
-                localStorage.setItem('rad_user', user);
+                var role = window.GM.normalizeRole(resp.role);
+                localStorage.setItem('gm_role', role);
+                localStorage.setItem('gm_user', user);
                 // Store in memory for reliable access
-                window.RAD.currentAccountId = user;
+                window.GM.currentAccountId = user;
 
                 showAdminDashboard(role);
-                if (window.RAD_SHELL && window.RAD_SHELL.renderShell) {
-                    window.RAD_SHELL.renderShell();
+                if (window.GM_SHELL && window.GM_SHELL.renderShell) {
+                    window.GM_SHELL.renderShell();
                 }
-                showToast(role === 'admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
+                showToast(role === 'super_admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
             } else {
                 throw new Error('invalid');
             }
@@ -184,11 +180,11 @@
     if (memberLogoutBtn) memberLogoutBtn.addEventListener('click', doLogout);
 
     function doLogout() {
-        window.RAD.logout();
-        localStorage.removeItem('rad_role');
-        localStorage.removeItem('rad_user');
-        localStorage.removeItem('rad_current_guild');
-        localStorage.removeItem('rad_guild_restriction');
+        window.GM.logout();
+        localStorage.removeItem('gm_role');
+        localStorage.removeItem('gm_user');
+        localStorage.removeItem('gm_current_guild');
+        localStorage.removeItem('gm_guild_restriction');
         window.currentGuildRestriction = null;
         showLogin();
         showToast(t('toast_logout'), 'info');
@@ -196,18 +192,17 @@
 
     // ─── View Switching ───────────────────────────────────────────────────────
     function showAdminDashboard(role) {
-        role = role || localStorage.getItem('rad_role');
+        role = window.GM.normalizeRole(role || localStorage.getItem('gm_role'));
         loginView.classList.add('hidden');
         if (memberView) memberView.classList.add('hidden');
         dashboardView.classList.remove('hidden');
         dashboardView.classList.add('active');
 
         var adminHomeBtn = document.querySelector('.nav-tab[data-tab="admin-home"]');
-        var adminBannedBtn = document.querySelector('.nav-tab[data-tab="admin-banned"]');
         var roleLabel = document.getElementById('nav-user-role');
         var nameLabel = document.getElementById('nav-user-name');
 
-        var isR5 = (role !== 'member');
+        var isR5 = (role !== 'member'); // super_admin & guild_admin
 
         if (isR5) {
             renderGuildsSubscriptionList();
@@ -215,28 +210,28 @@
 
         populateAccountGuildSelect();
 
-        if (role === 'member') { // R4
+        if (role !== 'super_admin') { // guild_admin or member
             if (roleLabel) {
                 roleLabel.textContent = window.currentGuildRestriction 
                     ? 'Admin ' + window.currentGuildRestriction + ' :' 
                     : 'Admin :';
             }
-            if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Officier';
+            if (nameLabel) nameLabel.textContent = localStorage.getItem('gm_user') || 'Officier';
 
             loadGuildSettings();
             fetchAccounts();
             fetchGuildMembers();
-        } else { // R5
+        } else { // super_admin
             if (roleLabel) {
                 roleLabel.textContent = 'Super Admin :';
             }
-            if (nameLabel) nameLabel.textContent = localStorage.getItem('rad_user') || 'Leader';
+            if (nameLabel) nameLabel.textContent = localStorage.getItem('gm_user') || 'Leader';
 
             fetchAccounts();
             loadGuildSettings();
             fetchGuildMembers();
         }
-        var savedTab = localStorage.getItem('rad_active_tab') || 'overview';
+        var savedTab = localStorage.getItem('gm_active_tab') || 'overview';
         restoreSavedTab(savedTab);
     }
 
@@ -244,8 +239,8 @@
     // RAF polls up to 30 times per frame (60fps = every 16ms), setTimeout spaces out retries.
     function restoreSavedTab(itemId, attempts) {
         attempts = attempts == null ? 30 : attempts;
-        if (window.RAD_SHELL && window.RAD_SHELL.gotoItem) {
-            window.RAD_SHELL.gotoItem(itemId);
+        if (window.GM_SHELL && window.GM_SHELL.gotoItem) {
+            window.GM_SHELL.gotoItem(itemId);
             return;
         }
         if (attempts <= 0) return;
@@ -281,40 +276,40 @@
         if (tabId === 'admin-banned') {
             fetchBannedPlayers();
         }
-        if ((tabId === 'tab-sanctions' || tabId === 'sanctions') && window.RAD_SANCTIONS) {
-            window.RAD_SANCTIONS.load();
+        if ((tabId === 'tab-sanctions' || tabId === 'sanctions') && window.GM_SANCTIONS) {
+            window.GM_SANCTIONS.load();
         }
-        if ((tabId === 'gm-overview' || tabId === 'overview') && window.RAD_OVERVIEW) {
-            window.RAD_OVERVIEW.load();
+        if ((tabId === 'gm-overview' || tabId === 'overview') && window.GM_OVERVIEW) {
+            window.GM_OVERVIEW.load();
         }
-        if ((tabId === 'event-svs' || tabId === 'svs') && window.RAD_EVENTS) {
-            window.RAD_EVENTS.loadEvent('SvS');
+        if ((tabId === 'event-svs' || tabId === 'svs') && window.GM_EVENTS) {
+            window.GM_EVENTS.loadEvent('SvS');
         }
-        if ((tabId === 'event-gvg' || tabId === 'gvg') && window.RAD_EVENTS) {
-            window.RAD_EVENTS.loadEvent('GvG');
+        if ((tabId === 'event-gvg' || tabId === 'gvg') && window.GM_EVENTS) {
+            window.GM_EVENTS.loadEvent('GvG');
         }
-        if ((tabId === 'event-shadowfront' || tabId === 'Shadowfront' || tabId === 'shadowfront') && window.RAD_SHADOWFRONT) {
-            window.RAD_SHADOWFRONT.load();
+        if ((tabId === 'event-shadowfront' || tabId === 'Shadowfront' || tabId === 'shadowfront') && window.GM_SHADOWFRONT) {
+            window.GM_SHADOWFRONT.load();
         }
-        if ((tabId === 'event-dtr' || tabId === 'dtr') && window.RAD_EVENTS) {
-            window.RAD_EVENTS.loadEvent('Defend Trade Route');
+        if ((tabId === 'event-dtr' || tabId === 'dtr') && window.GM_EVENTS) {
+            window.GM_EVENTS.loadEvent('Defend Trade Route');
         }
-        if ((tabId === 'event-arms-race' || tabId === 'ARMS RACE' || tabId === 'Arms Race' || tabId === 'armsrace') && window.RAD_ARMSRACE) {
-            window.RAD_ARMSRACE.load();
+        if ((tabId === 'event-arms-race' || tabId === 'ARMS RACE' || tabId === 'Arms Race' || tabId === 'armsrace') && window.GM_ARMSRACE) {
+            window.GM_ARMSRACE.load();
         }
-        if ((tabId === 'event-glory' || tabId === 'glory') && window.RAD_GLORY) {
-            window.RAD_GLORY.load();
+        if ((tabId === 'event-glory' || tabId === 'glory') && window.GM_GLORY) {
+            window.GM_GLORY.load();
         }
-        if ((tabId === 'event-history' || tabId === 'history') && window.RAD_HISTORY) {
-            window.RAD_HISTORY.load();
+        if ((tabId === 'event-history' || tabId === 'history') && window.GM_HISTORY) {
+            window.GM_HISTORY.load();
         }
-        if ((tabId === 'stats-admin' || tabId === 'stats-member' || tabId === 'stats') && window.RAD_STATS) {
-            window.RAD_STATS.load();
+        if ((tabId === 'stats-admin' || tabId === 'stats-member' || tabId === 'stats') && window.GM_STATS) {
+            window.GM_STATS.load();
         }
     }
 
-    window.RAD_APP = window.RAD_APP || {};
-    window.RAD_APP.onTabActivated = function (tabId) {
+    window.GM_APP = window.GM_APP || {};
+    window.GM_APP.onTabActivated = function (tabId) {
         triggerTabDataLoad(tabId);
     };
 
@@ -334,7 +329,7 @@
                 if (panel) panel.classList.add('active');
             }
 
-            window.RAD_APP.onTabActivated(tabId);
+            window.GM_APP.onTabActivated(tabId);
         });
     });
 
@@ -356,7 +351,7 @@
     async function fetchAccounts() {
         if (!supabase) return;
         try {
-            var res = await window.RAD.adminAccounts('list');
+            var res = await window.GM.adminAccounts('list');
             if (!res.ok) throw new Error(res.error || 'list_failed');
             accounts = res.accounts || [];
 
@@ -388,19 +383,19 @@
 
             var newPassword = generatePassword(12);
             try {
-                var res = await window.RAD.adminAccounts('create', {
+                var res = await window.GM.adminAccounts('create', {
                     id: identifier,
                     password: newPassword,
-                    role: 'R4',
+                    role: 'guild_admin',
                     guild: (guildSelected === 'ALL' ? null : guildSelected),
-                    created_by: window.RAD.currentAccountId
+                    created_by: window.GM.currentAccountId
                 });
                 if (!res.ok) throw new Error(res.error || 'create_failed');
 
                 pendingPasswords[identifier] = newPassword;
                 accounts.unshift({ 
                     id: identifier, 
-                    role: 'R4', 
+                    role: 'guild_admin', 
                     guild: (guildSelected === 'ALL' ? null : guildSelected), 
                     created_at: new Date().toISOString() 
                 });
@@ -418,7 +413,7 @@
 
     async function deleteAccount(id) {
         try {
-            var res = await window.RAD.adminAccounts('delete', { id: id });
+            var res = await window.GM.adminAccounts('delete', { id: id });
             if (!res.ok) throw new Error(res.error || 'delete_failed');
             accounts = accounts.filter(function (a) { return a.id !== id; });
             renderAccounts();
@@ -442,7 +437,7 @@
                 // Save subscription & server number info
                 window.guildsData = {};
                 data.forEach(function (g) {
-                    var sNum = g.server_number || localStorage.getItem('rad_server_number_' + g.id) || '';
+                    var sNum = g.server_number || localStorage.getItem('gm_server_number_' + g.id) || '';
                     window.guildsData[g.id] = {
                         type: g.subscription_type || 'Unlimited',
                         end: g.subscription_end || null,
@@ -452,9 +447,9 @@
                 console.log('window.guildsData populated:', window.guildsData);
                 
                 // Re-render topbar & sidebar if shell is loaded
-                if (window.RAD_SHELL) {
-                    if (window.RAD_SHELL.renderTopbar) window.RAD_SHELL.renderTopbar();
-                    if (window.RAD_SHELL.renderSidebar) window.RAD_SHELL.renderSidebar();
+                if (window.GM_SHELL) {
+                    if (window.GM_SHELL.renderTopbar) window.GM_SHELL.renderTopbar();
+                    if (window.GM_SHELL.renderSidebar) window.GM_SHELL.renderSidebar();
                 }
                 
                 // Update account creation select
@@ -509,10 +504,10 @@
 
             var newPassword = generatePassword(12);
             try {
-                var res = await window.RAD.adminAccounts('create', {
+                var res = await window.GM.adminAccounts('create', {
                     id: identifier,
                     password: newPassword,
-                    role: 'R4',
+                    role: 'guild_admin',
                     guild: guildSelected
                 });
                 if (!res.ok) throw new Error(res.error || 'create_failed');
@@ -521,7 +516,7 @@
                 pendingPasswords[identifier] = newPassword;
                 accounts.unshift({ 
                     id: identifier, 
-                    role: 'R4', 
+                    role: 'guild_admin', 
                     guild: guildSelected, 
                     created_at: new Date().toISOString() 
                 });
@@ -602,49 +597,49 @@
         if (gvgGroup) gvgGroup.style.display = showCalamityGvgSvs ? '' : 'none';
         if (svsGroup) svsGroup.style.display = showCalamityGvgSvs ? '' : 'none';
 
-        var coeffSvs = await window.RAD.config.get('coeff_svs');
-        var coeffGvg = await window.RAD.config.get('coeff_gvg');
-        var coeffShadowfront = await window.RAD.config.get('coeff_shadowfront');
-        var coeffDtr = await window.RAD.config.get('coeff_dtr');
-        var coeffArmsrace = await window.RAD.config.get('coeff_armsrace');
+        var coeffSvs = await window.GM.config.get('coeff_svs');
+        var coeffGvg = await window.GM.config.get('coeff_gvg');
+        var coeffShadowfront = await window.GM.config.get('coeff_shadowfront');
+        var coeffDtr = await window.GM.config.get('coeff_dtr');
+        var coeffArmsrace = await window.GM.config.get('coeff_armsrace');
 
         // Webhooks configuration
-        var webhookArmsrace = await window.RAD.config.get('webhook_armsrace');
-        var webhookDtr = await window.RAD.config.get('webhook_dtr');
-        var webhookShadowfront = await window.RAD.config.get('webhook_shadowfront');
-        var webhookCalamity = await window.RAD.config.get('webhook_calamity');
-        var webhookGvg = await window.RAD.config.get('webhook_gvg');
-        var webhookSvs = await window.RAD.config.get('webhook_svs');
-        var discordRoleId = await window.RAD.config.get('discord_role_id');
-        var discordRoleIdArmsrace = await window.RAD.config.get('discord_role_id_armsrace');
-        var discordRoleIdDtr = await window.RAD.config.get('discord_role_id_dtr');
-        var discordRoleIdShadowfront = await window.RAD.config.get('discord_role_id_shadowfront');
-        var discordRoleIdCalamity = await window.RAD.config.get('discord_role_id_calamity');
-        var discordRoleIdGvg = await window.RAD.config.get('discord_role_id_gvg');
-        var discordRoleIdSvs = await window.RAD.config.get('discord_role_id_svs');
+        var webhookArmsrace = await window.GM.config.get('webhook_armsrace');
+        var webhookDtr = await window.GM.config.get('webhook_dtr');
+        var webhookShadowfront = await window.GM.config.get('webhook_shadowfront');
+        var webhookCalamity = await window.GM.config.get('webhook_calamity');
+        var webhookGvg = await window.GM.config.get('webhook_gvg');
+        var webhookSvs = await window.GM.config.get('webhook_svs');
+        var discordRoleId = await window.GM.config.get('discord_role_id');
+        var discordRoleIdArmsrace = await window.GM.config.get('discord_role_id_armsrace');
+        var discordRoleIdDtr = await window.GM.config.get('discord_role_id_dtr');
+        var discordRoleIdShadowfront = await window.GM.config.get('discord_role_id_shadowfront');
+        var discordRoleIdCalamity = await window.GM.config.get('discord_role_id_calamity');
+        var discordRoleIdGvg = await window.GM.config.get('discord_role_id_gvg');
+        var discordRoleIdSvs = await window.GM.config.get('discord_role_id_svs');
 
         // Notification configs
-        var notifyArmsrace30 = await window.RAD.config.get('notify_armsrace_reminder_30');
-        var notifyArmsrace5 = await window.RAD.config.get('notify_armsrace_reminder_5');
-        var notifyArmsraceStart = await window.RAD.config.get('notify_armsrace_start');
-        var notifyArmsraceCreation = await window.RAD.config.get('notify_armsrace_creation');
+        var notifyArmsrace30 = await window.GM.config.get('notify_armsrace_reminder_30');
+        var notifyArmsrace5 = await window.GM.config.get('notify_armsrace_reminder_5');
+        var notifyArmsraceStart = await window.GM.config.get('notify_armsrace_start');
+        var notifyArmsraceCreation = await window.GM.config.get('notify_armsrace_creation');
 
-        var notifyDtr30 = await window.RAD.config.get('notify_dtr_reminder_30');
-        var notifyDtr5 = await window.RAD.config.get('notify_dtr_reminder_5');
-        var notifyDtrStart = await window.RAD.config.get('notify_dtr_start');
-        var notifyDtrCreation = await window.RAD.config.get('notify_dtr_creation');
+        var notifyDtr30 = await window.GM.config.get('notify_dtr_reminder_30');
+        var notifyDtr5 = await window.GM.config.get('notify_dtr_reminder_5');
+        var notifyDtrStart = await window.GM.config.get('notify_dtr_start');
+        var notifyDtrCreation = await window.GM.config.get('notify_dtr_creation');
 
-        var notifyShadowfront30 = await window.RAD.config.get('notify_shadowfront_reminder_30');
-        var notifyShadowfront5 = await window.RAD.config.get('notify_shadowfront_reminder_5');
-        var notifyShadowfrontStart = await window.RAD.config.get('notify_shadowfront_start');
-        var notifyShadowfrontCreation = await window.RAD.config.get('notify_shadowfront_creation');
+        var notifyShadowfront30 = await window.GM.config.get('notify_shadowfront_reminder_30');
+        var notifyShadowfront5 = await window.GM.config.get('notify_shadowfront_reminder_5');
+        var notifyShadowfrontStart = await window.GM.config.get('notify_shadowfront_start');
+        var notifyShadowfrontCreation = await window.GM.config.get('notify_shadowfront_creation');
 
-        var notifyCalamity10 = await window.RAD.config.get('notify_calamity_10');
-        var notifyGvgPvp = await window.RAD.config.get('notify_gvg_pvp');
+        var notifyCalamity10 = await window.GM.config.get('notify_calamity_10');
+        var notifyGvgPvp = await window.GM.config.get('notify_gvg_pvp');
         
-        var notifySvsGarrison = await window.RAD.config.get('notify_svs_garrison');
-        var notifySvsPvp = await window.RAD.config.get('notify_svs_pvp');
-        var notifySvsWonPrep = await window.RAD.config.get('notify_svs_won_prep');
+        var notifySvsGarrison = await window.GM.config.get('notify_svs_garrison');
+        var notifySvsPvp = await window.GM.config.get('notify_svs_pvp');
+        var notifySvsWonPrep = await window.GM.config.get('notify_svs_won_prep');
 
         document.getElementById('coeff-svs').value = coeffSvs;
         document.getElementById('coeff-gvg').value = coeffGvg;
@@ -714,48 +709,48 @@
             try {
                 var showCalamityGvgSvs = (window.currentGuild !== 'OMEGA' && window.currentGuild !== 'IMK');
                 await Promise.all([
-                    window.RAD.config.set('coeff_svs', document.getElementById('coeff-svs').value),
-                    window.RAD.config.set('coeff_gvg', document.getElementById('coeff-gvg').value),
-                    window.RAD.config.set('coeff_shadowfront', document.getElementById('coeff-shadowfront').value),
-                    window.RAD.config.set('coeff_dtr', document.getElementById('coeff-dtr').value),
-                    window.RAD.config.set('coeff_armsrace', document.getElementById('coeff-armsrace').value),
+                    window.GM.config.set('coeff_svs', document.getElementById('coeff-svs').value),
+                    window.GM.config.set('coeff_gvg', document.getElementById('coeff-gvg').value),
+                    window.GM.config.set('coeff_shadowfront', document.getElementById('coeff-shadowfront').value),
+                    window.GM.config.set('coeff_dtr', document.getElementById('coeff-dtr').value),
+                    window.GM.config.set('coeff_armsrace', document.getElementById('coeff-armsrace').value),
 
-                    window.RAD.config.set('webhook_armsrace', document.getElementById('webhook-armsrace').value.trim()),
-                    window.RAD.config.set('webhook_dtr', document.getElementById('webhook-dtr').value.trim()),
-                    window.RAD.config.set('webhook_shadowfront', document.getElementById('webhook-shadowfront').value.trim()),
-                    window.RAD.config.set('webhook_calamity', showCalamityGvgSvs ? document.getElementById('webhook-calamity').value.trim() : ''),
-                    window.RAD.config.set('webhook_gvg', showCalamityGvgSvs ? document.getElementById('webhook-gvg').value.trim() : ''),
-                    window.RAD.config.set('webhook_svs', showCalamityGvgSvs ? document.getElementById('webhook-svs').value.trim() : ''),
-                    window.RAD.config.set('discord_role_id', document.getElementById('discord-role-id').value.trim()),
-                    window.RAD.config.set('discord_role_id_armsrace', document.getElementById('discord-role-id-armsrace').value.trim()),
-                    window.RAD.config.set('discord_role_id_dtr', document.getElementById('discord-role-id-dtr').value.trim()),
-                    window.RAD.config.set('discord_role_id_shadowfront', document.getElementById('discord-role-id-shadowfront').value.trim()),
-                    window.RAD.config.set('discord_role_id_calamity', showCalamityGvgSvs ? document.getElementById('discord-role-id-calamity').value.trim() : ''),
-                    window.RAD.config.set('discord_role_id_gvg', showCalamityGvgSvs ? document.getElementById('discord-role-id-gvg').value.trim() : ''),
-                    window.RAD.config.set('discord_role_id_svs', showCalamityGvgSvs ? document.getElementById('discord-role-id-svs').value.trim() : ''),
+                    window.GM.config.set('webhook_armsrace', document.getElementById('webhook-armsrace').value.trim()),
+                    window.GM.config.set('webhook_dtr', document.getElementById('webhook-dtr').value.trim()),
+                    window.GM.config.set('webhook_shadowfront', document.getElementById('webhook-shadowfront').value.trim()),
+                    window.GM.config.set('webhook_calamity', showCalamityGvgSvs ? document.getElementById('webhook-calamity').value.trim() : ''),
+                    window.GM.config.set('webhook_gvg', showCalamityGvgSvs ? document.getElementById('webhook-gvg').value.trim() : ''),
+                    window.GM.config.set('webhook_svs', showCalamityGvgSvs ? document.getElementById('webhook-svs').value.trim() : ''),
+                    window.GM.config.set('discord_role_id', document.getElementById('discord-role-id').value.trim()),
+                    window.GM.config.set('discord_role_id_armsrace', document.getElementById('discord-role-id-armsrace').value.trim()),
+                    window.GM.config.set('discord_role_id_dtr', document.getElementById('discord-role-id-dtr').value.trim()),
+                    window.GM.config.set('discord_role_id_shadowfront', document.getElementById('discord-role-id-shadowfront').value.trim()),
+                    window.GM.config.set('discord_role_id_calamity', showCalamityGvgSvs ? document.getElementById('discord-role-id-calamity').value.trim() : ''),
+                    window.GM.config.set('discord_role_id_gvg', showCalamityGvgSvs ? document.getElementById('discord-role-id-gvg').value.trim() : ''),
+                    window.GM.config.set('discord_role_id_svs', showCalamityGvgSvs ? document.getElementById('discord-role-id-svs').value.trim() : ''),
 
                     // Notification Configs
-                    window.RAD.config.set('notify_armsrace_creation', document.getElementById('notify-armsrace-creation').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_armsrace_reminder_30', document.getElementById('notify-armsrace-30').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_armsrace_reminder_5', document.getElementById('notify-armsrace-5').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_armsrace_start', document.getElementById('notify-armsrace-start').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_armsrace_creation', document.getElementById('notify-armsrace-creation').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_armsrace_reminder_30', document.getElementById('notify-armsrace-30').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_armsrace_reminder_5', document.getElementById('notify-armsrace-5').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_armsrace_start', document.getElementById('notify-armsrace-start').checked ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_dtr_creation', document.getElementById('notify-dtr-creation').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_dtr_reminder_30', document.getElementById('notify-dtr-30').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_dtr_reminder_5', document.getElementById('notify-dtr-5').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_dtr_start', document.getElementById('notify-dtr-start').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_dtr_creation', document.getElementById('notify-dtr-creation').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_dtr_reminder_30', document.getElementById('notify-dtr-30').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_dtr_reminder_5', document.getElementById('notify-dtr-5').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_dtr_start', document.getElementById('notify-dtr-start').checked ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_shadowfront_creation', document.getElementById('notify-shadowfront-creation').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_shadowfront_reminder_30', document.getElementById('notify-shadowfront-30').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_shadowfront_reminder_5', document.getElementById('notify-shadowfront-5').checked ? 'true' : 'false'),
-                    window.RAD.config.set('notify_shadowfront_start', document.getElementById('notify-shadowfront-start').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_shadowfront_creation', document.getElementById('notify-shadowfront-creation').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_shadowfront_reminder_30', document.getElementById('notify-shadowfront-30').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_shadowfront_reminder_5', document.getElementById('notify-shadowfront-5').checked ? 'true' : 'false'),
+                    window.GM.config.set('notify_shadowfront_start', document.getElementById('notify-shadowfront-start').checked ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_calamity_10', (showCalamityGvgSvs && document.getElementById('notify-calamity-10').checked) ? 'true' : 'false'),
-                    window.RAD.config.set('notify_gvg_pvp', (showCalamityGvgSvs && document.getElementById('notify-gvg-pvp').checked) ? 'true' : 'false'),
+                    window.GM.config.set('notify_calamity_10', (showCalamityGvgSvs && document.getElementById('notify-calamity-10').checked) ? 'true' : 'false'),
+                    window.GM.config.set('notify_gvg_pvp', (showCalamityGvgSvs && document.getElementById('notify-gvg-pvp').checked) ? 'true' : 'false'),
 
-                    window.RAD.config.set('notify_svs_garrison', (showCalamityGvgSvs && document.getElementById('notify-svs-garrison').checked) ? 'true' : 'false'),
-                    window.RAD.config.set('notify_svs_pvp', (showCalamityGvgSvs && document.getElementById('notify-svs-pvp').checked) ? 'true' : 'false'),
-                    window.RAD.config.set('notify_svs_won_prep', (showCalamityGvgSvs && document.getElementById('notify-svs-won-prep').checked) ? 'true' : 'false')
+                    window.GM.config.set('notify_svs_garrison', (showCalamityGvgSvs && document.getElementById('notify-svs-garrison').checked) ? 'true' : 'false'),
+                    window.GM.config.set('notify_svs_pvp', (showCalamityGvgSvs && document.getElementById('notify-svs-pvp').checked) ? 'true' : 'false'),
+                    window.GM.config.set('notify_svs_won_prep', (showCalamityGvgSvs && document.getElementById('notify-svs-won-prep').checked) ? 'true' : 'false')
                 ]);
                 
                 showToast(t('toast_config_updated'), 'success');
@@ -770,7 +765,7 @@
 
     function renderAccounts() {
         var activeG = window.currentGuild || 'ALPHA';
-        var isSuperAdminUser = (localStorage.getItem('rad_role') === 'admin');
+        var isSuperAdminUser = window.GM.roleFromStorage() === 'super_admin';
 
         // Target 1: Admin Section (#account-list) - accounts for current active guild only
         var containerR4 = document.getElementById('account-list');
@@ -778,7 +773,7 @@
         if (containerR4) {
             var listR4 = accounts.filter(function (acc) {
                 var accGuild = acc.guild || 'ALPHA';
-                var isR5 = (acc.role === 'R5');
+                var isR5 = (acc.role === 'super_admin');
                 // Super Admin account ONLY shown when activeG is ALPHA
                 if (isR5) {
                     return true;
@@ -793,7 +788,7 @@
         var countR5 = document.getElementById('superadmin-account-count');
         if (containerR5) {
             var listR5 = accounts.filter(function (acc) {
-                return acc.role !== 'R5';
+                return acc.role !== 'super_admin';
             });
             listR5.sort(function (a, b) {
                 var gA = a.guild || '';
@@ -816,14 +811,14 @@
 
         var html = '<div class="gm-cred-grid">';
         listToRender.forEach(function (acc) {
-            var role = acc.role || 'R4';
-            var roleLabel = role === 'R5' ? 'Super Admin' : 'Admin';
-            var chipCls = role === 'R5' ? 'gm-chip-accent' : 'gm-chip-info';
+            var role = acc.role || 'guild_admin';
+            var roleLabel = role === 'super_admin' ? 'Super Admin' : 'Admin';
+            var chipCls = role === 'super_admin' ? 'gm-chip-accent' : 'gm-chip-info';
             var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
             var guildLabel = acc.guild ? 'Guild: ' + acc.guild : 'All Guilds';
             var guildCls = acc.guild ? 'gm-chip-warning' : 'gm-chip-success';
 
-            var isSuperAdminAccount = (role === 'R5');
+            var isSuperAdminAccount = (role === 'super_admin');
             
             // Password management permission:
             // Super Admin account password CANNOT be viewed/copied by regular R4 admins!
@@ -856,7 +851,7 @@
             }
 
             var guildSelectHtml = '';
-            if (acc.role !== 'R5' && isSuperAdminUser) {
+            if (acc.role !== 'super_admin' && isSuperAdminUser) {
                 var options = '<option value="ALL"' + (!acc.guild ? ' selected' : '') + '>All Guilds</option>';
                 (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
                     options += '<option value="' + g + '"' + (acc.guild === g ? ' selected' : '') + '>' + g + '</option>';
@@ -908,7 +903,7 @@
                     if (!pass) {
                         btn.disabled = true;
                         try {
-                            var res = await window.RAD.adminAccounts('get-password', { id: accId });
+                            var res = await window.GM.adminAccounts('get-password', { id: accId });
                             if (!res.ok) throw new Error(res.error || 'fetch_failed');
                             pass = res.password;
                         } catch (err) {
@@ -939,7 +934,7 @@
                 if (!pass) {
                     btn.disabled = true;
                     try {
-                        var res = await window.RAD.adminAccounts('get-password', { id: accId });
+                        var res = await window.GM.adminAccounts('get-password', { id: accId });
                         if (!res.ok) throw new Error(res.error || 'fetch_failed');
                         pass = res.password;
                     } catch (err) {
@@ -975,7 +970,7 @@
                 var newGuild = sel.value;
                 sel.disabled = true;
                 try {
-                    var res = await window.RAD.adminAccounts('update-guild', { id: id, guild: newGuild });
+                    var res = await window.GM.adminAccounts('update-guild', { id: id, guild: newGuild });
                     if (!res.ok) throw new Error(res.error || 'update_failed');
                     showToast('Access for ' + id + ' updated successfully!', 'success');
                     
@@ -1016,7 +1011,7 @@
                 var guildId = g.id;
                 var type = g.subscription_type || 'Unlimited';
                 var end = g.subscription_end;
-                var serverNum = g.server_number || (window.guildsData && window.guildsData[guildId] ? window.guildsData[guildId].server_number : '') || localStorage.getItem('rad_server_number_' + guildId) || '';
+                var serverNum = g.server_number || (window.guildsData && window.guildsData[guildId] ? window.guildsData[guildId].server_number : '') || localStorage.getItem('gm_server_number_' + guildId) || '';
                 var dateVal = end ? end.split('T')[0] : '';
 
                 // Calculate countdown html
@@ -1127,7 +1122,7 @@
                     btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i>...';
 
                     // Immediately persist in localStorage and memory cache
-                    localStorage.setItem('rad_server_number_' + guildId, serverNum);
+                    localStorage.setItem('gm_server_number_' + guildId, serverNum);
                     if (window.guildsData && window.guildsData[guildId]) {
                         window.guildsData[guildId].server_number = serverNum;
                         window.guildsData[guildId].type = type;
@@ -1168,7 +1163,7 @@
 
     async function fetchGuildMembers() {
         if (!supabase) return;
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
             var [res, transfersRes] = await Promise.all([
                 supabase.from('guild_members').select('*').order('pseudo', { ascending: true }),
@@ -1206,20 +1201,20 @@
         var html = '';
         pendingTransfers.forEach(function (t) {
             html += '<tr>' +
-                '<td data-label="Player"><div class="gm-member-name"><div class="gm-avatar gm-avatar-sm gm-avatar-info">' + esc(window.RAD.avatarInit(t.pseudo)) + '</div>' + esc(t.pseudo) + '</div></td>' +
+                '<td data-label="Player"><div class="gm-member-name"><div class="gm-avatar gm-avatar-sm gm-avatar-info">' + esc(window.GM.avatarInit(t.pseudo)) + '</div>' + esc(t.pseudo) + '</div></td>' +
                 '<td data-label="UID"><div class="gm-uid-badge">' + esc(t.uid) + '</div></td>' +
                 '<td data-label="Source Guild">' + esc(t.source_guild) + '</td>' +
                 '<td class="gm-center" data-label="Actions" style="white-space: nowrap;">' +
-                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" onclick="window.RAD.resolveTransfer(\'' + t.id + '\', \'approve\')" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
-                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" onclick="window.RAD.resolveTransfer(\'' + t.id + '\', \'reject\')" title="Reject Transfer"><i class="ph ph-x"></i></button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" onclick="window.GM.resolveTransfer(\'' + t.id + '\', \'approve\')" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" onclick="window.GM.resolveTransfer(\'' + t.id + '\', \'reject\')" title="Reject Transfer"><i class="ph ph-x"></i></button>' +
                 '</td>' +
             '</tr>';
         });
         list.innerHTML = html;
     }
 
-    window.RAD = window.RAD || {};
-    window.RAD.resolveTransfer = async function(transferId, action) {
+    window.GM = window.GM || {};
+    window.GM.resolveTransfer = async function(transferId, action) {
         if (!supabase) return;
         var confirmMsg = action === 'approve' ? 'Approve this transfer and add player to your guild?' : 'Reject this transfer request?';
         if (!confirm(confirmMsg)) return;
@@ -1257,9 +1252,9 @@
             return;
         }
 
-        var pseudoErr = window.RAD.validatePseudo(pseudo);
+        var pseudoErr = window.GM.validatePseudo(pseudo);
         if (pseudoErr) { showToast(t(pseudoErr), 'error'); return; }
-        var uidErr = window.RAD.validateUid(uidVal);
+        var uidErr = window.GM.validateUid(uidVal);
         if (uidErr) { showToast(t(uidErr), 'error'); return; }
 
         if (guildMembers.some(function (m) { return m.pseudo.toLowerCase() === pseudo.toLowerCase(); })) {
@@ -1294,7 +1289,7 @@
             console.error('Ban check failed', err);
         }
         try {
-            var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('rad_current_guild') || 'ALPHA';
+            var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
             var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal, guild: currentG }]);
             if (res.error) throw res.error;
             guildMembers.push({ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal, guild: currentG, created_at: new Date().toISOString() });
@@ -1306,14 +1301,14 @@
             showToast(pseudo + ' ' + t('toast_member_added'), 'success');
 
             var addedEvents = 0;
-            if (window.RAD_EVENTS && window.RAD_EVENTS.addMemberToActiveEvents) {
-                addedEvents += await window.RAD_EVENTS.addMemberToActiveEvents(pseudo);
+            if (window.GM_EVENTS && window.GM_EVENTS.addMemberToActiveEvents) {
+                addedEvents += await window.GM_EVENTS.addMemberToActiveEvents(pseudo);
             }
-            if (window.RAD_ARMSRACE && window.RAD_ARMSRACE.addMemberToActiveEvents) {
-                addedEvents += await window.RAD_ARMSRACE.addMemberToActiveEvents(pseudo);
+            if (window.GM_ARMSRACE && window.GM_ARMSRACE.addMemberToActiveEvents) {
+                addedEvents += await window.GM_ARMSRACE.addMemberToActiveEvents(pseudo);
             }
-            if (window.RAD_SHADOWFRONT && window.RAD_SHADOWFRONT.load) {
-                await window.RAD_SHADOWFRONT.load();
+            if (window.GM_SHADOWFRONT && window.GM_SHADOWFRONT.load) {
+                await window.GM_SHADOWFRONT.load();
             }
             if (addedEvents > 0) {
                 showToast(pseudo + ' ' + t('toast_member_added_active_events'), 'info');
@@ -1355,14 +1350,14 @@
             renderGuildMembers();
             showToast(t('toast_member_removed'), 'success');
 
-            if (window.RAD_EVENTS && window.RAD_EVENTS.removeMemberFromActiveEvents) {
-                window.RAD_EVENTS.removeMemberFromActiveEvents(pseudo);
+            if (window.GM_EVENTS && window.GM_EVENTS.removeMemberFromActiveEvents) {
+                window.GM_EVENTS.removeMemberFromActiveEvents(pseudo);
             }
-            if (window.RAD_ARMSRACE && window.RAD_ARMSRACE.removeMemberFromActiveEvents) {
-                window.RAD_ARMSRACE.removeMemberFromActiveEvents(pseudo);
+            if (window.GM_ARMSRACE && window.GM_ARMSRACE.removeMemberFromActiveEvents) {
+                window.GM_ARMSRACE.removeMemberFromActiveEvents(pseudo);
             }
-            if (window.RAD_SHADOWFRONT && window.RAD_SHADOWFRONT.load) {
-                await window.RAD_SHADOWFRONT.load();
+            if (window.GM_SHADOWFRONT && window.GM_SHADOWFRONT.load) {
+                await window.GM_SHADOWFRONT.load();
             }
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -1373,7 +1368,7 @@
     async function fetchBannedPlayers() {
         if (!supabase) return;
         try {
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             var res = await supabase.from('banned_players').select('*').eq('guild', currentG).order('created_at', { ascending: false });
             if (res.error) throw res.error;
             bannedPlayers = res.data || [];
@@ -1398,7 +1393,7 @@
         }
 
         var html = '<div class="gm-member-list">';
-        var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
+        var lang = (window.GM_I18N && window.GM_I18N.getLang) ? window.GM_I18N.getLang() : 'en';
         var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
         var uidPrefix = t('banned_uid_prefix');
         var reasonLabel = t('banned_reason_label');
@@ -1413,7 +1408,7 @@
             var pseudoVal = bp.pseudo || '—';
             var reasonVal = bp.reason || '—';
             var author = bp.created_by || '—';
-            var initial = window.RAD.avatarInit(pseudoVal !== '—' ? pseudoVal : fallbackName);
+            var initial = window.GM.avatarInit(pseudoVal !== '—' ? pseudoVal : fallbackName);
             
             html += '<div class="gm-member-row" data-uid="' + esc(bp.uid) + '">' +
                 '<div class="gm-member-id">' +
@@ -1458,7 +1453,7 @@
 
         if (!uidVal) return;
 
-        var uidErr = window.RAD.validateUid(uidVal);
+        var uidErr = window.GM.validateUid(uidVal);
         if (uidErr) { showToast(t(uidErr), 'error'); return; }
 
         if (bannedPlayers.some(function (bp) { return bp.uid === uidVal; })) {
@@ -1470,8 +1465,8 @@
         if (btn) btn.disabled = true;
 
         try {
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
-            var currentUser = window.RAD.currentAccountId || localStorage.getItem('rad_user') || 'Admin';
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+            var currentUser = window.GM.currentAccountId || localStorage.getItem('gm_user') || 'Admin';
             var res = await supabase.from('banned_players').insert([{
                 guild: currentG,
                 uid: uidVal,
@@ -1509,7 +1504,7 @@
 
     async function deleteBannedPlayer(uid) {
         try {
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             var res = await supabase.from('banned_players').delete().eq('uid', uid).eq('guild', currentG);
             if (res.error) throw res.error;
             showToast(t('toast_player_unbanned_ok'), 'success');
@@ -1525,9 +1520,9 @@
         var powerVal = parseInt(newPower) || 0;
         var roleVal = newRole || 'R1';
 
-        var pseudoErr = window.RAD.validatePseudo(newPseudo);
+        var pseudoErr = window.GM.validatePseudo(newPseudo);
         if (pseudoErr) { showToast(t(pseudoErr), 'error'); return false; }
-        var uidErr = window.RAD.validateUid(newUid);
+        var uidErr = window.GM.validateUid(newUid);
         if (uidErr) { showToast(t(uidErr), 'error'); return false; }
 
         var member = guildMembers.find(function (m) { return m.pseudo === oldPseudo; });
@@ -1570,7 +1565,7 @@
                     uid: member.uid,
                     old_pseudo: oldPseudo,
                     new_pseudo: newPseudo,
-                    changed_by: window.RAD.currentAccountId || localStorage.getItem('rad_user') || 'Admin'
+                    changed_by: window.GM.currentAccountId || localStorage.getItem('gm_user') || 'Admin'
                 });
                 if (histIns.error) console.error('Logging name history failed', histIns.error);
             }
@@ -1612,20 +1607,20 @@
         var powers = guildMembers.map(function (m) { return parseInt(m.overall_power) || 0; });
         var maxPower = powers.length ? Math.max.apply(null, powers) : 0;
 
-        var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('rad_current_guild') || 'ALPHA';
+        var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
 
         var filteredAdmin = guildMembers.filter(function (m) {
             var memberG = m.guild || 'ALPHA';
             var matchGuild = (memberG === currentG);
             var matchSearch = (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qAdmin) !== -1;
-            var matchTier = (tAdmin === 'ALL') || (window.RAD.getPowerTier(m.overall_power, maxPower) === tAdmin);
+            var matchTier = (tAdmin === 'ALL') || (window.GM.getPowerTier(m.overall_power, maxPower) === tAdmin);
             return matchGuild && matchSearch && matchTier;
         });
         var filteredMember = guildMembers.filter(function (m) {
             var memberG = m.guild || 'ALPHA';
             var matchGuild = (memberG === currentG);
             var matchSearch = (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qMember) !== -1;
-            var matchTier = (tMember === 'ALL') || (window.RAD.getPowerTier(m.overall_power, maxPower) === tMember);
+            var matchTier = (tMember === 'ALL') || (window.GM.getPowerTier(m.overall_power, maxPower) === tMember);
             return matchGuild && matchSearch && matchTier;
         });
 
@@ -1677,7 +1672,7 @@
                     hasAnyMembers = true;
                 }
 
-                var isCollapsed = !!window.RAD_COLLAPSED_ROLES[role];
+                var isCollapsed = !!window.GM_COLLAPSED_ROLES[role];
                 var iconClass = isCollapsed ? 'ph-caret-right' : 'ph-caret-down';
                 var displayStyle = isCollapsed ? 'none' : 'block';
 
@@ -1719,7 +1714,7 @@
         document.querySelectorAll('.gm-role-group-header').forEach(function (header) {
             header.addEventListener('click', function () {
                 var role = header.getAttribute('data-role');
-                window.RAD_COLLAPSED_ROLES[role] = !window.RAD_COLLAPSED_ROLES[role];
+                window.GM_COLLAPSED_ROLES[role] = !window.GM_COLLAPSED_ROLES[role];
                 renderGuildMembers();
             });
         });
@@ -1754,18 +1749,18 @@
     }
 
     function memberTileHtml(m, i, withActions, maxPower) {
-        var lang = (window.RAD_I18N && window.RAD_I18N.getLang) ? window.RAD_I18N.getLang() : 'en';
+        var lang = (window.GM_I18N && window.GM_I18N.getLang) ? window.GM_I18N.getLang() : 'en';
         var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
         var uidVal = m.uid || '—';
         var dateStr = m.created_at
             ? new Date(m.created_at).toLocaleDateString(locale, { day:'2-digit', month:'2-digit', year:'numeric' })
             : '—';
-        var initial = window.RAD.avatarInit(m.pseudo);
+        var initial = window.GM.avatarInit(m.pseudo);
 
         var powerVal = parseInt(m.overall_power) || 0;
-        var tier = window.RAD.getPowerTier(powerVal, maxPower);
-        var meta = window.RAD.getPowerTierMeta(tier);
-        var formattedPower = window.RAD.formatPower(powerVal);
+        var tier = window.GM.getPowerTier(powerVal, maxPower);
+        var meta = window.GM.getPowerTierMeta(tier);
+        var formattedPower = window.GM.formatPower(powerVal);
 
         var roleVal = m.role || 'R1';
         var roleStyles = {
@@ -1809,7 +1804,7 @@
         var existing = document.getElementById('transfer-member-overlay');
         if (existing) existing.remove();
 
-        var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('rad_current_guild') || 'ALPHA';
+        var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
 
         // Fetch up-to-date guilds list and server numbers
         // Merge DB data with localStorage fallback (DB may have null if save failed previously)
@@ -1820,7 +1815,7 @@
                 res.data.forEach(function (g) {
                     // Prefer DB value, fallback to localStorage, fallback to window.guildsData
                     var dbVal = g.server_number || '';
-                    var lsVal = localStorage.getItem('rad_server_number_' + g.id) || '';
+                    var lsVal = localStorage.getItem('gm_server_number_' + g.id) || '';
                     var memVal = (window.guildsData && window.guildsData[g.id]) ? (window.guildsData[g.id].server_number || '') : '';
                     guildsData[g.id] = dbVal || lsVal || memVal;
                 });
@@ -2167,9 +2162,9 @@
         var templates = {};
         for (var i = 0; i < reminders.length; i++) {
             var r = reminders[i];
-            templates[r.key + '_content'] = await window.RAD.config.get('tpl_' + eventPrefix + '_' + r.key + '_content') || '';
-            templates[r.key + '_title'] = await window.RAD.config.get('tpl_' + eventPrefix + '_' + r.key + '_title') || '';
-            templates[r.key + '_desc'] = await window.RAD.config.get('tpl_' + eventPrefix + '_' + r.key + '_desc') || '';
+            templates[r.key + '_content'] = await window.GM.config.get('tpl_' + eventPrefix + '_' + r.key + '_content') || '';
+            templates[r.key + '_title'] = await window.GM.config.get('tpl_' + eventPrefix + '_' + r.key + '_title') || '';
+            templates[r.key + '_desc'] = await window.GM.config.get('tpl_' + eventPrefix + '_' + r.key + '_desc') || '';
         }
 
         function getDefaultTpl(eventPrefix, key, field) {
@@ -2245,7 +2240,7 @@
             svs: 'SvS PvP'
         };
 
-        var esc = window.RAD.escapeHTML;
+        var esc = window.GM.escapeHTML;
 
         var html = 
             '<div class="gm-profile-card" style="max-width: 600px; gap: 1.25rem; align-items: stretch; text-align: left;">' +
@@ -2333,9 +2328,9 @@
                     var valTitle = document.getElementById('tpl-' + r.key + '-title').value.trim();
                     var valDesc = document.getElementById('tpl-' + r.key + '-desc').value.trim();
 
-                    promises.push(window.RAD.config.set('tpl_' + eventPrefix + '_' + r.key + '_content', valContent));
-                    promises.push(window.RAD.config.set('tpl_' + eventPrefix + '_' + r.key + '_title', valTitle));
-                    promises.push(window.RAD.config.set('tpl_' + eventPrefix + '_' + r.key + '_desc', valDesc));
+                    promises.push(window.GM.config.set('tpl_' + eventPrefix + '_' + r.key + '_content', valContent));
+                    promises.push(window.GM.config.set('tpl_' + eventPrefix + '_' + r.key + '_title', valTitle));
+                    promises.push(window.GM.config.set('tpl_' + eventPrefix + '_' + r.key + '_desc', valDesc));
                 }
                 await Promise.all(promises);
                 showToast(t('toast_config_updated'), 'success');
@@ -2423,7 +2418,7 @@
                 powerInputEl.value = data.overall_power || '';
             }
             
-            var initials = window.RAD.avatarInit(data.pseudo);
+            var initials = window.GM.avatarInit(data.pseudo);
             var avatarEl = document.getElementById('portal-user-avatar');
             avatarEl.textContent = initials;
             avatarEl.className = 'gm-avatar gm-avatar-md gm-avatar-accent';
@@ -2497,7 +2492,7 @@
             });
             if (error || !data || !data.ok) {
                 var errDesc = (data && data.error) ? data.error : (error ? error.message : 'unknown');
-                portalTransferSelect.innerHTML = '<option value="">Error loading guilds (' + window.RAD.escapeHTML(errDesc) + ')</option>';
+                portalTransferSelect.innerHTML = '<option value="">Error loading guilds (' + window.GM.escapeHTML(errDesc) + ')</option>';
                 return;
             }
             if (!data.guilds || data.guilds.length === 0) {
@@ -2508,7 +2503,7 @@
             var html = '<option value="">Select Target Guild...</option>';
             data.guilds.forEach(function (g) {
                 var displayName = g.name ? g.name : g.id;
-                html += '<option value="' + window.RAD.escapeHTML(g.id) + '">' + window.RAD.escapeHTML(displayName) + '</option>';
+                html += '<option value="' + window.GM.escapeHTML(g.id) + '">' + window.GM.escapeHTML(displayName) + '</option>';
             });
             portalTransferSelect.innerHTML = html;
         } catch (err) {
@@ -2683,7 +2678,7 @@
         container.innerHTML = html;
 
         container.querySelectorAll('.portal-score, .portal-score-prep, .portal-score-pvp').forEach(function (inp) {
-            window.RAD.attachNumberFormatter(inp);
+            window.GM.attachNumberFormatter(inp);
         });
 
         container.querySelectorAll('.portal-check-appointed').forEach(function (cb) {
@@ -2721,9 +2716,9 @@
                     appointed: appointed,
                     late: late,
                     excused: excused,
-                    score: scoreVal !== undefined ? window.RAD.parseNumber(scoreVal) : undefined,
-                    score_prep: scorePrepVal !== undefined ? window.RAD.parseNumber(scorePrepVal) : undefined,
-                    score_pvp: scorePvpVal !== undefined ? window.RAD.parseNumber(scorePvpVal) : undefined
+                    score: scoreVal !== undefined ? window.GM.parseNumber(scoreVal) : undefined,
+                    score_prep: scorePrepVal !== undefined ? window.GM.parseNumber(scorePrepVal) : undefined,
+                    score_pvp: scorePvpVal !== undefined ? window.GM.parseNumber(scorePvpVal) : undefined
                 };
 
                 btn.disabled = true;
@@ -2759,8 +2754,8 @@
         });
     }
 
-    window.RAD_APP = window.RAD_APP || {};
-    window.RAD_APP.showToast = showToast;
-    window.RAD_APP.reloadActiveView = reloadActiveView;
+    window.GM_APP = window.GM_APP || {};
+    window.GM_APP.showToast = showToast;
+    window.GM_APP.reloadActiveView = reloadActiveView;
 
 })();

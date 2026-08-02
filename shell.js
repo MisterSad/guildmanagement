@@ -10,10 +10,10 @@
  */
 (function () {
 
-    if (!window.RAD) return;
+    if (!window.GM) return;
 
-    var t = window.RAD.t;
-    var esc = window.RAD.escapeHTML;
+    var t = window.GM.t;
+    var esc = window.GM.escapeHTML;
 
     // ── Définition des items de nav ─────────────────────────────────────────
     // tabId = data-tab existant que app.js sait gérer.
@@ -40,7 +40,7 @@
         var role = getUserRole();
         var items = [];
         NAV_ITEMS.forEach(function (i) {
-            if (i.r5Only && role !== 'R5') return;
+            if (i.r5Only && role !== 'super_admin') return;
             items.push(Object.assign({}, i));
         });
         return items;
@@ -90,7 +90,7 @@
             slot.querySelectorAll('[data-gm-event-tab]').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     var tabId = btn.getAttribute('data-gm-event-tab');
-                    localStorage.setItem('rad_active_event_tab', tabId);
+                    localStorage.setItem('gm_active_event_tab', tabId);
 
                     var dashboard = document.getElementById('dashboard-view');
                     if (dashboard) {
@@ -101,14 +101,14 @@
 
                     renderEventsTabs();
 
-                    if (tabId === 'event-arms-race' && window.RAD_ARMSRACE && window.RAD_ARMSRACE.load) {
-                        window.RAD_ARMSRACE.load();
-                    } else if (tabId === 'event-shadowfront' && window.RAD_SHADOWFRONT && window.RAD_SHADOWFRONT.load) {
-                        window.RAD_SHADOWFRONT.load();
+                    if (tabId === 'event-arms-race' && window.GM_ARMSRACE && window.GM_ARMSRACE.load) {
+                        window.GM_ARMSRACE.load();
+                    } else if (tabId === 'event-shadowfront' && window.GM_SHADOWFRONT && window.GM_SHADOWFRONT.load) {
+                        window.GM_SHADOWFRONT.load();
                     }
 
-                    if (window.RAD_APP && window.RAD_APP.onTabActivated) {
-                        window.RAD_APP.onTabActivated(tabId);
+                    if (window.GM_APP && window.GM_APP.onTabActivated) {
+                        window.GM_APP.onTabActivated(tabId);
                     }
                 });
             });
@@ -197,7 +197,7 @@
                 dashboard.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
                 var panel = document.getElementById('gm-overview');
                 if (panel) panel.classList.add('active');
-                if (window.RAD_OVERVIEW) window.RAD_OVERVIEW.load();
+                if (window.GM_OVERVIEW) window.GM_OVERVIEW.load();
             });
         }
     }
@@ -212,14 +212,14 @@
     }
 
     function getUserName() {
-        return localStorage.getItem('rad_user') || 'Membre';
+        return localStorage.getItem('gm_user') || 'Membre';
     }
     function getUserRole() {
-        return localStorage.getItem('rad_role') === 'admin' ? 'R5' : 'R4';
+        return window.GM.roleFromStorage() || 'member';
     }
     function getUserRoleLong() {
         var r = getUserRole();
-        if (r === 'R5') return 'Super Admin';
+        if (r === 'super_admin') return 'Super Admin';
         if (window.currentGuildRestriction) {
             return 'Admin ' + window.currentGuildRestriction;
         }
@@ -227,7 +227,7 @@
     }
 
     function checkSubscriptionStatus() {
-        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin' || window.currentGuildRestriction === null);
+        var isSuperAdmin = (window.GM.isSuperAdmin() || window.currentGuildRestriction === null);
         var isExpired = false;
         var activeGuild = window.currentGuild || 'ALPHA';
         if (window.guildsData && window.guildsData[activeGuild]) {
@@ -242,8 +242,8 @@
             }
         }
 
-        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin' || window.currentGuildRestriction === null);
-        var canWrite = (window.RAD && window.RAD.canWriteGuild) ? window.RAD.canWriteGuild(activeGuild) : true;
+        var isSuperAdmin = (window.GM.isSuperAdmin() || window.currentGuildRestriction === null);
+        var canWrite = (window.GM && window.GM.canWriteGuild) ? window.GM.canWriteGuild(activeGuild) : true;
         // Never show read-only banner when navigating as Super Admin
         var readOnlyActive = !canWrite && !isSuperAdmin;
         var banner = document.getElementById('guild-warning-banner');
@@ -266,12 +266,12 @@
     }
 
     function renderGuildSelectorHtml() {
-        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
+        var isSuperAdmin = window.GM.isSuperAdmin();
         var guilds = window.guildsList || ['ALPHA', 'OMEGA', 'IMK'];
         if (window.currentGuildRestriction) {
             guilds = [window.currentGuildRestriction];
             window.currentGuild = window.currentGuildRestriction;
-            localStorage.setItem('rad_current_guild', window.currentGuildRestriction);
+            localStorage.setItem('gm_current_guild', window.currentGuildRestriction);
         }
 
         if (isSuperAdmin && !window.currentGuildRestriction) {
@@ -359,7 +359,7 @@
         var adminItems = visible.filter(function (i) { return i.section === 'admin'; });
         var superAdminItems = visible.filter(function (i) { return i.section === 'superadmin'; });
 
-        var userAvatarInitials = esc(window.RAD.avatarInit(getUserName()));
+        var userAvatarInitials = esc(window.GM.avatarInit(getUserName()));
 
         var navHtml = '';
         if (playItems.length > 0) {
@@ -407,12 +407,12 @@
         if (gSel) {
             gSel.addEventListener('change', function () {
                 var newGuild = gSel.value;
-                localStorage.setItem('rad_current_guild', newGuild);
+                localStorage.setItem('gm_current_guild', newGuild);
                 window.currentGuild = newGuild;
                 renderSidebar();
                 renderTopbar();
-                if (window.RAD_APP && window.RAD_APP.reloadActiveView) {
-                    window.RAD_APP.reloadActiveView();
+                if (window.GM_APP && window.GM_APP.reloadActiveView) {
+                    window.GM_APP.reloadActiveView();
                 } else {
                     window.location.reload();
                 }
@@ -451,13 +451,13 @@
               '</div>'
             : '<div class="gm-topbar-brand"></div>';
 
-        var isSuperAdmin = (localStorage.getItem('rad_role') === 'admin');
+        var isSuperAdmin = window.GM.isSuperAdmin();
 
         var guilds = window.guildsList || ['ALPHA', 'OMEGA', 'IMK'];
         if (window.currentGuildRestriction) {
             guilds = [window.currentGuildRestriction];
             window.currentGuild = window.currentGuildRestriction;
-            localStorage.setItem('rad_current_guild', window.currentGuildRestriction);
+            localStorage.setItem('gm_current_guild', window.currentGuildRestriction);
         }
         var guildOptions = guilds.map(function(g) {
             return '<option value="' + g + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + g + '</option>';
@@ -482,15 +482,15 @@
         if (gs) {
             gs.addEventListener('change', function () {
                 var newGuild = gs.value;
-                localStorage.setItem('rad_current_guild', newGuild);
+                localStorage.setItem('gm_current_guild', newGuild);
                 window.currentGuild = newGuild;
                 
                 // Re-render topbar & sidebar immediately to update subscription status and card!
                 renderSidebar();
                 renderTopbar();
                 
-                if (window.RAD_APP && window.RAD_APP.reloadActiveView) {
-                    window.RAD_APP.reloadActiveView();
+                if (window.GM_APP && window.GM_APP.reloadActiveView) {
+                    window.GM_APP.reloadActiveView();
                 } else {
                     window.location.reload();
                 }
@@ -582,11 +582,11 @@
     function gotoItem(itemId) {
         var item = NAV_ITEMS.find(function (i) { return i.id === itemId; });
         if (!item) return;
-        localStorage.setItem('rad_active_tab', itemId);
+        localStorage.setItem('gm_active_tab', itemId);
 
         var targetTabId = item.tabId;
         if (itemId === 'events') {
-            var savedEventTab = localStorage.getItem('rad_active_event_tab');
+            var savedEventTab = localStorage.getItem('gm_active_event_tab');
             if (savedEventTab && item.panels.indexOf(savedEventTab) !== -1) {
                 targetTabId = savedEventTab;
             }
@@ -601,8 +601,8 @@
             }
         }
 
-        if (window.RAD_APP && window.RAD_APP.onTabActivated) {
-            window.RAD_APP.onTabActivated(targetTabId);
+        if (window.GM_APP && window.GM_APP.onTabActivated) {
+            window.GM_APP.onTabActivated(targetTabId);
         }
     }
 
@@ -618,9 +618,9 @@
             var pid = activePanel.id;
             var item = NAV_ITEMS.find(function (i) { return i.panels.indexOf(pid) !== -1; });
             if (!item) return;
-            localStorage.setItem('rad_active_tab', item.id);
+            localStorage.setItem('gm_active_tab', item.id);
             if (item.panels.length > 1) {
-                localStorage.setItem('rad_active_event_tab', pid);
+                localStorage.setItem('gm_active_event_tab', pid);
             }
             if (item.id === state.active) return;
             state.active = item.id;
@@ -655,7 +655,7 @@
         }
     }, 30000);
 
-    window.RAD_SHELL = {
+    window.GM_SHELL = {
         gotoItem: gotoItem,
         renderShell: renderShell,
         renderSidebar: renderSidebar,

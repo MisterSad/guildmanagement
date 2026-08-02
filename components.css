@@ -2257,3 +2257,14 @@
     cursor: pointer;
 }
 
+/* ─── Shared utilities (moved from runtime injection in app.js) ─── */
+.text-success { color: var(--success); }
+.ph-spin { animation: gm-spin 1s linear infinite; }
+@keyframes gm-spin { to { transform: rotate(360deg); } }
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}
+
+

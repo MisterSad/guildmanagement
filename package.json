@@ -1,0 +1,15 @@
+{
+  "name": "guildmanagement",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "FGF Guild Management Tool — client-side app (vanilla JS + Supabase)",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1",
+    "vitest": "^4.1.10"
+  }
+}

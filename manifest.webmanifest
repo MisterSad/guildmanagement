@@ -2,7 +2,7 @@
   "name": "FGF guild management tool",
   "short_name": "FGF GM",
   "description": "Guild Management Tool for Foundation Galactic Frontier",
-  "lang": "fr",
+  "lang": "en",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

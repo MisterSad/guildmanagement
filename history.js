@@ -4,10 +4,10 @@
  */
 (function () {
 
-    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
-    var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
-    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
-    var fmt = window.RAD ? window.RAD.formatNumber : function (n) { return String(n); };
+    function getDb() { return (window.GM && window.GM.db) ? window.GM.db : null; }
+    var t   = window.GM ? window.GM.t  : function (k) { return k; };
+    var esc = window.GM ? window.GM.escapeHTML : function (s) { return s; };
+    var fmt = window.GM ? window.GM.formatNumber : function (n) { return String(n); };
 
     var EVENT_META = {
         'SvS':                { icon: 'ph-swords',      label: 'SvS',         filterKey: 'SvS',         hasScore: true,  border: 'var(--accent)' },
@@ -24,13 +24,13 @@
     var sessions = [];
     var activeFilter = 'All';
 
-    window.RAD_HISTORY = { load: loadHistory };
+    window.GM_HISTORY = { load: loadHistory };
 
     async function loadHistory() {
         var db = getDb();
         if (!db) return;
         try {
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             var res = await db.rpc('list_event_sessions', { p_guild: currentG });
             if (res.error) {
                 console.error('list_event_sessions', res.error);
@@ -116,7 +116,7 @@
 
     async function deleteCategoryHistory(filterKey, count) {
         var eventNames = getCategoryEventNames(filterKey);
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
         window.showConfirm(
             'Delete all ' + filterKey + ' history',
@@ -148,11 +148,11 @@
                         .in('event_name', eventNames);
                     if (delStatusRes.error) throw delStatusRes.error;
 
-                    window.RAD.showToast(t('toast_session_deleted'), 'success');
+                    window.GM.showToast(t('toast_session_deleted'), 'success');
                     await loadHistory();
                 } catch (err) {
                     console.error('deleteCategoryHistory error', err);
-                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                    window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
                 }
             }
         );
@@ -173,7 +173,7 @@
                 FILTERS.map(function (f) {
                     var isActive = (f === activeFilter);
                     var label = (f === 'All') ? t('history_filter_all') : f;
-                    var iconClass = (f === 'All') ? 'ph-circles-four' : ((window.RAD && window.RAD.getEventIcon) ? window.RAD.getEventIcon(f) : 'ph-calendar-dot');
+                    var iconClass = (f === 'All') ? 'ph-circles-four' : ((window.GM && window.GM.getEventIcon) ? window.GM.getEventIcon(f) : 'ph-calendar-dot');
                     return '<button class="gm-tab-pill history-filter' + (isActive ? ' gm-active' : '') + '" data-filter="' + esc(f) + '">' +
                         '<i class="ph ' + iconClass + '"></i> ' + esc(label) +
                     '</button>';
@@ -196,12 +196,12 @@
         var cardsHtml = '<div class="gm-timeline-container">';
         filtered.forEach(function (s, i) {
             var meta        = EVENT_META[s.event_name] || { icon: 'ph-calendar-dot', label: s.event_name, hasScore: false, border: 'var(--border-soft)' };
-            var iconClass   = (window.RAD && window.RAD.getEventIcon) ? window.RAD.getEventIcon(s.event_name) : (meta.icon || 'ph-calendar-dot');
+            var iconClass   = (window.GM && window.GM.getEventIcon) ? window.GM.getEventIcon(s.event_name) : (meta.icon || 'ph-calendar-dot');
             var isWeekly    = (s.event_name === 'SvS' || s.event_name === 'GvG');
             var weekNum     = getWeekNumber(s.week_start);
             var weekDisplay = 'Week ' + weekNum;
             var ratio       = s.participants > 0 ? Math.round((s.participated_count / s.participants) * 100) : 0;
-            var themeClass  = (window.RAD && window.RAD.getEventTheme) ? window.RAD.getEventTheme(s.event_name) : 'gm-task-card-dark';
+            var themeClass  = (window.GM && window.GM.getEventTheme) ? window.GM.getEventTheme(s.event_name) : 'gm-task-card-dark';
 
             var leftTopStr   = '';
             var leftSubStr   = '';
@@ -209,8 +209,8 @@
 
             if (isWeekly) {
                 leftTopStr   = weekDisplay;
-                leftSubStr   = window.RAD.formatWeek(s.week_start);
-                subtitleText = weekDisplay + ' (' + window.RAD.formatWeek(s.week_start) + ')';
+                leftSubStr   = window.GM.formatWeek(s.week_start);
+                subtitleText = weekDisplay + ' (' + window.GM.formatWeek(s.week_start) + ')';
             } else {
                 var dateObj = s.session_id ? new Date(s.session_id) : (s.week_start ? new Date(s.week_start + 'T12:00:00Z') : null);
                 if (dateObj && !isNaN(dateObj.getTime())) {
@@ -335,7 +335,7 @@
 
         var res = await query;
         if (res.error) {
-            window.RAD.showToast(t('toast_err_generic') + ' ' + res.error.message, 'error');
+            window.GM.showToast(t('toast_err_generic') + ' ' + res.error.message, 'error');
             return;
         }
 
@@ -347,7 +347,7 @@
     async function updateParticipantField(eventName, sessionId, weekStart, pseudo, field, value) {
         var db = getDb();
         if (!db) return;
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         var query = db.from('event_participants')
             .update({ [field]: value })
             .eq('guild', currentG)
@@ -361,9 +361,9 @@
         }
         var updateRes = await query;
         if (updateRes.error) {
-            window.RAD.showToast('Error: ' + updateRes.error.message, 'error');
+            window.GM.showToast('Error: ' + updateRes.error.message, 'error');
         } else {
-            window.RAD.showToast('Updated successfully', 'success');
+            window.GM.showToast('Updated successfully', 'success');
         }
     }
 
@@ -385,7 +385,7 @@
         });
 
         var isDtr = (eventName === 'Defend Trade Route');
-        var isAdmin = localStorage.getItem('rad_role') === 'admin' || localStorage.getItem('rad_role') === 'member';
+        var isAdmin = (window.GM.roleFromStorage() !== 'member');
 
         var headerCols = '<th>' + t('col_member') + '</th>';
         var hasParticipated = (eventName !== 'Glory');
@@ -407,7 +407,7 @@
         }
 
         var rowsHtml = sorted.map(function (r) {
-            var initial = window.RAD.avatarInit(r.pseudo);
+            var initial = window.GM.avatarInit(r.pseudo);
             
             var participatedCell = '';
             var lateCell = '';
@@ -484,7 +484,7 @@
                 '<div class="gm-row" style="justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">' +
                     '<div>' +
                         '<h3 style="margin:0;"><i class="ph-fill ' + meta.icon + '" style="color:' + meta.border + ';"></i> ' + esc(meta.label) + '</h3>' +
-                        '<div class="gm-dim" style="margin-top:.25rem; font-size:.85rem;">' + esc(when) + ' · ' + esc(window.RAD.formatWeek(weekStart)) + '</div>' +
+                        '<div class="gm-dim" style="margin-top:.25rem; font-size:.85rem;">' + esc(when) + ' · ' + esc(window.GM.formatWeek(weekStart)) + '</div>' +
                     '</div>' +
                     '<div class="gm-row" style="gap:.5rem; margin-left:auto;">' +
                         deleteBtnHtml +
@@ -521,11 +521,11 @@
                 });
             });
             overlay.querySelectorAll('.hist-edit-num').forEach(function (input) {
-                window.RAD.attachNumberFormatter(input);
+                window.GM.attachNumberFormatter(input);
                 input.addEventListener('change', async function () {
                     var pseudo = input.getAttribute('data-pseudo');
                     var field = input.getAttribute('data-field');
-                    var val = window.RAD.parseNumber(input.value);
+                    var val = window.GM.parseNumber(input.value);
                     await updateParticipantField(eventName, sessionId, weekStart, pseudo, field, val);
                 });
             });
@@ -577,12 +577,12 @@
                                 if (delStatusRes.error) throw delStatusRes.error;
                             }
 
-                            window.RAD.showToast(t('toast_session_deleted'), 'success');
+                            window.GM.showToast(t('toast_session_deleted'), 'success');
                             close();
                             await loadHistory();
                         } catch (err) {
                             console.error('Delete history session error', err);
-                            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                            window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
                         }
                     }
                 );

@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2026-08-02
+
+### Changed
+- **Semantic Account Roles**: Replaced the legacy numeric roles (`R5`/`R4`) with semantic roles (`super_admin`/`guild_admin`/`member`) across the database (accounts, 12 functions, 5 RLS policies, constraints), the `admin-accounts` edge function and the frontend. The client normalizes legacy stored values for backwards compatibility; existing sessions keep working until token refresh.
+- **Rename RAD → GM**: The shared module is now `gm-utils.js` and all globals/keys are prefixed `GM_` (`window.GM`, `localStorage gm_*`). A one-time shim migrates legacy `rad_*` localStorage keys on load. All asset cache busters bumped.
+- **CSS utilities**: `.text-success`, `.ph-spin` and the `shake` keyframe were moved from a runtime injection in `app.js` into `components.css`; a dead duplicate `shake` keyframe was removed from `shell.css`.
+- **Recidivist alert**: The native `alert()` in `sanctions.js` was replaced with the in-app confirm modal.
+- **Manifest**: `lang` set to `en`.
+
+### Removed
+- Stray `openapi.json` (98-byte API error response) and dead `admin-banned` inline style / unused variable.
+
+### Added
+- **Unit test suite** (Vitest + jsdom): 65 tests covering shared utilities, i18n, statistics engine, role resolution and subscription gating. Run with `npm test`.
+- **README.md** documenting the stack, roles, layout, deployment and testing.
+
 ## [Unreleased] - 2026-07-19
 
 ### Fixed

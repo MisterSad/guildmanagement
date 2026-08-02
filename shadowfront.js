@@ -10,9 +10,9 @@
  */
 (function () {
 
-    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
-    var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
-    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
+    function getDb() { return (window.GM && window.GM.db) ? window.GM.db : null; }
+    var t   = window.GM ? window.GM.t  : function (k) { return k; };
+    var esc = window.GM ? window.GM.escapeHTML : function (s) { return s; };
 
     var EVENT_NAME = 'Shadowfront'; // event_participants identity (scoring/history)
     var SQUAD_EVENT = { squad1: 'Shadowfront Squad 1', squad2: 'Shadowfront Squad 2' };
@@ -40,7 +40,7 @@
     var sfActiveSquad = 'squad1';   // 'squad1' | 'squad2'
 
     // ── Public API ─────────────────────────────────────────────────────────────
-    window.RAD_SHADOWFRONT = { load: loadShadowfront };
+    window.GM_SHADOWFRONT = { load: loadShadowfront };
 
     function squadLabel(squad) { return squad === 'squad1' ? t('sf_squad1') : t('sf_squad2'); }
     function getMemberPower(pseudo) {
@@ -84,8 +84,8 @@
             return;
         }
         try {
-            var currentWeek = window.RAD.getWeekStart();
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var currentWeek = window.GM.getWeekStart();
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
             var statusQ   = db.from('event_status').select('event_name, is_active, session_id, start_at').in('event_name', [SQUAD_EVENT.squad1, SQUAD_EVENT.squad2]);
             var membersQ  = db.from('guild_members').select('pseudo, uid, overall_power').order('pseudo', { ascending: true });
@@ -189,8 +189,8 @@
         var db = getDb();
         if (!db) return;
         var sq = sfState.squads[squad];
-        var sessionId = (sq && sq.active && sq.sessionId) ? sq.sessionId : window.RAD.newSessionId();
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var sessionId = (sq && sq.active && sq.sessionId) ? sq.sessionId : window.GM.newSessionId();
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
             var res = await db.from('event_status').upsert(
                 {
@@ -208,14 +208,14 @@
             // Sync all assigned members to event_participants
             await syncParticipantRows(sessionId);
 
-            window.RAD.showToast(squadLabel(squad) + ' — ' + t('sf_squad_started'), 'success');
+            window.GM.showToast(squadLabel(squad) + ' — ' + t('sf_squad_started'), 'success');
 
-            if (window.RAD.notifyDiscordEvent) {
-                window.RAD.notifyDiscordEvent(SQUAD_EVENT[squad], startAt || sessionId, 'start');
+            if (window.GM.notifyDiscordEvent) {
+                window.GM.notifyDiscordEvent(SQUAD_EVENT[squad], startAt || sessionId, 'start');
             }
         } catch (err) {
             console.error('startSquad', err);
-            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
         await loadShadowfront();
     }
@@ -223,7 +223,7 @@
     async function endSquads(squads) {
         var db = getDb();
         if (!db) return;
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         for (var i = 0; i < squads.length; i++) {
             var squad = squads[i];
             try {
@@ -240,7 +240,7 @@
                 );
             } catch (err) { console.error('endSquad', err); }
         }
-        window.RAD.showToast(t('sf_squad_ended'), 'success');
+        window.GM.showToast(t('sf_squad_ended'), 'success');
         await loadShadowfront();
     }
 
@@ -257,7 +257,7 @@
 
             var currentStartAt = res.data ? res.data.start_at : null;
 
-            window.RAD.pickEventStart({
+            window.GM.pickEventStart({
                 eventLabel: squadLabel(squad) + ' — ' + t('edit_title'),
                 defaultVal: currentStartAt
             }, async function (startAt) {
@@ -270,7 +270,7 @@
                     }).eq('event_name', SQUAD_EVENT[squad]);
                     if (updateRes.error) throw updateRes.error;
 
-                    var newWeek = window.RAD.getWeekStart(startAt);
+                    var newWeek = window.GM.getWeekStart(startAt);
                     await db.from('shadowfront_squads').update({
                         week_start: newWeek
                     }).eq('session_id', sq.sessionId);
@@ -280,21 +280,21 @@
                     }).eq('event_name', EVENT_NAME)
                       .eq('session_id', sq.sessionId);
 
-                    window.RAD.showToast(t('toast_member_updated'), 'success');
+                    window.GM.showToast(t('toast_member_updated'), 'success');
 
-                    if (window.RAD.notifyDiscordEvent) {
-                        window.RAD.notifyDiscordEvent(SQUAD_EVENT[squad], startAt, 'edit');
+                    if (window.GM.notifyDiscordEvent) {
+                        window.GM.notifyDiscordEvent(SQUAD_EVENT[squad], startAt, 'edit');
                     }
 
                     await loadShadowfront();
                 } catch (err) {
                     console.error('editSquadSchedule update', err);
-                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                    window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
                 }
             });
         } catch (err) {
             console.error('editSquadSchedule fetch', err);
-            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
     }
 
@@ -328,11 +328,11 @@
                         .eq('event_name', SQUAD_EVENT[squad]);
                     if (delStatusRes.error) throw delStatusRes.error;
 
-                    window.RAD.showToast(t('toast_session_deleted'), 'success');
+                    window.GM.showToast(t('toast_session_deleted'), 'success');
                     await loadShadowfront();
                 } catch (err) {
                     console.error('deleteSquadSession', err);
-                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                    window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
                 }
             }
         );
@@ -364,11 +364,11 @@
         var sq = sfState.squads[squad];
         if (!sq) return;
 
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
         // Si la session n'existe pas encore, la créer automatiquement pour permettre l'assignation rétroactive ou en avance
         if (!sq.sessionId) {
-            sq.sessionId = window.RAD.newSessionId();
+            sq.sessionId = window.GM.newSessionId();
             sq.startAt = new Date().toISOString();
             try {
                 await db.from('event_status').upsert({
@@ -387,9 +387,9 @@
 
         var existing = sfState.assignments.filter(function (a) { return a.squad === squad && a.role === role; });
         var max = role === 'participant' ? PARTICIPANTS_MAX : RESERVES_MAX;
-        if (existing.length >= max) { window.RAD.showToast(t('sf_squad_full'), 'error'); return; }
+        if (existing.length >= max) { window.GM.showToast(t('sf_squad_full'), 'error'); return; }
 
-        var week = window.RAD.getWeekStart(sq.startAt || new Date(sq.sessionId));
+        var week = window.GM.getWeekStart(sq.startAt || new Date(sq.sessionId));
 
         // Supprimer une précédente affectation pour ce membre dans cette semaine pour éviter le conflit 409
         try {
@@ -410,7 +410,7 @@
 
         if (upsertRes.error) {
             console.error('shadowfront_squads upsert error', upsertRes.error);
-            window.RAD.showToast(t('toast_err_generic') + ' ' + upsertRes.error.message, 'error');
+            window.GM.showToast(t('toast_err_generic') + ' ' + upsertRes.error.message, 'error');
             return;
         }
 
@@ -449,7 +449,7 @@
                 return a.squad === assignment.squad && a.is_commander;
             });
             if (currentCommanders.length >= 3) {
-                window.RAD.showToast('You can only have up to 3 commanders per squad!', 'error');
+                window.GM.showToast('You can only have up to 3 commanders per squad!', 'error');
                 return;
             }
         }
@@ -464,7 +464,7 @@
     async function syncParticipantRows(sessionId) {
         var db = getDb();
         if (!db || !sessionId) return;
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         var existingRes = await db.from('event_participants').select('pseudo')
             .eq('event_name', EVENT_NAME).eq('session_id', sessionId);
         var existing = new Set((existingRes.data || []).map(function (r) { return r.pseudo; }));
@@ -475,7 +475,7 @@
 
         var sq = Object.values(sfState.squads).find(function (s) { return s.sessionId === sessionId; });
         var startAt = sq ? sq.startAt : null;
-        var week = window.RAD.getWeekStart(startAt || new Date(sessionId));
+        var week = window.GM.getWeekStart(startAt || new Date(sessionId));
 
         var toInsert = assigned
             .filter(function (p) { return !existing.has(p); })
@@ -535,7 +535,7 @@
         var statusText = isActive ? t('event_active') : t('event_inactive');
         var dotColor = isActive ? 'var(--success)' : 'var(--fg-dim)';
         var subText = sq.startAt 
-            ? window.RAD.formatDateTimeUTC(sq.startAt)
+            ? window.GM.formatDateTimeUTC(sq.startAt)
             : (isActive ? t('event_active') : t('sf_squad_inactive_hint'));
 
         // 1. Selector for Squad 1 / Squad 2 at the top
@@ -688,9 +688,9 @@
 
                     var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
                     var powerVal = member ? parseInt(member.overall_power) || 0 : 0;
-                    var pTier = window.RAD.getPowerTier(powerVal, sfState.maxPower);
-                    var pMeta = window.RAD.getPowerTierMeta(pTier);
-                    var formattedPower = powerVal > 0 ? window.RAD.formatPower(powerVal) : '';
+                    var pTier = window.GM.getPowerTier(powerVal, sfState.maxPower);
+                    var pMeta = window.GM.getPowerTierMeta(pTier);
+                    var formattedPower = powerVal > 0 ? window.GM.formatPower(powerVal) : '';
 
                     var powerBadge = powerVal > 0
                         ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-left:0.25rem;"><span style="font-size:0.75rem;">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
@@ -739,9 +739,9 @@
                 var signup = sfState.signups.find(function (s) { return s.pseudo === m.pseudo; });
                 var avail = signup ? signup.availability : 'none';
                 
-                var tier = window.RAD.getPowerTier(m.overall_power, sfState.maxPower);
-                var meta = window.RAD.getPowerTierMeta(tier);
-                var formattedPower = window.RAD.formatPower(m.overall_power);
+                var tier = window.GM.getPowerTier(m.overall_power, sfState.maxPower);
+                var meta = window.GM.getPowerTierMeta(tier);
+                var formattedPower = window.GM.formatPower(m.overall_power);
                 
                 var powerBadge = m.overall_power > 0 
                     ? '<span class="gm-chip" style="font-size:0.7rem; padding:0.05rem 0.25rem; color:' + meta.color + '; border:1px solid ' + meta.color + '22; background: ' + meta.color + '05; display:inline-flex; align-items:center; gap:0.15rem;"><span style="font-size:0.75rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
@@ -883,9 +883,9 @@
 
         var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
         var powerVal = member ? parseInt(member.overall_power) || 0 : 0;
-        var pTier = window.RAD.getPowerTier(powerVal, sfState.maxPower);
-        var pMeta = window.RAD.getPowerTierMeta(pTier);
-        var formattedPower = powerVal > 0 ? window.RAD.formatPower(powerVal) : '';
+        var pTier = window.GM.getPowerTier(powerVal, sfState.maxPower);
+        var pMeta = window.GM.getPowerTierMeta(pTier);
+        var formattedPower = powerVal > 0 ? window.GM.formatPower(powerVal) : '';
         var powerBadge = powerVal > 0
             ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-right: 0.25rem;"><span style="font-size:0.75rem;">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
             : '';
@@ -930,8 +930,8 @@
             sortedList.forEach(function (pseudo) {
                 var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
                 var power = member ? parseInt(member.overall_power) || 0 : 0;
-                var tier = window.RAD.getPowerTier(power, sfState.maxPower);
-                var meta = window.RAD.getPowerTierMeta(tier);
+                var tier = window.GM.getPowerTier(power, sfState.maxPower);
+                var meta = window.GM.getPowerTierMeta(tier);
                 
                 var assignment = sfState.assignments.find(function (a) { return a.pseudo === pseudo; });
                 var assignedHtml = '';
@@ -950,7 +950,7 @@
                         '</div>';
                 }
 
-                var powerText = power > 0 ? window.RAD.formatPower(power) : '—';
+                var powerText = power > 0 ? window.GM.formatPower(power) : '—';
                 var rateBadge = getParticipationBadgeHtml(pseudo);
                 
                 html += '<div style="background:var(--bg-dim); border:1px solid var(--border-soft); padding:0.5rem; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:0.2rem; align-items:flex-start;">' +
@@ -1008,9 +1008,9 @@
         });
 
         sortedMembers.forEach(function (m) {
-            var tier = window.RAD.getPowerTier(m.overall_power, sfState.maxPower);
-            var meta = window.RAD.getPowerTierMeta(tier);
-            var formattedPower = window.RAD.formatPower(m.overall_power);
+            var tier = window.GM.getPowerTier(m.overall_power, sfState.maxPower);
+            var meta = window.GM.getPowerTierMeta(tier);
+            var formattedPower = window.GM.formatPower(m.overall_power);
             
             var tierBadge = m.overall_power > 0 
                 ? '<span class="gm-chip" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:' + meta.color + '; border:1px solid ' + meta.color + '22; background: ' + meta.color + '05; display:inline-flex; align-items:center; gap:0.2rem;"><span style="font-size:0.75rem;">' + meta.icon + '</span> ' + formattedPower + '</span>'
@@ -1158,8 +1158,8 @@
     async function saveAvailability(pseudo, availability) {
         var db = getDb();
         if (!db) return;
-        var week = window.RAD.getWeekStart();
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var week = window.GM.getWeekStart();
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
             if (availability === 'none') {
                 await db.from('shadowfront_signups').delete().eq('week_start', week).eq('pseudo', pseudo);
@@ -1171,11 +1171,11 @@
                     availability: availability
                 }, { onConflict: 'guild,week_start,pseudo' });
             }
-            window.RAD.showToast(pseudo + '\'s availability updated', 'success');
+            window.GM.showToast(pseudo + '\'s availability updated', 'success');
             await loadShadowfront();
         } catch (err) {
             console.error('saveAvailability failed', err);
-            window.RAD.showToast('Failed to save availability', 'error');
+            window.GM.showToast('Failed to save availability', 'error');
         }
     }
 
@@ -1201,7 +1201,7 @@
         if (startBtn) {
             startBtn.addEventListener('click', function () {
                 var squad = startBtn.getAttribute('data-squad');
-                window.RAD.pickEventStart({ eventLabel: 'Shadowfront — ' + squadLabel(squad) }, function (startAt) {
+                window.GM.pickEventStart({ eventLabel: 'Shadowfront — ' + squadLabel(squad) }, function (startAt) {
                     if (!startAt) return; // annulé
                     startSquad(squad, startAt);
                 });
@@ -1289,7 +1289,7 @@
                     if (pp) pp.is_pending = false;
                     renderShadowfront();
                 } catch (err) {
-                    window.RAD_APP.showToast('Failed to approve submission.', 'error');
+                    window.GM_APP.showToast('Failed to approve submission.', 'error');
                     btn.disabled = false;
                     btn.textContent = 'Approve';
                 }
@@ -1312,7 +1312,7 @@
                     });
                     renderShadowfront();
                 } catch (err) {
-                    window.RAD_APP.showToast('Failed to approve all submissions.', 'error');
+                    window.GM_APP.showToast('Failed to approve all submissions.', 'error');
                     approveAllBtnEl.disabled = false;
                     approveAllBtnEl.textContent = 'Approve All';
                 }

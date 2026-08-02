@@ -14,12 +14,12 @@
  */
 (function () {
 
-    if (!window.RAD) return;
+    if (!window.GM) return;
 
-    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
-    var t   = window.RAD.t;
-    var esc = window.RAD.escapeHTML;
-    var fmt = window.RAD.formatNumber;
+    function getDb() { return (window.GM && window.GM.db) ? window.GM.db : null; }
+    var t   = window.GM.t;
+    var esc = window.GM.escapeHTML;
+    var fmt = window.GM.formatNumber;
 
     var countdownTimer = null;
     var timezoneClockTimer = null;
@@ -36,7 +36,7 @@
         ];
     }
 
-    window.RAD_OVERVIEW = { load: loadOverview };
+    window.GM_OVERVIEW = { load: loadOverview };
 
     async function loadOverview() {
         var panel = document.getElementById('gm-overview');
@@ -44,12 +44,12 @@
 
         // Load custom clocks settings from database
         try {
-            var clocksStr = await window.RAD.config.get('timezone_clocks');
+            var clocksStr = await window.GM.config.get('timezone_clocks');
             if (clocksStr) {
                 CLOCK_MEMBERS = JSON.parse(clocksStr);
             } else {
                 CLOCK_MEMBERS = getDefaultClocks();
-                await window.RAD.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
+                await window.GM.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
             }
         } catch (e) {
             console.error('Failed to load timezone clocks', e);
@@ -63,8 +63,8 @@
         if (!db) return;
 
         try {
-            var week = window.RAD.getWeekStart();
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var week = window.GM.getWeekStart();
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
             var memCountQ  = db.from('guild_members').select('id', { count: 'exact', head: true });
             var statusQ    = db.from('event_status').select('event_name, is_active, updated_at, session_id, start_at');
@@ -143,8 +143,8 @@
             renderPage(panel, stats, activity, upcoming);
         } catch (err) {
             console.error('overview load', err);
-            if (window.RAD && window.RAD.showToast) {
-                window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            if (window.GM && window.GM.showToast) {
+                window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
             }
         }
     }
@@ -205,7 +205,7 @@
 
         var html = '';
         CLOCK_MEMBERS.forEach(function (m) {
-            var initials = window.RAD.avatarInit(m.name);
+            var initials = window.GM.avatarInit(m.name);
             var offsetText = 'UTC' + (m.offset >= 0 ? '+' + m.offset : m.offset);
             html +=
                 '<div class="gm-clock-card" data-offset="' + m.offset + '">' +
@@ -303,14 +303,14 @@
         content.innerHTML = html;
 
         var notifSlot = content.querySelector('[data-gm-notif]');
-        if (notifSlot && window.RAD_PUSH) window.RAD_PUSH.mount(notifSlot);
+        if (notifSlot && window.GM_PUSH) window.GM_PUSH.mount(notifSlot);
 
         startCountdownTicker();
     }
 
     function getEventIcon(name) {
-        if (window.RAD && window.RAD.getEventIcon) {
-            return window.RAD.getEventIcon(name);
+        if (window.GM && window.GM.getEventIcon) {
+            return window.GM.getEventIcon(name);
         }
         if (!name) return 'ph-calendar-dot';
         var lower = name.toLowerCase();
@@ -340,7 +340,7 @@
                 : pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes());
 
             var iconClass = getEventIcon(u.name);
-            var themeClass = (window.RAD && window.RAD.getEventTheme) ? window.RAD.getEventTheme(u.name) : 'gm-task-card-dark';
+            var themeClass = (window.GM && window.GM.getEventTheme) ? window.GM.getEventTheme(u.name) : 'gm-task-card-dark';
 
             html +=
                 '<div class="gm-timeline-item">' +
@@ -368,7 +368,7 @@
                                 '</div>' +
                                 '<div class="gm-task-info">' +
                                     '<div class="gm-task-title">' + esc(u.name) + '</div>' +
-                                    '<div class="gm-task-sub">' + esc(window.RAD.formatDateTimeUTC(u.when)) + '</div>' +
+                                    '<div class="gm-task-sub">' + esc(window.GM.formatDateTimeUTC(u.when)) + '</div>' +
                                 '</div>' +
                                 '<button class="gm-task-action-btn" title="Event Actions" aria-label="Event actions">' +
                                     '<i class="ph ph-dots-three-vertical"></i>' +
@@ -451,7 +451,7 @@
                 ? ''
                 : pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes());
 
-            var themeClass = (window.RAD && window.RAD.getEventTheme) ? window.RAD.getEventTheme(a.text) : 'gm-task-card-dark';
+            var themeClass = (window.GM && window.GM.getEventTheme) ? window.GM.getEventTheme(a.text) : 'gm-task-card-dark';
             if (themeClass === 'gm-task-card-dark' && a.color) {
                 themeClass = themeMap[a.color] || 'gm-task-card-dark';
             }
@@ -487,7 +487,7 @@
                                 '</div>' +
                                 '<div class="gm-task-info">' +
                                     '<div class="gm-task-title">' + esc(a.text) + '</div>' +
-                                    '<div class="gm-task-sub">' + esc(window.RAD.formatDateTimeUTC(a.when)) + '</div>' +
+                                    '<div class="gm-task-sub">' + esc(window.GM.formatDateTimeUTC(a.when)) + '</div>' +
                                 '</div>' +
                                 '<button class="gm-task-action-btn" title="Activity Actions" aria-label="Activity actions">' +
                                     '<i class="ph ph-dots-three-vertical"></i>' +
@@ -581,7 +581,7 @@
 
             var html = '';
             CLOCK_MEMBERS.forEach(function (m, idx) {
-                var initials = window.RAD.avatarInit(m.name);
+                var initials = window.GM.avatarInit(m.name);
                 var offsetText = 'UTC' + (m.offset >= 0 ? '+' + m.offset : m.offset);
                 html +=
                     '<div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-1); border: 1px solid var(--border-soft); padding: 0.5rem 0.75rem; border-radius: 8px; gap: 0.5rem;">' +
@@ -601,8 +601,8 @@
                 btn.addEventListener('click', async function () {
                     var idx = parseInt(btn.getAttribute('data-index'), 10);
                     CLOCK_MEMBERS.splice(idx, 1);
-                    await window.RAD.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
-                    window.RAD.showToast(t('toast_clock_deleted'), 'info');
+                    await window.GM.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
+                    window.GM.showToast(t('toast_clock_deleted'), 'info');
                     renderModalClocks();
                     renderTimezoneClocks(panel);
                 });
@@ -613,7 +613,7 @@
             var nameInput = document.getElementById('gm-new-clock-name');
             var name = nameInput.value.trim();
             if (!name) {
-                window.RAD.showToast(t('toast_clock_name_empty'), 'error');
+                window.GM.showToast(t('toast_clock_name_empty'), 'error');
                 return;
             }
 
@@ -624,8 +624,8 @@
             var color = colors[CLOCK_MEMBERS.length % colors.length];
 
             CLOCK_MEMBERS.push({ name: name, offset: offset, color: color });
-            await window.RAD.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
-            window.RAD.showToast(t('toast_clock_added'), 'success');
+            await window.GM.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
+            window.GM.showToast(t('toast_clock_added'), 'success');
             nameInput.value = '';
 
             renderModalClocks();

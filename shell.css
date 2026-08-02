@@ -939,13 +939,6 @@ html, body {
     padding-top: 1.25rem;
 }
 
-/* Keyframe shake for login error */
-@keyframes shake {
-    0%, 100% { transform: perspective(1000px) translateX(0); }
-    20%, 60% { transform: perspective(1000px) translateX(-8px); }
-    40%, 80% { transform: perspective(1000px) translateX(8px); }
-}
-
 /* ─── Responsive Adjustments ─── */
 @media (max-width: 960px) {
     .gm-login-grid {

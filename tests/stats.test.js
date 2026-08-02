@@ -1,0 +1,195 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import '../gm-utils.js';
+import '../stats.js';
+
+// ── Mock Supabase query builder ───────────────────────────────────────────────
+class MockBuilder {
+    constructor(rows) {
+        this.rows = rows || [];
+        this.where = [];
+        this.notWhere = [];
+        this.inWhere = null;
+    }
+    select() { return this; }
+    eq(field, value) { this.where.push([field, value]); return this; }
+    neq(field, value) { this.notWhere.push([field, value]); return this; }
+    in(field, values) { this.inWhere = [field, values]; return this; }
+    limit() { return this; }
+    _apply() {
+        let rows = this.rows;
+        for (const [field, value] of this.where) {
+            rows = rows.filter((r) => r[field] === value);
+        }
+        for (const [field, value] of this.notWhere) {
+            rows = rows.filter((r) => r[field] !== value);
+        }
+        if (this.inWhere) {
+            const [field, values] = this.inWhere;
+            rows = rows.filter((r) => values.includes(r[field]));
+        }
+        return rows;
+    }
+    maybeSingle() {
+        const rows = this._apply();
+        return Promise.resolve({ data: rows[0] || null, error: null });
+    }
+    then(resolve, reject) {
+        return Promise.resolve({ data: this._apply(), error: null }).then(resolve, reject);
+    }
+}
+
+let db;
+let calls;
+
+function makeDb(handlers) {
+    calls = { from: [], rpc: [] };
+    return {
+        rpc: (name, params) => {
+            calls.rpc.push([name, params]);
+            const h = handlers.rpc[name];
+            return h ? Promise.resolve(h(params)) : Promise.resolve({ data: [], error: null });
+        },
+        from: (table) => {
+            calls.from.push(table);
+            const h = handlers.from[table];
+            return h ? h() : new MockBuilder([]);
+        },
+        auth: { getSession: async () => ({ data: { session: null }, error: null }) }
+    };
+}
+
+const W1 = '2026-07-27';
+const W2 = '2026-08-03';
+
+const G = 'ALPHA';
+
+// ── Fixtures ──────────────────────────────────────────────────────────────────
+const MEMBERS = [
+    { pseudo: 'AlphaPrime', uid: '111', guild: G },
+    { pseudo: 'BetaKnight', uid: '222', guild: G }
+];
+
+const PARTS = [
+    { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 's1', week_start: W1, participated: 1, score: 100, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
+    { pseudo: 'BetaKnight', event_name: 'SvS', session_id: 's1', week_start: W1, participated: 0, score: 0, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
+    { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 's2', week_start: W2, participated: 1, score: 200, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
+    { pseudo: 'BetaKnight', event_name: 'SvS', session_id: 's2', week_start: W2, participated: 1, score: 50, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
+    // pending rows must NOT count as event instances nor attendance
+    { pseudo: 'GammaGhost', event_name: 'SvS', session_id: 's2', week_start: W2, participated: 1, score: 999, score_prep: 0, score_pvp: 0, is_pending: true, guild: G }
+];
+
+const GLORY = [
+    { pseudo: 'AlphaPrime', event_name: 'Glory', week_start: W1, score: 1000, guild: G },
+    { pseudo: 'BetaKnight', event_name: 'Glory', week_start: W1, score: 0, guild: G },
+    { pseudo: 'AlphaPrime', event_name: 'Glory', week_start: W2, score: 1500, guild: G },
+    { pseudo: 'BetaKnight', event_name: 'Glory', week_start: W2, score: 0, guild: G }
+];
+
+const SQUADS = [
+    { pseudo: 'AlphaPrime', role: 'Infantry', week_start: W1, guild: G },
+    { pseudo: 'BetaKnight', role: 'Infantry', week_start: W2, guild: G }
+];
+
+function buildDb() {
+    return makeDb({
+        rpc: {
+            list_event_weeks: () => ({ data: [{ week_start: W2 }, { week_start: W1 }], error: null })
+        },
+        from: {
+            guild_members: () => new MockBuilder(MEMBERS),
+            event_participants: () => new MockBuilder(PARTS.concat(GLORY)),
+            shadowfront_squads: () => new MockBuilder(SQUADS)
+        }
+    });
+}
+
+function mountContainers() {
+    document.body.innerHTML =
+        '<div class="stats-controls"></div>' +
+        '<div class="stats-leaderboard-area"></div>';
+}
+
+function parseLeaderboard() {
+    const area = document.querySelector('.stats-leaderboard-area');
+    const rows = [...area.querySelectorAll('tbody tr')].map((tr) => {
+        const tds = tr.querySelectorAll('td');
+        return {
+            pseudo: tds[1].querySelector('.gm-member-pseudo').textContent.trim(),
+            events: tds[2].textContent.trim(),
+            glory: tds[3].textContent.trim(),
+            score: tds[4].textContent.trim()
+        };
+    });
+    return rows;
+}
+
+beforeEach(() => {
+    mountContainers();
+    db = buildDb();
+    window.GM.db = db;
+    window.GM.ensureAuthSession = async () => null;
+});
+
+afterEach(() => {
+    delete window.GM.db;
+    window.GM.ensureAuthSession = undefined;
+    document.body.innerHTML = '';
+});
+
+describe('GM_STATS global mode', () => {
+    it('computes weighted scores with glory deltas and consistency bonus', async () => {
+        await window.GM_STATS.load();
+
+        const rows = parseLeaderboard();
+        // GammaGhost appears in the member union (pending rows still join the
+        // member list) but scores 0 and does not inflate event totals.
+        expect(rows).toHaveLength(3);
+        expect(rows[0].pseudo).toBe('AlphaPrime');
+        expect(rows[0].score).toBe('170 pts');
+        expect(rows[1].pseudo).toBe('BetaKnight');
+        expect(rows[1].score).toBe('50 pts');
+
+        // AlphaPrime: 2/2 events, glory delta +500
+        expect(rows[0].events).toBe('2/2');
+        expect(rows[0].glory).toBe('+500');
+
+        // BetaKnight: 1/2 events, no glory
+        expect(rows[1].events).toBe('1/2');
+        expect(rows[1].glory).toBe('—');
+
+        // Pending-only member gets 0
+        const gamma = rows.find((r) => r.pseudo === 'GammaGhost');
+        expect(gamma.score).toBe('0 pts');
+    });
+
+    it('renders week/period controls', async () => {
+        await window.GM_STATS.load();
+        const controls = document.querySelector('.stats-controls');
+        expect(controls.querySelectorAll('.week-select option').length).toBe(2);
+        expect(controls.querySelectorAll('.period-select option').length).toBe(4);
+    });
+
+    it('does not throw when db is missing', async () => {
+        delete window.GM.db;
+        await expect(window.GM_STATS.load()).resolves.toBeUndefined();
+    });
+});
+
+describe('GM_STATS participation mode', () => {
+    it('computes attendance rates as scores', async () => {
+        await window.GM_STATS.load();
+        // switch mode by clicking the participation tab
+        const btn = document.querySelector('button[data-gm-mode="participation"]');
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await window.GM_STATS.load();
+
+        const rows = parseLeaderboard();
+        const alpha = rows.find((r) => r.pseudo === 'AlphaPrime');
+        const beta = rows.find((r) => r.pseudo === 'BetaKnight');
+        expect(alpha.score).toBe('100 pts');
+        expect(alpha.events).toBe('2/2');
+        expect(beta.score).toBe('50 pts');
+        expect(beta.events).toBe('1/2');
+    });
+});

@@ -3,9 +3,9 @@
  */
 (function () {
 
-    function getDb() { return (window.RAD && window.RAD.db) ? window.RAD.db : null; }
-    var t   = window.RAD ? window.RAD.t  : function (k) { return k; };
-    var esc = window.RAD ? window.RAD.escapeHTML : function (s) { return s; };
+    function getDb() { return (window.GM && window.GM.db) ? window.GM.db : null; }
+    var t   = window.GM ? window.GM.t  : function (k) { return k; };
+    var esc = window.GM ? window.GM.escapeHTML : function (s) { return s; };
 
     var STAGE_EVENTS = { stageA: 'ARMS RACE STAGE A', stageB: 'ARMS RACE STAGE B' };
 
@@ -19,7 +19,7 @@
 
     var arActiveStage = 'stageA'; // 'stageA' | 'stageB'
 
-    window.RAD_ARMSRACE = { 
+    window.GM_ARMSRACE = { 
         load: loadArmsRace,
         addMemberToActiveEvents: addMemberToActiveEvents,
         removeMemberFromActiveEvents: removeMemberFromActiveEvents
@@ -34,7 +34,7 @@
             return;
         }
         try {
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             var statusQ = db.from('event_status').select('event_name, is_active, session_id, start_at')
                 .in('event_name', [STAGE_EVENTS.stageA, STAGE_EVENTS.stageB]);
             var membersQ = db.from('guild_members').select('pseudo, uid');
@@ -76,7 +76,7 @@
 
                     // Self-heal: active stage with 0 participants ⇒ trigger populate_event_participants
                     if (arState.stages[k].active && sid && arState.stages[k].participants.length === 0) {
-                        var week = window.RAD.getWeekStart(arState.stages[k].startAt);
+                        var week = window.GM.getWeekStart(arState.stages[k].startAt);
                         await db.rpc('populate_event_participants', {
                             p_event_name: evName,
                             p_session_id: sid,
@@ -105,10 +105,10 @@
         var db = getDb();
         if (!db) return;
         var stg = arState.stages[stageKey];
-        var sessionId = (stg && stg.active && stg.sessionId) ? stg.sessionId : window.RAD.newSessionId();
+        var sessionId = (stg && stg.active && stg.sessionId) ? stg.sessionId : window.GM.newSessionId();
         var evName = STAGE_EVENTS[stageKey];
         var stageLetter = stageKey === 'stageA' ? 'A' : 'B';
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         
         try {
             var res = await db.from('event_status').upsert(
@@ -126,7 +126,7 @@
             if (res.error) throw res.error;
 
             // populate participants
-            var week = window.RAD.getWeekStart(startAt);
+            var week = window.GM.getWeekStart(startAt);
             var rpcRes = await db.rpc('populate_event_participants', {
                 p_event_name: evName,
                 p_session_id: sessionId,
@@ -135,14 +135,14 @@
 
             if (rpcRes.error) throw rpcRes.error;
 
-            window.RAD.showToast('Arms Race ' + stageLabel(stageKey) + ' — ' + (t('event_started') || 'Started'), 'success');
+            window.GM.showToast('Arms Race ' + stageLabel(stageKey) + ' — ' + (t('event_started') || 'Started'), 'success');
 
-            if (window.RAD.notifyDiscordEvent) {
-                window.RAD.notifyDiscordEvent(evName, startAt || sessionId, 'start');
+            if (window.GM.notifyDiscordEvent) {
+                window.GM.notifyDiscordEvent(evName, startAt || sessionId, 'start');
             }
         } catch (err) {
             console.error('startStage', err);
-            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
         await loadArmsRace();
     }
@@ -152,7 +152,7 @@
         if (!db) return;
         var stg = arState.stages[stageKey];
         if (!stg.active) return;
-        var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         
         try {
             await db.from('event_status').upsert(
@@ -169,7 +169,7 @@
             );
         } catch (err) { console.error('endStage', err); }
         
-        window.RAD.showToast(t('event_session_ended'), 'success');
+        window.GM.showToast(t('event_session_ended'), 'success');
         await loadArmsRace();
     }
 
@@ -186,7 +186,7 @@
 
             var currentStartAt = res.data ? res.data.start_at : null;
 
-            window.RAD.pickEventStart({
+            window.GM.pickEventStart({
                 eventLabel: 'Arms Race ' + stageLabel(stageKey) + ' — ' + t('edit_title'),
                 defaultVal: currentStartAt
             }, async function (startAt) {
@@ -199,28 +199,28 @@
                     }).eq('event_name', STAGE_EVENTS[stageKey]);
                     if (updateRes.error) throw updateRes.error;
 
-                    var newWeek = window.RAD.getWeekStart(startAt);
+                    var newWeek = window.GM.getWeekStart(startAt);
                     var updatePartRes = await db.from('event_participants').update({
                         week_start: newWeek
                     }).eq('event_name', STAGE_EVENTS[stageKey])
                       .eq('session_id', stg.sessionId);
                     if (updatePartRes.error) throw updatePartRes.error;
 
-                    window.RAD.showToast(t('toast_member_updated'), 'success');
+                    window.GM.showToast(t('toast_member_updated'), 'success');
 
-                    if (window.RAD.notifyDiscordEvent) {
-                        window.RAD.notifyDiscordEvent(STAGE_EVENTS[stageKey], startAt, 'edit');
+                    if (window.GM.notifyDiscordEvent) {
+                        window.GM.notifyDiscordEvent(STAGE_EVENTS[stageKey], startAt, 'edit');
                     }
 
                     await loadArmsRace();
                 } catch (err) {
                     console.error('editStageSchedule update', err);
-                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                    window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
                 }
             });
         } catch (err) {
             console.error('editStageSchedule fetch', err);
-            window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
     }
 
@@ -246,11 +246,11 @@
                         .eq('event_name', STAGE_EVENTS[stageKey]);
                     if (delStatusRes.error) throw delStatusRes.error;
 
-                    window.RAD.showToast(t('toast_session_deleted'), 'success');
+                    window.GM.showToast(t('toast_session_deleted'), 'success');
                     await loadArmsRace();
                 } catch (err) {
                     console.error('deleteStageSession', err);
-                    window.RAD.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                    window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
                 }
             }
         );
@@ -273,14 +273,14 @@
             var active = ['stageA', 'stageB'].filter(function(k) { return arState.stages[k].active && arState.stages[k].sessionId; });
             if (active.length === 0) return 0;
             
-            var currentG = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             var rows = active.map(function(k) {
                 var stg = arState.stages[k];
                 return {
                     guild: currentG,
                     event_name: STAGE_EVENTS[k],
                     session_id: stg.sessionId,
-                    week_start: window.RAD.getWeekStart(stg.startAt || new Date(stg.sessionId)),
+                    week_start: window.GM.getWeekStart(stg.startAt || new Date(stg.sessionId)),
                     pseudo: pseudo,
                     participated: 0,
                     score: null
@@ -295,7 +295,7 @@
                 stg.participants.push({
                     event_name: STAGE_EVENTS[k],
                     session_id: stg.sessionId,
-                    week_start: window.RAD.getWeekStart(stg.startAt || new Date(stg.sessionId)),
+                    week_start: window.GM.getWeekStart(stg.startAt || new Date(stg.sessionId)),
                     pseudo: pseudo,
                     participated: 0,
                     score: null
@@ -332,7 +332,7 @@
         var statusText = isActive ? t('event_active') : t('event_inactive');
         var dotColor = isActive ? 'var(--success)' : 'var(--fg-dim)';
         var subText = stg.startAt 
-            ? window.RAD.formatDateTimeUTC(stg.startAt)
+            ? window.GM.formatDateTimeUTC(stg.startAt)
             : (isActive ? t('event_active') : t('event_not_active_hint'));
 
         var html =
@@ -408,7 +408,7 @@
 
         participants.forEach(function (p) {
             var isChecked = p.participated > 0;
-            var initial = window.RAD.avatarInit(p.pseudo);
+            var initial = window.GM.avatarInit(p.pseudo);
             html +=
                 '<tr class="participant-row' + (isChecked ? ' participated' : '') + '" data-pseudo="' + esc(p.pseudo) + '">' +
                     '<td data-label="' + t('col_member') + '">' +
@@ -443,7 +443,7 @@
         if (startBtn) {
             startBtn.addEventListener('click', function () {
                 var stageKey = startBtn.getAttribute('data-stage');
-                window.RAD.pickEventStart({ eventLabel: 'Arms Race ' + stageLabel(stageKey) }, function (startAt) {
+                window.GM.pickEventStart({ eventLabel: 'Arms Race ' + stageLabel(stageKey) }, function (startAt) {
                     if (!startAt) return; // annulé
                     startStage(stageKey, startAt);
                 });

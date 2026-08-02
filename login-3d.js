@@ -988,7 +988,7 @@
     }
 
     // Expose global controller
-    window.RAD_LOGIN_3D = {
+    window.GM_LOGIN_3D = {
         init: init3D,
         start: startLoop,
         stop: stopLoop

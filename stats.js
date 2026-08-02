@@ -13,11 +13,11 @@
 
     // ── Helper DB & Traduction ───────────────────────────────────────────────────
     function getDb() {
-        return (window.RAD && window.RAD.db) ? window.RAD.db : null;
+        return (window.GM && window.GM.db) ? window.GM.db : null;
     }
 
     function t(key) {
-        return (window.RAD && window.RAD.t) ? window.RAD.t(key) : key;
+        return (window.GM && window.GM.t) ? window.GM.t(key) : key;
     }
 
     function esc(str) {
@@ -32,7 +32,7 @@
 
     function fmt(num) {
         if (num == null || isNaN(num)) return '0';
-        return (window.RAD && window.RAD.formatNumber) ? window.RAD.formatNumber(num) : String(num);
+        return (window.GM && window.GM.formatNumber) ? window.GM.formatNumber(num) : String(num);
     }
 
     function round1(n) {
@@ -74,7 +74,7 @@
     };
 
     // ── Public API ──────────────────────────────────────────────────────────────
-    window.RAD_STATS = {
+    window.GM_STATS = {
         load: function () {
             return initAndLoad();
         }
@@ -87,18 +87,18 @@
 
         var db = getDb();
         if (!db) {
-            console.warn('[RAD_STATS] Base de données indisponible');
+            console.warn('[GM_STATS] Base de données indisponible');
             state.isLoading = false;
             return;
         }
 
-        if (window.RAD && window.RAD.ensureAuthSession) {
-            await window.RAD.ensureAuthSession();
+        if (window.GM && window.GM.ensureAuthSession) {
+            await window.GM.ensureAuthSession();
         }
 
-        state.activeGuild = window.RAD ? window.RAD.getActiveGuild() : 'ALPHA';
-        if (!state.selectedWeek && window.RAD && window.RAD.getWeekStart) {
-            state.selectedWeek = window.RAD.getWeekStart();
+        state.activeGuild = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        if (!state.selectedWeek && window.GM && window.GM.getWeekStart) {
+            state.selectedWeek = window.GM.getWeekStart();
         }
 
         await fetchAvailableWeeks();
@@ -124,13 +124,13 @@
                     state.selectedWeek = weeks[0];
                 }
             } else {
-                var defW = window.RAD ? window.RAD.getWeekStart() : '';
+                var defW = window.GM ? window.GM.getWeekStart() : '';
                 state.allWeeks = defW ? [defW] : [];
                 state.selectedWeek = defW;
             }
         } catch (err) {
-            console.warn('[RAD_STATS] Erreur fetchAvailableWeeks', err);
-            var fallbackW = window.RAD ? window.RAD.getWeekStart() : '';
+            console.warn('[GM_STATS] Erreur fetchAvailableWeeks', err);
+            var fallbackW = window.GM ? window.GM.getWeekStart() : '';
             state.allWeeks = fallbackW ? [fallbackW] : [];
             state.selectedWeek = fallbackW;
         }
@@ -166,7 +166,7 @@
         }
 
         if (!weeksToLoad || !weeksToLoad.length) {
-            weeksToLoad = [state.selectedWeek || (window.RAD ? window.RAD.getWeekStart() : '')];
+            weeksToLoad = [state.selectedWeek || (window.GM ? window.GM.getWeekStart() : '')];
         }
 
         await loadGlobalMode(weeksToLoad);
@@ -219,7 +219,7 @@
 
             renderLeaderboard();
         } catch (err) {
-            console.error('[RAD_STATS] Erreur loadGlobalMode', err);
+            console.error('[GM_STATS] Erreur loadGlobalMode', err);
             state.leaderboardData = [];
             renderLeaderboard();
         }
@@ -378,7 +378,7 @@
 
             renderLeaderboard();
         } catch (err) {
-            console.error('[RAD_STATS] Erreur loadSingleEventMode', err);
+            console.error('[GM_STATS] Erreur loadSingleEventMode', err);
             state.leaderboardData = [];
             renderLeaderboard();
         }
@@ -443,7 +443,7 @@
 
             renderLeaderboard();
         } catch (err) {
-            console.error('[RAD_STATS] Erreur loadParticipationMode', err);
+            console.error('[GM_STATS] Erreur loadParticipationMode', err);
             state.leaderboardData = [];
             renderLeaderboard();
         }
@@ -461,7 +461,7 @@
             }
 
             var weekOpts = state.allWeeks.map(function (w) {
-                return '<option value="' + w + '"' + (w === state.selectedWeek ? ' selected' : '') + '>' + window.RAD.formatWeek(w) + '</option>';
+                return '<option value="' + w + '"' + (w === state.selectedWeek ? ' selected' : '') + '>' + window.GM.formatWeek(w) + '</option>';
             }).join('');
 
             var periodOpts = [
@@ -563,7 +563,7 @@
 
             state.leaderboardData.forEach(function (m, idx) {
                 var rank = idx + 1;
-                var initial = (window.RAD && window.RAD.avatarInit) ? window.RAD.avatarInit(m.pseudo) : (m.pseudo ? m.pseudo.charAt(0).toUpperCase() : '?');
+                var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(m.pseudo) : (m.pseudo ? m.pseudo.charAt(0).toUpperCase() : '?');
                 var rankBadge = rank === 1 ? '<span class="gm-rank-badge">🥇</span>' : rank === 2 ? '<span class="gm-rank-badge">🥈</span>' : rank === 3 ? '<span class="gm-rank-badge">🥉</span>' : '<span class="gm-rank-num">' + rank + '</span>';
 
                 tableHtml +=
@@ -590,7 +590,7 @@
 
     function render3DPodiumColumn(member, medalClass, rankNum) {
         if (!member) return '';
-        var initial = (window.RAD && window.RAD.avatarInit) ? window.RAD.avatarInit(member.pseudo) : (member.pseudo ? member.pseudo.charAt(0).toUpperCase() : '?');
+        var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(member.pseudo) : (member.pseudo ? member.pseudo.charAt(0).toUpperCase() : '?');
         return '<div class="gm-podium-column gm-' + medalClass + '">' +
             '<div class="gm-podium-avatar-hex">' +
                 '<div class="gm-avatar">' + esc(initial) + '</div>' +
