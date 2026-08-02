@@ -47,6 +47,7 @@
                 count: list.length,
                 attended: attended,
                 rate: list.length > 0 ? Math.round((attended / list.length) * 100) : 0,
+                has_score: !!history[key].has_score,
                 history: list
             };
         });
@@ -261,10 +262,11 @@
             '</div>';
 
         var chartsHtml = '';
-        if (keys.length === 0) {
-            chartsHtml = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-chart-bar gm-icon"></i><div class="gm-empty-title">No history for this period.</div><div class="gm-empty-sub">Your progression charts will appear here after your first events.</div></div>';
+        var chartKeys = keys.filter(function (k) { return hist[k].has_score; });
+        if (chartKeys.length === 0) {
+            chartsHtml = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-chart-bar gm-icon"></i><div class="gm-empty-title">No scored events for this period.</div><div class="gm-empty-sub">Progression charts appear for events with scores (SvS, GvG, Glory).</div></div>';
         } else {
-            keys.forEach(function (key, idx) {
+            chartKeys.forEach(function (key, idx) {
                 var ev = hist[key];
                 chartsHtml += renderChartCard(key, ev, idx);
             });
@@ -292,7 +294,7 @@
         // Draw charts after insertion
         portalState.chartsDrawn = true;
         window.requestAnimationFrame(function () {
-            keys.forEach(function (key, idx) {
+            chartKeys.forEach(function (key, idx) {
                 drawChart(key, hist[key], idx);
             });
         });

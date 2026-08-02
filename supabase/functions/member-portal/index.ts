@@ -276,7 +276,15 @@ Deno.serve(async (req: Request) => {
     if (hErr) return json({ ok: false, error: "db_error", message: hErr.message }, 500);
 
     // Keep most recent 60 rows per player; group by event_name (case-insensitive).
+    // Events with a score column are the only ones that produce progression charts.
     const byEvent: Record<string, any[]> = {};
+    const hasScoreEvent = (name: string): boolean => {
+      const n = (name || "").toUpperCase();
+      if (n.indexOf("SVS") !== -1 || n.indexOf("GVG") !== -1) return true;
+      if (n.indexOf("GLORY") !== -1) return true;
+      // DTR / Shadowfront / Arms Race have no player score
+      return false;
+    };
     (rows || []).forEach((r: any) => {
       const key = (r.event_name || "Other").toUpperCase();
       if (!byEvent[key]) byEvent[key] = [];
@@ -301,6 +309,7 @@ Deno.serve(async (req: Request) => {
         count: total,
         attended: attended,
         rate: total > 0 ? Math.round((attended / total) * 100) : 0,
+        has_score: hasScoreEvent(key),
         history: list.slice(0, 60)
       };
     });
