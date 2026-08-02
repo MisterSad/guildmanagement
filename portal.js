@@ -61,56 +61,129 @@
         renderDashboard();
     }
 
-    // ─── Render the full dashboard ─────────────────────────────────────────
+    // ─── Render the full dashboard (same DA as the guild shell) ───────────
     function renderDashboard() {
         var root = document.getElementById('portal-dashboard-root');
         if (!root) return;
         var p = portalState.player;
         var initials = window.GM.avatarInit(p.pseudo);
 
+        var navItems = [
+            { id: 'dashboard', icon: 'ph-chart-line-up', label: 'My Progress' },
+            { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
+            { id: 'settings', icon: 'ph-sliders-horizontal', label: 'Account' }
+        ];
+
+        var navHtml = navItems.map(function (item) {
+            var isActive = portalState.activeTab === item.id;
+            return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
+                        '<i class="ph ' + item.icon + '"></i>' +
+                        '<span>' + esc(item.label) + '</span>' +
+                    '</button>';
+        }).join('');
+
         var html =
-            '<div class="portal-dashboard">' +
+            '<div class="gm-shell portal-shell">' +
 
-                // Profile header
-                '<div class="portal-header">' +
-                    '<div class="gm-avatar gm-avatar-lg gm-avatar-accent">' + esc(initials) + '</div>' +
-                    '<div class="portal-header-info">' +
-                        '<div class="portal-header-name">' + esc(p.pseudo) + '</div>' +
-                        '<div class="portal-header-guild"><i class="ph ph-flag-banner"></i> ' + esc(p.guild) + '</div>' +
+                // Sidebar (desktop)
+                '<aside class="gm-sidebar">' +
+                    '<div class="gm-sidebar-header">' +
+                        '<div class="gm-sidebar-user-row">' +
+                            '<div class="gm-user-avatar-ring">' +
+                                '<div class="gm-user-avatar">' + esc(initials) + '</div>' +
+                            '</div>' +
+                            '<div class="gm-sidebar-user-info">' +
+                                '<div class="gm-sidebar-user-name">' + esc(p.pseudo) + '</div>' +
+                                '<div class="gm-sidebar-user-role">' + esc(p.guild) + ' &middot; Player</div>' +
+                            '</div>' +
+                            '<button class="gm-sidebar-logout" data-portal-exit title="Sign out">' +
+                                '<i class="ph ph-sign-out"></i>' +
+                            '</button>' +
+                        '</div>' +
                     '</div>' +
-                    '<div class="portal-header-power">' +
-                        '<div class="portal-header-power-label">Combat Power</div>' +
-                        '<div class="portal-header-power-value">' + esc(window.GM.formatPower(p.overall_power)) + '</div>' +
+                    '<nav class="gm-sidebar-nav">' +
+                        '<div class="gm-nav-section-label">Player Portal</div>' +
+                        navHtml +
+                    '</nav>' +
+                    '<div class="gm-sidebar-sub-card">' +
+                        '<div class="gm-sub-card-badge-avatar"><i class="ph ph-crosshair"></i></div>' +
+                        '<div style="font-size:.8rem; font-weight:700; color:var(--fg);">' + esc(p.guild) + '</div>' +
+                        '<div style="font-size:.68rem; color:var(--fg-dim); margin-top:.25rem;">Foundation Galactic Frontier</div>' +
+                    '</div>' +
+                '</aside>' +
+
+                // Main column
+                '<div class="gm-main">' +
+                    '<header class="gm-topbar">' +
+                        '<div class="gm-topbar-mobile-brand">' +
+                            '<div class="gm-brand-mark">' + esc(initials) + '</div>' +
+                            '<div class="gm-topbar-title">Player Portal</div>' +
+                        '</div>' +
+                        '<div class="gm-topbar-actions">' +
+                            '<button class="gm-sidebar-logout" data-portal-exit title="Sign out"><i class="ph ph-sign-out"></i></button>' +
+                        '</div>' +
+                    '</header>' +
+
+                    '<div class="gm-content">' +
+                        '<div class="gm-page">' +
+                            '<div id="portal-panel-dashboard" class="gm-page portal-panel"></div>' +
+                            '<div id="portal-panel-events" class="gm-page portal-panel hidden"></div>' +
+                            '<div id="portal-panel-settings" class="gm-page portal-panel hidden"></div>' +
+                        '</div>' +
                     '</div>' +
                 '</div>' +
 
-                // Tabs
-                '<div class="portal-tabs">' +
-                    '<button type="button" class="portal-tab portal-tab-dashboard active" data-portal-tab="dashboard"><i class="ph ph-chart-line-up"></i><span>My Progress</span></button>' +
-                    '<button type="button" class="portal-tab portal-tab-events" data-portal-tab="events"><i class="ph ph-calendar-dots"></i><span>Active Events</span></button>' +
-                    '<button type="button" class="portal-tab portal-tab-settings" data-portal-tab="settings"><i class="ph ph-sliders-horizontal"></i><span>Account</span></button>' +
-                '</div>' +
-
-                // Tab panels
-                '<div id="portal-panel-dashboard" class="portal-panel"></div>' +
-                '<div id="portal-panel-events" class="portal-panel hidden"></div>' +
-                '<div id="portal-panel-settings" class="portal-panel hidden"></div>' +
+                // Bottom navigation (mobile)
+                '<nav class="gm-bottom-nav">' +
+                    '<div class="gm-bottom-nav-inner">' +
+                        navItems.map(function (item) {
+                            var isActive = portalState.activeTab === item.id;
+                            return '<button class="gm-bottom-nav-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
+                                        '<i class="ph ' + item.icon + ' gm-icon"></i>' +
+                                        '<span>' + esc(item.label) + '</span>' +
+                                    '</button>';
+                        }).join('') +
+                    '</div>' +
+                '</nav>' +
             '</div>';
 
         root.innerHTML = html;
 
-        root.querySelectorAll('.portal-tab').forEach(function (btn) {
+        function gotoTab(tabId) {
+            portalState.activeTab = tabId;
+            root.querySelectorAll('[data-portal-nav]').forEach(function (b) {
+                b.classList.toggle('gm-active', b.getAttribute('data-portal-nav') === tabId);
+            });
+            ['dashboard', 'events', 'settings'].forEach(function (name) {
+                var panel = document.getElementById('portal-panel-' + name);
+                if (panel) panel.classList.toggle('hidden', name !== portalState.activeTab);
+            });
+            if (portalState.activeTab === 'dashboard' && !portalState.chartsDrawn) {
+                renderDashboardPanel();
+            }
+        }
+
+        root.querySelectorAll('[data-portal-nav]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                portalState.activeTab = btn.getAttribute('data-portal-tab');
-                root.querySelectorAll('.portal-tab').forEach(function (b) { b.classList.remove('active'); });
-                btn.classList.add('active');
-                ['dashboard', 'events', 'settings'].forEach(function (name) {
-                    var panel = document.getElementById('portal-panel-' + name);
-                    if (panel) panel.classList.toggle('hidden', name !== portalState.activeTab);
+                gotoTab(btn.getAttribute('data-portal-nav'));
+            });
+        });
+
+        root.querySelectorAll('[data-portal-exit]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                window.GM.logout().then(function () {
+                    var portalView = document.getElementById('player-portal-view');
+                    var loginView = document.getElementById('login-view');
+                    if (portalView) portalView.classList.add('hidden');
+                    if (portalView) portalView.classList.remove('portal-connected');
+                    if (loginView) loginView.classList.remove('hidden');
+                }).catch(function () {
+                    var portalView = document.getElementById('player-portal-view');
+                    var loginView = document.getElementById('login-view');
+                    if (portalView) portalView.classList.add('hidden');
+                    if (portalView) portalView.classList.remove('portal-connected');
+                    if (loginView) loginView.classList.remove('hidden');
                 });
-                if (portalState.activeTab === 'dashboard' && !portalState.chartsDrawn) {
-                    renderDashboardPanel();
-                }
             });
         });
 
@@ -151,7 +224,15 @@
             });
         }
 
-        panel.innerHTML = tilesHtml + '<div class="portal-charts-grid">' + chartsHtml + '</div>';
+        panel.innerHTML =
+            '<header class="gm-page-header">' +
+                '<div>' +
+                    '<h1 class="gm-page-title">My Progress</h1>' +
+                    '<p class="gm-page-subtitle">Your participation across every guild event type</p>' +
+                '</div>' +
+            '</header>' +
+            tilesHtml +
+            '<div class="portal-charts-grid">' + chartsHtml + '</div>';
         portalState.chartsDrawn = true;
 
         // Draw charts after insertion
@@ -252,8 +333,16 @@
         var panel = document.getElementById('portal-panel-events');
         if (!panel) return;
 
+        var headerHtml =
+            '<header class="gm-page-header">' +
+                '<div>' +
+                    '<h1 class="gm-page-title">Active Events</h1>' +
+                    '<p class="gm-page-subtitle">Submit your participation and scores for the guild\'s current events</p>' +
+                '</div>' +
+            '</header>';
+
         if (!portalState.sessions || portalState.sessions.length === 0) {
-            panel.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, you will be able to submit your scores here.</div></div>';
+            panel.innerHTML = headerHtml + '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, you will be able to submit your scores here.</div></div>';
             return;
         }
 
@@ -261,7 +350,7 @@
         portalState.sessions.forEach(function (sess) {
             html += renderEventCard(sess);
         });
-        panel.innerHTML = html;
+        panel.innerHTML = headerHtml + '<div class="portal-events-grid">' + html + '</div>';
         wireEventCards(panel);
     }
 
@@ -406,6 +495,12 @@
         if (!panel) return;
 
         panel.innerHTML =
+            '<header class="gm-page-header">' +
+                '<div>' +
+                    '<h1 class="gm-page-title">Account</h1>' +
+                    '<p class="gm-page-subtitle">Manage your power and guild transfer requests</p>' +
+                '</div>' +
+            '</header>' +
             '<div class="portal-settings-grid">' +
 
                 '<div class="portal-card">' +
