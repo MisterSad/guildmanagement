@@ -74,10 +74,10 @@
                         return p.event_name === evName && p.session_id === sid;
                     });
 
-                    // Self-heal: active stage with 0 participants ⇒ trigger populate_event_participants
+                    // Self-heal: active stage with 0 participants ⇒ trigger gm_populate_event_participants
                     if (arState.stages[k].active && sid && arState.stages[k].participants.length === 0) {
                         var week = window.GM.getWeekStart(arState.stages[k].startAt);
-                        await db.rpc('populate_event_participants', {
+                        await db.rpc('gm_populate_event_participants', {
                             p_event_name: evName,
                             p_session_id: sid,
                             p_week_start: week
@@ -127,7 +127,7 @@
 
             // populate participants
             var week = window.GM.getWeekStart(startAt);
-            var rpcRes = await db.rpc('populate_event_participants', {
+            var rpcRes = await db.rpc('gm_populate_event_participants', {
                 p_event_name: evName,
                 p_session_id: sessionId,
                 p_week_start: week

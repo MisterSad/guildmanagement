@@ -148,7 +148,7 @@
     }
 
     // ── Auto-populate members pour une nouvelle session ──────────────────
-    // Utilise la RPC populate_event_participants pour contourner les problèmes
+    // Utilise la RPC gm_populate_event_participants pour contourner les problèmes
     // de schema cache PostgREST et garantir l'exécution atomique côté DB.
     async function populateParticipants(tabKey) {
         var db = getDb();
@@ -157,7 +157,7 @@
         if (!s.activeEventName || !s.sessionId) return;
 
         var week = window.GM.getWeekStart(s.startAt);
-        var rpcRes = await db.rpc('populate_event_participants', {
+        var rpcRes = await db.rpc('gm_populate_event_participants', {
             p_event_name: s.activeEventName,
             p_session_id: s.sessionId,
             p_week_start: week

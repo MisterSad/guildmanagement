@@ -102,16 +102,44 @@
         // Rule 1: Guild admin can write to their dedicated assigned guild if active
         if (role === 'guild_admin') {
             var restricted = window.currentGuildRestriction;
-            // If the restriction is missing (e.g. accounts fetch failed on an
-            // older session), fall back to the active guild selection so the
-            // admin can still work in their own guild.
+            // Never fall back to a default guild: writing to the wrong tenant
+            // is worse than blocking. If the restriction is missing, the
+            // login flow failed; block writes (the UI shows read-only).
             if (!restricted) {
-                restricted = window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
+                return false;
             }
             return activeG === restricted && !isGuildSubscriptionExpired(activeG);
         }
 
         return false;
+    }
+
+    // Re-fetch the caller's guild restriction from accounts when it is
+    // missing (defensive: login normally sets it, but stale sessions or
+    // failed fetches may leave it unset). Returns the guild or null.
+    async function ensureGuildRestriction() {
+        var role = roleFromStorage();
+        if (role === 'super_admin') return null;
+        if (role !== 'guild_admin') return null;
+        if (window.currentGuildRestriction) return window.currentGuildRestriction;
+
+        var c = getClient();
+        if (!c) return null;
+        try {
+            var info = await sessionInfo();
+            if (!info || !info.accountId) return null;
+            var res = await c.from('accounts').select('guild').eq('id', info.accountId).maybeSingle();
+            if (res && res.data && res.data.guild) {
+                window.currentGuildRestriction = res.data.guild;
+                window.currentGuild = res.data.guild;
+                try {
+                    localStorage.setItem('gm_current_guild', res.data.guild);
+                    localStorage.setItem('gm_guild_restriction', res.data.guild);
+                } catch (_) {}
+                return res.data.guild;
+            }
+        } catch (_) {}
+        return null;
     }
 
     // Intercept database calls to automatically add the 'guild' filter
@@ -888,6 +916,7 @@
         getActiveGuild: getActiveGuild,
         isGuildSubscriptionExpired: isGuildSubscriptionExpired,
         canWriteGuild: canWriteGuild,
+        ensureGuildRestriction: ensureGuildRestriction,
         escapeHTML: escapeHTML,
         getWeekStart: getWeekStart,
         getPrevWeekStart: getPrevWeekStart,

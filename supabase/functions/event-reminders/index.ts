@@ -449,7 +449,7 @@ serve(async (req) => {
         const ageDays = (now - sessionMs) / (24 * 3600 * 1000);
         isGvgActive = ageDays >= 0 && ageDays <= 7.5;
       }
-      if (isGvgActive && guild !== 'OMEGA' && guild !== 'IMK') {
+      if (isGvgActive && config['gvg_svs_calamity_enabled'] !== 'false') {
         const eventSpecificRoleId = config['discord_role_id_gvg'];
         const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
           ? eventSpecificRoleId
@@ -644,7 +644,7 @@ serve(async (req) => {
         const ageDays = (now - sessionMs) / (24 * 3600 * 1000);
         isSvsActive = ageDays >= 0 && ageDays <= 7.5;
       }
-      if (isSvsActive && guild !== 'OMEGA' && guild !== 'IMK') {
+      if (isSvsActive && config['gvg_svs_calamity_enabled'] !== 'false') {
         const eventSpecificRoleId = config['discord_role_id_svs'];
         const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
           ? eventSpecificRoleId
@@ -901,7 +901,7 @@ serve(async (req) => {
       }
 
       // 5. Calamity Befalls weekly reminders (10m before round)
-      if (guild !== 'OMEGA' && guild !== 'IMK') {
+      if (config['gvg_svs_calamity_enabled'] !== 'false') {
         const eventSpecificRoleId = config['discord_role_id_calamity'];
         const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
           ? eventSpecificRoleId

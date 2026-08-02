@@ -129,6 +129,12 @@
             window.GM.currentAccountId = info.accountId;
         }
 
+        // Defensive: make sure a guild_admin always has a guild restriction
+        // loaded before any write can happen (see canWriteGuild).
+        if (role === 'guild_admin' && window.GM.ensureGuildRestriction) {
+            await window.GM.ensureGuildRestriction();
+        }
+
         // Fetch guilds list (now authenticated, query will succeed)
         await fetchGuilds();
 
@@ -719,7 +725,7 @@
         var form = document.getElementById('guild-settings-form');
         if (!form) return;
 
-        var showCalamityGvgSvs = (window.currentGuild !== 'OMEGA' && window.currentGuild !== 'IMK');
+        var showCalamityGvgSvs = (await window.GM.config.get('gvg_svs_calamity_enabled')) !== 'false';
         var calamityGroup = document.getElementById('notification-group-calamity');
         var gvgGroup = document.getElementById('notification-group-gvg');
         var svsGroup = document.getElementById('notification-group-svs');
@@ -837,7 +843,7 @@
             if (span) span.textContent = '...';
 
             try {
-                var showCalamityGvgSvs = (window.currentGuild !== 'OMEGA' && window.currentGuild !== 'IMK');
+                var showCalamityGvgSvs = (await window.GM.config.get('gvg_svs_calamity_enabled')) !== 'false';
                 await Promise.all([
                     window.GM.config.set('coeff_svs', document.getElementById('coeff-svs').value),
                     window.GM.config.set('coeff_gvg', document.getElementById('coeff-gvg').value),

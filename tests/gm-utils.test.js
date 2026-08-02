@@ -269,11 +269,17 @@ describe('canWriteGuild (role-based write access)', () => {
         expect(GM.canWriteGuild('BABE')).toBe(false);
     });
 
-    it('guild_admin falls back to the active guild when restriction is missing', () => {
+    it('guild_admin cannot write when the restriction is missing (no fallback)', () => {
         setStorage({ gm_role: 'guild_admin' });
         window.currentGuildRestriction = null;
         window.currentGuild = 'OMEGA';
-        expect(GM.canWriteGuild('OMEGA')).toBe(true);
+        expect(GM.canWriteGuild('OMEGA')).toBe(false);
+    });
+
+    it('guild_admin cannot write to a different guild', () => {
+        setStorage({ gm_role: 'guild_admin' });
+        window.currentGuildRestriction = 'OMEGA';
+        expect(GM.canWriteGuild('ALPHA')).toBe(false);
     });
 
     it('member can never write', () => {
