@@ -254,7 +254,7 @@
         if (readOnlyActive) {
             document.body.classList.add('guild-read-only');
             if (banner) {
-                var messageHtml = '<span><i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem; margin-right: 0.5rem;"></i><strong>Mode Lecture Seule :</strong> L\'abonnement pour cette guilde a expiré.</span>';
+                var messageHtml = '<span><i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem; margin-right: 0.5rem;"></i><strong>Read Only Mode:</strong> This guild\'s subscription has expired. Renew it to restore write access.</span>';
                 banner.innerHTML = messageHtml;
                 banner.style.display = 'flex';
             }
