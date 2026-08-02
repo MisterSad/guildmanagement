@@ -66,6 +66,24 @@
 .gm-btn-danger { background: var(--danger); color: white; font-weight: 600; }
 .gm-btn-danger:hover { filter: brightness(1.08); }
 
+.gm-btn-danger-ghost {
+    background: transparent;
+    border-color: var(--danger-soft, var(--border-soft));
+    color: var(--danger);
+}
+.gm-btn-danger-ghost:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); border-color: var(--danger); }
+
+.gm-join-code {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 0.9rem;
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
+}
+
 .gm-btn-ghost {
     background: transparent;
     border-color: var(--border-soft);

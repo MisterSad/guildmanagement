@@ -120,14 +120,16 @@
 
     // ── Login : œil show/hide pour le password ──────────────────────────────
     function wireLoginPasswordToggle() {
-        var btn = document.querySelector('[data-gm-pwd-toggle]');
-        var input = document.getElementById('password');
-        if (!btn || !input) return;
-        btn.addEventListener('click', function () {
-            var isPwd = input.type === 'password';
-            input.type = isPwd ? 'text' : 'password';
-            var icon = btn.querySelector('i');
-            if (icon) icon.className = isPwd ? 'ph ph-eye-slash' : 'ph ph-eye';
+        document.querySelectorAll('[data-gm-pwd-toggle]').forEach(function (btn) {
+            var wrap = btn.closest('.gm-input-with-icon');
+            var input = wrap ? wrap.querySelector('input[type="password"], input[type="text"]') : null;
+            if (!input) return;
+            btn.addEventListener('click', function () {
+                var isPwd = input.type === 'password';
+                input.type = isPwd ? 'text' : 'password';
+                var icon = btn.querySelector('i');
+                if (icon) icon.className = isPwd ? 'ph ph-eye-slash' : 'ph ph-eye';
+            });
         });
     }
 

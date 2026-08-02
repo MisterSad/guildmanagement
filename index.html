@@ -86,7 +86,73 @@
                                     <i class="ph ph-user-focus"></i>
                                     <span>Access Player Portal (Submit Scores)</span>
                                 </button>
+                                <button type="button" id="go-to-register-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%; margin-top: 0.35rem;">
+                                    <i class="ph ph-user-plus"></i>
+                                    <span>Create a player account</span>
+                                </button>
                             </div>
+                        </div>
+                    </form>
+
+                    <!-- ─── Player Registration ────────────────────────────── -->
+                    <form id="register-form" class="gm-login-card login-card hidden">
+                        <div class="gm-login-brand-row">
+                            <div class="gm-login-avatar-3d">FGF</div>
+                            <div class="gm-login-title">PLAYER ACCOUNT</div>
+                            <div class="gm-login-sub">Register with your in-game UID and the guild join code</div>
+                        </div>
+
+                        <div class="gm-login-form">
+                            <div class="gm-login-field">
+                                <label for="register-id">Identifier</label>
+                                <div class="gm-input-with-icon">
+                                    <i class="ph ph-user gm-icon"></i>
+                                    <input type="text" id="register-id" class="gm-input" required
+                                        placeholder="Choose an identifier" autocomplete="username">
+                                    <span class="gm-input-focus-line"></span>
+                                </div>
+                            </div>
+                            <div class="gm-login-field">
+                                <label for="register-password">Password</label>
+                                <div class="gm-input-with-icon gm-login-pwd-wrap">
+                                    <i class="ph ph-lock gm-icon"></i>
+                                    <input type="password" id="register-password" class="gm-input" required
+                                        placeholder="At least 8 characters" autocomplete="new-password">
+                                    <span class="gm-input-focus-line"></span>
+                                    <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
+                                        <i class="ph ph-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="gm-login-field">
+                                <label for="register-uid">In-Game UID</label>
+                                <div class="gm-input-with-icon">
+                                    <i class="ph ph-identification-badge gm-icon"></i>
+                                    <input type="text" id="register-uid" class="gm-input" required placeholder="Your in-game UID">
+                                    <span class="gm-input-focus-line"></span>
+                                </div>
+                            </div>
+                            <div class="gm-login-field">
+                                <label for="register-code">Guild Join Code</label>
+                                <div class="gm-input-with-icon">
+                                    <i class="ph ph-key gm-icon"></i>
+                                    <input type="text" id="register-code" class="gm-input" required
+                                        placeholder="e.g. FGF-7K2M-X9Q4" autocomplete="off">
+                                    <span class="gm-input-focus-line"></span>
+                                </div>
+                            </div>
+                            <div id="register-error" class="gm-login-error hidden">
+                                <i class="ph ph-warning-circle"></i>
+                                <span>Registration failed.</span>
+                            </div>
+                            <button type="submit" id="register-btn" class="gm-btn gm-btn-primary gm-login-submit">
+                                <i class="ph ph-user-plus"></i>
+                                <span>Create account</span>
+                            </button>
+                            <button type="button" id="register-back-btn" class="gm-btn gm-btn-ghost" style="margin-top: 0.5rem; width: 100%;">
+                                <i class="ph ph-arrow-left"></i>
+                                <span>Back to Login</span>
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -305,6 +371,47 @@
                             <div class="gm-empty">
                                 <i class="ph-duotone ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title" data-i18n="empty_accounts">No accounts generated</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gm-card gm-card-padded gm-section" id="join-code-card">
+                        <div class="gm-section-title" style="margin-bottom: 0.5rem;">
+                            <i class="ph ph-key"></i>
+                            <span>Guild Join Code</span>
+                        </div>
+                        <p class="gm-page-subtitle" style="margin-bottom: 0.75rem;">
+                            Players use this code to create their own account from the login screen.
+                            The code is stored hashed; only you can see it.
+                        </p>
+                        <div class="gm-row" style="gap: 0.6rem; flex-wrap: wrap;">
+                            <button type="button" id="join-code-generate-btn" class="gm-btn gm-btn-primary">
+                                <i class="ph ph-magic-wand"></i>
+                                <span id="join-code-btn-label">Generate Code</span>
+                            </button>
+                            <button type="button" id="join-code-copy-btn" class="gm-btn gm-btn-ghost hidden">
+                                <i class="ph ph-copy"></i>
+                                <span>Copy Code</span>
+                            </button>
+                        </div>
+                        <div id="join-code-result" class="gm-join-code hidden" style="margin-top: 0.75rem;">
+                            <span id="join-code-value" style="font-family: var(--font-mono); letter-spacing: 0.08em; font-size: 1.05rem;"></span>
+                        </div>
+                        <div id="join-code-info" class="gm-dim" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
+                    </div>
+
+                    <div class="gm-section" id="pending-accounts-card">
+                        <div class="gm-section-head">
+                            <div class="gm-section-title">
+                                <i class="ph ph-hourglass"></i>
+                                <span>Pending Player Registrations</span>
+                                <span class="gm-count" id="pending-account-count">0</span>
+                            </div>
+                        </div>
+                        <div id="pending-account-list">
+                            <div class="gm-empty">
+                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <div class="gm-empty-title">No pending registrations</div>
                             </div>
                         </div>
                     </div>

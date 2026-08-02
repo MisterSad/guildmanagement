@@ -53,6 +53,10 @@ Deno.serve(async (req: Request) => {
 
   const canonicalId = loginRow.canonical_id;
   const role = loginRow.role;
+  const status = loginRow.status ?? "active";
+
+  // Pending player accounts cannot sign in until an admin approves them.
+  if (status !== "active") return json({ ok: false, error: "pending_approval" }, 200);
 
   const meta = { app_role: role, account_id: canonicalId };
   const email = await emailFor(canonicalId);

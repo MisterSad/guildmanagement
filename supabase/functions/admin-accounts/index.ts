@@ -248,5 +248,93 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true });
   }
 
+  if (action === "set-join-code") {
+    const guild = (body?.guild ?? null) as string | null;
+    const code = (body?.code ?? "").toString().trim();
+    if (!code) return json({ ok: false, error: "missing_fields" }, 200);
+
+    let targetGuild = guild;
+    if (info.role === "guild_admin") {
+      if (!callerGuild) return json({ ok: false, error: "forbidden" }, 200);
+      targetGuild = callerGuild;
+    } else if (!targetGuild) {
+      return json({ ok: false, error: "missing_fields" }, 200);
+    }
+
+    const { data, error } = await admin.rpc("gm_set_join_code", {
+      p_guild: targetGuild,
+      p_code: code,
+    });
+    if (error) return json({ ok: false, error: "server_error", message: error.message }, 500);
+    return json(data);
+  }
+
+  if (action === "approve-registration") {
+    const id = (body?.id ?? "").toString().trim();
+    if (!id) return json({ ok: false, error: "missing_fields" }, 200);
+
+    // Only pending player accounts (role member) can be approved.
+    const { data: targetAcc } = await admin
+      .from("accounts")
+      .select("role, guild, status, id")
+      .eq("id", id)
+      .maybeSingle();
+    if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
+    if (targetAcc.status !== "pending" || targetAcc.role !== "member") {
+      return json({ ok: false, error: "not_pending" }, 200);
+    }
+    if (info.role === "guild_admin") {
+      if (targetAcc.guild !== callerGuild) return json({ ok: false, error: "forbidden" }, 200);
+    }
+
+    const { data, error } = await admin.rpc("gm_approve_player_account", { p_id: id });
+    if (error) return json({ ok: false, error: "server_error", message: error.message }, 500);
+    if (!data || data.ok !== true) {
+      return json({ ok: false, error: data?.error || "approve_failed" }, 200);
+    }
+
+    // Provision the shadow GoTrue user now that the account is active.
+    const email = await emailFor(id);
+    const secret = randomSecret();
+    const meta = { app_role: "member", account_id: id };
+    const { data: created, error: cuErr } = await admin.auth.admin.createUser({
+      email, password: secret, email_confirm: true, app_metadata: meta,
+    });
+    let uid = created?.user?.id;
+    if (cuErr || !uid) {
+      const { data: list } = await admin.auth.admin.listUsers();
+      const ex = list?.users?.find((u: { email?: string }) => u.email === email);
+      if (!ex) return json({ ok: false, error: "provision_failed" }, 200);
+      uid = ex.id;
+      await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
+    }
+    const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: id, p_auth_user_id: uid, p_secret: secret });
+    if (aErr) return json({ ok: false, error: "server_error" }, 500);
+
+    return json({ ok: true });
+  }
+
+  if (action === "reject-registration") {
+    const id = (body?.id ?? "").toString().trim();
+    if (!id) return json({ ok: false, error: "missing_fields" }, 200);
+
+    const { data: targetAcc } = await admin
+      .from("accounts")
+      .select("role, guild, status")
+      .eq("id", id)
+      .maybeSingle();
+    if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
+    if (targetAcc.status !== "pending" || targetAcc.role !== "member") {
+      return json({ ok: false, error: "not_pending" }, 200);
+    }
+    if (info.role === "guild_admin") {
+      if (targetAcc.guild !== callerGuild) return json({ ok: false, error: "forbidden" }, 200);
+    }
+
+    const { data, error } = await admin.rpc("gm_reject_player_account", { p_id: id });
+    if (error) return json({ ok: false, error: "server_error", message: error.message }, 500);
+    return json(data);
+  }
+
   return json({ ok: false, error: "unknown_action" }, 200);
 });

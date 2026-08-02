@@ -374,6 +374,43 @@
         return data;
     }
 
+    // Player self-registration (anonymous): creates a pending account bound to
+    // an in-game UID, gated by the tenant join code. Called from the login view.
+    async function registerPlayer(id, password, uid, code) {
+        var c = getClient();
+        if (!c) return { ok: false, error: 'no_client' };
+        var r;
+        try {
+            r = await c.functions.invoke('player-register', {
+                body: {
+                    id: (id || '').trim(),
+                    password: password || '',
+                    uid: (uid || '').trim(),
+                    code: (code || '').trim()
+                }
+            });
+        } catch (e) {
+            return { ok: false, error: 'request_failed' };
+        }
+        var data = r && r.data;
+        if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'registration_failed' };
+        return { ok: true, status: data.status || 'pending' };
+    }
+
+    // Generate a tenant join code client-side (e.g. "FGF-7K2M-X9Q4").
+    // The plain code is sent to the edge function which stores only its SHA-256.
+    function generateJoinCode(prefix) {
+        var alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        var block = function () {
+            var s = '';
+            for (var i = 0; i < 4; i++) {
+                s += alphabet[Math.floor(Math.random() * alphabet.length)];
+            }
+            return s;
+        };
+        return (prefix || 'FGF') + '-' + block() + '-' + block();
+    }
+
     // Restaure le rôle/identifiant depuis la session persistée (localStorage
     // supabase-js) — survit à une fermeture d'onglet, contrairement à
     // sessionStorage. Lit les claims app_metadata du JWT.
@@ -778,6 +815,8 @@
         logout: logout,
         ensureAuthSession: ensureAuthSession,
         adminAccounts: adminAccounts,
+        registerPlayer: registerPlayer,
+        generateJoinCode: generateJoinCode,
         sessionInfo: sessionInfo,
         normalizeRole: normalizeRole,
         roleFromStorage: roleFromStorage,

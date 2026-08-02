@@ -15,6 +15,8 @@
     var memberView        = document.getElementById('member-view');
     var loginForm         = document.getElementById('login-form');
     var loginError        = document.getElementById('login-error');
+    var registerForm      = document.getElementById('register-form');
+    var registerError     = document.getElementById('register-error');
     var logoutBtn         = document.getElementById('logout-btn');
     var memberLogoutBtn   = document.getElementById('member-logout-btn');
     var createAccountForm = document.getElementById('create-account-form');
@@ -158,6 +160,10 @@
                     window.GM_SHELL.renderShell();
                 }
                 showToast(role === 'super_admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
+            } else if (resp.error === 'pending_approval') {
+                loginError.classList.remove('hidden');
+                var pe = loginError.querySelector('span');
+                if (pe) pe.textContent = 'Your account is awaiting approval by a guild admin.';
             } else {
                 throw new Error('invalid');
             }
@@ -177,6 +183,68 @@
     });
 
     if (logoutBtn)       logoutBtn.addEventListener('click', doLogout);
+
+    // ─── Player self-registration ────────────────────────────────────────────
+    var goToRegisterBtn = document.getElementById('go-to-register-btn');
+    var registerBackBtn = document.getElementById('register-back-btn');
+    var loginCard       = document.querySelector('#login-form');
+    var loginHero       = document.querySelector('.gm-login-hero-tag');
+
+    function showRegisterForm(show) {
+        if (registerForm) registerForm.classList.toggle('hidden', !show);
+        if (loginForm) loginForm.classList.toggle('hidden', show);
+        if (loginHero) loginHero.classList.toggle('hidden', show);
+        if (registerError) registerError.classList.add('hidden');
+    }
+
+    if (goToRegisterBtn) goToRegisterBtn.addEventListener('click', function () { showRegisterForm(true); });
+    if (registerBackBtn) registerBackBtn.addEventListener('click', function () { showRegisterForm(false); });
+
+    if (registerForm) registerForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var id = document.getElementById('register-id').value.trim();
+        var pass = document.getElementById('register-password').value;
+        var uid = document.getElementById('register-uid').value.trim();
+        var code = document.getElementById('register-code').value.trim();
+
+        var btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        var span = btn.querySelector('span');
+        if (span) span.textContent = 'Submitting...';
+
+        try {
+            var resp = await window.GM.registerPlayer(id, pass, uid, code);
+            if (resp.ok) {
+                if (registerError) registerError.classList.add('hidden');
+                if (registerForm) registerForm.reset();
+                showRegisterForm(false);
+                showToast('Registration submitted. A guild admin will approve your account.', 'success');
+            } else {
+                var msg = {
+                    invalid_identifier: 'Identifier must be 3 to 32 characters.',
+                    weak_password: 'Password must be at least 8 characters.',
+                    invalid_uid: 'Invalid in-game UID.',
+                    invalid_code: 'Invalid guild join code.',
+                    uid_not_in_guild: 'This UID is not a member of the guild for this join code.',
+                    uid_already_claimed: 'This UID is already linked to an account.',
+                    identifier_taken: 'This identifier is already taken.',
+                    too_many_attempts: 'Too many attempts. Try again later.',
+                    request_failed: 'Network error. Please try again.'
+                }[resp.error] || 'Registration failed. Please try again.';
+                if (registerError) {
+                    registerError.classList.remove('hidden');
+                    var regMsg = registerError.querySelector('span');
+                    if (regMsg) regMsg.textContent = msg;
+                }
+            }
+        } catch (err) {
+            console.error('Registration error details:', err);
+            if (registerError) registerError.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+            if (span) span.textContent = 'Create account';
+        }
+    });
     if (memberLogoutBtn) memberLogoutBtn.addEventListener('click', doLogout);
 
     function doLogout() {
@@ -264,6 +332,7 @@
             fetchAccounts();
             loadGuildSettings();
             populateAccountGuildSelect();
+            wireJoinCode();
         }
         if (tabId === 'admin-discord') {
             loadGuildSettings();
@@ -769,15 +838,131 @@
         });
     }
 
+    function renderPendingRegistrations(activeG) {
+        var container = document.getElementById('pending-account-list');
+        var countEl = document.getElementById('pending-account-count');
+        if (!container) return;
+
+        var pending = accounts.filter(function (acc) {
+            return acc.status === 'pending' && acc.role === 'member' &&
+                   (acc.guild || 'ALPHA') === activeG;
+        });
+        if (countEl) countEl.textContent = pending.length;
+
+        if (pending.length === 0) {
+            container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
+            return;
+        }
+
+        var html = '<div class="gm-cred-grid">';
+        pending.forEach(function (acc) {
+            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+            html +=
+                '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
+                    '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
+                        '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
+                        '<span class="gm-chip gm-chip-warning">Pending</span>' +
+                    '</div>' +
+                    '<div class="gm-row gm-dim" style="font-size:.75rem; gap: 0.75rem;">' +
+                        '<span><i class="ph ph-identification-badge"></i> UID ' + esc(acc.uid || '?') + '</span>' +
+                        '<span><i class="ph ph-calendar-blank"></i> ' + dateStr + '</span>' +
+                    '</div>' +
+                    '<div class="gm-row" style="gap: 0.5rem; margin-top: 0.6rem;">' +
+                        '<button class="gm-btn gm-btn-sm gm-btn-success gm-pending-approve" data-id="' + esc(acc.id) + '">' +
+                            '<i class="ph ph-check"></i><span>Approve</span>' +
+                        '</button>' +
+                        '<button class="gm-btn gm-btn-sm gm-btn-danger-ghost gm-pending-reject" data-id="' + esc(acc.id) + '">' +
+                            '<i class="ph ph-x"></i><span>Reject</span>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+
+        container.querySelectorAll('.gm-pending-approve').forEach(function (btn) {
+            btn.addEventListener('click', function () { resolveRegistration(btn.getAttribute('data-id'), 'approve'); });
+        });
+        container.querySelectorAll('.gm-pending-reject').forEach(function (btn) {
+            btn.addEventListener('click', function () { resolveRegistration(btn.getAttribute('data-id'), 'reject'); });
+        });
+    }
+
+    async function resolveRegistration(id, action) {
+        try {
+            var res = await window.GM.adminAccounts(action === 'approve' ? 'approve-registration' : 'reject-registration', { id: id });
+            if (!res.ok) throw new Error(res.error || (action + '_failed'));
+            accounts = accounts.filter(function (a) { return a.id !== id; });
+            renderAccounts();
+            showToast(action === 'approve' ? 'Player account approved.' : 'Player registration rejected.', 'success');
+        } catch (err) {
+            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        }
+    }
+
+    // ─── Guild Join Code (player self-registration) ───────────────────────────
+    function wireJoinCode() {
+        var generateBtn = document.getElementById('join-code-generate-btn');
+        var copyBtn = document.getElementById('join-code-copy-btn');
+        var resultBox = document.getElementById('join-code-result');
+        var resultVal = document.getElementById('join-code-value');
+        var infoEl = document.getElementById('join-code-info');
+        if (!generateBtn) return;
+
+        var generatedCode = '';
+        var hasCode = false;
+
+        (window.GM.config.get('join_code_hash')).then(function (hash) {
+            hasCode = !!hash;
+            var label = document.getElementById('join-code-btn-label');
+            if (label) label.textContent = hasCode ? 'Regenerate Code' : 'Generate Code';
+            if (infoEl) infoEl.textContent = hasCode ? 'A join code is already set for this guild.' : 'No join code set yet. Players cannot register until you generate one.';
+        }).catch(function () {});
+
+        generateBtn.addEventListener('click', async function () {
+            generatedCode = window.GM.generateJoinCode('FGF');
+            generateBtn.disabled = true;
+            var span = generateBtn.querySelector('span');
+            if (span) span.textContent = 'Saving...';
+            try {
+                var res = await window.GM.adminAccounts('set-join-code', { code: generatedCode });
+                if (!res.ok) throw new Error(res.error || 'set_code_failed');
+                if (resultVal) resultVal.textContent = generatedCode;
+                if (resultBox) resultBox.classList.remove('hidden');
+                if (copyBtn) copyBtn.classList.remove('hidden');
+                if (infoEl) infoEl.textContent = 'Share this code with your players. It will not be shown again.';
+                showToast('Join code generated.', 'success');
+            } catch (err) {
+                showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            } finally {
+                generateBtn.disabled = false;
+                if (span) span.textContent = hasCode ? 'Regenerate Code' : 'Generate Code';
+            }
+        });
+
+        if (copyBtn) copyBtn.addEventListener('click', function () {
+            if (!generatedCode) return;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(generatedCode).then(function () {
+                    showToast('Join code copied.', 'success');
+                }).catch(function () {});
+            }
+        });
+    }
+
     function renderAccounts() {
         var activeG = window.currentGuild || 'ALPHA';
         var isSuperAdminUser = window.GM.roleFromStorage() === 'super_admin';
+
+        // Target 0: Pending player registrations (role member, status pending)
+        renderPendingRegistrations(activeG);
 
         // Target 1: Admin Section (#account-list) - accounts for current active guild only
         var containerR4 = document.getElementById('account-list');
         var countR4 = document.getElementById('account-count');
         if (containerR4) {
             var listR4 = accounts.filter(function (acc) {
+                if (acc.status === 'pending') return false;
                 var accGuild = acc.guild || 'ALPHA';
                 var isR5 = (acc.role === 'super_admin');
                 // Super Admin account ONLY shown when activeG is ALPHA

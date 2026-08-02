@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-02
 
 ### Added
+- **Player self-registration**: players can create their own account from the login screen ("Create a player account") with an identifier, password, in-game UID and the guild join code. The new `player-register` edge function validates the join code (stored as a SHA-256 hash in `guild_config`, never in plaintext), checks the UID belongs to the guild roster and is not already claimed, then creates a `pending` account with a PGP-encrypted password. Accounts are role `member` and cannot sign in until approved.
+- **Guild join code**: admins generate a per-guild join code from the Accounts tab (`gm_set_join_code` RPC, hash-only storage, regenerable). `gm-utils.js` exposes `registerPlayer` and `generateJoinCode`.
+- **Pending registrations review**: admins approve or reject pending player accounts from the Accounts tab. Approval provisions the shadow GoTrue user at that moment (`gm_approve_player_account` RPC + admin-accounts `approve-registration` action); rejection deletes the request (`gm_reject_player_account`). `gm_admin_list` now returns `uid` and `status`.
+- **Pending-aware login**: `gm_check_login` returns the account status; `auth-login` answers `pending_approval` instead of a generic failure for unapproved accounts.
+- **Unit tests**: `tests/player-register.test.js` (invocation, trimming, error propagation, join code format) — 104 tests total across 9 files.
+
+## [Unreleased] - 2026-08-02
+
+### Added
 - **Self-service subscriptions (Revolut)**: new Subscription tab visible to `guild_admin` and `super_admin` (per tenant), with five plans — 1 Month €6.99, 3 Months €16.99, 6 Months €27.99, 12 Months €47.99, Lifetime €89.00. Checkout runs through the Revolut Merchant Web SDK embedded checkout (card, Revolut Pay, Apple Pay, Google Pay), orders are created server-side by the `gm-create-order` edge function and recorded in a new `gm_payments` table. `gm-revolut-webhook` (HMAC-verified, public) applies completed payments atomically and idempotently (`gm_apply_subscription_payment` RPC): time plans extend the guild's `subscription_end` from `max(now, current end)` so renewals stack; the Lifetime plan switches the guild to a new `Lifetime` subscription type that never expires. `gm-order-status` lets the UI confirm payments immediately after checkout while the webhook stays the source of truth. The super admin's manual grant UI (Unlimited/Premium + date) is unchanged and now also supports the `Lifetime` type.
 - **Unit tests**: coverage for the subscription module (plans, status rendering, widget wiring, payment polling, error states) — 91 tests total.
 - **Shadowfront unit tests**: smoke coverage for the new stepper, availability entry, composition pool, tracking bulk actions and Discord sharing — 96 tests total.
