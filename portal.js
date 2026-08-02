@@ -333,6 +333,13 @@
         var accent = eventAccent(eventKey);
         var attended = ev.attended || 0;
 
+        // Does this period contain any recorded score? If not, the canvas
+        // shows participation dots and the legend/hints must match.
+        var anyScore = (ev.history || []).some(function (h) { return (h.score || 0) > 0; });
+        var hintHtml = anyScore
+            ? '<span class="lg portal-legend-hint"><i class="ph ph-chart-bar"></i> Bar height = score</span>'
+            : '<span class="lg portal-legend-hint"><i class="ph ph-dots-three"></i> Dots = participation, no scores yet</span>';
+
         var historyHtml = '';
         (ev.history || []).slice(0, 8).forEach(function (h) {
             var label = h.week_start || h.session_id || '?';
@@ -340,11 +347,12 @@
                 ? '<span class="portal-badge" style="background:rgba(52,211,153,0.18); color:#34d399; border-color:rgba(52,211,153,0.45);">P</span>'
                 : (h.excused ? '<span class="portal-badge" style="background:rgba(251,191,36,0.15); color:#fbbf24; border-color:rgba(251,191,36,0.45);">E</span>'
                    : '<span class="portal-badge" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.45);">A</span>');
+            var scoreText = anyScore ? window.GM.formatNumber(h.score || 0) : '—';
             historyHtml +=
                 '<div class="portal-chart-row">' +
                     '<span class="portal-chart-row-label">' + esc(String(label).slice(0, 10)) + '</span>' +
                     badge +
-                    '<span class="portal-chart-row-score">' + esc(window.GM.formatNumber(h.score || 0)) + '</span>' +
+                    '<span class="portal-chart-row-score">' + esc(scoreText) + '</span>' +
                 '</div>';
         });
 
@@ -359,7 +367,7 @@
                         '<span class="lg"><span class="sw" style="background:#34d399;"></span>Participated</span>' +
                         '<span class="lg"><span class="sw" style="background:#fbbf24;"></span>Excused</span>' +
                         '<span class="lg"><span class="sw" style="background:#f87171;"></span>Absent</span>' +
-                        '<span class="lg portal-legend-hint"><i class="ph ph-chart-bar"></i> Bar height = score</span>' +
+                        hintHtml +
                     '</div>' +
                     '<div class="portal-chart-list">' + historyHtml + '</div>' +
                 '</div>';
