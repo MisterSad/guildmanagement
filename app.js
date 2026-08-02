@@ -2363,7 +2363,8 @@
             try {
                 var res = await supabase.rpc('transfer_guild_member', {
                     p_uid: member.uid,
-                    p_target_guild: targetGuild
+                    p_target_guild: targetGuild,
+                    p_pseudo: member.pseudo
                 });
 
                 if (res.error) throw res.error;
