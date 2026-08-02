@@ -1,128 +1,105 @@
 # FGF Guild Management Tool
 
-Serverless guild-management web app for **Foundation Galactic Frontier (FGF)**, a
-guild of the mobile game *Whiteout Survival*. The app covers event tracking
-(SvS, GvG, Shadowfront, DTR, Arms Race, Glory), member & account management,
-sanctions, banned players, Discord notifications and per-guild subscription
-plans.
+> **Guild management for Foundation Galactic Frontier — open to every guild, each with its own space.**
 
-## Stack
+Hi, I'm the developer behind this project. FGF Guild Management Tool is a web app I built to make running a guild in **Foundation Galactic Frontier** simple and organized. It is not tied to any single guild: any guild of the game can use it, and every guild gets its own isolated tenant with its own members, events, settings, and subscription.
 
-- **Frontend**: vanilla JavaScript (no framework), static hosting on Supabase
-  Storage. 3D login scene (three.js), Phosphor icons, custom CSS design system
-  (`styles.css`, `tokens.css`, `components.css`, `shell.css`).
-- **Backend**: Supabase (Postgres + RLS + `SECURITY DEFINER` functions) and
-  Edge Functions (Deno) for authentication and admin operations.
-- **Tests**: Vitest + jsdom, run with `npm test`.
+---
 
-## Project layout
+## What this project is
 
-```
-index.html              Single-page shell (all views are panels)
-gm-utils.js             Shared utilities (Supabase client, roles, i18n bridge,
-                        dates, escaping, toasts) — loaded first
-app.js                  Core app: login/session, accounts, members, tabs
-shell.js                Sidebar/topbar/bottom-nav shell around the dashboard
-i18n.js                 English-only translation strings (t('key'))
-events.js / shadowfront.js / armsrace.js / glory.js / history.js
-stats.js / sanctions.js / overview.js / push.js
-login-3d.js             three.js login background
-sw.js                   Service worker
-supabase/functions/     Edge Functions: auth-login, admin-accounts,
-                        member-portal, event-reminders, gm-create-order,
-                        gm-order-status, gm-revolut-webhook
-supabase/migrations/    SQL migrations (roles, RLS policies, functions)
-tests/                  Vitest unit tests
-```
+Running a competitive guild in Foundation Galactic Frontier is a lot of work: recurring events with strict rules (SvS, GvG, Shadowfront, DTR, Arms Race, Glory), limited squad slots, commanders to choose, availability that changes by the hour, and players to keep accountable.
 
-## Subscriptions (Revolut)
+This tool replaces the spreadsheets and the chat-thread chaos with a complete, purpose-built workspace where guild leaders and officers can:
 
-Guild admins (and the super admin, per tenant) can purchase subscription
-extensions in the **Subscription** tab. Plans: 1 Month €6.99, 3 Months €16.99,
-6 Months €27.99, 12 Months €47.99, Lifetime €89.00. Payments run through the
-Revolut Merchant Web SDK (embedded checkout: card, Revolut Pay, Apple Pay,
-Google Pay) and are confirmed server-side only:
+- plan and run every event with a workflow adapted to its own rules,
+- build fair squads based on real participation history,
+- track attendance live, with one click,
+- keep the whole guild informed through Discord and push notifications,
+- manage members, sanctions, banned players, and accounts,
+- rank players across the guild with transparent, meaningful statistics.
 
-1. `gm-create-order` creates the Revolut order (server-side, amount in cents)
-   and records it in `gm_payments` (status `pending`).
-2. `gm-revolut-webhook` (public, HMAC-verified) applies the extension on
-   `ORDER_COMPLETED` via the idempotent `gm_apply_subscription_payment` RPC —
-   time plans extend from `max(now, current end)` (stacking), the Lifetime plan
-   switches the guild to `subscription_type = 'Lifetime'`.
-3. `gm-order-status` lets the client confirm quickly after checkout and
-   refresh the UI; the webhook remains the source of truth.
+Every guild is fully isolated from the others, and each one can subscribe independently.
 
-Required Supabase secrets (Dashboard → Edge Functions → Secrets):
+---
 
-```
-REVOLUT_SECRET_KEY              # Revolut Business API key (server side)
-REVOLUT_PUBLIC_KEY              # Revolut public key (pk_...), widget
-REVOLUT_ENV                     # 'sandbox' | 'prod' (default: prod)
-REVOLUT_WEBHOOK_SIGNING_SECRET  # HMAC secret, generated when registering the webhook
-```
+## Features
 
-Register the webhook in Revolut Business (Merchant API → Webhooks) pointing to:
+### Event management
+Dedicated workflows for every recurring event, each following its own rules:
 
-```
-https://<project-ref>.functions.supabase.co/gm-revolut-webhook
-```
+- **SvS, GvG & DTR** — start and close sessions, auto-import the roster as participants, track participation and scores (prep phase and PvP day for SvS/GvG, appointments for DTR), and approve scores submitted by players.
+- **Shadowfront** — a guided three-step flow: record who declared availability in-game, compose the two squads (20 participants + 10 reserves each, up to 3 commanders per squad), then track participation live. Rosters can be prepared in advance, and published to Discord with one click.
+- **Arms Race** — two independent stages (A and B), participation-only tracking.
+- **Glory** — a weekly tracker with per-member input, evolution percentages, and guild totals.
 
-deployed with `--no-verify-jwt` (the signature is verified inside the function).
+### Squad composition, guided by history
+When composing squads, every player's **participation rate** is shown at a glance — Excellent, Good, Average, Poor, or new — with category filters and per-squad summaries. No more guesswork: the players who show up are the players who get picked.
 
-## Roles & access
+### Live participation tracking
+Mark players Present, Late, Excused, or Substitute Present with color-coded toggles. Stats update instantly, with one-click "everyone present / everyone absent" actions and autosave.
 
-| Role          | Legacy | Meaning                                                       |
-|---------------|--------|---------------------------------------------------------------|
-| `super_admin` | R5     | Full access; writes are restricted to the ALPHA guild         |
-| `guild_admin` | R4     | Admin of one guild (linked to a `guild`), subscription-gated  |
-| `member`      | R1–R3  | Read-only access to guild data                                |
+### Rankings & statistics
+A full leaderboard with a 3D podium for the top three players. Browse global rankings, per-event scores, participation, and periods from one week to all time — with consistency and glory bonuses, and badges such as Iron Man, MVP, Glory Climber, Loyal Soldier, and Consistency Master.
 
-`super_admin` and `guild_admin` are stored on the `accounts` table and mirrored
-into `auth.users.raw_app_meta_data.app_role` (edge functions use them server
-side). The UI reads the role from the JWT when available, falling back to
-`localStorage`.
+### Member management
+Add members with in-game role, UID, and power; search, filter by power tier (S to D), sort, and group by role. Edit details with a full name-history audit trail, transfer players between sister guilds on the same server, and approve or reject pending transfer requests.
 
-> Note: the R1–R5 values on `guild_members.rank` are gameplay guild ranks
-> (titles inside the guild) — unrelated to the account roles above and kept
-> unchanged.
+### Sanctions & banned players
+Record sanctions with reason and author, with an automatic alert for repeat offenders (3+ sanctions). Ban a UID permanently — banned players are removed from the roster and can never be added back.
 
-## Local development
+### Discord integration
+Paste a webhook URL and the guild's Discord is wired in: per-event webhooks, role mentions, notification toggles, and fully customizable message templates. Automated reminders cover every event (30 minutes before, 5 minutes before, at start), plus the complex schedules of GvG Saturday and SvS PvP day.
 
-The frontend is plain static files — open `index.html` or serve the folder:
+### Player portal
+Players don't need an account: they enter their in-game UID and can update their power, request a guild transfer, and submit their scores for active events. Submissions arrive as pending for officers to approve.
 
-```sh
-python3 -m http.server 8000
-```
+### Push notifications
+Members can opt in to push notifications on their device and receive event reminders even when they're not in the app.
 
-Supabase CLI for edge functions and migrations:
+### Multi-guild support
+One platform, many guilds. Each guild is completely isolated, and super admins can switch between guilds, manage accounts, and consult a cross-guild leaderboard of every player's power and participation.
 
-```sh
-supabase start                 # local stack
-supabase functions serve       # serve edge functions locally
-supabase db push               # apply migrations
-supabase functions deploy auth-login admin-accounts member-portal event-reminders
-```
+### Subscriptions
+Each guild subscribes independently, with plans from one month to lifetime, purchased securely in the app. Renewals stack on the remaining time, and if a subscription expires the guild switches to read-only until it renews.
 
-## Tests
+---
 
-```sh
-npm install
-npm test           # vitest run
-npm run test:watch
-```
+## How an event comes to life
 
-Test files cover shared utilities, i18n, leaderboard statistics computation
-(global & participation modes with mocked Supabase responses) and the role
-resolution rules.
+1. **Availability** — players declare in-game; officers record who is available, per squad.
+2. **Composition** — participants and reserves are chosen from the available pool, guided by participation rates.
+3. **Share** — the finalized roster is posted to Discord so everyone knows who is committed.
+4. **Start & track** — the event runs and attendance is logged live (present, late, excused, substitute).
+5. **Review** — scores come in from the player portal and are approved by officers.
+6. **Rank** — every session feeds the statistics engine, the badges, and the next event's decisions.
 
-> Node ≥ 22 note: on Node versions exposing an experimental global
-> `localStorage`, Vitest's jsdom environment skips the DOM Storage polyfill;
-> `tests/setup.js` re-injects an in-memory `localStorage` so tests are
-> deterministic.
+---
 
-## Browser storage
+## Roles
 
-All persisted state lives under `localStorage` keys prefixed `gm_`
-(e.g. `gm_role`, `gm_current_guild`, `gm_guild_restriction`, `gm_user`,
-`gm_active_tab`, `gm_config_*`). A one-time shim in `gm-utils.js` migrates the
-legacy `rad_*` keys automatically on load.
+| Role | What they can do |
+|------|------------------|
+| **Super Admin** | Oversees all guilds, creates guilds, manages accounts, grants subscriptions, cross-guild leaderboard. |
+| **Guild Admin** | Full management of their guild: events, squads, members, sanctions, Discord settings, subscription. |
+| **Member** | Read-only access: overview, members, stats, history. |
+| **Player (portal)** | No account needed — submits scores, updates power, requests transfers via their in-game UID. |
+
+---
+
+## About the project
+
+This project was developed entirely by me, with no third-party assets. It is a lightweight web app — plain JavaScript with a custom design system, a database and serverless backend, and an automated test suite for the core logic (statistics, rankings, subscriptions, access control). It is designed to be fast, easy to maintain, and simple to deploy.
+
+---
+
+## License
+
+FGF Guild Management Tool is licensed under the **Business Source License 1.1** — see [`LICENSE`](LICENSE) for the full text.
+
+- The project is fully self-developed; no game publisher assets are used.
+- You may read, study, and adapt the code for non-production and internal purposes.
+- Operating the app as a service for third parties, or reselling it, requires a commercial license — contact the maintainer to arrange one.
+- On the Change Date (**2029-08-02**), the software becomes available under the **Apache License, Version 2.0**.
+
+This is an unofficial, community-developed project and is not affiliated with or endorsed by the publisher of Foundation Galactic Frontier.
