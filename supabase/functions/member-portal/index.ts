@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY      = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +15,49 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { ...cors, "Content-Type": "application/json" },
   });
+}
+
+/**
+ * Resolve the authenticated player's identity from their account.
+ * The player signs in with identifier + password via auth-login, which
+ * provisions a shadow GoTrue user; the JWT of that session maps back to
+ * the accounts row (auth_user_id), which carries the in-game UID.
+ *
+ * The in-game UID is NEVER accepted as an access credential anymore:
+ * knowing a UID no longer grants access to someone else's portal data.
+ */
+async function getIdentity(
+  req: Request,
+  admin: ReturnType<typeof createClient>
+): Promise<{ uid: string | null; pseudo: string | null; guild: string | null } | null> {
+  const authHeader = req.headers.get("Authorization") || "";
+  const match = authHeader.match(/^Bearer (.+)$/);
+  if (!match) return null;
+
+  const jwt = match[1];
+  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const { data: { user }, error } = await anon.auth.getUser(jwt);
+  if (error || !user) return null;
+
+  const { data: acc } = await admin
+    .from("accounts")
+    .select("uid, status, guild")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (!acc || acc.status !== "active" || !acc.uid) return null;
+
+  return { uid: acc.uid, pseudo: null, guild: acc.guild ?? null };
+}
+
+async function getPlayer(admin: ReturnType<typeof createClient>, uid: string) {
+  const { data, error } = await admin
+    .from("guild_members")
+    .select("pseudo, guild, overall_power")
+    .eq("uid", uid)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data;
 }
 
 Deno.serve(async (req: Request) => {
@@ -34,18 +78,17 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
+  // Identity always comes from the signed-in account, never from a client-supplied UID.
+  const identity = await getIdentity(req, admin);
+  if (!identity || !identity.uid) {
+    return json({ ok: false, error: "unauthorized" }, 200);
+  }
+  const uid = identity.uid;
+
   if (action === "get-active-sessions") {
-    const uid = (payload?.uid ?? "").toString().trim();
-    if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
-
     // 1. Look up player in guild_members
-    const { data: member, error: mErr } = await admin
-      .from("guild_members")
-      .select("pseudo, guild, overall_power")
-      .eq("uid", uid)
-      .maybeSingle();
-
-    if (mErr || !member) {
+    const member = await getPlayer(admin, uid);
+    if (!member) {
       return json({ ok: false, error: "player_not_found" }, 200);
     }
 
@@ -87,22 +130,16 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "submit-scores") {
-    const uid = (payload?.uid ?? "").toString().trim();
     const eventName = (payload?.event_name ?? "").toString().trim();
     const sessionId = (payload?.session_id ?? "").toString().trim();
-    
-    if (!uid || !eventName || !sessionId) {
+
+    if (!eventName || !sessionId) {
       return json({ ok: false, error: "missing_parameters" }, 400);
     }
 
     // 1. Verify player membership
-    const { data: member, error: mErr } = await admin
-      .from("guild_members")
-      .select("pseudo, guild")
-      .eq("uid", uid)
-      .maybeSingle();
-
-    if (mErr || !member) {
+    const member = await getPlayer(admin, uid);
+    if (!member) {
       return json({ ok: false, error: "player_not_found" }, 400);
     }
 
@@ -162,9 +199,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "update-power") {
-    const uid = (payload?.uid ?? "").toString().trim();
     const power = parseInt(payload?.power) || 0;
-
     if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
 
     // Update the player's overall_power in guild_members
@@ -181,17 +216,9 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "get-transfer-guilds") {
-    const uid = (payload?.uid ?? "").toString().trim();
-    if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
-
     // Get player's current guild and its server number
-    const { data: member, error: mErr } = await admin
-      .from("guild_members")
-      .select("guild")
-      .eq("uid", uid)
-      .maybeSingle();
-
-    if (mErr || !member) return json({ ok: false, error: "player_not_found" }, 200);
+    const member = await getPlayer(admin, uid);
+    if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
     const { data: sourceGuild, error: gErr } = await admin
       .from("guilds")
@@ -218,10 +245,8 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "submit-transfer-request") {
-    const uid = (payload?.uid ?? "").toString().trim();
     const targetGuild = (payload?.targetGuild ?? "").toString().trim();
 
-    if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
     if (!targetGuild) return json({ ok: false, error: "missing_target_guild" }, 400);
 
     // Call the RPC to handle the complex logic securely

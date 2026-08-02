@@ -2552,10 +2552,10 @@
     var playerPortalView = document.getElementById('player-portal-view');
     var portalStepLookup = document.getElementById('portal-step-lookup');
     var portalStepForm   = document.getElementById('portal-step-form');
-    var portalUidInput   = document.getElementById('portal-uid');
+    var portalIdInput    = document.getElementById('portal-id');
+    var portalPasswordInput = document.getElementById('portal-password');
     var portalLookupError = document.getElementById('portal-lookup-error');
     var portalLookupBtn  = document.getElementById('portal-lookup-btn');
-    var portalActiveUid  = null;
 
     document.getElementById('go-to-portal-btn').addEventListener('click', function () {
         loginView.classList.add('hidden');
@@ -2563,30 +2563,53 @@
         portalStepLookup.classList.remove('hidden');
         portalStepForm.classList.add('hidden');
         portalLookupError.classList.add('hidden');
-        portalUidInput.value = '';
-        portalActiveUid = null;
+        portalIdInput.value = '';
+        portalPasswordInput.value = '';
+    });
+
+    document.getElementById('portal-go-register-btn').addEventListener('click', function () {
+        playerPortalView.classList.add('hidden');
+        loginView.classList.remove('hidden');
+        showRegisterForm(true);
     });
 
     document.querySelectorAll('.portal-back-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            playerPortalView.classList.add('hidden');
-            loginView.classList.remove('hidden');
+            // Sign out of the portal session so the next player signs in with their own account
+            window.GM.logout().then(function () {
+                playerPortalView.classList.add('hidden');
+                loginView.classList.remove('hidden');
+            }).catch(function () {
+                playerPortalView.classList.add('hidden');
+                loginView.classList.remove('hidden');
+            });
         });
     });
 
     portalLookupBtn.addEventListener('click', async function () {
-        var uid = portalUidInput.value.trim();
-        if (!uid) return;
+        var id = portalIdInput.value.trim();
+        var pass = portalPasswordInput.value;
+        if (!id || !pass) return;
 
         portalLookupBtn.disabled = true;
         var span = portalLookupBtn.querySelector('span');
         var origText = span ? span.textContent : '';
-        if (span) span.textContent = 'Searching...';
+        if (span) span.textContent = 'Signing in...';
         portalLookupError.classList.add('hidden');
 
         try {
+            var loginResp = await window.GM.login(id, pass);
+            if (!loginResp.ok) {
+                portalLookupError.querySelector('span').textContent =
+                    loginResp.error === 'pending_approval'
+                        ? 'Your account is awaiting approval by a guild admin.'
+                        : 'Invalid identifier or password.';
+                portalLookupError.classList.remove('hidden');
+                return;
+            }
+
             var { data, error } = await supabase.functions.invoke('member-portal', {
-                body: { action: 'get-active-sessions', payload: { uid: uid } }
+                body: { action: 'get-active-sessions', payload: {} }
             });
 
             if (error || !data || !data.ok) {
@@ -2596,13 +2619,12 @@
             }
 
             if (data.error === 'player_not_found') {
-                portalLookupError.querySelector('span').textContent = 'Player UID not found in guild database.';
+                portalLookupError.querySelector('span').textContent = 'Your account is not linked to a guild member.';
                 portalLookupError.classList.remove('hidden');
                 return;
             }
 
             // Successfully fetched data
-            portalActiveUid = uid;
             portalStepLookup.classList.add('hidden');
             portalStepForm.classList.remove('hidden');
 
@@ -2620,10 +2642,10 @@
             avatarEl.textContent = initials;
             avatarEl.className = 'gm-avatar gm-avatar-md gm-avatar-accent';
 
-            renderPortalActiveSessions(uid, data.sessions);
+            renderPortalActiveSessions(data.sessions);
             
             // Fetch guilds for transfer
-            loadPortalTransferGuilds(uid);
+            loadPortalTransferGuilds();
         } catch (err) {
             console.error(err);
             portalLookupError.querySelector('span').textContent = 'An error occurred during verification.';
@@ -2643,7 +2665,6 @@
                 showToast('Please enter a valid power number.', 'error');
                 return;
             }
-            if (!portalActiveUid) return;
 
             portalUpdatePowerBtn.disabled = true;
             var origText = portalUpdatePowerBtn.innerHTML;
@@ -2651,18 +2672,12 @@
 
             try {
                 var { data, error } = await supabase.functions.invoke('member-portal', {
-                    body: { action: 'update-power', payload: { uid: portalActiveUid, power: powerVal } }
+                    body: { action: 'update-power', payload: { power: powerVal } }
                 });
                 if (error || !data || !data.ok) {
                     throw new Error(error ? error.message : 'Update failed');
                 }
                 showToast('Your combat power has been updated successfully!', 'success');
-                // Sync local guildMembers if loaded
-                var localMember = guildMembers.find(function (m) { return m.uid === portalActiveUid; });
-                if (localMember) {
-                    localMember.overall_power = powerVal;
-                    renderGuildMembers();
-                }
             } catch (err) {
                 console.error(err);
                 showToast('Failed to update combat power: ' + err.message, 'error');
@@ -2677,7 +2692,7 @@
     var portalTransferBtn    = document.getElementById('portal-transfer-btn');
     var portalTransferMsg    = document.getElementById('portal-transfer-msg');
 
-    async function loadPortalTransferGuilds(uid) {
+    async function loadPortalTransferGuilds() {
         if (!portalTransferSelect) return;
         portalTransferSelect.innerHTML = '<option value="">Loading guilds...</option>';
         portalTransferBtn.disabled = true;
@@ -2685,7 +2700,7 @@
 
         try {
             var { data, error } = await supabase.functions.invoke('member-portal', {
-                body: { action: 'get-transfer-guilds', payload: { uid: uid } }
+                body: { action: 'get-transfer-guilds', payload: {} }
             });
             if (error || !data || !data.ok) {
                 var errDesc = (data && data.error) ? data.error : (error ? error.message : 'unknown');
@@ -2715,7 +2730,6 @@
         });
 
         portalTransferBtn.addEventListener('click', async function () {
-            if (!portalActiveUid) return;
             var targetGuild = portalTransferSelect.value;
             if (!targetGuild) return;
 
@@ -2728,7 +2742,7 @@
 
             try {
                 var { data, error } = await supabase.functions.invoke('member-portal', {
-                    body: { action: 'submit-transfer-request', payload: { uid: portalActiveUid, targetGuild: targetGuild } }
+                    body: { action: 'submit-transfer-request', payload: { targetGuild: targetGuild } }
                 });
 
                 if (error || !data || !data.ok) {
@@ -2761,7 +2775,7 @@
         portalTransferMsg.style.display = 'block';
     }
 
-    function renderPortalActiveSessions(uid, sessions) {
+    function renderPortalActiveSessions(sessions) {
         var container = document.getElementById('portal-active-sessions-container');
         if (!sessions || sessions.length === 0) {
             container.innerHTML = '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: 1.8rem;"></i><div class="gm-empty-title" style="font-size: 0.85rem;">No active events for your guild.</div></div>';
@@ -2906,7 +2920,6 @@
                 var scorePvpVal = card.querySelector('.portal-score-pvp')?.value;
 
                 var payload = {
-                    uid: uid,
                     event_name: eventName,
                     session_id: sessionId,
                     participated: participated,

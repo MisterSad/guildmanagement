@@ -177,27 +177,47 @@
                             <div class="gm-login-sub">Submit your scores for active guild events</div>
                         </div>
 
-                        <!-- Step 1: Lookup UID -->
+                        <!-- Step 1: Sign in with account -->
                         <div id="portal-step-lookup" class="gm-login-form">
                             <div class="gm-login-field">
-                                <label for="portal-uid">Your In-Game UID</label>
+                                <label for="portal-id">Identifier</label>
                                 <div class="gm-input-with-icon">
-                                    <i class="ph ph-identification-badge gm-icon"></i>
-                                    <input type="text" id="portal-uid" class="gm-input" required placeholder="e.g. 12345678">
+                                    <i class="ph ph-user gm-icon"></i>
+                                    <input type="text" id="portal-id" class="gm-input" required
+                                        placeholder="Your account identifier" autocomplete="username">
+                                    <span class="gm-input-focus-line"></span>
+                                </div>
+                            </div>
+                            <div class="gm-login-field">
+                                <label for="portal-password">Password</label>
+                                <div class="gm-input-with-icon gm-login-pwd-wrap">
+                                    <i class="ph ph-lock gm-icon"></i>
+                                    <input type="password" id="portal-password" class="gm-input" required
+                                        placeholder="Your password" autocomplete="current-password">
+                                    <span class="gm-input-focus-line"></span>
+                                    <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
+                                        <i class="ph ph-eye"></i>
+                                    </button>
                                 </div>
                             </div>
                             <div id="portal-lookup-error" class="gm-login-error hidden">
                                 <i class="ph ph-warning-circle"></i>
-                                <span>Player UID not found in guild database.</span>
+                                <span>Unable to sign in. Check your credentials.</span>
                             </div>
                             <button type="button" id="portal-lookup-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                                <i class="ph ph-magnifying-glass"></i>
+                                <i class="ph ph-sign-in"></i>
                                 <span>Access My Guild Events</span>
                             </button>
-                            <button type="button" class="gm-btn gm-btn-ghost portal-back-btn" style="margin-top: 0.5rem; width: 100%;">
-                                <i class="ph ph-arrow-left"></i>
-                                <span>Back to Login</span>
-                            </button>
+                            <div class="gm-portal-switch-wrap">
+                                <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%;" id="portal-go-register-btn">
+                                    <i class="ph ph-user-plus"></i>
+                                    <span>Create a player account</span>
+                                </button>
+                                <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm portal-back-btn" style="font-size: 0.85rem; width: 100%; margin-top: 0.35rem;">
+                                    <i class="ph ph-arrow-left"></i>
+                                    <span>Back to Login</span>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Step 2: Display active events & form -->
