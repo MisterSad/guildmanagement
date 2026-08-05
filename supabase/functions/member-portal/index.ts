@@ -368,6 +368,35 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true });
   }
 
+  if (action === "get-badges") {
+    // Raw data for the badge engine (computed client-side in badges.js):
+    // in-game rank, join date (seniority), combat power and attendance count.
+    const { data: full, error: fErr } = await admin
+      .from("guild_members")
+      .select("pseudo, guild, role, created_at, overall_power")
+      .eq("uid", uid)
+      .maybeSingle();
+    if (fErr || !full) return json({ ok: false, error: "player_not_found" }, 200);
+
+    // Attendance: any participation row where the player was present.
+    const { count, error: cErr } = await admin
+      .from("event_participants")
+      .select("pseudo", { count: "exact", head: true })
+      .eq("guild", full.guild ?? identity.guild)
+      .eq("pseudo", full.pseudo)
+      .or("participated.gt.0,sub_present.eq.true");
+
+    if (cErr) return json({ ok: false, error: "db_error", message: cErr.message }, 500);
+
+    return json({
+      ok: true,
+      role: full.role || "R1",
+      created_at: full.created_at,
+      overall_power: full.overall_power || 0,
+      attended: count || 0
+    });
+  }
+
   if (action === "update-timezone") {
     const offset = parseInt(payload?.offset, 10);
     if (isNaN(offset) || offset < -12 || offset > 14) {

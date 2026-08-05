@@ -16,7 +16,8 @@
         history: null,      // per-event history from get-history
         activeTab: 'dashboard',
         period: 'all',      // 'all' | '8w' | '4w' | '1w'
-        chartsDrawn: false
+        chartsDrawn: false,
+        badgesLoaded: false
     };
 
     // Period presets, in weeks. 'all' keeps everything.
@@ -107,6 +108,7 @@
 
         var navItems = [
             { id: 'dashboard', icon: 'ph-chart-line-up', label: 'My Progress' },
+            { id: 'badges', icon: 'ph-trophy', label: 'Badges' },
             { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
             { id: 'absence', icon: 'ph-user-minus', label: 'Absence' },
             { id: 'settings', icon: 'ph-sliders-horizontal', label: 'Account' }
@@ -165,6 +167,7 @@
                     '<div class="gm-content">' +
                         '<div class="gm-page">' +
                             '<div id="portal-panel-dashboard" class="gm-page portal-panel"></div>' +
+                            '<div id="portal-panel-badges" class="gm-page portal-panel hidden"></div>' +
                             '<div id="portal-panel-events" class="gm-page portal-panel hidden"></div>' +
                             '<div id="portal-panel-absence" class="gm-page portal-panel hidden"></div>' +
                             '<div id="portal-panel-settings" class="gm-page portal-panel hidden"></div>' +
@@ -193,12 +196,15 @@
             root.querySelectorAll('[data-portal-nav]').forEach(function (b) {
                 b.classList.toggle('gm-active', b.getAttribute('data-portal-nav') === tabId);
             });
-            ['dashboard', 'events', 'absence', 'settings'].forEach(function (name) {
+            ['dashboard', 'badges', 'events', 'absence', 'settings'].forEach(function (name) {
                 var panel = document.getElementById('portal-panel-' + name);
                 if (panel) panel.classList.toggle('hidden', name !== portalState.activeTab);
             });
             if (portalState.activeTab === 'dashboard' && !portalState.chartsDrawn) {
                 renderDashboardPanel();
+            }
+            if (portalState.activeTab === 'badges' && !portalState.badgesLoaded) {
+                renderBadgesPanel();
             }
             if (portalState.activeTab === 'absence') {
                 renderAbsencePanel();
@@ -231,6 +237,7 @@
         });
 
         renderDashboardPanel();
+        renderBadgesPanel();
         renderEventsPanel();
         renderSettingsPanel();
     }
@@ -530,6 +537,102 @@
             ctx.textAlign = 'center';
             ctx.fillText((h.week_start || h.session_id || '').toString().slice(5, 10), x, padT + chartH + 17);
         });
+    }
+
+    // ─── Panel: Badges (gamification) ─────────────────────────────────────
+    function renderBadgesPanel() {
+        var panel = document.getElementById('portal-panel-badges');
+        if (!panel) return;
+        panel.innerHTML =
+            '<header class="gm-page-header">' +
+                '<div>' +
+                    '<h1 class="gm-page-title">Badges</h1>' +
+                    '<p class="gm-page-subtitle">Achievements that unlock as you grow in the guild</p>' +
+                '</div>' +
+            '</header>' +
+            '<div id="portal-badges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading badges...</div></div></div>';
+        loadBadgesPanel();
+    }
+
+    function formatBadgeCurrent(badge) {
+        if (badge.category === 'rank') return 'R' + badge.current;
+        if (badge.category === 'tenure') return window.GM.formatNumber(badge.current) + 'd';
+        if (badge.category === 'power') return window.GM.formatPower(badge.current);
+        return window.GM.formatNumber(badge.current) + ' evts';
+    }
+
+    function formatBadgeTarget(badge) {
+        if (badge.category === 'rank') return 'R' + badge.target;
+        if (badge.category === 'tenure') return window.GM.formatNumber(badge.target) + 'd';
+        if (badge.category === 'power') return window.GM.formatPower(badge.target);
+        return window.GM.formatNumber(badge.target) + ' evts';
+    }
+
+    function renderBadgeCard(badge) {
+        var cls = badge.earned ? 'portal-badge-card earned' : 'portal-badge-card locked';
+        var iconCls = badge.earned ? 'portal-badge-icon' : 'portal-badge-icon dim';
+        var stateHtml = badge.earned
+            ? '<div class="portal-badge-state"><i class="ph ph-check-circle"></i> Unlocked</div>'
+            : '<div class="portal-badge-state"><i class="ph ph-lock-key"></i> Locked</div>';
+
+        var progressHtml = badge.earned
+            ? '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" style="width:100%; background:' + badge.color + ';"></div></div>'
+            : '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" style="width:' + badge.progress + '%; background:' + badge.color + ';"></div></div>';
+
+        var metricHtml = badge.earned ? '' :
+            '<div class="portal-badge-metric"><span>' + esc(formatBadgeCurrent(badge)) + '</span><span class="portal-badge-metric-sep">/</span><span>' + esc(formatBadgeTarget(badge)) + '</span></div>';
+
+        return '<div class="' + cls + '">' +
+                    '<div class="' + iconCls + '" style="color:' + badge.color + ';' + (badge.earned ? ' border-color:' + badge.color + '; box-shadow:0 0 18px ' + badge.color + '55;' : '') + '">' +
+                        '<i class="ph ' + badge.icon + '"></i>' +
+                    '</div>' +
+                    '<div class="portal-badge-name">' + esc(badge.name) + '</div>' +
+                    '<div class="portal-badge-desc">' + esc(badge.desc) + '</div>' +
+                    progressHtml +
+                    metricHtml +
+                    stateHtml +
+                '</div>';
+    }
+
+    function renderBadgesBody(data) {
+        var body = document.getElementById('portal-badges-body');
+        if (!body) return;
+
+        var summary =
+            '<div class="portal-badges-summary">' +
+                '<div class="portal-badges-summary-item"><span class="portal-badges-summary-value">' + data.earned + '</span><span class="portal-badges-summary-label">of ' + data.total + ' badges earned</span></div>' +
+                '<div class="portal-badges-summary-item"><span class="portal-badges-summary-value">' + data.categories.length + '</span><span class="portal-badges-summary-label">achievement tracks</span></div>' +
+            '</div>';
+
+        var sections = data.categories.map(function (cat) {
+            var cards = cat.badges.map(renderBadgeCard).join('');
+            return '<div class="portal-badge-section">' +
+                        '<div class="portal-badge-section-title"><i class="ph ' + cat.icon + '" style="color:' + cat.color + ';"></i> ' + esc(cat.label) + '</div>' +
+                        '<div class="portal-badge-grid">' + cards + '</div>' +
+                    '</div>';
+        }).join('');
+
+        body.innerHTML = summary + sections;
+    }
+
+    async function loadBadgesPanel() {
+        var body = document.getElementById('portal-badges-body');
+        if (!body) return;
+
+        var res = await invoke('get-badges', {});
+        if (!res.ok) {
+            body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your badges.</div><div class="gm-empty-sub">' + esc(res.error || 'unknown error') + '</div></div>';
+            return;
+        }
+
+        var data = window.GM_BADGES.computeBadges({
+            role: res.role,
+            created_at: res.created_at,
+            overall_power: res.overall_power,
+            attended: res.attended
+        });
+        portalState.badgesLoaded = true;
+        renderBadgesBody(data);
     }
 
     // ─── Panel 2: Active Events (score submission) ─────────────────────────

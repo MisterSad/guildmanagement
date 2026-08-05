@@ -193,8 +193,8 @@ npm test          # vitest run — all files, all must pass
 npm run test:watch
 ```
 
-Current suite: **114 tests** across `tests/` (i18n, roles, gm-utils,
-utils, stats, shadowfront, cross-rank, subscription, player-register).
+Current suite: **135 tests** across `tests/` (i18n, roles, gm-utils,
+utils, stats, shadowfront, cross-rank, subscription, player-register, badges).
 When you add a feature, **add unit tests for it** in the matching test
 file (or a new `tests/<feature>.test.js`).
 
@@ -244,7 +244,7 @@ valid JWT. Every anon-granted table must return `[]` for anon.
 
 ### 6.5 Check before every commit
 
-- [ ] `npm test` — 114+ tests, all green
+- [ ] `npm test` — 135 tests, all green
 - [ ] No secret/token committed (`sbp_`, `vcp_`, `eyJ`, private keys)
 - [ ] New UI strings are English, no em-dashes
 - [ ] New tenant table added to `tenantTables` (or consciously excluded)

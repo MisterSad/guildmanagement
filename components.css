@@ -2454,6 +2454,134 @@
     flex-shrink: 0;
 }
 
+/* ─── Badges panel (gamification) ────────────────────────────────────── */
+.portal-badges-summary {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+.portal-badges-summary-item {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.portal-badges-summary-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+.portal-badges-summary-label {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    font-weight: 600;
+}
+.portal-badge-section { margin-bottom: 1.5rem; }
+.portal-badge-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--fg);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.75rem;
+}
+.portal-badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+.portal-badge-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 1rem 0.9rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.35rem;
+    transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+.portal-badge-card.earned {
+    border-color: rgba(255,255,255,0.09);
+}
+.portal-badge-card.locked {
+    opacity: 0.55;
+    filter: saturate(0.4);
+}
+.portal-badge-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    border: 1px solid transparent;
+    background: var(--bg-2);
+    margin-bottom: 0.25rem;
+    flex-shrink: 0;
+}
+.portal-badge-icon.dim {
+    opacity: 0.6;
+}
+.portal-badge-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--fg);
+    line-height: 1.1;
+}
+.portal-badge-desc {
+    font-size: 0.68rem;
+    color: var(--fg-muted);
+    line-height: 1.25;
+    min-height: 1.9rem;
+}
+.portal-badge-progress {
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--bg-2);
+    overflow: hidden;
+    margin-top: 0.3rem;
+}
+.portal-badge-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+.portal-badge-metric {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+}
+.portal-badge-metric-sep { color: var(--fg-dim); }
+.portal-badge-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+}
+.portal-badge-card.earned .portal-badge-state { color: var(--success); }
+.portal-badge-card.locked .portal-badge-state { color: var(--fg-dim); }
+
+
 .portal-events-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));

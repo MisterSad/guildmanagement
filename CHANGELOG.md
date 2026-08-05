@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2026-08-06
+
+### Added
+- **Gamification badges in the Player Portal**: a new "Badges" tab turns player progression into achievements. The `badges.js` module (pure, unit-tested engine) computes a catalog of 19 badges across four tracks from the player's own data: **Ranks** (cumulative R1-R5), **Seniority** (30 days to 2 years in the guild), **Power** (10M to 1B combat power) and **Participation** (10 to 100 events attended). Earned badges render in full color with a glow; locked badges are greyed out and show the objective to reach (description), a progress bar and a current/target metric (e.g. "R3 / R5", "75M / 100M"). Data comes from a new `get-badges` action in the `member-portal` edge function, so the player never reads tables directly. 18 new unit tests (135 total across 10 files).
+
 ## [Unreleased] - 2026-08-02
 
 ### Added
