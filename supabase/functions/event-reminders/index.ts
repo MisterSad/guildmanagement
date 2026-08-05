@@ -918,7 +918,7 @@ serve(async (req) => {
         const CALAMITY_SCHEDULE = [
           { day: 1, hour: 23, minute: 50, round: 1, targetHour: 0, targetMinute: 0, targetDay: 'Tuesday' },
           { day: 2, hour: 2, minute: 50, round: 2, targetHour: 3, targetMinute: 0, targetDay: 'Tuesday' },
-          { day: 2, hour: 5, minute: 50, round: 3, targetHour: 6, targetMinute: 0, targetDay: 'Tuesday' },
+          { day: 2, hour: 5, minute: 20, round: 3, targetHour: 5, targetMinute: 30, targetDay: 'Tuesday' },
           { day: 2, hour: 8, minute: 50, round: 4, targetHour: 9, targetMinute: 0, targetDay: 'Tuesday' },
           { day: 2, hour: 11, minute: 50, round: 5, targetHour: 12, targetMinute: 0, targetDay: 'Tuesday' },
           { day: 2, hour: 14, minute: 50, round: 6, targetHour: 15, targetMinute: 0, targetDay: 'Tuesday' },
