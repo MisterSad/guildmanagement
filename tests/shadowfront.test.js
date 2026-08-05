@@ -139,7 +139,10 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
         const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-        expect(body.embeds[0].fields[0].name).toContain('Squad One');
+        // Only the active squad is shared: embed title carries the squad name,
+        // with just two fields (participants + reserves).
+        expect(body.embeds[0].title).toContain('Squad One');
+        expect(body.embeds[0].fields).toHaveLength(2);
         expect(body.embeds[0].fields[0].value).toContain('👑 Alpha');
         expect(body.embeds[0].fields[1].value).toBe('None yet');
     });

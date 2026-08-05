@@ -370,33 +370,24 @@
             };
         };
 
-        var s1 = squadField('squad1');
-        var s2 = squadField('squad2');
+        // Share only the squad currently being composed (sfActiveSquad).
+        var squadKey = sfActiveSquad === 'squad2' ? 'squad2' : 'squad1';
+        var squad = squadField(squadKey);
 
         var body = {
-            content: '📋 **Shadowfront — Squad Composition**',
+            content: '📋 **Shadowfront — ' + squadLabel(squadKey) + ' Composition**',
             embeds: [{
-                title: 'Shadowfront Squads',
+                title: squadLabel(squadKey),
                 color: 9442302, // Lilac (#8B5CF6)
                 fields: [
                     {
-                        name: t('sf_squad1') + ' — ' + t('sf_participants') + ' (' + s1.participants.length + '/20)',
-                        value: s1.participantsText,
+                        name: t('sf_participants') + ' (' + squad.participants.length + '/20)',
+                        value: squad.participantsText,
                         inline: true
                     },
                     {
-                        name: t('sf_squad1') + ' — ' + t('sf_reserves') + ' (' + s1.reserves.length + '/10)',
-                        value: s1.reservesText,
-                        inline: true
-                    },
-                    {
-                        name: t('sf_squad2') + ' — ' + t('sf_participants') + ' (' + s2.participants.length + '/20)',
-                        value: s2.participantsText,
-                        inline: true
-                    },
-                    {
-                        name: t('sf_squad2') + ' — ' + t('sf_reserves') + ' (' + s2.reserves.length + '/10)',
-                        value: s2.reservesText,
+                        name: t('sf_reserves') + ' (' + squad.reserves.length + '/10)',
+                        value: squad.reservesText,
                         inline: true
                     }
                 ],
