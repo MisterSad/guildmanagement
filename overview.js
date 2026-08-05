@@ -72,15 +72,17 @@
             var sanctionsQ = db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5);
             var recentMemQ = db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5);
             var transfersQ = db.from('guild_transfers').select('pseudo, source_guild, target_guild, resolved_at').eq('status', 'approved').or('source_guild.eq.' + currentG + ',target_guild.eq.' + currentG).order('resolved_at', { ascending: false }).limit(5);
+            var powerQ     = db.from('guild_members').select('overall_power');
 
             memCountQ  = memCountQ.eq('guild', currentG);
             statusQ    = statusQ.eq('guild', currentG);
             gloryQ     = gloryQ.eq('guild', currentG);
             sanctionsQ = sanctionsQ.eq('guild', currentG);
             recentMemQ = recentMemQ.eq('guild', currentG);
+            powerQ     = powerQ.eq('guild', currentG);
 
-            var [memCount, statusRows, gloryRows, sanctionsRows, recentMembers, transfersRows] = await Promise.all([
-                memCountQ, statusQ, gloryQ, sanctionsQ, recentMemQ, transfersQ
+            var [memCount, statusRows, gloryRows, sanctionsRows, recentMembers, transfersRows, powerRows] = await Promise.all([
+                memCountQ, statusQ, gloryQ, sanctionsQ, recentMemQ, transfersQ, powerQ
             ]);
 
             var stats = {
@@ -88,7 +90,8 @@
                 liveEvents: (statusRows.data || []).filter(function (s) { return s.is_active; }).length,
                 liveEventNames: (statusRows.data || []).filter(function (s) { return s.is_active; }).map(function (s) { return prettyEventName(s.event_name); }),
                 gloryTotal: (gloryRows.data || []).reduce(function (a, r) { return a + (r.score || 0); }, 0),
-                sanctions: (sanctionsRows.data || []).length
+                sanctions: (sanctionsRows.data || []).length,
+                totalPower: (powerRows.data || []).reduce(function (a, m) { return a + (parseInt(m.overall_power, 10) || 0); }, 0)
             };
 
             // Activity feed : merge events + sanctions + new members
@@ -282,9 +285,9 @@
         var html =
             '<div class="gm-stat-grid">' +
                 statTile(t('overview_s_members'), fmt(stats.members), null, 'ph-users', false, 'Active Guild Members', 'stat-theme-lime') +
+                statTile('Guild Power', formatBigNumber(stats.totalPower), null, 'ph-gauge', false, 'Total Power of All Members', 'stat-theme-cyan') +
                 statTile(t('overview_s_events'), String(stats.liveEvents), null, 'ph-clock', stats.liveEvents > 0, liveEventsMeta, 'stat-theme-coral') +
                 statTile(t('overview_s_glory'), formatBigNumber(stats.gloryTotal), 'up', 'ph-trophy', false, t('overview_s_glory_meta'), 'stat-theme-mint') +
-                statTile(t('overview_s_sanctions'), String(stats.sanctions), stats.sanctions > 0 ? 'down' : null, 'ph-warning-octagon', false, 'Recorded Warnings', 'stat-theme-lilac') +
             '</div>' +
             '<div class="gm-section">' +
                 '<div class="gm-section-head">' +
