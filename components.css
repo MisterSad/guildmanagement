@@ -1641,23 +1641,26 @@
     border-color: rgba(244, 63, 94, 0.35);
 }
 
-/* ─── Timezone Clocks (Overview Page) ────────────────────────────────────── */
-.gm-overview-clocks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    justify-content: center;
-    margin-bottom: 1.5rem;
-}
-
 /* ─── Timezone Clocks (Overview Page) ─── */
 .gm-overview-clocks {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.85rem;
     margin-bottom: 2rem;
     width: 100%;
     box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+    .gm-overview-clocks {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .gm-overview-clocks {
+        grid-template-columns: 1fr;
+    }
 }
 
 .gm-clock-card {
