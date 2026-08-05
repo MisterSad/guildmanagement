@@ -14,6 +14,8 @@ class MockBuilder {
     eq(field, value) { this.where.push([field, value]); return this; }
     neq(field, value) { this.notWhere.push([field, value]); return this; }
     in(field, values) { this.inWhere = [field, values]; return this; }
+    or() { return this; }
+    order() { return this; }
     limit() { return this; }
     _apply() {
         let rows = this.rows;
@@ -191,5 +193,99 @@ describe('GM_STATS participation mode', () => {
         expect(alpha.events).toBe('2/2');
         expect(beta.score).toBe('50 pts');
         expect(beta.events).toBe('1/2');
+    });
+});
+
+describe('GM_STATS KPI tabs', () => {
+    // Members with real power for the health/reliability computations.
+    const MEMBERS_POWER = [
+        { pseudo: 'AlphaPrime', uid: '111', guild: G, overall_power: 80000000, role: 'R4', created_at: '2026-05-01T00:00:00Z' },
+        { pseudo: 'BetaKnight', uid: '222', guild: G, overall_power: 50000000, role: 'R3', created_at: '2026-06-15T00:00:00Z' },
+        { pseudo: 'GammaGhost', uid: '333', guild: G, overall_power: 20000000, role: 'R2', created_at: '2026-07-20T00:00:00Z' },
+        { pseudo: 'ZombieZzz', uid: '444', guild: G, overall_power: 5000000, role: 'R1', created_at: '2026-07-20T00:00:00Z' }
+    ];
+    const PARTS_POWER = [
+        { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 's1', week_start: W2, participated: 1, is_pending: false, guild: G },
+        { pseudo: 'BetaKnight', event_name: 'SvS', session_id: 's1', week_start: W2, participated: 1, is_pending: false, guild: G },
+        // GammaGhost participated in the previous week only (still recent)
+        { pseudo: 'GammaGhost', event_name: 'SvS', session_id: 'sOld', week_start: W1, participated: 1, is_pending: false, guild: G }
+        // ZombieZzz never participated -> inactive
+    ];
+
+    function buildKpiDb() {
+        const base = buildDb();
+        return makeDb({
+            rpc: { list_event_weeks: () => ({ data: [{ week_start: W2 }, { week_start: W1 }], error: null }) },
+            from: {
+                guild_members: () => new MockBuilder(MEMBERS_POWER),
+                event_participants: () => new MockBuilder(PARTS_POWER),
+                shadowfront_squads: () => new MockBuilder([]),
+                shadowfront_signups: () => new MockBuilder([]),
+                guild_transfers: () => new MockBuilder([]),
+                event_status: () => new MockBuilder([])
+            }
+        });
+    }
+
+    beforeEach(() => {
+        mountContainers();
+        db = buildKpiDb();
+        window.GM.db = db;
+        window.GM.ensureAuthSession = async () => null;
+        // Deterministic week helpers: current week = W2, previous = W1
+        window.GM.getWeekStart = () => W2;
+        window.GM.getPrevWeekStart = () => W1;
+    });
+
+    afterEach(() => {
+        delete window.GM.db;
+        window.GM.ensureAuthSession = undefined;
+        window.GM.getWeekStart = undefined;
+        window.GM.getPrevWeekStart = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('renders Guild Health with power tiles and tier bars', async () => {
+        await window.GM_STATS.load();
+        const btn = document.querySelector('button[data-gm-mode="kpi-health"]');
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+
+        const area = document.querySelector('.stats-leaderboard-area');
+        const text = area.textContent;
+        // Total power = 80M + 50M + 20M = 150M -> "150.0M" via formatBigNum
+        expect(text).toContain('Total Power');
+        expect(text).toContain('Roster summary');
+        expect(text).toContain('Power distribution');
+    });
+
+    it('renders Engagement and flags inactive members', async () => {
+        await window.GM_STATS.load();
+        const btn = document.querySelector('button[data-gm-mode="kpi-engage"]');
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+
+        const area = document.querySelector('.stats-leaderboard-area');
+        const text = area.textContent;
+        expect(text).toContain('Inactive members');
+        // ZombieZzz has no participation in the current or previous week.
+        expect(text).toContain('ZombieZzz');
+    });
+
+    it('renders Roster and Operations without throwing', async () => {
+        await window.GM_STATS.load();
+        const rosterBtn = document.querySelector('button[data-gm-mode="kpi-roster"]');
+        rosterBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+        expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('Role structure');
+
+        const opsBtn = document.querySelector('button[data-gm-mode="kpi-ops"]');
+        opsBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+        expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('Pending score approvals');
     });
 });
