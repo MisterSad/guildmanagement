@@ -2,7 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2026-08-06
+## [Unreleased] - 2026-08-07
+
+### Added
+- **Duplicate-UID add-member dialog**: when an admin tries to add a player whose UID already exists in another guild, a dialog now shows exactly where the player lives (pseudo, UID, current guild, server number, rank, power and name-change history) and offers a **Request Transfer** action. The admin confirms with an acknowledgement that the process cannot be undone without reporting an issue, then a pending transfer request is created for the target guild.
+- **Admin transfer requests**: new `gm_admin_request_transfer` RPC lets a `guild_admin` request moving an existing player into their own guild (or a `super_admin` into any guild). Same-server validation, duplicate-UID and subscription gates. The request appears in the target guild's Pending Transfers list.
+- **Transfer direction in the admin panel**: Pending Transfers now shows both directions — `IN` (player joining this guild, approve/reject buttons) and `OUT` (player leaving this guild, waiting on the other guild's approval), with a "From → To" column.
+- **RLS hardening on `guild_transfers`**: the legacy inline-`accounts` policies (which all `authenticated` users could hit, letting a member whose guild matched read transfers and even resolve them) were replaced with helper-based admin-only policies (`gm_can_read_guild_data` / `check_user_guild_write_access`).
+- **`resolve_guild_transfer` hardened**: approval now moves only the source-guild row (legacy duplicate UIDs can no longer drag unrelated guilds), rejects stale approvals (`member_no_longer_in_source`), re-checks target duplicates, enforces the subscription gate and uses `search_path ''`.
 
 ### Changed
 - **Payments moved to a hosted checkout session**: self-service subscriptions now use a hosted checkout provider instead of the embedded widget. The admin clicks a plan, is redirected to the provider's checkout page (card, Apple Pay, Google Pay, PayPal) and returns to the app where the subscription is confirmed by polling. Order creation (`gm-create-order`), status (`gm-order-status`) and the signature-verified webhook (`gm-stripe-webhook`) remain the same security shape: the webhook is the source of truth and only applies settled payments. The subscription application RPC is unchanged (atomic, idempotent, stacking). Unit tests updated for the redirect flow.

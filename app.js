@@ -1471,7 +1471,7 @@
         try {
             var [res, transfersRes, absencesRes] = await Promise.all([
                 supabase.from('guild_members').select('*').order('pseudo', { ascending: true }),
-                supabase.from('guild_transfers').select('id, uid, pseudo, source_guild').eq('target_guild', currentG).eq('status', 'pending').order('created_at', { ascending: true }),
+                supabase.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild').eq('status', 'pending').order('created_at', { ascending: true }),
                 supabase.from('player_absences').select('*').eq('guild', currentG)
             ]);
             
@@ -1479,7 +1479,12 @@
             guildMembers = res.data || [];
             
             if (!transfersRes.error) {
-                pendingTransfers = transfersRes.data || [];
+                // Pending transfers touching this guild in either direction:
+                // players joining (target = us) or leaving (source = us).
+                var currentGTransfers = (transfersRes.data || []).filter(function (t) {
+                    return t.target_guild === currentG || t.source_guild === currentG;
+                });
+                pendingTransfers = currentGTransfers;
             }
 
             if (!absencesRes.error) {
@@ -1509,16 +1514,33 @@
         section.style.display = '';
         count.textContent = pendingTransfers.length;
 
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+
         var html = '';
         pendingTransfers.forEach(function (t) {
+            // Direction from the current admin's point of view.
+            var isIncoming = t.target_guild === currentG;
+            var directionBadge = isIncoming
+                ? '<span class="gm-chip gm-chip-success" style="font-size:0.68rem;"><i class="ph ph-arrow-down-left"></i> IN</span>'
+                : '<span class="gm-chip" style="font-size:0.68rem; background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.3);"><i class="ph ph-arrow-up-right"></i> OUT</span>';
+
+            var actions = '';
+            if (isIncoming) {
+                // Only the target guild (or super admin) can resolve.
+                actions =
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" onclick="window.GM.resolveTransfer(\'' + t.id + '\', \'approve\')" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" onclick="window.GM.resolveTransfer(\'' + t.id + '\', \'reject\')" title="Reject Transfer"><i class="ph ph-x"></i></button>';
+            } else {
+                // Outgoing: another guild must approve; show a waiting hint.
+                actions = '<span style="font-size:0.72rem; color:var(--text-dim);"><i class="ph ph-hourglass"></i> Awaiting approval from ' + esc(t.target_guild) + '</span>';
+            }
+
             html += '<tr>' +
                 '<td data-label="Player"><div class="gm-member-name"><div class="gm-avatar gm-avatar-sm gm-avatar-info">' + esc(window.GM.avatarInit(t.pseudo)) + '</div>' + esc(t.pseudo) + '</div></td>' +
                 '<td data-label="UID"><div class="gm-uid-badge">' + esc(t.uid) + '</div></td>' +
-                '<td data-label="Source Guild">' + esc(t.source_guild) + '</td>' +
-                '<td class="gm-center" data-label="Actions" style="white-space: nowrap;">' +
-                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" onclick="window.GM.resolveTransfer(\'' + t.id + '\', \'approve\')" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
-                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" onclick="window.GM.resolveTransfer(\'' + t.id + '\', \'reject\')" title="Reject Transfer"><i class="ph ph-x"></i></button>' +
-                '</td>' +
+                '<td data-label="Direction">' + directionBadge + '</td>' +
+                '<td data-label="From">' + esc(t.source_guild) + ' &rarr; ' + esc(t.target_guild) + '</td>' +
+                '<td class="gm-center" data-label="Actions" style="white-space: nowrap;">' + actions + '</td>' +
             '</tr>';
         });
         list.innerHTML = html;
@@ -1549,6 +1571,114 @@
         }
     };
 
+    // ── UID already taken: show where the player lives + transfer request ──
+    // info comes from gm_find_player_by_uid: { player, name_history }
+    async function showUidTakenDialog(typedPseudo, uid, info) {
+        var existing = document.getElementById('uid-taken-overlay');
+        if (existing) existing.remove();
+
+        var p = info.player || {};
+        var server = p.server_number ? 'Server #' + p.server_number : 'Server unknown';
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+
+        var historyHtml = '';
+        var history = info.name_history || [];
+        if (history.length > 0) {
+            var items = history.slice(0, 5).map(function (h) {
+                return '<div style="font-size:0.8rem; color:var(--text-dim);">' +
+                    '<span style="color:var(--text-muted); text-decoration:line-through;">' + esc(h.old_pseudo) + '</span>' +
+                    ' &rarr; <span style="color:var(--accent); font-weight:600;">' + esc(h.new_pseudo) + '</span>' +
+                    '<span style="margin-left:0.5rem; font-size:0.7rem;">(' + esc(String(h.changed_at || '').slice(0, 10)) + ')</span>' +
+                '</div>';
+            }).join('');
+            historyHtml =
+                '<div style="margin-top:0.75rem; border-top:1px solid var(--border-soft); padding-top:0.65rem;">' +
+                    '<div style="font-size:0.72rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.35rem;">Name history</div>' +
+                    '<div style="display:flex; flex-direction:column; gap:0.2rem;">' + items + '</div>' +
+                '</div>';
+        }
+
+        var overlay = document.createElement('div');
+        overlay.id = 'uid-taken-overlay';
+        overlay.className = 'confirm-overlay';
+
+        overlay.innerHTML =
+            '<div class="gm-modal-card" style="max-width: 520px; width: 92%; position: relative; text-align:left;">' +
+                '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">' +
+                    '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                        '<i class="ph ph-user-circle-gear" style="font-size:1.5rem; color:var(--accent);"></i>' +
+                        '<h3 style="margin:0; font-size:1.2rem;">Player ID already exists</h3>' +
+                    '</div>' +
+                    '<button type="button" class="gm-mini-btn gm-close-uid" style="cursor:pointer;"><i class="ph ph-x"></i></button>' +
+                '</div>' +
+                '<div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:8px; padding:0.9rem; display:flex; flex-direction:column; gap:0.4rem;">' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Player</span><strong style="color:var(--fg);">' + esc(p.pseudo || typedPseudo) + '</strong></div>' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Player ID</span><span class="gm-uid-badge">' + esc(uid) + '</span></div>' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Current Guild</span><strong style="color:var(--accent);">' + esc(p.guild || '?') + '</strong></div>' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Server</span><span>' + esc(server) + '</span></div>' +
+                    (p.role ? '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Rank</span><span>' + esc(p.role) + '</span></div>' : '') +
+                    historyHtml +
+                '</div>' +
+                '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; border:1px solid var(--info-soft); font-size:0.8rem; line-height:1.45; margin-top:0.85rem;">' +
+                    '<i class="ph ph-info" style="margin-right:4px;"></i>' +
+                    'This player already belongs to <strong>' + esc(p.guild || 'another guild') + '</strong>. You cannot add them directly here. You can send a transfer request so an admin approves moving them to <strong>' + esc(currentG) + '</strong>.' +
+                '</div>' +
+                '<label style="display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.85rem; cursor:pointer; font-size:0.82rem; color:var(--text-muted);">' +
+                    '<input type="checkbox" id="uid-taken-confirm" style="margin-top:2px; accent-color: var(--accent);">' +
+                    '<span>I understand this process cannot be undone without reporting an issue or bug, and that the transfer must be approved by an admin.</span>' +
+                '</label>' +
+                '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
+                    '<button type="button" class="gm-btn gm-btn-ghost gm-close-uid">Cancel</button>' +
+                    '<button type="button" id="uid-taken-request-btn" class="gm-btn gm-btn-primary" disabled>' +
+                        '<i class="ph ph-arrows-left-right"></i> <span>Request Transfer</span>' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function closeDialog() {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 200);
+        }
+        overlay.querySelectorAll('.gm-close-uid').forEach(function (btn) {
+            btn.addEventListener('click', closeDialog);
+        });
+        overlay.addEventListener('click', function (ev) {
+            if (ev.target === overlay) closeDialog();
+        });
+
+        var confirmCb = document.getElementById('uid-taken-confirm');
+        var requestBtn = document.getElementById('uid-taken-request-btn');
+        if (confirmCb) {
+            confirmCb.addEventListener('change', function () {
+                if (requestBtn) requestBtn.disabled = !confirmCb.checked;
+            });
+        }
+
+        if (requestBtn) {
+            requestBtn.addEventListener('click', async function () {
+                requestBtn.disabled = true;
+                var span = requestBtn.querySelector('span');
+                if (span) span.textContent = 'Requesting...';
+                try {
+                    var res = await supabase.rpc('gm_admin_request_transfer', { p_uid: uid, p_target_guild: currentG });
+                    if (res.error) throw res.error;
+                    var data = res.data || {};
+                    if (!data.ok) throw new Error(data.error || 'request_failed');
+                    closeDialog();
+                    showToast('Transfer request sent to ' + currentG + '. It will appear in the pending list for approval.', 'success');
+                    fetchGuildMembers();
+                } catch (err) {
+                    showToast('Could not request transfer: ' + err.message, 'error');
+                    requestBtn.disabled = false;
+                    if (span) span.textContent = 'Request Transfer';
+                }
+            });
+        }
+    }
+
     async function handleAddMember(inputId, uidInputId, powerInputId, roleInputId) {
         var input  = document.getElementById(inputId);
         var pseudo = input ? input.value.trim() : '';
@@ -1577,7 +1707,18 @@
             var uidCheck = await supabase.rpc('check_uid_exists_globally', { p_uid: String(uidVal).trim() });
             if (uidCheck.error) throw uidCheck.error;
             if (uidCheck.data) {
-                showToast('Player ID is already in use by another guild. Use Transfer instead.', 'error');
+                // The UID exists somewhere: show where the player currently
+                // lives and offer a transfer request instead of blocking.
+                var lookup = await supabase.rpc('gm_find_player_by_uid', { p_uid: String(uidVal).trim() });
+                if (lookup.error) throw lookup.error;
+                var info = lookup.data || {};
+                if (!info.ok) throw new Error(info.error || 'lookup_failed');
+                if (info.found) {
+                    showUidTakenDialog(pseudo, uidVal, info);
+                    return;
+                }
+                // Fallback: global check says it exists but lookup found nothing.
+                showToast('Player ID is already in use. Use Transfer instead.', 'error');
                 return;
             }
         } catch (err) {
