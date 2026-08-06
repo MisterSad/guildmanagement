@@ -111,11 +111,11 @@
         var initials = window.GM.avatarInit(p.pseudo);
 
         var navItems = [
+            { id: 'settings', icon: 'ph-cardholder', label: 'My Info' },
             { id: 'dashboard', icon: 'ph-chart-line-up', label: 'My Progress' },
-            { id: 'badges', icon: 'ph-trophy', label: 'Badges' },
-            { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
             { id: 'absence', icon: 'ph-user-minus', label: 'Absence' },
-            { id: 'settings', icon: 'ph-sliders-horizontal', label: 'My Info' }
+            { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
+            { id: 'badges', icon: 'ph-trophy', label: 'Badges' }
         ];
 
         var navHtml = navItems.map(function (item) {
