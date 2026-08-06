@@ -16,7 +16,7 @@ function find(catalog, id) {
 describe('GM_BADGES badge catalog', () => {
     it('exposes the expected total badge count', () => {
         const c = compute({ role: 'R1', created_at: null, overall_power: 0, attended: 0 });
-        expect(c.total).toBe(34);
+        expect(c.total).toBe(41);
         expect(c.categories).toHaveLength(5);
     });
 
@@ -27,7 +27,7 @@ describe('GM_BADGES badge catalog', () => {
 
     it('handles empty input without throwing', () => {
         const c = compute(null);
-        expect(c.total).toBe(34);
+        expect(c.total).toBe(41);
         // default rank is R1, so only the baseline Initiate badge is earned
         expect(c.earned).toBe(1);
     });
@@ -86,10 +86,11 @@ describe('GM_BADGES seniority badges', () => {
         expect(find(c, 'tenure_2y').earned).toBe(false);
     });
 
-    it('a 60-day member earns the 1-month badge with partial progress on 3-month', () => {
+    it('a 60-day member earns 1m and 2m badges, partial on 3-month', () => {
         const past = new Date(Date.now() - 60 * 86400000).toISOString();
         const c = compute({ role: 'R1', created_at: past, overall_power: 0, attended: 0 });
         expect(find(c, 'tenure_1m').earned).toBe(true);
+        expect(find(c, 'tenure_2m').earned).toBe(true);
         expect(find(c, 'tenure_3m').earned).toBe(false);
         expect(find(c, 'tenure_3m').progress).toBe(67);
     });
@@ -113,22 +114,32 @@ describe('GM_BADGES power badges', () => {
     it('locks everything at zero power', () => {
         const c = compute({ role: 'R1', created_at: null, overall_power: 0, attended: 0 });
         expect(find(c, 'power_10m').earned).toBe(false);
-        expect(find(c, 'power_1b').earned).toBe(false);
+        expect(find(c, 'power_300m').earned).toBe(false);
     });
 
-    it('75M power earns Fighter and Brawler, Titan at 75%', () => {
+    it('75M power earns Fighter, Brawler, Warrior and Elite, Titan at 75%', () => {
         const c = compute({ role: 'R1', created_at: null, overall_power: 75000000, attended: 0 });
         expect(find(c, 'power_10m').earned).toBe(true);
+        expect(find(c, 'power_25m').earned).toBe(true);
         expect(find(c, 'power_50m').earned).toBe(true);
+        expect(find(c, 'power_75m').earned).toBe(true);
         expect(find(c, 'power_100m').earned).toBe(false);
         expect(find(c, 'power_100m').progress).toBe(75);
         expect(find(c, 'power_100m').current).toBe(75000000);
     });
 
-    it('2B power unlocks every power badge', () => {
-        const c = compute({ role: 'R1', created_at: null, overall_power: 2000000000, attended: 0 });
-        expect(find(c, 'power_1b').earned).toBe(true);
-        expect(find(c, 'power_1b').progress).toBe(100);
+    it('300M power unlocks every power badge', () => {
+        const c = compute({ role: 'R1', created_at: null, overall_power: 300000000, attended: 0 });
+        expect(find(c, 'power_300m').earned).toBe(true);
+        expect(find(c, 'power_300m').progress).toBe(100);
+    });
+
+    it('keeps the max tier at 300M (no higher tier exists)', () => {
+        const c = compute({ role: 'R1', created_at: null, overall_power: 9000000000, attended: 0 });
+        expect(find(c, 'power_300m').earned).toBe(true);
+        const powerBadges = c.categories.find((cat) => cat.id === 'power').badges;
+        const maxTarget = Math.max.apply(null, powerBadges.map((b) => b.target));
+        expect(maxTarget).toBe(300000000);
     });
 });
 
@@ -140,9 +151,16 @@ describe('GM_BADGES participation badges', () => {
         expect(find(c, 'part_25').progress).toBe(48);
     });
 
-    it('100 attended events unlock every participation badge', () => {
+    it('100 attended events unlock through Iron Will, Vanguard still locked', () => {
         const c = compute({ role: 'R1', created_at: null, overall_power: 0, attended: 100 });
         expect(find(c, 'part_100').earned).toBe(true);
+        expect(find(c, 'part_200').earned).toBe(false);
+    });
+
+    it('1500 attended events unlock every participation badge', () => {
+        const c = compute({ role: 'R1', created_at: null, overall_power: 0, attended: 1500 });
+        expect(find(c, 'part_1000').earned).toBe(true);
+        expect(find(c, 'part_1500').earned).toBe(true);
     });
 
     it('treats string numbers and null attended values safely', () => {
