@@ -144,6 +144,15 @@
             window.GM_SHELL.renderShell();
         }
         reloadActiveView();
+
+        // Handle a Stripe checkout redirect (back from the hosted payment
+        // page): switch to the Subscription tab so GM_SUBSCRIPTION.load()
+        // can poll gm-order-status and confirm the payment.
+        var urlParams = new URLSearchParams(window.location.search);
+        if ((urlParams.get('checkout') === 'success' || urlParams.get('checkout') === 'cancel') &&
+            window.GM_SUBSCRIPTION && window.GM_SHELL && window.GM_SHELL.gotoItem) {
+            window.GM_SHELL.gotoItem('subscription');
+        }
     })();
 
     // ─── Auth ─────────────────────────────────────────────────────────────────

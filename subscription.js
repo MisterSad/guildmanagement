@@ -1,10 +1,10 @@
 /**
  * subscription.js — Abonnement en self-service (onglet « Subscription »).
  * Visible pour les guild_admin et le super_admin (sur n'importe quel tenant).
- * Paiement via Revolut Merchant Web SDK (embedded checkout) : CB, Revolut Pay,
- * Apple Pay, Google Pay. La source de vérité reste le webhook Revolut
- * (gm-revolut-webhook) ; gm-order-status permet de rafraîchir l'UI dès que
- * Revolut confirme l'ordre côté serveur.
+ * Paiement via une Checkout Session hébergée (redirection Stripe) : CB,
+ * Apple Pay, Google Pay, PayPal. La source de vérité reste le webhook
+ * (gm-stripe-webhook) ; gm-order-status permet de rafraîchir l'UI dès que
+ * Stripe confirme le paiement côté serveur.
  * Chargé à la demande par app.js via window.GM_SUBSCRIPTION.load().
  */
 (function () {
@@ -20,13 +20,9 @@
         { key: 'lifetime', label: 'Lifetime', price: '89.00', period: 'one-time', tag: 'Best value' }
     ];
 
-    var POLL_INTERVAL_MS = 2000;
-    var POLL_ATTEMPTS = 15;
-
     var state = {
-        config: null,       // { publicKey, mode, configured }
-        widget: null,       // EmbeddedCheckoutInstance (destroy)
-        polling: false
+        config: null,       // { mode, configured }
+        busy: false
     };
 
     function getDb() {
@@ -61,7 +57,6 @@
         }
 
         state.config = null;
-        state.polling = false;
         container.innerHTML = loadingHtml();
 
         try {
@@ -72,6 +67,7 @@
             if (!data.ok) throw new Error(data.error || 'config_failed');
             state.config = data;
             render(container);
+            await handleReturn(container);
         } catch (err) {
             container.innerHTML = errorHtml((err && err.message) || 'load_failed');
             wireRetry(container);
@@ -145,116 +141,78 @@
         '</div>';
     }
 
-    // ── Widget Revolut (embedded checkout) ───────────────────────────────────
-    function loadEmbedScript(mode) {
-        return new Promise(function (resolve, reject) {
-            if (window.RevolutCheckout) return resolve(window.RevolutCheckout);
-            var base = mode === 'sandbox'
-                ? 'https://sandbox-merchant.revolut.com/embed.js'
-                : 'https://merchant.revolut.com/embed.js';
-            var s = document.createElement('script');
-            s.id = 'revolut-embed';
-            s.src = base;
-            s.async = true;
-            s.onload = function () { resolve(window.RevolutCheckout || null); };
-            s.onerror = function () { reject(new Error('embed_failed')); };
-            document.head.appendChild(s);
-        });
+    // ── Démarrer un paiement : créer la session puis rediriger ──────────────
+    // Redirect goes through the public API so tests can stub it without
+    // touching the read-only window.location.assign in jsdom.
+    function redirectTo(url) {
+        window.location.assign(url);
     }
 
-    async function openWidget(planKey, container) {
+    function startCheckoutRedirect(url) {
+        if (window.GM_SUBSCRIPTION && window.GM_SUBSCRIPTION._redirectTo) {
+            window.GM_SUBSCRIPTION._redirectTo(url);
+        } else {
+            redirectTo(url);
+        }
+    }
+
+    async function startCheckout(planKey, container) {
         var cfg = state.config;
         if (!cfg || !cfg.configured) {
             showToast(t('gm_sub_not_configured') || 'Payments are not configured yet.', 'error');
             return;
         }
-        if (!cfg.publicKey) {
-            showToast(t('gm_sub_not_configured') || 'Payments are not configured yet.', 'error');
-            return;
-        }
+        if (state.busy) return;
+        state.busy = true;
 
-        var slot = document.getElementById('subscription-widget');
-        if (!slot) return;
-
-        if (state.widget && state.widget.destroy) {
-            try { state.widget.destroy(); } catch (e) { /* ignore */ }
-            state.widget = null;
-        }
-
-        slot.style.display = 'block';
-        slot.innerHTML = '<div class="gm-empty"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">' + (t('loading') || 'Loading') + '…</div></div>';
-
-        var sdk;
-        try {
-            sdk = await loadEmbedScript(cfg.mode);
-            if (!sdk) throw new Error('embed_failed');
-        } catch (err) {
-            slot.style.display = 'none';
-            showToast(t('gm_sub_widget_error') || 'Could not open the payment widget.', 'error');
-            render(container);
-            return;
+        var btn = container.querySelector('[data-gm-sub-plan="' + planKey + '"]');
+        var origText = '';
+        if (btn) {
+            origText = btn.textContent;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i> <span>Redirecting...</span>';
         }
 
         var guildId = getGuildId();
         var db = getDb();
+        var returnUrl = window.location.href.split('?')[0];
 
         try {
-            state.widget = await sdk.embeddedCheckout({
-                publicToken: cfg.publicKey,
-                mode: cfg.mode,
-                locale: 'auto',
-                target: slot,
-                createOrder: async function () {
-                    var res = await db.functions.invoke('gm-create-order', {
-                        body: { action: 'create', guildId: guildId, plan: planKey }
-                    });
-                    var data = res.data || {};
-                    if (!data.ok || !data.token) throw new Error(data.error || 'order_failed');
-                    return { publicId: data.token };
-                },
-                onSuccess: function (payload) {
-                    var token = (payload && payload.orderId) || null;
-                    showToast(t('gm_sub_processing') || 'Processing payment…', 'info');
-                    if (token) pollStatus(token, container);
-                },
-                onError: function () {
-                    showToast(t('gm_sub_payment_failed') || 'Payment failed, please try again.', 'error');
-                },
-                onCancel: function () {
-                    slot.style.display = 'none';
-                    slot.innerHTML = '';
-                    render(container);
-                }
+            var res = await db.functions.invoke('gm-create-order', {
+                body: { action: 'create', guildId: guildId, plan: planKey, returnUrl: returnUrl }
             });
+            var data = res.data || {};
+            if (!data.ok || !data.url) throw new Error(data.error || 'order_failed');
+            // Hosted checkout: hand the browser over to Stripe.
+            startCheckoutRedirect(data.url);
         } catch (err) {
-            slot.style.display = 'none';
-            showToast(t('gm_sub_widget_error') || 'Could not open the payment widget.', 'error');
-            render(container);
+            state.busy = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origText;
+            }
+            showToast(t('gm_sub_widget_error') || 'Could not start the payment.', 'error');
         }
     }
 
-    // ── Confirmation : poll gm-order-status puis refresh local ──────────────
-    async function pollStatus(token, container) {
-        if (state.polling) return;
-        state.polling = true;
+    // ── Confirmation au retour de Stripe : poll gm-order-status ────────────
+    async function confirmCheckout(sessionId, container) {
         var db = getDb();
         var applied = false;
         var attempts = 0;
 
-        while (attempts < POLL_ATTEMPTS) {
+        while (attempts < 15) {
             attempts++;
             try {
-                var res = await db.functions.invoke('gm-order-status', { body: { orderId: token } });
+                var res = await db.functions.invoke('gm-order-status', { body: { sessionId: sessionId } });
                 var data = res.data || {};
                 if (data.ok && (data.applied === true || data.state === 'completed')) {
                     applied = true;
                     break;
                 }
             } catch (err) { /* keep polling */ }
-            await sleep(POLL_INTERVAL_MS);
+            await sleep(2000);
         }
-
-        state.polling = false;
 
         if (applied) {
             await refreshGuildsData();
@@ -265,15 +223,6 @@
             showToast(t('gm_sub_waiting') || 'Payment received - activation in progress…', 'info');
         }
 
-        var slot = document.getElementById('subscription-widget');
-        if (slot) {
-            slot.style.display = 'none';
-            slot.innerHTML = '';
-        }
-        if (state.widget && state.widget.destroy) {
-            try { state.widget.destroy(); } catch (e) { /* ignore */ }
-            state.widget = null;
-        }
         render(container);
     }
 
@@ -313,8 +262,8 @@
                 '<div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:stretch; justify-content:center;">' +
                     PLANS.map(planCardHtml).join('') +
                 '</div>' +
-                '<div class="gm-dim" style="font-size:.75rem; margin-top:.9rem;">' + (t('gm_sub_methods') || 'Accepted payments: Card, Apple Pay, Google Pay and Revolut Pay.') + '</div>' +
-                '<div class="gm-dim" style="font-size:.75rem; margin-top:.25rem;"><i class="ph ph-shield-check"></i> ' + (t('gm_sub_security') || 'Payments are processed and secured by Revolut. The site administrator never has access to your bank details.') + '</div>' +
+                '<div class="gm-dim" style="font-size:.75rem; margin-top:.9rem;">' + (t('gm_sub_methods') || 'Accepted payments: Card, Apple Pay, Google Pay and more.') + '</div>' +
+                '<div class="gm-dim" style="font-size:.75rem; margin-top:.25rem;"><i class="ph ph-shield-check"></i> ' + (t('gm_sub_security') || 'Payments are processed and secured by the payment provider. The site administrator never has access to your bank details.') + '</div>' +
             '</div>' +
             '<div id="subscription-widget" class="gm-sub-widget" style="display:none;"></div>';
 
@@ -322,7 +271,7 @@
 
         container.querySelectorAll('[data-gm-sub-plan]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                openWidget(btn.getAttribute('data-gm-sub-plan'), container);
+                startCheckout(btn.getAttribute('data-gm-sub-plan'), container);
             });
         });
     }
@@ -347,10 +296,27 @@
         '</div>';
     }
 
+    // ── Traitement du retour de Stripe (page rechargée avec ?checkout=) ─────
+    async function handleReturn(container, search) {
+        var params = new URLSearchParams(search === undefined ? window.location.search : search);
+        var mode = params.get('checkout');
+        var sessionId = params.get('session_id');
+        if (mode === 'cancel') {
+            showToast(t('gm_sub_cancelled') || 'Payment cancelled.', 'info');
+            return;
+        }
+        if (mode === 'success' && sessionId) {
+            showToast(t('gm_sub_processing') || 'Processing payment…', 'info');
+            await confirmCheckout(sessionId, container);
+        }
+    }
+
     window.GM_SUBSCRIPTION = {
         load: load,
+        handleReturn: handleReturn,
         _plans: PLANS,
-        _state: state
+        _state: state,
+        _redirectTo: redirectTo
     };
 
 })();

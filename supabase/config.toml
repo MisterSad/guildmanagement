@@ -414,3 +414,6 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.event-reminders]
 verify_jwt = false
+
+[functions.gm-stripe-webhook]
+verify_jwt = false

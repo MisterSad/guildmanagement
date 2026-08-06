@@ -1,15 +1,15 @@
 // gm-order-status — client-side payment confirmation (polling).
 //
-// After the embedded checkout widget reports success (onSuccess), the client
-// polls this function with the order's public token. If Revolut confirms the
-// order as COMPLETED, the subscription is applied right away with the same
-// atomic/idempotent RPC used by the webhook — the UI can refresh immediately
-// while the webhook remains the eventual source of truth.
+// After Stripe redirects the user back to success_url, the client polls this
+// function with the Checkout Session id. If Stripe confirms the session as
+// paid, the subscription is applied right away with the same atomic/idempotent
+// RPC used by the webhook — the UI can refresh immediately while the webhook
+// remains the eventual source of truth.
 //
 // Access: authenticated guild_admin (owner guild) or super_admin.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { fetchRevolutOrder, revolutSecretKey } from "../_shared/revolut.ts";
+import { fetchCheckoutSession, stripeSecretKey } from "../_shared/stripe.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -61,15 +61,15 @@ Deno.serve(async (req: Request) => {
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 200); }
-  const token = (body?.orderId ?? "").toString().trim();
-  if (!token) return json({ ok: false, error: "missing_fields" }, 200);
+  const sessionId = (body?.sessionId ?? "").toString().trim();
+  if (!sessionId) return json({ ok: false, error: "missing_fields" }, 200);
 
-  if (!revolutSecretKey()) return json({ ok: false, error: "not_configured" }, 200);
+  if (!stripeSecretKey()) return json({ ok: false, error: "not_configured" }, 200);
 
   const { data: pay } = await admin
     .from("gm_payments")
     .select("order_id, guild_id")
-    .eq("token", token)
+    .eq("token", sessionId)
     .maybeSingle();
   if (!pay || !pay.order_id) return json({ ok: false, error: "not_found" }, 200);
 
@@ -78,16 +78,16 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "forbidden" }, 200);
   }
 
-  let order: { state?: string };
+  let session: { payment_status?: string; status?: string };
   try {
-    order = await fetchRevolutOrder(pay.order_id);
+    session = await fetchCheckoutSession(pay.order_id);
   } catch (err) {
-    console.error("[gm-order-status] Revolut status failed", err);
-    return json({ ok: false, error: "revolut_status_failed" }, 200);
+    console.error("[gm-order-status] Stripe session failed", err);
+    return json({ ok: false, error: "session_failed" }, 200);
   }
 
-  const state = (order?.state ?? "").toString().toLowerCase();
-  if (state === "completed") {
+  const paymentStatus = (session?.payment_status ?? "").toString().toLowerCase();
+  if (paymentStatus === "paid") {
     const { data: rows, error } = await admin.rpc("gm_apply_subscription_payment", {
       p_order_id: pay.order_id,
     });
@@ -106,5 +106,5 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  return json({ ok: true, state, applied: false, newEnd: null });
+  return json({ ok: true, state: paymentStatus, applied: false, newEnd: null });
 });

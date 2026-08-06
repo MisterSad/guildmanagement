@@ -268,7 +268,7 @@ valid JWT. Every anon-granted table must return `[]` for anon.
   ```
   Currently deployed: `auth-login`, `admin-accounts`, `member-portal`,
   `event-reminders`, `gm-create-order`, `gm-order-status`,
-  `gm-revolut-webhook`, `player-register`.
+  `gm-stripe-webhook`, `player-register`.
 - After `db push` or `functions deploy`, always run 6.2/6.3 on the live
   project.
 

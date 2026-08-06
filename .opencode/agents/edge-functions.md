@@ -1,5 +1,5 @@
 ---
-description: Edge Functions (Deno/TypeScript) authority. Use for changes to supabase/functions/* — member-portal, auth-login, player-register, admin-accounts, event-reminders, gm-create-order, gm-order-status, gm-revolut-webhook. Enforces server-side identity resolution, JWT rules, CORS, secret handling.
+description: Edge Functions (Deno/TypeScript) authority. Use for changes to supabase/functions/* — member-portal, auth-login, player-register, admin-accounts, event-reminders, gm-create-order, gm-order-status, gm-stripe-webhook. Enforces server-side identity resolution, JWT rules, CORS, secret handling.
 mode: subagent
 permission:
   bash: deny
@@ -16,7 +16,7 @@ Review and design Deno/TypeScript serverless functions per AGENTS.md §5.
    `getIdentity`. A UID alone must never grant access to another player's
    data.
 2. **JWT verification config**: `auth-login`, `player-register`,
-   `gm-revolut-webhook`, `event-reminders` are public (no-verify-jwt, own
+   `gm-stripe-webhook`, `event-reminders` are public (no-verify-jwt, own
    auth: HMAC/x-cron-secret); `member-portal`, `admin-accounts`,
    `gm-create-order`, `gm-order-status` are JWT-verified (`--use-api`).
 3. **CORS + json() helper**: every function returns the shared `cors` object

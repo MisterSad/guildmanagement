@@ -14,7 +14,7 @@ revenue or exposes paid features. Treat every change with maximum care.
 - **Tables**: `gm_payments` (orders), `guilds` (subscription_type,
   subscription_end, Lifetime/Unlimited/Premium).
 - **Edge functions**: `gm-create-order` (server-side order creation, JWT),
-  `gm-order-status` (JWT), `gm-revolut-webhook` (public, HMAC-verified).
+  `gm-order-status` (JWT), `gm-stripe-webhook` (public, signature-verified).
 - **RPC**: `gm_apply_subscription_payment` — atomic, idempotent. Time plans
   extend `subscription_end` from `max(now, current end)` so renewals stack;
   Lifetime switches the guild to `Lifetime` type that never expires.

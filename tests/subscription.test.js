@@ -12,22 +12,24 @@ const GUILDS = [
     { id: 'OMEGA', subscription_type: 'Unlimited', subscription_end: null, server_number: null },
 ];
 
-let capturedOpts = null;
-
 function fromMock() {
     return {
         select: () => ({ order: () => Promise.resolve({ data: GUILDS, error: null }) })
     };
 }
 
+let invokeCalls = [];
+let assignedUrl = null;
+
 function invokeMock(name, opts) {
     const body = (opts && opts.body) || {};
+    invokeCalls.push([name, body]);
     if (name === 'gm-create-order') {
         if (body.action === 'config') {
-            return Promise.resolve({ data: { ok: true, publicKey: 'pk_test_123', mode: 'sandbox', configured: true } });
+            return Promise.resolve({ data: { ok: true, mode: 'test', configured: true } });
         }
         if (body.action === 'create') {
-            return Promise.resolve({ data: { ok: true, token: 'tok_x', orderId: 'ord_x', publicKey: 'pk_test_123', mode: 'sandbox' } });
+            return Promise.resolve({ data: { ok: true, url: 'https://checkout.stripe.test/cs_test_x', sessionId: 'cs_test_x', mode: 'test' } });
         }
     }
     if (name === 'gm-order-status') {
@@ -47,6 +49,13 @@ function planKeys() {
     );
 }
 
+function setupDb(overrides) {
+    GM.db = {
+        functions: { invoke: overrides && overrides.invoke ? overrides.invoke : invokeMock },
+        from: overrides && overrides.from ? overrides.from : fromMock
+    };
+}
+
 beforeEach(() => {
     document.body.innerHTML = '<div id="subscription-container"></div>';
     localStorage.setItem('gm_role', 'guild_admin');
@@ -54,13 +63,9 @@ beforeEach(() => {
     window.guildsData = {
         ALPHA: { type: 'Premium', end: FUTURE_END, server_number: '1089' }
     };
-    capturedOpts = null;
-    window.RevolutCheckout = {
-        embeddedCheckout: async (opts) => {
-            capturedOpts = opts;
-            return { destroy: vi.fn() };
-        }
-    };
+    invokeCalls = [];
+    assignedUrl = null;
+    SUB._state.busy = false;
     GM.db = { functions: { invoke: invokeMock }, from: fromMock };
     GM.showToast = vi.fn();
 });
@@ -69,8 +74,8 @@ afterEach(() => {
     GM.db = null;
     GM.showToast = vi.fn();
     document.body.innerHTML = '';
-    delete window.RevolutCheckout;
     delete window.currentGuildRestriction;
+    window.history.replaceState({}, '', '/');
 });
 
 describe('GM_SUBSCRIPTION self-service subscriptions', () => {
@@ -111,11 +116,11 @@ describe('GM_SUBSCRIPTION self-service subscriptions', () => {
         expect(container().textContent).toContain('Renew below');
     });
 
-    it('mentions the accepted payment methods and Revolut security', async () => {
+    it('mentions the accepted payment methods and provider security', async () => {
         await SUB.load();
         const texts = container().textContent;
-        expect(texts).toContain('Card, Apple Pay, Google Pay and Revolut Pay');
-        expect(texts).toContain('processed and secured by Revolut');
+        expect(texts).toContain('Card, Apple Pay, Google Pay and more');
+        expect(texts).toContain('processed and secured by the payment provider');
         expect(texts).toContain('never has access to your bank details');
     });
 
@@ -126,92 +131,84 @@ describe('GM_SUBSCRIPTION self-service subscriptions', () => {
         expect(container().textContent).toContain('Admins only');
     });
 
-    it('does not open the widget when payments are not configured', async () => {
-        GM.db = {
-            functions: {
-                invoke: async (name, opts) => {
-                    if ((opts.body || {}).action === 'config') {
-                        return { data: { ok: true, publicKey: null, mode: 'prod', configured: false } };
-                    }
-                    return { data: { ok: false, error: 'not_configured' } };
+    it('does not start checkout when payments are not configured', async () => {
+        setupDb({
+            invoke: async (name, opts) => {
+                if ((opts.body || {}).action === 'config') {
+                    return { data: { ok: true, mode: 'prod', configured: false } };
                 }
-            },
-            from: fromMock
-        };
+                return { data: { ok: false, error: 'not_configured' } };
+            }
+        });
         await SUB.load();
         container().querySelector('[data-gm-sub-plan="1m"]').click();
-        expect(capturedOpts).toBeNull();
         expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('not configured'), 'error');
+        expect(invokeCalls.filter((c) => c[0] === 'gm-create-order' && c[1].action === 'create')).toHaveLength(0);
     });
 
-    it('opens the embedded checkout with the config public key and mode', async () => {
+    it('creates a Checkout Session and redirects the browser to the hosted page', async () => {
+        SUB._redirectTo = (url) => { assignedUrl = String(url); };
         await SUB.load();
         container().querySelector('[data-gm-sub-plan="6m"]').click();
         await new Promise((r) => setTimeout(r, 0));
-        expect(capturedOpts).not.toBeNull();
-        expect(capturedOpts.publicToken).toBe('pk_test_123');
-        expect(capturedOpts.mode).toBe('sandbox');
-        expect(typeof capturedOpts.createOrder).toBe('function');
+        const createCalls = invokeCalls.filter((c) => c[0] === 'gm-create-order' && c[1].action === 'create');
+        expect(createCalls).toHaveLength(1);
+        expect(createCalls[0][1].guildId).toBe('ALPHA');
+        expect(createCalls[0][1].plan).toBe('6m');
+        expect(assignedUrl).toBe('https://checkout.stripe.test/cs_test_x');
     });
 
-    it('createOrder creates the order with the current guild and plan and returns the token', async () => {
-        await SUB.load();
-        container().querySelector('[data-gm-sub-plan="6m"]').click();
-        await new Promise((r) => setTimeout(r, 0));
-        const created = await capturedOpts.createOrder();
-        expect(created).toEqual({ publicId: 'tok_x' });
-    });
-
-    it('shows a payment failure toast on onError', async () => {
-        await SUB.load();
-        container().querySelector('[data-gm-sub-plan="1m"]').click();
-        await new Promise((r) => setTimeout(r, 0));
-        capturedOpts.onError({ error: { message: 'declined' }, orderId: 'tok_x' });
-        expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('Payment failed'), 'error');
-    });
-
-    it('confirms the payment, refreshes guildsData and shows the success toast', async () => {
+    it('shows a failure toast when creating the session fails', async () => {
+        setupDb({
+            invoke: async (name, opts) => {
+                const body = (opts && opts.body) || {};
+                if (body.action === 'config') return { data: { ok: true, mode: 'prod', configured: true } };
+                if (body.action === 'create') return { data: { ok: false, error: 'checkout_failed' } };
+                return { data: { ok: false, error: 'unexpected' } };
+            }
+        });
         await SUB.load();
         container().querySelector('[data-gm-sub-plan="1m"]').click();
         await new Promise((r) => setTimeout(r, 0));
-        await capturedOpts.onSuccess({ orderId: 'tok_x' });
+        expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('Could not start the payment'), 'error');
+    });
+
+    it('confirms a successful return by polling gm-order-status and refreshing guildsData', async () => {
+        await SUB.load();
+        // Simulate the return URL: the app would call handleReturn with the session id.
+        await SUB.handleReturn(container(), "?checkout=success&session_id=cs_test_9");
         await new Promise((r) => setTimeout(r, 0));
+        const statusCalls = invokeCalls.filter((c) => c[0] === 'gm-order-status');
+        expect(statusCalls.length).toBeGreaterThan(0);
+        expect(statusCalls[0][1].sessionId).toBe('cs_test_9');
         expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('activated'), 'success');
-        expect(window.guildsData.ALPHA.end).toBe(FUTURE_END);
-        expect(document.getElementById('subscription-widget').style.display).toBe('none');
     });
 
-    it('shows a waiting toast when Revolut has not applied the payment yet', async () => {
+    it('shows a waiting toast when the payment is not applied yet', async () => {
         vi.useFakeTimers();
-        GM.db = {
-            functions: {
-                invoke: async (name, opts) => {
-                    const body = (opts && opts.body) || {};
-                    if (name === 'gm-create-order' && body.action === 'config') {
-                        return { data: { ok: true, publicKey: 'pk_test_123', mode: 'sandbox', configured: true } };
-                    }
-                    if (name === 'gm-order-status') {
-                        return { data: { ok: true, state: 'pending', applied: false } };
-                    }
-                    return { data: { ok: false, error: 'unexpected_invoke' } };
+        setupDb({
+            invoke: async (name, opts) => {
+                const body = (opts && opts.body) || {};
+                if (name === 'gm-create-order' && body.action === 'config') {
+                    return { data: { ok: true, mode: 'test', configured: true } };
                 }
+                if (name === 'gm-order-status') {
+                    return { data: { ok: true, state: 'open', applied: false } };
+                }
+                return { data: { ok: false, error: 'unexpected_invoke' } };
             },
             from: fromMock
-        };
+        });
         await SUB.load();
-        container().querySelector('[data-gm-sub-plan="3m"]').click();
-        await Promise.resolve();
-        capturedOpts.onSuccess({ orderId: 'tok_y' });
+        const pending = SUB.handleReturn(container(), "?checkout=success&session_id=cs_test_9");
         await vi.advanceTimersByTimeAsync(2000 * 16);
+        await pending;
         expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('activation in progress'), 'info');
         vi.useRealTimers();
     });
 
     it('shows the load error state with a retry button when config fails', async () => {
-        GM.db = {
-            functions: { invoke: async () => ({ data: { ok: false, error: 'server_error' } }) },
-            from: fromMock
-        };
+        setupDb({ invoke: async () => ({ data: { ok: false, error: 'server_error' } }) });
         await SUB.load();
         expect(container().textContent).toContain('Could not load the subscription page');
         expect(document.getElementById('subscription-retry')).not.toBeNull();
