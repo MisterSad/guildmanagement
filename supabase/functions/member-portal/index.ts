@@ -441,20 +441,30 @@ Deno.serve(async (req: Request) => {
 
     if (cErr) return json({ ok: false, error: "db_error", message: cErr.message }, 500);
 
-    // Best Glory week ever, for the Glory badge track. Only positive scores
-    // count: a zero/empty Glory entry is not a real score and must not unlock
-    // or skew the badge progress.
-    const { data: gloryBest, error: gErr } = await admin
+    // Glory badge track: the player's best positive Glory week, EXCLUDING
+    // their first-ever declaration. The app just launched: if the first
+    // declaration counted, a player entering their real Glory score would
+    // instantly unlock every Glory badge. So badges only start tracking from
+    // the second declaration onwards. A player with a single positive entry
+    // (or none) gets glory_best = 0 and unlocks nothing.
+    const { data: gloryRows, error: gErr } = await admin
       .from("event_participants")
-      .select("score")
+      .select("score, week_start")
       .eq("guild", full.guild ?? identity.guild)
       .eq("pseudo", full.pseudo)
       .eq("event_name", "Glory")
       .gt("score", 0)
-      .order("score", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("week_start", { ascending: true });
+
     if (gErr) return json({ ok: false, error: "db_error", message: gErr.message }, 500);
+
+    let gloryBest = 0;
+    if ((gloryRows ?? []).length > 1) {
+      // Drop the first (earliest) positive entry, then take the max of the rest.
+      gloryBest = (gloryRows ?? [])
+        .slice(1)
+        .reduce((m: number, r: any) => Math.max(m, Number(r.score) || 0), 0);
+    }
 
     return json({
       ok: true,
@@ -462,7 +472,7 @@ Deno.serve(async (req: Request) => {
       created_at: full.created_at,
       overall_power: full.overall_power || 0,
       attended: count || 0,
-      glory_best: gloryBest?.score ?? 0
+      glory_best: gloryBest
     });
   }
 
