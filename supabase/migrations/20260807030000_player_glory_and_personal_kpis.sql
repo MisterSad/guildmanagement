@@ -110,6 +110,8 @@ begin
   );
 
   -- Glory: current week, best ever, this-week rank.
+  -- Only positive scores count: a zero/empty Glory entry is not a real score
+  -- and must never be returned as the player's "best" or "current" Glory.
   v_week := to_char(date_trunc('week', now())::date, 'YYYY-MM-DD');
 
   select score into v_glory_week
@@ -118,20 +120,25 @@ begin
     and event_name = 'Glory'
     and week_start = v_week::date
     and lower(pseudo) = lower(v_member.pseudo)
+    and coalesce(score, 0) > 0
   limit 1;
 
   select max(score) into v_glory_best
   from public.event_participants
   where guild = v_member.guild
     and event_name = 'Glory'
-    and lower(pseudo) = lower(v_member.pseudo);
+    and lower(pseudo) = lower(v_member.pseudo)
+    and coalesce(score, 0) > 0;
 
   select max(score) into v_glory_week_max
   from public.event_participants
   where guild = v_member.guild
     and event_name = 'Glory'
-    and week_start = v_week::date;
+    and week_start = v_week::date
+    and coalesce(score, 0) > 0;
 
+  -- Rank only counts players with an actual positive Glory this week; a
+  -- player with no score (or 0) is not ranked ahead of anyone.
   select count(*) + 1 into v_glory_rank
   from public.event_participants
   where guild = v_member.guild

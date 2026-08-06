@@ -55,12 +55,17 @@
         { id: 'part_1250',  category: 'part', name: 'Transcendent', desc: 'Attend 1250 events',   icon: 'ph-broadcast',      color: '#22d3ee', target: 1250 },
         { id: 'part_1500',  category: 'part', name: 'Immortal',     desc: 'Attend 1500 events',   icon: 'ph-asterisk',       color: '#22d3ee', target: 1500 },
         // Glory: highest single Glory week ever recorded for the player.
-        { id: 'glory_1k',   category: 'glory', name: 'Spark',     desc: 'Reach 1K Glory in a week',    icon: 'ph-sparkle',       color: '#fbbf24', target: 1000 },
-        { id: 'glory_10k',  category: 'glory', name: 'Radiant',   desc: 'Reach 10K Glory in a week',   icon: 'ph-sun',           color: '#fbbf24', target: 10000 },
-        { id: 'glory_50k',  category: 'glory', name: 'Luminous',  desc: 'Reach 50K Glory in a week',   icon: 'ph-brightness-high', color: '#fbbf24', target: 50000 },
-        { id: 'glory_100k', category: 'glory', name: 'Dazzling',  desc: 'Reach 100K Glory in a week',  icon: 'ph-crown',         color: '#fbbf24', target: 100000 },
-        { id: 'glory_500k', category: 'glory', name: 'Supernova', desc: 'Reach 500K Glory in a week',  icon: 'ph-broadcast',     color: '#fbbf24', target: 500000 },
-        { id: 'glory_1m',   category: 'glory', name: 'Divine',    desc: 'Reach 1M Glory in a week',    icon: 'ph-asterisk',      color: '#fbbf24', target: 1000000 }
+        // Zero / empty scores never count toward this track.
+        { id: 'glory_1k',    category: 'glory', name: 'Spark',     desc: 'Reach 1K Glory in a week',     icon: 'ph-sparkle',        color: '#fbbf24', target: 1000 },
+        { id: 'glory_10k',   category: 'glory', name: 'Radiant',   desc: 'Reach 10K Glory in a week',    icon: 'ph-sun',            color: '#fbbf24', target: 10000 },
+        { id: 'glory_50k',   category: 'glory', name: 'Luminous',  desc: 'Reach 50K Glory in a week',    icon: 'ph-brightness-high', color: '#fbbf24', target: 50000 },
+        { id: 'glory_100k',  category: 'glory', name: 'Dazzling',  desc: 'Reach 100K Glory in a week',   icon: 'ph-crown',          color: '#fbbf24', target: 100000 },
+        { id: 'glory_500k',  category: 'glory', name: 'Supernova', desc: 'Reach 500K Glory in a week',   icon: 'ph-broadcast',      color: '#fbbf24', target: 500000 },
+        { id: 'glory_1m',    category: 'glory', name: 'Divine',    desc: 'Reach 1M Glory in a week',     icon: 'ph-asterisk',       color: '#fbbf24', target: 1000000 },
+        { id: 'glory_5m',    category: 'glory', name: 'Celestial', desc: 'Reach 5M Glory in a week',     icon: 'ph-star-four',      color: '#fbbf24', target: 5000000 },
+        { id: 'glory_10m',   category: 'glory', name: 'Titanic',   desc: 'Reach 10M Glory in a week',    icon: 'ph-planet',         color: '#fbbf24', target: 10000000 },
+        { id: 'glory_25m',   category: 'glory', name: 'Cosmic',    desc: 'Reach 25M Glory in a week',    icon: 'ph-star',           color: '#fbbf24', target: 25000000 },
+        { id: 'glory_50m',   category: 'glory', name: 'Demigod',   desc: 'Reach 50M Glory in a week',    icon: 'ph-sparkle',        color: '#fbbf24', target: 50000000 }
     ];
 
     // ── Category metadata (order + labels) ─────────────────────────────────────

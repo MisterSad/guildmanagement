@@ -441,13 +441,16 @@ Deno.serve(async (req: Request) => {
 
     if (cErr) return json({ ok: false, error: "db_error", message: cErr.message }, 500);
 
-    // Best Glory week ever, for the Glory badge track.
+    // Best Glory week ever, for the Glory badge track. Only positive scores
+    // count: a zero/empty Glory entry is not a real score and must not unlock
+    // or skew the badge progress.
     const { data: gloryBest, error: gErr } = await admin
       .from("event_participants")
       .select("score")
       .eq("guild", full.guild ?? identity.guild)
       .eq("pseudo", full.pseudo)
       .eq("event_name", "Glory")
+      .gt("score", 0)
       .order("score", { ascending: false })
       .limit(1)
       .maybeSingle();

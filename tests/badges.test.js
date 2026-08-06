@@ -16,7 +16,7 @@ function find(catalog, id) {
 describe('GM_BADGES badge catalog', () => {
     it('exposes the expected total badge count', () => {
         const c = compute({ role: 'R1', created_at: null, overall_power: 0, attended: 0 });
-        expect(c.total).toBe(41);
+        expect(c.total).toBe(45);
         expect(c.categories).toHaveLength(5);
     });
 
@@ -27,7 +27,7 @@ describe('GM_BADGES badge catalog', () => {
 
     it('handles empty input without throwing', () => {
         const c = compute(null);
-        expect(c.total).toBe(41);
+        expect(c.total).toBe(45);
         // default rank is R1, so only the baseline Initiate badge is earned
         expect(c.earned).toBe(1);
     });
@@ -37,7 +37,7 @@ describe('GM_BADGES glory badges', () => {
     it('locks every glory badge at zero', () => {
         const c = compute({ role: 'R1', created_at: null, overall_power: 0, attended: 0, glory_best: 0 });
         expect(find(c, 'glory_1k').earned).toBe(false);
-        expect(find(c, 'glory_1m').earned).toBe(false);
+        expect(find(c, 'glory_50m').earned).toBe(false);
     });
 
     it('250K best glory unlocks Spark, Radiant, Luminous and Dazzling', () => {
@@ -48,9 +48,16 @@ describe('GM_BADGES glory badges', () => {
         expect(find(c, 'glory_500k').progress).toBe(50);
     });
 
-    it('1M best glory unlocks every glory badge', () => {
-        const c = compute({ role: 'R1', created_at: null, overall_power: 0, attended: 0, glory_best: 1000000 });
-        expect(find(c, 'glory_1m').earned).toBe(true);
+    it('50M best glory unlocks every glory badge', () => {
+        const c = compute({ role: 'R1', created_at: null, overall_power: 0, attended: 0, glory_best: 50000000 });
+        expect(find(c, 'glory_50m').earned).toBe(true);
+        expect(find(c, 'glory_50m').progress).toBe(100);
+    });
+
+    it('a zero glory value never unlocks any glory badge', () => {
+        const c = compute({ role: 'R1', created_at: null, overall_power: 0, attended: 0, glory_best: 0 });
+        expect(find(c, 'glory_1k').earned).toBe(false);
+        expect(find(c, 'glory_50m').earned).toBe(false);
     });
 });
 
