@@ -266,29 +266,17 @@
             .eq('pseudo', pseudo);
     }
 
+    // ── Ajout dynamique d'un membre aux événements actifs ─────────────────
+    // La RPC gm_add_member_to_active_events fait l'écriture DB de façon
+    // fiable. Ce helper ne fait que synchroniser l'état mémoire des stages
+    // Arms Race ouverts (le DB est déjà à jour via la RPC).
     async function addMemberToActiveEvents(pseudo) {
         var db = getDb();
         if (!db || !pseudo) return 0;
         try {
             var active = ['stageA', 'stageB'].filter(function(k) { return arState.stages[k].active && arState.stages[k].sessionId; });
             if (active.length === 0) return 0;
-            
-            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
-            var rows = active.map(function(k) {
-                var stg = arState.stages[k];
-                return {
-                    guild: currentG,
-                    event_name: STAGE_EVENTS[k],
-                    session_id: stg.sessionId,
-                    week_start: window.GM.getWeekStart(stg.startAt || new Date(stg.sessionId)),
-                    pseudo: pseudo,
-                    participated: 0,
-                    score: null
-                };
-            });
-            var insRes = await db.from('event_participants').insert(rows);
-            if (insRes.error) throw insRes.error;
-            
+
             active.forEach(function(k) {
                 var stg = arState.stages[k];
                 if (stg.participants.some(function (p) { return p.pseudo === pseudo; })) return;

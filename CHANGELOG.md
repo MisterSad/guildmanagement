@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-07
 
+### Fixed
+- **New members are now enrolled into active events automatically**: previously, adding a member after events were scheduled (Arms Race, DTR, SvS, GvG) silently left them out of the event member lists. The root cause was a client-side upsert that Postgres rejected against the partial unique index on `event_participants` (42P10), so the error was swallowed and the member was never added. A new `gm_add_member_to_active_events` RPC now inserts the member into every active session of their guild in one atomic, idempotent call (Shadowfront is excluded by design, its participants come from squad assignments). The client helpers were reduced to UI-only memory sync.
+- **Shadowfront participant sync fixed**: the same broken upsert pattern in `shadowfront.js` was replaced with a plain insert (rows are already filtered against existing ones).
+
 ### Added
 - **Duplicate-UID add-member dialog**: when an admin tries to add a player whose UID already exists in another guild, a dialog now shows exactly where the player lives (pseudo, UID, current guild, server number, rank, power and name-change history) and offers a **Request Transfer** action. The admin confirms with an acknowledgement that the process cannot be undone without reporting an issue, then a pending transfer request is created for the target guild.
 - **Admin transfer requests**: new `gm_admin_request_transfer` RPC lets a `guild_admin` request moving an existing player into their own guild (or a `super_admin` into any guild). Same-server validation, duplicate-UID and subscription gates. The request appears in the target guild's Pending Transfers list.

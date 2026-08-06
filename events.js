@@ -177,10 +177,12 @@
     }
 
     // ── Ajout dynamique d'un membre aux événements actifs ─────────────────
-    // Appelé après l'insertion d'un membre dans guild_members. Insère une
-    // ligne event_participants pour chaque event actif (hors Shadowfront,
-    // dont les participants sont liés aux assignations de squad).
-    // Retourne le nombre d'events mis à jour.
+    // La RPC gm_add_member_to_active_events fait l'écriture DB de façon
+    // fiable (les upserts client échouaient sur l'index partiel
+    // event_participants_session_unique -> le membre n'était jamais ajouté).
+    // Ce helper ne sert plus qu'à synchroniser l'état mémoire des onglets
+    // ouverts avec le membre nouvellement inséré.
+    // Retourne le nombre d'events actifs concernés (pour information).
     async function addMemberToActiveEvents(pseudo) {
         var db = getDb();
         if (!db || !pseudo) return 0;
@@ -191,8 +193,10 @@
         });
 
         try {
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             var statusRes = await db.from('event_status')
                 .select('event_name, session_id, start_at')
+                .eq('guild', currentG)
                 .eq('is_active', true)
                 .in('event_name', dbEventNames);
             if (statusRes.error) throw statusRes.error;
@@ -200,24 +204,8 @@
             var active = (statusRes.data || []).filter(function (r) { return r.session_id; });
             if (active.length === 0) return 0;
 
-            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
-            var rows = active.map(function (r) {
-                return {
-                    guild:        currentG,
-                    event_name:   r.event_name,
-                    session_id:   r.session_id,
-                    week_start:   window.GM.getWeekStart(r.start_at || new Date(r.session_id)),
-                    pseudo:       pseudo,
-                    participated: 0,
-                    score:        null
-                };
-            });
-
-            var insRes = await db.from('event_participants').upsert(rows, { onConflict: 'guild,event_name,session_id,pseudo' });
-            if (insRes.error) throw insRes.error;
-
-            // Sync UI : pour chaque onglet ouvert dont la session courante a été enrichie,
-            // ajoute le membre en mémoire et re-rendu.
+            // Sync UI : pour chaque onglet ouvert dont la session courante est active,
+            // ajoute le membre en mémoire et re-rendu (le DB est déjà à jour via la RPC).
             Object.keys(state).forEach(function (tabKey) {
                 var s = state[tabKey];
                 if (!s.isActive || !s.sessionId) return;

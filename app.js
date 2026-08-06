@@ -1753,11 +1753,26 @@
             showToast(pseudo + ' ' + t('toast_member_added'), 'success');
 
             var addedEvents = 0;
+            var activeG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+            try {
+                // Reliable DB-side enrollment: adds the member to every active
+                // event of the guild (Arms Race, DTR, SvS, GvG) regardless of
+                // which UI tabs were visited. Shadowfront is excluded by design.
+                var enrollRes = await supabase.rpc('gm_add_member_to_active_events', { p_pseudo: pseudo, p_guild: activeG });
+                if (!enrollRes.error && typeof enrollRes.data === 'number') {
+                    addedEvents = enrollRes.data;
+                }
+            } catch (err) {
+                console.error('Auto-enroll into active events failed', err);
+            }
+            // Refresh the in-memory states so open tabs reflect the new member.
+            // The client helpers are idempotent (upsert), so running them after
+            // the RPC only re-syncs the UI without creating duplicates.
             if (window.GM_EVENTS && window.GM_EVENTS.addMemberToActiveEvents) {
-                addedEvents += await window.GM_EVENTS.addMemberToActiveEvents(pseudo);
+                await window.GM_EVENTS.addMemberToActiveEvents(pseudo);
             }
             if (window.GM_ARMSRACE && window.GM_ARMSRACE.addMemberToActiveEvents) {
-                addedEvents += await window.GM_ARMSRACE.addMemberToActiveEvents(pseudo);
+                await window.GM_ARMSRACE.addMemberToActiveEvents(pseudo);
             }
             if (window.GM_SHADOWFRONT && window.GM_SHADOWFRONT.load) {
                 await window.GM_SHADOWFRONT.load();

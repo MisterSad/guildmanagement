@@ -554,7 +554,10 @@
                 };
             });
         if (toInsert.length > 0) {
-            await db.from('event_participants').upsert(toInsert, { onConflict: 'guild,event_name,session_id,pseudo' });
+            // Plain insert: toInsert is already filtered against existing rows,
+            // and the partial unique index (guild,event_name,session_id,pseudo)
+            // can't be inferred by an ON CONFLICT column list (42P10).
+            await db.from('event_participants').insert(toInsert);
         }
     }
 
