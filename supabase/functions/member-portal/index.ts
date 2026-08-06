@@ -60,6 +60,17 @@ async function getPlayer(admin: ReturnType<typeof createClient>, uid: string) {
   return data;
 }
 
+// Monday (UTC) of the week containing the given date, as YYYY-MM-DD.
+// Mirrors gm-utils.getWeekStart() used across the client.
+function getWeekStartIso(date: Date): string {
+  const d = new Date(date);
+  const day = d.getUTCDay(); // 0=Sun ... 6=Sat
+  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST")   return json({ ok: false, error: "method_not_allowed" }, 405);
@@ -101,9 +112,22 @@ Deno.serve(async (req: Request) => {
 
     if (sErr) return json({ ok: false, error: "db_error", message: sErr.message }, 500);
 
+    // 2b. Current-week Glory score for the profile (My Info panel)
+    const week = getWeekStartIso(new Date());
+    const { data: gloryRow, error: gErr } = await admin
+      .from("event_participants")
+      .select("score")
+      .eq("guild", member.guild)
+      .eq("event_name", "Glory")
+      .eq("week_start", week)
+      .eq("pseudo", member.pseudo)
+      .maybeSingle();
+    if (gErr) return json({ ok: false, error: "db_error", message: gErr.message }, 500);
+    const glory = gloryRow?.score != null ? gloryRow.score : null;
+
     // 3. For each active session, retrieve the player's participant entry
     if (!activeSessions || activeSessions.length === 0) {
-      return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, timezone_offset: member.timezone_offset ?? null, sessions: [] });
+      return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, timezone_offset: member.timezone_offset ?? null, glory, sessions: [] });
     }
 
     const sessionIds = activeSessions.map(s => s.session_id);
@@ -126,7 +150,7 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-    return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, timezone_offset: member.timezone_offset ?? null, sessions });
+    return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, timezone_offset: member.timezone_offset ?? null, glory, sessions });
   }
 
   if (action === "submit-scores") {
@@ -213,6 +237,35 @@ Deno.serve(async (req: Request) => {
     }
 
     return json({ ok: true });
+  }
+
+  if (action === "update-glory") {
+    // Player submits/modifies their weekly Glory score. Glory lives in
+    // event_participants with event_name='Glory', indexed by week_start
+    // (no session_id). We resolve the player's guild + pseudo server-side
+    // and upsert their row for the current week.
+    const glory = parseInt(payload?.glory);
+    if (isNaN(glory) || glory < 0) {
+      return json({ ok: false, error: "invalid_glory" }, 400);
+    }
+
+    const member = await getPlayer(admin, uid);
+    if (!member) return json({ ok: false, error: "player_not_found" }, 400);
+
+    const week = getWeekStartIso(new Date());
+    const { data, error: rErr } = await admin.rpc("gm_upsert_player_glory", {
+      p_guild: member.guild,
+      p_pseudo: member.pseudo,
+      p_week_start: week,
+      p_glory: glory,
+    });
+    if (rErr) {
+      return json({ ok: false, error: "update_failed", message: rErr.message }, 500);
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
+    if (!row || !row.ok) return json({ ok: false, error: row?.error || "save_failed" }, 200);
+
+    return json({ ok: true, week, glory });
   }
 
   if (action === "get-transfer-guilds") {
@@ -388,13 +441,37 @@ Deno.serve(async (req: Request) => {
 
     if (cErr) return json({ ok: false, error: "db_error", message: cErr.message }, 500);
 
+    // Best Glory week ever, for the Glory badge track.
+    const { data: gloryBest, error: gErr } = await admin
+      .from("event_participants")
+      .select("score")
+      .eq("guild", full.guild ?? identity.guild)
+      .eq("pseudo", full.pseudo)
+      .eq("event_name", "Glory")
+      .order("score", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (gErr) return json({ ok: false, error: "db_error", message: gErr.message }, 500);
+
     return json({
       ok: true,
       role: full.role || "R1",
       created_at: full.created_at,
       overall_power: full.overall_power || 0,
-      attended: count || 0
+      attended: count || 0,
+      glory_best: gloryBest?.score ?? 0
     });
+  }
+
+  if (action === "get-personal-kpis") {
+    // Advanced personal KPIs + positioning vs the rest of the guild.
+    // Computed server-side by gm_personal_kpis (service_role); the player
+    // only ever receives their own aggregates and guild-wide ranks.
+    const { data, error } = await admin.rpc("gm_personal_kpis", { p_uid: uid });
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean } | null;
+    if (!row || !row.ok) return json({ ok: false, error: "kpis_failed" }, 200);
+    return json(row);
   }
 
   if (action === "update-timezone") {

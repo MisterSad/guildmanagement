@@ -14,6 +14,7 @@
         player: null,       // { pseudo, guild, overall_power }
         sessions: [],       // active event sessions
         history: null,      // per-event history from get-history
+        kpis: null,         // personal KPIs + guild positioning
         activeTab: 'dashboard',
         period: 'all',      // 'all' | '8w' | '4w' | '1w'
         chartsDrawn: false,
@@ -76,9 +77,10 @@
         if (!root) return;
         root.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading your portal...</div></div>';
 
-        var [profile, history] = await Promise.all([
+        var [profile, history, kpis] = await Promise.all([
             invoke('get-active-sessions', {}),
-            invoke('get-history', {})
+            invoke('get-history', {}),
+            invoke('get-personal-kpis', {})
         ]);
 
         if (!profile.ok) {
@@ -90,10 +92,12 @@
             pseudo: profile.pseudo,
             guild: profile.guild,
             overall_power: profile.overall_power,
-            timezone_offset: profile.timezone_offset != null ? profile.timezone_offset : null
+            timezone_offset: profile.timezone_offset != null ? profile.timezone_offset : null,
+            glory: profile.glory != null ? profile.glory : null
         };
         portalState.sessions = profile.sessions || [];
         portalState.history = history.ok ? (history.events || {}) : null;
+        portalState.kpis = kpis.ok ? kpis : null;
         portalState.chartsDrawn = false;
 
         renderDashboard();
@@ -111,7 +115,7 @@
             { id: 'badges', icon: 'ph-trophy', label: 'Badges' },
             { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
             { id: 'absence', icon: 'ph-user-minus', label: 'Absence' },
-            { id: 'settings', icon: 'ph-sliders-horizontal', label: 'Account' }
+            { id: 'settings', icon: 'ph-sliders-horizontal', label: 'My Info' }
         ];
 
         var navHtml = navItems.map(function (item) {
@@ -256,6 +260,65 @@
         });
         var overallRate = totalCount > 0 ? Math.round((totalAttended / totalCount) * 100) : 0;
 
+        // ── Advanced personal KPIs (from gm_personal_kpis) ─────────────────
+        var kpis = portalState.kpis;
+        var kpiHtml = '';
+        if (kpis && kpis.power) {
+            var pw = kpis.power;
+            var gl = kpis.glory || {};
+            var pa = kpis.participation || {};
+
+            var powerDelta = pw.guild_max > 0
+                ? Math.round((pw.current / pw.guild_max) * 100)
+                : 0;
+            var gloryWeek = (gl.current_week != null) ? window.GM.formatNumber(gl.current_week) : '0';
+            var gloryRankTxt = (gl.current_week != null) ? '#' + (gl.rank || '-') + ' in guild' : 'No score yet';
+            var gloryPct = (gl.guild_max_week != null && gl.guild_max_week > 0)
+                ? Math.round(((gl.current_week || 0) / gl.guild_max_week) * 100)
+                : 0;
+            var partVsGuild = (pa.guild_avg_rate != null)
+                ? (pa.rate - pa.guild_avg_rate)
+                : 0;
+            var partVsTxt = (pa.guild_avg_rate != null)
+                ? (partVsGuild >= 0 ? '+' : '') + partVsGuild + '% vs guild avg'
+                : 'No data';
+
+            kpiHtml =
+                '<div class="portal-kpi-grid">' +
+                    '<div class="portal-kpi-card portal-kpi-power">' +
+                        '<div class="portal-kpi-icon"><i class="ph ph-sword"></i></div>' +
+                        '<div class="portal-kpi-value">' + esc(window.GM.formatPower(pw.current)) + '</div>' +
+                        '<div class="portal-kpi-label">Combat Power</div>' +
+                        '<div class="portal-kpi-rank">#' + esc(pw.rank || '-') + ' of ' + esc(pw.members || '-') + ' members</div>' +
+                        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + esc(powerDelta) + '%;"></div></div>' +
+                        '<div class="portal-kpi-sub">Top ' + esc(pw.percentile != null ? pw.percentile : 0) + '% &middot; ' + esc(powerDelta) + '% of guild max</div>' +
+                    '</div>' +
+                    '<div class="portal-kpi-card portal-kpi-glory">' +
+                        '<div class="portal-kpi-icon"><i class="ph ph-trophy"></i></div>' +
+                        '<div class="portal-kpi-value">' + esc(gloryWeek) + '</div>' +
+                        '<div class="portal-kpi-label">Glory this week</div>' +
+                        '<div class="portal-kpi-rank">' + esc(gloryRankTxt) + '</div>' +
+                        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + esc(gloryPct) + '%;"></div></div>' +
+                        '<div class="portal-kpi-sub">Best ever: ' + esc(gl.best_ever != null ? window.GM.formatNumber(gl.best_ever) : '-') + '</div>' +
+                    '</div>' +
+                    '<div class="portal-kpi-card portal-kpi-part">' +
+                        '<div class="portal-kpi-icon"><i class="ph ph-calendar-check"></i></div>' +
+                        '<div class="portal-kpi-value">' + esc(pa.rate != null ? pa.rate + '%' : '0%') + '</div>' +
+                        '<div class="portal-kpi-label">Attendance rate</div>' +
+                        '<div class="portal-kpi-rank">' + esc(pa.attended || 0) + '/' + esc(pa.total || 0) + ' events</div>' +
+                        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + esc(pa.rate || 0) + '%;"></div></div>' +
+                        '<div class="portal-kpi-sub">' + esc(partVsTxt) + '</div>' +
+                    '</div>' +
+                    '<div class="portal-kpi-card portal-kpi-tenure">' +
+                        '<div class="portal-kpi-icon"><i class="ph ph-hourglass"></i></div>' +
+                        '<div class="portal-kpi-value">' + esc(kpis.days_in_guild != null ? kpis.days_in_guild : 0) + '</div>' +
+                        '<div class="portal-kpi-label">Days in guild</div>' +
+                        '<div class="portal-kpi-rank">' + esc(kpis.role || 'R1') + ' rank</div>' +
+                        '<div class="portal-kpi-sub">&nbsp;</div>' +
+                    '</div>' +
+                '</div>';
+        }
+
         var tilesHtml =
             '<div class="portal-stats">' +
                 '<div class="portal-stat"><div class="portal-stat-value">' + esc(totalCount) + '</div><div class="portal-stat-label">Events tracked</div></div>' +
@@ -318,6 +381,7 @@
                 '</div>' +
                 periodHtml +
             '</header>' +
+            kpiHtml +
             tilesHtml +
             tilesHtml2 +
             '<div class="portal-charts-grid">' + chartsHtml + '</div>';
@@ -558,6 +622,7 @@
         if (badge.category === 'rank') return 'R' + badge.current;
         if (badge.category === 'tenure') return window.GM.formatNumber(badge.current) + 'd';
         if (badge.category === 'power') return window.GM.formatPower(badge.current);
+        if (badge.category === 'glory') return window.GM.formatNumber(badge.current);
         return window.GM.formatNumber(badge.current) + ' evts';
     }
 
@@ -565,7 +630,7 @@
         if (badge.category === 'rank') return 'R' + badge.target;
         if (badge.category === 'tenure') return window.GM.formatNumber(badge.target) + 'd';
         if (badge.category === 'power') return window.GM.formatPower(badge.target);
-        return window.GM.formatNumber(badge.target) + ' evts';
+        if (badge.category === 'glory') return window.GM.formatNumber(badge.target);
     }
 
     function renderBadgeCard(badge) {
@@ -629,7 +694,8 @@
             role: res.role,
             created_at: res.created_at,
             overall_power: res.overall_power,
-            attended: res.attended
+            attended: res.attended,
+            glory_best: res.glory_best
         });
         portalState.badgesLoaded = true;
         renderBadgesBody(data);
@@ -855,7 +921,7 @@
         });
     }
 
-    // ─── Panel 3: Account (power + transfer) ───────────────────────────────
+    // ─── Panel 3: My Info (power + glory + timezone + transfer) ────────────
     function renderSettingsPanel() {
         var panel = document.getElementById('portal-panel-settings');
         if (!panel) return;
@@ -863,18 +929,28 @@
         panel.innerHTML =
             '<header class="gm-page-header">' +
                 '<div>' +
-                    '<h1 class="gm-page-title">Account</h1>' +
-                    '<p class="gm-page-subtitle">Manage your power and guild transfer requests</p>' +
+                    '<h1 class="gm-page-title">My Info</h1>' +
+                    '<p class="gm-page-subtitle">Manage your power, glory, timezone and guild transfer requests</p>' +
                 '</div>' +
             '</header>' +
             '<div class="portal-settings-grid">' +
 
                 '<div class="portal-card">' +
-                    '<div class="portal-card-title"><i class="ph ph-sword"></i> Update My Power</div>' +
+                    '<div class="portal-card-title"><i class="ph ph-sword"></i> My Power</div>' +
                     '<div class="portal-row">' +
                         '<input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 80000000" value="' + esc(portalState.player.overall_power || '') + '">' +
                         '<button type="button" id="portal-update-power-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
                     '</div>' +
+                '</div>' +
+
+                '<div class="portal-card">' +
+                    '<div class="portal-card-title"><i class="ph ph-trophy"></i> My Glory</div>' +
+                    '<div class="portal-row">' +
+                        '<input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000" value="' + esc(portalState.player.glory != null ? portalState.player.glory : '') + '">' +
+                        '<button type="button" id="portal-update-glory-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
+                    '</div>' +
+                    '<div class="portal-msg" id="portal-glory-msg"></div>' +
+                    '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Your weekly Glory score, used by officers for tracking and rewards.</div>' +
                 '</div>' +
 
                 '<div class="portal-card">' +
@@ -896,31 +972,7 @@
                     '<div id="portal-transfer-msg" class="portal-msg"></div>' +
                 '</div>' +
 
-                '<div class="portal-card">' +
-                    '<div class="portal-card-title"><i class="ph ph-sign-out"></i> Session</div>' +
-                    '<button type="button" class="gm-btn gm-btn-ghost portal-exit-btn"><i class="ph ph-arrow-left"></i><span>Switch Account / Exit</span></button>' +
-                '</div>' +
-
             '</div>';
-
-        var exitBtn = document.querySelector('.portal-exit-btn');
-        if (exitBtn) {
-            exitBtn.addEventListener('click', function () {
-                window.GM.logout().then(function () {
-                    var portalView = document.getElementById('player-portal-view');
-                    var loginView = document.getElementById('login-view');
-                    if (portalView) portalView.classList.add('hidden');
-                    if (portalView) portalView.classList.remove('portal-connected');
-                    if (loginView) loginView.classList.remove('hidden');
-                }).catch(function () {
-                    var portalView = document.getElementById('player-portal-view');
-                    var loginView = document.getElementById('login-view');
-                    if (portalView) portalView.classList.add('hidden');
-                    if (portalView) portalView.classList.remove('portal-connected');
-                    if (loginView) loginView.classList.remove('hidden');
-                });
-            });
-        }
 
         // Power update
         var powerInput = document.getElementById('portal-user-power');
@@ -948,6 +1000,44 @@
                 window.GM.showToast('Failed to update combat power: ' + err.message, 'error');
             } finally {
                 powerBtn.disabled = false;
+                if (span) span.textContent = origText;
+            }
+        });
+
+        // Glory update
+        var gloryInput = document.getElementById('portal-user-glory');
+        var gloryBtn = document.getElementById('portal-update-glory-btn');
+        var gloryMsg = document.getElementById('portal-glory-msg');
+        if (gloryInput) window.GM.attachNumberFormatter(gloryInput);
+
+        if (gloryBtn) gloryBtn.addEventListener('click', async function () {
+            var gloryVal = gloryInput ? parseInt(String(gloryInput.value).replace(/[^0-9]/g, ''), 10) : 0;
+            if (isNaN(gloryVal) || gloryVal < 0) {
+                window.GM.showToast('Please enter a valid Glory number.', 'error');
+                return;
+            }
+            gloryBtn.disabled = true;
+            var span = gloryBtn.querySelector('span');
+            var origText = span ? span.textContent : '';
+            if (span) span.textContent = 'Saving...';
+            try {
+                var res = await invoke('update-glory', { glory: gloryVal });
+                if (!res.ok) throw new Error(res.error || 'update_failed');
+                portalState.player.glory = gloryVal;
+                if (gloryMsg) {
+                    gloryMsg.textContent = 'Glory saved. Your officers can now see your score.';
+                    gloryMsg.style.color = 'var(--success)';
+                    gloryMsg.style.display = 'block';
+                }
+                window.GM.showToast('Your Glory has been updated!', 'success');
+            } catch (err) {
+                if (gloryMsg) {
+                    gloryMsg.textContent = 'Failed to save: ' + err.message;
+                    gloryMsg.style.color = 'var(--danger)';
+                    gloryMsg.style.display = 'block';
+                }
+            } finally {
+                gloryBtn.disabled = false;
                 if (span) span.textContent = origText;
             }
         });

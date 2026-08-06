@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-07
 
+### Added
+- **Player Portal "My Info" tab**: the former "Account" tab was renamed and now groups everything a player manages about themselves: combat power, **weekly Glory** (new, self-service via `update-glory` / `gm_upsert_player_glory`), timezone and guild transfer requests. The redundant logout tile was removed (the sidebar already has a logout button).
+- **Personal KPI dashboard in "My Progress"**: a new `get-personal-kpis` / `gm_personal_kpis` server-side RPC computes advanced per-player metrics and their position within the guild: power (current, guild max, rank, percentile, % of guild max), Glory (current week, best ever, guild rank), attendance (rate, events, delta vs guild average, per-event-type breakdown) and tenure. Four KPI cards render above the existing stats.
+- **More badge tiers**: the badge catalog grew from 19 to 34 badges — Seniority (up to 5 years), Power (up to 10B), Participation (up to 250 events) and a brand-new **Glory** track (1K to 1M weekly Glory) driven by the player's best Glory week ever.
+
 ### Fixed
 - **New members are now enrolled into active events automatically**: previously, adding a member after events were scheduled (Arms Race, DTR, SvS, GvG) silently left them out of the event member lists. The root cause was a client-side upsert that Postgres rejected against the partial unique index on `event_participants` (42P10), so the error was swallowed and the member was never added. A new `gm_add_member_to_active_events` RPC now inserts the member into every active session of their guild in one atomic, idempotent call (Shadowfront is excluded by design, its participants come from squad assignments). The client helpers were reduced to UI-only memory sync.
 - **Shadowfront participant sync fixed**: the same broken upsert pattern in `shadowfront.js` was replaced with a plain insert (rows are already filtered against existing ones).

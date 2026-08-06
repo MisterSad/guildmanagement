@@ -2319,6 +2319,68 @@
 .portal-stat-value { font-size: 1.2rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
 .portal-stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-muted); margin-top: 0.2rem; }
 
+/* ─── Personal KPI cards (My Progress) ─────────────────────────────────── */
+.portal-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+.portal-kpi-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    position: relative;
+    overflow: hidden;
+}
+.portal-kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    opacity: 0.85;
+}
+.portal-kpi-power::before  { background: #a78bfa; }
+.portal-kpi-glory::before  { background: #fbbf24; }
+.portal-kpi-part::before   { background: #34d399; }
+.portal-kpi-tenure::before { background: #22d3ee; }
+.portal-kpi-icon {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
+}
+.portal-kpi-power .portal-kpi-icon  { color: #a78bfa; background: rgba(167,139,250,0.12); }
+.portal-kpi-glory .portal-kpi-icon  { color: #fbbf24; background: rgba(251,191,36,0.12); }
+.portal-kpi-part .portal-kpi-icon   { color: #34d399; background: rgba(52,211,153,0.12); }
+.portal-kpi-tenure .portal-kpi-icon { color: #22d3ee; background: rgba(34,211,238,0.12); }
+.portal-kpi-value {
+    font-size: 1.45rem; font-weight: 800; color: var(--fg);
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.portal-kpi-label {
+    font-size: 0.72rem; font-weight: 700; color: var(--fg-muted);
+    text-transform: uppercase; letter-spacing: 0.04em;
+}
+.portal-kpi-rank {
+    font-size: 0.78rem; font-weight: 700; color: var(--accent);
+}
+.portal-kpi-bar {
+    height: 5px; border-radius: 3px; background: var(--bg-2);
+    overflow: hidden; margin-top: 0.3rem;
+}
+.portal-kpi-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+}
+.portal-kpi-sub { font-size: 0.7rem; color: var(--fg-dim); font-weight: 600; }
+
 .portal-charts-grid {
     display: flex;
     flex-direction: column;

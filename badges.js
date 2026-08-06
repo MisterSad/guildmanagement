@@ -26,17 +26,33 @@
         { id: 'tenure_6m', category: 'tenure', name: 'Seasoned',  desc: 'Stay 6 months in the guild',     icon: 'ph-users',       color: '#34d399', target: 180 },
         { id: 'tenure_1y', category: 'tenure', name: 'Alumnus',   desc: 'Stay 1 year in the guild',       icon: 'ph-trophy',      color: '#34d399', target: 365 },
         { id: 'tenure_2y', category: 'tenure', name: 'Legend',    desc: 'Stay 2 years in the guild',      icon: 'ph-crown',       color: '#34d399', target: 730 },
+        { id: 'tenure_3y', category: 'tenure', name: 'Eternal',   desc: 'Stay 3 years in the guild',      icon: 'ph-crown-simple',color: '#34d399', target: 1095 },
+        { id: 'tenure_4y', category: 'tenure', name: 'Monument',  desc: 'Stay 4 years in the guild',      icon: 'ph-buildings',   color: '#34d399', target: 1460 },
+        { id: 'tenure_5y', category: 'tenure', name: 'Immortal',  desc: 'Stay 5 years in the guild',      icon: 'ph-infinity',    color: '#34d399', target: 1825 },
         // Power: current overall_power in the guild roster.
         { id: 'power_10m',  category: 'power', name: 'Fighter',   desc: 'Reach 10M combat power',   icon: 'ph-sword',     color: '#a78bfa', target: 10000000 },
         { id: 'power_50m',  category: 'power', name: 'Brawler',   desc: 'Reach 50M combat power',   icon: 'ph-crosshair', color: '#a78bfa', target: 50000000 },
         { id: 'power_100m', category: 'power', name: 'Titan',     desc: 'Reach 100M combat power',  icon: 'ph-barbell',   color: '#a78bfa', target: 100000000 },
         { id: 'power_500m', category: 'power', name: 'Colossus',  desc: 'Reach 500M combat power',  icon: 'ph-lightning', color: '#a78bfa', target: 500000000 },
         { id: 'power_1b',   category: 'power', name: 'Overlord',  desc: 'Reach 1B combat power',    icon: 'ph-fire',      color: '#a78bfa', target: 1000000000 },
+        { id: 'power_2b',   category: 'power', name: 'Tyrant',    desc: 'Reach 2B combat power',    icon: 'ph-planet',    color: '#a78bfa', target: 2000000000 },
+        { id: 'power_5b',   category: 'power', name: 'Warlord',   desc: 'Reach 5B combat power',    icon: 'ph-star-four', color: '#a78bfa', target: 5000000000 },
+        { id: 'power_10b',  category: 'power', name: 'Godslayer', desc: 'Reach 10B combat power',   icon: 'ph-sparkle',   color: '#a78bfa', target: 10000000000 },
         // Participation: events attended (participated or sub-present).
-        { id: 'part_10',  category: 'part', name: 'Active',    desc: 'Attend 10 events',     icon: 'ph-check-circle',  color: '#22d3ee', target: 10 },
-        { id: 'part_25',  category: 'part', name: 'Reliable',  desc: 'Attend 25 events',     icon: 'ph-calendar-check', color: '#22d3ee', target: 25 },
-        { id: 'part_50',  category: 'part', name: 'Dedicated', desc: 'Attend 50 events',     icon: 'ph-flame',          color: '#22d3ee', target: 50 },
-        { id: 'part_100', category: 'part', name: 'Iron Will', desc: 'Attend 100 events',    icon: 'ph-star',           color: '#22d3ee', target: 100 }
+        { id: 'part_10',   category: 'part', name: 'Active',    desc: 'Attend 10 events',     icon: 'ph-check-circle',  color: '#22d3ee', target: 10 },
+        { id: 'part_25',   category: 'part', name: 'Reliable',  desc: 'Attend 25 events',     icon: 'ph-calendar-check', color: '#22d3ee', target: 25 },
+        { id: 'part_50',   category: 'part', name: 'Dedicated', desc: 'Attend 50 events',     icon: 'ph-flame',          color: '#22d3ee', target: 50 },
+        { id: 'part_100',  category: 'part', name: 'Iron Will', desc: 'Attend 100 events',    icon: 'ph-star',           color: '#22d3ee', target: 100 },
+        { id: 'part_150',  category: 'part', name: 'Vanguard',  desc: 'Attend 150 events',    icon: 'ph-shield-star',    color: '#22d3ee', target: 150 },
+        { id: 'part_200',  category: 'part', name: 'Unbreakable', desc: 'Attend 200 events',  icon: 'ph-crown',          color: '#22d3ee', target: 200 },
+        { id: 'part_250',  category: 'part', name: 'Legendary', desc: 'Attend 250 events',    icon: 'ph-sparkle',        color: '#22d3ee', target: 250 },
+        // Glory: highest single Glory week ever recorded for the player.
+        { id: 'glory_1k',   category: 'glory', name: 'Spark',     desc: 'Reach 1K Glory in a week',    icon: 'ph-sparkle',       color: '#fbbf24', target: 1000 },
+        { id: 'glory_10k',  category: 'glory', name: 'Radiant',   desc: 'Reach 10K Glory in a week',   icon: 'ph-sun',           color: '#fbbf24', target: 10000 },
+        { id: 'glory_50k',  category: 'glory', name: 'Luminous',  desc: 'Reach 50K Glory in a week',   icon: 'ph-brightness-high', color: '#fbbf24', target: 50000 },
+        { id: 'glory_100k', category: 'glory', name: 'Dazzling',  desc: 'Reach 100K Glory in a week',  icon: 'ph-crown',         color: '#fbbf24', target: 100000 },
+        { id: 'glory_500k', category: 'glory', name: 'Supernova', desc: 'Reach 500K Glory in a week',  icon: 'ph-broadcast',     color: '#fbbf24', target: 500000 },
+        { id: 'glory_1m',   category: 'glory', name: 'Divine',    desc: 'Reach 1M Glory in a week',    icon: 'ph-asterisk',      color: '#fbbf24', target: 1000000 }
     ];
 
     // ── Category metadata (order + labels) ─────────────────────────────────────
@@ -44,7 +60,8 @@
         { id: 'rank',   label: 'Ranks',         icon: 'ph-shield',        color: '#fbbf24' },
         { id: 'tenure', label: 'Seniority',     icon: 'ph-hourglass',     color: '#34d399' },
         { id: 'power',  label: 'Power',         icon: 'ph-sword',         color: '#a78bfa' },
-        { id: 'part',   label: 'Participation', icon: 'ph-calendar-check', color: '#22d3ee' }
+        { id: 'part',   label: 'Participation', icon: 'ph-calendar-check', color: '#22d3ee' },
+        { id: 'glory',  label: 'Glory',         icon: 'ph-trophy',        color: '#fbbf24' }
     ];
 
     function parseRank(role) {
@@ -72,6 +89,7 @@
         var days = daysSince(player.created_at);
         var power = parseInt(player.overall_power, 10) || 0;
         var attended = parseInt(player.attended, 10) || 0;
+        var glory = parseInt(player.glory_best, 10) || 0;
 
         var byCategory = {};
         var earnedCount = 0;
@@ -82,6 +100,7 @@
             else if (def.category === 'tenure') current = days;
             else if (def.category === 'power') current = power;
             else if (def.category === 'part') current = attended;
+            else if (def.category === 'glory') current = glory;
 
             var earned = current >= def.target;
             if (earned) earnedCount++;
