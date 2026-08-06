@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-07
 
+### Changed
+- **Login page is now static**: the Three.js 3D space battle background and the animated orbs were removed — the page loads much faster and is lighter on battery. The login keeps the dark DA styling with a static gradient-border card. A new **Discord button** below the login form links to the community server so guild leaders can request a tenant and admin access for their guild.
+
 ### Added
 - **Player Portal "My Info" tab**: the former "Account" tab was renamed and now groups everything a player manages about themselves: combat power, **weekly Glory** (new, self-service via `update-glory` / `gm_upsert_player_glory`), timezone and guild transfer requests. The redundant logout tile was removed (the sidebar already has a logout button).
 - **Personal KPI dashboard in "My Progress"**: a new `get-personal-kpis` / `gm_personal_kpis` server-side RPC computes advanced per-player metrics and their position within the guild: power (current, guild max, rank, percentile, % of guild max), Glory (current week, best ever, guild rank), attendance (rate, events, delta vs guild average, per-event-type breakdown) and tenure. Four KPI cards render above the existing stats.

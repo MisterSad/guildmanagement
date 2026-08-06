@@ -19,6 +19,7 @@
             login_error:           'Invalid credentials.',
             login_btn:             'Access',
             login_btn_loading:     'Logging in...',
+            login_discord:         'Need a guild? Join our Discord',
 
             /* ── Admin topbar ──────────────────── */
             nav_dashboard:         'Command Center',

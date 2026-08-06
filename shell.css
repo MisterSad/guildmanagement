@@ -53,8 +53,7 @@
 #dashboard-view > .app-header { display: none !important; }
 /* Cache aussi l'ancien header de member-view (s'il est encore utilisé) */
 #member-view > .app-header { display: none !important; }
-/* Cache l'ancien fond animated-bg (orbs) — le shell a son propre gradient */
-#dashboard-view ~ .animated-bg, .gm-shell ~ .animated-bg { display: none; }
+/* Le shell a son propre gradient de fond */
 
 /* Neutralise les styles legacy de .dashboard-content quand wrapée par le shell */
 .gm-shell .dashboard-content {
@@ -577,15 +576,7 @@ html, body {
 }
 
 /* ─── Login screen & 3D WebGL Canvas ─── */
-#login-3d-canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 0;
-}
-
+/* Static login backdrop (no 3D canvas: keeps the page light) */
 .gm-login-wrap {
     min-height: 100vh;
     display: flex;
@@ -618,7 +609,7 @@ html, body {
     z-index: 10;
 }
 
-/* Centered Container for Codehal Animated Style */
+/* Centered Container */
 .gm-login-centered-container {
     display: flex;
     flex-direction: column;
@@ -629,7 +620,6 @@ html, body {
     z-index: 2;
     max-width: 440px;
     width: 100%;
-    perspective: 1200px;
 }
 
 .gm-login-hero-tag {
@@ -664,61 +654,17 @@ html, body {
     50% { transform: scale(1.45); opacity: 0.4; }
 }
 
-/* Rotating Gradient Animated Card Wrapper (Codehal Signature Style) */
+/* Static Gradient Border Card Wrapper (no rotating conic beam) */
 .gm-animated-card-wrap {
     position: relative;
     width: 100%;
     border-radius: 22px;
     padding: 3px; /* Glowing border thickness */
     overflow: hidden;
+    background: linear-gradient(135deg, var(--accent-lime), var(--accent-cyan), var(--accent-lilac));
     box-shadow:
         0 30px 70px oklch(0 0 0 / 0.65),
         0 0 50px oklch(0.88 0.19 125 / 0.15);
-}
-
-/* Rotating Conic Gradient Beam */
-.gm-animated-card-wrap::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: conic-gradient(
-        from 0deg,
-        transparent 0%,
-        var(--accent-lime) 20%,
-        transparent 40%,
-        var(--accent-cyan) 60%,
-        transparent 80%,
-        var(--accent-lilac) 90%,
-        transparent 100%
-    );
-    animation: gm-rotate-conic 4s linear infinite;
-    z-index: 0;
-}
-
-/* Soft Glow Shadow Layer */
-.gm-animated-card-wrap::after {
-    content: "";
-    position: absolute;
-    inset: -12px;
-    background: conic-gradient(
-        from 0deg,
-        var(--accent-lime),
-        var(--accent-cyan),
-        var(--accent-lilac),
-        var(--accent-lime)
-    );
-    animation: gm-rotate-conic 4s linear infinite;
-    filter: blur(26px);
-    opacity: 0.35;
-    z-index: -1;
-}
-
-@keyframes gm-rotate-conic {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 
 /* Inner Glass Card */
@@ -733,16 +679,16 @@ html, body {
     z-index: 2;
 }
 
-/* Specular Reflection Glow */
+/* Static top specular glow */
 .gm-login-card::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
     background: radial-gradient(
-        circle at var(--shine-x, 50%) var(--shine-y, 50%),
-        oklch(0.88 0.19 125 / 0.15),
-        transparent 65%
+        circle at 50% 0%,
+        oklch(0.88 0.19 125 / 0.12),
+        transparent 60%
     );
     pointer-events: none;
     z-index: 1;
@@ -754,7 +700,6 @@ html, body {
     align-items: center;
     gap: 0.85rem;
     margin-bottom: 1.75rem;
-    transform: translateZ(15px);
 }
 
 .gm-login-avatar-3d {
@@ -773,11 +718,6 @@ html, body {
         0 8px 20px oklch(0.88 0.19 125 / 0.35),
         inset 0 1px 0 oklch(1 0 0 / 0.4);
     position: relative;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.gm-login-avatar-3d:hover {
-    transform: scale(1.08) rotate(3deg);
 }
 
 .gm-login-title {
@@ -800,7 +740,6 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    transform: translateZ(10px);
 }
 
 .gm-login-field label {
@@ -937,6 +876,35 @@ html, body {
     margin-top: 1.25rem;
     border-top: 1px dashed var(--border-soft);
     padding-top: 1.25rem;
+}
+
+/* Discord Community / Tenant Request Button */
+.gm-login-discord-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: var(--radius-pill);
+    background: oklch(0.22 0.026 250 / 0.75);
+    border: 1px solid oklch(0.72 0.17 260 / 0.5);
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    backdrop-filter: blur(12px);
+    transition: all 0.2s ease;
+    box-shadow: 0 6px 20px oklch(0 0 0 / 0.35);
+}
+.gm-login-discord-btn .ph {
+    font-size: 1.3rem;
+    color: var(--accent-lilac);
+}
+.gm-login-discord-btn:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-lilac);
+    box-shadow: 0 10px 28px oklch(0.72 0.17 260 / 0.35);
 }
 
 /* ─── Responsive Adjustments ─── */

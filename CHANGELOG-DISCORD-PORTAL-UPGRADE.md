@@ -37,7 +37,7 @@ The badge collection grew to **45**. More milestones to chase, with finely space
 - :calendar_spiral: **Participation** - new tiers from 10 up to 1500 events attended
 - :trophy: **Glory (new track)** - unlock badges from 1K up to 50M Glory in a single week
 
-A small but important rule: a Glory score of 0 (or empty) never counts toward the Glory badges. Only real positive scores unlock them, and a player with no score is not ranked.
+A small but important rule: a Glory score of 0 (or empty) never counts toward the Glory badges, and neither does your **first-ever Glory declaration**. Since the app just launched, declaring your Glory for the first time would instantly unlock badges (you enter your real score). Glory badges only start tracking from your second declaration onwards. A player with no score is not ranked.
 
 Locked badges still show the target and your progress, as always.
 

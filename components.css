@@ -3020,7 +3020,6 @@
     padding: 0;
     align-items: stretch;
 }
-#player-portal-view.portal-connected #login-3d-canvas { display: none !important; }
 #player-portal-view.portal-connected .gm-login-hero-tag { display: none; }
 #player-portal-view.portal-connected::before { display: none; }
 #player-portal-view.portal-connected .gm-login-centered-container {
