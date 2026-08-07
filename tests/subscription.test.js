@@ -118,7 +118,9 @@ describe('GM_SUBSCRIPTION self-service subscriptions', () => {
     it('mentions the accepted payment methods and provider security', async () => {
         await SUB.load();
         const texts = container().textContent;
-        expect(texts).toContain('Card, Apple Pay, Google Pay and more');
+        expect(texts).toContain('Accepted payments: Cards (Visa, Mastercard, Amex)');
+        expect(texts).toContain('Apple Pay, Google Pay, PayPal');
+        expect(texts).toContain('Alipay, Amazon Pay, Klarna');
         expect(texts).toContain('processed and secured by the payment provider');
         expect(texts).toContain('never has access to your bank details');
     });

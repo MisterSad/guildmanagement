@@ -129,12 +129,12 @@
     // ── Cartes de plans ──────────────────────────────────────────────────────
     function planCardHtml(plan) {
         var featured = plan.tag ? ' gm-sub-plan-featured' : '';
-        return '<div class="gm-card gm-card-padded gm-sub-plan-card' + featured + '" style="flex:1; min-width:180px; max-width:220px; display:flex; flex-direction:column; gap:.4rem; position:relative;">' +
-            (plan.tag ? '<span style="position:absolute; top:-10px; right:12px; background:var(--accent); color:var(--accent-fg); font-size:.65rem; font-weight:800; padding:2px 8px; border-radius:99px; letter-spacing:.04em;">' + esc(plan.tag) + '</span>' : '') +
-            '<div class="gm-dim" style="font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;">' + esc(plan.label) + '</div>' +
-            '<div style="font-size:1.6rem; font-weight:800; font-variant-numeric:tabular-nums; color:var(--fg);">€' + esc(plan.price) + '</div>' +
-            '<div class="gm-dim" style="font-size:.75rem; margin-bottom:.35rem;">' + (plan.period === 'one-time' ? (t('gm_sub_one_time') || 'one-time payment') : esc(plan.period)) + '</div>' +
-            '<button class="gm-btn gm-btn-primary gm-sub-buy" data-gm-sub-plan="' + plan.key + '" style="margin-top:auto;">' +
+        return '<div class="gm-sub-plan-card' + featured + '">' +
+            (plan.tag ? '<span class="gm-sub-plan-tag">' + esc(plan.tag) + '</span>' : '') +
+            '<div class="gm-sub-plan-label">' + esc(plan.label) + '</div>' +
+            '<div class="gm-sub-plan-price">€' + esc(plan.price) + '</div>' +
+            '<div class="gm-sub-plan-period">' + (plan.period === 'one-time' ? (t('gm_sub_one_time') || 'one-time payment') : esc(plan.period)) + '</div>' +
+            '<button class="gm-btn gm-btn-primary gm-sub-buy" data-gm-sub-plan="' + plan.key + '">' +
                 '<i class="ph ph-credit-card"></i> ' + (t('gm_sub_subscribe') || 'Subscribe') +
             '</button>' +
         '</div>';
@@ -258,10 +258,10 @@
         html +=
             '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1rem;">' +
                 '<div class="gm-dim" style="font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:.75rem;">' + (t('gm_sub_plans_title') || 'Subscription plans') + '</div>' +
-                '<div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:stretch; justify-content:center;">' +
+                '<div class="gm-sub-plans-grid">' +
                     PLANS.map(planCardHtml).join('') +
                 '</div>' +
-                '<div class="gm-dim" style="font-size:.75rem; margin-top:.9rem;">' + (t('gm_sub_methods') || 'Accepted payments: Card, Apple Pay, Google Pay and more.') + '</div>' +
+                '<div class="gm-dim gm-sub-methods" style="font-size:.78rem; margin-top:.9rem;">' + (t('gm_sub_methods') || 'Accepted payments: Cards (Visa, Mastercard, Amex), Cartes Bancaires, Apple Pay, Google Pay, PayPal, Alipay, Amazon Pay, Klarna, iDEAL, Bancontact, EPS, BLIK, MB WAY, Pix, Satispay, Multibanco, MobilePay, WeChat Pay, Revolut Pay, Samsung Pay, Kakao Pay, Naver Pay, PAYCO, Link, and more.') + '</div>' +
                 '<div class="gm-dim" style="font-size:.75rem; margin-top:.25rem;"><i class="ph ph-shield-check"></i> ' + (t('gm_sub_security') || 'Payments are processed and secured by the payment provider. The site administrator never has access to your bank details.') + '</div>' +
             '</div>' +
             '<div id="subscription-widget" class="gm-sub-widget" style="display:none;"></div>';

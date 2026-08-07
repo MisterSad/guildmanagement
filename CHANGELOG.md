@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-07
 
 ### Changed
+- **Subscription page tiles**: plan cards now fill the page width in a 4-column grid of equal, taller tiles (2 columns on tablet, 1 on mobile). The accepted-payment message now lists the main methods (Cards, Cartes Bancaires, Apple Pay, Google Pay, PayPal, Alipay, Amazon Pay, Klarna, iDEAL, Bancontact, EPS, BLIK, MB WAY, Pix, Satispay, Multibanco, MobilePay, WeChat Pay, Revolut Pay, Samsung Pay, Kakao Pay, Naver Pay, PAYCO, Link, and more).
 - **Subscription plans updated**: new pricing without the Lifetime plan — 1 Month €7.99, 3 Months €19.99 (save ~16%), 6 Months €34.99 (save ~27%), 12 Months €59.99 (save ~37%, best value). Checkout and application logic unchanged; existing Lifetime guilds keep their status.
 - **Login page is now static**: the Three.js 3D space battle background and the animated orbs were removed — the page loads much faster and is lighter on battery. The login keeps the dark DA styling with a static gradient-border card. A new **Discord button** below the login form links to the community server so guild leaders can request a tenant and admin access for their guild.
 

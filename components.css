@@ -2516,6 +2516,84 @@
     flex-shrink: 0;
 }
 
+/* ─── Subscription plan tiles ──────────────────────────────────────────── */
+.gm-sub-plans-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    width: 100%;
+    margin-bottom: 0.25rem;
+}
+.gm-sub-plan-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 1.4rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    position: relative;
+    min-height: 190px;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.gm-sub-plan-card:hover {
+    border-color: var(--accent-lime, var(--accent));
+    box-shadow: 0 8px 24px oklch(0 0 0 / 0.25);
+    transform: translateY(-2px);
+}
+.gm-sub-plan-card.gm-sub-plan-featured {
+    border-color: var(--accent-lime, var(--accent));
+    background: linear-gradient(180deg, oklch(0.24 0.05 125 / 0.35), var(--bg-1));
+}
+.gm-sub-plan-tag {
+    position: absolute;
+    top: -11px;
+    right: 14px;
+    background: var(--accent-lime, var(--accent));
+    color: var(--accent-lime-fg, var(--accent-fg, #101018));
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 99px;
+    letter-spacing: 0.04em;
+}
+.gm-sub-plan-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+}
+.gm-sub-plan-price {
+    font-size: 1.9rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+    line-height: 1.1;
+}
+.gm-sub-plan-period {
+    font-size: 0.78rem;
+    color: var(--fg-muted);
+    margin-bottom: 0.4rem;
+}
+.gm-sub-plan-card .gm-sub-buy {
+    margin-top: auto;
+}
+.gm-sub-methods {
+    line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+    .gm-sub-plans-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 520px) {
+    .gm-sub-plans-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ─── Badges panel (gamification) ────────────────────────────────────── */
 .portal-badges-summary {
     display: grid;
