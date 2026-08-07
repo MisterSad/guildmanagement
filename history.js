@@ -334,6 +334,7 @@
 
         var query = db.from('event_participants')
             .select('pseudo, participated, score, score_prep, score_pvp, appointed, excused, late, sub_present')
+            .eq('guild', window.GM ? window.GM.getActiveGuild() : 'ALPHA')
             .eq('event_name', eventName)
             .eq('week_start', weekStart)
             .limit(100000);

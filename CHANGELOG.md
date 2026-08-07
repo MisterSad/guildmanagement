@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-07
 
 ### Fixed
+- **History detail showed every tenant's players**: opening a session detail (e.g. the Glory log) loaded `event_participants` without a guild filter, so a super admin viewing ALPHA saw 651 players instead of 165. The detail query now filters by the active guild.
 - **Page refresh no longer forces the Subscription tab**: after a Stripe checkout redirect, the URL kept `?checkout=success&session_id=...`, so every page reload switched back to the Subscription tab regardless of where you were. The checkout parameters are now removed from the URL as soon as they are handled, so a refresh restores the tab you were on.
 
 ### Changed
