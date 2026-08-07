@@ -678,11 +678,20 @@
                 btn.disabled = true;
                 btn.textContent = '...';
                 try {
-                    await db.from('event_participants').update({ is_pending: false })
-                        .eq('event_name', s.activeEventName)
-                        .eq('session_id', s.sessionId)
-                        .eq('pseudo', pseudo);
-                    
+                    // Approval via a SECURITY DEFINER RPC: the active session
+                    // is resolved server-side, so a stale client state can no
+                    // longer make the update silently match nothing.
+                    var rpcRes = await db.rpc('gm_approve_participant_submission', {
+                        p_guild: window.GM ? window.GM.getActiveGuild() : 'ALPHA',
+                        p_event_name: s.activeEventName,
+                        p_session_id: s.sessionId,
+                        p_pseudo: pseudo
+                    });
+                    if (rpcRes.error) throw rpcRes.error;
+                    var data = rpcRes.data;
+                    var ok = data && (data.ok !== false);
+                    if (!ok) throw new Error((data && data.error) || 'approve_failed');
+
                     var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
                     if (pp) pp.is_pending = false;
                     renderParticipants(tabKey);
@@ -699,12 +708,18 @@
             approveAllBtnEl.addEventListener('click', async function () {
                 approveAllBtnEl.disabled = true;
                 approveAllBtnEl.textContent = 'Approving...';
+                var pendingPseudos = state[tabKey].participants.filter(function (p) { return p.is_pending; }).map(function (p) { return p.pseudo; });
                 try {
-                    await db.from('event_participants').update({ is_pending: false })
-                        .eq('event_name', s.activeEventName)
-                        .eq('session_id', s.sessionId)
-                        .eq('is_pending', true);
-                    
+                    // Approve every pending player via the SECURITY DEFINER RPC.
+                    for (var pi = 0; pi < pendingPseudos.length; pi++) {
+                        var rpcRes = await db.rpc('gm_approve_participant_submission', {
+                            p_guild: window.GM ? window.GM.getActiveGuild() : 'ALPHA',
+                            p_event_name: s.activeEventName,
+                            p_session_id: s.sessionId,
+                            p_pseudo: pendingPseudos[pi]
+                        });
+                        if (rpcRes.error) throw rpcRes.error;
+                    }
                     state[tabKey].participants.forEach(function (p) {
                         if (p.is_pending) p.is_pending = false;
                     });

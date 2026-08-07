@@ -5,11 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-07
 
 ### Fixed
+- **Score approvals actually clear the pending state**: approving a player submission (single or "Approve All") no longer silently fails. The client previously updated the table with the in-memory session fields, which could match nothing and leave `is_pending` stuck. A new `gm_approve_participant_submission` RPC (SECURITY DEFINER) resolves the session server-side and clears `is_pending`, checking the caller is an admin of that guild. Verified live: the DTR submissions were approved and no pending rows remain.
+- **History: Shadowfront squad name on the tile**: the History card now displays "Shadowfront Squad One" / "Shadowfront Squad Two" directly on the tile, not only when opening the detail modal.
 - **History: Shadowfront squads are distinct again**: the History page now shows "Shadowfront Squad One" and "Shadowfront Squad Two" instead of a generic "Shadowfront". The `gm_list_event_sessions` RPC exposes the squad name from `event_status` and groups each session by `(event, session)` instead of by week, which also removes the duplicate row that appeared when a squad had mixed week values.
 - **History: battle date fully visible**: the date column was widened so "07/08/2026" is no longer clipped to "07/08/202". The history date and sorting use the battle date chosen at creation, with the session timestamp as fallback.
 
 ### Added
-- **History shows the battle date**: the History page now displays the fight day chosen when the event was created (`event_status.start_at`) instead of the session creation timestamp. A new `gm_list_event_sessions` RPC (new OID) joins `event_status` to expose `start_at`; `history.js` uses it for the date and the sorting, falling back to the session timestamp when no battle date exists.
+- **History shows the battle date**: the History page now displays the fight day chosen when the event was created (`event_status.start_at`) instead of the session creation timestamp. This applies to all session events (Shadowfront, DTR, Arms Race, SvS, GvG). A new `gm_list_event_sessions` RPC (new OID) joins `event_status` to expose `start_at`; `history.js` uses it for the date and the sorting, falling back to the session timestamp when no battle date exists.
 
 ### Fixed
 - **Shadowfront history restored in ALPHA**: the two accidentally deleted squad histories were rebuilt (Squad 1 session `2026-08-02T17:20:08.453Z` at 2026-08-07 18:00 UTC and Squad 2 session `2026-08-05T19:56:53.062Z` at 2026-08-07 23:00 UTC), with their 30 assignments each, their 30 participant rows and the `event_status` rows reactivated so the End button works again and finishing each squad records the event with the correct date.

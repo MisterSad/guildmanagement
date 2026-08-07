@@ -201,6 +201,8 @@
             if (displayName === 'Shadowfront Squad 1') displayName = 'Shadowfront Squad One';
             else if (displayName === 'Shadowfront Squad 2') displayName = 'Shadowfront Squad Two';
             var meta        = EVENT_META[s.event_name] || { icon: 'ph-calendar-dot', label: displayName, hasScore: false, border: 'var(--border-soft)' };
+            // La tuile doit afficher le nom du squad (pas seulement le modal).
+            meta.label = displayName;
             var iconClass   = (window.GM && window.GM.getEventIcon) ? window.GM.getEventIcon(s.event_name) : (meta.icon || 'ph-calendar-dot');
             var isWeekly    = (s.event_name === 'SvS' || s.event_name === 'GvG');
             var weekNum     = getWeekNumber(s.week_start);
