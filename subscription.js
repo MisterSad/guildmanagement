@@ -300,6 +300,16 @@
         var params = new URLSearchParams(search === undefined ? window.location.search : search);
         var mode = params.get('checkout');
         var sessionId = params.get('session_id');
+
+        // Nettoyer l'URL après lecture : sans ça, le ?checkout= success/cancel
+        // resterait dans la barre d'adresse et chaque rechargement de page
+        // ramènerait l'utilisateur sur l'onglet Subscription.
+        if (search === undefined && (mode === 'success' || mode === 'cancel')) {
+            try {
+                window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+            } catch (e) { /* non fatal */ }
+        }
+
         if (mode === 'cancel') {
             showToast(t('gm_sub_cancelled') || 'Payment cancelled.', 'info');
             return;

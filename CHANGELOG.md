@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-07
 
+### Fixed
+- **Page refresh no longer forces the Subscription tab**: after a Stripe checkout redirect, the URL kept `?checkout=success&session_id=...`, so every page reload switched back to the Subscription tab regardless of where you were. The checkout parameters are now removed from the URL as soon as they are handled, so a refresh restores the tab you were on.
+
 ### Changed
 - **Permanent guild join codes**: each guild now has ONE join code, stored in plain text (admin-readable only) alongside the SHA-256 hash used to validate registration. The Accounts tab displays it in read-only mode with a copy button, and there is no regenerate option anymore. If a guild has no code yet, the UI creates one once on first visit. A new `gm_get_join_code` RPC + `get-join-code` admin-accounts action return the plain code to admins; the caller is restricted to their own guild (or any guild for super admins). Verified live: the code is accepted by player-register.
 
