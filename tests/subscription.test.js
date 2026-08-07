@@ -79,15 +79,14 @@ afterEach(() => {
 });
 
 describe('GM_SUBSCRIPTION self-service subscriptions', () => {
-    it('renders the five plans with their prices', async () => {
+    it('renders the four plans with their prices', async () => {
         await SUB.load();
         const texts = container().textContent;
-        expect(planKeys()).toEqual(['1m', '3m', '6m', '12m', 'lifetime']);
-        expect(texts).toContain('€6.99');
-        expect(texts).toContain('€16.99');
-        expect(texts).toContain('€27.99');
-        expect(texts).toContain('€47.99');
-        expect(texts).toContain('€89.00');
+        expect(planKeys()).toEqual(['1m', '3m', '6m', '12m']);
+        expect(texts).toContain('€7.99');
+        expect(texts).toContain('€19.99');
+        expect(texts).toContain('€34.99');
+        expect(texts).toContain('€59.99');
     });
 
     it('shows the active status for a Premium subscription with a future end', async () => {

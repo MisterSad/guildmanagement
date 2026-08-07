@@ -13,11 +13,10 @@
     var t = function (k) { return window.GM_I18N ? window.GM_I18N.t(k) : k; };
 
     var PLANS = [
-        { key: '1m', label: '1 Month',  price: '6.99',  period: 'one-time', tag: null },
-        { key: '3m', label: '3 Months', price: '16.99', period: 'one-time', tag: 'Save 19%' },
-        { key: '6m', label: '6 Months', price: '27.99', period: 'one-time', tag: 'Save 33%' },
-        { key: '12m', label: '12 Months', price: '47.99', period: 'one-time', tag: 'Save 43%' },
-        { key: 'lifetime', label: 'Lifetime', price: '89.00', period: 'one-time', tag: 'Best value' }
+        { key: '1m', label: '1 Month',  price: '7.99',  period: 'one-time', tag: null },
+        { key: '3m', label: '3 Months', price: '19.99', period: 'one-time', tag: 'Save ~16%' },
+        { key: '6m', label: '6 Months', price: '34.99', period: 'one-time', tag: 'Save ~27%' },
+        { key: '12m', label: '12 Months', price: '59.99', period: 'one-time', tag: 'Save ~37% - best value' }
     ];
 
     var state = {
