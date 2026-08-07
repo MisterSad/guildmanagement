@@ -114,6 +114,8 @@ begin
   -- and must never be returned as the player's "best" or "current" Glory.
   v_week := to_char(date_trunc('week', now())::date, 'YYYY-MM-DD');
 
+  -- Current week: only counts if the player has at least TWO positive Glory
+  -- weeks (their very first declaration never counts, matching the badges).
   select score into v_glory_week
   from public.event_participants
   where guild = v_member.guild
@@ -121,14 +123,27 @@ begin
     and week_start = v_week::date
     and lower(pseudo) = lower(v_member.pseudo)
     and coalesce(score, 0) > 0
+    and (
+      select count(*) from public.event_participants ep2
+      where ep2.guild = v_member.guild
+        and ep2.event_name = 'Glory'
+        and lower(ep2.pseudo) = lower(v_member.pseudo)
+        and coalesce(ep2.score, 0) > 0
+    ) >= 2
   limit 1;
 
-  select max(score) into v_glory_best
-  from public.event_participants
-  where guild = v_member.guild
-    and event_name = 'Glory'
-    and lower(pseudo) = lower(v_member.pseudo)
-    and coalesce(score, 0) > 0;
+  -- Best ever: excludes the player's first-ever positive Glory week.
+  select coalesce(max(gs.score), null) into v_glory_best
+  from (
+    select ep.score
+    from public.event_participants ep
+    where ep.guild = v_member.guild
+      and ep.event_name = 'Glory'
+      and lower(ep.pseudo) = lower(v_member.pseudo)
+      and coalesce(ep.score, 0) > 0
+    order by ep.week_start asc
+    offset 1
+  ) gs;
 
   select max(score) into v_glory_week_max
   from public.event_participants

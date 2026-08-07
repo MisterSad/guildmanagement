@@ -234,15 +234,25 @@
             gloryByWeek[r.week_start][normalizePseudo(r.pseudo)] = r.score || 0;
         });
 
-        // Deltas de Gloire
+        // Deltas de Gloire — la première déclaration de gloire d'un joueur ne
+        // compte pas dans le calcul. La progression ne démarre qu'à partir de
+        // la deuxième semaine de gloire positive du joueur.
         var weekStarts = Object.keys(gloryByWeek).sort();
         var gloryDeltas = {};
         membersList.forEach(function (pseudo) {
             var norm = normalizePseudo(pseudo);
+
+            // Semaines triées où ce joueur a un score de gloire positif.
+            var playerWeeks = weekStarts.filter(function (w) {
+                var sc = gloryByWeek[w][norm] || 0;
+                return sc > 0;
+            });
+
             var totalDelta = 0;
-            for (var i = 1; i < weekStarts.length; i++) {
-                var curr = gloryByWeek[weekStarts[i]][norm] || 0;
-                var prev = gloryByWeek[weekStarts[i - 1]][norm] || 0;
+            // Ignorer la première saisie : commencer les deltas au 2e score.
+            for (var j = 1; j < playerWeeks.length - 1; j++) {
+                var prev = gloryByWeek[playerWeeks[j]][norm] || 0;
+                var curr = gloryByWeek[playerWeeks[j + 1]][norm] || 0;
                 var diff = curr - prev;
                 if (diff > 0) totalDelta += diff;
             }

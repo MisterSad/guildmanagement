@@ -78,7 +78,9 @@ BEGIN
            count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'SvS' AND e.attended)         AS svs_att,
            count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'GvG' AND e.attended)         AS gvg_att,
            count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'Shadowfront' AND e.attended) AS sh_att,
-           count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'Glory' AND e.attended)       AS gl_att,
+           -- Glory: the player's first-ever positive Glory week never counts.
+           GREATEST(count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'Glory' AND e.attended)
+                    - CASE WHEN count(DISTINCT e.skey) FILTER (WHERE e.event_name = 'Glory' AND e.attended) > 0 THEN 1 ELSE 0 END, 0) AS gl_att,
            count(DISTINCT e.skey) FILTER (WHERE NOT e.is_glory AND e.attended)               AS g_att
     FROM ep e
     GROUP BY e.guild, lower(btrim(e.pseudo))

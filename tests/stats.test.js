@@ -147,13 +147,14 @@ describe('GM_STATS global mode', () => {
         // member list) but scores 0 and does not inflate event totals.
         expect(rows).toHaveLength(3);
         expect(rows[0].pseudo).toBe('AlphaPrime');
-        expect(rows[0].score).toBe('170 pts');
+        expect(rows[0].score).toBe('130 pts');
         expect(rows[1].pseudo).toBe('BetaKnight');
         expect(rows[1].score).toBe('50 pts');
 
-        // AlphaPrime: 2/2 events, glory delta +500
+        // AlphaPrime: 2/2 events, glory delta 0 (first declaration never
+        // counts: with only two Glory weeks there is no measurable delta).
         expect(rows[0].events).toBe('2/2');
-        expect(rows[0].glory).toBe('+500');
+        expect(rows[0].glory).toBe('—');
 
         // BetaKnight: 1/2 events, no glory
         expect(rows[1].events).toBe('1/2');
