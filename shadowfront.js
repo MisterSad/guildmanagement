@@ -73,7 +73,17 @@
     }
     function anySquadActive() { return activeSquadKeys().length > 0; }
     function currentSessionIds() {
+        // Toutes les sessions portant un id (actives ET terminées récentes) :
+        // les participants d'un squad terminé restent accessibles pour la
+        // saisie des scores et le suivi.
         return ['squad1', 'squad2']
+            .map(function (k) { return sfState.squads[k].sessionId; })
+            .filter(Boolean);
+    }
+
+    function activeSessionIds() {
+        return ['squad1', 'squad2']
+            .filter(function (k) { return sfState.squads[k].active; })
             .map(function (k) { return sfState.squads[k].sessionId; })
             .filter(Boolean);
     }
@@ -124,6 +134,10 @@
             sfState.maxPower = powers.length ? Math.max.apply(null, powers) : 0;
 
             var sids = currentSessionIds();
+            // Seules les sessions ACTIVES sont exclues de l'historique des
+            // joueurs : une session terminée compte comme une participation
+            // passée (elle ne doit pas être masquée).
+            var activeSids = activeSessionIds();
 
             // Histoire : exclure les sessions de l'occurrence courante et calculer les détails
             var hist = {};
@@ -138,7 +152,7 @@
             });
 
             (histSquads.data || []).forEach(function (r) {
-                if (sids.indexOf(r.session_id) !== -1) return;
+                if (activeSids.indexOf(r.session_id) !== -1) return;
                 if (!hist[r.pseudo]) hist[r.pseudo] = { assigned: 0, participated: 0, excused_count: 0, late_count: 0, sub_present_count: 0 };
                 
                 var partInfo = partMap[r.pseudo + '|' + r.session_id];
@@ -228,13 +242,18 @@
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         for (var i = 0; i < squads.length; i++) {
             var squad = squads[i];
+            var currentSession = sfState.squads[squad] ? sfState.squads[squad].sessionId : null;
             try {
                 await db.from('event_status').upsert(
                     {
                         guild:      currentG,
                         event_name: SQUAD_EVENT[squad],
                         is_active:  false,
-                        session_id: null, // session clôturée; un nouveau start crée une nouvelle session
+                        // Garde le session_id de la session terminée : les
+                        // participants restent traçables et l'historique peut
+                        // toujours retrouver l'événement. Un nouveau start
+                        // créera une nouvelle session.
+                        session_id: currentSession,
                         start_at:   null, // retire de l'agenda / rappels
                         updated_at: new Date().toISOString()
                     },
@@ -529,35 +548,20 @@
         var db = getDb();
         if (!db || !sessionId) return;
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
-        var existingRes = await db.from('event_participants').select('pseudo')
-            .eq('event_name', EVENT_NAME).eq('session_id', sessionId);
-        var existing = new Set((existingRes.data || []).map(function (r) { return r.pseudo; }));
-
-        var assignRes = await db.from('shadowfront_squads').select('pseudo')
-            .eq('session_id', sessionId);
-        var assigned = (assignRes.data || []).map(function (a) { return a.pseudo; });
-
-        var sq = Object.values(sfState.squads).find(function (s) { return s.sessionId === sessionId; });
-        var startAt = sq ? sq.startAt : null;
-        var week = window.GM.getWeekStart(startAt || new Date(sessionId));
-
-        var toInsert = assigned
-            .filter(function (p) { return !existing.has(p); })
-            .map(function (p) {
-                return {
-                    guild: currentG,
-                    event_name: EVENT_NAME,
-                    week_start: week,
-                    session_id: sessionId,
-                    pseudo: p,
-                    participated: 0
-                };
+        // Database-side sync: the RPC resolves assignments straight from
+        // shadowfront_squads (not the UI state) and inserts missing
+        // participants with an index-safe ON CONFLICT. We check the error so
+        // a composed squad can never silently end up with zero participants.
+        try {
+            var res = await db.rpc('gm_sync_shadowfront_participants', {
+                p_guild: currentG,
+                p_session_id: sessionId
             });
-        if (toInsert.length > 0) {
-            // Plain insert: toInsert is already filtered against existing rows,
-            // and the partial unique index (guild,event_name,session_id,pseudo)
-            // can't be inferred by an ON CONFLICT column list (42P10).
-            await db.from('event_participants').insert(toInsert);
+            if (res.error) {
+                console.error('syncParticipantRows RPC failed', res.error);
+            }
+        } catch (err) {
+            console.error('syncParticipantRows RPC threw', err);
         }
     }
 
@@ -640,9 +644,11 @@
         // 3. Stepper navigation (3 steps)
         var hasAnyDeclared   = sfState.signups.length > 0;
         var hasAnyAssignment = sfState.assignments.length > 0;
-        var hasActiveSession = activeSquadKeys().length > 0;
+        // Une session trackable = un squad avec un session_id, qu'il soit
+        // encore actif ou tout juste terminé (pour saisir les scores après End).
+        var hasTrackableSession = currentSessionIds().length > 0;
 
-        if ((sfActiveTab === 'tracking' && !hasActiveSession) ||
+        if ((sfActiveTab === 'tracking' && !hasTrackableSession) ||
             (sfActiveTab === 'composition' && !hasAnyDeclared && !hasAnyAssignment)) {
             sfActiveTab = 'availability';
         }
@@ -661,7 +667,7 @@
                 '<span class="sf-step-sep"></span>' +
                 stepBtn('composition', 'ph-users-three', t('sf_step_composition'), hasAnyDeclared || hasAnyAssignment) +
                 '<span class="sf-step-sep"></span>' +
-                stepBtn('tracking', 'ph-chart-bar', t('sf_step_tracking'), hasActiveSession) +
+                stepBtn('tracking', 'ph-chart-bar', t('sf_step_tracking'), hasTrackableSession) +
             '</div>';
 
         html +=
