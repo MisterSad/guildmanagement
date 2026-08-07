@@ -349,22 +349,18 @@
                             <span>Guild Join Code</span>
                         </div>
                         <p class="gm-page-subtitle" style="margin-bottom: 0.75rem;">
-                            Players use this code to create their own account from the login screen.
-                            The code is stored hashed; only you can see it.
+                            Players use this permanent code to create their own account from the login screen.
+                            It is unique to your guild and never changes.
                         </p>
                         <div class="gm-row" style="gap: 0.6rem; flex-wrap: wrap;">
-                            <button type="button" id="join-code-generate-btn" class="gm-btn gm-btn-primary">
-                                <i class="ph ph-magic-wand"></i>
-                                <span id="join-code-btn-label">Generate Code</span>
-                            </button>
-                            <button type="button" id="join-code-copy-btn" class="gm-btn gm-btn-ghost">
+                            <button type="button" id="join-code-copy-btn" class="gm-btn gm-btn-primary">
                                 <i class="ph ph-copy"></i>
                                 <span>Copy Code</span>
                             </button>
                         </div>
                         <div id="join-code-result" class="gm-join-code" style="margin-top: 0.75rem;">
                             <i class="ph ph-key"></i>
-                            <span id="join-code-value" style="font-family: var(--font-mono); letter-spacing: 0.08em; font-size: 1.05rem;">No code yet</span>
+                            <span id="join-code-value" style="font-family: var(--font-mono); letter-spacing: 0.08em; font-size: 1.05rem;">Loading...</span>
                         </div>
                         <div id="join-code-info" class="gm-dim" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
                     </div>
@@ -1340,7 +1336,7 @@
     <script src="subscription.js?v=6"></script>
     <script src="badges.js?v=4"></script>
     <script src="portal.js?v=4"></script>
-    <script src="app.js?v=32"></script>
+    <script src="app.js?v=33"></script>
     <script src="shell.js?v=18"></script>
 </body>
 </html>

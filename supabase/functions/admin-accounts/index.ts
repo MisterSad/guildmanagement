@@ -269,6 +269,24 @@ Deno.serve(async (req: Request) => {
     return json(data);
   }
 
+  if (action === "get-join-code") {
+    // Return the guild's permanent join code (plain) for display. Admin-only.
+    const guild = (body?.guild ?? null) as string | null;
+    let targetGuild = guild;
+    if (info.role === "guild_admin") {
+      if (!callerGuild) return json({ ok: false, error: "forbidden" }, 200);
+      targetGuild = callerGuild;
+    } else if (!targetGuild) {
+      return json({ ok: false, error: "missing_fields" }, 200);
+    }
+
+    const { data, error } = await admin.rpc("gm_get_join_code", {
+      p_guild: targetGuild,
+    });
+    if (error) return json({ ok: false, error: "server_error", message: error.message }, 500);
+    return json(data);
+  }
+
   if (action === "approve-registration") {
     const id = (body?.id ?? "").toString().trim();
     if (!id) return json({ ok: false, error: "missing_fields" }, 200);

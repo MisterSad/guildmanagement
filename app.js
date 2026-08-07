@@ -981,76 +981,71 @@
     }
 
     function wireJoinCode() {
-        var generateBtn = document.getElementById('join-code-generate-btn');
         var copyBtn = document.getElementById('join-code-copy-btn');
         var resultBox = document.getElementById('join-code-result');
         var resultVal = document.getElementById('join-code-value');
         var infoEl = document.getElementById('join-code-info');
-        if (!generateBtn) return;
+        if (!resultVal) return;
 
-        var hasCode = false;
-        var storedCode = '';
-        try { storedCode = localStorage.getItem(joinCodeStorageKey()) || ''; } catch (_) {}
-
-        function setLabel(text) {
-            var label = document.getElementById('join-code-btn-label');
-            if (label) label.textContent = text;
-        }
+        var currentCode = '';
 
         function showCode(code) {
             if (!resultVal) return;
+            currentCode = code || '';
             resultVal.textContent = code || 'No code yet';
             if (code) {
                 resultBox.classList.remove('gm-join-code-empty');
-                copyBtn.classList.remove('hidden');
+                if (copyBtn) copyBtn.classList.remove('hidden');
             } else {
                 resultBox.classList.add('gm-join-code-empty');
-                copyBtn.classList.add('hidden');
+                if (copyBtn) copyBtn.classList.add('hidden');
             }
         }
 
-        (window.GM.config.get('join_code_hash')).then(function (hash) {
-            hasCode = !!hash;
-            setLabel(hasCode ? 'Regenerate Code' : 'Generate Code');
-            if (storedCode) {
-                showCode(storedCode);
-                if (infoEl) infoEl.textContent = 'This is your current code. Share it with your players, or regenerate for a new one.';
-            } else if (hasCode) {
-                showCode('');
-                if (infoEl) infoEl.textContent = 'A code is already set but was generated elsewhere. Regenerate to get a new one, then share it.';
-            } else {
-                showCode('');
-                if (infoEl) infoEl.textContent = 'No join code set yet. Generate one so players can register.';
-            }
-        }).catch(function () {});
+        function setInfo(text) {
+            if (infoEl) infoEl.textContent = text;
+        }
 
-        generateBtn.addEventListener('click', async function () {
-            var generatedCode = window.GM.generateJoinCode('FGF');
-            generateBtn.disabled = true;
-            var span = generateBtn.querySelector('span');
-            if (span) span.textContent = 'Saving...';
+        async function loadJoinCode() {
+            var guild = window.currentGuild || window.GM.getActiveGuild() || 'ALPHA';
             try {
-                var res = await window.GM.adminAccounts('set-join-code', {
-                    code: generatedCode,
-                    guild: window.currentGuild || window.GM.getActiveGuild() || 'ALPHA'
-                });
-                if (!res.ok) throw new Error(res.error || 'set_code_failed');
-                try { localStorage.setItem(joinCodeStorageKey(), generatedCode); } catch (_) {}
-                storedCode = generatedCode;
-                hasCode = true;
-                showCode(generatedCode);
-                if (infoEl) infoEl.textContent = 'New code generated and saved. Share it with your players, or regenerate for another one.';
-                showToast('Join code generated.', 'success');
+                var res = await window.GM.adminAccounts('get-join-code', { guild: guild });
+                if (!res.ok) throw new Error(res.error || 'get_code_failed');
+                if (res.code) {
+                    // Code already persisted: just display it, never regenerate.
+                    showCode(res.code);
+                    setInfo('This is your guild\'s permanent join code. Share it with your players.');
+                } else {
+                    // No persistent code yet: generate ONE now and save it.
+                    var generatedCode = window.GM.generateJoinCode('FGF');
+                    var setRes = await window.GM.adminAccounts('set-join-code', {
+                        code: generatedCode,
+                        guild: guild
+                    });
+                    if (!setRes.ok) throw new Error(setRes.error || 'set_code_failed');
+                    try { localStorage.setItem(joinCodeStorageKey(), generatedCode); } catch (_) {}
+                    showCode(generatedCode);
+                    setInfo('This is your guild\'s permanent join code. Share it with your players.');
+                    showToast('Join code created.', 'success');
+                }
             } catch (err) {
-                showToast(t('toast_err_generic') + ' ' + err.message, 'error');
-            } finally {
-                generateBtn.disabled = false;
-                if (span) span.textContent = hasCode ? 'Regenerate Code' : 'Generate Code';
+                // Fallback to the legacy localStorage plain code if available.
+                var storedCode = '';
+                try { storedCode = localStorage.getItem(joinCodeStorageKey()) || ''; } catch (_) {}
+                if (storedCode) {
+                    showCode(storedCode);
+                    setInfo('This is your guild\'s permanent join code. Share it with your players.');
+                } else {
+                    showCode('');
+                    setInfo('Unable to load the join code.');
+                }
             }
-        });
+        }
+
+        loadJoinCode();
 
         if (copyBtn) copyBtn.addEventListener('click', function () {
-            var code = storedCode || (resultVal ? resultVal.textContent : '') || '';
+            var code = currentCode || (resultVal ? resultVal.textContent : '') || '';
             if (!code || code === 'No code yet') return;
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(code).then(function () {

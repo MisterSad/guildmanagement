@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-07
 
+### Changed
+- **Permanent guild join codes**: each guild now has ONE join code, stored in plain text (admin-readable only) alongside the SHA-256 hash used to validate registration. The Accounts tab displays it in read-only mode with a copy button, and there is no regenerate option anymore. If a guild has no code yet, the UI creates one once on first visit. A new `gm_get_join_code` RPC + `get-join-code` admin-accounts action return the plain code to admins; the caller is restricted to their own guild (or any guild for super admins). Verified live: the code is accepted by player-register.
+
 ### Fixed
 - **Timezone coverage counted every tenant**: the Guild Members timezone histogram used the full in-memory member list as its denominator, so a super admin viewing ALPHA saw "2/834" instead of "2/165". `fetchGuildMembers` now filters `guild_members` by the active guild (same as the absences query), so the coverage ratio reflects the current tenant only.
 - **Score approvals actually clear the pending state**: approving a player submission (single or "Approve All") no longer silently fails. The client previously updated the table with the in-memory session fields, which could match nothing and leave `is_pending` stuck. A new `gm_approve_participant_submission` RPC (SECURITY DEFINER) resolves the session server-side and clears `is_pending`, checking the caller is an admin of that guild. Verified live: the DTR submissions were approved and no pending rows remain.
