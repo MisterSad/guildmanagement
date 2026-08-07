@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-07
 
 ### Fixed
+- **Timezone coverage counted every tenant**: the Guild Members timezone histogram used the full in-memory member list as its denominator, so a super admin viewing ALPHA saw "2/834" instead of "2/165". `fetchGuildMembers` now filters `guild_members` by the active guild (same as the absences query), so the coverage ratio reflects the current tenant only.
 - **Score approvals actually clear the pending state**: approving a player submission (single or "Approve All") no longer silently fails. The client previously updated the table with the in-memory session fields, which could match nothing and leave `is_pending` stuck. A new `gm_approve_participant_submission` RPC (SECURITY DEFINER) resolves the session server-side and clears `is_pending`, checking the caller is an admin of that guild. Verified live: the DTR submissions were approved and no pending rows remain.
 - **History: Shadowfront squad name on the tile**: the History card now displays "Shadowfront Squad One" / "Shadowfront Squad Two" directly on the tile, not only when opening the detail modal.
 - **History: Shadowfront squads are distinct again**: the History page now shows "Shadowfront Squad One" and "Shadowfront Squad Two" instead of a generic "Shadowfront". The `gm_list_event_sessions` RPC exposes the squad name from `event_status` and groups each session by `(event, session)` instead of by week, which also removes the duplicate row that appeared when a squad had mixed week values.

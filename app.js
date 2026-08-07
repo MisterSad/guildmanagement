@@ -1470,7 +1470,7 @@
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
             var [res, transfersRes, absencesRes] = await Promise.all([
-                supabase.from('guild_members').select('*').order('pseudo', { ascending: true }),
+                supabase.from('guild_members').select('*').eq('guild', currentG).order('pseudo', { ascending: true }),
                 supabase.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild').eq('status', 'pending').order('created_at', { ascending: true }),
                 supabase.from('player_absences').select('*').eq('guild', currentG)
             ]);
