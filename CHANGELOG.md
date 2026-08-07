@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-07
 
 ### Fixed
+- **Ending a Shadowfront squad now resets its UI**: previously, clicking "End" on a squad kept showing the declared availability and the old squad composition because the tab reloaded assignments from every session (active and ended). Now a squad whose session was started and then ended shows a clean "not active" state with a Start button: availability, past composition and tracking are no longer displayed, the next Start creates a brand-new session, and the other squad (still running) plus all history stay untouched.
 - **History detail showed every tenant's players**: opening a session detail (e.g. the Glory log) loaded `event_participants` without a guild filter, so a super admin viewing ALPHA saw 651 players instead of 165. The detail query now filters by the active guild.
 - **Page refresh no longer forces the Subscription tab**: after a Stripe checkout redirect, the URL kept `?checkout=success&session_id=...`, so every page reload switched back to the Subscription tab regardless of where you were. The checkout parameters are now removed from the URL as soon as they are handled, so a refresh restores the tab you were on.
 

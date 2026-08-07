@@ -115,12 +115,20 @@
                 statusQ, membersQ, squadsQ, partsQ, signupsQ
             ]);
 
+            var startedSessions = {};
+            (histParts.data || []).forEach(function (r) { if (r.session_id) startedSessions[r.session_id] = true; });
+
             ['squad1', 'squad2'].forEach(function (k) {
                 var row = (statusRes.data || []).find(function (r) { return r.event_name === SQUAD_EVENT[k]; });
                 sfState.squads[k] = {
                     active:    row ? !!row.is_active : false,
                     sessionId: row ? row.session_id : null,
-                    startAt:   row ? row.start_at : null
+                    startAt:   row ? row.start_at : null,
+                    // Un squad est "terminé" quand il est inactif mais garde un
+                    // session_id déjà pourvu de participants (il a été lancé puis
+                    // clôturé). L'UI doit alors se réinitialiser, sans toucher à
+                    // l'autre squad ni à l'historique.
+                    ended: row ? (!row.is_active && row.session_id && !!startedSessions[row.session_id]) : false
                 };
             });
 
@@ -133,7 +141,6 @@
             var powers = sfState.membersData.map(function (m) { return parseInt(m.overall_power) || 0; });
             sfState.maxPower = powers.length ? Math.max.apply(null, powers) : 0;
 
-            var sids = currentSessionIds();
             // Seules les sessions ACTIVES sont exclues de l'historique des
             // joueurs : une session terminée compte comme une participation
             // passée (elle ne doit pas être masquée).
@@ -178,12 +185,12 @@
             });
             sfState.history = hist;
 
-            if (sids.length) {
+            if (activeSids.length) {
                 var [assignRes, partRes] = await Promise.all([
                     db.from('shadowfront_squads').select('*')
-                        .in('session_id', sids).order('pseudo', { ascending: true }),
+                        .in('session_id', activeSids).order('pseudo', { ascending: true }),
                     db.from('event_participants').select('*')
-                        .eq('event_name', EVENT_NAME).in('session_id', sids)
+                        .eq('event_name', EVENT_NAME).in('session_id', activeSids)
                         .order('pseudo', { ascending: true })
                 ]);
                 sfState.assignments  = assignRes.data || [];
@@ -205,7 +212,10 @@
         var db = getDb();
         if (!db) return;
         var sq = sfState.squads[squad];
-        var sessionId = (sq && sq.sessionId) ? sq.sessionId : window.GM.newSessionId();
+        // Un squad terminé ne réutilise pas son ancienne session : un nouveau
+        // Start doit démarrer une composition fraîche.
+        var sessionId = (sq && sq.sessionId && !sq.ended) ? sq.sessionId : window.GM.newSessionId();
+        if (sq) sq.ended = false;
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
             var res = await db.from('event_status').upsert(
@@ -452,8 +462,10 @@
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
         // Si la session n'existe pas encore, la créer automatiquement (inactive) pour permettre la composition avant le lancement
-        if (!sq.sessionId) {
+        // Un squad terminé repart aussi sur une session neuve.
+        if (!sq.sessionId || sq.ended) {
             sq.sessionId = window.GM.newSessionId();
+            sq.ended = false;
             try {
                 await db.from('event_status').upsert({
                     guild: currentG,
@@ -640,6 +652,22 @@
                     ) +
                 '</div>' +
             '</div>';
+
+        // Squad terminé : l'UI se réinitialise. On garde les données en base
+        // (historique intact) mais on n'affiche plus les joueurs en disponibilité,
+        // la composition passée ni le tracking. Un nouveau Start créera une
+        // session neuve.
+        if (sq.ended) {
+            html +=
+                '<div class="gm-empty" style="margin-top: 2rem;">' +
+                    '<i class="ph-duotone ph-ghost gm-icon"></i>' +
+                    '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
+                    '<div class="gm-empty-hint">' + t('sf_squad_inactive_hint') + '</div>' +
+                '</div>';
+            area.innerHTML = html;
+            attachSFListeners(area);
+            return;
+        }
 
         // 3. Stepper navigation (3 steps)
         var hasAnyDeclared   = sfState.signups.length > 0;

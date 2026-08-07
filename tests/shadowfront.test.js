@@ -146,4 +146,27 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         expect(body.embeds[0].fields[0].value).toContain('👑 Alpha');
         expect(body.embeds[0].fields[1].value).toBe('None yet');
     });
+
+    it('resets the UI for an ended squad instead of keeping availability and composition', async () => {
+        // Squad 1 ended: inactive but session S1 still has participants.
+        tables.event_status = [
+            { event_name: 'Shadowfront Squad 1', is_active: false, session_id: 'S1', start_at: null },
+            { event_name: 'Shadowfront Squad 2', is_active: true, session_id: 'S2', start_at: '2026-08-05T12:00:00Z' },
+        ];
+        tables.event_participants = [
+            { pseudo: 'Alpha', event_name: 'Shadowfront', session_id: 'S1', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
+            { pseudo: 'Bravo', event_name: 'Shadowfront', session_id: 'S2', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
+        ];
+        tables.shadowfront_squads = [
+            { pseudo: 'Alpha', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' },
+        ];
+
+        await SF.load();
+        const text = area().textContent;
+        // Ended squad1 shows the reset empty state, not the old availability/composition.
+        expect(text).toContain('No active session');
+        expect(text).toContain('Start');
+        expect(text).not.toContain('1. Availability');
+        expect(text).not.toContain('2. Squad Composition');
+    });
 });
