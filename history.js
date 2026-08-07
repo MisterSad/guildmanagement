@@ -31,9 +31,9 @@
         if (!db) return;
         try {
             var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
-            var res = await db.rpc('list_event_sessions', { p_guild: currentG });
+            var res = await db.rpc('gm_list_event_sessions', { p_guild: currentG });
             if (res.error) {
-                console.error('list_event_sessions', res.error);
+                console.error('gm_list_event_sessions', res.error);
                 renderHistory();
                 return;
             }
@@ -72,10 +72,10 @@
                     var glorySessions = Object.values(gloryMap);
                     sessions = sessions.concat(glorySessions);
                     
-                    // Re-sort sessions by date descending
+                    // Re-sort sessions by date descending (battle date first).
                     sessions.sort(function(a, b) {
-                        var timeA = a.session_id ? new Date(a.session_id).getTime() : new Date(a.week_start).getTime();
-                        var timeB = b.session_id ? new Date(b.session_id).getTime() : new Date(b.week_start).getTime();
+                        var timeA = a.start_at ? new Date(a.start_at).getTime() : (a.session_id ? new Date(a.session_id).getTime() : new Date(a.week_start).getTime());
+                        var timeB = b.start_at ? new Date(b.start_at).getTime() : (b.session_id ? new Date(b.session_id).getTime() : new Date(b.week_start).getTime());
                         return timeB - timeA;
                     });
                 }
@@ -212,10 +212,12 @@
                 leftSubStr   = window.GM.formatWeek(s.week_start);
                 subtitleText = weekDisplay + ' (' + window.GM.formatWeek(s.week_start) + ')';
             } else {
-                var dateObj = s.session_id ? new Date(s.session_id) : (s.week_start ? new Date(s.week_start + 'T12:00:00Z') : null);
+                // Priorité à la date du combat (start_at choisi à la création) ;
+                // repli sur le timestamp de session si aucune date de combat.
+                var dateObj = s.start_at ? new Date(s.start_at) : (s.session_id ? new Date(s.session_id) : (s.week_start ? new Date(s.week_start + 'T12:00:00Z') : null));
                 if (dateObj && !isNaN(dateObj.getTime())) {
                     leftTopStr = pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1) + '/' + dateObj.getUTCFullYear();
-                    if (s.session_id) {
+                    if (s.start_at || s.session_id) {
                         leftSubStr = pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes()) + ' UTC';
                         subtitleText = dateObj.toLocaleDateString('fr-FR', {
                             day: '2-digit', month: '2-digit', year: 'numeric',
