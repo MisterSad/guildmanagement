@@ -7,9 +7,11 @@
 -- brand-new function name (gm_list_event_sessions) and history.js was
 -- updated to call it. The legacy list_event_sessions is left in place.
 
+drop function if exists public.gm_list_event_sessions(text);
 create or replace function public.gm_list_event_sessions(p_guild text default null::text)
  returns table(
    event_name text,
+   display_name text,
    session_id text,
    week_start date,
    start_at timestamptz,
@@ -44,9 +46,12 @@ begin
     return query
     select
         ep.event_name,
+        -- Afficher le nom du squad (Shadowfront Squad One/Two) quand il existe,
+        -- sinon le nom générique de l'événement.
+        coalesce(es.event_name, ep.event_name) as display_name,
         ep.session_id,
-        ep.week_start,
-        es.start_at,
+        min(ep.week_start) as week_start,
+        max(es.start_at) as start_at,
         count(*)::integer as participants,
         sum(case when ep.participated > 0 then 1 else 0 end)::integer as participated_count,
         sum(coalesce(ep.score, 0) + coalesce(ep.score_prep, 0) + coalesce(ep.score_pvp, 0))::bigint as total_score
@@ -61,8 +66,10 @@ begin
        or (ep.event_name = 'Shadowfront' and es.event_name like 'Shadowfront%')
      )
     where ep.guild = v_target_guild
-    group by ep.event_name, ep.session_id, ep.week_start, es.start_at
-    order by coalesce(es.start_at, ep.session_id::timestamptz, (ep.week_start || 'T12:00:00')::timestamptz) desc;
+    -- Une session = une ligne : on regroupe par (event, session) et non par
+    -- week_start (le squad1 avait des week_start mixtes, créant des doublons).
+    group by ep.event_name, es.event_name, ep.session_id
+    order by coalesce(max(es.start_at), min(ep.session_id::timestamptz), (min(ep.week_start) || 'T12:00:00')::timestamptz) desc;
 end;
 $function$;
 

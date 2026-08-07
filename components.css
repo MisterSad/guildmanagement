@@ -1759,7 +1759,7 @@
 
 .gm-timeline-item {
     display: grid;
-    grid-template-columns: 72px 20px minmax(0, 1fr);
+    grid-template-columns: 88px 20px minmax(0, 1fr);
     align-items: stretch;
     gap: 0.65rem;
     width: 100%;
@@ -1771,7 +1771,7 @@
         gap: 1rem;
     }
     .gm-timeline-item {
-        grid-template-columns: 50px 14px minmax(0, 1fr);
+        grid-template-columns: 62px 14px minmax(0, 1fr);
         gap: 0.35rem;
     }
     .gm-timeline-time-col {

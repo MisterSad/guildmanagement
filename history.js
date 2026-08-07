@@ -195,7 +195,12 @@
 
         var cardsHtml = '<div class="gm-timeline-container">';
         filtered.forEach(function (s, i) {
-            var meta        = EVENT_META[s.event_name] || { icon: 'ph-calendar-dot', label: s.event_name, hasScore: false, border: 'var(--border-soft)' };
+            // Le nom affiché : le squad (Shadowfront Squad One/Two) quand la
+            // RPC le fournit, sinon le nom générique de l'événement.
+            var displayName = s.display_name || s.event_name;
+            if (displayName === 'Shadowfront Squad 1') displayName = 'Shadowfront Squad One';
+            else if (displayName === 'Shadowfront Squad 2') displayName = 'Shadowfront Squad Two';
+            var meta        = EVENT_META[s.event_name] || { icon: 'ph-calendar-dot', label: displayName, hasScore: false, border: 'var(--border-soft)' };
             var iconClass   = (window.GM && window.GM.getEventIcon) ? window.GM.getEventIcon(s.event_name) : (meta.icon || 'ph-calendar-dot');
             var isWeekly    = (s.event_name === 'SvS' || s.event_name === 'GvG');
             var weekNum     = getWeekNumber(s.week_start);
@@ -240,13 +245,13 @@
                 '<div class="gm-timeline-item">' +
                     '<div class="gm-timeline-time-col">' +
                         '<div style="font-size:0.85rem; font-weight:700;">' + esc(leftTopStr) + '</div>' +
-                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7; max-width:85px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(leftSubStr) + '</div>' +
+                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(leftSubStr) + '</div>' +
                     '</div>' +
                     '<div class="gm-timeline-line-col">' +
                         '<div class="gm-timeline-dot"></div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="gm-task-card gm-history-card ' + themeClass + '" data-event="' + esc(s.event_name) + '" data-session="' + esc(s.session_id || '') + '" data-week="' + esc(s.week_start) + '">' +
+                        '<div class="gm-task-card gm-history-card ' + themeClass + '" data-event="' + esc(s.event_name) + '" data-display="' + esc(displayName) + '" data-session="' + esc(s.session_id || '') + '" data-week="' + esc(s.week_start) + '">' +
                             '<div class="gm-task-card-top">' +
                                 '<div class="gm-task-status-tag">' +
                                     '<i class="ph ' + esc(iconClass) + '"></i>' +
@@ -311,17 +316,19 @@
         document.querySelectorAll('#event-history .gm-history-card').forEach(function (card) {
             card.addEventListener('click', function () {
                 var ev   = card.getAttribute('data-event');
+                var disp = card.getAttribute('data-display') || null;
                 var sid  = card.getAttribute('data-session') || null;
                 var week = card.getAttribute('data-week');
-                openSessionDetail(ev, sid, week);
+                openSessionDetail(ev, disp, sid, week);
             });
         });
     }
 
-    async function openSessionDetail(eventName, sessionId, weekStart) {
+    async function openSessionDetail(eventName, displayName, sessionId, weekStart) {
         var db = getDb();
         if (!db) return;
-        var meta = EVENT_META[eventName] || { label: eventName, icon: 'ph-circle', hasScore: false, border: 'var(--border-soft)' };
+        var meta = EVENT_META[eventName] || { label: displayName || eventName, icon: 'ph-circle', hasScore: false, border: 'var(--border-soft)' };
+        if (displayName) meta.label = displayName;
 
         var query = db.from('event_participants')
             .select('pseudo, participated, score, score_prep, score_pvp, appointed, excused, late, sub_present')

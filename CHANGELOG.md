@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-07
 
+### Fixed
+- **History: Shadowfront squads are distinct again**: the History page now shows "Shadowfront Squad One" and "Shadowfront Squad Two" instead of a generic "Shadowfront". The `gm_list_event_sessions` RPC exposes the squad name from `event_status` and groups each session by `(event, session)` instead of by week, which also removes the duplicate row that appeared when a squad had mixed week values.
+- **History: battle date fully visible**: the date column was widened so "07/08/2026" is no longer clipped to "07/08/202". The history date and sorting use the battle date chosen at creation, with the session timestamp as fallback.
+
 ### Added
 - **History shows the battle date**: the History page now displays the fight day chosen when the event was created (`event_status.start_at`) instead of the session creation timestamp. A new `gm_list_event_sessions` RPC (new OID) joins `event_status` to expose `start_at`; `history.js` uses it for the date and the sorting, falling back to the session timestamp when no battle date exists.
 
