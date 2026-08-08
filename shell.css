@@ -910,6 +910,15 @@ html, body {
     box-shadow: 0 14px 36px oklch(0.45 0.22 300 / 0.5);
 }
 
+.gm-login-footer {
+    margin-top: 1.25rem;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    opacity: 0.8;
+}
+
 /* ─── Responsive Adjustments ─── */
 @media (max-width: 960px) {
     .gm-login-grid {
