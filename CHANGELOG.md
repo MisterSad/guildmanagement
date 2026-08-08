@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2026-08-08
+
+### Added
+- **DEMO tenant for public screenshots and app demos**: a fully fictional guild `DEMO` (server `#0000`, join code `FGF-DEMO-0000`) seeded with 200 fictional players and 4 weeks (2026-07-13 → 2026-08-03) of Glory, DTR, Arms Race, SvS, GvG and Shadowfront events with realistic scores, participation and attendance trends. Re-seed anytime with `python3 scripts/generate_demo_data.py | supabase db query --linked`. Visible to super admins through the guild selector (server number shown as `#0000`).
+
+### Fixed
+- **History grouped all Glory weeks into a single row**: `gm_list_event_sessions` grouped by `(event, session_id)` and Glory has no session, so multiple weeks collapsed into one History entry. The group key is now `coalesce(session_id, week_start)`: sessioned events keep one row per session, session-less events (Glory) get one row per week. Fresh OID applied to drop any cached PostgREST plan.
+- **Ending a Shadowfront squad now resets its UI**: previously, clicking "End" on a squad kept showing the declared availability and the old squad composition because the tab reloaded assignments from every session (active and ended). Now a squad whose session was started and then ended shows a clean "not active" state with a Start button: availability, past composition and tracking are no longer displayed, the next Start creates a brand-new session, and the other squad (still running) plus all history stay untouched.
+
 ## [Unreleased] - 2026-08-07
 
 ### Fixed
