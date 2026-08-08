@@ -507,6 +507,9 @@
             accounts = res.accounts || [];
 
             renderAccounts();
+            // Accounts may resolve after members; re-render so the portal
+            // badge on member tiles is up to date.
+            if (guildMembers.length > 0) renderGuildMembers();
         } catch (err) {
             showToast(t('toast_err_fetch_accounts') + ' ' + err.message, 'error');
         }
@@ -2078,6 +2081,16 @@
         var powers = guildMembers.map(function (m) { return parseInt(m.overall_power) || 0; });
         var maxPower = powers.length ? Math.max.apply(null, powers) : 0;
 
+        // UIDs of validated player accounts (Player Portal access) for the
+        // active guild. A member gets the portal badge when their UID matches
+        // an active member account of this guild.
+        var portalUids = {};
+        accounts.forEach(function (a) {
+            if (a.role === 'member' && a.status === 'active' && a.uid) {
+                portalUids[String(a.uid)] = true;
+            }
+        });
+
         var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
 
         var filteredAdmin = guildMembers.filter(function (m) {
@@ -2123,7 +2136,7 @@
         };
         var roleOrder = ['R5', 'R4', 'R3', 'R2', 'R1'];
 
-        function buildGroupedListHtml(filteredList, sortVal, withActions) {
+        function buildGroupedListHtml(filteredList, sortVal, withActions, portalUids) {
             // Group the filtered list
             var grouped = { R5: [], R4: [], R3: [], R2: [], R1: [] };
             filteredList.forEach(function (m) {
@@ -2157,7 +2170,7 @@
                             '</div>' +
                             '<div class="gm-role-group-body" style="display: ' + displayStyle + ';">' +
                                 (sorted.length 
-                                    ? '<div class="gm-member-list">' + sorted.map(function (m, i) { return memberTileHtml(m, i, withActions, maxPower); }).join('') + '</div>'
+                                    ? '<div class="gm-member-list">' + sorted.map(function (m, i) { return memberTileHtml(m, i, withActions, maxPower, portalUids); }).join('') + '</div>'
                                     : '<div class="gm-dim" style="font-size: 0.85rem; padding: 1rem; text-align: center;">No members in this role</div>') +
                             '</div>' +
                         '</div>';
@@ -2175,10 +2188,10 @@
         if (guildMemberCountM) guildMemberCountM.textContent = filteredMember.length;
 
         if (guildMemberList) {
-            guildMemberList.innerHTML = buildGroupedListHtml(filteredAdmin, sortAdmin, true);
+            guildMemberList.innerHTML = buildGroupedListHtml(filteredAdmin, sortAdmin, true, portalUids);
         }
         if (guildMemberListM) {
-            guildMemberListM.innerHTML = buildGroupedListHtml(filteredMember, sortMember, false);
+            guildMemberListM.innerHTML = buildGroupedListHtml(filteredMember, sortMember, false, portalUids);
         }
 
         // Attach collapse click listeners
@@ -2219,7 +2232,7 @@
         });
     }
 
-    function memberTileHtml(m, i, withActions, maxPower) {
+    function memberTileHtml(m, i, withActions, maxPower, portalUids) {
         var lang = (window.GM_I18N && window.GM_I18N.getLang) ? window.GM_I18N.getLang() : 'en';
         var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
         var uidVal = m.uid || '—';
@@ -2249,6 +2262,11 @@
         var absenceBadge = absenceBadgeHtml(m);
         var timezoneChip = timezoneChipHtml(m);
 
+        var hasPortal = portalUids && uidVal !== '—' && !!portalUids[String(uidVal)];
+        var portalBadge = hasPortal
+            ? '<span class="gm-portal-chip" title="Player Portal account (validated)" style="color:#34d399; border:1px solid rgba(52,211,153,0.35); background:rgba(52,211,153,0.10); border-radius:999px; padding:0.05rem 0.35rem; font-size:0.68rem; display:inline-flex; align-items:center; gap:0.2rem;"><i class="ph ph-user-check"></i> Portal</span>'
+            : '';
+
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
                     '<div class="gm-avatar gm-avatar-squircle">' + esc(initial) + '</div>' +
@@ -2256,6 +2274,7 @@
                         '<div class="gm-member-pseudo-row">' +
                             '<span class="gm-member-pseudo">' + esc(m.pseudo) + '</span>' +
                             roleBadgeHtml +
+                            portalBadge +
                             absenceBadge +
                             timezoneChip +
                         '</div>' +

@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-08
 
 ### Added
+- **Portal access badge on member tiles**: the member list now shows a small green "Portal" chip next to any member whose in-game UID matches a validated player account (role `member`, status `active`). It makes it obvious at a glance who has registered and been approved on the Player Portal. Pending registrations and admin accounts do not get the badge.
 - **DEMO tenant for public screenshots and app demos**: a fully fictional guild `DEMO` (server `#0000`, join code `FGF-DEMO-0000`) seeded with 200 fictional players and 4 weeks (2026-07-13 → 2026-08-03) of Glory, DTR, Arms Race, SvS, GvG and Shadowfront events with realistic scores, participation and attendance trends. Re-seed anytime with `python3 scripts/generate_demo_data.py | supabase db query --linked`. Visible to super admins through the guild selector (server number shown as `#0000`).
 
 ### Fixed
