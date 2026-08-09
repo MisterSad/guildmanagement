@@ -86,6 +86,8 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
+  const info = await getCallerInfo(req, admin);
+
   // FIX (C1): Cryptographically validate caller role. Block 'member' callers completely.
   if (!info.role || (info.role !== "guild_admin" && info.role !== "super_admin")) {
     return json({ ok: false, error: "forbidden" }, 403);
