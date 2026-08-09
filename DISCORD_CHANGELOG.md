@@ -1,31 +1,25 @@
-:sparkles: **PUSH PREFERENCES + WEEKLY CHALLENGES + SCOUTING — v4**
+:sparkles: **GUILD BENCHMARK + PUSH PREFERENCES + CHALLENGES + SCOUTING — v5**
 
-Player notifications you control, weekly goals, and rival-guild tracking.
+A complete analytics batch: compare guilds, control your notifications, earn weekly goals, scout rivals.
 
 ---
 
 :new: **What's new**
 
-- :bell: **Push preferences (Player Portal).** In "My Info" you now choose which web-push reminders you receive:
-  - Event reminders (starts, reminders, battle openings).
-  - Glory tracking notices.
-  - Weekly challenges and season updates.
-  - Your choice is saved per player and respected by the reminder engine; if you never set preferences, you still receive everything by default.
-- :dart: **Weekly challenges.** A new Challenges tab gives every player goals for the week:
-  - Attend 1 / 3 / 5 events this week.
-  - Submit your Glory score.
-  - Refresh your power.
-  - Season summary over the last 4 weeks with a Bronze / Silver / Gold rank and live progress bars.
-- :crosshairs: **Scouting (super admin).** Track rival guild rosters over time:
-  - Paste a roster (one "pseudo, power" per line) and capture a snapshot per guild.
-  - See each player's latest power with the growth delta since the previous capture, and open a full power history.
-  - Super admin only: scouting data is never visible to guild admins or players.
+- :buildings: **Guild benchmark (super admin).** A new tab compares every guild side by side:
+  - Members, total power, max player power.
+  - Active events, 8-week participation rate, members inactive for 2+ weeks.
+  - Subscription type and push subscription count.
+  - Automatic alerts flag low participation, many inactive players, or missing power data, so problem guilds stand out instantly.
+- :bell: **Push preferences (Player Portal).** In "My Info" choose which web-push reminders you receive (event reminders, Glory, challenges). The reminder engine respects your choice; if you never set preferences, you still receive everything.
+- :dart: **Weekly challenges.** A new Challenges tab gives every player weekly goals (attend 1/3/5 events, submit Glory, refresh power) with a Bronze/Silver/Gold season rank.
+- :crosshairs: **Scouting (super admin).** Track rival guild rosters: paste a roster, capture a snapshot, see power growth deltas and full player trends.
 
 ---
 
 :bug: **What's fixed**
 
-- Nothing fixed this round; this is the third part of the analytics batch. Next up: a multi-guild benchmark view.
+- Nothing fixed this round; this closes the analytics batch (scouting, challenges, push prefs, benchmark). The e2e test suite for admin and player flows is next.
 
 ---
 

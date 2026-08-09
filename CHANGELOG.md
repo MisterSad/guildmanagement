@@ -11,6 +11,13 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Guild benchmark (super admin)**: a new "Guild benchmark" tab compares
+  every guild side by side: members, total/max power, active events, the
+  8-week participation rate, members inactive for 2+ weeks, subscription type
+  and push subscription count. Each guild card flags automatic alerts (low
+  participation, many inactive, no power data) so problems are visible at a
+  glance. Super admin only (`gm_guild_benchmark` is gated by
+  `is_super_admin()`).
 - **Contextual push reminders with per-player preferences**: players can now
   choose which web-push reminders they receive from the "My Info" tab (event
   reminders, Glory, challenges). Preferences are stored per guild+player

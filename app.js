@@ -430,6 +430,9 @@
         if (tabId === 'tab-scouting' && window.GM_SCOUTING) {
             window.GM_SCOUTING.load();
         }
+        if (tabId === 'tab-benchmark' && window.GM_BENCHMARK) {
+            window.GM_BENCHMARK.load();
+        }
         if ((tabId === 'tab-sanctions' || tabId === 'sanctions') && window.GM_SANCTIONS) {
             window.GM_SANCTIONS.load();
         }
