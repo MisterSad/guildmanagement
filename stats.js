@@ -666,10 +666,10 @@
                             '<thead><tr>' +
                                 '<th class="gm-center" style="width:65px;">#</th>' +
                                 '<th>' + (t('col_member') || 'Member') + '</th>' +
+                                '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
                                 (isBattleEventMode ?
                                     '<th class="gm-center">' + (t('col_score_prep') || 'Day 1 to 5 score') + '</th>' +
-                                    '<th class="gm-center">' + (t('col_score_pvp') || 'Day 6 score') + '</th>' :
-                                    '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>'
+                                    '<th class="gm-center">' + (t('col_score_pvp') || 'Day 6 score') + '</th>' : ''
                                 ) +
                                 (showGloryCol ? '<th class="gm-center">' + (t('stats_glory_delta') || 'Glory Δ') + '</th>' : '') +
                                 '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>' +
@@ -689,10 +689,10 @@
                                 '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(m.pseudo) + '</strong>' +
                             '</div>' +
                         '</td>' +
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + '/' + m.events_total + '</td>' +
                         (isBattleEventMode ?
                             '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
-                            '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' :
-                            '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + '/' + m.events_total + '</td>'
+                            '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' : ''
                         ) +
                         (showGloryCol ? '<td class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '—') + '</td>' : '') +
                         '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + fmt(m.score) + ' pts</span></td>' +
