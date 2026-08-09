@@ -33,12 +33,22 @@
         return /-\d{8}$/.test(sessionId) || /-\d{4}-W\d{2}$/.test(sessionId);
     }
     function parseSessionDate(s) {
-        if (s.start_at) return new Date(s.start_at);
-        var sid = s.session_id || '';
-        var m = sid.match(/-(\d{4})(\d{2})(\d{2})$/);
-        if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-        if (s.week_start) return new Date(s.week_start + 'T12:00:00Z');
-        return null;
+        var d = null;
+        if (s.start_at) {
+            var raw = String(s.start_at);
+            // Postgres can serialize timestamptz as "2026-08-12T19:30:00+00"
+            // (offset without minutes), which JS Date rejects. Normalize it.
+            d = new Date(raw.replace(/\+00$/, '+00:00'));
+            if (isNaN(d.getTime())) d = new Date(raw);
+            if (isNaN(d.getTime())) d = null;
+        }
+        if (!d || isNaN(d.getTime())) {
+            var sid = s.session_id || '';
+            var m = sid.match(/-(\d{4})(\d{2})(\d{2})$/);
+            if (m) d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+            else if (s.week_start) d = new Date(s.week_start + 'T12:00:00Z');
+        }
+        return d && !isNaN(d.getTime()) ? d : null;
     }
     function sessionTime(s) {
         var d = parseSessionDate(s);
