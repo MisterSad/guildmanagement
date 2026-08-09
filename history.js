@@ -256,12 +256,9 @@
 
             if (isWeekly) {
                 leftTopStr   = weekDisplay;
-                leftSubStr   = window.GM.formatWeek(s.week_start);
+                leftSubStr   = '';
                 subtitleText = weekDisplay + ' (' + window.GM.formatWeek(s.week_start) + ')';
             } else {
-                // Priorité à la date du combat (start_at choisi à la création) ;
-                // repli sur la date encodée dans l'ID de session (ARA-20260809,
-                // SF1-20260802, ...), sinon sur la semaine.
                 var dateObj = parseSessionDate(s);
                 if (dateObj && !isNaN(dateObj.getTime())) {
                     leftTopStr = pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1) + '/' + dateObj.getUTCFullYear();
@@ -279,7 +276,7 @@
                     }
                 } else {
                     leftTopStr   = weekDisplay;
-                    leftSubStr   = s.week_start || '';
+                    leftSubStr   = '';
                     subtitleText = weekDisplay;
                 }
             }
@@ -288,7 +285,7 @@
                 '<div class="gm-timeline-item">' +
                     '<div class="gm-timeline-time-col">' +
                         '<div style="font-size:0.85rem; font-weight:700;">' + esc(leftTopStr) + '</div>' +
-                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(leftSubStr) + '</div>' +
+                        (leftSubStr ? '<div style="font-size:0.7rem; font-weight:500; opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(leftSubStr) + '</div>' : '') +
                     '</div>' +
                     '<div class="gm-timeline-line-col">' +
                         '<div class="gm-timeline-dot"></div>' +
