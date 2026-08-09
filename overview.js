@@ -301,6 +301,21 @@
                 statTile(t('overview_s_events'), String(stats.liveEvents), null, 'ph-clock', stats.liveEvents > 0, liveEventsMeta, 'stat-theme-coral') +
                 statTile(t('overview_s_glory'), formatBigNumber(stats.gloryTotal), 'up', 'ph-trophy', false, t('overview_s_glory_meta'), 'stat-theme-mint') +
             '</div>' +
+            '<div class="gm-section" id="pending-accounts-card">' +
+                '<div class="gm-section-head">' +
+                    '<div class="gm-section-title" style="color:var(--accent-amber); font-weight:700;">' +
+                        '<i class="ph ph-user-plus"></i>' +
+                        '<span>Demandes de validation de compte (Player Portal)</span>' +
+                        '<span class="gm-count" id="pending-account-count">0</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div id="pending-account-list">' +
+                    '<div class="gm-empty" style="padding:1.25rem;">' +
+                        '<i class="ph-duotone ph-hourglass gm-icon"></i>' +
+                        '<div class="gm-empty-title">Aucune demande en attente</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
             '<div class="gm-section">' +
                 '<div class="gm-section-head">' +
                     '<div class="gm-section-title"><i class="ph ph-calendar-dots"></i> ' + t('overview_upcoming_title') + '</div>' +
@@ -316,6 +331,10 @@
             '</div>';
 
         content.innerHTML = html;
+
+        if (window.GM && window.GM.renderPendingRegistrations) {
+            window.GM.renderPendingRegistrations();
+        }
 
         var notifSlot = content.querySelector('[data-gm-notif]');
         if (notifSlot && window.GM_PUSH) window.GM_PUSH.mount(notifSlot);

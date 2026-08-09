@@ -930,19 +930,39 @@
         });
     }
 
-    function renderPendingRegistrations(activeG) {
+    async function renderPendingRegistrations(activeG) {
         var container = document.getElementById('pending-account-list');
         var countEl = document.getElementById('pending-account-count');
         if (!container) return;
 
-        var pending = accounts.filter(function (acc) {
-            return acc.status === 'pending' && acc.role === 'member' &&
-                   (acc.guild || 'ALPHA') === activeG;
-        });
+        activeG = activeG || (window.GM ? window.GM.getActiveGuild() : 'ALPHA');
+
+        var pending = [];
+        if (accounts && accounts.length > 0) {
+            pending = accounts.filter(function (acc) {
+                return acc.status === 'pending' && acc.role === 'member' &&
+                       (acc.guild || 'ALPHA') === activeG;
+            });
+        } else {
+            var db = (window.GM && window.GM.db) ? window.GM.db : null;
+            if (db) {
+                try {
+                    var res = await db.from('accounts')
+                        .select('id, uid, status, role, guild, created_at')
+                        .eq('status', 'pending')
+                        .eq('role', 'member')
+                        .eq('guild', activeG);
+                    pending = res.data || [];
+                } catch (e) {
+                    console.warn('[GM] Error loading pending accounts:', e);
+                }
+            }
+        }
+
         if (countEl) countEl.textContent = pending.length;
 
         if (pending.length === 0) {
-            container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
+            container.innerHTML = '<div class="gm-empty" style="padding:1.5rem;"><i class="ph-duotone ph-hourglass gm-icon"></i><div class="gm-empty-title">Aucune demande de validation en attente</div></div>';
             return;
         }
 
@@ -952,8 +972,8 @@
             html +=
                 '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
                     '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
-                        '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
-                        '<span class="gm-chip gm-chip-warning">Pending</span>' +
+                        '<div class="gm-cred-name" style="font-weight:700; color:var(--fg);">' + esc(acc.id) + '</div>' +
+                        '<span class="gm-chip gm-chip-warning">En attente</span>' +
                     '</div>' +
                     '<div class="gm-row gm-dim" style="font-size:.75rem; gap: 0.75rem;">' +
                         '<span><i class="ph ph-identification-badge"></i> UID ' + esc(acc.uid || '?') + '</span>' +
@@ -961,10 +981,10 @@
                     '</div>' +
                     '<div class="gm-row" style="gap: 0.5rem; margin-top: 0.6rem;">' +
                         '<button class="gm-btn gm-btn-sm gm-btn-success gm-pending-approve" data-id="' + esc(acc.id) + '">' +
-                            '<i class="ph ph-check"></i><span>Approve</span>' +
+                            '<i class="ph ph-check"></i><span>Accepter</span>' +
                         '</button>' +
                         '<button class="gm-btn gm-btn-sm gm-btn-danger-ghost gm-pending-reject" data-id="' + esc(acc.id) + '">' +
-                            '<i class="ph ph-x"></i><span>Reject</span>' +
+                            '<i class="ph ph-x"></i><span>Refuser</span>' +
                         '</button>' +
                     '</div>' +
                 '</div>';
@@ -980,13 +1000,22 @@
         });
     }
 
+    if (window.GM) {
+        window.GM.renderPendingRegistrations = renderPendingRegistrations;
+    }
+
     async function resolveRegistration(id, action) {
         try {
             var res = await window.GM.adminAccounts(action === 'approve' ? 'approve-registration' : 'reject-registration', { id: id });
             if (!res.ok) throw new Error(res.error || (action + '_failed'));
             accounts = accounts.filter(function (a) { return a.id !== id; });
             renderAccounts();
-            showToast(action === 'approve' ? 'Player account approved.' : 'Player registration rejected.', 'success');
+            if (window.GM_OVERVIEW && window.GM_OVERVIEW.load) {
+                window.GM_OVERVIEW.load();
+            } else {
+                renderPendingRegistrations();
+            }
+            showToast(action === 'approve' ? 'Compte joueur approuvé.' : 'Demande d\'inscription refusée.', 'success');
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
