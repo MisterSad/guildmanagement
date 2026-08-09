@@ -968,7 +968,7 @@
 
         var html = '<div class="gm-cred-grid">';
         pending.forEach(function (acc) {
-            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
             html +=
                 '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
                     '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
@@ -1185,7 +1185,7 @@
                 roleLabel = 'Member';
                 chipCls = 'gm-chip-lilac';
             }
-            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
             var guildLabel = acc.guild ? 'Guild: ' + acc.guild : 'All Guilds';
             var guildCls = acc.guild ? 'gm-chip-warning' : 'gm-chip-success';
 
@@ -2646,9 +2646,9 @@
                 '<h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;"><i class="ph ph-clock-counter-clockwise"></i> ' + t('Name History') + '</h4>' +
                 '<div style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem;">' +
                 nameHistory.map(function (h) {
-                    var date = new Date(h.changed_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    var date = new Date(h.changed_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     return '<div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm);">' +
-                        '<span><strong>' + esc(h.old_pseudo) + '</strong> ➔ <strong>' + esc(h.new_pseudo) + '</strong> <span class="gm-dim" style="font-size:0.75rem;">(' + date + ' par ' + esc(h.changed_by) + ')</span></span>' +
+                        '<span><strong>' + esc(h.old_pseudo) + '</strong> ➔ <strong>' + esc(h.new_pseudo) + '</strong> <span class="gm-dim" style="font-size:0.75rem;">(' + date + ' by ' + esc(h.changed_by) + ')</span></span>' +
                         '<button type="button" class="delete-history-btn" data-id="' + h.id + '" style="background: none; border: none; color: var(--error); cursor: pointer; padding: 2px;"><i class="ph ph-trash"></i></button>' +
                         '</div>';
                 }).join('') +

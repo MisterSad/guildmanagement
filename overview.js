@@ -551,8 +551,8 @@
         if (diff < 60)        return t('overview_time_now');
         if (diff < 3600)      return Math.floor(diff / 60) + ' min';
         if (diff < 86400)     return Math.floor(diff / 3600) + ' h';
-        if (diff < 86400 * 7) return Math.floor(diff / 86400) + ' j';
-        return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+        if (diff < 86400 * 7) return Math.floor(diff / 86400) + ' d';
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
     }
 
     function openManageClocksModal(panel) {

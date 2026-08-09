@@ -58,7 +58,7 @@
         var m = sessionId.match(/-(\d{4})(\d{2})(\d{2})(-\d+)?$/);
         if (m) {
             var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+            return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
         }
         return sessionId;
     }
@@ -267,13 +267,13 @@
                     leftTopStr = pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1) + '/' + dateObj.getUTCFullYear();
                     if (s.start_at || hasSessionDate(s.session_id)) {
                         leftSubStr = pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes()) + ' UTC';
-                        subtitleText = dateObj.toLocaleDateString('fr-FR', {
+                        subtitleText = dateObj.toLocaleDateString('en-GB', {
                             day: '2-digit', month: '2-digit', year: 'numeric',
                             hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
                         }) + ' UTC';
                     } else {
                         leftSubStr = weekDisplay;
-                        subtitleText = dateObj.toLocaleDateString('fr-FR', {
+                        subtitleText = dateObj.toLocaleDateString('en-GB', {
                             day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC'
                         }) + ' · ' + weekDisplay;
                     }
@@ -330,7 +330,7 @@
 
     function formatWhen(sessionId, weekStart) {
         if (sessionId) {
-            return new Date(sessionId).toLocaleDateString('fr-FR', {
+            return new Date(sessionId).toLocaleDateString('en-GB', {
                 day: '2-digit', month: '2-digit', year: 'numeric',
                 hour: '2-digit', minute: '2-digit'
             });

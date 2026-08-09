@@ -47,8 +47,7 @@
         }
 
         var html = '<div class="gm-sanction-list">';
-        var lang = (window.GM_I18N && window.GM_I18N.getLang) ? window.GM_I18N.getLang() : 'en';
-        var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
+        var locale = 'en-GB';
 
         sanctions.forEach(function (s) {
             var dateStr = new Date(s.created_at).toLocaleDateString(locale, {

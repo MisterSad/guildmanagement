@@ -258,7 +258,7 @@
         var end = new Date(d); end.setUTCDate(end.getUTCDate() + 6);
         var opts = { day: '2-digit', month: '2-digit', timeZone: 'UTC' };
         var endOpts = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' };
-        return d.toLocaleDateString('fr-FR', opts) + ' → ' + end.toLocaleDateString('fr-FR', endOpts);
+        return d.toLocaleDateString('en-GB', opts) + ' → ' + end.toLocaleDateString('en-GB', endOpts);
     }
 
     function newSessionId() {
