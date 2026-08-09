@@ -92,7 +92,7 @@
                 return;
             }
             var reg = await getReg();
-            if (!reg) { window.GM.showToast(t('push_toast_err'), 'error'); return; }
+            if (!reg) { window.GM.showToast(t('push_toast_err') + ' (No Service Worker)', 'error'); return; }
             var sub = await reg.pushManager.getSubscription();
             if (!sub) {
                 sub = await reg.pushManager.subscribe({
@@ -113,7 +113,8 @@
             window.GM.showToast(t('push_toast_on'), 'success');
         } catch (e) {
             console.error('push enable', e);
-            window.GM.showToast(t('push_toast_err'), 'error');
+            var errMsg = (e && e.message) ? ' (' + e.message + ')' : '';
+            window.GM.showToast(t('push_toast_err') + errMsg, 'error');
         } finally {
             isEnabling = false;
         }
