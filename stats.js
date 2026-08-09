@@ -629,7 +629,7 @@
             }
 
             // Tableau de Classement Officiel (.gm-card, .glass-card, .gm-table)
-            var showGloryCol = (state.currentMode === 'global' || state.currentMode === 'participation');
+            var showGloryCol = (state.currentMode === 'global');
 
             var tableHtml =
                 '<div class="gm-card glass-card" style="padding:1.25rem;">' +

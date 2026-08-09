@@ -125,11 +125,12 @@ function parseLeaderboard() {
     const area = document.querySelector('.stats-leaderboard-area');
     const rows = [...area.querySelectorAll('tbody tr')].map((tr) => {
         const tds = tr.querySelectorAll('td');
+        const hasGlory = tds.length > 4;
         return {
             pseudo: tds[1].querySelector('.gm-member-pseudo').textContent.trim(),
             events: tds[2].textContent.trim(),
-            glory: tds[3].textContent.trim(),
-            score: tds[4].textContent.trim()
+            glory: hasGlory ? tds[3].textContent.trim() : '—',
+            score: (hasGlory ? tds[4] : tds[3]).textContent.trim()
         };
     });
     return rows;
