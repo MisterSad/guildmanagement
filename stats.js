@@ -111,10 +111,16 @@
 
         await fetchAvailableWeeks();
         renderControls();
-        if (state.currentMode.indexOf('kpi-') === 0) {
-            await renderKpiTab();
-        } else {
-            await fetchAndComputeData();
+        try {
+            if (state.currentMode.indexOf('kpi-') === 0) {
+                await renderKpiTab();
+            } else {
+                await fetchAndComputeData();
+            }
+        } catch (err) {
+            // Never leave isLoading stuck true: a thrown error (network, RPC,
+            // rendering) would silently disable every later Stats reload.
+            console.error('[GM_STATS] load error', err);
         }
 
         state.isLoading = false;
@@ -189,25 +195,25 @@
         var db = getDb();
         try {
             var isAllTime = (state.statsPeriod === 'all');
-            var membersQ = db.from('guild_members').select('pseudo, uid').eq('guild', state.activeGuild);
-            var partsQ   = db.from('event_participants').select('*').eq('guild', state.activeGuild).neq('event_name', 'Glory').limit(100000);
-            var gloryQ   = db.from('event_participants').select('pseudo, score, week_start').eq('guild', state.activeGuild).eq('event_name', 'Glory').limit(100000);
-            var squadsQ  = db.from('shadowfront_squads').select('pseudo, role, week_start').eq('guild', state.activeGuild).limit(100000);
+
+            // Full dataset via SECURITY DEFINER RPC: the REST API truncates
+            // event_participants to 1000 rows (silently), so tenants with more
+            // than 1000 rows (CLAW, BABE, OMEGA, DEMO, ...) would lose their
+            // recent events and the leaderboard looked stale. gm_stats_data
+            // returns everything for the caller's guild.
+            var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
+            var raw = dataRes.data || null;
+
+            var memberRows = (raw && raw.members) || [];
+            var partRows   = (raw && raw.participants) || [];
+            var gloryRows  = (raw && raw.glory) || [];
+            var squadRows  = (raw && raw.squads) || [];
 
             if (!isAllTime && weeksToLoad && weeksToLoad.length > 0) {
-                partsQ = partsQ.in('week_start', weeksToLoad);
-                gloryQ = gloryQ.in('week_start', weeksToLoad);
-                squadsQ = squadsQ.in('week_start', weeksToLoad);
+                partRows = partRows.filter(function (r) { return weeksToLoad.indexOf(r.week_start) !== -1; });
+                gloryRows = gloryRows.filter(function (r) { return weeksToLoad.indexOf(r.week_start) !== -1; });
+                squadRows = squadRows.filter(function (r) { return weeksToLoad.indexOf(r.week_start) !== -1; });
             }
-
-            var [memRes, partRes, gloryRes, squadRes] = await Promise.all([
-                membersQ, partsQ, gloryQ, squadsQ
-            ]);
-
-            var memberRows = memRes.data || [];
-            var partRows   = partRes.data || [];
-            var gloryRows  = gloryRes.data || [];
-            var squadRows  = squadRes.data || [];
 
             // Union de tous les membres uniques
             var memberSet = new Set();
@@ -372,17 +378,16 @@
     async function loadSingleEventMode(eventName) {
         var db = getDb();
         try {
-            var q = db.from('event_participants')
-                .select('pseudo, score, score_prep, score_pvp, participated')
-                .eq('guild', state.activeGuild)
-                .eq('event_name', eventName);
+            // Full dataset via gm_stats_data (REST truncates event_participants
+            // at 1000 rows); filter the event client-side.
+            var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
+            var raw = dataRes.data || null;
+            var allParts = (raw && raw.participants) || [];
+            var rows = allParts.filter(function (r) { return r.event_name === eventName; });
 
             if (state.statsPeriod !== 'all' && state.selectedWeek) {
-                q = q.eq('week_start', state.selectedWeek);
+                rows = rows.filter(function (r) { return r.week_start === state.selectedWeek; });
             }
-
-            var res = await q;
-            var rows = res.data || [];
 
             state.leaderboardData = rows.map(function (r) {
                 var total = (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0);
@@ -411,10 +416,10 @@
         var db = getDb();
         try {
             var memRes = await db.from('guild_members').select('pseudo').eq('guild', state.activeGuild);
-            var partRes = await db.from('event_participants')
-                .select('pseudo, event_name, week_start, session_id, participated, is_pending')
-                .eq('guild', state.activeGuild)
-                .neq('event_name', 'Glory');
+            // Full participation set via gm_stats_data (REST truncates at 1000 rows).
+            var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
+            var raw = dataRes.data || null;
+            var partRes = { data: (raw && raw.participants) || [] };
 
             var memberSet = new Set();
             (memRes.data || []).forEach(function (m) { if (m.pseudo) memberSet.add(m.pseudo); });
@@ -693,11 +698,11 @@
     async function renderKpiEngagement(container, db, g, tabsHtml) {
         // Participation per week (last 8 weeks), distinct members via the
         // scoring key so Arms A+B / Shadowfront squads of the same week count
-        // as one participation.
-        var partsRes = await db.from('event_participants')
-            .select('pseudo, event_name, week_start, session_id, participated, sub_present, is_pending')
-            .eq('guild', g)
-            .neq('event_name', 'Glory');
+        // as one participation. Full dataset via gm_stats_data (REST truncates
+        // at 1000 rows, which would silently drop recent weeks on big tenants).
+        var dataRes = await db.rpc('gm_stats_data', { p_guild: g });
+        var raw = dataRes.data || null;
+        var partsRes = { data: (raw && raw.participants) || [] };
         var rows = (partsRes.data || []).filter(function (r) { return !r.is_pending; });
 
         var membersRes = await db.from('guild_members').select('pseudo, overall_power').eq('guild', g);

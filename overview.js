@@ -64,11 +64,13 @@
 
         try {
             var week = window.GM.getWeekStart();
+            var prevWeek = window.GM.getPrevWeekStart(week);
             var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
             var memCountQ  = db.from('guild_members').select('id', { count: 'exact', head: true });
             var statusQ    = db.from('event_status').select('event_name, is_active, updated_at, session_id, start_at');
-            var gloryQ     = db.from('event_participants').select('score').eq('event_name', 'Glory').eq('week_start', week);
+            var gloryQ     = db.from('event_participants').select('pseudo, score').eq('event_name', 'Glory').eq('week_start', week);
+            var gloryPrevQ = db.from('event_participants').select('pseudo, score').eq('event_name', 'Glory').eq('week_start', prevWeek);
             var sanctionsQ = db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5);
             var recentMemQ = db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5);
             var transfersQ = db.from('guild_transfers').select('pseudo, source_guild, target_guild, resolved_at').eq('status', 'approved').or('source_guild.eq.' + currentG + ',target_guild.eq.' + currentG).order('resolved_at', { ascending: false }).limit(5);
@@ -77,19 +79,29 @@
             memCountQ  = memCountQ.eq('guild', currentG);
             statusQ    = statusQ.eq('guild', currentG);
             gloryQ     = gloryQ.eq('guild', currentG);
+            gloryPrevQ = gloryPrevQ.eq('guild', currentG);
             sanctionsQ = sanctionsQ.eq('guild', currentG);
             recentMemQ = recentMemQ.eq('guild', currentG);
             powerQ     = powerQ.eq('guild', currentG);
 
-            var [memCount, statusRows, gloryRows, sanctionsRows, recentMembers, transfersRows, powerRows] = await Promise.all([
-                memCountQ, statusQ, gloryQ, sanctionsQ, recentMemQ, transfersQ, powerQ
+            var [memCount, statusRows, gloryRows, gloryPrevRows, sanctionsRows, recentMembers, transfersRows, powerRows] = await Promise.all([
+                memCountQ, statusQ, gloryQ, gloryPrevQ, sanctionsQ, recentMemQ, transfersQ, powerQ
             ]);
+
+            // Glory is cumulative per player: "this week" is the gain, i.e. the
+            // sum of (current week score - previous week score) per member.
+            var prevByPseudo = {};
+            (gloryPrevRows.data || []).forEach(function (r) { prevByPseudo[r.pseudo] = r.score || 0; });
+            var gloryGained = (gloryRows.data || []).reduce(function (acc, r) {
+                var gain = (r.score || 0) - (prevByPseudo[r.pseudo] || 0);
+                return acc + Math.max(0, gain);
+            }, 0);
 
             var stats = {
                 members:   memCount.count || 0,
                 liveEvents: (statusRows.data || []).filter(function (s) { return s.is_active; }).length,
                 liveEventNames: (statusRows.data || []).filter(function (s) { return s.is_active; }).map(function (s) { return prettyEventName(s.event_name); }),
-                gloryTotal: (gloryRows.data || []).reduce(function (a, r) { return a + (r.score || 0); }, 0),
+                gloryTotal: gloryGained,
                 sanctions: (sanctionsRows.data || []).length,
                 totalPower: (powerRows.data || []).reduce(function (a, m) { return a + (parseInt(m.overall_power, 10) || 0); }, 0)
             };

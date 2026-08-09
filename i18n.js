@@ -382,7 +382,7 @@
             overview_s_members:    'Active members',
             overview_s_events:     'Live events',
             overview_s_glory:      'Glory this week',
-            overview_s_glory_meta: 'Sum across all members',
+            overview_s_glory_meta: 'Gained vs last week',
             overview_s_sanctions:  'Recorded sanctions',
             overview_no_live:      'None live',
             overview_recent_activity: 'Recent activity',

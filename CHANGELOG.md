@@ -11,6 +11,20 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Stats load the full guild dataset via a server RPC** (all tenants): the
+  Stats page now fetches members, participation, Glory and squads through the
+  new `gm_stats_data` SECURITY DEFINER RPC instead of raw REST reads. This
+  removes the 1000-row limit that silently truncated event data for every
+  tenant with more than 1000 rows (DEMO, OMEGA, BABE, CLAW, ALPHA), so recent
+  scores and participation always show up. Role rules match the other RPCs:
+  `guild_admin` is scoped to their own guild, `super_admin` may pick any, a
+  `member` gets nothing.
+- **SaaS audit: same event flow for every tenant**: verified that event
+  creation (`buildEventSessionId` / `gm_event_session_id`), score recording
+  (`score_prep`/`score_pvp` for SvS/GvG, `score` elsewhere) and the history
+  rules are identical across ALPHA, BABE, CLAW, DEMO, IMK, OMEGA, YARR. The
+  JS and SQL session-id helpers produce the same ids, so no tenant runs a
+  different event pipeline.
 - **Per-guild payments switch** (all tenants): a new `payments_disabled`
   flag on `guilds` turns off the self-service subscription flow for any
   guild. The Subscription tab is hidden from the sidebar, the subscription
@@ -20,6 +34,18 @@ few hours, with an incrementing number in its title.
   `window.GM.isPaymentsDisabled(guildId)` drives the nav and the page. DEMO,
   the public preview tenant shared in articles, has the flag enabled so
   visitors can never start a real purchase.
+- **Shadowfront "Squad One/Two" titles now consistent on every tenant**: the
+  history RPC (`gm_list_event_sessions`) used to derive the squad name from a
+  JOIN on `event_status`, which only matched when the tenant's event_status
+  row carried the same session_id (ALPHA, DEMO). BABE, CLAW, OMEGA, YARR
+  fell back to the generic "Shadowfront" label. The display name is now
+  derived from the session id itself (SF1-* / SF2-*), so every tenant shows
+  the same "Squad One"/"Squad Two" titles.
+- **Overview "Glory this week" now shows the gain**: the tile sums the glory
+  *gained* this week (each member's current week score minus their previous
+  week score, floored at zero) instead of the sum of every cumulative score.
+  A new member's first declaration counts in full; the tile meta now reads
+  "Gained vs last week".
 - **Public DEMO tenant accounts**: `DemoAdmin` (guild admin) and
   `DemoPlayer` (Player Portal, linked to the in-game member KiraIX) let
   anyone preview the tool from a web article. Both log in with the easy
@@ -126,6 +152,36 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Stats page appeared to ignore newly entered scores**: the Supabase REST API
+  silently truncates `event_participants` at 1000 rows, and the client never
+  sent an ORDER BY, so the rows returned were always the OLDEST by id. Any
+  tenant with more than 1000 non-Glory rows (DEMO, OMEGA, BABE, CLAW, ALPHA)
+  lost its recent events on the Stats page — exactly what CLAW reported after
+  entering all scores. Stats now load the full dataset through `gm_stats_data`.
+- **A failed Stats load could freeze the page**: `state.isLoading` was only
+  reset on the happy path; an error (network, RPC, render) left it stuck at
+  `true`, silently disabling every later Stats reload. The load is now wrapped
+  so `isLoading` always clears.
+- **BABE current-week Glory had no session id**: 172 Glory rows for the week
+  of 2026-08-03 carried `session_id = NULL` (created before Glory rows were
+  keyed), unlike every other tenant which uses `GLORY-2026-W32`. A player
+  Glory upsert on BABE would have inserted a duplicate row because the
+  conflict target is the sessioned index. The missing session id is now
+  backfilled so BABE matches the other tenants.
+- **Legacy `gm_populate_event_participants` overload could target ALPHA**: the
+  3-argument overload fell back to `v_guild := 'ALPHA'` when the guild could
+  not be resolved and had a weak authorization check. It was still executable
+  by `authenticated`. The frontend only uses the 4-argument overload (explicit
+  `p_guild`), so the legacy overload's grants are revoked.
+- **Shadowfront history titles missing on some tenants**: BABE, CLAW, OMEGA
+  and YARR showed a generic "Shadowfront" label instead of "Squad One"/"Squad
+  Two" because the history RPC joined on `event_status`, whose `session_id`
+  was NULL for those tenants. The squad name is now read from the session id,
+  matching ALPHA's display on every tenant.
+- **Overview "Glory this week" showed the sum of all cumulative scores**: the
+  tile now computes the glory gained during the week (current week score minus
+  previous week score per member, floor at zero), which is what the label
+  promises.
 - **Payments could be started on the public DEMO tenant**: the Subscription
   tab and the checkout flow are now fully disabled for guilds with the
   `payments_disabled` flag (DEMO). The nav entry, the plan tiles and the
@@ -182,7 +238,10 @@ few hours, with an incrementing number in its title.
 
 ## Version history
 
-- **2026-08-09** — Per-guild payments switch, public DEMO tenant accounts,
+- **2026-08-09** — Stats full-dataset RPC (1000-row truncation fixed), SaaS
+  audit (event flow parity), BABE Glory backfill, legacy populate RPC
+  hardened, Shadowfront squad titles fixed for all tenants, Overview
+  Glory-gain fix, per-guild payments switch, public DEMO tenant accounts,
   Scouting feature removed (tab, module, DB objects).
 - **2026-08-09** — Playwright e2e suite (login + portal, stubbed backend) and
   CI `e2e` job.
