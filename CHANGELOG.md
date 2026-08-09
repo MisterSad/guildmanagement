@@ -1,62 +1,138 @@
 # Changelog
 
-Toutes les modifications notables de ce projet sont documentées ici.
+All notable changes to this project are documented in this file.
 
-Le CHANGELOG.md est réécrit et mis à jour à **chaque** modification : une
-partie **New** (fonctionnalités) et une partie **Fixed** (corrections).
-`DISCORD_CHANGELOG.md` contient la même information au format prêt à coller
-sur Discord, limitée aux toutes dernières heures.
+`CHANGELOG.md` is rewritten and updated at **every** change: a **New**
+section (features) and a **Fixed** section (bug fixes). `DISCORD_CHANGELOG.md`
+carries the same information in a Discord-ready format, limited to the last
+few hours, with an incrementing number in its title.
 
 ---
 
 ## New
 
-- **Stats > page Engagement refondue** : les tuiles et graphiques sont désormais clairs. La page affiche : membres actifs cette semaine, taux moyen de participation sur 8 semaines, membres inactifs (2+ semaines), semaines avec données ; une tendance hebdomadaire (membres distincts ayant participé à au moins un événement, calculée avec la clé de scoring partagée : Arms A+B et Shadowfront comptent une fois par semaine) ; une répartition par type d'événement (SvS, GvG, Shadowfront, Arms Race, DTR) ; une liste des inactifs triée par durée d'absence avec dernière semaine d'activité et puissance.
-- **Onglets Stats persistés** : le mode Stats sélectionné (Guild Health, Engagement, Roster, Operations) est mémorisé et restauré après un rechargement de page. Les sélecteurs de période/semaine sont masqués sur les onglets KPI pour éviter de revenir au classement global.
-- **Sandbox multi-tenant durcie** (tous les tenants) :
-  - `guildsList` chargée depuis la table `guilds` au lieu d'une liste codée en dur obsolète.
-  - Defaults de colonnes `'ALPHA'` supprimés sur 6 tables : une insertion sans guilde échoue désormais au lieu d'atterrir silencieusement dans ALPHA.
-  - `accounts.guild` obligatoire pour tout rôle sauf `super_admin` ; `join_code_hash` unique globalement ; grants de `gm_cross_guild_ranking` restreints.
-  - DTR utilise un seul nom d'événement (`Defend Trade Route`) ; l'insertion `player_name_history` fournit la guilde.
-- **Participation comptée selon les règles du jeu** (tous les tenants) : une clé de scoring partagée (`gm_event_scoring_key` / `window.GM.eventScoringKey`) régit tous les calculs. Arms Race (Stage A + B) et Shadowfront (Squad 1 + 2) comptent **une fois par semaine** ; SvS et GvG une fois par semaine ; chaque événement DTR compte séparément. Appliqué au leaderboard des stats, au classement inter-guildes, aux KPI du portail joueur et aux badges de participation.
-- **Semaines Shadowfront dérivées de la date de combat** : le client et `gm_sync_shadowfront_participants` utilisent la date choisie par l'admin (`start_at`), en repli sur la date encodée dans l'ID de session. Les lignes incohérentes existantes ont été corrigées pour tous les tenants (un joueur ne peut être que dans un squad par semaine ; doublons fusionnés).
-- **IDs de session lisibles et déterministes** (tous les tenants) : chaque événement porte un ID lisible et triable chronologiquement (`SVS-2026-W32`, `ARA-20260809`, `SF1-20260802`...). Relancer un événement pour la même date réutilise la session au lieu de créer un doublon fantôme. L'historique est trié du plus récent au plus ancien.
-- **Badges de gamification** dans le Player Portal : rangs, ancienneté, puissance, participation, Gloire. Paliers recalibrés (ancienneté jusqu'à 2 ans, puissance jusqu'à 300M, participation jusqu'à 1500, Gloire jusqu'à 50M/semaine). La première déclaration de Gloire ne compte jamais.
-- **Onglet "My Info" du portail** : puissance, Gloire en libre-service, fuseau horaire, demande de transfert. Dashboard de KPI personnels (rang puissance, percentile, Gloire, assiduité, ancienneté).
-- **Paiements Stripe** : remplacement de l'ancien processeur par un checkout Stripe hébergé (création de commande, statut, webhook). Nouveaux tarifs (1M 7,99 € / 3M 19,99 € / 6M 34,99 € / 12M 59,99 €), abonnement Lifetime retiré, tuiles d'abonnement pleine largeur avec liste des moyens de paiement.
-- **Join codes permanents par guilde** : un seul code par guilde, affiché en lecture seule avec copie, sans régénération. `join_code_hash` unique globalement.
-- **Page de connexion statique** (sans animation 3D) avec bouton Discord communautaire et mention "Developed by HawkEye #1058".
-- **Badge d'accès Portal sur les tuiles de membres** : une pastille "Portal" indique les joueurs dont le compte a été validé.
-- **Tenant DEMO fictif** (serveur #0000, 200 joueurs, 4 semaines d'événements) pour captures d'écran et démos, régénérable via `scripts/generate_demo_data.py`.
-- **CI GitHub Actions** (vitest + `deno check` sur les edge functions) et **`scripts/bump_cache_busters.py`** (bump automatique des `?v=`).
+- **Stats > Engagement page rebuilt**: the tiles and charts are now clear. The
+  page shows: active members this week, the average 8-week participation rate,
+  members inactive for 2+ weeks, and weeks with data; a weekly participation
+  trend (distinct members who attended at least one event, computed with the
+  shared scoring key so Arms A+B and Shadowfront count once per week); a
+  per-event-type engagement breakdown (SvS, GvG, Shadowfront, Arms Race, DTR);
+  and an inactive-members list sorted by length of absence with last-seen week
+  and power.
+- **Stats tabs persist**: the selected Stats mode (Guild Health, Engagement,
+  Roster, Operations) is saved and restored after a page reload. The
+  period/week selectors are hidden on KPI tabs so they can no longer fall back
+  to the global leaderboard.
+- **Multi-tenant sandbox hardened** (all tenants):
+  - `guildsList` is loaded from the `guilds` table instead of a stale
+    hard-coded list.
+  - The `'ALPHA'` column defaults were removed from 6 tables: an insert
+    without a guild now fails loudly instead of silently landing in ALPHA.
+  - `accounts.guild` is required for every role except `super_admin`;
+    `join_code_hash` is globally unique; `gm_cross_guild_ranking` grants are
+    restricted.
+  - DTR uses a single event name (`Defend Trade Route`); the
+    `player_name_history` insert now provides the guild.
+- **Participation counted per the game rules** (all tenants): a shared scoring
+  key (`gm_event_scoring_key` / `window.GM.eventScoringKey`) drives all
+  participation math. Arms Race (Stage A + B) and Shadowfront (Squad 1 + 2)
+  count **once per week**; SvS and GvG once per week; each DTR event counts
+  separately. Applied to the stats leaderboard, cross-guild ranking, Player
+  Portal KPIs and participation badges.
+- **Shadowfront weeks derived from the battle date**: the client and
+  `gm_sync_shadowfront_participants` use the admin-chosen date (`start_at`),
+  falling back to the date encoded in the session id. Inconsistent existing
+  rows were backfilled for all tenants (a player can only be in one squad per
+  week; duplicates merged).
+- **Human-readable deterministic session ids** (all tenants): every event
+  carries a readable, chronologically-sortable id (`SVS-2026-W32`,
+  `ARA-20260809`, `SF1-20260802`...). Re-starting an event for the same date
+  reuses the session instead of creating a ghost duplicate. History is sorted
+  most recent first.
+- **Gamification badges** in the Player Portal: ranks, seniority, power,
+  participation, Glory. Tiers recalibrated (seniority up to 2 years, power up
+  to 300M, participation up to 1500, Glory up to 50M/week). A player's
+  first-ever Glory declaration never counts.
+- **"My Info" portal tab**: power, self-service Glory, timezone, transfer
+  request. Personal KPI dashboard (power rank, percentile, Glory, attendance,
+  tenure).
+- **Stripe payments**: replaced the legacy processor with a hosted Stripe
+  checkout (order creation, status, webhook). New pricing (1M 7.99 EUR / 3M
+  19.99 EUR / 6M 34.99 EUR / 12M 59.99 EUR), Lifetime removed, full-width plan
+  tiles with a detailed payment-methods list.
+- **Permanent per-guild join codes**: one code per guild, read-only display
+  with copy, no regeneration. `join_code_hash` globally unique.
+- **Static login page** (no 3D animation) with a Discord community button and
+  a "Developed by HawkEye #1058" footer.
+- **Portal access badge on member tiles**: a "Portal" chip marks players whose
+  account has been validated.
+- **Fictional DEMO tenant** (server #0000, 200 players, 4 weeks of events) for
+  screenshots and demos, re-seedable via `scripts/generate_demo_data.py`.
+- **GitHub Actions CI** (vitest + `deno check` on edge functions) and
+  **`scripts/bump_cache_busters.py`** (automatic `?v=` bumps).
 
 ---
 
 ## Fixed
 
-- **Stats : rechargement / changement de période ne ramène plus à "Weekly Global"** : le mode Stats est persisté et restauré, et les sélecteurs période/semaine sont masqués sur les onglets KPI.
-- **Historique vide après la refonte des IDs** : la RPC `gm_list_event_sessions` sélectionnait `ep.session_id` avec un `GROUP BY` sur `coalesce(...)`, rejeté par PostgreSQL. La RPC sélectionne désormais l'expression `coalesce` aliasée `session_id` (nouvel OID), ce qui restaure la page pour tous les tenants.
-- **Tri de l'historique** : les sessions sont toujours triées du plus récent au plus ancien (le tri ne s'exécutait que dans un cas particulier).
-- **Dates d'historique avec offset `+00`** : Postgres sérialise `timestamptz` en `+00`, rejeté par `new Date()`. Les helpers de date normalisent l'offset.
-- **Approve / Approve All bloqués sur "..."** : les handlers appelaient `showToast()` sans préfixe (indéfini dans le scope), ce qui interrompait le `catch` avant de restaurer le bouton. Utilisation de `window.GM.showToast` + rechargement des participants après approbation.
-- **Événements actifs affichant des joueurs d'autres guildes** : avec les IDs déterministes partagés (ex. `GVG-2026-W32`), les requêtes filtrant seulement par `event_name` + `session_id` chargeaient les participants de toutes les guildes. Toutes les lectures/écritures sur `event_participants`, `event_status`, `shadowfront_squads`, `shadowfront_signups` filtrent désormais par la guilde active, et `gm_populate_event_participants` prend un `p_guild` explicite vérifié contre l'appelant. Aucune donnée cross-tenant (vérifié).
-- **Fin d'un squad Shadowfront réinitialise son UI** : la composition et la disponibilité d'un squad terminé ne sont plus affichées ; un nouveau Start crée une session neuve, sans toucher à l'autre squad ni à l'historique.
-- **Approbation des scores vraiment fiable** : la RPC `gm_approve_participant_submission` résout la session côté serveur et lève `is_pending`.
-- **Shadowfront : participants jamais synchronisés + historique perdu à la fin** : la synchronisation passe par la base (`gm_sync_shadowfront_participants`), et terminer un squad conserve la session pour l'historique.
-- **Historique : nom des squads et dates** : "Shadowfront Squad One/Two" affiché proprement, date de combat choisie à la création, pas de doublons.
-- **Coverage fuseau horaire** : le ratio ne compte que les membres de la guilde active.
-- **Refraîchissement de page garde l'onglet actif** : les paramètres `?checkout=` sont purgés de l'URL après le retour Stripe.
-- **Auto-inscription des nouveaux membres** dans les événements actifs via RPC (au lieu d'upserts client qui échouaient sur l'index partiel).
-- **Dialog UID dupliqué** : `gm_find_player_by_uid` + `gm_admin_request_transfer` pour les transferts, RLS sur `guild_transfers` durcie.
-- **Règle Gloire (première déclaration exclue)** appliquée partout : badges, KPI portail, leaderboard, classement inter-guildes. Les scores nuls/vides ne comptent jamais.
-- **Badges : zéro/vide exclu et paliers recalibrés** pour éviter des déblocages immédiats.
+- **Stats no longer jumps back to "Weekly Global"**: reloading the page or
+  changing the period/week while on a KPI tab used to bounce to the global
+  leaderboard. The selected Stats mode is now persisted and restored, and the
+  period/week selectors are hidden on KPI tabs.
+- **History page came back empty after the event-id rework**: the
+  `gm_list_event_sessions` RPC selected `ep.session_id` with a `GROUP BY` on
+  `coalesce(...)`, which PostgreSQL rejects. The RPC now selects the `coalesce`
+  expression aliased `session_id` (fresh OID), restoring the page for all
+  tenants.
+- **History sorted most recent first**: sessions are always sorted newest to
+  oldest (the sort previously only ran in one code path).
+- **History dates with a bare `+00` offset**: Postgres serializes `timestamptz`
+  as `+00`, which `new Date()` rejects. The date helpers now normalize the
+  offset.
+- **Approve / Approve All stuck on "..."**: the handlers called `showToast()`
+  without a prefix (undefined in scope), aborting the `catch` before restoring
+  the button. Now uses `window.GM.showToast` and reloads participants after
+  approving.
+- **Active events showing players from other guilds**: with the shared
+  deterministic session ids (e.g. `GVG-2026-W32`), queries filtered only by
+  `event_name` + `session_id` loaded every guild's participants. All reads and
+  writes on `event_participants`, `event_status`, `shadowfront_squads`,
+  `shadowfront_signups` now also filter by the active guild, and
+  `gm_populate_event_participants` takes an explicit `p_guild` verified against
+  the caller. No cross-tenant data (verified).
+- **Ending a Shadowfront squad resets its UI**: the composition and
+  availability of an ended squad are no longer shown; a new Start creates a
+  fresh session without touching the other squad or the history.
+- **Score approval is reliable**: `gm_approve_participant_submission` resolves
+  the session server-side and clears `is_pending`.
+- **Shadowfront: participants never synced + history lost on end**: the sync
+  now runs in the database (`gm_sync_shadowfront_participants`), and ending a
+  squad keeps the session for history.
+- **History: squad names and dates**: "Shadowfront Squad One/Two" shown
+  cleanly, the battle date chosen at creation is used, no duplicate rows.
+- **Timezone coverage ratio** now counts only the active tenant's members.
+- **Page refresh keeps the active tab**: `?checkout=` params are purged from
+  the URL after the Stripe return.
+- **Auto-enroll of new members** into active events via RPC (instead of client
+  upserts that failed on the partial index).
+- **Duplicate-UID dialog**: `gm_find_player_by_uid` + `gm_admin_request_transfer`
+  for transfers, `guild_transfers` RLS hardened.
+- **Glory rule (first declaration excluded)** applied everywhere: badges,
+  portal KPIs, leaderboard, cross-guild ranking. Zero/empty scores never count.
+- **Badges: zero/empty excluded and tiers recalibrated** to avoid instant
+  unlocks.
 
 ---
 
-## Historique des versions
+## Version history
 
-- **2026-08-09** — engagement Stats refondu, onglets persistés, sandbox durcie, scoring par règles du jeu, semaines Shadowfront corrigées, IDs de session lisibles, DTR unifié.
-- **2026-08-08** — tenancy hardening, approbation des scores, scoping guilde, historique réparé, join codes permanents, DEMO tenant.
-- **2026-08-07** — badges/portail, paiements Stripe, page de connexion, subscription, corrections Shadowfront/historique/approbation.
-- **2026-08-06** — IDs de session déterministes, session IDs lisibles, login statique, plan tarifaire, auto-enroll, transferts.
-- **2026-08-05** — badges (initial), onglets KPI Stats, divers fixes.
+- **2026-08-09** — Stats Engagement rebuilt, persisted Stats tabs, sandbox
+  hardened, scoring per game rules, Shadowfront weeks fixed, readable session
+  ids, DTR unified.
+- **2026-08-08** — tenancy hardening, score approval, guild scoping, history
+  fixed, permanent join codes, DEMO tenant.
+- **2026-08-07** — badges/portal, Stripe payments, login page, subscription,
+  Shadowfront/history/approval fixes.
+- **2026-08-06** — deterministic session ids, readable session ids, static
+  login, pricing plan, auto-enroll, transfers.
+- **2026-08-05** — badges (initial), Stats KPI tabs, misc fixes.

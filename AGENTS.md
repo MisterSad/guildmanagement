@@ -317,9 +317,11 @@ valid JWT. Every anon-granted table must return `[]` for anon.
 - Only `main` branch exists; never create long-lived branches.
 - Do not commit `.agents/`, `android/`, `apple-devices/`, build artifacts.
 - **Changelogs are rewritten, not appended**: at every change, erase and
-  rebuild both `CHANGELOG.md` (full history, sections `## New` / `## Fixed`)
-  and `DISCORD_CHANGELOG.md` (Discord-paste, English, emoji shortcodes, no
-  tables/HTML, covering only the last few hours). Do not create
+  rebuild both `CHANGELOG.md` (full history, sections `## New` / `## Fixed`,
+  **English only**) and `DISCORD_CHANGELOG.md` (Discord-paste, English, emoji
+  shortcodes, no tables/HTML, covering only the last few hours). Every Discord
+  changelog title carries an incrementing number (e.g. `... — v1`, then `v2`,
+  `v3`...), and the number must never repeat. Do not create
   `CHANGELOG-DISCORD-*.md` files anymore.
 - The project is monetized (paid guild subscriptions). Treat any change
   to payments or access control as security-critical.

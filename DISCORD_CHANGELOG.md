@@ -1,4 +1,4 @@
-:sparkles: **MULTI-TENANT HARDENING, CLEANER STATS ENGAGEMENT, STABLE TABS**
+:sparkles: **MULTI-TENANT HARDENING, CLEANER STATS ENGAGEMENT, STABLE TABS — v1**
 
 A fresh batch of changes, applied to every guild on the platform.
 
