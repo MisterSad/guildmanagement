@@ -136,6 +136,7 @@ afterEach(() => {
     delete window.GM.db;
     window.GM.ensureAuthSession = undefined;
     document.body.innerHTML = '';
+    localStorage.removeItem('gm_stats_mode');
 });
 
 describe('GM_STATS global mode', () => {
@@ -328,5 +329,49 @@ describe('GM_STATS KPI tabs', () => {
         expect(text).toContain('Weekly participation rate');
         expect(text).toContain('Members inactive for 2+ weeks');
         expect(text).toContain('ZombieZzz'); // no data -> everyone is inactive
+    });
+
+    it('persists the selected stats mode and reloads into it', async () => {
+        const db = makeDb({
+            rpc: { list_event_weeks: () => ({ data: [{ week_start: W2 }], error: null }) },
+            from: {
+                guild_members: () => new MockBuilder(MEMBERS_POWER),
+                event_participants: () => new MockBuilder(PARTS_POWER),
+                shadowfront_squads: () => new MockBuilder([])
+            }
+        });
+        window.GM.db = db;
+        await window.GM_STATS.load();
+        // Switch to Engagement and back to global, then reload: mode restored.
+        const engageBtn = document.querySelector('button[data-gm-mode="kpi-engage"]');
+        engageBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        expect(localStorage.getItem('gm_stats_mode')).toBe('kpi-engage');
+
+        // Reload the module: it must restore Engagement, not Weekly Global.
+        await window.GM_STATS.load();
+        const text = document.querySelector('.stats-leaderboard-area').textContent;
+        expect(text).toContain('Weekly participation rate');
+    });
+
+    it('KPI modes hide the period/week selectors (no fallback to global)', async () => {
+        const db = makeDb({
+            rpc: { list_event_weeks: () => ({ data: [{ week_start: W2 }], error: null }) },
+            from: {
+                guild_members: () => new MockBuilder(MEMBERS_POWER),
+                event_participants: () => new MockBuilder(PARTS_POWER),
+                shadowfront_squads: () => new MockBuilder([])
+            }
+        });
+        window.GM.db = db;
+        await window.GM_STATS.load();
+        const engageBtn = document.querySelector('button[data-gm-mode="kpi-engage"]');
+        engageBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+
+        const controls = document.querySelector('.stats-controls');
+        // The period/week selectors must be absent in KPI mode.
+        expect(controls.querySelector('.period-select')).toBeNull();
+        expect(controls.querySelector('.week-select')).toBeNull();
     });
 });

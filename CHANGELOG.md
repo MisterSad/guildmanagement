@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-08
 
+### Fixed
+- **Stats keeps your current tab on reload and period change**: refreshing the page, or using the period/week dropdowns while on a KPI tab (Guild Health, Engagement, Roster, Operations), used to bounce back to "Weekly Global". The selected stats mode is now persisted and restored on load, and the period/week selectors are hidden on KPI tabs so they can no longer trigger a fallback to the global leaderboard.
+
 ### Changed
 - **Stats > Engagement page rebuilt**: the KPI tiles and charts were unclear and mixed concepts (the old "Dispo reliability" blended Shadowfront declarations with general activity, and the weekly participation rate counted rows instead of distinct members). The page now shows: active members this week, the average 8-week participation rate, members inactive for 2+ weeks, and weeks with data; a weekly participation trend (distinct members who attended at least one event, computed with the shared scoring key so Arms A+B and Shadowfront squads count once per week); a per-event-type engagement breakdown (SvS, GvG, Shadowfront, Arms Race, DTR); and a clearer inactive-members list sorted by how long they have been absent, with last-seen week and power.
 - **Tenancy hardening across every tenant**:

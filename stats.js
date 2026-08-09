@@ -101,9 +101,21 @@
             state.selectedWeek = window.GM.getWeekStart();
         }
 
+        // Restore the last stats mode so a page reload keeps the current tab
+        // (e.g. Engagement instead of falling back to Weekly Global).
+        var savedMode = null;
+        try { savedMode = localStorage.getItem('gm_stats_mode'); } catch (_) {}
+        if (savedMode && state.currentMode !== savedMode) {
+            state.currentMode = savedMode;
+        }
+
         await fetchAvailableWeeks();
         renderControls();
-        await fetchAndComputeData();
+        if (state.currentMode.indexOf('kpi-') === 0) {
+            await renderKpiTab();
+        } else {
+            await fetchAndComputeData();
+        }
 
         state.isLoading = false;
     }
@@ -465,7 +477,10 @@
         if (!containers || !containers.length) return;
 
         containers.forEach(function (el) {
-            if (state.currentMode === 'participation') {
+            // Les modes KPI (Guild Health, Engagement, Roster, Operations) et
+            // Participation ont leurs propres vues : pas de sélecteur de
+            // période / semaine, qui sinon rechargerait le mode global.
+            if (state.currentMode === 'participation' || state.currentMode.indexOf('kpi-') === 0) {
                 el.innerHTML = '';
                 return;
             }
@@ -1034,6 +1049,7 @@
         container.querySelectorAll('[data-gm-mode]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 state.currentMode = btn.getAttribute('data-gm-mode');
+                try { localStorage.setItem('gm_stats_mode', state.currentMode); } catch (_) {}
                 renderControls();
                 if (state.currentMode.indexOf('kpi-') === 0) {
                     renderKpiTab();
