@@ -43,6 +43,21 @@
         return p ? String(p).trim().toLowerCase() : '';
     }
 
+    function getWeekNumber(ws) {
+        if (!ws) return '';
+        var d = new Date(ws.length === 10 ? ws + 'T12:00:00Z' : ws);
+        if (isNaN(d.getTime())) return '';
+        var target = new Date(d.valueOf());
+        var dayNr = (d.getUTCDay() + 6) % 7;
+        target.setUTCDate(target.getUTCDate() - dayNr + 3);
+        var firstThursday = target.valueOf();
+        target.setUTCMonth(0, 1);
+        if (target.getUTCDay() !== 4) {
+            target.setUTCMonth(0, 1 + ((4 - target.getUTCDay() + 7) % 7));
+        }
+        return 1 + Math.ceil((firstThursday - target) / 604800000);
+    }
+
     // Un événement ne compte que dans la semaine où il a lieu (lundi->dimanche),
     // jamais dans la semaine où il a été lancé. Une session planifiée pour la
     // semaine suivante (week_start dans le futur) ne doit pas gonfler les stats
@@ -880,16 +895,21 @@
         });
 
         // Tendance (barres de participation par semaine).
-        var maxRate = 0;
-        lastWeeks.forEach(function (w) { if (perWeek[w].rate > maxRate) maxRate = perWeek[w].rate; });
-        if (maxRate <= 0) maxRate = 1;
         var weekBars = lastWeeks.map(function (w) {
             var d = perWeek[w];
-            var pctW = Math.round(d.rate / maxRate * 100);
-            var barColor = d.rate >= 70 ? '#34d399' : (d.rate >= 40 ? '#a78bfa' : '#f87171');
-            return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + shortDate(w) + '</span>' +
-                '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:' + barColor + ';"></div></div>' +
-                '<span class="gm-kpi-value">' + d.rate + '% (' + d.present + '/' + d.memberCount + ')</span></div>';
+            var weekNum = getWeekNumber(w);
+            var weekLabel = (weekNum ? 'Week ' + weekNum + ' (' + shortDate(w) + ')' : shortDate(w));
+            var pctRate = d.rate;
+            var barColor = pctRate >= 70 ? '#34d399' : (pctRate >= 40 ? '#a78bfa' : '#f87171');
+            return '<div class="gm-kpi-row" style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">' +
+                '<span class="gm-kpi-label" style="min-width:130px; font-weight:600; font-size:0.83rem; color:var(--fg);">' + esc(weekLabel) + '</span>' +
+                '<div class="gm-kpi-bar-track" style="flex:1; height:22px; background:var(--bg-3); border-radius:6px; overflow:hidden; position:relative;">' +
+                    '<div class="gm-kpi-bar" style="width:' + pctRate + '%; height:100%; background:' + barColor + '; border-radius:6px; transition:width .4s ease;"></div>' +
+                '</div>' +
+                '<span class="gm-kpi-value" style="min-width:130px; text-align:right; font-weight:700; font-size:0.85rem; font-family:var(--font-display); color:var(--fg);">' +
+                    pctRate + '% <span style="font-size:0.75rem; font-weight:500; color:var(--fg-dim);">(' + d.present + '/' + d.memberCount + ')</span>' +
+                '</span>' +
+            '</div>';
         }).join('');
 
         // Répartition par type (barres).
@@ -910,12 +930,36 @@
         var avgRate = lastWeeks.length > 0 ? Math.round(sumRate / lastWeeks.length) : 0;
 
         var inactiveHtml = inactive.length === 0
-            ? '<div class="gm-empty" style="padding:1rem;">Every member participated in the last 2 weeks.</div>'
-            : inactive.slice(0, 15).map(function (m) {
-                var seen = m.lastSeen ? 'last seen ' + shortDate(m.lastSeen) : 'never participated';
-                return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + esc(m.pseudo) + '</span>' +
-                    '<span class="gm-kpi-value" style="font-size:0.72rem; color:var(--text-muted);">' + seen + ' · ' + formatBigNum(m.power) + '</span></div>';
-            }).join('') + (inactive.length > 15 ? '<div class="gm-kpi-row"><span class="gm-kpi-label">… and ' + (inactive.length - 15) + ' more</span></div>' : '');
+            ? '<div class="gm-empty" style="padding:2.5rem 1.5rem; text-align:center;">' +
+                '<i class="ph-duotone ph-check-circle gm-icon" style="font-size:2.4rem; color:var(--accent-mint); margin-bottom:.5rem; display:block;"></i>' +
+                '<div class="gm-empty-title" style="font-size:1.1rem; font-weight:700; color:var(--fg);">Every member participated in the last 2 weeks</div>' +
+                '<div style="font-size:0.85rem; color:var(--fg-dim); margin-top:0.25rem;">No inactive members detected on the roster.</div>' +
+              '</div>'
+            : '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:0.75rem; margin-top:0.5rem;">' +
+                inactive.slice(0, 20).map(function (m) {
+                    var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(m.pseudo) : (m.pseudo ? m.pseudo.charAt(0).toUpperCase() : '?');
+                    var seenText = m.lastSeen ? 'Seen ' + shortDate(m.lastSeen) : 'Never participated';
+                    var pwr = formatBigNum ? formatBigNum(m.power) : String(m.power);
+
+                    return '<div style="background:var(--bg-2); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.8rem 0.95rem; display:flex; align-items:center; justify-content:space-between; gap:0.75rem;">' +
+                        '<div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:36px; height:36px; font-size:.9rem; font-weight:700; background:oklch(0.25 0.08 20); color:#f87171; flex-shrink:0;">' + esc(initial) + '</div>' +
+                            '<div style="min-width:0;">' +
+                                '<div style="font-weight:700; color:var(--fg); font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.pseudo) + '</div>' +
+                                '<div style="font-size:0.75rem; color:var(--fg-dim); display:flex; align-items:center; gap:0.3rem; margin-top:2px;">' +
+                                    '<i class="ph ph-lightning" style="color:var(--accent-amber);"></i> ' + esc(pwr) +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div style="text-align:right; flex-shrink:0;">' +
+                            '<span style="font-size:0.72rem; font-weight:600; padding:3px 8px; border-radius:99px; background:oklch(0.25 0.08 20); color:#f87171; border:1px solid oklch(0.45 0.15 20 / 0.4); display:inline-flex; align-items:center; gap:0.3rem;">' +
+                                '<i class="ph ph-warning-circle"></i> ' + esc(seenText) +
+                            '</span>' +
+                        '</div>' +
+                    '</div>';
+                }).join('') +
+              '</div>' +
+              (inactive.length > 20 ? '<div style="margin-top:0.75rem; text-align:center; font-size:0.8rem; color:var(--fg-dim); font-weight:600;">+ ' + (inactive.length - 20) + ' more inactive members</div>' : '');
 
         var html = tabsHtml +
             '<div class="gm-kpi-grid">' +
@@ -930,7 +974,7 @@
                 '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-chart-pie"></i> Members engaged per event type (8w)</div>' +
                     '<div class="gm-kpi-card-body">' + typeBars + '</div></div>' +
             '</div>' +
-            '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-user-minus"></i> Members inactive for 2+ weeks</div>' +
+            '<div class="gm-kpi-card" style="margin-top:0.85rem;"><div class="gm-kpi-card-title"><i class="ph ph-user-minus"></i> Members inactive for 2+ weeks</div>' +
                 '<div class="gm-kpi-card-body">' + inactiveHtml + '</div>' +
             '</div>';
 
