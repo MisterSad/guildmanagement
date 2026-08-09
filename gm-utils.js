@@ -37,7 +37,10 @@
     var localRestriction = localStorage.getItem('gm_guild_restriction');
     window.currentGuildRestriction = localRestriction || null;
     window.currentGuild = localRestriction || localStorage.getItem('gm_current_guild') || 'ALPHA';
-    window.guildsList = ['ALPHA', 'OMEGA', 'IMK'];
+    // Chargée depuis la table guilds à l'init (app.js). Fallback vide: si la
+    // liste ne charge pas, aucun sélecteur de guilde ne s'affiche plutôt que
+    // d'en montrer une liste périmée.
+    window.guildsList = window.guildsList || [];
 
     // ── Rôles : modèle sémantique (super_admin / guild_admin / member) ─────
     // Les anciennes valeurs numériques (R5/R4) et 'admin' sont normalisées

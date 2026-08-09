@@ -5,8 +5,18 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-08
 
 ### Changed
+- **Tenancy hardening across every tenant**:
+  - `guildsList` is loaded from the `guilds` table instead of a hard-coded list; the stale `['ALPHA','OMEGA','IMK']` fallback is gone, so the guild selector always reflects the real tenants (ALPHA, OMEGA, IMK, BABE, CLAW, YARR, DEMO).
+  - The `'ALPHA'` column defaults on `guild_config`, `shadowfront_signups`, `push_subscriptions`, `event_reminders_sent`, `discord_notifications_sent` and `player_name_history` were removed: an insert without a guild now fails loudly instead of silently landing in ALPHA.
+  - `accounts.guild` is now required for every role except `super_admin` (constraint), and `join_code_hash` is globally unique so a join code can never resolve to an ambiguous guild.
+  - `gm_cross_guild_ranking` grants restricted (authenticated + service_role only).
+  - DTR uses a single event name (`Defend Trade Route`); the redundant `'DTR'` alias was removed.
 - **Participation is now counted per the game rules, across every tenant**: a shared scoring key (`gm_event_scoring_key` / `window.GM.eventScoringKey`) drives all participation math. Arms Race (Stage A + Stage B) and Shadowfront (Squad 1 + Squad 2) each count **once per week**; SvS and GvG count once per week; each Defend Trade Route event counts separately. Applied to the stats leaderboard (`stats.js`), the cross-guild ranking, the Player Portal KPIs and the participation badges. Before this, Arms A+B of the same week counted twice and Shadowfront's two squads inflated the denominators.
 - **Shadowfront weeks are derived from the battle date, not the sync time**: the squad week was sometimes computed from `new Date(sessionId)` (invalid) or from `updated_at` (the sync moment), so a player synced later landed in the wrong week. The client and `gm_sync_shadowfront_participants` now resolve the week from the admin-chosen `start_at`, falling back to the date encoded in the session id. Existing inconsistent rows were backfilled for every tenant (a player can only be in one squad per week; duplicates were merged).
+
+### Tooling
+- **CI workflow added** (`.github/workflows/ci.yml`): runs `npm test` (158 tests) and `deno check` on every edge function, on every push to `main` and on pull requests.
+- **`scripts/bump_cache_busters.py`**: bumps the `?v=N` cache-buster of every changed frontend asset automatically, so stale-cache mixing across tenants is avoided.
 
 ### Fixed
 - **Approve / Approve All stuck on "..."**: the approval handlers called a bare `showToast(...)` that does not exist in the events module scope, so when an approval hit any error the `ReferenceError` aborted the catch block before the button could be restored, leaving it stuck on "..." with the player still marked Pending. The handlers now use `window.GM.showToast` and reload the participants from the database after approving, so the UI always reflects the real pending state.

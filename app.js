@@ -626,7 +626,7 @@
         var selectR5 = document.getElementById('superadmin-account-guild');
         if (selectR5) {
             var html = '';
-            (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
+            (window.guildsList || []).forEach(function (g) {
                 var sNum = (window.guildsData && window.guildsData[g] && window.guildsData[g].server_number) ? ' (#' + window.guildsData[g].server_number + ')' : '';
                 html += '<option value="' + g + '">' + g + sNum + '</option>';
             });
@@ -1158,7 +1158,7 @@
             var guildSelectHtml = '';
             if (acc.role !== 'super_admin' && isSuperAdminUser) {
                 var options = '<option value="ALL"' + (!acc.guild ? ' selected' : '') + '>All Guilds</option>';
-                (window.guildsList || ['ALPHA', 'OMEGA', 'IMK']).forEach(function (g) {
+                (window.guildsList || []).forEach(function (g) {
                     options += '<option value="' + g + '"' + (acc.guild === g ? ' selected' : '') + '>' + g + '</option>';
                 });
                 guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
@@ -2033,6 +2033,7 @@
             // Log pseudo change history
             if (pseudoChanged && member && member.uid) {
                 var histIns = await supabase.from('player_name_history').insert({
+                    guild: window.GM.getActiveGuild(),
                     uid: member.uid,
                     old_pseudo: oldPseudo,
                     new_pseudo: newPseudo,

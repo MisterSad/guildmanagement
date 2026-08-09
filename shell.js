@@ -272,7 +272,7 @@
 
     function renderGuildSelectorHtml() {
         var isSuperAdmin = window.GM.isSuperAdmin();
-        var guilds = window.guildsList || ['ALPHA', 'OMEGA', 'IMK'];
+        var guilds = window.guildsList || [];
         if (window.currentGuildRestriction) {
             guilds = [window.currentGuildRestriction];
             window.currentGuild = window.currentGuildRestriction;
@@ -464,7 +464,7 @@
 
         var isSuperAdmin = window.GM.isSuperAdmin();
 
-        var guilds = window.guildsList || ['ALPHA', 'OMEGA', 'IMK'];
+        var guilds = window.guildsList || [];
         if (window.currentGuildRestriction) {
             guilds = [window.currentGuildRestriction];
             window.currentGuild = window.currentGuildRestriction;

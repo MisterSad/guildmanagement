@@ -17,7 +17,8 @@
     var TAB_TO_DB_EVENTS = {
         'SvS':                ['SvS'],
         'GvG':                ['GvG'],
-        'Defend Trade Route': ['Defend Trade Route', 'DTR']
+        // Un seul event_name pour DTR : 'Defend Trade Route'.
+        'Defend Trade Route': ['Defend Trade Route']
     };
 
     var PANEL_MAP = {
