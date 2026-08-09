@@ -1026,6 +1026,20 @@
                 '</div>' +
 
                 '<div class="portal-card">' +
+                    '<div class="portal-card-title"><i class="ph ph-bell-ringing"></i> Notifications</div>' +
+                    '<div class="portal-notif-hint"><i class="ph ph-info"></i> Choose which web-push reminders you want to receive.</div>' +
+                    '<div class="portal-notif-options">' +
+                        '<label class="portal-notif-opt"><input type="checkbox" id="portal-notif-events" value="events"><span><strong>Event reminders</strong><small>Starts, reminders and battle openings</small></span></label>' +
+                        '<label class="portal-notif-opt"><input type="checkbox" id="portal-notif-glory" value="glory"><span><strong>Glory</strong><small>Weekly Glory tracking notices</small></span></label>' +
+                        '<label class="portal-notif-opt"><input type="checkbox" id="portal-notif-challenges" value="challenges"><span><strong>Challenges</strong><small>Weekly challenges and season updates</small></span></label>' +
+                    '</div>' +
+                    '<div class="portal-row">' +
+                        '<button type="button" id="portal-notif-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
+                    '</div>' +
+                    '<div class="portal-msg" id="portal-notif-msg"></div>' +
+                '</div>' +
+
+                '<div class="portal-card">' +
                     '<div class="portal-card-title"><i class="ph ph-swap"></i> Request Guild Transfer</div>' +
                     '<div class="portal-row">' +
                         '<select id="portal-transfer-select" class="gm-input"><option value="">Select Target Guild...</option></select>' +
@@ -1207,6 +1221,56 @@
                     if (span) span.textContent = origText;
                     transferBtn.disabled = !transferSelect.value;
                     transferSelect.disabled = false;
+                }
+            });
+        }
+
+        // Notifications preferences
+        var notifBtn = document.getElementById('portal-notif-btn');
+        var notifMsg = document.getElementById('portal-notif-msg');
+        var notifBoxes = ['events', 'glory', 'challenges'].map(function (k) {
+            return document.getElementById('portal-notif-' + k);
+        });
+
+        function setNotifMsg(msg, type) {
+            if (!notifMsg) return;
+            notifMsg.textContent = msg;
+            notifMsg.style.color = type === 'error' ? 'var(--danger)' : 'var(--success)';
+            notifMsg.style.display = 'block';
+        }
+
+        // Load current preferences and tick the boxes.
+        invoke('get-push-prefs', {}).then(function (res) {
+            var types = (res.ok && res.event_types) ? res.event_types : ['events', 'glory', 'challenges'];
+            notifBoxes.forEach(function (box) {
+                if (box) box.checked = types.indexOf(box.value) !== -1;
+            });
+        });
+
+        if (notifBtn) {
+            notifBtn.addEventListener('click', async function () {
+                var selected = notifBoxes.filter(function (b) { return b && b.checked; }).map(function (b) { return b.value; });
+                if (selected.length === 0) {
+                    setNotifMsg('Select at least one notification type.', 'error');
+                    return;
+                }
+                notifBtn.disabled = true;
+                var span = notifBtn.querySelector('span');
+                var origText = span ? span.textContent : '';
+                if (span) span.textContent = 'Saving...';
+                notifMsg.style.display = 'none';
+                try {
+                    var res = await invoke('set-push-prefs', { event_types: selected });
+                    if (!res.ok) {
+                        setNotifMsg('Failed to save notification preferences (' + (res.error || 'unknown') + ').', 'error');
+                    } else {
+                        setNotifMsg('Notification preferences saved.', 'success');
+                    }
+                } catch (err) {
+                    setNotifMsg('An error occurred.', 'error');
+                } finally {
+                    if (span) span.textContent = origText;
+                    notifBtn.disabled = false;
                 }
             });
         }

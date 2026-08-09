@@ -11,6 +11,13 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Contextual push reminders with per-player preferences**: players can now
+  choose which web-push reminders they receive from the "My Info" tab (event
+  reminders, Glory, challenges). Preferences are stored per guild+player
+  (`player_push_prefs`) and respected by the reminder engine: a player who
+  opted out of an event type no longer receives that push. Subscriptions are
+  now bound to the authenticated player (`push_subscriptions.pseudo`), and the
+  default remains "receive everything" for players who never set preferences.
 - **Weekly challenges + season progression (Player Portal)**: a new
   "Challenges" tab shows weekly goals computed server-side: attend 1/3/5
   events this week (via the shared scoring key), submit your Glory score, and

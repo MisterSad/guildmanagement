@@ -609,5 +609,33 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true });
   }
 
+  if (action === "get-push-prefs") {
+    // The caller's web-push notification preferences (event types they want
+    // to be notified about). Resolved server-side from auth.
+    const { data, error } = await admin.rpc("gm_get_push_prefs");
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    const row = (Array.isArray(data) ? data[0] : data) as { event_types?: string[] } | null;
+    return json({
+      ok: true,
+      event_types: row?.event_types ?? ["events", "glory", "challenges"]
+    });
+  }
+
+  if (action === "set-push-prefs") {
+    const types = Array.isArray(payload?.event_types)
+      ? payload.event_types.filter((t: unknown) => typeof t === "string")
+      : [];
+    if (types.length === 0) {
+      return json({ ok: false, error: "invalid_event_types" }, 400);
+    }
+    const { data, error } = await admin.rpc("gm_set_push_prefs", {
+      p_event_types: types,
+    });
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
+    if (!row || !row.ok) return json({ ok: false, error: row?.error || "update_failed" }, 200);
+    return json({ ok: true });
+  }
+
   return json({ ok: false, error: "unknown_action" }, 400);
 });

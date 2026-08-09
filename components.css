@@ -2682,6 +2682,28 @@
 .portal-challenge-progress-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
 .portal-challenge-state { flex-shrink: 0; font-size: 1.2rem; min-width: 44px; text-align: right; }
 .portal-challenge-count { font-size: 0.8rem; color: var(--fg-muted); font-weight: 700; }
+
+/* ── Portal: Notification preferences ─────────────────────────────────── */
+.portal-notif-hint {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    margin-bottom: 0.6rem;
+}
+.portal-notif-options { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
+.portal-notif-opt {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    background: var(--bg-1);
+    cursor: pointer;
+}
+.portal-notif-opt input { accent-color: var(--accent); width: 16px; height: 16px; }
+.portal-notif-opt span { display: flex; flex-direction: column; gap: 0.1rem; }
+.portal-notif-opt strong { font-size: 0.85rem; }
+.portal-notif-opt small { font-size: 0.72rem; color: var(--fg-muted); }
 .portal-badge-section-title {
     display: flex;
     align-items: center;

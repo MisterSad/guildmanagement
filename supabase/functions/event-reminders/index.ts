@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { sendNotification } from "npm:web-push-neo"
 
-async function sendWebPush(supabase: any, title: string, body: string, guild: string) {
+async function sendWebPush(supabase: any, title: string, body: string, guild: string, eventType = "events") {
   try {
     const { data: subs, error: subError } = await supabase
       .from('push_subscriptions')
@@ -11,6 +11,20 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
 
     if (subError) throw subError;
     if (!subs || subs.length === 0) return;
+
+    // Respect per-player push preferences: only notify subscribers whose
+    // event_types include this reminder type. Subscribers without a prefs
+    // row get all reminders (default = events, glory, challenges).
+    const { data: prefs, error: prefError } = await supabase
+      .from('player_push_prefs')
+      .select('pseudo, event_types')
+      .eq('guild', guild);
+    if (prefError) throw prefError;
+
+    const prefByPseudo = new Map<string, string[]>();
+    for (const p of prefs ?? []) {
+      if (p.pseudo) prefByPseudo.set(p.pseudo.toLowerCase(), p.event_types || []);
+    }
 
     const vapidDetails = {
       subject: 'mailto:web-push@guildmanagement.internal',
@@ -31,6 +45,11 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
 
     for (const sub of subs) {
       try {
+        // If the player has preferences, honor them; otherwise default to on.
+        const types = sub.pseudo ? prefByPseudo.get(sub.pseudo.toLowerCase()) : undefined;
+        const allowed = types === undefined ? true : types.includes(eventType);
+        if (!allowed) continue;
+
         const subscription = {
           endpoint: sub.endpoint,
           keys: {
