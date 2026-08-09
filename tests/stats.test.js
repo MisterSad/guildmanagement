@@ -206,6 +206,44 @@ describe('GM_STATS participation mode', () => {
         expect(beta.score).toBe('50 pts');
         expect(beta.events).toBe('1/2');
     });
+
+    it('excludes events planned for a future week from the denominator', async () => {
+        // Current week = W2. Add a session planned for W3 (the next week): it
+        // must NOT inflate the total event count, so rates stay unchanged.
+        const W3 = '2026-08-10';
+        const base = buildDb();
+        const futureParts = PARTS.concat([
+            { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 's3', week_start: W3, participated: 1, score: 999, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
+            { pseudo: 'BetaKnight', event_name: 'SvS', session_id: 's3', week_start: W3, participated: 0, score: 0, score_prep: 0, score_pvp: 0, is_pending: false, guild: G }
+        ]);
+        window.GM.db = makeDb({
+            rpc: {
+                list_event_weeks: () => ({ data: [{ week_start: W3 }, { week_start: W2 }, { week_start: W1 }], error: null }),
+                gm_stats_data: () => ({ data: { guild: G, members: MEMBERS, participants: futureParts, glory: GLORY, squads: SQUADS }, error: null })
+            },
+            from: {
+                guild_members: () => new MockBuilder(MEMBERS),
+                event_participants: () => new MockBuilder(futureParts.concat(GLORY)),
+                shadowfront_squads: () => new MockBuilder(SQUADS)
+            }
+        });
+        window.GM.getWeekStart = () => W2;
+
+        await window.GM_STATS.load();
+        const btn = document.querySelector('button[data-gm-mode="participation"]');
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await window.GM_STATS.load();
+
+        const rows = parseLeaderboard();
+        const alpha = rows.find((r) => r.pseudo === 'AlphaPrime');
+        const beta = rows.find((r) => r.pseudo === 'BetaKnight');
+        // Same 2 events as without the future session: W3 is ignored.
+        expect(alpha.events).toBe('2/2');
+        expect(beta.events).toBe('1/2');
+
+        delete window.GM.getWeekStart;
+    });
 });
 
 describe('GM_STATS KPI tabs', () => {
@@ -286,6 +324,43 @@ describe('GM_STATS KPI tabs', () => {
         expect(text).toContain('Members engaged per event type');
         // ZombieZzz has no participation in the current or previous week.
         expect(text).toContain('ZombieZzz');
+    });
+
+    it('Engagement ignores a session planned for a future week', async () => {
+        const W3 = '2026-08-10';
+        const parts = PARTS_POWER.concat([
+            { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 'sFut', week_start: W3, participated: 1, is_pending: false, guild: G }
+        ]);
+        window.GM.db = makeDb({
+            rpc: {
+                list_event_weeks: () => ({ data: [{ week_start: W3 }, { week_start: W2 }, { week_start: W1 }], error: null }),
+                gm_stats_data: () => ({ data: { guild: G, members: MEMBERS_POWER, participants: parts, glory: [], squads: [] }, error: null })
+            },
+            from: {
+                guild_members: () => new MockBuilder(MEMBERS_POWER),
+                event_participants: () => new MockBuilder(parts),
+                shadowfront_squads: () => new MockBuilder([]),
+                shadowfront_signups: () => new MockBuilder([]),
+                guild_transfers: () => new MockBuilder([]),
+                event_status: () => new MockBuilder([])
+            }
+        });
+        window.GM.getWeekStart = () => W2;
+
+        await window.GM_STATS.load();
+        const btn = document.querySelector('button[data-gm-mode="kpi-engage"]');
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+
+        const area = document.querySelector('.stats-leaderboard-area');
+        const text = area.textContent;
+        // Future week must not become the most recent week shown, nor inflate
+        // the recent-window computation.
+        expect(text).not.toContain('10/08/2026');
+        expect(text).not.toContain('2026-08-10');
+
+        delete window.GM.getWeekStart;
     });
 
     it('renders Roster and Operations without throwing', async () => {

@@ -11,6 +11,15 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Stats only count events for the week they take place** (all tenants): an
+  event counts in the stats of the week it is scheduled in (Monday to Sunday),
+  never in the week it was launched. Sessions planned for a later week (e.g. an
+  Arms Race started this week but dated next Monday) are excluded from every
+  stats mode until their own week arrives: global leaderboard, single-event
+  (SvS/GvG), participation and the Engagement KPI. The week picker no longer
+  offers future weeks as the "current" one. Before this fix, a planned event
+  with pre-populated members inflated the participation denominator and showed
+  an empty "recent" week in Engagement.
 - **Stats load the full guild dataset via a server RPC** (all tenants): the
   Stats page now fetches members, participation, Glory and squads through the
   new `gm_stats_data` SECURITY DEFINER RPC instead of raw REST reads. This
@@ -152,6 +161,11 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Future-planned events leaked into current stats**: sessions started this
+  week but dated next week (e.g. ARA-20260811) carried a correct future
+  `week_start`, but the participation mode, the Engagement KPI and the global
+  "all time" mode counted them anyway (inflated denominator, empty future week
+  in Engagement). All modes now ignore weeks strictly after the current Monday.
 - **Stats page appeared to ignore newly entered scores**: the Supabase REST API
   silently truncates `event_participants` at 1000 rows, and the client never
   sent an ORDER BY, so the rows returned were always the OLDEST by id. Any
@@ -238,11 +252,11 @@ few hours, with an incrementing number in its title.
 
 ## Version history
 
-- **2026-08-09** — Stats full-dataset RPC (1000-row truncation fixed), SaaS
-  audit (event flow parity), BABE Glory backfill, legacy populate RPC
-  hardened, Shadowfront squad titles fixed for all tenants, Overview
-  Glory-gain fix, per-guild payments switch, public DEMO tenant accounts,
-  Scouting feature removed (tab, module, DB objects).
+- **2026-08-09** — Stats exclude future-planned events, Stats full-dataset RPC
+  (1000-row truncation fixed), SaaS audit (event flow parity), BABE Glory
+  backfill, legacy populate RPC hardened, Shadowfront squad titles fixed for
+  all tenants, Overview Glory-gain fix, per-guild payments switch, public DEMO
+  tenant accounts, Scouting feature removed (tab, module, DB objects).
 - **2026-08-09** — Playwright e2e suite (login + portal, stubbed backend) and
   CI `e2e` job.
 - **2026-08-09** — Stats Engagement rebuilt, persisted Stats tabs, sandbox

@@ -43,6 +43,22 @@
         return p ? String(p).trim().toLowerCase() : '';
     }
 
+    // Un événement ne compte que dans la semaine où il a lieu (lundi->dimanche),
+    // jamais dans la semaine où il a été lancé. Une session planifiée pour la
+    // semaine suivante (week_start dans le futur) ne doit pas gonfler les stats
+    // de la période en cours : on l'exclut jusqu'à ce que sa semaine arrive.
+    function isFutureWeek(weekStart) {
+        if (!weekStart) return false;
+        var cur = window.GM ? window.GM.getWeekStart() : '';
+        if (!cur) return false;
+        return String(weekStart).localeCompare(cur) > 0;
+    }
+
+    function keepOnlyPastOrCurrent(rows) {
+        if (!rows || !rows.length) return rows;
+        return rows.filter(function (r) { return !isFutureWeek(r.week_start); });
+    }
+
     // ── Configuration Formule & Poids ───────────────────────────────────────────
     var COEFFS = {
         'SvS':         5,
@@ -134,6 +150,9 @@
         try {
             var rpcRes = await db.rpc('list_event_weeks', { p_guild: state.activeGuild });
             var weeks = (rpcRes.data || []).map(function (w) { return w.week_start; }).filter(Boolean);
+            // A session planned for a later week must not become the "current"
+            // week of the stats page; only current/previous weeks are offered.
+            weeks = weeks.filter(function (w) { return !isFutureWeek(w); });
             weeks.sort(function (a, b) { return b.localeCompare(a); });
 
             if (weeks.length > 0) {
@@ -208,6 +227,13 @@
             var partRows   = (raw && raw.participants) || [];
             var gloryRows  = (raw && raw.glory) || [];
             var squadRows  = (raw && raw.squads) || [];
+
+            // Only events that belong to the current week or earlier count.
+            // Sessions planned for a later week (even if launched this week)
+            // are ignored until their own week arrives.
+            partRows = keepOnlyPastOrCurrent(partRows);
+            gloryRows = keepOnlyPastOrCurrent(gloryRows);
+            squadRows = keepOnlyPastOrCurrent(squadRows);
 
             if (!isAllTime && weeksToLoad && weeksToLoad.length > 0) {
                 partRows = partRows.filter(function (r) { return weeksToLoad.indexOf(r.week_start) !== -1; });
@@ -385,6 +411,10 @@
             var allParts = (raw && raw.participants) || [];
             var rows = allParts.filter(function (r) { return r.event_name === eventName; });
 
+            // Sessions planned for a later week must not count for the current
+            // period.
+            rows = keepOnlyPastOrCurrent(rows);
+
             if (state.statsPeriod !== 'all' && state.selectedWeek) {
                 rows = rows.filter(function (r) { return r.week_start === state.selectedWeek; });
             }
@@ -427,6 +457,10 @@
 
             var membersList = Array.from(memberSet).sort(function (a, b) { return a.localeCompare(b); });
             var validRows = (partRes.data || []).filter(function (r) { return !r.is_pending; });
+
+            // Only current/previous weeks count: a session planned for a later
+            // week must not inflate the denominator before it takes place.
+            validRows = keepOnlyPastOrCurrent(validRows);
 
             // Unique tenant event instances
             var tenantEventInstances = new Set();
@@ -704,6 +738,10 @@
         var raw = dataRes.data || null;
         var partsRes = { data: (raw && raw.participants) || [] };
         var rows = (partsRes.data || []).filter(function (r) { return !r.is_pending; });
+
+        // Only current/previous weeks count: planned events for a later week
+        // must not show up as a "recent" week with no participation yet.
+        rows = keepOnlyPastOrCurrent(rows);
 
         var membersRes = await db.from('guild_members').select('pseudo, overall_power').eq('guild', g);
         var members = membersRes.data || [];

@@ -1,20 +1,20 @@
-:sparkles: **STATS FIXED: 1000-ROW TRUNCATION — v12**
+:sparkles: **STATS: FUTURE WEEKS EXCLUDED — v13**
 
-The Stats page was silently ignoring recent scores on any tenant with more than 1000 event rows (CLAW, BABE, OMEGA, DEMO, ALPHA). Now fixed.
+Stats now count an event only for the week it actually takes place. A session planned for next week (even if launched this week) no longer leaks into the current stats.
 
 ---
 
 :new: **What's new**
 
-- :floppy_disk: **Stats load via a server RPC.** Members, participation, Glory and squads are fetched through `gm_stats_data` (SECURITY DEFINER) instead of raw REST reads, removing the silent 1000-row cap. Admins see their own guild only, super admin any guild, members nothing.
+- :calendar: **Events count in their own week only.** Sessions dated for a later week (e.g. an Arms Race started now but planned for next Monday) are excluded from every stats mode until that week arrives: global, SvS/GvG, participation and Engagement. The week picker no longer shows future weeks as "current".
 
 ---
 
 :bug: **What's fixed**
 
-- :bar_chart: **Stats looked stuck after entering scores.** Supabase truncates `event_participants` at 1000 rows and the client had no ORDER BY, so only the oldest rows came back. Any tenant over 1000 rows lost recent events on the Stats page — exactly what CLAW reported. The full dataset now always loads.
-- :electric_plug: **A failed Stats load froze the page.** `isLoading` only cleared on success; an error left it stuck, silently blocking every later reload. It now always clears.
-- :trophy: **BABE Glory session ids** and :shield: **legacy populate RPC grants** (previous rounds) remain in place.
+- :ghost: **Planned events inflated current stats.** With members pre-populated, a future-dated event was counted in the participation denominator and showed an empty "recent" week in Engagement. All modes now ignore weeks strictly after the current Monday.
+- :bar_chart: **Stats 1000-row truncation** (from the previous round): the full dataset now loads via `gm_stats_data`, so recent scores always show.
+- :electric_plug: **Stats freeze after a failed load** (previous round) stays fixed.
 
 ---
 
