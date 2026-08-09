@@ -305,14 +305,14 @@
                 '<div class="gm-section-head">' +
                     '<div class="gm-section-title" style="color:var(--accent-amber); font-weight:700;">' +
                         '<i class="ph ph-user-plus"></i>' +
-                        '<span>Demandes de validation de compte (Player Portal)</span>' +
+                        '<span>Pending Account Validations (Player Portal)</span>' +
                         '<span class="gm-count" id="pending-account-count">0</span>' +
                     '</div>' +
                 '</div>' +
                 '<div id="pending-account-list">' +
                     '<div class="gm-empty" style="padding:1.25rem;">' +
                         '<i class="ph-duotone ph-hourglass gm-icon"></i>' +
-                        '<div class="gm-empty-title">Aucune demande en attente</div>' +
+                        '<div class="gm-empty-title">No pending registrations</div>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
