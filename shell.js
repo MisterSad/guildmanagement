@@ -284,7 +284,8 @@
 
         if (isSuperAdmin && !window.currentGuildRestriction) {
             var guildOptions = guilds.map(function(g) {
-                var sNum = (window.guildsData && window.guildsData[g] && window.guildsData[g].server_number) ? ' (#' + esc(window.guildsData[g].server_number) + ')' : '';
+                var sVal = (window.guildsData && window.guildsData[g] && window.guildsData[g].server_number) ? String(window.guildsData[g].server_number).replace(/^#+/, '') : '';
+                var sNum = sVal ? ' (#' + esc(sVal) + ')' : '';
                 return '<option value="' + g + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + esc(g) + sNum + '</option>';
             }).join('');
             return '<div class="gm-sidebar-guild-select-wrapper">' +
@@ -294,7 +295,8 @@
             '</div>';
         } else {
             var displayGuild = window.currentGuildRestriction || window.currentGuild || 'ALPHA';
-            var sNum = (window.guildsData && window.guildsData[displayGuild] && window.guildsData[displayGuild].server_number) ? ' #' + esc(window.guildsData[displayGuild].server_number) : '';
+            var sVal = (window.guildsData && window.guildsData[displayGuild] && window.guildsData[displayGuild].server_number) ? String(window.guildsData[displayGuild].server_number).replace(/^#+/, '') : '';
+            var sNum = sVal ? ' #' + esc(sVal) : '';
             return '<div class="gm-sidebar-guild-badge">' + esc(displayGuild) + sNum + '</div>';
         }
     }

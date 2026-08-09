@@ -20,7 +20,7 @@ import uuid
 random.seed(20260808)
 
 GUILD = "DEMO"
-SERVER = "#0000"
+SERVER = "0000"
 JOIN_CODE = "FGF-DEMO-0000"
 
 # Weeks covered (Monday starts). 4 consecutive weeks ending 2026-08-03.
