@@ -11,6 +11,13 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Scouting tool (super admin)**: track rival guild rosters over time. Paste
+  a roster (one "pseudo, power" per line, quotes and thousand separators
+  accepted), capture a snapshot per guild, and see each player's latest power
+  with the growth delta since the previous capture. A trend view shows the
+  full history of a player. Super admin only (table + RPCs are gated by
+  `is_super_admin()`), so scouting intelligence is never visible to guild
+  admins or members.
 - **Stats > Engagement page rebuilt**: the tiles and charts are now clear. The
   page shows: active members this week, the average 8-week participation rate,
   members inactive for 2+ weeks, and weeks with data; a weekly participation
