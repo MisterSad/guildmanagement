@@ -300,13 +300,14 @@
     // One key per scoring unit, per the game rules:
     //   - SvS / GvG            -> once per week (SVS-2026-W32)
     //   - Shadowfront          -> once per week (Squad 1 + Squad 2 = one)
-    //   - Arms Race (A or B)   -> once per week (Stage A + Stage B = one)
+    //   - Arms Race (A or B)   -> each session counts (Stage A and Stage B
+    //                             are two separate events, so 2 A + 2 B = 4)
     //   - Defend Trade Route   -> each event counts (one per session)
     // Mirrors the SQL helper public.gm_event_scoring_key(text,text,text).
     function eventScoringKey(eventName, sessionId, weekStart) {
         var up = (eventName || '').toUpperCase();
         var ws = weekStart || '';
-        if (up.indexOf('ARMS RACE') !== -1) return 'Arms Race|' + ws;
+        if (up.indexOf('ARMS RACE') !== -1) return 'Arms Race|' + (sessionId || ws);
         if (up === 'SHADOWFRONT') return 'Shadowfront|' + ws;
         if (up === 'SVS') return 'SvS|' + ws;
         if (up === 'GVG') return 'GvG|' + ws;

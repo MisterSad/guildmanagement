@@ -11,6 +11,13 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Arms Race scoring: each Stage session counts as one event** (all
+  tenants): Stage A and Stage B are now separate participation units, keyed by
+  their session id like Defend Trade Route. A guild running two Arms Race
+  cycles in one week (e.g. CLAW on 08-05 and 08-08) no longer collapses them
+  into a single event: 2 x A + 2 x B in a week = 4 events. The change is
+  applied in sync to `window.GM.eventScoringKey`, `gm_event_scoring_key` and
+  the member-portal `eventScoringKey`.
 - **Stats only count events for the week they take place** (all tenants): an
   event counts in the stats of the week it is scheduled in (Monday to Sunday),
   never in the week it was launched. Sessions planned for a later week (e.g. an
@@ -161,6 +168,10 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Two Arms Race in the same week counted as one**: the scoring key grouped
+  Stage A + B by week, so a guild running 2 cycles in a week (CLAW) showed a
+  participation denominator too small (5 instead of 8). Each Stage session now
+  counts once, matching how the game actually runs.
 - **Future-planned events leaked into current stats**: sessions started this
   week but dated next week (e.g. ARA-20260811) carried a correct future
   `week_start`, but the participation mode, the Engagement KPI and the global
@@ -252,11 +263,12 @@ few hours, with an incrementing number in its title.
 
 ## Version history
 
-- **2026-08-09** — Stats exclude future-planned events, Stats full-dataset RPC
-  (1000-row truncation fixed), SaaS audit (event flow parity), BABE Glory
-  backfill, legacy populate RPC hardened, Shadowfront squad titles fixed for
-  all tenants, Overview Glory-gain fix, per-guild payments switch, public DEMO
-  tenant accounts, Scouting feature removed (tab, module, DB objects).
+- **2026-08-09** — Arms Race per-session scoring, Stats exclude future-planned
+  events, Stats full-dataset RPC (1000-row truncation fixed), SaaS audit
+  (event flow parity), BABE Glory backfill, legacy populate RPC hardened,
+  Shadowfront squad titles fixed for all tenants, Overview Glory-gain fix,
+  per-guild payments switch, public DEMO tenant accounts, Scouting feature
+  removed (tab, module, DB objects).
 - **2026-08-09** — Playwright e2e suite (login + portal, stubbed backend) and
   CI `e2e` job.
 - **2026-08-09** — Stats Engagement rebuilt, persisted Stats tabs, sandbox

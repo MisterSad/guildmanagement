@@ -55,11 +55,16 @@ describe('tenancy sandbox contract', () => {
 });
 
 describe('scoring key sandbox (once per week for weekly events)', () => {
-    it('Arms Race A and B of the same week collapse into one key', () => {
+    it('Arms Race Stage A and B are separate events keyed by session', () => {
         const a = GM.eventScoringKey('ARMS RACE STAGE A', 'ARA-20260805', '2026-08-03');
-        const b = GM.eventScoringKey('ARMS RACE STAGE B', 'ARB-20260807', '2026-08-03');
-        expect(a).toBe('Arms Race|2026-08-03');
-        expect(b).toBe(a);
+        const b = GM.eventScoringKey('ARMS RACE STAGE B', 'ARB-20260805', '2026-08-03');
+        const a2 = GM.eventScoringKey('ARMS RACE STAGE A', 'ARA-20260808', '2026-08-03');
+        // Each stage session counts once, so 2 A + 2 B in a week = 4 events.
+        expect(a).toBe('Arms Race|ARA-20260805');
+        expect(b).toBe('Arms Race|ARB-20260805');
+        expect(a2).toBe('Arms Race|ARA-20260808');
+        expect(a).not.toBe(b);
+        expect(b).not.toBe(a2);
     });
 
     it('Shadowfront squad 1 and 2 of the same week collapse into one key', () => {

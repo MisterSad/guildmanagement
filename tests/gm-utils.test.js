@@ -347,11 +347,13 @@ describe('buildEventSessionId (deterministic event ids, all tenants)', () => {
 });
 
 describe('eventScoringKey (participation counted once per week for weekly events)', () => {
-    it('Arms Race A and B of the same week share one key', () => {
+    it('Arms Race Stage A and B are separate events keyed by session', () => {
         expect(GM.eventScoringKey('ARMS RACE STAGE A', 'ARA-20260805', '2026-08-03'))
-            .toBe('Arms Race|2026-08-03');
-        expect(GM.eventScoringKey('ARMS RACE STAGE B', 'ARB-20260807', '2026-08-03'))
-            .toBe('Arms Race|2026-08-03');
+            .toBe('Arms Race|ARA-20260805');
+        expect(GM.eventScoringKey('ARMS RACE STAGE B', 'ARB-20260805', '2026-08-03'))
+            .toBe('Arms Race|ARB-20260805');
+        expect(GM.eventScoringKey('ARMS RACE STAGE A', 'ARA-20260805', '2026-08-03'))
+            .not.toBe(GM.eventScoringKey('ARMS RACE STAGE A', 'ARA-20260808', '2026-08-03'));
     });
 
     it('Shadowfront squads of the same week share one key', () => {

@@ -88,6 +88,12 @@ Rules:
   the `event_participants_session_unique` index.
 - Participation rates count **distinct sessions** per player, never rows
   (`gm_personal_kpis`, stats.js), or duplicate sessions would inflate them.
+- Scoring key: each Arms Race **Stage session** counts once (Stage A and
+  Stage B are separate events, so 2 A + 2 B in a week = 4); Shadowfront,
+  SvS, GvG count once per week; DTR counts once per session. The JS
+  `window.GM.eventScoringKey`, the SQL `public.gm_event_scoring_key` and the
+  member-portal `eventScoringKey` MUST stay in sync — change all three, never
+  one.
 
 
 ---

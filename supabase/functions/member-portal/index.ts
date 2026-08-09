@@ -78,12 +78,13 @@ function getPrevWeekStartIso(weekStart: string): string {
 }
 
 // Participation scoring key, mirrors gm_event_scoring_key (SQL) and
-// window.GM.eventScoringKey (client). Arms/Shadowfront count once per week,
-// DTR once per session, SvS/GvG once per week.
+// window.GM.eventScoringKey (client). Arms Race counts per session (Stage A
+// and Stage B are separate events), Shadowfront once per week, DTR once per
+// session, SvS/GvG once per week.
 function eventScoringKey(eventName: string, sessionId: string | null, weekStart: string | null): string {
   const up = (eventName || "").toUpperCase();
   const ws = weekStart || "";
-  if (up.indexOf("ARMS RACE") !== -1) return "Arms Race|" + ws;
+  if (up.indexOf("ARMS RACE") !== -1) return "Arms Race|" + (sessionId || ws);
   if (up === "SHADOWFRONT") return "Shadowfront|" + ws;
   if (up === "SVS") return "SvS|" + ws;
   if (up === "GVG") return "GvG|" + ws;
