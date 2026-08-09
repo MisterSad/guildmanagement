@@ -427,9 +427,6 @@
         if (tabId === 'tab-settings' && window.GM_SETTINGS) {
             window.GM_SETTINGS.load();
         }
-        if (tabId === 'tab-scouting' && window.GM_SCOUTING) {
-            window.GM_SCOUTING.load();
-        }
         if (tabId === 'tab-benchmark' && window.GM_BENCHMARK) {
             window.GM_BENCHMARK.load();
         }

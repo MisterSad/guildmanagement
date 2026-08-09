@@ -100,6 +100,17 @@ few hours, with an incrementing number in its title.
 
 ---
 
+## Removed
+
+- **Scouting tool (super admin) removed**: the `Scouting` tab, its client
+  module (`scouting.js`) and the backend objects it created
+  (`scouting_snapshots` table, `gm_scouting_capture` / `gm_scouting_report` /
+  `gm_scouting_history` functions and their grants) are gone. The drop
+  migration `20260809140000_drop_scouting.sql` removes every artifact for all
+  tenants; the feature is no longer used and its rival-roster data is dropped.
+
+---
+
 ## Fixed
 
 - **Stats no longer jumps back to "Weekly Global"**: reloading the page or
@@ -153,6 +164,7 @@ few hours, with an incrementing number in its title.
 
 ## Version history
 
+- **2026-08-09** — Scouting feature removed (tab, module, DB objects).
 - **2026-08-09** — Playwright e2e suite (login + portal, stubbed backend) and
   CI `e2e` job.
 - **2026-08-09** — Stats Engagement rebuilt, persisted Stats tabs, sandbox
