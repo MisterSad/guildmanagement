@@ -30,7 +30,7 @@
     // best stand-in for a battle date when start_at was never chosen.
     function hasSessionDate(sessionId) {
         if (!sessionId) return false;
-        return /-\d{8}$/.test(sessionId) || /-\d{4}-W\d{2}$/.test(sessionId);
+        return /-\d{8}(-\d+)?$/.test(sessionId) || /-\d{4}-W\d{2}$/.test(sessionId);
     }
     function parseSessionDate(s) {
         var d = null;
@@ -44,7 +44,7 @@
         }
         if (!d || isNaN(d.getTime())) {
             var sid = s.session_id || '';
-            var m = sid.match(/-(\d{4})(\d{2})(\d{2})$/);
+            var m = sid.match(/-(\d{4})(\d{2})(\d{2})(-\d+)?$/);
             if (m) d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
             else if (s.week_start) d = new Date(s.week_start + 'T12:00:00Z');
         }
@@ -55,7 +55,7 @@
         return d && !isNaN(d.getTime()) ? d.getTime() : 0;
     }
     function formatSessionDate(sessionId) {
-        var m = sessionId.match(/-(\d{4})(\d{2})(\d{2})$/);
+        var m = sessionId.match(/-(\d{4})(\d{2})(\d{2})(-\d+)?$/);
         if (m) {
             var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
             return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
