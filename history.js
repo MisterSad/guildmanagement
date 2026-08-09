@@ -244,7 +244,7 @@
             // La tuile doit afficher le nom du squad (pas seulement le modal).
             meta.label = displayName;
             var iconClass   = (window.GM && window.GM.getEventIcon) ? window.GM.getEventIcon(s.event_name) : (meta.icon || 'ph-calendar-dot');
-            var isWeekly    = (s.event_name === 'SvS' || s.event_name === 'GvG');
+            var isWeekly    = (s.event_name === 'SvS' || s.event_name === 'GvG' || s.event_name === 'Glory');
             var weekNum     = getWeekNumber(s.week_start);
             var weekDisplay = 'Week ' + weekNum;
             var ratio       = s.participants > 0 ? Math.round((s.participated_count / s.participants) * 100) : 0;
@@ -257,22 +257,22 @@
             if (isWeekly) {
                 leftTopStr   = weekDisplay;
                 leftSubStr   = '';
-                subtitleText = weekDisplay + ' (' + window.GM.formatWeek(s.week_start) + ')';
+                subtitleText = weekDisplay + (s.week_start ? ' (' + window.GM.formatWeek(s.week_start) + ')' : '');
             } else {
                 var dateObj = parseSessionDate(s);
                 if (dateObj && !isNaN(dateObj.getTime())) {
                     leftTopStr = pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1) + '/' + dateObj.getUTCFullYear();
-                    if (s.start_at || hasSessionDate(s.session_id)) {
+                    if (s.start_at) {
                         leftSubStr = pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes()) + ' UTC';
                         subtitleText = dateObj.toLocaleDateString('en-GB', {
                             day: '2-digit', month: '2-digit', year: 'numeric',
-                            hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
-                        }) + ' UTC';
+                            timeZone: 'UTC'
+                        }) + ', ' + leftSubStr;
                     } else {
-                        leftSubStr = weekDisplay;
+                        leftSubStr = '';
                         subtitleText = dateObj.toLocaleDateString('en-GB', {
                             day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC'
-                        }) + ' · ' + weekDisplay;
+                        });
                     }
                 } else {
                     leftTopStr   = weekDisplay;
