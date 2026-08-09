@@ -101,7 +101,7 @@
                             };
                         }
                         gloryMap[ws].participants++;
-                        if (row.participated > 0) {
+                        if (row.participated > 0 || (row.score != null && row.score > 0)) {
                             gloryMap[ws].participated_count++;
                         }
                         if (row.score > 0) {
