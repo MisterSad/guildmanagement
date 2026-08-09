@@ -1283,7 +1283,7 @@
                     if (navigator.clipboard) {
                         navigator.clipboard.writeText(pass).catch(function () {});
                     }
-                    showToast('New password generated: ' + pass + ' (copied to clipboard)', 'success');
+                    showToast('Password renewed: ' + pass + ' (copied to clipboard)', 'success');
                 } catch (err) {
                     showToast(t('toast_err_generic') + ' ' + err.message, 'error');
                 } finally {
