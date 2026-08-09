@@ -11,12 +11,8 @@ drop function if exists public.gm_scouting_history(text, text);
 -- Drop the policy before the table.
 drop policy if exists scouting_snapshots_superadmin on public.scouting_snapshots;
 
--- Drop the table (indexes and identity sequence go with it).
+-- Drop the table (indexes, grants and the identity sequence go with it).
 drop table if exists public.scouting_snapshots;
-
--- Remove any leftover grants (safe no-ops if already gone).
-revoke all on table public.scouting_snapshots from anon, authenticated;
-revoke usage on sequence scouting_snapshots_id_seq from authenticated;
 
 -- Force PostgREST schema cache reload
 notify pgrst, 'reload schema';
