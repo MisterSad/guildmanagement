@@ -898,15 +898,15 @@
         var weekBars = lastWeeks.map(function (w) {
             var d = perWeek[w];
             var weekNum = getWeekNumber(w);
-            var weekLabel = (weekNum ? 'Week ' + weekNum + ' (' + shortDate(w) + ')' : shortDate(w));
+            var weekLabel = (weekNum ? 'Week ' + weekNum : shortDate(w));
             var pctRate = d.rate;
             var barColor = pctRate >= 70 ? '#34d399' : (pctRate >= 40 ? '#a78bfa' : '#f87171');
             return '<div class="gm-kpi-row" style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">' +
-                '<span class="gm-kpi-label" style="min-width:130px; font-weight:600; font-size:0.83rem; color:var(--fg);">' + esc(weekLabel) + '</span>' +
+                '<span class="gm-kpi-label" style="min-width:90px; font-weight:600; font-size:0.83rem; color:var(--fg);">' + esc(weekLabel) + '</span>' +
                 '<div class="gm-kpi-bar-track" style="flex:1; height:22px; background:var(--bg-3); border-radius:6px; overflow:hidden; position:relative;">' +
                     '<div class="gm-kpi-bar" style="width:' + pctRate + '%; height:100%; background:' + barColor + '; border-radius:6px; transition:width .4s ease;"></div>' +
                 '</div>' +
-                '<span class="gm-kpi-value" style="min-width:130px; text-align:right; font-weight:700; font-size:0.85rem; font-family:var(--font-display); color:var(--fg);">' +
+                '<span class="gm-kpi-value" style="min-width:120px; text-align:right; font-weight:700; font-size:0.85rem; font-family:var(--font-display); color:var(--fg);">' +
                     pctRate + '% <span style="font-size:0.75rem; font-weight:500; color:var(--fg-dim);">(' + d.present + '/' + d.memberCount + ')</span>' +
                 '</span>' +
             '</div>';
@@ -935,24 +935,24 @@
                 '<div class="gm-empty-title" style="font-size:1.1rem; font-weight:700; color:var(--fg);">Every member participated in the last 2 weeks</div>' +
                 '<div style="font-size:0.85rem; color:var(--fg-dim); margin-top:0.25rem;">No inactive members detected on the roster.</div>' +
               '</div>'
-            : '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:0.75rem; margin-top:0.5rem;">' +
+            : '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:0.85rem; margin-top:0.5rem;">' +
                 inactive.slice(0, 20).map(function (m) {
                     var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(m.pseudo) : (m.pseudo ? m.pseudo.charAt(0).toUpperCase() : '?');
                     var seenText = m.lastSeen ? 'Seen ' + shortDate(m.lastSeen) : 'Never participated';
                     var pwr = formatBigNum ? formatBigNum(m.power) : String(m.power);
 
-                    return '<div style="background:var(--bg-2); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.8rem 0.95rem; display:flex; align-items:center; justify-content:space-between; gap:0.75rem;">' +
-                        '<div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">' +
-                            '<div class="gm-avatar gm-avatar-squircle" style="width:36px; height:36px; font-size:.9rem; font-weight:700; background:oklch(0.25 0.08 20); color:#f87171; flex-shrink:0;">' + esc(initial) + '</div>' +
-                            '<div style="min-width:0;">' +
-                                '<div style="font-weight:700; color:var(--fg); font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.pseudo) + '</div>' +
-                                '<div style="font-size:0.75rem; color:var(--fg-dim); display:flex; align-items:center; gap:0.3rem; margin-top:2px;">' +
+                    return '<div style="background:var(--bg-2); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.9rem 1.1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">' +
+                        '<div style="display:flex; align-items:center; gap:0.85rem; min-width:0; flex:1;">' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:40px; height:40px; font-size:.95rem; font-weight:700; background:oklch(0.25 0.08 20); color:#f87171; flex-shrink:0;">' + esc(initial) + '</div>' +
+                            '<div style="min-width:0; flex:1;">' +
+                                '<div style="font-weight:700; color:var(--fg); font-size:0.95rem; word-break:break-word;">' + esc(m.pseudo) + '</div>' +
+                                '<div style="font-size:0.78rem; color:var(--fg-dim); display:flex; align-items:center; gap:0.35rem; margin-top:3px;">' +
                                     '<i class="ph ph-lightning" style="color:var(--accent-amber);"></i> ' + esc(pwr) +
                                 '</div>' +
                             '</div>' +
                         '</div>' +
-                        '<div style="text-align:right; flex-shrink:0;">' +
-                            '<span style="font-size:0.72rem; font-weight:600; padding:3px 8px; border-radius:99px; background:oklch(0.25 0.08 20); color:#f87171; border:1px solid oklch(0.45 0.15 20 / 0.4); display:inline-flex; align-items:center; gap:0.3rem;">' +
+                        '<div style="flex-shrink:0;">' +
+                            '<span style="font-size:0.75rem; font-weight:600; padding:4px 10px; border-radius:99px; background:oklch(0.25 0.08 20); color:#f87171; border:1px solid oklch(0.45 0.15 20 / 0.4); display:inline-flex; align-items:center; gap:0.35rem; white-space:nowrap;">' +
                                 '<i class="ph ph-warning-circle"></i> ' + esc(seenText) +
                             '</span>' +
                         '</div>' +
