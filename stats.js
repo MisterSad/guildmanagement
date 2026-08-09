@@ -429,14 +429,41 @@
                 rows = rows.filter(function (r) { return r.week_start === state.selectedWeek; });
             }
 
-            state.leaderboardData = rows.map(function (r) {
-                var total = (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0);
+            var byMember = {};
+            rows.forEach(function (r) {
+                var norm = normalizePseudo(r.pseudo);
+                if (!byMember[norm]) {
+                    byMember[norm] = {
+                        pseudo: r.pseudo,
+                        score: 0,
+                        score_prep: 0,
+                        score_pvp: 0,
+                        events_done: 0,
+                        events_total: 0
+                    };
+                }
+                var prep = r.score_prep || 0;
+                var pvp = r.score_pvp || 0;
+                var sc = r.score || 0;
+                var tot = sc > 0 ? sc : (prep + pvp);
+                byMember[norm].score_prep += prep;
+                byMember[norm].score_pvp += pvp;
+                byMember[norm].score += tot;
+                if (r.participated > 0 || prep > 0 || pvp > 0 || sc > 0) {
+                    byMember[norm].events_done += 1;
+                }
+                byMember[norm].events_total += 1;
+            });
+
+            state.leaderboardData = Object.values(byMember).map(function (m) {
                 return {
-                    pseudo: r.pseudo,
-                    score: total,
-                    events_done: r.participated > 0 ? 1 : 0,
-                    events_total: 1,
-                    attendance_rate: r.participated > 0 ? 1 : 0,
+                    pseudo: m.pseudo,
+                    score: m.score,
+                    score_prep: m.score_prep,
+                    score_pvp: m.score_pvp,
+                    events_done: m.events_done,
+                    events_total: m.events_total,
+                    attendance_rate: m.events_total > 0 ? m.events_done / m.events_total : 0,
                     glory_delta: 0,
                     glory_bonus: 0,
                     consistency_bonus: 0
@@ -629,6 +656,7 @@
             }
 
             // Tableau de Classement Officiel (.gm-card, .glass-card, .gm-table)
+            var isBattleEventMode = (state.currentMode === 'SvS' || state.currentMode === 'GvG');
             var showGloryCol = (state.currentMode === 'global');
 
             var tableHtml =
@@ -638,7 +666,11 @@
                             '<thead><tr>' +
                                 '<th class="gm-center" style="width:65px;">#</th>' +
                                 '<th>' + (t('col_member') || 'Member') + '</th>' +
-                                '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
+                                (isBattleEventMode ?
+                                    '<th class="gm-center">' + (t('col_score_prep') || 'Day 1 to 5 score') + '</th>' +
+                                    '<th class="gm-center">' + (t('col_score_pvp') || 'Day 6 score') + '</th>' :
+                                    '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>'
+                                ) +
                                 (showGloryCol ? '<th class="gm-center">' + (t('stats_glory_delta') || 'Glory Δ') + '</th>' : '') +
                                 '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>' +
                             '</tr></thead><tbody>';
@@ -657,7 +689,11 @@
                                 '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(m.pseudo) + '</strong>' +
                             '</div>' +
                         '</td>' +
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + '/' + m.events_total + '</td>' +
+                        (isBattleEventMode ?
+                            '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
+                            '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' :
+                            '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + '/' + m.events_total + '</td>'
+                        ) +
                         (showGloryCol ? '<td class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '—') + '</td>' : '') +
                         '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + fmt(m.score) + ' pts</span></td>' +
                     '</tr>';
