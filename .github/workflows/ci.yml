@@ -25,3 +25,17 @@ jobs:
             echo "deno check $f"
             deno check "$f" || exit 1
           done
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright e2e
+        run: npx playwright test

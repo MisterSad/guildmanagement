@@ -6,10 +6,13 @@
   "description": "FGF Guild Management Tool — client-side app (vanilla JS + Supabase)",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "jsdom": "^30.0.1",
+    "serve": "^14.2.6",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }

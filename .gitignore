@@ -8,3 +8,5 @@ coverage/
 !.env.example
 supabase/.env*
 deno.lock
+test-results/
+playwright-report/

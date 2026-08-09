@@ -31,13 +31,6 @@ few hours, with an incrementing number in its title.
   refresh your power. A season summary (last 4 weeks) shows your total events
   and a Bronze/Silver/Gold season rank. Completed challenges are checked off;
   progress bars update live.
-- **Scouting tool (super admin)**: track rival guild rosters over time. Paste
-  a roster (one "pseudo, power" per line, quotes and thousand separators
-  accepted), capture a snapshot per guild, and see each player's latest power
-  with the growth delta since the previous capture. A trend view shows the
-  full history of a player. Super admin only (table + RPCs are gated by
-  `is_super_admin()`), so scouting intelligence is never visible to guild
-  admins or members.
 - **Stats > Engagement page rebuilt**: the tiles and charts are now clear. The
   page shows: active members this week, the average 8-week participation rate,
   members inactive for 2+ weeks, and weeks with data; a weekly participation
@@ -97,6 +90,13 @@ few hours, with an incrementing number in its title.
   screenshots and demos, re-seedable via `scripts/generate_demo_data.py`.
 - **GitHub Actions CI** (vitest + `deno check` on edge functions) and
   **`scripts/bump_cache_busters.py`** (automatic `?v=` bumps).
+- **Playwright e2e suite**: 7 browser tests cover the login page (title,
+  footer, Discord button, empty-submit validation, register/form switch) and
+  the Player Portal (dashboard boot, sidebar navigation, weekly challenges
+  panel). The Supabase backend is stubbed via route interception so the suite
+  runs locally and in CI without touching the live project. A new `e2e` CI job
+  installs Chromium and runs `npx playwright test` on every push/PR.
+  `npm run test:e2e` added; test artifacts are gitignored.
 
 ---
 
@@ -153,6 +153,8 @@ few hours, with an incrementing number in its title.
 
 ## Version history
 
+- **2026-08-09** — Playwright e2e suite (login + portal, stubbed backend) and
+  CI `e2e` job.
 - **2026-08-09** — Stats Engagement rebuilt, persisted Stats tabs, sandbox
   hardened, scoring per game rules, Shadowfront weeks fixed, readable session
   ids, DTR unified.
