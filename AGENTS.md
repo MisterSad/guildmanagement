@@ -290,7 +290,8 @@ valid JWT. Every anon-granted table must return `[]` for anon.
       targeted grants
 - [ ] Security matrix from 6.2 passes for the touched surface
 - [ ] `?v=` cache busters bumped for changed assets
-- [ ] CHANGELOG.md updated (if user-facing feature)
+- [ ] `CHANGELOG.md` **and** `DISCORD_CHANGELOG.md` rewritten/updated —
+      every change requires a **New** and a **Fixed** section in both files
 
 ---
 
@@ -315,7 +316,10 @@ valid JWT. Every anon-granted table must return `[]` for anon.
 
 - Only `main` branch exists; never create long-lived branches.
 - Do not commit `.agents/`, `android/`, `apple-devices/`, build artifacts.
-- Keep `CHANGELOG.md` current; `CHANGELOG-*.md` files are Discord-paste
-  announcements (English, emoji shortcodes, no tables/HTML).
+- **Changelogs are rewritten, not appended**: at every change, erase and
+  rebuild both `CHANGELOG.md` (full history, sections `## New` / `## Fixed`)
+  and `DISCORD_CHANGELOG.md` (Discord-paste, English, emoji shortcodes, no
+  tables/HTML, covering only the last few hours). Do not create
+  `CHANGELOG-DISCORD-*.md` files anymore.
 - The project is monetized (paid guild subscriptions). Treat any change
   to payments or access control as security-critical.
