@@ -712,8 +712,11 @@
                     var pp = state[tabKey].participants.find(function (x) { return x.pseudo === pseudo; });
                     if (pp) pp.is_pending = false;
                     renderParticipants(tabKey);
+                    // Reload from the DB so the UI reflects the real pending state.
+                    await fetchParticipants(tabKey);
                 } catch (err) {
-                    showToast('Failed to approve submission.', 'error');
+                    console.error('approve single', err);
+                    (window.GM && window.GM.showToast ? window.GM.showToast : function () {})('Failed to approve submission.', 'error');
                     btn.disabled = false;
                     btn.textContent = 'Approve';
                 }
@@ -741,8 +744,11 @@
                         if (p.is_pending) p.is_pending = false;
                     });
                     renderParticipants(tabKey);
+                    // Reload from the DB so the UI reflects the real pending state.
+                    await fetchParticipants(tabKey);
                 } catch (err) {
-                    showToast('Failed to approve all submissions.', 'error');
+                    console.error('approve all', err);
+                    (window.GM && window.GM.showToast ? window.GM.showToast : function () {})('Failed to approve all submissions.', 'error');
                     approveAllBtnEl.disabled = false;
                     approveAllBtnEl.textContent = 'Approve All (' + pendingCount + ')';
                 }
