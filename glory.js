@@ -209,14 +209,14 @@
         if (!db) return;
         try {
             var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
-            var scoreVal = (value === null || value === '') ? null : (typeof value === 'number' ? value : window.GM.parseNumber(value));
-            var res = await db.from('event_participants')
-                .update({ score: scoreVal, participated: 1 })
-                .eq('guild', currentG)
-                .eq('event_name', 'Glory')
-                .eq('week_start', week)
-                .eq('pseudo', pseudo);
-            if (res.error) throw res.error;
+            var scoreVal = (value === null || value === '') ? 0 : (typeof value === 'number' ? value : (window.GM.parseNumber(value) || 0));
+            var rpcRes = await db.rpc('gm_upsert_player_glory', {
+                p_guild: currentG,
+                p_pseudo: pseudo,
+                p_week_start: week,
+                p_glory: scoreVal
+            });
+            if (rpcRes && rpcRes.error) throw rpcRes.error;
             if (icon) icon.classList.add('hidden');
         } catch (err) {
             console.error('saveGlory', err);

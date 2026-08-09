@@ -315,28 +315,48 @@
         return (eventName || '') + '|' + (sessionId || ws);
     }
 
-    // Date d'un session_id lisible (SF1-20260802, ARA-20260809, ...) :
-    // retourne un objet Date ou null. Les clés hebdo (SVS-2026-W32) n'ont pas
-    // de date, elles renvoient null.
+    // Date from a human-readable session_id (SF1-20260802-1, ARA-20260809, ...) :
+    // returns a Date object or null. Weekly keys (SVS-2026-W32) return null.
+    // Handles both legacy bare IDs (ARA-20260809) and sequenced IDs (ARA-20260809-2).
     function sessionDateFromId(sessionId) {
         if (!sessionId) return null;
-        var m = String(sessionId).match(/-(\d{4})(\d{2})(\d{2})$/);
+        var m = String(sessionId).match(/-(\d{4})(\d{2})(\d{2})(-\d+)?$/);
         if (!m) return null;
         return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
     }
 
-    function buildEventSessionId(eventName, startAt) {
+    // Builds a deterministic, chronologically-sortable session ID from an event
+    // name and a reference date (the admin-set battle date).
+    //
+    // Weekly events (SVS, GVG, GLORY) return an ISO-week key (SVS-2026-W32).
+    // Daily events (DTR, Arms Race, Shadowfront) return a YYYYMMDD key with an
+    // anti-collision sequence suffix: DTR-20260812-1, DTR-20260812-2, etc.
+    //
+    // existingIds (optional array) — all session_ids already present in DB for
+    // this guild+event. The function finds the lowest -N not already taken.
+    // If omitted, -1 is used (safe when you know no session exists yet for that day).
+    //
+    // Mirrors the SQL helper public.gm_event_session_id(text, date).
+    function buildEventSessionId(eventName, startAt, existingIds) {
         var up = (eventName || '').toUpperCase();
         var ref = startAt || new Date();
+        // Weekly events: no sequence suffix needed (deterministic per ISO week)
         if (up === 'SVS') return 'SVS-' + isoWeekKey(ref);
         if (up === 'GVG') return 'GVG-' + isoWeekKey(ref);
         if (up === 'GLORY') return 'GLORY-' + isoWeekKey(ref);
-        if (up === 'ARMS RACE STAGE A') return 'ARA-' + dateKey(ref);
-        if (up === 'ARMS RACE STAGE B') return 'ARB-' + dateKey(ref);
-        if (up === 'DEFEND TRADE ROUTE') return 'DTR-' + dateKey(ref);
-        if (up === 'SHADOWFRONT SQUAD 1') return 'SF1-' + dateKey(ref);
-        if (up === 'SHADOWFRONT SQUAD 2') return 'SF2-' + dateKey(ref);
-        return newSessionId();
+        // Daily events: base + anti-collision sequence
+        var base;
+        if (up === 'ARMS RACE STAGE A')  base = 'ARA-' + dateKey(ref);
+        else if (up === 'ARMS RACE STAGE B')  base = 'ARB-' + dateKey(ref);
+        else if (up === 'DEFEND TRADE ROUTE') base = 'DTR-' + dateKey(ref);
+        else if (up === 'SHADOWFRONT SQUAD 1') base = 'SF1-' + dateKey(ref);
+        else if (up === 'SHADOWFRONT SQUAD 2') base = 'SF2-' + dateKey(ref);
+        else return newSessionId();
+        // Find the lowest sequence number not already taken for this base+day
+        var ids = existingIds || [];
+        var n = 1;
+        while (ids.indexOf(base + '-' + n) !== -1) { n++; }
+        return base + '-' + n;
     }
 
     // Bloque les caractères HTML/JS dangereux + caractères de contrôle.
@@ -536,7 +556,10 @@
         try {
             var p = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
             p += '='.repeat((4 - p.length % 4) % 4);
-            var claims = JSON.parse(decodeURIComponent(escape(atob(p))));
+            var jsonStr = atob(p).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join('');
+            var claims = JSON.parse(decodeURIComponent(jsonStr));
             var am = claims.app_metadata || {};
             return { role: normalizeRole(am.app_role || 'guild_admin'), accountId: am.account_id || null };
         } catch (e) {
@@ -591,7 +614,10 @@
             if (s.error) return null;
             var p = data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
             p += '='.repeat((4 - p.length % 4) % 4);
-            var claims = JSON.parse(decodeURIComponent(escape(atob(p))));
+            var jsonStr = atob(p).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join('');
+            var claims = JSON.parse(decodeURIComponent(jsonStr));
             var am = claims.app_metadata || {};
             return { role: normalizeRole(am.app_role || 'member'), accountId: am.account_id || null };
         } catch (_) {
@@ -758,9 +784,16 @@
             );
             if (res && res.error) {
                 console.warn('setGuildConfig db error:', res.error);
+                return false;
             }
         }
         return true;
+    }
+
+    function getCurrentPseudo() {
+        try {
+            return localStorage.getItem('gm_user') || localStorage.getItem('gm_pseudo') || null;
+        } catch (_) { return null; }
     }
 
     function formatDiscordRoleMention(input) {
@@ -1001,6 +1034,7 @@
         isSuperAdmin: isSuperAdmin,
         getRoleInfo: getRoleInfo,
         getActiveGuild: getActiveGuild,
+        getCurrentPseudo: getCurrentPseudo,
         isPaymentsDisabled: isPaymentsDisabled,
         isGuildSubscriptionExpired: isGuildSubscriptionExpired,
         canWriteGuild: canWriteGuild,

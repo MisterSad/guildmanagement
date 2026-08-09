@@ -324,21 +324,29 @@ describe('buildEventSessionId (deterministic event ids, all tenants)', () => {
         expect(GM.buildEventSessionId('SvS', '2026-08-02T18:00:00Z')).toBe('SVS-2026-W31');
     });
 
-    it('dated events use YYYYMMDD of the battle date', () => {
-        expect(GM.buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z')).toBe('ARA-20260809');
-        expect(GM.buildEventSessionId('ARMS RACE STAGE B', '2026-08-09T12:00:00Z')).toBe('ARB-20260809');
-        expect(GM.buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z')).toBe('DTR-20260808');
+    it('dated events use YYYYMMDD of the battle date with sequence suffix -1 when no existing ids', () => {
+        // No existingIds -> first session gets suffix -1
+        expect(GM.buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z', [])).toBe('ARA-20260809-1');
+        expect(GM.buildEventSessionId('ARMS RACE STAGE B', '2026-08-09T12:00:00Z', [])).toBe('ARB-20260809-1');
+        expect(GM.buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z', [])).toBe('DTR-20260808-1');
+        // Second session on the same day gets -2
+        expect(GM.buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z', ['DTR-20260808-1'])).toBe('DTR-20260808-2');
+        // Third session skips to -3 if -2 is also taken
+        expect(GM.buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z', ['DTR-20260808-1', 'DTR-20260808-2'])).toBe('DTR-20260808-3');
     });
 
-    it('shadowfront squads get their own prefix', () => {
-        expect(GM.buildEventSessionId('Shadowfront Squad 1', '2026-08-02T12:00:00Z')).toBe('SF1-20260802');
-        expect(GM.buildEventSessionId('Shadowfront Squad 2', '2026-08-05T12:00:00Z')).toBe('SF2-20260805');
+    it('shadowfront squads get their own prefix and sequence suffix', () => {
+        expect(GM.buildEventSessionId('Shadowfront Squad 1', '2026-08-02T12:00:00Z', [])).toBe('SF1-20260802-1');
+        expect(GM.buildEventSessionId('Shadowfront Squad 2', '2026-08-05T12:00:00Z', [])).toBe('SF2-20260805-1');
+        // Collision avoidance
+        expect(GM.buildEventSessionId('Shadowfront Squad 1', '2026-08-02T12:00:00Z', ['SF1-20260802-1'])).toBe('SF1-20260802-2');
     });
 
     it('the same battle date yields the same id (re-start reuses the session)', () => {
-        const a = GM.buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z');
-        const b = GM.buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T18:00:00Z');
-        expect(a).toBe(b);
+        // With the same existingIds, both calls get the same first available slot
+        const a = GM.buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z', []);
+        const b = GM.buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T18:00:00Z', []);
+        expect(a).toBe(b); // Both -> ARA-20260809-1
     });
 
     it('unknown event names fall back to a timestamp', () => {

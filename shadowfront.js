@@ -212,11 +212,21 @@
         var db = getDb();
         if (!db) return;
         var sq = sfState.squads[squad];
-        // Un squad terminé ne réutilise pas son ancienne session : un nouveau
-        // Start doit démarrer une composition fraîche.
-        var sessionId = (sq && sq.sessionId && !sq.ended) ? sq.sessionId : window.GM.buildEventSessionId(SQUAD_EVENT[squad], startAt || new Date());
-        if (sq) sq.ended = false;
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        var sessionId;
+        if (sq && sq.sessionId && !sq.ended) {
+            // Reuse existing active session (e.g. page reload mid-event)
+            sessionId = sq.sessionId;
+        } else {
+            // Fetch existing session_ids for this guild+event to prevent same-day collision
+            var existingRes = await db.from('event_participants')
+                .select('session_id')
+                .eq('guild', currentG)
+                .eq('event_name', EVENT_NAME);
+            var existingIds = (existingRes.data || []).map(function (r) { return r.session_id; });
+            sessionId = window.GM.buildEventSessionId(SQUAD_EVENT[squad], startAt || new Date(), existingIds);
+        }
+        if (sq) sq.ended = false;
         try {
             var res = await db.from('event_status').upsert(
                 {
@@ -315,6 +325,28 @@
                     }).eq('guild', currentG)
                       .eq('event_name', EVENT_NAME)
                       .eq('session_id', sq.sessionId);
+
+                    // Recalculate session_id: pass [] to avoid collision check (renaming, not creating)
+                    var newSessionId = window.GM.buildEventSessionId(SQUAD_EVENT[squad], new Date(startAt), []);
+                    if (newSessionId !== sq.sessionId) {
+                        await db.from('event_participants').update({
+                            session_id: newSessionId
+                        }).eq('guild', currentG)
+                          .eq('event_name', EVENT_NAME)
+                          .eq('session_id', sq.sessionId);
+
+                        await db.from('shadowfront_squads').update({
+                            session_id: newSessionId
+                        }).eq('guild', currentG)
+                          .eq('session_id', sq.sessionId);
+
+                        await db.from('event_status').update({
+                            session_id: newSessionId
+                        }).eq('guild', currentG)
+                          .eq('event_name', SQUAD_EVENT[squad]);
+
+                        sq.sessionId = newSessionId;
+                    }
 
                     window.GM.showToast(t('toast_member_updated'), 'success');
 
@@ -495,10 +527,10 @@
 
         var week = window.GM.getWeekStart(sq.startAt || window.GM.sessionDateFromId(sq.sessionId) || new Date());
 
-        // Supprimer une précédente affectation pour ce membre dans cette semaine pour éviter le conflit 409
+        // Supprimer une précédente affectation pour ce membre dans cette session pour éviter le conflit 409
         try {
             await db.from('shadowfront_squads').delete()
-                .eq('guild', currentG).eq('week_start', week).eq('pseudo', pseudo);
+                .eq('guild', currentG).eq('session_id', sq.sessionId).eq('pseudo', pseudo);
         } catch (delErr) {
             console.warn('delete old assignment error', delErr);
         }
@@ -534,8 +566,19 @@
             return;
         }
         var g = (a && a.guild) || (window.GM ? window.GM.getActiveGuild() : 'ALPHA');
-        await db.from('shadowfront_squads').delete()
-            .eq('guild', g).eq('session_id', a.session_id).eq('pseudo', pseudo);
+        try {
+            await db.rpc('gm_unsync_shadowfront_participant', {
+                p_guild: g,
+                p_session_id: a.session_id,
+                p_pseudo: pseudo
+            });
+        } catch (err) {
+            console.warn('gm_unsync_shadowfront_participant RPC fallback:', err);
+            await db.from('shadowfront_squads').delete()
+                .eq('guild', g).eq('session_id', a.session_id).eq('pseudo', pseudo);
+            await db.from('event_participants').delete()
+                .eq('guild', g).eq('session_id', a.session_id).eq('pseudo', pseudo);
+        }
         await loadShadowfront();
     }
 

@@ -1,20 +1,24 @@
-:sparkles: **ARMS RACE PER-SESSION SCORING — v14**
+:calendar: **EVENT RELIABILITY & SESSION ID HARDENING — v16**
 
-Each Arms Race Stage now counts as its own event, so two Arms Race cycles in one week are no longer merged.
+Critical fixes to the event session system: SQL crash eliminated, same-day session collision prevention, mandatory date picker for all events, and automatic session ID recalculation on schedule edits.
 
 ---
 
 :new: **What's new**
 
-- :crossed_swords: **Arms Race Stage A and Stage B are separate events.** Each session (ARA-x / ARB-x) counts once in participation, like DTR. A week with 2 x A + 2 x B now counts 4 events instead of 1. Applied in sync to the client scoring key, the SQL `gm_event_scoring_key` and the Player Portal.
+- :id: **Anti-Collision Session IDs:** DTR, Arms Race, and Shadowfront sessions on the same day now generate unique IDs (`DTR-20260812-1`, `DTR-20260812-2`, ...) instead of overwriting each other.
+- :calendar: **Mandatory Date Picker for SvS and GvG:** Starting a SvS or GvG event now requires an explicit battle date, ensuring the ISO-week session ID always matches the real battle week.
+- :arrows_counterclockwise: **Session ID Cascade on Schedule Edit:** Editing the battle date of any active event now updates the session ID in all related tables automatically.
+- :zap: **New DB Index `idx_event_status_guild_session`:** Faster JOIN resolution on event history queries across all tenants.
 
 ---
 
 :bug: **What's fixed**
 
-- :arrows_counterclockwise: **Two Arms Race in a week were merged.** CLAW ran Arms Race on Aug 5 and Aug 8, but the scoring key grouped them by week, shrinking the participation denominator (5 instead of 8) and inflating rates. Now each Stage counts separately.
-- :calendar: **Future-planned events** no longer leak into current stats (previous round).
-- :bar_chart: **Stats 1000-row truncation** fixed via `gm_stats_data` (previous round).
+- :boom: **CRITICAL SQL Crash in Event History (`gm_list_event_sessions`):** The ORDER BY clause was casting `session_id::timestamptz`, crashing PostgreSQL on IDs like `SF1-20260812`, `ARA-20260809`. Fixed with safe YYYYMMDD regex extraction.
+- :collision: **Same-Day Event Collision (DTR, Arms Race, Shadowfront):** Starting a 2nd session of these events on the same UTC day silently overwrote the first. Now generates a new unique session each time.
+- :repeat: **Stale Session ID After Date Edit:** Editing an event's date updated `start_at` but left the `session_id` pointing to the original date, causing stat incoherence. Fixed with full cascade.
+- :bar_chart: **Arms Race Historical Stats Backfill:** Rows from before 09/08/2026 had `week_start` inconsistent with the date in their `session_id`. Backfill migration corrects all affected rows.
 
 ---
 

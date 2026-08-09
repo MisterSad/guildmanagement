@@ -213,13 +213,26 @@
     async function loadGlobalMode(weeksToLoad) {
         var db = getDb();
         try {
-            var isAllTime = (state.statsPeriod === 'all');
+            // First attempt to fetch calculated leaderboard directly from DB RPC (R-13)
+            var lbRes = await db.rpc('gm_leaderboard', {
+                p_guild: state.activeGuild,
+                p_period: state.statsPeriod,
+                p_week: state.selectedWeek
+            });
 
-            // Full dataset via SECURITY DEFINER RPC: the REST API truncates
-            // event_participants to 1000 rows (silently), so tenants with more
-            // than 1000 rows (CLAW, BABE, OMEGA, DEMO, ...) would lose their
-            // recent events and the leaderboard looked stale. gm_stats_data
-            // returns everything for the caller's guild.
+            if (lbRes && lbRes.data && lbRes.data.ok && Array.isArray(lbRes.data.scores)) {
+                state.leaderboardData = lbRes.data.scores;
+                var weeksCount = lbRes.data.weeks_count || 1;
+                state.lastMaxPossible = round1((WEIGHTS.participation + WEIGHTS.performance + WEIGHTS.gloryMax + WEIGHTS.consistency) * weeksCount * 5);
+                renderLeaderboard();
+                return;
+            }
+        } catch (rpcErr) {
+            console.warn('[GM_STATS] gm_leaderboard RPC error, falling back to client computation:', rpcErr);
+        }
+
+        try {
+            var isAllTime = (state.statsPeriod === 'all');
             var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
             var raw = dataRes.data || null;
 
@@ -228,9 +241,6 @@
             var gloryRows  = (raw && raw.glory) || [];
             var squadRows  = (raw && raw.squads) || [];
 
-            // Only events that belong to the current week or earlier count.
-            // Sessions planned for a later week (even if launched this week)
-            // are ignored until their own week arrives.
             partRows = keepOnlyPastOrCurrent(partRows);
             gloryRows = keepOnlyPastOrCurrent(gloryRows);
             squadRows = keepOnlyPastOrCurrent(squadRows);
@@ -241,7 +251,6 @@
                 squadRows = squadRows.filter(function (r) { return weeksToLoad.indexOf(r.week_start) !== -1; });
             }
 
-            // Union de tous les membres uniques
             var memberSet = new Set();
             memberRows.forEach(function (m) { if (m.pseudo) memberSet.add(m.pseudo); });
             partRows.forEach(function (r) { if (r.pseudo) memberSet.add(r.pseudo); });
@@ -252,7 +261,6 @@
             state.uidMap = {};
             memberRows.forEach(function (m) { if (m.pseudo) state.uidMap[m.pseudo] = m.uid || ''; });
 
-            // Extraire les semaines effectives
             var actualWeeks = isAllTime
                 ? Array.from(new Set(partRows.map(function (r) { return r.week_start; }).concat(gloryRows.map(function (r) { return r.week_start; })).filter(Boolean))).sort()
                 : weeksToLoad;
@@ -319,9 +327,10 @@
             return !p.is_pending;
         });
 
-        // 1. Calculer le nombre total d'événements uniques tenus par cette guilde sur la période
+        // 1. Calculer le nombre total d'événements uniques tenus par cette guilde sur la période (Glory exclu)
         var tenantEventInstances = new Set();
         validPartRows.forEach(function (p) {
+            if ((p.event_name || '').toLowerCase() === 'glory') return;
             var evKey = window.GM.eventScoringKey(p.event_name, p.session_id, p.week_start);
             if (evKey) tenantEventInstances.add(evKey);
         });
@@ -334,6 +343,7 @@
         });
 
         validPartRows.forEach(function (p) {
+            if ((p.event_name || '').toLowerCase() === 'glory') return;
             var norm = normalizePseudo(p.pseudo);
             var memberMatch = membersList.find(function (m) { return normalizePseudo(m) === norm; });
             if (!memberMatch) return;
@@ -343,7 +353,7 @@
             var coeff = COEFFS[evName] || 1;
             var evKey = window.GM.eventScoringKey(evName, p.session_id, p.week_start);
 
-            var attended = (p.participated > 0) || (p.score > 0) || (p.score_prep > 0) || (p.score_pvp > 0);
+            var attended = (p.participated > 0) || (p.sub_present === true) || (p.score > 0) || (p.score_prep > 0) || (p.score_pvp > 0);
 
             if (attended) {
                 if (!attendedSessionsByMember[norm].has(evKey)) {
@@ -462,9 +472,10 @@
             // week must not inflate the denominator before it takes place.
             validRows = keepOnlyPastOrCurrent(validRows);
 
-            // Unique tenant event instances
+            // Unique tenant event instances (Glory excluded)
             var tenantEventInstances = new Set();
             validRows.forEach(function (r) {
+                if ((r.event_name || '').toLowerCase() === 'glory') return;
                 var evKey = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
                 if (evKey) tenantEventInstances.add(evKey);
             });
@@ -477,10 +488,11 @@
             });
 
             validRows.forEach(function (r) {
+                if ((r.event_name || '').toLowerCase() === 'glory') return;
                 var norm = normalizePseudo(r.pseudo);
                 if (attendedSessionsByMember[norm]) {
                     var evKey = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
-                    if (r.participated > 0) {
+                    if (r.participated > 0 || r.sub_present === true) {
                         attendedSessionsByMember[norm].add(evKey);
                     }
                 }

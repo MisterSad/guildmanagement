@@ -492,9 +492,18 @@
     // Math.random() is not cryptographically secure and produces predictable outputs.
     function generatePassword(length) {
         var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
-        var values = new Uint32Array(length);
-        crypto.getRandomValues(values);
-        return Array.from(values, function(v) { return chars[v % chars.length]; }).join('');
+        var result = '';
+        var limit = 256 - (256 % chars.length);
+        while (result.length < length) {
+            var values = new Uint8Array(length * 2);
+            crypto.getRandomValues(values);
+            for (var i = 0; i < values.length && result.length < length; i++) {
+                if (values[i] < limit) {
+                    result += chars[values[i] % chars.length];
+                }
+            }
+        }
+        return result;
     }
 
     // In-memory cache for passwords of freshly created accounts.
@@ -1212,9 +1221,12 @@
                     if (!pass) {
                         btn.disabled = true;
                         try {
-                            var res = await window.GM.adminAccounts('get-password', { id: accId });
-                            if (!res.ok) throw new Error(res.error || 'fetch_failed');
-                            pass = res.password;
+                            var newPass = generatePassword(12);
+                            var res = await window.GM.adminAccounts('reset-password', { id: accId, password: newPass });
+                            if (!res.ok) throw new Error(res.error || 'reset_failed');
+                            pass = res.password || newPass;
+                            pendingPasswords[accId] = pass;
+                            showToast(t('toast_password_reset_success') || 'Password reset successfully', 'success');
                         } catch (err) {
                             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
                             btn.disabled = false;
@@ -1243,9 +1255,12 @@
                 if (!pass) {
                     btn.disabled = true;
                     try {
-                        var res = await window.GM.adminAccounts('get-password', { id: accId });
-                        if (!res.ok) throw new Error(res.error || 'fetch_failed');
-                        pass = res.password;
+                        var newPass = generatePassword(12);
+                        var res = await window.GM.adminAccounts('reset-password', { id: accId, password: newPass });
+                        if (!res.ok) throw new Error(res.error || 'reset_failed');
+                        pass = res.password || newPass;
+                        pendingPasswords[accId] = pass;
+                        showToast(t('toast_password_reset_success') || 'Password reset successfully', 'success');
                     } catch (err) {
                         showToast(t('toast_err_generic') + ' ' + err.message, 'error');
                         btn.disabled = false;

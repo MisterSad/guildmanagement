@@ -86,9 +86,10 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
-  // FIX (C1): JWT validated cryptographically via auth.getUser(), not by manual base64 decode
-  const info = await getCallerInfo(req, admin);
-  if (!info.role) return json({ ok: false, error: "forbidden" }, 200);
+  // FIX (C1): Cryptographically validate caller role. Block 'member' callers completely.
+  if (!info.role || (info.role !== "guild_admin" && info.role !== "super_admin")) {
+    return json({ ok: false, error: "forbidden" }, 403);
+  }
 
   const callerGuild = info.guild;
 
@@ -97,7 +98,7 @@ Deno.serve(async (req: Request) => {
   const action = (body?.action ?? "").toString();
 
   // Verify subscription status for non-Super Admin (guild_admin) callers on mutations
-  if (info.role === "guild_admin" && action !== "list" && action !== "get-password") {
+  if (info.role === "guild_admin" && action !== "list" && action !== "reset-password") {
     const active = await isSubscriptionActive(admin, callerGuild);
     if (!active) {
       return json({ ok: false, error: "subscription_expired" }, 200);
@@ -108,7 +109,6 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await admin.rpc("gm_admin_list");
     if (error) return json({ ok: false, error: "server_error" }, 200);
 
-    // FIX (C8): gm_admin_list no longer returns passwords. No password field in the list response.
     let accountsList = data ?? [];
     if (info.role === "guild_admin") {
       // Filter list: only show accounts of the same guild.
@@ -120,13 +120,12 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, accounts: accountsList });
   }
 
-  // FIX (C8): New action to retrieve a single account's password on demand.
-  // Caller must be super_admin, or a guild_admin owning the same guild as the target account.
-  if (action === "get-password") {
+  // FIX (R-02): Secure action to reset an account's password and return a new one-time password.
+  // Plaintext password retrieval (get-password) is permanently removed.
+  if (action === "reset-password") {
     const id = (body?.id ?? "").toString().trim();
     if (!id) return json({ ok: false, error: "missing_fields" }, 200);
 
-    // Fetch target account info to validate permissions
     const { data: targetAcc } = await admin
       .from("accounts")
       .select("role, guild")
@@ -135,17 +134,24 @@ Deno.serve(async (req: Request) => {
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
 
     if (info.role === "guild_admin") {
-      // Guild admins cannot retrieve super_admin passwords and can only retrieve passwords for their own guild
       if (targetAcc.role === "super_admin" || targetAcc.guild !== callerGuild) {
         return json({ ok: false, error: "forbidden" }, 200);
       }
     }
 
-    const { data: password, error: pErr } = await admin.rpc("gm_get_account_password", { p_id: id });
-    if (pErr) return json({ ok: false, error: "server_error" }, 200);
-    if (!password) return json({ ok: false, error: "not_found" }, 200);
+    const newPassword = (body?.password ?? randomSecret().slice(0, 16)).toString();
+    const { error: rpcErr } = await admin.rpc("gm_reset_account_password", { p_id: id, p_password: newPassword });
+    if (rpcErr) return json({ ok: false, error: "server_error" }, 200);
 
-    return json({ ok: true, password });
+    // Update GoTrue password if shadow user exists
+    const email = await emailFor(id);
+    const { data: list } = await admin.auth.admin.listUsers();
+    const ex = list?.users?.find((u: { email?: string }) => u.email === email);
+    if (ex) {
+      await admin.auth.admin.updateUserById(ex.id, { password: newPassword });
+    }
+
+    return json({ ok: true, password: newPassword });
   }
 
   if (action === "create") {

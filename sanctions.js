@@ -42,7 +42,7 @@
         if (count) count.textContent = sanctions.length;
 
         if (sanctions.length === 0) {
-            list.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
+            list.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_sanctions') + '</div></div>';
             return;
         }
 
@@ -105,10 +105,11 @@
             try {
                 var db = getDb();
                 if (!db) return;
+                var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
                 var res = await db.from('sanctions').insert([{
+                    guild: currentG,
                     pseudo: pseudo,
-                    comment: comment,
-                    created_by: localStorage.getItem('gm_user') || 'Admin'
+                    comment: comment
                 }]).select();
 
                 if (res.error) throw res.error;

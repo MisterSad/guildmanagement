@@ -11,53 +11,42 @@ few hours, with an incrementing number in its title.
 
 ## New
 
-- **Arms Race scoring: each Stage session counts as one event** (all
-  tenants): Stage A and Stage B are now separate participation units, keyed by
-  their session id like Defend Trade Route. A guild running two Arms Race
-  cycles in one week (e.g. CLAW on 08-05 and 08-08) no longer collapses them
-  into a single event: 2 x A + 2 x B in a week = 4 events. The change is
-  applied in sync to `window.GM.eventScoringKey`, `gm_event_scoring_key` and
-  the member-portal `eventScoringKey`.
-- **Stats only count events for the week they take place** (all tenants): an
-  event counts in the stats of the week it is scheduled in (Monday to Sunday),
-  never in the week it was launched. Sessions planned for a later week (e.g. an
-  Arms Race started this week but dated next Monday) are excluded from every
-  stats mode until their own week arrives: global leaderboard, single-event
-  (SvS/GvG), participation and the Engagement KPI. The week picker no longer
-  offers future weeks as the "current" one. Before this fix, a planned event
-  with pre-populated members inflated the participation denominator and showed
-  an empty "recent" week in Engagement.
-- **Stats load the full guild dataset via a server RPC** (all tenants): the
-  Stats page now fetches members, participation, Glory and squads through the
-  new `gm_stats_data` SECURITY DEFINER RPC instead of raw REST reads. This
-  removes the 1000-row limit that silently truncated event data for every
-  tenant with more than 1000 rows (DEMO, OMEGA, BABE, CLAW, ALPHA), so recent
-  scores and participation always show up. Role rules match the other RPCs:
-  `guild_admin` is scoped to their own guild, `super_admin` may pick any, a
-  `member` gets nothing.
-- **SaaS audit: same event flow for every tenant**: verified that event
-  creation (`buildEventSessionId` / `gm_event_session_id`), score recording
-  (`score_prep`/`score_pvp` for SvS/GvG, `score` elsewhere) and the history
-  rules are identical across ALPHA, BABE, CLAW, DEMO, IMK, OMEGA, YARR. The
-  JS and SQL session-id helpers produce the same ids, so no tenant runs a
-  different event pipeline.
-- **Per-guild payments switch** (all tenants): a new `payments_disabled`
-  flag on `guilds` turns off the self-service subscription flow for any
-  guild. The Subscription tab is hidden from the sidebar, the subscription
-  page shows a "Payments are disabled" notice instead of plan tiles, and
-  `gm-create-order` refuses to create a checkout session (server-side
-  `payments_disabled` error). The shared helper
-  `window.GM.isPaymentsDisabled(guildId)` drives the nav and the page. DEMO,
-  the public preview tenant shared in articles, has the flag enabled so
-  visitors can never start a real purchase.
-- **Shadowfront "Squad One/Two" titles now consistent on every tenant**: the
-  history RPC (`gm_list_event_sessions`) used to derive the squad name from a
-  JOIN on `event_status`, which only matched when the tenant's event_status
-  row carried the same session_id (ALPHA, DEMO). BABE, CLAW, OMEGA, YARR
-  fell back to the generic "Shadowfront" label. The display name is now
-  derived from the session id itself (SF1-* / SF2-*), so every tenant shows
-  the same "Squad One"/"Squad Two" titles.
-- **Overview "Glory this week" now shows the gain**: the tile sums the glory
+- **Anti-Collision Event Session IDs**: Daily events (DTR, Arms Race Stage A/B, Shadowfront Squad 1/2) now include a sequence suffix in their session ID (`DTR-20260812-1`, `DTR-20260812-2`, etc.), allowing multiple sessions of the same event type on the same UTC day without data collision.
+- **Mandatory Date Picker for SvS and GvG**: Launching a Server vs Server or Guild vs Guild event now requires an explicit admin-set battle date, ensuring the ISO-week session ID always matches the actual battle week.
+- **Session ID Cascade on Schedule Edit**: Editing the battle date of an active event now recalculates and cascades the `session_id` to both `event_status` and `event_participants`, keeping the ID consistent with the actual date.
+- **`gm_session_id_base()` SQL Helper**: New SQL function strips the sequence suffix from a session ID (e.g., `DTR-20260812-2` -> `DTR-20260812`) for use in future aggregation queries.
+- **`idx_event_status_guild_session` Index**: New composite index on `event_status(guild, session_id)` accelerates JOIN lookups in `gm_list_event_sessions`.
+
+---
+
+## Fixed
+
+- **CRITICAL SQL Crash in `gm_list_event_sessions`**: The ORDER BY clause was casting `session_id::timestamptz`, which throws a PostgreSQL exception for human-readable IDs like `SF1-20260812`, `ARA-20260809`, `DTR-20260812-1`. Replaced with a safe regex extraction of the YYYYMMDD date portion, with a `week_start` fallback for weekly keys.
+- **Same-Day Session Collision (DTR, Arms Race, Shadowfront)**: Starting a second DTR, Arms Race stage, or Shadowfront squad on the same UTC day now generates a unique session ID instead of silently overwriting the first session's data.
+- **Session ID Stale After Date Edit**: `editEventSchedule` / `editStageSchedule` / `editSquadSchedule` previously updated `start_at` and `week_start` but left the `session_id` pointing to the old date. If the ISO week changed, stats became incoherent. Fixed by recalculating and cascading the new `session_id`.
+- **Arms Race Historical `week_start` Backfill**: Rows for `ARMS RACE STAGE A` and `B` created before migration `20260809190000` may have had a `week_start` inconsistent with the date encoded in their session ID. A data migration recalculates `week_start` from the YYYYMMDD part of the `session_id` for all affected rows.
+- **`sessionDateFromId` Regex**: Updated to handle the new sequence-suffixed session IDs (`SF1-20260812-1`) in addition to the legacy bare format (`SF1-20260812`).
+
+---
+
+- **Server-Side Deterministic Leaderboard Engine (`gm_leaderboard` RPC)** (all tenants): Statistics scores, participation rates, glory deltas, and consistency bonuses are now calculated 100% in SQL via a `SECURITY DEFINER` function (`public.gm_leaderboard`). Eliminates client-side score discrepancies, 1000-row REST API truncation, and inconsistent calculations across devices.
+- **Secure One-Time Password Reset API** (all tenants): Replaced legacy plaintext password retrieval endpoint (`get-password`) in `admin-accounts` with a secure password reset action (`reset-password`).
+- **Atomic Shadowfront Unassign RPC (`gm_unsync_shadowfront_participant`)**: Unassigning a player from a Shadowfront squad now atomically deletes their squad assignment and cleans up their row in `event_participants`.
+- **Security Headers via `vercel.json`**: Implemented strict Content-Security-Policy (CSP), X-Frame-Options (DENY), X-Content-Type-Options (nosniff), and Referrer-Policy headers.
+- **Explicit Webhook Discord Validation**: Added strict URL scheme and hostname validation (`https://discord.com/api/webhooks/`) to block SSRF attacks on `event-reminders`.
+
+---
+
+## Fixed
+
+- **Privilege Escalation in Admin Accounts (`admin-accounts/index.ts`)**: Closed security vulnerability where `member` accounts passed implicit role checks to execute administrative actions.
+- **Multi-Tenant Isolation Constraints**: Dropped lingering `DEFAULT 'ALPHA'` values across `guild_members`, `event_participants`, `event_status`, `shadowfront_squads`, `weekly_scores`, `sanctions`, and `banned_players`. Added database foreign keys and indexes for tenant isolation.
+- **Shadowfront Re-assignment Scope Fix**: Scoped squad re-assignment deletions in `shadowfront.js` to `session_id` instead of deleting an entire week's assignments.
+- **Stats Calculation & Participation Denominator**: Excluded 'Glory' from event instance denominators, and correctly included substitute attendance (`sub_present === true`) across global leaderboard modes.
+- **Member Portal Push Preferences in Service Role Context**: Updated `gm_get_push_prefs` and `gm_set_push_prefs` RPCs to accept explicit `p_uid` parameters so service role edge function calls evaluate correctly.
+- **Member Score Overwrite Protection**: Prevented player portal score submissions from overwriting event records that have already been validated (`is_pending === false`) by a guild officer.
+- **Rate-Limiter IP Spoofing Fix**: Extracted trusted client IP using `cf-connecting-ip` / `x-real-ip` / last `x-forwarded-for` header in `player-register`.
+- **Sanctions Guild Assignment & Created By**: Explicitly passed `guild` on sanction creation and enforced `auth.uid()` default for audit logs.
   *gained* this week (each member's current week score minus their previous
   week score, floored at zero) instead of the sum of every cumulative score.
   A new member's first declaration counts in full; the tile meta now reads

@@ -87,8 +87,16 @@
     async function startEvent(tabKey, dbEventName, stage, startAt) {
         var db = getDb();
         if (!db) return;
-        var sessionId = window.GM.buildEventSessionId(dbEventName, startAt || new Date());
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        var ref = startAt || new Date();
+        // Fetch existing session_ids for this guild+event to resolve same-day collisions.
+        // buildEventSessionId will return base-1, base-2, etc. as needed.
+        var existingRes = await db.from('event_participants')
+            .select('session_id')
+            .eq('guild', currentG)
+            .eq('event_name', dbEventName);
+        var existingIds = (existingRes.data || []).map(function (r) { return r.session_id; });
+        var sessionId = window.GM.buildEventSessionId(dbEventName, ref, existingIds);
         try {
             var statusRes = await db.from('event_status').upsert(
                 {
@@ -325,8 +333,9 @@
         return p ? p.querySelector('.event-participants-area') : null;
     }
 
-    // Ces événements demandent un jour + heure de début (UTC) au lancement
-    var SCHEDULED_TABS = ['Defend Trade Route'];
+    // These events require an admin-set UTC start date before launching.
+    // SvS and GvG are included so the ISO week is always explicit and reliable.
+    var SCHEDULED_TABS = ['SvS', 'GvG', 'Defend Trade Route'];
 
     async function editEventSchedule(tabKey) {
         var db = getDb();
@@ -364,6 +373,28 @@
                       .eq('event_name', s.activeEventName)
                       .eq('session_id', s.sessionId);
                     if (updatePartRes.error) throw updatePartRes.error;
+
+                    // Recalculate session_id from the new date (weekly events: ISO week
+                    // may change; daily events: YYYYMMDD base changes). Pass [] for
+                    // existingIds because we are renaming an existing session, not
+                    // creating a new one, so no collision check is needed.
+                    var newSessionId = window.GM.buildEventSessionId(s.activeEventName, new Date(startAt), []);
+                    if (newSessionId !== s.sessionId) {
+                        var updateSidPartRes = await db.from('event_participants').update({
+                            session_id: newSessionId
+                        }).eq('guild', currentG)
+                          .eq('event_name', s.activeEventName)
+                          .eq('session_id', s.sessionId);
+                        if (updateSidPartRes.error) throw updateSidPartRes.error;
+
+                        var updateSidStatusRes = await db.from('event_status').update({
+                            session_id: newSessionId
+                        }).eq('guild', currentG)
+                          .eq('event_name', s.activeEventName);
+                        if (updateSidStatusRes.error) throw updateSidStatusRes.error;
+
+                        s.sessionId = newSessionId;
+                    }
                     
                     window.GM.showToast(t('toast_member_updated'), 'success');
                     

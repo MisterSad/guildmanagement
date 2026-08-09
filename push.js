@@ -101,10 +101,12 @@
                 });
             }
             var j = sub.toJSON();
+            var currentPseudo = window.GM && window.GM.getCurrentPseudo ? window.GM.getCurrentPseudo() : null;
             var res = await window.GM.db.rpc('save_push_subscription', {
                 p_endpoint: j.endpoint,
                 p_p256dh:   j.keys && j.keys.p256dh,
                 p_auth:     j.keys && j.keys.auth,
+                p_pseudo:   currentPseudo,
                 p_ua:       (navigator.userAgent || '').slice(0, 300)
             });
             if (res.error) throw res.error;

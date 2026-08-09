@@ -112,8 +112,20 @@
         var stg = arState.stages[stageKey];
         var evName = STAGE_EVENTS[stageKey];
         var stageLetter = stageKey === 'stageA' ? 'A' : 'B';
-        var sessionId = (stg && stg.active && stg.sessionId) ? stg.sessionId : window.GM.buildEventSessionId(evName, startAt || new Date());
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        var sessionId;
+        if (stg && stg.active && stg.sessionId) {
+            // Reuse existing session when still active (e.g. re-render after reload)
+            sessionId = stg.sessionId;
+        } else {
+            // Fetch existing session_ids for this guild+event to prevent same-day collision
+            var existingRes = await db.from('event_participants')
+                .select('session_id')
+                .eq('guild', currentG)
+                .eq('event_name', evName);
+            var existingIds = (existingRes.data || []).map(function (r) { return r.session_id; });
+            sessionId = window.GM.buildEventSessionId(evName, startAt || new Date(), existingIds);
+        }
         
         try {
             var res = await db.from('event_status').upsert(
@@ -216,6 +228,25 @@
                       .eq('event_name', STAGE_EVENTS[stageKey])
                       .eq('session_id', stg.sessionId);
                     if (updatePartRes.error) throw updatePartRes.error;
+
+                    // Recalculate session_id: pass [] to avoid collision check (renaming, not creating)
+                    var newSessionId = window.GM.buildEventSessionId(STAGE_EVENTS[stageKey], new Date(startAt), []);
+                    if (newSessionId !== stg.sessionId) {
+                        var updateSidPartRes = await db.from('event_participants').update({
+                            session_id: newSessionId
+                        }).eq('guild', currentG)
+                          .eq('event_name', STAGE_EVENTS[stageKey])
+                          .eq('session_id', stg.sessionId);
+                        if (updateSidPartRes.error) throw updateSidPartRes.error;
+
+                        var updateSidStatusRes = await db.from('event_status').update({
+                            session_id: newSessionId
+                        }).eq('guild', currentG)
+                          .eq('event_name', STAGE_EVENTS[stageKey]);
+                        if (updateSidStatusRes.error) throw updateSidStatusRes.error;
+
+                        stg.sessionId = newSessionId;
+                    }
 
                     window.GM.showToast(t('toast_member_updated'), 'success');
 

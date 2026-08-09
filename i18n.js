@@ -63,6 +63,9 @@
             btn_add:               'Add',
             card_member_list:      'Members list',
             empty_members:         'No members registered',
+            empty_sanctions:       'No sanctions recorded',
+            loading:               'Loading...',
+            toast_password_reset_success: 'Password reset successfully',
             search_placeholder:    'Search by username or UID...',
 
             /* ── Member view ───────────────────── */

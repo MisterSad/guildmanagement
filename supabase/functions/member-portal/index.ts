@@ -202,6 +202,20 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "session_inactive" }, 400);
     }
 
+    // Check existing state to prevent overwriting an officer-validated score
+    const { data: existing } = await admin
+      .from("event_participants")
+      .select("is_pending")
+      .eq("guild", member.guild)
+      .eq("event_name", eventName)
+      .eq("session_id", sessionId)
+      .eq("pseudo", member.pseudo)
+      .maybeSingle();
+
+    if (existing && existing.is_pending === false) {
+      return json({ ok: false, error: "score_already_validated" }, 400);
+    }
+
     // 3. Prepare update data
     const update: any = {
       is_pending: true
@@ -246,7 +260,9 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "update-power") {
-    const power = parseInt(payload?.power) || 0;
+    const rawPower = parseInt(payload?.power) || 0;
+    const MAX_POWER = 100_000_000;
+    const power = Math.min(Math.max(0, rawPower), MAX_POWER);
     if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
 
     // Update the player's overall_power in guild_members (and stamp the
@@ -613,7 +629,7 @@ Deno.serve(async (req: Request) => {
   if (action === "get-push-prefs") {
     // The caller's web-push notification preferences (event types they want
     // to be notified about). Resolved server-side from auth.
-    const { data, error } = await admin.rpc("gm_get_push_prefs");
+    const { data, error } = await admin.rpc("gm_get_push_prefs", { p_uid: uid });
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
     const row = (Array.isArray(data) ? data[0] : data) as { event_types?: string[] } | null;
     return json({
@@ -630,6 +646,7 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "invalid_event_types" }, 400);
     }
     const { data, error } = await admin.rpc("gm_set_push_prefs", {
+      p_uid: uid,
       p_event_types: types,
     });
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);

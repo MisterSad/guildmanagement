@@ -80,7 +80,20 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
   }
 }
 
+function isValidDiscordWebhook(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' &&
+      (u.hostname === 'discord.com' || u.hostname === 'discordapp.com') &&
+      u.pathname.startsWith('/api/webhooks/');
+  } catch { return false; }
+}
+
 async function sendDiscordWebhookWithRetry(url: string, body: any): Promise<boolean> {
+  if (!isValidDiscordWebhook(url)) {
+    console.error(`SECURITY: Invalid or untrusted Discord Webhook URL blocked: ${url}`);
+    return false;
+  }
   let attempts = 0;
   const maxAttempts = 3;
   let delay = 500; // 500ms initial backoff
@@ -222,7 +235,8 @@ serve(async (req) => {
       lockTimes[g] = {};
     }
     for (const row of (configRows || [])) {
-      const g = row.guild || 'ALPHA';
+      if (!row.guild) continue;
+      const g = row.guild;
       if (configsByGuild[g]) {
         configsByGuild[g][row.key] = row.value;
         lockTimes[g][row.key] = row.updated_at || '';
@@ -249,7 +263,7 @@ serve(async (req) => {
     // Loop through each guild tenant
     for (const guild of GUILDS) {
       const config = configsByGuild[guild];
-      const events = (allEvents || []).filter(e => (e.guild || 'ALPHA') === guild);
+      const events = (allEvents || []).filter(e => e.guild === guild);
 
       const guildTag = '@everyone';
 

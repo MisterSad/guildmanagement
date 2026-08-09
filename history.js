@@ -397,7 +397,17 @@
         renderSessionModal(eventName, sessionId, weekStart, rows, meta, isDualScore);
     }
 
+    var ALLOWED_HISTORY_FIELDS = [
+        'participated', 'score', 'score_prep', 'score_pvp',
+        'late', 'excused', 'sub_present', 'appointed', 'is_pending'
+    ];
+
     async function updateParticipantField(eventName, sessionId, weekStart, pseudo, field, value) {
+        if (ALLOWED_HISTORY_FIELDS.indexOf(field) === -1) {
+            console.error('[SECURITY] Unauthorized field update attempt in history:', field);
+            window.GM.showToast('Invalid update field', 'error');
+            return;
+        }
         var db = getDb();
         if (!db) return;
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
