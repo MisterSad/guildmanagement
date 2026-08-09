@@ -163,11 +163,37 @@ lines.append(
 )
 
 # 4. events: for each week, build event_status (sessions) + event_participants.
-#    Glory has no session_id; DTR/ARMS/SvS/GvG have a session per week; Shadowfront has squads.
+#    Session ids follow the SaaS scheme (gm_event_session_id): SvS/GvG/Glory
+#    use the ISO week, dated events use YYYYMMDD.
 
-def week_date_iso(week, hour, minute=0):
-    """Session_id in ISO form like real data: 2026-07-13T19:30:00.000Z"""
-    return f"{week}T{hour:02d}:{minute:02d}:00.000Z"
+def iso_week_key(week):
+    from datetime import date
+    y, m, d = map(int, week.split("-"))
+    iso = date(y, m, d).isocalendar()
+    return f"{iso[0]}-W{iso[1]:02d}"
+
+def date_key(week):
+    return week.replace("-", "")
+
+def event_session_id(event_name, week):
+    up = event_name.upper()
+    if up == "SVS":
+        return "SVS-" + iso_week_key(week)
+    if up == "GVG":
+        return "GVG-" + iso_week_key(week)
+    if up == "GLORY":
+        return "GLORY-" + iso_week_key(week)
+    if up == "ARMS RACE STAGE A":
+        return "ARA-" + date_key(week)
+    if up == "ARMS RACE STAGE B":
+        return "ARB-" + date_key(week)
+    if up == "DEFEND TRADE ROUTE":
+        return "DTR-" + date_key(week)
+    if up == "SHADOWFRONT SQUAD 1":
+        return "SF1-" + date_key(week)
+    if up == "SHADOWFRONT SQUAD 2":
+        return "SF2-" + date_key(week)
+    return "EV-" + date_key(week)
 
 def glory_score(pseudo, week):
     # Deterministic per (pseudo, week) so each week trends differently.
@@ -196,14 +222,16 @@ def event_participation(pseudo, week, base_rate):
         return (0, None)  # marked absent
     return (0, None)  # not present
 
-# Glory: every week, all 200 players declare a Glory score.
+# Glory: every week, all 200 players declare a Glory score under a GLORY-Wxx
+# session id (matches gm_upsert_player_glory).
 for week in WEEKS:
+    gid = event_session_id("Glory", week)
     for m in members:
         lines.append(
             "insert into public.event_participants "
-            "(event_name, week_start, pseudo, participated, score, guild, late, excused, appointed, sub_present) values "
-            f"('Glory', {sql_q(week)}, {sql_q(m['pseudo'])}, 1, {glory_score(m['pseudo'], week)}, {sql_q(GUILD)}, false, false, false, false) "
-            f"on conflict (guild, event_name, week_start, pseudo) where session_id is null do update set score = excluded.score, participated = 1;"
+            "(event_name, week_start, pseudo, participated, score, session_id, guild, late, excused, appointed, sub_present) values "
+            f"('Glory', {sql_q(week)}, {sql_q(m['pseudo'])}, 1, {glory_score(m['pseudo'], week)}, {sql_q(gid)}, {sql_q(GUILD)}, false, false, false, false) "
+            f"on conflict (guild, event_name, session_id, pseudo) where session_id is not null do update set score = excluded.score, participated = 1;"
         )
 
 # Weekly events with a session per week.
@@ -217,7 +245,7 @@ for week in WEEKS:
         ("SvS", "SvS", 14, 0.72, "svs"),
         ("GvG", "GvG", 10, 0.68, "gvg"),
     ]:
-        sid = week_date_iso(week, hour, 30)
+        sid = event_session_id(ev, week)
         session_by_event[ev] = sid
         for m in members:
             participated, _ = event_participation(m["pseudo"], week, rate)
@@ -240,7 +268,7 @@ shadow_sessions = {
     "Shadowfront Squad 2": ("2026-07-27", 23, 0),
 }
 for ev, (week, hour, minute) in shadow_sessions.items():
-    sid = week_date_iso(week, hour, minute)
+    sid = event_session_id(ev, week)
     session_by_event[ev] = sid
     # 30 assigned per squad
     squad_members = members[:30]
@@ -264,7 +292,7 @@ for ev, label in [("Defend Trade Route", "Defend Trade Route"), ("ARMS RACE STAG
         "insert into public.event_status (guild, event_name, is_active, updated_at, session_id, stage, start_at) values "
         f"({sql_q(GUILD)}, {sql_q(ev)}, false, now(), {sql_q(sid)}, "
         f"{sql_q('A') if 'STAGE A' in ev else (sql_q('B') if 'STAGE B' in ev else 'null')}, "
-        f"{sql_q(sid.replace('.000Z','+00'))}) "
+        f"null) "
         f"on conflict (guild, event_name) do update set session_id = excluded.session_id, start_at = excluded.start_at;"
     )
 

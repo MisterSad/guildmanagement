@@ -24,6 +24,35 @@
     var sessions = [];
     var activeFilter = 'All';
 
+    // ── Session date helpers ────────────────────────────────────────────────
+    // session_id is a human-readable key (ARA-20260809, SF1-20260802,
+    // SVS-2026-W32, ...). A trailing YYYYMMDD segment (or a week key) is the
+    // best stand-in for a battle date when start_at was never chosen.
+    function hasSessionDate(sessionId) {
+        if (!sessionId) return false;
+        return /-\d{8}$/.test(sessionId) || /-\d{4}-W\d{2}$/.test(sessionId);
+    }
+    function parseSessionDate(s) {
+        if (s.start_at) return new Date(s.start_at);
+        var sid = s.session_id || '';
+        var m = sid.match(/-(\d{4})(\d{2})(\d{2})$/);
+        if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+        if (s.week_start) return new Date(s.week_start + 'T12:00:00Z');
+        return null;
+    }
+    function sessionTime(s) {
+        var d = parseSessionDate(s);
+        return d && !isNaN(d.getTime()) ? d.getTime() : 0;
+    }
+    function formatSessionDate(sessionId) {
+        var m = sessionId.match(/-(\d{4})(\d{2})(\d{2})$/);
+        if (m) {
+            var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+        }
+        return sessionId;
+    }
+
     window.GM_HISTORY = { load: loadHistory };
 
     async function loadHistory() {
@@ -74,8 +103,8 @@
                     
                     // Re-sort sessions by date descending (battle date first).
                     sessions.sort(function(a, b) {
-                        var timeA = a.start_at ? new Date(a.start_at).getTime() : (a.session_id ? new Date(a.session_id).getTime() : new Date(a.week_start).getTime());
-                        var timeB = b.start_at ? new Date(b.start_at).getTime() : (b.session_id ? new Date(b.session_id).getTime() : new Date(b.week_start).getTime());
+                        var timeA = sessionTime(a);
+                        var timeB = sessionTime(b);
                         return timeB - timeA;
                     });
                 }
@@ -220,11 +249,12 @@
                 subtitleText = weekDisplay + ' (' + window.GM.formatWeek(s.week_start) + ')';
             } else {
                 // Priorité à la date du combat (start_at choisi à la création) ;
-                // repli sur le timestamp de session si aucune date de combat.
-                var dateObj = s.start_at ? new Date(s.start_at) : (s.session_id ? new Date(s.session_id) : (s.week_start ? new Date(s.week_start + 'T12:00:00Z') : null));
+                // repli sur la date encodée dans l'ID de session (ARA-20260809,
+                // SF1-20260802, ...), sinon sur la semaine.
+                var dateObj = parseSessionDate(s);
                 if (dateObj && !isNaN(dateObj.getTime())) {
                     leftTopStr = pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1) + '/' + dateObj.getUTCFullYear();
-                    if (s.start_at || s.session_id) {
+                    if (s.start_at || hasSessionDate(s.session_id)) {
                         leftSubStr = pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes()) + ' UTC';
                         subtitleText = dateObj.toLocaleDateString('fr-FR', {
                             day: '2-digit', month: '2-digit', year: 'numeric',
@@ -383,8 +413,8 @@
         var existing = document.getElementById('history-modal');
         if (existing) existing.remove();
 
-        var when = sessionId
-            ? new Date(sessionId).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        var when = sessionId && hasSessionDate(sessionId)
+            ? formatSessionDate(sessionId)
             : t('history_week_only');
 
         var sorted = rows.slice().sort(function (a, b) {

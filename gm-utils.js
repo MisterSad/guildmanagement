@@ -262,6 +262,51 @@
         return new Date().toISOString();
     }
 
+    // ── Human-readable event session ids (SaaS, all tenants) ────────────────
+    // Every event session gets a deterministic, chronologically-sortable id
+    // built from its type and battle date, so a re-Start of the same event
+    // reuses the same session (no ghost duplicates). Mirrors the SQL helper
+    // public.gm_event_session_id.
+    //   SvS -> SVS-YYYY-Www | GvG -> GVG-YYYY-Www | Glory -> GLORY-YYYY-Www
+    //   ARMS A/B -> ARA-/ARB-YYYYMMDD | DTR -> DTR-YYYYMMDD
+    //   Shadowfront S1/S2 -> SF1-/SF2-YYYYMMDD
+    function isoWeekKey(dateStr) {
+        var d = dateStr ? new Date(dateStr) : new Date();
+        if (isNaN(d.getTime())) d = new Date();
+        // Force UTC to match the SQL to_char(..., 'IYYY-"W"IW').
+        var utc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+        var dayNum = utc.getUTCDay() || 7; // Mon=1 ... Sun=7
+        utc.setUTCDate(utc.getUTCDate() + 4 - dayNum);
+        var year = utc.getUTCFullYear();
+        var firstThu = new Date(Date.UTC(year, 0, 4));
+        var firstMon = new Date(firstThu.getTime() - ((firstThu.getUTCDay() || 7) - 1) * 86400000);
+        var week = Math.floor((utc - firstMon) / 86400000 / 7) + 1;
+        var isoYear = utc.getUTCFullYear();
+        return isoYear + '-W' + (week < 10 ? '0' : '') + week;
+    }
+
+    function dateKey(dateStr) {
+        var d = dateStr ? new Date(dateStr) : new Date();
+        if (isNaN(d.getTime())) d = new Date();
+        return d.getUTCFullYear() +
+            (d.getUTCMonth() + 1 < 10 ? '0' : '') + (d.getUTCMonth() + 1) +
+            (d.getUTCDate() < 10 ? '0' : '') + d.getUTCDate();
+    }
+
+    function buildEventSessionId(eventName, startAt) {
+        var up = (eventName || '').toUpperCase();
+        var ref = startAt || new Date();
+        if (up === 'SVS') return 'SVS-' + isoWeekKey(ref);
+        if (up === 'GVG') return 'GVG-' + isoWeekKey(ref);
+        if (up === 'GLORY') return 'GLORY-' + isoWeekKey(ref);
+        if (up === 'ARMS RACE STAGE A') return 'ARA-' + dateKey(ref);
+        if (up === 'ARMS RACE STAGE B') return 'ARB-' + dateKey(ref);
+        if (up === 'DEFEND TRADE ROUTE') return 'DTR-' + dateKey(ref);
+        if (up === 'SHADOWFRONT SQUAD 1') return 'SF1-' + dateKey(ref);
+        if (up === 'SHADOWFRONT SQUAD 2') return 'SF2-' + dateKey(ref);
+        return newSessionId();
+    }
+
     // Bloque les caractères HTML/JS dangereux + caractères de contrôle.
     // Limite à 32 caractères max. Retourne null si OK, sinon une clé i18n d'erreur.
     function validatePseudo(pseudo) {
@@ -922,6 +967,7 @@
         getPrevWeekStart: getPrevWeekStart,
         formatWeek: formatWeek,
         newSessionId: newSessionId,
+        buildEventSessionId: buildEventSessionId,
         formatDateTimeUTC: formatDateTimeUTC,
         pickEventStart: pickEventStart,
         showToast: showToast,

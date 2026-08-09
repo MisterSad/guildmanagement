@@ -214,7 +214,7 @@
         var sq = sfState.squads[squad];
         // Un squad terminé ne réutilise pas son ancienne session : un nouveau
         // Start doit démarrer une composition fraîche.
-        var sessionId = (sq && sq.sessionId && !sq.ended) ? sq.sessionId : window.GM.newSessionId();
+        var sessionId = (sq && sq.sessionId && !sq.ended) ? sq.sessionId : window.GM.buildEventSessionId(SQUAD_EVENT[squad], startAt || new Date());
         if (sq) sq.ended = false;
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
@@ -464,7 +464,7 @@
         // Si la session n'existe pas encore, la créer automatiquement (inactive) pour permettre la composition avant le lancement
         // Un squad terminé repart aussi sur une session neuve.
         if (!sq.sessionId || sq.ended) {
-            sq.sessionId = window.GM.newSessionId();
+            sq.sessionId = window.GM.buildEventSessionId(SQUAD_EVENT[squad], sq.startAt || new Date());
             sq.ended = false;
             try {
                 await db.from('event_status').upsert({

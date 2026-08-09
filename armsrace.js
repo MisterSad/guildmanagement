@@ -105,9 +105,9 @@
         var db = getDb();
         if (!db) return;
         var stg = arState.stages[stageKey];
-        var sessionId = (stg && stg.active && stg.sessionId) ? stg.sessionId : window.GM.newSessionId();
         var evName = STAGE_EVENTS[stageKey];
         var stageLetter = stageKey === 'stageA' ? 'A' : 'B';
+        var sessionId = (stg && stg.active && stg.sessionId) ? stg.sessionId : window.GM.buildEventSessionId(evName, startAt || new Date());
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         
         try {

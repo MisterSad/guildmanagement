@@ -288,3 +288,33 @@ describe('canWriteGuild (role-based write access)', () => {
         expect(GM.canWriteGuild('OMEGA')).toBe(false);
     });
 });
+
+describe('buildEventSessionId (deterministic event ids, all tenants)', () => {
+    it('weekly events use the ISO week of the battle date', () => {
+        expect(GM.buildEventSessionId('SvS', '2026-08-03T19:00:00Z')).toBe('SVS-2026-W32');
+        expect(GM.buildEventSessionId('GvG', '2026-08-03T00:00:00Z')).toBe('GVG-2026-W32');
+        expect(GM.buildEventSessionId('Glory', '2026-08-03T12:00:00Z')).toBe('GLORY-2026-W32');
+        expect(GM.buildEventSessionId('SvS', '2026-08-02T18:00:00Z')).toBe('SVS-2026-W31');
+    });
+
+    it('dated events use YYYYMMDD of the battle date', () => {
+        expect(GM.buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z')).toBe('ARA-20260809');
+        expect(GM.buildEventSessionId('ARMS RACE STAGE B', '2026-08-09T12:00:00Z')).toBe('ARB-20260809');
+        expect(GM.buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z')).toBe('DTR-20260808');
+    });
+
+    it('shadowfront squads get their own prefix', () => {
+        expect(GM.buildEventSessionId('Shadowfront Squad 1', '2026-08-02T12:00:00Z')).toBe('SF1-20260802');
+        expect(GM.buildEventSessionId('Shadowfront Squad 2', '2026-08-05T12:00:00Z')).toBe('SF2-20260805');
+    });
+
+    it('the same battle date yields the same id (re-start reuses the session)', () => {
+        const a = GM.buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z');
+        const b = GM.buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T18:00:00Z');
+        expect(a).toBe(b);
+    });
+
+    it('unknown event names fall back to a timestamp', () => {
+        expect(GM.buildEventSessionId('Something Else')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+});

@@ -86,7 +86,7 @@
     async function startEvent(tabKey, dbEventName, stage, startAt) {
         var db = getDb();
         if (!db) return;
-        var sessionId = window.GM.newSessionId();
+        var sessionId = window.GM.buildEventSessionId(dbEventName, startAt || new Date());
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
             var statusRes = await db.from('event_status').upsert(
@@ -217,7 +217,7 @@
                 s.participants.push({
                     event_name:   s.activeEventName,
                     session_id:   s.sessionId,
-                    week_start:   window.GM.getWeekStart(matched.start_at || new Date(s.sessionId)),
+                    week_start:   window.GM.getWeekStart(matched.start_at || new Date()),
                     pseudo:       pseudo,
                     participated: 0,
                     score:        null

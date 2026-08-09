@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-08
 
+### Changed
+- **Human-readable event session ids across every tenant**: each event session now carries a deterministic, chronologically-sortable id built from its type and battle date: `SVS-2026-W32` / `GVG-2026-W32` / `GLORY-2026-W32` (ISO week) and `ARA-20260809` / `ARB-20260809` / `DTR-20260809` / `SF1-20260802` / `SF2-20260805` (YYYYMMDD). Starting an event that already has a session for the same date reuses it, so duplicate "ghost" sessions can no longer be created. The SQL helper `gm_event_session_id` and the frontend `window.GM.buildEventSessionId` stay in sync; all historical sessions were migrated (existing data fused where duplicates existed, no scores or participation lost) and `Glory` is now keyed by `GLORY-YYYY-Www`.
+- **Participation rates count distinct sessions**: `gm_personal_kpis` and the attendance dashboard previously counted every participant row, so a player listed in two sessions of the same event was counted twice and guild totals could read "5/7" for 5 real events. Rates now use `count(distinct session_id)`.
+
 ### Added
 - **Login page footer**: the sign-in screen now shows "Developed by HawkEye #1058" centered at the bottom, under the Discord button.
 - **Portal access badge on member tiles**: the member list now shows a small green "Portal" chip next to any member whose in-game UID matches a validated player account (role `member`, status `active`). It makes it obvious at a glance who has registered and been approved on the Player Portal. Pending registrations and admin accounts do not get the badge.

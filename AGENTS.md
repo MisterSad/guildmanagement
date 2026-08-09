@@ -53,6 +53,43 @@ read/write any guild data through the REST API.**
 5. When a player transfers guilds, their account's `guild` column follows
    them (`transfer_guild_member` / `resolve_guild_transfer`).
 
+### SaaS rule (CRITICAL — never develop for a single tenant)
+
+This is a multi-tenant SaaS. **Every feature, migration, fix, edge function or
+SQL change must apply to ALL tenants** (ALPHA, OMEGA, IMK, BABE, CLAW, YARR,
+DEMO, and any future guild). Never write per-tenant logic, never special-case
+one guild, never "fix" only the guild that reported an issue. Verify the
+impact across tenants in the same change.
+
+### Event session ids (SaaS scheme)
+
+Every event session carries a deterministic, chronologically-sortable
+`session_id` built from the event type and its battle date, so a re-Start of
+the same event reuses the same session (no ghost duplicates). **The SQL helper
+`public.gm_event_session_id(text, date)` and the frontend
+`window.GM.buildEventSessionId(eventName, date)` MUST stay in sync** — change
+both, never one.
+
+- SvS → `SVS-YYYY-Www` (ISO week of the battle date)
+- GvG → `GVG-YYYY-Www`
+- Glory → `GLORY-YYYY-Www` (weekly, keyed by `week_start`)
+- ARMS RACE STAGE A/B → `ARA-`/`ARB-YYYYMMDD`
+- Defend Trade Route → `DTR-YYYYMMDD`
+- Shadowfront Squad 1/2 → `SF1-`/`SF2-YYYYMMDD`
+
+Rules:
+- Never cast `session_id` to a timestamp (`session_id::timestamptz`): it is a
+  key, not a date. Derive dates from `event_status.start_at` (battle date),
+  falling back to `updated_at` or `week_start`.
+- A guild must never hold two sessions with the same `session_id` for the
+  same event: if the UI or an RPC would mint one, reuse the existing session
+  instead (see `startEvent`, `startStage`, `startSquad`).
+- Glory rows carry a `GLORY-YYYY-Www` session id (not NULL); the upsert uses
+  the `event_participants_session_unique` index.
+- Participation rates count **distinct sessions** per player, never rows
+  (`gm_personal_kpis`, stats.js), or duplicate sessions would inflate them.
+
+
 ---
 
 ## 3. Database security model (CRITICAL)
