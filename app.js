@@ -1113,24 +1113,40 @@
         // Target 0: Pending player registrations (role member, status pending)
         renderPendingRegistrations(activeG);
 
-        // Target 1: Admin Section (#account-list) - accounts for current active guild only
-        var containerR4 = document.getElementById('account-list');
-        var countR4 = document.getElementById('account-count');
-        if (containerR4) {
-            var listR4 = accounts.filter(function (acc) {
-                if (acc.status === 'pending') return false;
-                var accGuild = acc.guild || 'ALPHA';
-                var isR5 = (acc.role === 'super_admin');
-                // Super Admin account ONLY shown when activeG is ALPHA
-                if (isR5) {
-                    return true;
-                }
-                return accGuild === activeG;
-            });
-            renderAccountCardsToContainer(containerR4, countR4, listR4, isSuperAdminUser);
+        // Active accounts for current active guild (status !== 'pending')
+        var activeAccounts = accounts.filter(function (acc) {
+            if (acc.status === 'pending') return false;
+            var accGuild = acc.guild || 'ALPHA';
+            var isR5 = (acc.role === 'super_admin');
+            if (isR5) return true;
+            return accGuild === activeG;
+        });
+
+        // 1. Admin Accounts (super_admin & guild_admin)
+        var adminAccountsList = activeAccounts.filter(function (acc) {
+            return acc.role !== 'member';
+        });
+
+        // 2. Member Accounts (role === 'member')
+        var memberAccountsList = activeAccounts.filter(function (acc) {
+            return acc.role === 'member';
+        });
+
+        // Target 1: Admin Section (#account-list)
+        var containerAdmin = document.getElementById('account-list');
+        var countAdmin = document.getElementById('account-count');
+        if (containerAdmin) {
+            renderAccountCardsToContainer(containerAdmin, countAdmin, adminAccountsList, isSuperAdminUser);
         }
 
-        // Target 2: Super Admin Section (#superadmin-account-list) - all R4 admin accounts across guilds
+        // Target 1b: Member Section (#member-account-list)
+        var containerMember = document.getElementById('member-account-list');
+        var countMember = document.getElementById('member-account-count');
+        if (containerMember) {
+            renderAccountCardsToContainer(containerMember, countMember, memberAccountsList, isSuperAdminUser);
+        }
+
+        // Target 2: Super Admin Section (#superadmin-account-list) - all admin accounts across guilds
         var containerR5 = document.getElementById('superadmin-account-list');
         var countR5 = document.getElementById('superadmin-account-count');
         if (containerR5) {
@@ -1159,8 +1175,16 @@
         var html = '<div class="gm-cred-grid">';
         listToRender.forEach(function (acc) {
             var role = acc.role || 'guild_admin';
-            var roleLabel = role === 'super_admin' ? 'Super Admin' : 'Admin';
-            var chipCls = role === 'super_admin' ? 'gm-chip-accent' : 'gm-chip-info';
+            var roleLabel = 'Admin';
+            var chipCls = 'gm-chip-info';
+
+            if (role === 'super_admin') {
+                roleLabel = 'Super Admin';
+                chipCls = 'gm-chip-accent';
+            } else if (role === 'member') {
+                roleLabel = 'Member';
+                chipCls = 'gm-chip-lilac';
+            }
             var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
             var guildLabel = acc.guild ? 'Guild: ' + acc.guild : 'All Guilds';
             var guildCls = acc.guild ? 'gm-chip-warning' : 'gm-chip-success';
