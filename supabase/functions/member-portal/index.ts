@@ -53,7 +53,7 @@ async function getIdentity(
 async function getPlayer(admin: ReturnType<typeof createClient>, uid: string) {
   const { data, error } = await admin
     .from("guild_members")
-    .select("pseudo, guild, overall_power, timezone_offset")
+    .select("pseudo, guild, overall_power, timezone_offset, power_updated_at")
     .eq("uid", uid)
     .maybeSingle();
   if (error || !data) return null;
@@ -68,6 +68,13 @@ function getWeekStartIso(date: Date): string {
   const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));  const pad = (n: number) => String(n).padStart(2, "0");
   return `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`;
+}
+
+// Monday of the previous week (YYYY-MM-DD).
+function getPrevWeekStartIso(weekStart: string): string {
+  const d = new Date(weekStart + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() - 7);
+  return getWeekStartIso(d);
 }
 
 // Participation scoring key, mirrors gm_event_scoring_key (SQL) and
@@ -241,10 +248,11 @@ Deno.serve(async (req: Request) => {
     const power = parseInt(payload?.power) || 0;
     if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
 
-    // Update the player's overall_power in guild_members
+    // Update the player's overall_power in guild_members (and stamp the
+    // power refresh for the weekly "keep your power current" challenge).
     const { error: uErr } = await admin
       .from("guild_members")
-      .update({ overall_power: power })
+      .update({ overall_power: power, power_updated_at: new Date().toISOString() })
       .eq("uid", uid);
 
     if (uErr) {
@@ -498,6 +506,79 @@ Deno.serve(async (req: Request) => {
       overall_power: full.overall_power || 0,
       attended: attended,
       glory_best: gloryBest
+    });
+  }
+
+  if (action === "get-weekly-challenges") {
+    // Weekly challenges + season progression, computed server-side.
+    //   - events: attend 1/3/5 distinct events this week (scoring key)
+    //   - glory:  submit a positive Glory score this week
+    //   - power:  refresh your power this week
+    // Season = the last 4 weeks; each completed challenge adds 1 point.
+    const member = await getPlayer(admin, uid);
+    if (!member) return json({ ok: false, error: "player_not_found" }, 200);
+
+    const week = getWeekStartIso(new Date());
+    const prevWeek = getPrevWeekStartIso(week);
+    const prevPrev = getPrevWeekStartIso(prevWeek);
+    const prev3 = getPrevWeekStartIso(prevPrev);
+
+    // Distinct events attended this week (and over the season window).
+    const { data: partRows, error: pErr } = await admin
+      .from("event_participants")
+      .select("event_name, session_id, week_start")
+      .eq("guild", member.guild)
+      .eq("pseudo", member.pseudo)
+      .neq("event_name", "Glory")
+      .or(`participated.gt.0,sub_present.eq.true`);
+    if (pErr) return json({ ok: false, error: "db_error", message: pErr.message }, 500);
+
+    const attended = new Set<string>();
+    const seasonAttended = new Set<string>();
+    for (const r of partRows ?? []) {
+      const key = eventScoringKey(r.event_name, r.session_id, r.week_start);
+      if (!key) continue;
+      if (r.week_start === week) attended.add(key);
+      if (r.week_start >= prev3 && r.week_start <= week) seasonAttended.add(key);
+    }
+
+    // Glory this week: a positive Glory row exists for the current week.
+    const { data: gloryThisWeek, error: gwErr } = await admin
+      .from("event_participants")
+      .select("score")
+      .eq("guild", member.guild)
+      .eq("pseudo", member.pseudo)
+      .eq("event_name", "Glory")
+      .eq("week_start", week)
+      .gt("score", 0)
+      .limit(1);
+    if (gwErr) return json({ ok: false, error: "db_error", message: gwErr.message }, 500);
+    const gloryDone = (gloryThisWeek ?? []).length > 0;
+
+    // Power refreshed this week?
+    const powerDone = !!member.power_updated_at &&
+      new Date(member.power_updated_at).getTime() >= new Date(week + "T00:00:00Z").getTime();
+
+    const eventsCount = attended.size;
+    const challenges = [
+      { id: "events1", label: "Attend 1 event this week", icon: "ph-calendar-check", done: eventsCount >= 1, progress: Math.min(eventsCount, 1), target: 1 },
+      { id: "events3", label: "Attend 3 events this week", icon: "ph-lightning", done: eventsCount >= 3, progress: Math.min(eventsCount, 3), target: 3 },
+      { id: "events5", label: "Attend 5 events this week", icon: "ph-star", done: eventsCount >= 5, progress: Math.min(eventsCount, 5), target: 5 },
+      { id: "glory", label: "Submit your Glory score", icon: "ph-trophy", done: gloryDone, progress: gloryDone ? 1 : 0, target: 1 },
+      { id: "power", label: "Refresh your power", icon: "ph-gauge", done: powerDone, progress: powerDone ? 1 : 0, target: 1 }
+    ];
+
+    // Season: total events attended over the window as a rough score.
+    const seasonScore = seasonAttended.size;
+    const level = seasonScore >= 15 ? "Gold" : seasonScore >= 8 ? "Silver" : seasonScore >= 3 ? "Bronze" : "None";
+
+    return json({
+      ok: true,
+      week,
+      challenges,
+      completed: challenges.filter((c) => c.done).length,
+      total: challenges.length,
+      season: { level, events: seasonScore }
     });
   }
 

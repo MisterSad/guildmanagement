@@ -11,6 +11,12 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Weekly challenges + season progression (Player Portal)**: a new
+  "Challenges" tab shows weekly goals computed server-side: attend 1/3/5
+  events this week (via the shared scoring key), submit your Glory score, and
+  refresh your power. A season summary (last 4 weeks) shows your total events
+  and a Bronze/Silver/Gold season rank. Completed challenges are checked off;
+  progress bars update live.
 - **Scouting tool (super admin)**: track rival guild rosters over time. Paste
   a roster (one "pseudo, power" per line, quotes and thousand separators
   accepted), capture a snapshot per guild, and see each player's latest power

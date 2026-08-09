@@ -113,6 +113,7 @@
         var navItems = [
             { id: 'settings', icon: 'ph-cardholder', label: 'My Info' },
             { id: 'dashboard', icon: 'ph-chart-line-up', label: 'My Progress' },
+            { id: 'challenges', icon: 'ph-target', label: 'Challenges' },
             { id: 'absence', icon: 'ph-user-minus', label: 'Absence' },
             { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
             { id: 'badges', icon: 'ph-trophy', label: 'Badges' }
@@ -171,6 +172,7 @@
                     '<div class="gm-content">' +
                         '<div class="gm-page">' +
                             '<div id="portal-panel-dashboard" class="gm-page portal-panel"></div>' +
+                            '<div id="portal-panel-challenges" class="gm-page portal-panel hidden"></div>' +
                             '<div id="portal-panel-badges" class="gm-page portal-panel hidden"></div>' +
                             '<div id="portal-panel-events" class="gm-page portal-panel hidden"></div>' +
                             '<div id="portal-panel-absence" class="gm-page portal-panel hidden"></div>' +
@@ -200,12 +202,15 @@
             root.querySelectorAll('[data-portal-nav]').forEach(function (b) {
                 b.classList.toggle('gm-active', b.getAttribute('data-portal-nav') === tabId);
             });
-            ['dashboard', 'badges', 'events', 'absence', 'settings'].forEach(function (name) {
+            ['dashboard', 'challenges', 'badges', 'events', 'absence', 'settings'].forEach(function (name) {
                 var panel = document.getElementById('portal-panel-' + name);
                 if (panel) panel.classList.toggle('hidden', name !== portalState.activeTab);
             });
             if (portalState.activeTab === 'dashboard' && !portalState.chartsDrawn) {
                 renderDashboardPanel();
+            }
+            if (portalState.activeTab === 'challenges') {
+                renderChallengesPanel();
             }
             if (portalState.activeTab === 'badges' && !portalState.badgesLoaded) {
                 renderBadgesPanel();
@@ -601,6 +606,63 @@
             ctx.textAlign = 'center';
             ctx.fillText((h.week_start || h.session_id || '').toString().slice(5, 10), x, padT + chartH + 17);
         });
+    }
+
+    // ─── Panel: Weekly challenges + season progression ─────────────────────
+    function renderChallengesPanel() {
+        var panel = document.getElementById('portal-panel-challenges');
+        if (!panel) return;
+        panel.innerHTML =
+            '<header class="gm-page-header">' +
+                '<div>' +
+                    '<h1 class="gm-page-title">Challenges</h1>' +
+                    '<p class="gm-page-subtitle">Weekly goals and your season progress</p>' +
+                '</div>' +
+            '</header>' +
+            '<div id="portal-challenges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading challenges...</div></div></div>';
+        loadChallengesPanel();
+    }
+
+    function renderChallengeCard(challenge) {
+        var cls = challenge.done ? 'portal-challenge done' : 'portal-challenge';
+        var pct = challenge.target > 0 ? Math.min(100, Math.round(challenge.progress / challenge.target * 100)) : 0;
+        return '<div class="' + cls + '">' +
+                    '<div class="portal-challenge-icon"><i class="ph ' + challenge.icon + '"></i></div>' +
+                    '<div class="portal-challenge-info">' +
+                        '<div class="portal-challenge-name">' + esc(challenge.label) + '</div>' +
+                        '<div class="portal-challenge-progress"><div class="portal-challenge-progress-fill" style="width:' + pct + '%; background:' + (challenge.done ? 'var(--success)' : 'var(--accent)') + ';"></div></div>' +
+                    '</div>' +
+                    '<div class="portal-challenge-state">' +
+                        (challenge.done ? '<i class="ph ph-check-circle" style="color:var(--success);"></i>' : '<span class="portal-challenge-count">' + challenge.progress + '/' + challenge.target + '</span>') +
+                    '</div>' +
+                '</div>';
+    }
+
+    async function loadChallengesPanel() {
+        var body = document.getElementById('portal-challenges-body');
+        if (!body) return;
+        var res = await invoke('get-weekly-challenges', {});
+        if (!res.ok) {
+            body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load challenges.</div><div class="gm-empty-sub">' + esc(res.error || 'unknown error') + '</div></div>';
+            return;
+        }
+
+        var levelMeta = {
+            'None': { label: 'No season rank yet', color: 'var(--fg-dim)' },
+            'Bronze': { label: 'Bronze season', color: '#cd7f32' },
+            'Silver': { label: 'Silver season', color: '#c0c0c0' },
+            'Gold': { label: 'Gold season', color: '#ffd700' }
+        }[res.season.level] || { label: res.season.level, color: 'var(--accent)' };
+
+        var cards = res.challenges.map(renderChallengeCard).join('');
+
+        body.innerHTML =
+            '<div class="portal-challenges-summary">' +
+                '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value">' + res.completed + '/' + res.total + '</span><span class="portal-challenges-summary-label">challenges done this week</span></div>' +
+                '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" style="color:' + levelMeta.color + ';">' + res.season.events + '</span><span class="portal-challenges-summary-label">events over the season</span></div>' +
+                '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" style="color:' + levelMeta.color + ';">' + levelMeta.label + '</span><span class="portal-challenges-summary-label">season</span></div>' +
+            '</div>' +
+            '<div class="portal-challenge-list">' + cards + '</div>';
     }
 
     // ─── Panel: Badges (gamification) ─────────────────────────────────────
