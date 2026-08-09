@@ -157,10 +157,12 @@
         if (!s.activeEventName || !s.sessionId) return;
 
         var week = window.GM.getWeekStart(s.startAt);
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         var rpcRes = await db.rpc('gm_populate_event_participants', {
             p_event_name: s.activeEventName,
             p_session_id: s.sessionId,
-            p_week_start: week
+            p_week_start: week,
+            p_guild: currentG
         });
 
         if (rpcRes.error) {
@@ -254,12 +256,14 @@
         if (!db) return;
         var s = state[tabKey];
         if (!s.activeEventName || !s.sessionId) return;
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         var [partRes, memRes] = await Promise.all([
             db.from('event_participants').select('*')
+                .eq('guild', currentG)
                 .eq('event_name', s.activeEventName)
                 .eq('session_id', s.sessionId)
                 .order('pseudo', { ascending: true }),
-            db.from('guild_members').select('pseudo, uid')
+            db.from('guild_members').select('pseudo, uid').eq('guild', currentG)
         ]);
         if (partRes.error) return;
         (memRes.data || []).forEach(function (m) { uidMap[m.pseudo] = m.uid; });
@@ -272,7 +276,9 @@
         var db = getDb();
         if (!db) return;
         var s = state[tabKey];
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         await db.from('event_participants').update({ participated: value })
+            .eq('guild', currentG)
             .eq('event_name', s.activeEventName)
             .eq('session_id', s.sessionId)
             .eq('pseudo', pseudo);
@@ -282,7 +288,9 @@
         var db = getDb();
         if (!db) return;
         var s = state[tabKey];
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         await db.from('event_participants').update({ appointed: value })
+            .eq('guild', currentG)
             .eq('event_name', s.activeEventName)
             .eq('session_id', s.sessionId)
             .eq('pseudo', pseudo);
@@ -298,10 +306,12 @@
         var db = getDb();
         if (!db) return;
         var s = state[tabKey];
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         var num = window.GM.parseNumber(value);
         var update = {};
         update[field] = num;
         await db.from('event_participants').update(update)
+            .eq('guild', currentG)
             .eq('event_name', s.activeEventName)
             .eq('session_id', s.sessionId)
             .eq('pseudo', pseudo);
@@ -323,8 +333,10 @@
         var s = state[tabKey];
         if (!s.activeEventName || !s.sessionId) return;
         
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
             var res = await db.from('event_status').select('start_at')
+                .eq('guild', currentG)
                 .eq('event_name', s.activeEventName).single();
             if (res.error) throw res.error;
             
@@ -340,13 +352,15 @@
                     var updateRes = await db.from('event_status').update({
                         start_at: startAt,
                         updated_at: new Date().toISOString()
-                    }).eq('event_name', s.activeEventName);
+                    }).eq('guild', currentG)
+                      .eq('event_name', s.activeEventName);
                     if (updateRes.error) throw updateRes.error;
 
                     var newWeek = window.GM.getWeekStart(startAt);
                     var updatePartRes = await db.from('event_participants').update({
                         week_start: newWeek
-                    }).eq('event_name', s.activeEventName)
+                    }).eq('guild', currentG)
+                      .eq('event_name', s.activeEventName)
                       .eq('session_id', s.sessionId);
                     if (updatePartRes.error) throw updatePartRes.error;
                     
@@ -379,14 +393,17 @@
             '<strong>' + esc(s.activeEventName) + '</strong><br>' + t('confirm_delete_session_body'),
             async function () {
                 try {
+                    var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
                     var delPartRes = await db.from('event_participants')
                         .delete()
+                        .eq('guild', currentG)
                         .eq('event_name', s.activeEventName)
                         .eq('session_id', s.sessionId);
                     if (delPartRes.error) throw delPartRes.error;
                     
                     var delStatusRes = await db.from('event_status')
                         .delete()
+                        .eq('guild', currentG)
                         .eq('event_name', s.activeEventName);
                     if (delStatusRes.error) throw delStatusRes.error;
                     

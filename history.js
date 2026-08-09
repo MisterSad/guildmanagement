@@ -601,7 +601,9 @@
                             var db = getDb();
                             if (!db) return;
                             // 1. Delete matching participants in event_participants
+                            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
                             var query = db.from('event_participants').delete()
+                                .eq('guild', currentG)
                                 .eq('event_name', eventName)
                                 .eq('week_start', weekStart);
                             
@@ -618,6 +620,7 @@
                             if (eventName === 'Shadowfront' && sessionId) {
                                 var delSquadRes = await db.from('shadowfront_squads')
                                     .delete()
+                                    .eq('guild', currentG)
                                     .eq('session_id', sessionId);
                                 if (delSquadRes.error) throw delSquadRes.error;
                             }
@@ -626,6 +629,7 @@
                             if (sessionId) {
                                 var delStatusRes = await db.from('event_status')
                                     .delete()
+                                    .eq('guild', currentG)
                                     .eq('session_id', sessionId);
                                 if (delStatusRes.error) throw delStatusRes.error;
                             }

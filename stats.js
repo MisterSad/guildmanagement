@@ -842,6 +842,7 @@
         var activeEvents = statusRes.data || [];
         var importedRes = await db.from('event_participants')
             .select('session_id', { count: 'exact', head: true })
+            .eq('guild', g)
             .in('session_id', activeEvents.map(function (s) { return s.session_id; }).filter(Boolean));
         var importedCount = importedRes.count || 0;
         var completeness = activeEvents.length > 0 && memberCount > 0 ? Math.min(100, Math.round(importedCount / (activeEvents.length * memberCount) * 100)) : 0;

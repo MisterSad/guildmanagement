@@ -60,7 +60,9 @@
                 .filter(Boolean);
 
             if (sids.length) {
+                var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
                 var partRes = await db.from('event_participants').select('*')
+                    .eq('guild', currentG)
                     .in('event_name', [STAGE_EVENTS.stageA, STAGE_EVENTS.stageB])
                     .in('session_id', sids)
                     .order('pseudo', { ascending: true });
@@ -77,12 +79,15 @@
                     // Self-heal: active stage with 0 participants ⇒ trigger gm_populate_event_participants
                     if (arState.stages[k].active && sid && arState.stages[k].participants.length === 0) {
                         var week = window.GM.getWeekStart(arState.stages[k].startAt);
+                        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
                         await db.rpc('gm_populate_event_participants', {
                             p_event_name: evName,
                             p_session_id: sid,
-                            p_week_start: week
+                            p_week_start: week,
+                            p_guild: currentG
                         });
                         var healRes = await db.from('event_participants').select('*')
+                            .eq('guild', currentG)
                             .eq('event_name', evName)
                             .eq('session_id', sid)
                             .order('pseudo', { ascending: true });
@@ -130,7 +135,8 @@
             var rpcRes = await db.rpc('gm_populate_event_participants', {
                 p_event_name: evName,
                 p_session_id: sessionId,
-                p_week_start: week
+                p_week_start: week,
+                p_guild: currentG
             });
 
             if (rpcRes.error) throw rpcRes.error;
@@ -180,7 +186,9 @@
         if (!stg || !stg.active || !stg.sessionId) return;
 
         try {
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             var res = await db.from('event_status').select('start_at')
+                .eq('guild', currentG)
                 .eq('event_name', STAGE_EVENTS[stageKey]).single();
             if (res.error) throw res.error;
 
@@ -193,16 +201,19 @@
                 if (!startAt) return;
 
                 try {
+                    var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
                     var updateRes = await db.from('event_status').update({
                         start_at: startAt,
                         updated_at: new Date().toISOString()
-                    }).eq('event_name', STAGE_EVENTS[stageKey]);
+                    }).eq('guild', currentG)
+                      .eq('event_name', STAGE_EVENTS[stageKey]);
                     if (updateRes.error) throw updateRes.error;
 
                     var newWeek = window.GM.getWeekStart(startAt);
                     var updatePartRes = await db.from('event_participants').update({
                         week_start: newWeek
-                    }).eq('event_name', STAGE_EVENTS[stageKey])
+                    }).eq('guild', currentG)
+                      .eq('event_name', STAGE_EVENTS[stageKey])
                       .eq('session_id', stg.sessionId);
                     if (updatePartRes.error) throw updatePartRes.error;
 
@@ -235,14 +246,17 @@
             '<strong>Arms Race ' + esc(stageLabel(stageKey)) + '</strong><br>' + t('confirm_delete_session_body'),
             async function () {
                 try {
+                    var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
                     var delPartRes = await db.from('event_participants')
                         .delete()
+                        .eq('guild', currentG)
                         .eq('event_name', STAGE_EVENTS[stageKey])
                         .eq('session_id', stg.sessionId);
                     if (delPartRes.error) throw delPartRes.error;
 
                     var delStatusRes = await db.from('event_status')
                         .delete()
+                        .eq('guild', currentG)
                         .eq('event_name', STAGE_EVENTS[stageKey]);
                     if (delStatusRes.error) throw delStatusRes.error;
 
@@ -260,7 +274,9 @@
         var db = getDb();
         if (!db) return;
         var stg = arState.stages[arActiveStage];
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         await db.from('event_participants').update({ participated: value })
+            .eq('guild', currentG)
             .eq('event_name', STAGE_EVENTS[arActiveStage])
             .eq('session_id', stg.sessionId)
             .eq('pseudo', pseudo);
