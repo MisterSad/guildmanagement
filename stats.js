@@ -676,85 +676,153 @@
 
     // ── KPI: Engagement ───────────────────────────────────────────────────────
     async function renderKpiEngagement(container, db, g, tabsHtml) {
-        // Participation per week (last 8 weeks)
+        // Participation per week (last 8 weeks), distinct members via the
+        // scoring key so Arms A+B / Shadowfront squads of the same week count
+        // as one participation.
         var partsRes = await db.from('event_participants')
-            .select('pseudo, event_name, week_start, participated')
+            .select('pseudo, event_name, week_start, session_id, participated, sub_present, is_pending')
             .eq('guild', g)
             .neq('event_name', 'Glory');
-        var rows = partsRes.data || [];
+        var rows = (partsRes.data || []).filter(function (r) { return !r.is_pending; });
 
-        var weeks = [];
-        rows.forEach(function (r) { if (r.week_start && weeks.indexOf(r.week_start) === -1) weeks.push(r.week_start); });
-        weeks.sort(function (a, b) { return b.localeCompare(a); });
-        var last8 = weeks.slice(0, 8).reverse();
+        var membersRes = await db.from('guild_members').select('pseudo, overall_power').eq('guild', g);
+        var members = membersRes.data || [];
+        var memberSet = {};
+        members.forEach(function (m) { if (m.pseudo) memberSet[m.pseudo] = true; });
 
+        // Semaines présentes, triées desc puis limitées à 8.
+        var weekSet = {};
+        rows.forEach(function (r) { if (r.week_start) weekSet[r.week_start] = true; });
+        var allWeeks = Object.keys(weekSet).sort(function (a, b) { return b.localeCompare(a); });
+        var lastWeeks = allWeeks.slice(0, 8).reverse(); // du plus ancien au plus récent
+
+        // Par semaine: ensemble des membres ayant participé (>=1 clé de scoring).
         var perWeek = {};
-        last8.forEach(function (w) {
-            var wkRows = rows.filter(function (r) { return r.week_start === w; });
-            var present = wkRows.filter(function (r) { return r.participated > 0; }).length;
+        lastWeeks.forEach(function (w) {
+            var present = {};
+            var presentCount = 0;
+            rows.forEach(function (r) {
+                if (r.week_start !== w) return;
+                var attended = (r.participated > 0) || (r.sub_present === true);
+                if (!attended) return;
+                var key = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
+                if (!key) return;
+                var norm = normalizePseudo(r.pseudo);
+                if (!present[norm]) { present[norm] = {}; presentCount++; }
+                present[norm][key] = true;
+            });
             perWeek[w] = {
-                total: wkRows.length,
-                present: present,
-                rate: wkRows.length > 0 ? Math.round(present / wkRows.length * 100) : 0
+                present: presentCount,
+                memberCount: members.length,
+                rate: members.length > 0 ? Math.round(presentCount / members.length * 100) : 0
             };
         });
 
-        // Inactive members: 0 participation in the last 2 weeks
-        var cutoff = (window.GM && window.GM.getWeekStart) ? window.GM.getWeekStart() : '';
-        var weeksAgo2 = window.GM && window.GM.getPrevWeekStart ? window.GM.getPrevWeekStart() : cutoff;
-        var activePseudos = {};
+        // Répartition par type d'événement sur la période (8 dernières semaines).
+        var typeCounts = { 'SvS': 0, 'GvG': 0, 'Shadowfront': 0, 'Arms Race': 0, 'DTR': 0 };
+        var typeNames = { 'SvS': 'SvS', 'GvG': 'GvG', 'Shadowfront': 'Shadowfront', 'Arms Race': 'Arms Race', 'DTR': 'DTR' };
+        var typeMembers = {};
+        Object.keys(typeCounts).forEach(function (k) { typeMembers[k] = {}; });
         rows.forEach(function (r) {
-            if (r.week_start >= weeksAgo2) activePseudos[r.pseudo] = true;
+            if (lastWeeks.indexOf(r.week_start) === -1) return;
+            var attended = (r.participated > 0) || (r.sub_present === true);
+            if (!attended) return;
+            var key = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
+            var prefix = key.split('|')[0];
+            var t = null;
+            if (prefix === 'SvS') t = 'SvS';
+            else if (prefix === 'GvG') t = 'GvG';
+            else if (prefix === 'Shadowfront') t = 'Shadowfront';
+            else if (prefix === 'Arms Race') t = 'Arms Race';
+            else if (prefix === 'DTR') t = 'DTR';
+            if (!t) return;
+            typeMembers[t][normalizePseudo(r.pseudo)] = true;
         });
-        var membersRes = await db.from('guild_members').select('pseudo, overall_power').eq('guild', g);
-        var members = membersRes.data || [];
-        var inactive = members.filter(function (m) { return !activePseudos[m.pseudo]; });
+        Object.keys(typeCounts).forEach(function (k) {
+            typeCounts[k] = Object.keys(typeMembers[k]).length;
+        });
 
-        // Reliability: declared available (shadowfront_signups) but absent
-        var signupsRes = await db.from('shadowfront_signups').select('pseudo, week_start, availability').eq('guild', g);
-        var signups = signupsRes.data || [];
-        var declared = {};
-        signups.forEach(function (s) {
-            if (s.availability === 'squad1' || s.availability === 'squad2' || s.availability === 'both') {
-                declared[s.pseudo] = true;
+        // Membres inactifs: aucune participation sur les 2 dernières semaines.
+        var activeWindow = lastWeeks.length > 0 ? lastWeeks.slice(-2) : [];
+        var activeMembers = {};
+        rows.forEach(function (r) {
+            if (activeWindow.indexOf(r.week_start) === -1) return;
+            var attended = (r.participated > 0) || (r.sub_present === true);
+            if (!attended) return;
+            activeMembers[normalizePseudo(r.pseudo)] = true;
+        });
+        var inactive = members.filter(function (m) {
+            return !activeMembers[normalizePseudo(m.pseudo)];
+        });
+        // Dernière semaine d'activité de chaque membre inactif.
+        var lastSeen = {};
+        rows.forEach(function (r) {
+            if ((r.participated > 0) || (r.sub_present === true)) {
+                var n = normalizePseudo(r.pseudo);
+                if (!lastSeen[n] || r.week_start > lastSeen[n]) lastSeen[n] = r.week_start;
             }
         });
-        var reliability = { declared: 0, present: 0 };
-        Object.keys(declared).forEach(function (p) {
-            reliability.declared++;
-            if (activePseudos[p]) reliability.present++;
+        inactive = inactive.map(function (m) {
+            return { pseudo: m.pseudo, power: parseInt(m.overall_power, 10) || 0, lastSeen: lastSeen[normalizePseudo(m.pseudo)] || null };
+        }).sort(function (a, b) {
+            var la = a.lastSeen ? a.lastSeen : '';
+            var lb = b.lastSeen ? b.lastSeen : '';
+            if (la !== lb) return la < lb ? -1 : 1; // plus longtemps inactif en premier
+            return b.power - a.power;
         });
-        var relRate = reliability.declared > 0 ? Math.round(reliability.present / reliability.declared * 100) : 0;
 
-        // Week bars
+        // Tendance (barres de participation par semaine).
         var maxRate = 0;
-        last8.forEach(function (w) { if (perWeek[w].rate > maxRate) maxRate = perWeek[w].rate; });
+        lastWeeks.forEach(function (w) { if (perWeek[w].rate > maxRate) maxRate = perWeek[w].rate; });
         if (maxRate <= 0) maxRate = 1;
-        var weekBars = last8.map(function (w) {
+        var weekBars = lastWeeks.map(function (w) {
             var d = perWeek[w];
             var pctW = Math.round(d.rate / maxRate * 100);
+            var barColor = d.rate >= 70 ? '#34d399' : (d.rate >= 40 ? '#a78bfa' : '#f87171');
             return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + shortDate(w) + '</span>' +
-                '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:#a78bfa;"></div></div>' +
-                '<span class="gm-kpi-value">' + d.present + '/' + d.total + ' (' + d.rate + '%)</span></div>';
+                '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:' + barColor + ';"></div></div>' +
+                '<span class="gm-kpi-value">' + d.rate + '% (' + d.present + '/' + d.memberCount + ')</span></div>';
         }).join('');
 
+        // Répartition par type (barres).
+        var typeOrder = ['GvG', 'SvS', 'Shadowfront', 'Arms Race', 'DTR'];
+        var typeColors = { 'GvG': '#60a5fa', 'SvS': '#fbbf24', 'Shadowfront': '#c084fc', 'Arms Race': '#f87171', 'DTR': '#34d399' };
+        var maxType = 0;
+        typeOrder.forEach(function (k) { if (typeCounts[k] > maxType) maxType = typeCounts[k]; });
+        var typeBars = typeOrder.map(function (k) {
+            var pctW = maxType > 0 ? Math.round(typeCounts[k] / maxType * 100) : 0;
+            return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + typeNames[k] + '</span>' +
+                '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:' + (typeColors[k] || '#a78bfa') + ';"></div></div>' +
+                '<span class="gm-kpi-value">' + typeCounts[k] + ' members</span></div>';
+        }).join('');
+
+        // Moyenne de participation sur la période.
+        var sumRate = 0;
+        lastWeeks.forEach(function (w) { sumRate += perWeek[w].rate; });
+        var avgRate = lastWeeks.length > 0 ? Math.round(sumRate / lastWeeks.length) : 0;
+
         var inactiveHtml = inactive.length === 0
-            ? '<div class="gm-empty" style="padding:1rem;">All members participated recently.</div>'
+            ? '<div class="gm-empty" style="padding:1rem;">Every member participated in the last 2 weeks.</div>'
             : inactive.slice(0, 15).map(function (m) {
-                return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + esc(m.pseudo) + '</span><span class="gm-kpi-value">' + (parseInt(m.overall_power, 10) || 0) + ' power</span></div>';
-            }).join('') + (inactive.length > 15 ? '<div class="gm-kpi-row"><span class="gm-kpi-label">...</span></div>' : '');
+                var seen = m.lastSeen ? 'last seen ' + shortDate(m.lastSeen) : 'never participated';
+                return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + esc(m.pseudo) + '</span>' +
+                    '<span class="gm-kpi-value" style="font-size:0.72rem; color:var(--text-muted);">' + seen + ' · ' + formatBigNum(m.power) + '</span></div>';
+            }).join('') + (inactive.length > 15 ? '<div class="gm-kpi-row"><span class="gm-kpi-label">… and ' + (inactive.length - 15) + ' more</span></div>' : '');
 
         var html = tabsHtml +
             '<div class="gm-kpi-grid">' +
-                kpiTile('2-week inactive', inactive.length, 'ph-user-minus', inactive.length > 0 ? 'stat-theme-coral' : 'stat-theme-mint') +
-                kpiTile('Dispo reliability', relRate + '%', 'ph-shield-check', relRate >= 70 ? 'stat-theme-lime' : relRate >= 40 ? 'stat-theme-coral' : 'stat-theme-lilac') +
-                kpiTile('Declared available', reliability.declared, 'ph-users', 'stat-theme-cyan') +
-                kpiTile('Weeks tracked', last8.length, 'ph-calendar', 'stat-theme-mint') +
+                kpiTile('Active this week', perWeek[lastWeeks[lastWeeks.length - 1]] ? perWeek[lastWeeks[lastWeeks.length - 1]].present : 0, 'ph-user-check', 'stat-theme-lime') +
+                kpiTile('Avg participation (8w)', avgRate + '%', 'ph-chart-line-up', avgRate >= 50 ? 'stat-theme-mint' : 'stat-theme-coral') +
+                kpiTile('Inactive (2w+)', inactive.length, 'ph-user-minus', inactive.length > 5 ? 'stat-theme-coral' : 'stat-theme-mint') +
+                kpiTile('Weeks with data', lastWeeks.length, 'ph-calendar', 'stat-theme-cyan') +
             '</div>' +
-            '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-chart-line-up"></i> Participation rate per week</div>' +
-                '<div class="gm-kpi-card-body">' + weekBars + '</div>' +
+            '<div class="gm-kpi-grid" style="margin-top:0.85rem;">' +
+                '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-chart-line-up"></i> Weekly participation rate</div>' +
+                    '<div class="gm-kpi-card-body">' + weekBars + '</div></div>' +
+                '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-chart-pie"></i> Members engaged per event type (8w)</div>' +
+                    '<div class="gm-kpi-card-body">' + typeBars + '</div></div>' +
             '</div>' +
-            '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-user-minus"></i> Inactive members (no participation in 2 weeks)</div>' +
+            '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-user-minus"></i> Members inactive for 2+ weeks</div>' +
                 '<div class="gm-kpi-card-body">' + inactiveHtml + '</div>' +
             '</div>';
 

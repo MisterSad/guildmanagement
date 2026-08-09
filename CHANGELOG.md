@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-08
 
 ### Changed
+- **Stats > Engagement page rebuilt**: the KPI tiles and charts were unclear and mixed concepts (the old "Dispo reliability" blended Shadowfront declarations with general activity, and the weekly participation rate counted rows instead of distinct members). The page now shows: active members this week, the average 8-week participation rate, members inactive for 2+ weeks, and weeks with data; a weekly participation trend (distinct members who attended at least one event, computed with the shared scoring key so Arms A+B and Shadowfront squads count once per week); a per-event-type engagement breakdown (SvS, GvG, Shadowfront, Arms Race, DTR); and a clearer inactive-members list sorted by how long they have been absent, with last-seen week and power.
 - **Tenancy hardening across every tenant**:
   - `guildsList` is loaded from the `guilds` table instead of a hard-coded list; the stale `['ALPHA','OMEGA','IMK']` fallback is gone, so the guild selector always reflects the real tenants (ALPHA, OMEGA, IMK, BABE, CLAW, YARR, DEMO).
   - The `'ALPHA'` column defaults on `guild_config`, `shadowfront_signups`, `push_subscriptions`, `event_reminders_sent`, `discord_notifications_sent` and `player_name_history` were removed: an insert without a guild now fails loudly instead of silently landing in ALPHA.

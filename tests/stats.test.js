@@ -270,7 +270,9 @@ describe('GM_STATS KPI tabs', () => {
 
         const area = document.querySelector('.stats-leaderboard-area');
         const text = area.textContent;
-        expect(text).toContain('Inactive members');
+        expect(text).toContain('Members inactive for 2+ weeks');
+        expect(text).toContain('Weekly participation rate');
+        expect(text).toContain('Members engaged per event type');
         // ZombieZzz has no participation in the current or previous week.
         expect(text).toContain('ZombieZzz');
     });
@@ -288,5 +290,43 @@ describe('GM_STATS KPI tabs', () => {
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
         expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('Pending score approvals');
+    });
+
+    it('Engagement breaks down engagement by event type', async () => {
+        await window.GM_STATS.load();
+        const btn = document.querySelector('button[data-gm-mode="kpi-engage"]');
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+
+        const text = document.querySelector('.stats-leaderboard-area').textContent;
+        // AlphaPrime + BetaKnight participated in SvS over the 2 weeks.
+        expect(text).toContain('SvS');
+        expect(text).toContain('GvG');
+        expect(text).toContain('Shadowfront');
+        expect(text).toContain('Arms Race');
+        expect(text).toContain('DTR');
+    });
+
+    it('Engagement renders cleanly with no participation data', async () => {
+        const emptyDb = makeDb({
+            rpc: { list_event_weeks: () => ({ data: [], error: null }) },
+            from: {
+                guild_members: () => new MockBuilder(MEMBERS_POWER),
+                event_participants: () => new MockBuilder([]),
+                shadowfront_squads: () => new MockBuilder([])
+            }
+        });
+        window.GM.db = emptyDb;
+        await window.GM_STATS.load();
+        const btn = document.querySelector('button[data-gm-mode="kpi-engage"]');
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+
+        const text = document.querySelector('.stats-leaderboard-area').textContent;
+        expect(text).toContain('Weekly participation rate');
+        expect(text).toContain('Members inactive for 2+ weeks');
+        expect(text).toContain('ZombieZzz'); // no data -> everyone is inactive
     });
 });
