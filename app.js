@@ -1201,12 +1201,10 @@
 
             var passHtml = '';
             if (canManagePass) {
-                // FIX (C4): No longer storing password in data-acc-pass DOM attribute.
-                // Passwords are fetched on demand from the API when eye/copy is clicked.
                 passHtml = '<div class="gm-cred-pass gm-masked" data-acc-id="' + esc(acc.id) + '">' +
                                '<span class="gm-pwd-text">••••••••••••</span>' +
-                               '<button class="gm-mini-btn gm-cred-toggle" title="' + t('show_pwd') + '"><i class="ph ph-eye"></i></button>' +
-                               '<button class="gm-mini-btn gm-cred-copy" title="' + t('copy_title') + '"><i class="ph ph-copy"></i></button>' +
+                               '<button class="gm-mini-btn gm-cred-reset" title="Renew Password"><i class="ph ph-arrows-clockwise"></i></button>' +
+                               '<button class="gm-mini-btn gm-cred-copy hidden" title="Copy Password"><i class="ph ph-copy"></i></button>' +
                            '</div>';
             } else {
                 passHtml = '<div class="gm-cred-pass gm-masked" style="opacity: 0.6; cursor: not-allowed;" title="Protected Super Admin Account">' +
@@ -1260,73 +1258,55 @@
     function wireAccountCardListeners(container) {
         if (!container) return;
 
-        // FIX (C4): Passwords are no longer stored in data-acc-pass DOM attributes.
-        // On reveal/copy, we check the in-memory pendingPasswords cache first (freshly created accounts),
-        // then fall back to calling the get-password API endpoint.
-        container.querySelectorAll('.gm-cred-toggle').forEach(function (btn) {
+        // Renew password listener for account cards
+        container.querySelectorAll('.gm-cred-reset').forEach(function (btn) {
             btn.addEventListener('click', async function () {
                 var wrap = btn.closest('.gm-cred-pass');
                 var accId = wrap.getAttribute('data-acc-id');
                 var pwdSpan = wrap.querySelector('.gm-pwd-text');
+                var copyBtn = wrap.querySelector('.gm-cred-copy');
                 var icon = btn.querySelector('i');
-                if (wrap.classList.contains('gm-masked')) {
-                    var pass = pendingPasswords[accId] || wrap.getAttribute('data-acc-pass-temp');
-                    if (!pass) {
-                        btn.disabled = true;
-                        try {
-                            var newPass = generatePassword(12);
-                            var res = await window.GM.adminAccounts('reset-password', { id: accId, password: newPass });
-                            if (!res.ok) throw new Error(res.error || 'reset_failed');
-                            pass = res.password || newPass;
-                            pendingPasswords[accId] = pass;
-                            showToast(t('toast_password_reset_success') || 'Password reset successfully', 'success');
-                        } catch (err) {
-                            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
-                            btn.disabled = false;
-                            return;
-                        }
-                        btn.disabled = false;
-                    }
+
+                btn.disabled = true;
+                if (icon) icon.className = 'ph ph-circle-notch ph-spin';
+
+                try {
+                    var newPass = generatePassword(12);
+                    var res = await window.GM.adminAccounts('reset-password', { id: accId, password: newPass });
+                    if (!res.ok) throw new Error(res.error || 'reset_failed');
+                    var pass = res.password || newPass;
+                    pendingPasswords[accId] = pass;
                     wrap.setAttribute('data-acc-pass-temp', pass);
                     wrap.classList.remove('gm-masked');
                     pwdSpan.textContent = pass;
-                    icon.className = 'ph ph-eye-slash';
-                } else {
-                    wrap.classList.add('gm-masked');
-                    wrap.removeAttribute('data-acc-pass-temp');
-                    pwdSpan.textContent = '••••••••••••';
-                    icon.className = 'ph ph-eye';
+                    if (copyBtn) copyBtn.classList.remove('hidden');
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(pass).catch(function () {});
+                    }
+                    showToast('New password generated: ' + pass + ' (copied to clipboard)', 'success');
+                } catch (err) {
+                    showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    if (icon) icon.className = 'ph ph-arrows-clockwise';
                 }
             });
         });
 
         container.querySelectorAll('.gm-cred-copy').forEach(function (btn) {
-            btn.addEventListener('click', async function () {
+            btn.addEventListener('click', function () {
                 var wrap = btn.closest('.gm-cred-pass');
                 var accId = wrap.getAttribute('data-acc-id');
                 var pass = pendingPasswords[accId] || wrap.getAttribute('data-acc-pass-temp');
-                if (!pass) {
-                    btn.disabled = true;
-                    try {
-                        var newPass = generatePassword(12);
-                        var res = await window.GM.adminAccounts('reset-password', { id: accId, password: newPass });
-                        if (!res.ok) throw new Error(res.error || 'reset_failed');
-                        pass = res.password || newPass;
-                        pendingPasswords[accId] = pass;
-                        showToast(t('toast_password_reset_success') || 'Password reset successfully', 'success');
-                    } catch (err) {
-                        showToast(t('toast_err_generic') + ' ' + err.message, 'error');
-                        btn.disabled = false;
-                        return;
-                    }
-                    btn.disabled = false;
+                if (!pass) return;
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(pass).then(function () {
+                        var icon = btn.querySelector('i');
+                        if (icon) icon.className = 'ph ph-check';
+                        showToast('Password copied to clipboard.', 'success');
+                        setTimeout(function () { if (icon) icon.className = 'ph ph-copy'; }, 2000);
+                    });
                 }
-                navigator.clipboard.writeText(pass).then(function () {
-                    var icon = btn.querySelector('i');
-                    icon.className = 'ph ph-check';
-                    showToast(t('toast_copied'), 'success');
-                    setTimeout(function () { icon.className = 'ph ph-copy'; }, 2000);
-                });
             });
         });
 
