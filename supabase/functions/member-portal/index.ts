@@ -66,9 +66,22 @@ function getWeekStartIso(date: Date): string {
   const d = new Date(date);
   const day = d.getUTCDay(); // 0=Sun ... 6=Sat
   const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));  const pad = (n: number) => String(n).padStart(2, "0");
   return `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`;
+}
+
+// Participation scoring key, mirrors gm_event_scoring_key (SQL) and
+// window.GM.eventScoringKey (client). Arms/Shadowfront count once per week,
+// DTR once per session, SvS/GvG once per week.
+function eventScoringKey(eventName: string, sessionId: string | null, weekStart: string | null): string {
+  const up = (eventName || "").toUpperCase();
+  const ws = weekStart || "";
+  if (up.indexOf("ARMS RACE") !== -1) return "Arms Race|" + ws;
+  if (up === "SHADOWFRONT") return "Shadowfront|" + ws;
+  if (up === "SVS") return "SvS|" + ws;
+  if (up === "GVG") return "GvG|" + ws;
+  if (up === "DEFEND TRADE ROUTE") return "DTR|" + (sessionId || ws);
+  return (eventName || "") + "|" + (sessionId || ws);
 }
 
 Deno.serve(async (req: Request) => {
@@ -134,6 +147,7 @@ Deno.serve(async (req: Request) => {
     const { data: participants, error: pErr } = await admin
       .from("event_participants")
       .select("*")
+      .eq("guild", member.guild)
       .eq("pseudo", member.pseudo)
       .in("session_id", sessionIds);
 
@@ -211,6 +225,7 @@ Deno.serve(async (req: Request) => {
     const { error: uErr } = await admin
       .from("event_participants")
       .update(update)
+      .eq("guild", member.guild)
       .eq("event_name", eventName)
       .eq("session_id", sessionId)
       .eq("pseudo", member.pseudo);
@@ -323,6 +338,7 @@ Deno.serve(async (req: Request) => {
     const { data: rows, error: hErr } = await admin
       .from("event_participants")
       .select("event_name, session_id, week_start, participated, score, score_prep, score_pvp, late, excused, sub_present, appointed")
+      .eq("guild", member.guild)
       .eq("pseudo", member.pseudo)
       .order("week_start", { ascending: false });
 
@@ -431,15 +447,24 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (fErr || !full) return json({ ok: false, error: "player_not_found" }, 200);
 
-    // Attendance: any participation row where the player was present.
-    const { count, error: cErr } = await admin
+    // Attendance: distinct scoring keys where the player was present.
+    // Arms/Shadowfront count once per week, DTR per session (see
+    // gm_event_scoring_key / window.GM.eventScoringKey).
+    const { data: attendRows, error: cErr } = await admin
       .from("event_participants")
-      .select("pseudo", { count: "exact", head: true })
+      .select("event_name, session_id, week_start")
       .eq("guild", full.guild ?? identity.guild)
       .eq("pseudo", full.pseudo)
       .or("participated.gt.0,sub_present.eq.true");
 
     if (cErr) return json({ ok: false, error: "db_error", message: cErr.message }, 500);
+
+    const attendedKeys = new Set<string>();
+    for (const row of attendRows ?? []) {
+      const key = eventScoringKey(row.event_name, row.session_id, row.week_start);
+      if (key) attendedKeys.add(key);
+    }
+    const attended = attendedKeys.size;
 
     // Glory badge track: the player's best positive Glory week, EXCLUDING
     // their first-ever declaration. The app just launched: if the first
@@ -471,7 +496,7 @@ Deno.serve(async (req: Request) => {
       role: full.role || "R1",
       created_at: full.created_at,
       overall_power: full.overall_power || 0,
-      attended: count || 0,
+      attended: attended,
       glory_best: gloryBest
     });
   }

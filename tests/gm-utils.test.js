@@ -318,3 +318,29 @@ describe('buildEventSessionId (deterministic event ids, all tenants)', () => {
         expect(GM.buildEventSessionId('Something Else')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 });
+
+describe('eventScoringKey (participation counted once per week for weekly events)', () => {
+    it('Arms Race A and B of the same week share one key', () => {
+        expect(GM.eventScoringKey('ARMS RACE STAGE A', 'ARA-20260805', '2026-08-03'))
+            .toBe('Arms Race|2026-08-03');
+        expect(GM.eventScoringKey('ARMS RACE STAGE B', 'ARB-20260807', '2026-08-03'))
+            .toBe('Arms Race|2026-08-03');
+    });
+
+    it('Shadowfront squads of the same week share one key', () => {
+        expect(GM.eventScoringKey('Shadowfront', 'SF1-20260802', '2026-07-27'))
+            .toBe('Shadowfront|2026-07-27');
+        expect(GM.eventScoringKey('Shadowfront', 'SF2-20260805', '2026-08-03'))
+            .toBe('Shadowfront|2026-08-03');
+    });
+
+    it('SvS and GvG are keyed by week', () => {
+        expect(GM.eventScoringKey('SvS', 'SVS-2026-W32', '2026-08-03')).toBe('SvS|2026-08-03');
+        expect(GM.eventScoringKey('GvG', 'GVG-2026-W32', '2026-08-03')).toBe('GvG|2026-08-03');
+    });
+
+    it('each DTR session counts separately', () => {
+        expect(GM.eventScoringKey('Defend Trade Route', 'DTR-20260804', '2026-08-03')).toBe('DTR|DTR-20260804');
+        expect(GM.eventScoringKey('Defend Trade Route', 'DTR-20260812', '2026-08-10')).toBe('DTR|DTR-20260812');
+    });
+});

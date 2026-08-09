@@ -278,7 +278,7 @@
         // 1. Calculer le nombre total d'événements uniques tenus par cette guilde sur la période
         var tenantEventInstances = new Set();
         validPartRows.forEach(function (p) {
-            var evKey = (p.event_name || '').trim() + '|' + (p.session_id || p.week_start || '');
+            var evKey = window.GM.eventScoringKey(p.event_name, p.session_id, p.week_start);
             if (evKey) tenantEventInstances.add(evKey);
         });
         var totalTenantEvents = tenantEventInstances.size;
@@ -297,7 +297,7 @@
             var agg = aggMap[memberMatch];
             var evName = (p.event_name || '').trim();
             var coeff = COEFFS[evName] || 1;
-            var evKey = evName + '|' + (p.session_id || p.week_start || '');
+            var evKey = window.GM.eventScoringKey(evName, p.session_id, p.week_start);
 
             var attended = (p.participated > 0) || (p.score > 0) || (p.score_prep > 0) || (p.score_pvp > 0);
 
@@ -414,7 +414,7 @@
             // Unique tenant event instances
             var tenantEventInstances = new Set();
             validRows.forEach(function (r) {
-                var evKey = (r.event_name || '').trim() + '|' + (r.session_id || r.week_start || '');
+                var evKey = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
                 if (evKey) tenantEventInstances.add(evKey);
             });
             var totalTenantEvents = tenantEventInstances.size;
@@ -428,7 +428,7 @@
             validRows.forEach(function (r) {
                 var norm = normalizePseudo(r.pseudo);
                 if (attendedSessionsByMember[norm]) {
-                    var evKey = (r.event_name || '').trim() + '|' + (r.session_id || r.week_start || '');
+                    var evKey = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
                     if (r.participated > 0) {
                         attendedSessionsByMember[norm].add(evKey);
                     }

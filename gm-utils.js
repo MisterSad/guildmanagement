@@ -293,6 +293,34 @@
             (d.getUTCDate() < 10 ? '0' : '') + d.getUTCDate();
     }
 
+    // ── Participation scoring key (SaaS, all tenants) ────────────────────────
+    // One key per scoring unit, per the game rules:
+    //   - SvS / GvG            -> once per week (SVS-2026-W32)
+    //   - Shadowfront          -> once per week (Squad 1 + Squad 2 = one)
+    //   - Arms Race (A or B)   -> once per week (Stage A + Stage B = one)
+    //   - Defend Trade Route   -> each event counts (one per session)
+    // Mirrors the SQL helper public.gm_event_scoring_key(text,text,text).
+    function eventScoringKey(eventName, sessionId, weekStart) {
+        var up = (eventName || '').toUpperCase();
+        var ws = weekStart || '';
+        if (up.indexOf('ARMS RACE') !== -1) return 'Arms Race|' + ws;
+        if (up === 'SHADOWFRONT') return 'Shadowfront|' + ws;
+        if (up === 'SVS') return 'SvS|' + ws;
+        if (up === 'GVG') return 'GvG|' + ws;
+        if (up === 'DEFEND TRADE ROUTE') return 'DTR|' + (sessionId || ws);
+        return (eventName || '') + '|' + (sessionId || ws);
+    }
+
+    // Date d'un session_id lisible (SF1-20260802, ARA-20260809, ...) :
+    // retourne un objet Date ou null. Les clés hebdo (SVS-2026-W32) n'ont pas
+    // de date, elles renvoient null.
+    function sessionDateFromId(sessionId) {
+        if (!sessionId) return null;
+        var m = String(sessionId).match(/-(\d{4})(\d{2})(\d{2})$/);
+        if (!m) return null;
+        return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    }
+
     function buildEventSessionId(eventName, startAt) {
         var up = (eventName || '').toUpperCase();
         var ref = startAt || new Date();
@@ -968,6 +996,8 @@
         formatWeek: formatWeek,
         newSessionId: newSessionId,
         buildEventSessionId: buildEventSessionId,
+        eventScoringKey: eventScoringKey,
+        sessionDateFromId: sessionDateFromId,
         formatDateTimeUTC: formatDateTimeUTC,
         pickEventStart: pickEventStart,
         showToast: showToast,

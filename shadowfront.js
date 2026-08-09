@@ -493,7 +493,7 @@
         var max = role === 'participant' ? PARTICIPANTS_MAX : RESERVES_MAX;
         if (existing.length >= max) { window.GM.showToast(t('sf_squad_full'), 'error'); return; }
 
-        var week = window.GM.getWeekStart(sq.startAt || new Date(sq.sessionId));
+        var week = window.GM.getWeekStart(sq.startAt || window.GM.sessionDateFromId(sq.sessionId) || new Date());
 
         // Supprimer une précédente affectation pour ce membre dans cette semaine pour éviter le conflit 409
         try {
