@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-08-08
 
 ### Fixed
+- **History sessions are always sorted most recent first**: the descending-date sort only ran when the RPC did not return Glory, so most of the time the History page kept the raw RPC order. The sort now runs on every load, so events are listed from the most recent battle date down to the oldest for every tenant.
 - **History page came back empty after the event-id rework**: the `gm_list_event_sessions` RPC selected `ep.session_id` while its `GROUP BY` used `coalesce(ep.session_id, ep.week_start::text)`, which PostgreSQL rejects ("column must appear in the GROUP BY"). Every History load failed silently and showed no events. The RPC now selects the coalesce expression itself (aliased `session_id`), restoring the History page for every tenant.
 - **History dates with a bare `+00` offset parsed as invalid**: Postgres serializes `timestamptz` as `2026-08-12T19:30:00+00`, which `new Date()` rejects. The history date helpers now normalize the offset, so battle dates render reliably.
 

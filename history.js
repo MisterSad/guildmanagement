@@ -110,15 +110,16 @@
                     });
                     var glorySessions = Object.values(gloryMap);
                     sessions = sessions.concat(glorySessions);
-                    
-                    // Re-sort sessions by date descending (battle date first).
-                    sessions.sort(function(a, b) {
-                        var timeA = sessionTime(a);
-                        var timeB = sessionTime(b);
-                        return timeB - timeA;
-                    });
                 }
             }
+
+            // Always sort sessions by date descending: most recent first.
+            sessions.sort(function(a, b) {
+                var timeA = sessionTime(a);
+                var timeB = sessionTime(b);
+                return timeB - timeA;
+            });
+
             renderHistory();
         } catch (err) {
             console.error('loadHistory', err);
