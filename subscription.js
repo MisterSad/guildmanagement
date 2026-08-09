@@ -55,6 +55,21 @@
             return;
         }
 
+        // Guilds with payments disabled (e.g. the public DEMO preview tenant)
+        // get a read-only notice instead of the purchase plans.
+        var guildId = getGuildId();
+        if (!window.guildsData || !window.guildsData[guildId]) {
+            // guildsData not loaded yet (deep link): refresh it first so the
+            // payments_disabled flag is authoritative before rendering plans.
+            try {
+                await refreshGuildsData();
+            } catch (err) { /* fall through to plans; server gates at create */ }
+        }
+        if (window.GM.isPaymentsDisabled(guildId)) {
+            container.innerHTML = paymentsDisabledHtml();
+            return;
+        }
+
         state.config = null;
         container.innerHTML = loadingHtml();
 
@@ -231,7 +246,7 @@
         if (!db) return;
         try {
             var res = await db.from('guilds')
-                .select('id, subscription_type, subscription_end, server_number')
+                .select('id, subscription_type, subscription_end, server_number, payments_disabled')
                 .order('id');
             if (res.error || !res.data || res.data.length === 0) return;
             window.guildsList = res.data.map(function (g) { return g.id; });
@@ -241,7 +256,8 @@
                 window.guildsData[g.id] = {
                     type: g.subscription_type || 'Unlimited',
                     end: g.subscription_end || null,
-                    server_number: sNum
+                    server_number: sNum,
+                    paymentsDisabled: !!g.payments_disabled
                 };
             });
             if (window.GM_SHELL) {
@@ -292,6 +308,14 @@
         return '<div class="gm-empty">' +
             '<i class="ph-duotone ph-shield-warning gm-icon"></i>' +
             '<div class="gm-empty-title">' + (t('gm_sub_denied') || 'Admins only') + '</div>' +
+        '</div>';
+    }
+
+    function paymentsDisabledHtml() {
+        return '<div class="gm-empty">' +
+            '<i class="ph-duotone ph-infinity gm-icon"></i>' +
+            '<div class="gm-empty-title">' + (t('gm_sub_disabled_title') || 'Payments are disabled') + '</div>' +
+            '<div class="gm-empty-hint">' + (t('gm_sub_disabled_hint') || 'This guild runs without subscriptions. No payment is required.') + '</div>' +
         '</div>';
     }
 

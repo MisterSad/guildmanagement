@@ -11,6 +11,19 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Per-guild payments switch** (all tenants): a new `payments_disabled`
+  flag on `guilds` turns off the self-service subscription flow for any
+  guild. The Subscription tab is hidden from the sidebar, the subscription
+  page shows a "Payments are disabled" notice instead of plan tiles, and
+  `gm-create-order` refuses to create a checkout session (server-side
+  `payments_disabled` error). The shared helper
+  `window.GM.isPaymentsDisabled(guildId)` drives the nav and the page. DEMO,
+  the public preview tenant shared in articles, has the flag enabled so
+  visitors can never start a real purchase.
+- **Public DEMO tenant accounts**: `DemoAdmin` (guild admin) and
+  `DemoPlayer` (Player Portal, linked to the in-game member KiraIX) let
+  anyone preview the tool from a web article. Both log in with the easy
+  credential `demo1234`.
 - **Guild benchmark (super admin)**: a new "Guild benchmark" tab compares
   every guild side by side: members, total/max power, active events, the
   8-week participation rate, members inactive for 2+ weeks, subscription type
@@ -113,6 +126,11 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Payments could be started on the public DEMO tenant**: the Subscription
+  tab and the checkout flow are now fully disabled for guilds with the
+  `payments_disabled` flag (DEMO). The nav entry, the plan tiles and the
+  order-creation edge function are all gated, so a preview visitor cannot
+  trigger a real Stripe checkout.
 - **Stats no longer jumps back to "Weekly Global"**: reloading the page or
   changing the period/week while on a KPI tab used to bounce to the global
   leaderboard. The selected Stats mode is now persisted and restored, and the
@@ -164,7 +182,8 @@ few hours, with an incrementing number in its title.
 
 ## Version history
 
-- **2026-08-09** — Scouting feature removed (tab, module, DB objects).
+- **2026-08-09** — Per-guild payments switch, public DEMO tenant accounts,
+  Scouting feature removed (tab, module, DB objects).
 - **2026-08-09** — Playwright e2e suite (login + portal, stubbed backend) and
   CI `e2e` job.
 - **2026-08-09** — Stats Engagement rebuilt, persisted Stats tabs, sandbox

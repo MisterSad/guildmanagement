@@ -42,9 +42,11 @@
     function visibleNavItems() {
         var role = getUserRole();
         var items = [];
+        var paymentsDisabled = window.GM.isPaymentsDisabled();
         NAV_ITEMS.forEach(function (i) {
             if (i.r5Only && role !== 'super_admin') return;
             if (i.adminOnly && role !== 'super_admin' && role !== 'guild_admin') return;
+            if (i.id === 'subscription' && paymentsDisabled) return;
             items.push(Object.assign({}, i));
         });
         return items;

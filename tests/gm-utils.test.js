@@ -79,6 +79,33 @@ describe('isGuildSubscriptionExpired (subscription gating)', () => {
     });
 });
 
+describe('isPaymentsDisabled (per-guild payments switch)', () => {
+    beforeEach(() => {
+        clearStorage();
+        window.currentGuildRestriction = null;
+        window.guildsData = {
+            ALPHA: { type: 'Unlimited', paymentsDisabled: false },
+            DEMO: { type: 'Unlimited', paymentsDisabled: true },
+        };
+    });
+
+    it('returns false when the guild has no disabled flag', () => {
+        expect(GM.isPaymentsDisabled('ALPHA')).toBe(false);
+        expect(GM.isPaymentsDisabled('NOPE')).toBe(false);
+    });
+
+    it('returns true for a guild with payments disabled', () => {
+        expect(GM.isPaymentsDisabled('DEMO')).toBe(true);
+    });
+
+    it('falls back to the active guild when no id is given', () => {
+        window.currentGuild = 'DEMO';
+        expect(GM.isPaymentsDisabled()).toBe(true);
+        window.currentGuild = 'ALPHA';
+        expect(GM.isPaymentsDisabled()).toBe(false);
+    });
+});
+
 describe('guild config (localStorage + DB fallback)', () => {
     beforeEach(() => {
         clearStorage();

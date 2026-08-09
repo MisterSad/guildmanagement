@@ -120,8 +120,11 @@ Deno.serve(async (req: Request) => {
   const secret = stripeSecretKey();
   if (!secret) return json({ ok: false, error: "not_configured" }, 200);
 
-  const { data: guild } = await admin.from("guilds").select("id").eq("id", guildId).maybeSingle();
+  const { data: guild } = await admin.from("guilds").select("id, payments_disabled").eq("id", guildId).maybeSingle();
   if (!guild) return json({ ok: false, error: "guild_not_found" }, 200);
+  if (guild.payments_disabled) {
+    return json({ ok: false, error: "payments_disabled" }, 200);
+  }
 
   const plan = PLANS[planKey];
   const extRef = `gm_${crypto.randomUUID()}`;

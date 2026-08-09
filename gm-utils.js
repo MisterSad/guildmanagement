@@ -974,6 +974,16 @@
         return window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
     }
 
+    // True when a guild has payments disabled (self-service subscription flow
+    // turned off). Data-driven from window.guildsData, which mirrors the
+    // guilds.payments_disabled column; used by the shell nav and the
+    // subscription page so the check lives in one place.
+    function isPaymentsDisabled(guildId) {
+        var g = guildId || getActiveGuild();
+        if (!window.guildsData || !window.guildsData[g]) return false;
+        return !!window.guildsData[g].paymentsDisabled;
+    }
+
     window.GM = {
         db: db,
         t: t,
@@ -990,6 +1000,7 @@
         isSuperAdmin: isSuperAdmin,
         getRoleInfo: getRoleInfo,
         getActiveGuild: getActiveGuild,
+        isPaymentsDisabled: isPaymentsDisabled,
         isGuildSubscriptionExpired: isGuildSubscriptionExpired,
         canWriteGuild: canWriteGuild,
         ensureGuildRestriction: ensureGuildRestriction,

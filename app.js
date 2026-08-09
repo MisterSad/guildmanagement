@@ -583,7 +583,7 @@
     async function fetchGuilds() {
         if (!supabase) return;
         try {
-            var res = await supabase.from('guilds').select('id, subscription_type, subscription_end, server_number').order('id');
+            var res = await supabase.from('guilds').select('id, subscription_type, subscription_end, server_number, payments_disabled').order('id');
             if (res.error) {
                 return;
             }
@@ -598,7 +598,8 @@
                     window.guildsData[g.id] = {
                         type: g.subscription_type || 'Unlimited',
                         end: g.subscription_end || null,
-                        server_number: sNum
+                        server_number: sNum,
+                        paymentsDisabled: !!g.payments_disabled
                     };
                 });
                 console.log('window.guildsData populated:', window.guildsData);

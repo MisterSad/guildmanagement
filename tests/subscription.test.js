@@ -132,6 +132,21 @@ describe('GM_SUBSCRIPTION self-service subscriptions', () => {
         expect(container().textContent).toContain('Admins only');
     });
 
+    it('shows a payments-disabled state instead of plans when the guild flag is set', async () => {
+        window.guildsData.ALPHA = { type: 'Unlimited', end: null, server_number: '1089', paymentsDisabled: true };
+        await SUB.load();
+        expect(container().textContent).toContain('Payments are disabled');
+        expect(container().textContent).toContain('No payment is required');
+        expect(planKeys()).toEqual([]);
+        expect(invokeCalls.filter((c) => c[0] === 'gm-create-order')).toHaveLength(0);
+    });
+
+    it('renders plans again for a guild with payments enabled', async () => {
+        window.guildsData.ALPHA = { type: 'Premium', end: FUTURE_END, server_number: '1089', paymentsDisabled: false };
+        await SUB.load();
+        expect(planKeys()).toEqual(['1m', '3m', '6m', '12m']);
+    });
+
     it('does not start checkout when payments are not configured', async () => {
         setupDb({
             invoke: async (name, opts) => {

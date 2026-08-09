@@ -357,6 +357,8 @@
             gm_sub_load_error:     'Could not load the subscription page',
             gm_sub_retry:          'Retry',
             gm_sub_denied:         'Admins only',
+            gm_sub_disabled_title: 'Payments are disabled',
+            gm_sub_disabled_hint:  'This guild runs without subscriptions. No payment is required.',
             gm_sub_methods:        'Accepted payments: Cards (Visa, Mastercard, Amex), Cartes Bancaires, Apple Pay, Google Pay, PayPal, Alipay, Amazon Pay, Klarna, iDEAL, Bancontact, EPS, BLIK, MB WAY, Pix, Satispay, Multibanco, MobilePay, WeChat Pay, Revolut Pay, Samsung Pay, Kakao Pay, Naver Pay, PAYCO, Link, and more.',
             gm_sub_security:       'Payments are processed and secured by the payment provider. The site administrator never has access to your bank details.',
             gm_settings_sub:       'Cross-guild player overview',
