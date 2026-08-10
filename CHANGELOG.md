@@ -11,6 +11,8 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Server-Grouped Accordion View for Super Admin Accounts**: Grouped **Active Guild Admin Accounts** in the Super Admin Accounts & Access dashboard (`app.js`) by **Server** (e.g. `Server #1058`, `Server #1064`, etc.) using collapsible accordion cards.
+- **Accordion Card UI Elements**: Each server group features a server badge (`Server #1058`), a list of associated guilds (`ALPHA, IMK, BABE`), account count badge (`3 admins`), and an animated toggle arrow (`ph-caret-down`). The first server section is open by default, and clicking any header toggles expand/collapse.
 - **Super Admin Accounts & Access Filter Update**: Filtered the **Active Guild Admin Accounts** section in the Super Admin Accounts & Access dashboard (`app.js`) to display **ONLY** `guild_admin` accounts (`acc.role === 'guild_admin'`), completely excluding player portal `member` accounts.
 - **Strict Right-Edge Alignment & Zero Overflow**: Enforced `grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)` across all 3 card rows in both **SvS Matchup** (`svs-matchup.js`) and **GvG Matchup** (`gvg-matchup.js`).
 - **Compact Roster Row Styling & Truncation**: Added `max-width: 110px`, `text-overflow: ellipsis`, and `overflow: hidden` on player pseudos in side-by-side tables. Adjusted cell padding (`padding: .3rem .2rem`) and badge sizes so the right roster table fits 100% inside its container with zero horizontal overflow.
@@ -32,6 +34,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Super Admin Accounts Organization**: Replaced unstructured account list with server-level accordion grouping for easy cross-server administration.
 - **Super Admin Accounts List Pollution**: Prevented player portal `member` accounts from appearing in the Super Admin "Active Guild Admin Accounts" overview card.
 - **Table Overflow on Right Border**: Fixed right side overflow of player roster tables by capping column grid widths with `minmax(0, 1fr)` and truncating long player pseudos with ellipsis (`...`).
 - **Sidebar Space Efficiency**: Reduced vertical height of the sidebar subscription model card by 70%, keeping only the guild switcher dropdown and plan status badge.

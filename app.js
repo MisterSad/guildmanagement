@@ -1152,7 +1152,7 @@
             renderAccountCardsToContainer(containerMember, countMember, memberAccountsList, isSuperAdminUser);
         }
 
-        // Target 2: Super Admin Section (#superadmin-account-list) - ONLY guild_admin accounts across guilds
+        // Target 2: Super Admin Section (#superadmin-account-list) - accordion grouping by server
         var containerR5 = document.getElementById('superadmin-account-list');
         var countR5 = document.getElementById('superadmin-account-count');
         if (containerR5) {
@@ -1165,8 +1165,102 @@
                 if (gA !== gB) return gA.localeCompare(gB);
                 return a.id.localeCompare(b.id);
             });
-            renderAccountCardsToContainer(containerR5, countR5, listR5, isSuperAdminUser);
+            renderSuperAdminGroupedAccounts(containerR5, countR5, listR5, isSuperAdminUser);
         }
+    }
+
+    function getServerNumberForGuild(guildId) {
+        if (!guildId) return '';
+        if (window.guildsData && window.guildsData[guildId] && window.guildsData[guildId].server_number) {
+            return String(window.guildsData[guildId].server_number);
+        }
+        var ls = localStorage.getItem('gm_server_number_' + guildId);
+        if (ls) return String(ls);
+        return '';
+    }
+
+    function renderSuperAdminGroupedAccounts(container, countEl, listToRender, isSuperAdminUser) {
+        if (!container) return;
+        if (countEl) countEl.textContent = listToRender.length;
+
+        if (listToRender.length === 0) {
+            container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_accounts') + '</div></div>';
+            return;
+        }
+
+        // Group accounts by server
+        var groupedByServer = {};
+        listToRender.forEach(function (acc) {
+            var g = acc.guild || 'ALPHA';
+            var sNum = getServerNumberForGuild(g);
+            var sKey = sNum ? ('Server #' + sNum) : 'Unassigned Server';
+            if (!groupedByServer[sKey]) {
+                groupedByServer[sKey] = { serverKey: sKey, sNum: sNum, accounts: [], guildsSet: {} };
+            }
+            groupedByServer[sKey].accounts.push(acc);
+            groupedByServer[sKey].guildsSet[g] = true;
+        });
+
+        // Sort server keys (numerically by server # first)
+        var serverKeys = Object.keys(groupedByServer).sort(function (a, b) {
+            var numA = parseInt(a.replace(/\D/g, ''), 10) || 999999;
+            var numB = parseInt(b.replace(/\D/g, ''), 10) || 999999;
+            if (numA !== numB) return numA - numB;
+            return a.localeCompare(b);
+        });
+
+        var html = '';
+        serverKeys.forEach(function (sKey, index) {
+            var group = groupedByServer[sKey];
+            var guildsList = Object.keys(group.guildsSet).sort().join(', ');
+            var accCount = group.accounts.length;
+            var isFirst = (index === 0);
+
+            html +=
+                '<div class="gm-card glass-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">' +
+                    '<div class="gm-accordion-header" style="padding:0.9rem 1.2rem; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); transition:background 0.2s ease;">' +
+                        '<div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">' +
+                            '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size:0.85rem; font-family:var(--font-display);">' +
+                                '<i class="ph ph-hard-drives" style="margin-right:4px;"></i>' + esc(sKey) +
+                            '</span>' +
+                            '<span style="font-weight:700; color:var(--fg); font-size:0.9rem;">' + esc(guildsList) + '</span>' +
+                            '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:0.75rem;">' + accCount + ' admin' + (accCount > 1 ? 's' : '') + '</span>' +
+                        '</div>' +
+                        '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size:1.2rem; color:var(--fg-dim); transition:transform 0.25s ease;' + (isFirst ? ' transform:rotate(180deg);' : '') + '"></i>' +
+                    '</div>' +
+                    '<div class="gm-accordion-body" style="padding:1rem 1.25rem;' + (isFirst ? ' display:block;' : ' display:none;') + '">' +
+                        '<div id="acc-grid-' + index + '" class="gm-account-grid"></div>' +
+                    '</div>' +
+                '</div>';
+        });
+
+        container.innerHTML = html;
+
+        // Render card contents into each accordion body grid
+        serverKeys.forEach(function (sKey, index) {
+            var gridEl = document.getElementById('acc-grid-' + index);
+            if (gridEl) {
+                renderAccountCardsToContainer(gridEl, null, groupedByServer[sKey].accounts, isSuperAdminUser);
+            }
+        });
+
+        // Wire accordion header click toggles
+        container.querySelectorAll('.gm-accordion-header').forEach(function (headerEl) {
+            headerEl.addEventListener('click', function () {
+                var bodyEl = headerEl.nextElementSibling;
+                var arrowEl = headerEl.querySelector('.gm-accordion-arrow');
+                if (!bodyEl) return;
+                var isHidden = (bodyEl.style.display === 'none');
+                if (isHidden) {
+                    bodyEl.style.display = 'block';
+                    if (arrowEl) arrowEl.style.transform = 'rotate(180deg)';
+                } else {
+                    bodyEl.style.display = 'none';
+                    if (arrowEl) arrowEl.style.transform = 'rotate(0deg)';
+                }
+            });
+        });
+    }
     }
 
     function renderAccountCardsToContainer(container, countEl, listToRender, isSuperAdminUser) {
