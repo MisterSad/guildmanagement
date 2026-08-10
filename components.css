@@ -2705,35 +2705,6 @@
 .portal-notif-opt strong { font-size: 0.85rem; }
 .portal-notif-opt small { font-size: 0.72rem; color: var(--fg-muted); }
 
-/* ── Super admin: Guild benchmark ─────────────────────────────────────── */
-.benchmark-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-}
-.benchmark-card {
-    background: var(--card-bg, var(--bg-1));
-    border: 1px solid var(--border-soft);
-    border-radius: var(--radius-lg);
-    padding: 1.1rem 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
-}
-.benchmark-card-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
-.benchmark-card-name { font-size: 1.1rem; font-weight: 800; font-family: var(--font-family-title, inherit); }
-.benchmark-alerts { display: flex; gap: 0.35rem; flex-wrap: wrap; min-height: 1.2rem; }
-.benchmark-card-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
-.benchmark-stat {
-    background: var(--bg-2, rgba(255,255,255,0.03));
-    border-radius: var(--radius-md);
-    padding: 0.55rem 0.6rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-}
-.benchmark-stat-value { font-weight: 800; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
-.benchmark-stat-label { font-size: 0.68rem; color: var(--fg-muted); }
 .portal-badge-section-title {
     display: flex;
     align-items: center;

@@ -347,7 +347,6 @@
             gm_svs_matchup_sub:    'Server vs Server Matchup & Dangerosity Ranking',
             gm_nav_gvg_matchup:    'GvG',
             gm_gvg_matchup_sub:    'Server vs Server Guild Matchup & Dangerosity Ranking',
-            gm_nav_benchmark:      'Guild benchmark',
             gm_nav_subscription:   'Subscription',
             gm_sub_subtitle:       'Manage your guild subscription',
             gm_sub_plans_title:    'Subscription plans',

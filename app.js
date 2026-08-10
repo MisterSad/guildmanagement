@@ -433,9 +433,6 @@
         if ((tabId === 'tab-gvg-matchup' || tabId === 'gvg-matchup') && window.GM_GVG_MATCHUP) {
             window.GM_GVG_MATCHUP.load();
         }
-        if (tabId === 'tab-benchmark' && window.GM_BENCHMARK) {
-            window.GM_BENCHMARK.load();
-        }
         if ((tabId === 'tab-sanctions' || tabId === 'sanctions') && window.GM_SANCTIONS) {
             window.GM_SANCTIONS.load();
         }
