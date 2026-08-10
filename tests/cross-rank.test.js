@@ -171,6 +171,17 @@ describe('GM_SETTINGS cross-guild Draft Mercato ranking', () => {
         localStorage.removeItem('gm_role');
     });
 
+    it('excludes players from the DEMO guild', async () => {
+        const demoFixture = [
+            ...FIXTURE,
+            { pseudo: 'DemoUser', guild: 'DEMO', server_number: '0000', power: 99999, global_rate: 100 }
+        ];
+        GM.db = createMockDb(demoFixture);
+        await SETTINGS.load();
+        expect(rowPseudos()).not.toContain('DemoUser');
+        expect(rowPseudos().length).toBe(5);
+    });
+
     it('shows an error state with a retry button when the RPC fails', async () => {
         GM.db = createMockDb(null, { message: 'boom' });
         await SETTINGS.load();

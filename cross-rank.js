@@ -87,7 +87,9 @@
                 wireRetry(container);
                 return;
             }
-            state.rows = (res && res.data) || [];
+            state.rows = ((res && res.data) || []).filter(function (r) {
+                return r.guild !== 'DEMO';
+            });
             render(container);
         } catch (err) {
             container.innerHTML = errorHtml((err && err.message) || 'Failed to load ranking');
@@ -104,6 +106,7 @@
     function visibleRows() {
         var q = state.query.trim().toLowerCase();
         var rows = state.rows.filter(function (r) {
+            if (r.guild === 'DEMO') return false;
             if (state.guild !== 'ALL' && r.guild !== state.guild) return false;
             var sVal = r.server_number != null ? String(r.server_number) : '';
             if (state.server !== 'ALL' && sVal !== state.server) return false;
