@@ -11,6 +11,9 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **GoTrue Shadow Account Self-Healing & Secret Isolation**: Fixed password reset flow in `admin-accounts` to preserve the GoTrue shadow account secret (`gotrue_secret_enc`) while updating the human password (`password_enc`). Added automatic self-healing in `auth-login` Edge Function to re-sync GoTrue credentials on the fly if a shadow account secret ever diverged.
+- **Clean Alphanumeric Password Generator**: Updated password generator (`generatePassword`) to produce clean, unambiguous alphanumeric characters avoiding confusing symbols or accidental formatting issues.
+- **Repaired Password Reset Database Engine (`gm_reset_account_password` RPC & migration `20260810210000_fix_reset_account_password.sql`)**: Updated password reset procedure to encrypt passwords using `extensions.pgp_sym_encrypt` with Vault secret key `gm_accounts_key` and store in `accounts.password_enc`.
 - **Removed Legacy Guild Benchmark Tab**: Completely removed the deprecated **Guild Benchmark** tab, script (`benchmark.js`), HTML template (`#tab-benchmark`), CSS styles, navigation item, and unit tests as requested.
 - **Server-Grouped Accordions for Guild Subscriptions & Server Numbers**: Grouped the **Subscription Management & Server Numbers** section in Super Admin Accounts & Access (`app.js`) into collapsible accordion cards by **Server** (e.g. `Server #1058`, `Server #1064`, `Unassigned Server`).
 - **Subscription Accordion UI Features**: Each server accordion header highlights the server badge, list of hosted guilds (`ALPHA, IMK, BABE`), guild count badge (`3 guilds`), and an animated toggle arrow (`ph-caret-down`). The first server section opens by default, and header clicks expand/collapse sections dynamically.

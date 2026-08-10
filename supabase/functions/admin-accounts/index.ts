@@ -130,8 +130,8 @@ Deno.serve(async (req: Request) => {
 
     const { data: targetAcc } = await admin
       .from("accounts")
-      .select("role, guild")
-      .eq("id", id)
+      .select("id, role, guild, auth_user_id")
+      .ilike("id", id)
       .maybeSingle();
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 200);
 
@@ -141,17 +141,47 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const newPassword = (body?.password ?? randomSecret().slice(0, 16)).toString();
-    const { error: rpcErr } = await admin.rpc("gm_reset_account_password", { p_id: id, p_password: newPassword });
-    if (rpcErr) return json({ ok: false, error: "server_error" }, 200);
-
-    // Update GoTrue password if shadow user exists
-    const email = await emailFor(id);
-    const { data: list } = await admin.auth.admin.listUsers();
-    const ex = list?.users?.find((u: { email?: string }) => u.email === email);
-    if (ex) {
-      await admin.auth.admin.updateUserById(ex.id, { password: newPassword });
+    const canonicalId = targetAcc.id;
+    const newPassword = (body?.password ?? randomSecret().slice(0, 16)).toString().trim();
+    const { data: rpcData, error: rpcErr } = await admin.rpc("gm_reset_account_password", { p_id: canonicalId, p_password: newPassword });
+    if (rpcErr) return json({ ok: false, error: "server_error", message: rpcErr.message }, 500);
+    if (Array.isArray(rpcData) && rpcData.length > 0 && rpcData[0]?.ok === false) {
+      return json({ ok: false, error: rpcData[0]?.error || "reset_failed" }, 200);
     }
+
+    // Sync GoTrue shadow user password: resync using stored gotrue_secret.
+    // NEVER overwrite gotrue_secret with the human password.
+    // NEVER create a new shadow user if auth_user_id already exists.
+    const { data: shadow } = await admin.rpc("gm_get_shadow", { p_id: canonicalId });
+    const row = Array.isArray(shadow) ? shadow[0] : shadow;
+
+    if (row?.auth_user_id && row?.gotrue_secret) {
+      // Shadow user already linked: just keep GoTrue password in sync with gotrue_secret
+      try {
+        await admin.auth.admin.updateUserById(row.auth_user_id, { password: row.gotrue_secret });
+      } catch (_) { /* best-effort */ }
+    } else if (!row?.auth_user_id) {
+      // No shadow user at all: provision one now with a fresh secret
+      const email = await emailFor(canonicalId);
+      const secret = randomSecret();
+      const meta = { app_role: targetAcc.role || "guild_admin", account_id: canonicalId };
+      const { data: created, error: cuErr } = await admin.auth.admin.createUser({
+        email, password: secret, email_confirm: true, app_metadata: meta,
+      });
+      let uid = created?.user?.id;
+      if (cuErr || !uid) {
+        const { data: list } = await admin.auth.admin.listUsers();
+        const ex = list?.users?.find((u: { email?: string }) => u.email === email);
+        if (ex) {
+          uid = ex.id;
+          await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
+        }
+      }
+      if (uid) {
+        await admin.rpc("gm_attach_shadow", { p_id: canonicalId, p_auth_user_id: uid, p_secret: secret });
+      }
+    }
+    // If auth_user_id is set but gotrue_secret is null: auth-login self-heal will fix it on next login.
 
     return json({ ok: true, password: newPassword });
   }

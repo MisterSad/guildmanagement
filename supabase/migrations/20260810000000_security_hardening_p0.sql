@@ -35,8 +35,10 @@ BEGIN
   END IF;
 
   UPDATE public.accounts
-  SET password_encrypted = pgtap_encrypt(p_password),
-      updated_at = now()
+  SET password_enc = extensions.pgp_sym_encrypt(
+        p_password,
+        (SELECT s.decrypted_secret FROM vault.decrypted_secrets s WHERE s.name = 'gm_accounts_key')
+      )
   WHERE id = p_id;
 
   IF NOT FOUND THEN

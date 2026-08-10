@@ -494,7 +494,7 @@
     // FIX (C3): Use crypto.getRandomValues() instead of Math.random() for password generation.
     // Math.random() is not cryptographically secure and produces predictable outputs.
     function generatePassword(length) {
-        var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
+        var chars = '23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ!@#$%';
         var result = '';
         var limit = 256 - (256 % chars.length);
         while (result.length < length) {
@@ -2841,17 +2841,14 @@
                             '</div>' +
                         '</div>' +
                         '<div class="input-group" style="flex: 1;">' +
-                            '<label for="edit-role">Role</label>' +
-                            '<div class="input-wrapper">' +
-                                '<i class="ph ph-crown"></i>' +
-                                '<select id="edit-role" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); font-family: var(--font-family-body); font-size: 0.88rem; width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.5rem;">' +
-                                    '<option value="R1"' + (member.role === 'R1' ? ' selected' : '') + '>R1</option>' +
-                                    '<option value="R2"' + (member.role === 'R2' ? ' selected' : '') + '>R2</option>' +
-                                    '<option value="R3"' + (member.role === 'R3' ? ' selected' : '') + '>R3</option>' +
-                                    '<option value="R4"' + (member.role === 'R4' ? ' selected' : '') + '>R4</option>' +
-                                    '<option value="R5"' + (member.role === 'R5' ? ' selected' : '') + '>R5</option>' +
-                                '</select>' +
-                            '</div>' +
+                            '<label for="edit-role"><i class="ph ph-crown" style="vertical-align:middle;margin-right:0.3rem"></i>Role</label>' +
+                            '<select id="edit-role" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); font-family: var(--font-family-body); font-size: 0.88rem; width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
+                                '<option value="R1"' + (member.role === 'R1' ? ' selected' : '') + '>R1</option>' +
+                                '<option value="R2"' + (member.role === 'R2' ? ' selected' : '') + '>R2</option>' +
+                                '<option value="R3"' + (member.role === 'R3' ? ' selected' : '') + '>R3</option>' +
+                                '<option value="R4"' + (member.role === 'R4' ? ' selected' : '') + '>R4</option>' +
+                                '<option value="R5"' + (member.role === 'R5' ? ' selected' : '') + '>R5</option>' +
+                            '</select>' +
                         '</div>' +
                     '</div>' +
                     historyHtml +

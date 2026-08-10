@@ -44,4 +44,13 @@ describe('Security Hardening & Module Audits', () => {
         const json = JSON.parse(content);
         expect(json.headers[0].headers.some(h => h.key === 'Content-Security-Policy')).toBe(true);
     });
+
+    it('verifies gm_reset_account_password migration uses valid column password_enc and pgp_sym_encrypt', () => {
+        const filePath = path.resolve(__dirname, '../supabase/migrations/20260810210000_fix_reset_account_password.sql');
+        const content = fs.readFileSync(filePath, 'utf-8');
+        expect(content).toContain('password_enc = extensions.pgp_sym_encrypt');
+        expect(content).not.toContain('password_encrypted');
+        expect(content).not.toContain('pgtap_encrypt');
+        expect(content).not.toContain('updated_at = now()');
+    });
 });

@@ -85,7 +85,14 @@ Deno.serve(async (req: Request) => {
   }
 
   const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
-  const { data: signIn, error: siErr } = await anon.auth.signInWithPassword({ email, password: secret! });
+  let { data: signIn, error: siErr } = await anon.auth.signInWithPassword({ email, password: secret! });
+  if (siErr && row?.auth_user_id && secret) {
+    // Self-heal: GoTrue shadow user password may have diverged from gotrue_secret. Resync it.
+    await admin.auth.admin.updateUserById(row.auth_user_id, { password: secret });
+    const retry = await anon.auth.signInWithPassword({ email, password: secret });
+    signIn = retry.data;
+    siErr = retry.error;
+  }
   if (siErr || !signIn?.session) return json({ ok: false, error: "session_failed" }, 200);
 
   return json({

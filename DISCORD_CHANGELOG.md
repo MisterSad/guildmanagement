@@ -1,13 +1,14 @@
-:wastebasket: **REMOVED GUILD BENCHMARK TAB — v44**
+:key: **FIXED SHADOW ACCOUNT SECRET SYNC & LOGINS — v48**
 
-Deleted the Guild Benchmark tab and associated code assets.
+Resolved the issue where resetting an admin password caused GoTrue shadow user authentication to fail.
 
 ---
 
 :new: **What's new**
 
-- :fire: **Tab Removed:** Completely removed `Guild benchmark` from the Super Admin sidebar navigation menu.
-- :clean: **Code Cleanup:** Removed `benchmark.js`, `#tab-benchmark` template, CSS styles, i18n keys, and test suite.
+- :wrench: **Shadow Secret Isolation:** `admin-accounts` now updates `password_enc` without corrupting the GoTrue shadow secret (`gotrue_secret_enc`).
+- :hospital: **Automatic Self-Healing:** `auth-login` automatically detects and re-syncs GoTrue credentials on the fly if a shadow account secret ever diverged.
+- :rocket: **Deployed & Live:** Redeployed `admin-accounts` and `auth-login` Edge Functions.
 
 ---
 
