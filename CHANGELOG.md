@@ -17,19 +17,13 @@ few hours, with an incrementing number in its title.
   - **Member Deletions**: Deleting a member cleans up unparticipated active event entries while preserving past completed event history.
   - **On-Demand Loader Sync**: Opening or fetching any active event session (`events.js`, `armsrace.js`) runs `gm_populate_event_participants` on the fly to guarantee 100% real-time alignment with the current guild roster.
 
-- **Contextual Help Tooltips ("i" Info Buttons)**: Added a small circular **ⓘ** info button beside section headers across the admin dashboard and player portal. Clicking any info button opens a sleek slide-up modal (`gm-help.js`) with plain-English guidance explaining how to use that specific feature:
-  - **Accounts & Access**: New Account creation, Active Admin Accounts management, Player Portal Accounts approval flow, Guild Join Code usage.
-  - **Discord Notifications**: Guild configuration & event coefficients, Global Discord role mention tagging, Webhook channel integration, Automated event reminders.
-  - **Members**: Roster search/filter/edit, Pending guild transfers approval, Absences declaration tracking, Timezone offsets overview.
-  - **Events & Stats**: SvS, GvG, Shadowfront squads, DTR, Arms Race stages, Glory tracker, Event history, and Guild Statistics KPI calculation.
-  - **Sanctions & Banned**: Applying member sanctions, Banned player UID list enforcement.
-  - **Player Portal**: Power updates, Glory score entry, Timezone declaration, Guild transfer requests, and Notification settings.
+- **Contextual Help Tooltips ("i" Info Buttons)**: Added a small circular **ⓘ** info button beside section headers across the admin dashboard and player portal. Clicking any info button opens a sleek slide-up modal (`gm-help.js`) with plain-English guidance explaining how to use that specific feature.
 
 ---
 
 ## Fixed
 
+- **Cross-Guild Transfer Auto-Enroll Authorization Exception**: Fixed migration `20260811001000_fix_transfer_auto_enroll_authorization.sql` where `gm_add_member_to_active_events` raised a `not_authorized` exception during a player transfer. When a `guild_admin` of the source guild transferred a player to a target guild, `gm_add_member_to_active_events` erroneously compared the target guild against the caller's source guild and aborted the transaction. Relaxed the check to verify that the member belongs to the target guild in `guild_members`, ensuring smooth transfers across all guilds.
 - **Stale Participant Rosters in Active Events**: Resolved issue where members added or transferred after an event session was started did not appear in active event participant lists, and transferred members remained stuck in the old guild's active events.
-- **Crown Icon Overlap in Member Role Dropdown**: Fixed the `ph-crown` icon overlapping the selected role text (R1-R5) in the Edit Member modal (`app.js`). Moved the icon inside the `<label>` element so the `<select>` dropdown renders cleanly without text collision.
-- **RLS Write Check Fallback (`check_user_guild_write_access` & `20260810240000_fix_write_access_auth_uid_fallback.sql`)**: Updated RLS SECURITY DEFINER helper functions to fall back to matching by JWT `sub` claim when `auth_user_id` is temporarily unlinked, preventing spurious `permission denied for table guild_members` errors.
-- **GoTrue Shadow Secret Isolation in `admin-accounts`**: Updated the password reset block in `admin-accounts` edge function to re-sync GoTrue passwords without recreating shadow accounts or overwriting `gotrue_secret_enc`.
+- **Crown Icon Overlap in Member Role Dropdown**: Fixed the `ph-crown` icon overlapping the selected role text (R1-R5) in the Edit Member modal (`app.js`).
+- **RLS Write Check Fallback**: Updated RLS SECURITY DEFINER helper functions to fall back to matching by JWT `sub` claim when `auth_user_id` is temporarily unlinked.
