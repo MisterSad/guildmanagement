@@ -1,19 +1,14 @@
-:chart_with_downwards_trend: **SVS DANGEROSITY POWER PENALTIES & SCORE AVERAGES — v32**
+:straight_ruler: **SINGLE-LINE SCORE FORMATTING & SVS MATCHUP POLISH — v33**
 
-Applied combat power penalty multipliers to Dangerosity Scoring and updated table columns to display average scores.
+Fixed score text wrapping on table cells by enforcing single-line formatting and compact score display.
 
 ---
 
 :new: **What's new**
 
-- :weight_lifting: **Power Penalties on Dangerosity Score:**
-  - **< 60M Power:** Big Penalty (`0.30x` multiplier)
-  - **61M - 90M Power:** Moderate Penalty (`0.65x` multiplier)
-  - **> 91M Power:** Normal Dangerosity (`1.00x` multiplier, no penalty)
-- :bar_chart: **Average Scores Displayed:**
-  - **Day 1 to 5 (Avg):** Displays average preparation phase score.
-  - **Day 6 (Avg):** Displays average PvP invasion score.
-- :database: **Updated RPC `gm_svs_server_matchup`:** Migration `20260810180000_svs_matchup_power_penalty.sql` deployed to calculate penalized dangerosity scores in PostgreSQL.
+- :one: **Single-Line Table Display:** Applied `white-space: nowrap` and compact notation (`19.3M`, `2.39M`) to prevent scores like `19 307 310` from breaking onto 3 separate lines.
+- :mag: **Full Exact Scores on Hover:** Hovering over any score displays the exact unformatted integer in a browser tooltip.
+- :art: **Polished Table Typography:** Scaled font sizes (`0.78rem` to `0.82rem`) and column widths for clean alignment in Side-by-Side view.
 
 ---
 

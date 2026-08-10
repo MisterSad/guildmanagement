@@ -5,7 +5,8 @@
  * - Puissance < 60M : gros malus (x0.30)
  * - Puissance 60M à 90M : malus modéré (x0.65)
  * - Puissance > 91M : dangerosité normale (x1.00)
- * Affiche les MOYENNES des scores "Day 1 to 5" (Préparation) et "Day 6" (PvP / Invasion).
+ * Affiche les MOYENNES des scores "Day 1 to 5" (Préparation) et "Day 6" (PvP / Invasion)
+ * sur une seule ligne (white-space: nowrap + format compact K/M/B).
  * Source : RPC gm_svs_server_matchup() (SECURITY DEFINER, superadmin only).
  */
 (function () {
@@ -14,9 +15,18 @@
     var fmtPower = (window.GM && window.GM.formatPower) || function (n) { return String(n); };
     var fmtNum = (window.GM && window.GM.formatNumber) || function (n) {
         if (n == null || isNaN(n)) return '0';
-        return Number(n).toLocaleString();
+        return Number(n).toLocaleString().replace(/\s/g, '\u00A0');
     };
     var t = function (k) { return window.GM_I18N ? window.GM_I18N.t(k) : k; };
+
+    function fmtScore(n) {
+        if (n == null || isNaN(n) || n === 0) return '—';
+        if (n >= 1000000000) return (n / 1000000000).toFixed(1) + 'B';
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+        if (n >= 10000) return (n / 1000).toFixed(0) + 'K';
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+        return String(n);
+    }
 
     var state = {
         rows: [],
@@ -61,15 +71,15 @@
     function getDangerBadge(tier, score) {
         var tUpper = String(tier || '').toUpperCase();
         if (tUpper === 'EXTREME') {
-            return '<span class="gm-badge" style="background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.3); font-weight:800; font-size:0.75rem;"><i class="ph ph-fire-simple"></i> EXTREME</span>';
+            return '<span class="gm-badge" style="background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.3); font-weight:800; font-size:0.7rem; white-space:nowrap;"><i class="ph ph-fire-simple"></i> EXTREME</span>';
         }
         if (tUpper === 'HIGH') {
-            return '<span class="gm-badge" style="background:rgba(249, 115, 22, 0.15); color:#fb923c; border:1px solid rgba(249, 115, 22, 0.3); font-weight:800; font-size:0.75rem;"><i class="ph ph-warning"></i> HIGH</span>';
+            return '<span class="gm-badge" style="background:rgba(249, 115, 22, 0.15); color:#fb923c; border:1px solid rgba(249, 115, 22, 0.3); font-weight:800; font-size:0.7rem; white-space:nowrap;"><i class="ph ph-warning"></i> HIGH</span>';
         }
         if (tUpper === 'MEDIUM') {
-            return '<span class="gm-badge" style="background:rgba(234, 179, 8, 0.15); color:#facc15; border:1px solid rgba(234, 179, 8, 0.3); font-weight:700; font-size:0.75rem;"><i class="ph ph-shield"></i> MEDIUM</span>';
+            return '<span class="gm-badge" style="background:rgba(234, 179, 8, 0.15); color:#facc15; border:1px solid rgba(234, 179, 8, 0.3); font-weight:700; font-size:0.7rem; white-space:nowrap;"><i class="ph ph-shield"></i> MEDIUM</span>';
         }
-        return '<span class="gm-badge" style="background:rgba(34, 197, 94, 0.12); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.25); font-weight:600; font-size:0.75rem;"><i class="ph ph-check-circle"></i> LOW</span>';
+        return '<span class="gm-badge" style="background:rgba(34, 197, 94, 0.12); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.25); font-weight:600; font-size:0.7rem; white-space:nowrap;"><i class="ph ph-check-circle"></i> LOW</span>';
     }
 
     // ── Chargement des données ───────────────────────────────────────────────
@@ -352,15 +362,15 @@
                 '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:.75rem; background:rgba(0,0,0,0.2); padding:.75rem; border-radius:8px; text-align:center;">' +
                     '<div>' +
                         '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 1-5 Avg</div>' +
-                        '<div style="font-weight:700; color:var(--fg); font-size:.9rem;">' + fmtNum(statsA.avgPrep) + '</div>' +
+                        '<div style="font-weight:700; color:var(--fg); font-size:.85rem; white-space:nowrap;">' + fmtScore(statsA.avgPrep) + '</div>' +
                     '</div>' +
                     '<div>' +
                         '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 6 Avg</div>' +
-                        '<div style="font-weight:800; color:#f87171; font-size:.9rem;">' + fmtNum(statsA.avgPvp) + '</div>' +
+                        '<div style="font-weight:800; color:#f87171; font-size:.85rem; white-space:nowrap;">' + fmtScore(statsA.avgPvp) + '</div>' +
                     '</div>' +
                     '<div>' +
                         '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Threats</div>' +
-                        '<div style="font-weight:800; color:#fb923c; font-size:.9rem;">' + (statsA.extremeCount + statsA.highCount) + ' High+</div>' +
+                        '<div style="font-weight:800; color:#fb923c; font-size:.85rem; white-space:nowrap;">' + (statsA.extremeCount + statsA.highCount) + ' High+</div>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
@@ -380,15 +390,15 @@
                 '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:.75rem; background:rgba(0,0,0,0.2); padding:.75rem; border-radius:8px; text-align:center;">' +
                     '<div>' +
                         '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 1-5 Avg</div>' +
-                        '<div style="font-weight:700; color:var(--fg); font-size:.9rem;">' + fmtNum(statsB.avgPrep) + '</div>' +
+                        '<div style="font-weight:700; color:var(--fg); font-size:.85rem; white-space:nowrap;">' + fmtScore(statsB.avgPrep) + '</div>' +
                     '</div>' +
                     '<div>' +
                         '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 6 Avg</div>' +
-                        '<div style="font-weight:800; color:#f87171; font-size:.9rem;">' + fmtNum(statsB.avgPvp) + '</div>' +
+                        '<div style="font-weight:800; color:#f87171; font-size:.85rem; white-space:nowrap;">' + fmtScore(statsB.avgPvp) + '</div>' +
                     '</div>' +
                     '<div>' +
                         '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Threats</div>' +
-                        '<div style="font-weight:800; color:#fb923c; font-size:.9rem;">' + (statsB.extremeCount + statsB.highCount) + ' High+</div>' +
+                        '<div style="font-weight:800; color:#fb923c; font-size:.85rem; white-space:nowrap;">' + (statsB.extremeCount + statsB.highCount) + ' High+</div>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
@@ -407,13 +417,13 @@
                 '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
                     '<table class="gm-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">' +
                         '<thead><tr>' +
-                            '<th>#</th>' +
-                            '<th>Member</th>' +
-                            '<th class="gm-center">Guild</th>' +
-                            '<th class="gm-right">Power</th>' +
-                            '<th class="gm-right" title="Day 1 to 5 Average Prep Score">Day 1-5 (Avg)</th>' +
-                            '<th class="gm-right" title="Day 6 Average PvP Score">Day 6 (Avg)</th>' +
-                            '<th class="gm-center">Threat</th>' +
+                            '<th class="gm-center" style="width:30px; white-space:nowrap;">#</th>' +
+                            '<th style="white-space:nowrap;">Member</th>' +
+                            '<th class="gm-center" style="white-space:nowrap;">Guild</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;">Power</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average PvP Score">Day 6</th>' +
+                            '<th class="gm-center" style="white-space:nowrap;">Threat</th>' +
                         '</tr></thead><tbody>' +
                             renderRosterRows(rowsA) +
                         '</tbody>' +
@@ -430,13 +440,13 @@
                 '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
                     '<table class="gm-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">' +
                         '<thead><tr>' +
-                            '<th>#</th>' +
-                            '<th>Member</th>' +
-                            '<th class="gm-center">Guild</th>' +
-                            '<th class="gm-right">Power</th>' +
-                            '<th class="gm-right" title="Day 1 to 5 Average Prep Score">Day 1-5 (Avg)</th>' +
-                            '<th class="gm-right" title="Day 6 Average PvP Score">Day 6 (Avg)</th>' +
-                            '<th class="gm-center">Threat</th>' +
+                            '<th class="gm-center" style="width:30px; white-space:nowrap;">#</th>' +
+                            '<th style="white-space:nowrap;">Member</th>' +
+                            '<th class="gm-center" style="white-space:nowrap;">Guild</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;">Power</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average PvP Score">Day 6</th>' +
+                            '<th class="gm-center" style="white-space:nowrap;">Threat</th>' +
                         '</tr></thead><tbody>' +
                             renderRosterRows(rowsB) +
                         '</tbody>' +
@@ -456,20 +466,20 @@
             var dScore = computeDangerScore(r);
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
-                    '<td style="font-weight:700; color:var(--fg-dim);">' + (idx + 1) + '</td>' +
-                    '<td>' +
+                    '<td class="gm-center" style="font-weight:700; color:var(--fg-dim); white-space:nowrap;">' + (idx + 1) + '</td>' +
+                    '<td style="white-space:nowrap;">' +
                         '<div style="display:flex; align-items:center; gap:.5rem;">' +
-                            '<div class="gm-avatar gm-avatar-squircle" style="width:28px; height:28px; font-size:.8rem; font-weight:700;">' + esc(initial) + '</div>' +
-                            '<strong style="color:var(--fg); font-size:.85rem;">' + esc(r.pseudo) + '</strong>' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:26px; height:26px; font-size:.78rem; font-weight:700;">' + esc(initial) + '</div>' +
+                            '<strong style="color:var(--fg); font-size:.82rem;">' + esc(r.pseudo) + '</strong>' +
                         '</div>' +
                     '</td>' +
-                    '<td class="gm-center">' +
-                        '<span style="background:var(--accent-soft); color:var(--accent); border-radius:4px; padding:1px 6px; font-weight:700; font-size:.7rem;">' + esc(r.guild) + '</span>' +
+                    '<td class="gm-center" style="white-space:nowrap;">' +
+                        '<span style="background:var(--accent-soft); color:var(--accent); border-radius:4px; padding:1px 6px; font-weight:700; font-size:.68rem;">' + esc(r.guild) + '</span>' +
                     '</td>' +
-                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums;">' + fmtPower(r.power) + '</td>' +
-                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; color:var(--fg);">' + (r.avg_prep_score > 0 ? fmtNum(r.avg_prep_score) : '—') + '</td>' +
-                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; color:#f87171;">' + (r.avg_pvp_score > 0 ? fmtNum(r.avg_pvp_score) : '—') + '</td>' +
-                    '<td class="gm-center">' + getDangerBadge(r.danger_tier, dScore) + '</td>' +
+                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem;">' + fmtPower(r.power) + '</td>' +
+                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem; color:var(--fg);" title="' + fmtNum(r.avg_prep_score) + '">' + fmtScore(r.avg_prep_score) + '</td>' +
+                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem; color:#f87171;" title="' + fmtNum(r.avg_pvp_score) + '">' + fmtScore(r.avg_pvp_score) + '</td>' +
+                    '<td class="gm-center" style="white-space:nowrap;">' + getDangerBadge(r.danger_tier, dScore) + '</td>' +
                 '</tr>';
         });
         return html;
@@ -492,15 +502,15 @@
             '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
                 '<table class="gm-table" style="width:100%; border-collapse:collapse;">' +
                     '<thead><tr>' +
-                        '<th class="gm-center" style="width:50px;">#</th>' +
+                        '<th class="gm-center" style="width:50px; white-space:nowrap;">#</th>' +
                         header('pseudo', 'Member') +
                         header('server', 'Server') +
                         header('guild', 'Guild') +
-                        '<th class="gm-right" data-sort="power" style="cursor:pointer;">Power</th>' +
-                        '<th class="gm-right" data-sort="avg_prep_score" style="cursor:pointer;" title="Average Day 1 to 5 Prep score">Day 1-5 Avg</th>' +
-                        '<th class="gm-right" data-sort="avg_pvp_score" style="cursor:pointer;" title="Average Day 6 PvP score">Day 6 Avg</th>' +
-                        '<th class="gm-right" data-sort="danger_score" style="cursor:pointer;">Danger Score</th>' +
-                        '<th class="gm-center" data-sort="danger_tier" style="cursor:pointer;">Danger Tier</th>' +
+                        '<th class="gm-right" data-sort="power" style="cursor:pointer; white-space:nowrap;">Power</th>' +
+                        '<th class="gm-right" data-sort="avg_prep_score" style="cursor:pointer; white-space:nowrap;" title="Average Day 1 to 5 Prep score">Day 1-5 Avg</th>' +
+                        '<th class="gm-right" data-sort="avg_pvp_score" style="cursor:pointer; white-space:nowrap;" title="Average Day 6 PvP score">Day 6 Avg</th>' +
+                        '<th class="gm-right" data-sort="danger_score" style="cursor:pointer; white-space:nowrap;">Danger Score</th>' +
+                        '<th class="gm-center" data-sort="danger_tier" style="cursor:pointer; white-space:nowrap;">Danger Tier</th>' +
                     '</tr></thead><tbody>' +
                         renderCombinedRows(rows) +
                     '</tbody>' +
@@ -521,24 +531,24 @@
 
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
-                    '<td class="gm-center" style="font-weight:700;">' + (idx + 1) + '</td>' +
-                    '<td>' +
+                    '<td class="gm-center" style="font-weight:700; white-space:nowrap;">' + (idx + 1) + '</td>' +
+                    '<td style="white-space:nowrap;">' +
                         '<div style="display:flex; align-items:center; gap:.75rem;">' +
-                            '<div class="gm-avatar gm-avatar-squircle" style="width:34px; height:34px; font-size:.9rem; font-weight:700;">' + esc(initial) + '</div>' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:32px; height:32px; font-size:.85rem; font-weight:700;">' + esc(initial) + '</div>' +
                             '<strong style="color:var(--fg); font-weight:700;">' + esc(r.pseudo) + '</strong>' +
                         '</div>' +
                     '</td>' +
-                    '<td class="gm-center">' +
+                    '<td class="gm-center" style="white-space:nowrap;">' +
                         '<span style="background:rgba(59, 130, 246, 0.12); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.25); border-radius:6px; padding:2px 8px; font-weight:700; font-size:.75rem;">' + esc(sDisplay) + '</span>' +
                     '</td>' +
-                    '<td class="gm-center">' +
+                    '<td class="gm-center" style="white-space:nowrap;">' +
                         '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:2px 8px; font-weight:700; font-size:.72rem;">' + esc(r.guild) + '</span>' +
                     '</td>' +
-                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums;">' + fmtPower(r.power) + '</td>' +
-                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; font-weight:600;">' + (r.avg_prep_score > 0 ? fmtNum(r.avg_prep_score) : '—') + '</td>' +
-                    '<td class="gm-right" style="font-weight:800; font-variant-numeric:tabular-nums; color:#f87171;">' + (r.avg_pvp_score > 0 ? fmtNum(r.avg_pvp_score) : '—') + '</td>' +
-                    '<td class="gm-right" style="font-weight:900; font-variant-numeric:tabular-nums; color:var(--accent);">' + fmtNum(dScore) + '</td>' +
-                    '<td class="gm-center">' + getDangerBadge(r.danger_tier, dScore) + '</td>' +
+                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap;">' + fmtPower(r.power) + '</td>' +
+                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap;" title="' + fmtNum(r.avg_prep_score) + '">' + fmtScore(r.avg_prep_score) + '</td>' +
+                    '<td class="gm-right" style="font-weight:800; font-variant-numeric:tabular-nums; color:#f87171; white-space:nowrap;" title="' + fmtNum(r.avg_pvp_score) + '">' + fmtScore(r.avg_pvp_score) + '</td>' +
+                    '<td class="gm-right" style="font-weight:900; font-variant-numeric:tabular-nums; color:var(--accent); white-space:nowrap;">' + fmtScore(dScore) + '</td>' +
+                    '<td class="gm-center" style="white-space:nowrap;">' + getDangerBadge(r.danger_tier, dScore) + '</td>' +
                 '</tr>';
         });
         return html;

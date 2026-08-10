@@ -11,6 +11,7 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Single-Line Score Formatting & No-Wrap Styling**: Updated the **SvS Matchup** page (`svs-matchup.js`) with compact numeric score formatting (`K`/`M`/`B`) and `white-space: nowrap` styling across all table cells and headers. Prevents multi-line text wrapping on large scores (e.g. `19 307 310` is displayed cleanly as `19.3M` on a single line, with full exact numbers available on mouse hover).
 - **SvS Dangerosity Power Penalty Thresholds**: Updated the **SvS Matchup** RPC (`20260810180000_svs_matchup_power_penalty.sql`) and client logic (`svs-matchup.js`) to apply power penalties to Dangerosity Scoring:
   - **Power < 60M**: Big Penalty (`0.30x` multiplier)
   - **Power 61M to 90M**: Moderate Penalty (`0.65x` multiplier)
@@ -25,6 +26,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Table Score Text Overflow / Multi-Line Wrapping**: Fixed multi-line wrapping of scores in SvS Matchup table cells by applying `white-space: nowrap;` and compact notation (`19.3M`), ensuring all table rows remain strictly single-line.
 - **Dangerosity Tier Balance**: Penalized low-power accounts (<60M power) so they cannot artificially inflate threat levels to EXTREME or HIGH without sufficient combat power.
 - **Super Admin Navigation**: Added new `SvS` item under `SUPER ADMIN` section in `shell.js` with sword icon (`ph-sword`) and r5Only protection.
 - **Global Participation Rate Weighting**: Standardized Overall score calculation on the Draft page so high-impact major guild events (SvS and GvG) carry 5x weight, Shadowfront carries 3x weight, and daily events (DTR & Arms Race) carry 2x weight.
