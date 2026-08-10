@@ -1,16 +1,15 @@
-:flag_white: **SUPER ADMIN GVG GUILD VS GUILD MATCHUP DASHBOARD — v34**
+:swords: **GVG GUILD A VS GUILD B PLAYER ROSTER MATCHUP — v35**
 
-Added a dedicated **GvG** tab in the Super Admin menu to compare Server vs Server guild rosters, scores, and dangerosity.
+Updated the GvG tab to compare Guild A vs Guild B directly with full player rosters.
 
 ---
 
 :new: **What's new**
 
-- :triangular_flag_on_post: **Server vs Server Guild Matchup:** Compare all **guilds** of **Server A** vs all **guilds** of **Server B** side by side.
-- :bar_chart: **Guild Metrics & Day 1-5 / Day 6 Scores:** Displays total guild power, member count, average member power, Day 1 to 5 average score per member, and Day 6 castle battle score per member.
-- :warning: **Guild Dangerosity Score & Badges:** Calculates a weighted Guild Dangerosity Score and assigns Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
-- :columns: **Dual View Modes:** Switch between **Side by Side Guilds** comparison and **Combined Guild Ranking**.
-- :database: **New RPC `gm_gvg_guild_matchup`:** Migration `20260810190000_gvg_guild_matchup_rpc.sql` deployed to calculate GvG guild matchup data in PostgreSQL.
+- :flag_white: **Guild A vs Guild B Selectors:** Select boxes now list Guilds directly (e.g. `ALPHA (#1058)`, `OMEGA (#1064)`, `IMK (#1058)`, `YARR (#1064)`).
+- :users: **Full Player Rosters:** Displays the complete list of players for Guild A on the left and Guild B on the right.
+- :bar_chart: **GvG Player Scores & Dangerosity:** Shows Day 1-5 Avg, Day 6 Castle Battle Avg, Power, and Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
+- :database: **New RPC `gm_gvg_player_matchup`:** Migration `20260810200000_gvg_player_matchup_rpc.sql` deployed to serve GvG player matchup data in PostgreSQL.
 
 ---
 

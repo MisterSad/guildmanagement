@@ -1,9 +1,11 @@
 /**
  * gvg-matchup.js — Super Admin GvG Guild vs Guild Matchup & Dangerosity Ranking.
- * Permet de comparer les GUILDES d'un serveur vs les GUILDES d'un autre serveur,
- * avec leurs statistiques complètes et leur scoring de dangerosité GvG dans les journées
- * "Day 1 to 5" (Préparation) et "Day 6" (Combat de château).
- * Source : RPC gm_gvg_guild_matchup() (SECURITY DEFINER, superadmin only).
+ * Permet de comparer GUILDE A vs GUILDE B directement (ex: ALPHA vs OMEGA),
+ * en affichant l'ensemble des joueurs de chaque guilde avec leurs moyennes GvG :
+ * - Scores "Day 1 to 5" (Préparation GvG)
+ * - Scores "Day 6" (Combat de château GvG du samedi)
+ * - Scoring de dangerosité du joueur (avec malus de puissance : <60M x0.30, 60-90M x0.65, >91M x1.00)
+ * Source : RPC gm_gvg_player_matchup() (SECURITY DEFINER, superadmin only).
  */
 (function () {
 
@@ -26,8 +28,8 @@
 
     var state = {
         rows: [],
-        serverA: 'ALL',
-        serverB: 'ALL',
+        guildA: 'ALL',
+        guildB: 'ALL',
         viewMode: 'side-by-side', // 'side-by-side' ou 'combined'
         sortKey: 'danger_score',
         sortDesc: true,
@@ -49,15 +51,15 @@
         if (r.danger_score !== undefined && r.danger_score !== null) {
             return r.danger_score;
         }
-        var p = r.total_power || 0;
-        var prep = r.total_prep_score || (r.avg_prep_score * r.member_count) || 0;
-        var pvp = r.total_pvp_score || (r.avg_pvp_score * r.member_count) || 0;
+        var p = r.power || 0;
+        var prep = r.avg_prep_score || 0;
+        var pvp = r.avg_pvp_score || 0;
         var raw = p + (prep * 2) + (pvp * 5);
         var mult = 1.0;
-        if (p < 1500000000) {
-            mult = 0.40;
-        } else if (p <= 3500000000) {
-            mult = 0.70;
+        if (p < 60000000) {
+            mult = 0.30;
+        } else if (p <= 90000000) {
+            mult = 0.65;
         }
         return Math.round(raw * mult);
     }
@@ -99,7 +101,7 @@
         container.innerHTML = loadingHtml();
 
         try {
-            var query = db.rpc('gm_gvg_guild_matchup');
+            var query = db.rpc('gm_gvg_player_matchup');
             if (query && typeof query.range === 'function') {
                 query = query.range(0, 99999);
             }
@@ -113,13 +115,13 @@
                 return r.guild !== 'DEMO';
             });
 
-            // Auto-sélection des 2 premiers serveurs s'ils ne sont pas encore configurés
-            var sList = serverList();
-            if (sList.length >= 2 && state.serverA === 'ALL' && state.serverB === 'ALL') {
-                state.serverA = sList[0];
-                state.serverB = sList[1];
-            } else if (sList.length >= 1 && state.serverA === 'ALL') {
-                state.serverA = sList[0];
+            // Auto-sélection des 2 premières guildes si non encore configurées
+            var gList = guildList();
+            if (gList.length >= 2 && state.guildA === 'ALL' && state.guildB === 'ALL') {
+                state.guildA = gList[0].id;
+                state.guildB = gList[1].id;
+            } else if (gList.length >= 1 && state.guildA === 'ALL') {
+                state.guildA = gList[0].id;
             }
 
             render(container);
@@ -134,26 +136,33 @@
         if (btn) btn.addEventListener('click', load);
     }
 
-    function serverList() {
-        var set = [];
+    function guildList() {
+        var map = {};
         state.rows.forEach(function (r) {
-            if (r.guild === 'DEMO') return;
-            var s = r.server_number != null ? String(r.server_number) : '';
-            if (s && set.indexOf(s) === -1) set.push(s);
+            if (!r.guild || r.guild === 'DEMO') return;
+            if (!map[r.guild]) {
+                map[r.guild] = { id: r.guild, server: r.server_number != null ? String(r.server_number) : '' };
+            }
         });
-        return set.sort();
+        var list = [];
+        Object.keys(map).forEach(function (k) {
+            list.push(map[k]);
+        });
+        return list.sort(function (a, b) {
+            return a.id.localeCompare(b.id);
+        });
     }
 
-    function filterRows(serverNum) {
+    function filterRows(guildId) {
         var q = state.query.trim().toLowerCase();
         return state.rows.filter(function (r) {
             if (r.guild === 'DEMO') return false;
-            var sVal = r.server_number != null ? String(r.server_number) : '';
-            if (serverNum !== 'ALL' && sVal !== serverNum) return false;
+            if (guildId !== 'ALL' && r.guild !== guildId) return false;
             if (!q) return true;
+            var pseudoStr = String(r.pseudo || '').toLowerCase();
             var guildStr = String(r.guild || '').toLowerCase();
-            var serverStr = sVal.toLowerCase();
-            return (guildStr.indexOf(q) !== -1 || serverStr.indexOf(q) !== -1);
+            var serverStr = String(r.server_number || '').toLowerCase();
+            return (pseudoStr.indexOf(q) !== -1 || guildStr.indexOf(q) !== -1 || serverStr.indexOf(q) !== -1);
         });
     }
 
@@ -162,10 +171,16 @@
         list.sort(function (a, b) {
             var dir = sortDesc ? -1 : 1;
             var av, bv;
+            if (sortKey === 'pseudo') {
+                av = String(a.pseudo || '').toLowerCase();
+                bv = String(b.pseudo || '').toLowerCase();
+                return av.localeCompare(bv) * dir;
+            }
             if (sortKey === 'guild') {
                 av = String(a.guild || '').toLowerCase();
                 bv = String(b.guild || '').toLowerCase();
-                return av.localeCompare(bv) * dir;
+                if (av !== bv) return av.localeCompare(bv) * dir;
+                return (b.power || 0) - (a.power || 0);
             }
             if (sortKey === 'danger_score') {
                 av = computeDangerScore(a);
@@ -175,14 +190,13 @@
                 bv = b[sortKey] || 0;
             }
             if (av !== bv) return (av - bv) * dir;
-            return (b.total_power || 0) - (a.total_power || 0);
+            return (b.power || 0) - (a.power || 0);
         });
         return list;
     }
 
     function computeStats(rows) {
         var totalPower = 0;
-        var totalMembers = 0;
         var totalPrep = 0;
         var totalPvp = 0;
         var totalDanger = 0;
@@ -190,8 +204,7 @@
         var highCount = 0;
 
         rows.forEach(function (r) {
-            totalPower += (r.total_power || 0);
-            totalMembers += (r.member_count || 0);
+            totalPower += (r.power || 0);
             totalPrep += (r.avg_prep_score || 0);
             totalPvp += (r.avg_pvp_score || 0);
             totalDanger += computeDangerScore(r);
@@ -203,7 +216,6 @@
         return {
             count: rows.length,
             totalPower: totalPower,
-            totalMembers: totalMembers,
             avgPrep: rows.length ? Math.round(totalPrep / rows.length) : 0,
             avgPvp: rows.length ? Math.round(totalPvp / rows.length) : 0,
             avgDanger: rows.length ? Math.round(totalDanger / rows.length) : 0,
@@ -212,49 +224,59 @@
         };
     }
 
+    function getGuildServer(guildId) {
+        for (var i = 0; i < state.rows.length; i++) {
+            if (state.rows[i].guild === guildId && state.rows[i].server_number) {
+                return formatServerDisplay(state.rows[i].server_number);
+            }
+        }
+        return '—';
+    }
+
     // ── Rendu de la vue ──────────────────────────────────────────────────────
     function render(container) {
-        var servers = serverList();
+        var guilds = guildList();
 
-        var rowsA = sortRows(filterRows(state.serverA), state.sortKey, state.sortDesc);
-        var rowsB = sortRows(filterRows(state.serverB), state.sortKey, state.sortDesc);
+        var rowsA = sortRows(filterRows(state.guildA), state.sortKey, state.sortDesc);
+        var rowsB = sortRows(filterRows(state.guildB), state.sortKey, state.sortDesc);
 
         var statsA = computeStats(rowsA);
         var statsB = computeStats(rowsB);
 
-        // Barre d'outils et sélecteurs de Matchup
+        // Barre d'outils et sélecteurs de Guildes A vs B
         var headerHtml =
             '<div class="gm-card glass-card gm-section" style="padding:1.5rem; margin-bottom:1.5rem;">' +
                 '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">' +
                     '<div>' +
                         '<h2 style="margin:0; font-family:var(--font-display); font-size:1.4rem; display:flex; align-items:center; gap:.6rem;">' +
-                            '<i class="ph ph-flag-banner" style="color:var(--accent);"></i> GvG Guild Matchup & Dangerosity' +
+                            '<i class="ph ph-flag-banner" style="color:var(--accent);"></i> GvG Guild vs Guild Matchup' +
                         '</h2>' +
                         '<div class="gm-dim" style="font-size:0.85rem; margin-top:.25rem;">' +
-                            'Compare Server vs Server guild rosters with Day 1-5 Avg & Day 6 Avg scores and guild power penalties.' +
+                            'Compare full player rosters of Guild A vs Guild B with Day 1-5 Avg & Day 6 Castle Battle Avg scores.' +
                         '</div>' +
                     '</div>' +
                     '<div style="display:flex; gap:.5rem;">' +
                         '<button id="gvg-mode-side" class="gm-btn ' + (state.viewMode === 'side-by-side' ? 'gm-btn-primary' : 'gm-btn-secondary') + '" style="font-weight:600;">' +
-                            '<i class="ph ph-columns"></i> Side by Side Guilds' +
+                            '<i class="ph ph-columns"></i> Side by Side Rosters' +
                         '</button>' +
                         '<button id="gvg-mode-combined" class="gm-btn ' + (state.viewMode === 'combined' ? 'gm-btn-primary' : 'gm-btn-secondary') + '" style="font-weight:600;">' +
-                            '<i class="ph ph-list-numbers"></i> Combined Guild Ranking' +
+                            '<i class="ph ph-list-numbers"></i> Combined Roster Ranking' +
                         '</button>' +
                     '</div>' +
                 '</div>' +
 
-                '<!-- Matchup Server Selectors -->' +
+                '<!-- Matchup Guild Selectors -->' +
                 '<div style="display:grid; grid-template-columns: 1fr auto 1fr; gap:1rem; align-items:center;">' +
-                    '<!-- Server A Selection -->' +
+                    '<!-- Guild A Selection -->' +
                     '<div style="background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:12px; padding:1rem;">' +
                         '<div style="font-weight:800; color:#60a5fa; font-size:0.85rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem;">' +
-                            '<i class="ph ph-shield-star"></i> Server A Guilds' +
+                            '<i class="ph ph-shield-star"></i> Guild A' +
                         '</div>' +
-                        '<select id="gvg-select-server-a" class="gm-input" style="width:100%; font-weight:700;">' +
-                            '<option value="ALL">All Servers</option>' +
-                            servers.map(function (s) {
-                                return '<option value="' + esc(s) + '"' + (state.serverA === s ? ' selected' : '') + '>Server ' + esc(formatServerDisplay(s)) + '</option>';
+                        '<select id="gvg-select-guild-a" class="gm-input" style="width:100%; font-weight:700; font-size:1.05rem;">' +
+                            '<option value="ALL">All Guilds</option>' +
+                            guilds.map(function (g) {
+                                var label = esc(g.id) + ' (Server ' + esc(formatServerDisplay(g.server)) + ')';
+                                return '<option value="' + esc(g.id) + '"' + (state.guildA === g.id ? ' selected' : '') + '>' + label + '</option>';
                             }).join('') +
                         '</select>' +
                     '</div>' +
@@ -266,15 +288,16 @@
                         '</div>' +
                     '</div>' +
 
-                    '<!-- Server B Selection -->' +
+                    '<!-- Guild B Selection -->' +
                     '<div style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:12px; padding:1rem;">' +
                         '<div style="font-weight:800; color:#f87171; font-size:0.85rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem;">' +
-                            '<i class="ph ph-crosshair"></i> Server B Guilds' +
+                            '<i class="ph ph-crosshair"></i> Guild B' +
                         '</div>' +
-                        '<select id="gvg-select-server-b" class="gm-input" style="width:100%; font-weight:700;">' +
-                            '<option value="ALL">All Servers</option>' +
-                            servers.map(function (s) {
-                                return '<option value="' + esc(s) + '"' + (state.serverB === s ? ' selected' : '') + '>Server ' + esc(formatServerDisplay(s)) + '</option>';
+                        '<select id="gvg-select-guild-b" class="gm-input" style="width:100%; font-weight:700; font-size:1.05rem;">' +
+                            '<option value="ALL">All Guilds</option>' +
+                            guilds.map(function (g) {
+                                var label = esc(g.id) + ' (Server ' + esc(formatServerDisplay(g.server)) + ')';
+                                return '<option value="' + esc(g.id) + '"' + (state.guildB === g.id ? ' selected' : '') + '>' + label + '</option>';
                             }).join('') +
                         '</select>' +
                     '</div>' +
@@ -284,12 +307,12 @@
                 '<div style="margin-top:1rem; display:flex; gap:1rem; align-items:center;">' +
                     '<div class="gm-input-with-icon" style="flex:1;">' +
                         '<i class="ph ph-magnifying-glass gm-icon"></i>' +
-                        '<input type="text" id="gvg-matchup-search" class="gm-input" value="' + esc(state.query) + '" placeholder="Search guild name or server number...">' +
+                        '<input type="text" id="gvg-matchup-search" class="gm-input" value="' + esc(state.query) + '" placeholder="Search player pseudo or guild name...">' +
                     '</div>' +
                 '</div>' +
             '</div>';
 
-        // Cartes de synthèse comparatives des 2 serveurs
+        // Cartes de synthèse comparatives des 2 guildes
         var comparisonCardsHtml = renderComparisonCards(statsA, statsB);
 
         var contentHtml = '';
@@ -303,19 +326,22 @@
         wireControls(container);
     }
 
-    // ── Cartes de Synthèse Comparatives ──────────────────────────────────────
+    // ── Cartes de Synthèse Comparatives des 2 Guildes ────────────────────────
     function renderComparisonCards(statsA, statsB) {
+        var sA = getGuildServer(state.guildA);
+        var sB = getGuildServer(state.guildB);
+
         return '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-bottom:1.5rem;">' +
-            '<!-- Server A Guild Summary -->' +
+            '<!-- Guild A Summary -->' +
             '<div class="gm-card glass-card" style="padding:1.25rem; border-left:4px solid #3b82f6;">' +
                 '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">' +
                     '<div>' +
-                        '<div style="font-weight:800; font-size:1.1rem; color:#60a5fa;">Server ' + esc(formatServerDisplay(state.serverA)) + ' Guilds</div>' +
-                        '<div class="gm-dim" style="font-size:0.8rem;">' + statsA.count + ' guilds (' + statsA.totalMembers + ' members)</div>' +
+                        '<div style="font-weight:800; font-size:1.15rem; color:#60a5fa;">' + esc(state.guildA === 'ALL' ? 'All Guilds' : state.guildA) + ' <span style="font-size:0.85rem; color:var(--fg-dim); font-weight:600;">(Server ' + esc(sA) + ')</span></div>' +
+                        '<div class="gm-dim" style="font-size:0.8rem;">' + statsA.count + ' players analyzed</div>' +
                     '</div>' +
                     '<div style="text-align:right;">' +
                         '<div style="font-weight:800; font-size:1.2rem; font-variant-numeric:tabular-nums; color:var(--fg);">' + fmtPower(statsA.totalPower) + '</div>' +
-                        '<div class="gm-dim" style="font-size:0.75rem;">Guilds Total Power</div>' +
+                        '<div class="gm-dim" style="font-size:0.75rem;">Total Guild Power</div>' +
                     '</div>' +
                 '</div>' +
                 '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:.75rem; background:rgba(0,0,0,0.2); padding:.75rem; border-radius:8px; text-align:center;">' +
@@ -328,22 +354,22 @@
                         '<div style="font-weight:800; color:#f87171; font-size:.85rem; white-space:nowrap;">' + fmtScore(statsA.avgPvp) + '</div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Guild Threats</div>' +
+                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Threats</div>' +
                         '<div style="font-weight:800; color:#fb923c; font-size:.85rem; white-space:nowrap;">' + (statsA.extremeCount + statsA.highCount) + ' High+</div>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
 
-            '<!-- Server B Guild Summary -->' +
+            '<!-- Guild B Summary -->' +
             '<div class="gm-card glass-card" style="padding:1.25rem; border-left:4px solid #ef4444;">' +
                 '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">' +
                     '<div>' +
-                        '<div style="font-weight:800; font-size:1.1rem; color:#f87171;">Server ' + esc(formatServerDisplay(state.serverB)) + ' Guilds</div>' +
-                        '<div class="gm-dim" style="font-size:0.8rem;">' + statsB.count + ' guilds (' + statsB.totalMembers + ' members)</div>' +
+                        '<div style="font-weight:800; font-size:1.15rem; color:#f87171;">' + esc(state.guildB === 'ALL' ? 'All Guilds' : state.guildB) + ' <span style="font-size:0.85rem; color:var(--fg-dim); font-weight:600;">(Server ' + esc(sB) + ')</span></div>' +
+                        '<div class="gm-dim" style="font-size:0.8rem;">' + statsB.count + ' players analyzed</div>' +
                     '</div>' +
                     '<div style="text-align:right;">' +
                         '<div style="font-weight:800; font-size:1.2rem; font-variant-numeric:tabular-nums; color:var(--fg);">' + fmtPower(statsB.totalPower) + '</div>' +
-                        '<div class="gm-dim" style="font-size:0.75rem;">Guilds Total Power</div>' +
+                        '<div class="gm-dim" style="font-size:0.75rem;">Total Guild Power</div>' +
                     '</div>' +
                 '</div>' +
                 '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:.75rem; background:rgba(0,0,0,0.2); padding:.75rem; border-radius:8px; text-align:center;">' +
@@ -356,7 +382,7 @@
                         '<div style="font-weight:800; color:#f87171; font-size:.85rem; white-space:nowrap;">' + fmtScore(statsB.avgPvp) + '</div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Guild Threats</div>' +
+                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Threats</div>' +
                         '<div style="font-weight:800; color:#fb923c; font-size:.85rem; white-space:nowrap;">' + (statsB.extremeCount + statsB.highCount) + ' High+</div>' +
                     '</div>' +
                 '</div>' +
@@ -364,50 +390,48 @@
         '</div>';
     }
 
-    // ── Vue Side-by-Side (Deux Tableaux de Guildes Côte à Côte) ──────────────
+    // ── Vue Side-by-Side (Deux Tableaux de Joueurs Côte à Côte) ──────────────
     function renderSideBySideView(rowsA, rowsB) {
         return '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">' +
-            '<!-- Server A Guilds Table -->' +
+            '<!-- Guild A Roster Table -->' +
             '<div class="gm-card glass-card" style="padding:1rem;">' +
                 '<div style="font-weight:800; font-size:0.95rem; color:#60a5fa; margin-bottom:.75rem; display:flex; align-items:center; justify-content:space-between;">' +
-                    '<span><i class="ph ph-shield"></i> Server ' + esc(formatServerDisplay(state.serverA)) + ' Guilds</span>' +
-                    '<span class="gm-dim" style="font-size:.8rem; font-weight:600;">' + rowsA.length + ' guilds</span>' +
+                    '<span><i class="ph ph-shield"></i> ' + esc(state.guildA === 'ALL' ? 'All Guilds' : state.guildA) + ' Roster</span>' +
+                    '<span class="gm-dim" style="font-size:.8rem; font-weight:600;">' + rowsA.length + ' players</span>' +
                 '</div>' +
                 '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
                     '<table class="gm-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">' +
                         '<thead><tr>' +
                             '<th class="gm-center" style="width:30px; white-space:nowrap;">#</th>' +
-                            '<th style="white-space:nowrap;">Guild</th>' +
-                            '<th class="gm-center" style="white-space:nowrap;">Members</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;">Total Power</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score per Member">Day 1-5 (Avg)</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average Castle Battle Score per Member">Day 6 (Avg)</th>' +
+                            '<th style="white-space:nowrap;">Member</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;">Power</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average Castle Battle Score">Day 6</th>' +
                             '<th class="gm-center" style="white-space:nowrap;">Threat</th>' +
                         '</tr></thead><tbody>' +
-                            renderGuildRows(rowsA) +
+                            renderPlayerRows(rowsA) +
                         '</tbody>' +
                     '</table>' +
                 '</div>' +
             '</div>' +
 
-            '<!-- Server B Guilds Table -->' +
+            '<!-- Guild B Roster Table -->' +
             '<div class="gm-card glass-card" style="padding:1rem;">' +
                 '<div style="font-weight:800; font-size:0.95rem; color:#f87171; margin-bottom:.75rem; display:flex; align-items:center; justify-content:space-between;">' +
-                    '<span><i class="ph ph-crosshair"></i> Server ' + esc(formatServerDisplay(state.serverB)) + ' Guilds</span>' +
-                    '<span class="gm-dim" style="font-size:.8rem; font-weight:600;">' + rowsB.length + ' guilds</span>' +
+                    '<span><i class="ph ph-crosshair"></i> ' + esc(state.guildB === 'ALL' ? 'All Guilds' : state.guildB) + ' Roster</span>' +
+                    '<span class="gm-dim" style="font-size:.8rem; font-weight:600;">' + rowsB.length + ' players</span>' +
                 '</div>' +
                 '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
                     '<table class="gm-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">' +
                         '<thead><tr>' +
                             '<th class="gm-center" style="width:30px; white-space:nowrap;">#</th>' +
-                            '<th style="white-space:nowrap;">Guild</th>' +
-                            '<th class="gm-center" style="white-space:nowrap;">Members</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;">Total Power</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score per Member">Day 1-5 (Avg)</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average Castle Battle Score per Member">Day 6 (Avg)</th>' +
+                            '<th style="white-space:nowrap;">Member</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;">Power</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
+                            '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average Castle Battle Score">Day 6</th>' +
                             '<th class="gm-center" style="white-space:nowrap;">Threat</th>' +
                         '</tr></thead><tbody>' +
-                            renderGuildRows(rowsB) +
+                            renderPlayerRows(rowsB) +
                         '</tbody>' +
                     '</table>' +
                 '</div>' +
@@ -415,21 +439,24 @@
         '</div>';
     }
 
-    function renderGuildRows(rows) {
+    function renderPlayerRows(rows) {
         if (!rows || rows.length === 0) {
-            return '<tr><td colspan="7" class="gm-center" style="padding:2rem; color:var(--fg-dim);">No guilds found.</td></tr>';
+            return '<tr><td colspan="6" class="gm-center" style="padding:2rem; color:var(--fg-dim);">No players found.</td></tr>';
         }
         var html = '';
         rows.forEach(function (r, idx) {
+            var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(r.pseudo) : (r.pseudo ? String(r.pseudo).charAt(0).toUpperCase() : '?');
             var dScore = computeDangerScore(r);
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
                     '<td class="gm-center" style="font-weight:700; color:var(--fg-dim); white-space:nowrap;">' + (idx + 1) + '</td>' +
                     '<td style="white-space:nowrap;">' +
-                        '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:2px 8px; font-weight:800; font-size:.85rem; letter-spacing:.02em;">' + esc(r.guild) + '</span>' +
+                        '<div style="display:flex; align-items:center; gap:.5rem;">' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:26px; height:26px; font-size:.78rem; font-weight:700;">' + esc(initial) + '</div>' +
+                            '<strong style="color:var(--fg); font-size:.82rem;">' + esc(r.pseudo) + '</strong>' +
+                        '</div>' +
                     '</td>' +
-                    '<td class="gm-center" style="white-space:nowrap; font-weight:600; font-size:.8rem;">' + r.member_count + '</td>' +
-                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem;">' + fmtPower(r.total_power) + '</td>' +
+                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem;">' + fmtPower(r.power) + '</td>' +
                     '<td class="gm-right" style="font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem; color:var(--fg);" title="' + fmtNum(r.avg_prep_score) + '">' + fmtScore(r.avg_prep_score) + '</td>' +
                     '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem; color:#f87171;" title="' + fmtNum(r.avg_pvp_score) + '">' + fmtScore(r.avg_pvp_score) + '</td>' +
                     '<td class="gm-center" style="white-space:nowrap;">' + getDangerBadge(r.danger_tier, dScore) + '</td>' +
@@ -438,7 +465,7 @@
         return html;
     }
 
-    // ── Vue Combinée Leaderboard (Grand Tableau Unique de Guildes) ───────────
+    // ── Vue Combinée Leaderboard (Grand Tableau Unique de Joueurs) ───────────
     function renderCombinedView(allRows) {
         var rows = sortRows(allRows, state.sortKey, state.sortDesc);
 
@@ -449,20 +476,19 @@
 
         return '<div class="gm-card glass-card" style="padding:1.25rem;">' +
             '<div style="font-weight:800; font-size:1.05rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">' +
-                '<span>Cross-Server GvG Guild Dangerosity Leaderboard</span>' +
-                '<span class="gm-dim" style="font-size:0.85rem;">' + rows.length + ' guilds total</span>' +
+                '<span>Cross-Guild GvG Player Dangerosity Leaderboard</span>' +
+                '<span class="gm-dim" style="font-size:0.85rem;">' + rows.length + ' players total</span>' +
             '</div>' +
             '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
                 '<table class="gm-table" style="width:100%; border-collapse:collapse;">' +
                     '<thead><tr>' +
                         '<th class="gm-center" style="width:50px; white-space:nowrap;">#</th>' +
+                        header('pseudo', 'Member') +
                         header('guild', 'Guild') +
                         header('server', 'Server') +
-                        header('member_count', 'Members') +
-                        '<th class="gm-right" data-sort="total_power" style="cursor:pointer; white-space:nowrap;">Total Power</th>' +
-                        '<th class="gm-right" data-sort="avg_power" style="cursor:pointer; white-space:nowrap;">Avg Power</th>' +
-                        '<th class="gm-right" data-sort="avg_prep_score" style="cursor:pointer; white-space:nowrap;" title="Average Day 1 to 5 Prep score per member">Day 1-5 (Avg)</th>' +
-                        '<th class="gm-right" data-sort="avg_pvp_score" style="cursor:pointer; white-space:nowrap;" title="Average Day 6 Castle Battle score per member">Day 6 (Avg)</th>' +
+                        '<th class="gm-right" data-sort="power" style="cursor:pointer; white-space:nowrap;">Power</th>' +
+                        '<th class="gm-right" data-sort="avg_prep_score" style="cursor:pointer; white-space:nowrap;" title="Average Day 1 to 5 Prep score">Day 1-5 Avg</th>' +
+                        '<th class="gm-right" data-sort="avg_pvp_score" style="cursor:pointer; white-space:nowrap;" title="Average Day 6 Castle Battle score">Day 6 Avg</th>' +
                         '<th class="gm-right" data-sort="danger_score" style="cursor:pointer; white-space:nowrap;">Danger Score</th>' +
                         '<th class="gm-center" data-sort="danger_tier" style="cursor:pointer; white-space:nowrap;">Danger Tier</th>' +
                     '</tr></thead><tbody>' +
@@ -475,10 +501,11 @@
 
     function renderCombinedRows(rows) {
         if (!rows || rows.length === 0) {
-            return '<tr><td colspan="10" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">No guilds match the selected criteria.</td></tr>';
+            return '<tr><td colspan="9" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">No players match the selected criteria.</td></tr>';
         }
         var html = '';
         rows.forEach(function (r, idx) {
+            var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(r.pseudo) : (r.pseudo ? String(r.pseudo).charAt(0).toUpperCase() : '?');
             var sDisplay = formatServerDisplay(r.server_number);
             var dScore = computeDangerScore(r);
 
@@ -486,14 +513,18 @@
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
                     '<td class="gm-center" style="font-weight:700; white-space:nowrap;">' + (idx + 1) + '</td>' +
                     '<td style="white-space:nowrap;">' +
-                        '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:3px 10px; font-weight:800; font-size:.88rem;">' + esc(r.guild) + '</span>' +
+                        '<div style="display:flex; align-items:center; gap:.75rem;">' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:32px; height:32px; font-size:.85rem; font-weight:700;">' + esc(initial) + '</div>' +
+                            '<strong style="color:var(--fg); font-weight:700;">' + esc(r.pseudo) + '</strong>' +
+                        '</div>' +
+                    '</td>' +
+                    '<td class="gm-center" style="white-space:nowrap;">' +
+                        '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:2px 8px; font-weight:700; font-size:.72rem;">' + esc(r.guild) + '</span>' +
                     '</td>' +
                     '<td class="gm-center" style="white-space:nowrap;">' +
                         '<span style="background:rgba(59, 130, 246, 0.12); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.25); border-radius:6px; padding:2px 8px; font-weight:700; font-size:.75rem;">' + esc(sDisplay) + '</span>' +
                     '</td>' +
-                    '<td class="gm-center" style="white-space:nowrap; font-weight:600;">' + r.member_count + '</td>' +
-                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap;">' + fmtPower(r.total_power) + '</td>' +
-                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem;">' + fmtPower(r.avg_power) + '</td>' +
+                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap;">' + fmtPower(r.power) + '</td>' +
                     '<td class="gm-right" style="font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap;" title="' + fmtNum(r.avg_prep_score) + '">' + fmtScore(r.avg_prep_score) + '</td>' +
                     '<td class="gm-right" style="font-weight:800; font-variant-numeric:tabular-nums; color:#f87171; white-space:nowrap;" title="' + fmtNum(r.avg_pvp_score) + '">' + fmtScore(r.avg_pvp_score) + '</td>' +
                     '<td class="gm-right" style="font-weight:900; font-variant-numeric:tabular-nums; color:var(--accent); white-space:nowrap;">' + fmtScore(dScore) + '</td>' +
@@ -520,17 +551,17 @@
             });
         }
 
-        var selA = document.getElementById('gvg-select-server-a');
+        var selA = document.getElementById('gvg-select-guild-a');
         if (selA) {
             selA.addEventListener('change', function () {
-                state.serverA = selA.value;
+                state.guildA = selA.value;
                 render(container);
             });
         }
-        var selB = document.getElementById('gvg-select-server-b');
+        var selB = document.getElementById('gvg-select-guild-b');
         if (selB) {
             selB.addEventListener('change', function () {
-                state.serverB = selB.value;
+                state.guildB = selB.value;
                 render(container);
             });
         }
