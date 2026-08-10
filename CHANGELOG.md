@@ -11,6 +11,7 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Shadowfront Historical Participation Rate Fix Across All Tenants**: Resolved a bug where ended past Shadowfront sessions were excluded from historical calculations because `currentSids` retained past session IDs in `event_status`. `loadShadowfront()` now uses `activeSids` for history exclusion and unions `shadowfront_squads` with `event_participants`, ensuring historical participation rate badges (`100%`, `85%`, `50%`) update correctly across all tenants (CLAW, ALPHA, OMEGA, BABE, IMK, YARR, DEMO).
 - **Shadowfront Cross-Squad Member Pool Exclusion**: Assigning a player to any Shadowfront Squad (Squad One or Squad Two) now automatically excludes them from the available member pool of both squads. Unassigning a player immediately returns them to the available pool for both squads.
 - **Shadowfront 2-Step Workflow & Member Pool**: Streamlined Shadowfront Squad One & Squad Two management by removing the redundant "Availability" step. Admins now directly compose squads from the complete member pool (Column 1) into Main Participants (Column 2) or Substitutes/Reserves (Column 3), followed by live Participation Tracking (Step 2).
 - **Participation Percentage Badge Visibility**: Ensured historical participation rate badges (e.g. `100%`, `85%`, `50%`, `N/A`) are rendered directly in front of member names across all Shadowfront views (Member Pool, Main Participants, Substitutes/Reserves, and Participation Tracking table).
@@ -25,6 +26,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Shadowfront Participation Rate Badge Freeze**: Fixed player participation percentage calculation in `shadowfront.js` by separating history exclusion logic (`activeSids`) from current squad assignment fetching (`currentSids`), and combining session data from both `shadowfront_squads` and `event_participants`.
 - **Shadowfront Cross-Squad Double Booking Prevention**: Fixed `loadShadowfront()` to load assignment data across all current session IDs (`currentSids`) rather than active-only sessions (`activeSids`), ensuring assigned members are properly hidden from the unassigned pool when preparing squads prior to launch.
 - **Shadowfront Double-Entry Removal**: Eliminated duplicate data entry in Shadowfront by replacing the 3-step Availability declaration flow with a streamlined 2-step Squad Composition and Tracking flow.
 - **Web Push Notifications Setup Fixes**: Resolved multiple push notification registration errors (`updated_at` column missing, missing `ON CONFLICT` constraint, missing `p_ua` parameter) by adding a unique index on `push_subscriptions(endpoint)`, fixing `save_push_subscription` RPC parameters, using `last_seen`, and granting explicit `EXECUTE` permissions.
@@ -34,9 +36,6 @@ few hours, with an incrementing number in its title.
 - **DEMO Guild Server Number Fix**: Fixed DEMO tenant `server_number` from `'#0000'` to `'0000'` in `public.guilds` (`20260810095000_fix_demo_server_number.sql`) and added frontend sanitization in `shell.js` to prevent double hash symbols (`##0000`).
 - **Inactive Members UI Truncation**: Redesigned inactive member cards in Stats > Engagement with larger containers and line wrapping to prevent long player pseudos from being truncated.
 - **Glorious Delta (`Glory Δ`) Column Scoping**: Restricted `Glory Δ` column to Global leaderboard mode only, hiding it in event-specific views (SvS, GvG) where it was irrelevant.
-- **Strict 100% English UI Audit**: Audited and localized all UI strings, date formats (`en-GB`), empty state messages, and toast notifications to 100% English across `app.js`, `overview.js`, `history.js`, `sanctions.js`, and `gm-utils.js`.
-- **`admin-accounts` Edge Function Fix**: Resolved `ReferenceError: info is not defined` and edge function network call failures by implementing clean response error handling and fallback logic.
-- **Event History RPC Query & Order Fix**: Resolved event history loading failures ("No session for this filter") caused by invalid `GROUP BY` clauses and unsafe `session_id::timestamptz` casting in `gm_list_event_sessions` (`20260810040000` & `20260810070000`).
 
 ---
 

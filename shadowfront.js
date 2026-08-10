@@ -141,11 +141,11 @@
             var powers = sfState.membersData.map(function (m) { return parseInt(m.overall_power) || 0; });
             sfState.maxPower = powers.length ? Math.max.apply(null, powers) : 0;
 
-            // Seules les sessions ACTIVES sont exclues de l'historique des
-            // joueurs : une session terminée compte comme une participation
+            // Only currently active sessions are excluded from historical calculations.
+            // Past ended sessions are included in player participation history.
+            var activeSids = activeSessionIds();
             var currentSids = currentSessionIds();
 
-            // History: exclude current occurrence sessions from player history
             var hist = {};
             var partMap = {};
             (histParts.data || []).forEach(function (r) {
@@ -157,29 +157,42 @@
                 };
             });
 
+            // Union of unique (pseudo, session_id) pairs from shadowfront_squads and event_participants
+            var histKeys = {};
             (histSquads.data || []).forEach(function (r) {
-                if (currentSids.indexOf(r.session_id) !== -1) return;
-                if (!hist[r.pseudo]) hist[r.pseudo] = { assigned: 0, participated: 0, excused_count: 0, late_count: 0, sub_present_count: 0 };
-                
-                var partInfo = partMap[r.pseudo + '|' + r.session_id];
+                if (activeSids.indexOf(r.session_id) !== -1) return;
+                histKeys[r.pseudo + '|' + r.session_id] = true;
+            });
+            (histParts.data || []).forEach(function (r) {
+                if (activeSids.indexOf(r.session_id) !== -1) return;
+                histKeys[r.pseudo + '|' + r.session_id] = true;
+            });
+
+            Object.keys(histKeys).forEach(function (key) {
+                var idx = key.indexOf('|');
+                var pseudo = key.substring(0, idx);
+
+                if (!hist[pseudo]) hist[pseudo] = { assigned: 0, participated: 0, excused_count: 0, late_count: 0, sub_present_count: 0 };
+
+                var partInfo = partMap[key];
                 if (partInfo) {
                     if (partInfo.excused) {
-                        hist[r.pseudo].excused_count++;
+                        hist[pseudo].excused_count++;
                     } else if (partInfo.sub_present) {
-                        hist[r.pseudo].assigned++;
-                        hist[r.pseudo].participated++; // Remplaçant présent = participation valide
-                        hist[r.pseudo].sub_present_count++;
+                        hist[pseudo].assigned++;
+                        hist[pseudo].participated++; // Reserve present = valid participation
+                        hist[pseudo].sub_present_count++;
                     } else {
-                        hist[r.pseudo].assigned++;
+                        hist[pseudo].assigned++;
                         if (partInfo.participated > 0) {
-                            hist[r.pseudo].participated++;
+                            hist[pseudo].participated++;
                         }
                         if (partInfo.late) {
-                            hist[r.pseudo].late_count++;
+                            hist[pseudo].late_count++;
                         }
                     }
                 } else {
-                    hist[r.pseudo].assigned++;
+                    hist[pseudo].assigned++;
                 }
             });
             sfState.history = hist;

@@ -7,24 +7,35 @@ const GM = window.GM;
 const SF = window.GM_SHADOWFRONT;
 
 const MEMBERS = [
-    { pseudo: 'Alpha', uid: 'uid1', overall_power: 100000000 },
-    { pseudo: 'Bravo', uid: 'uid2', overall_power: 50000000 },
-    { pseudo: 'Charlie', uid: 'uid3', overall_power: 10000000 },
-    { pseudo: 'Delta', uid: 'uid4', overall_power: 75000000 },
+    { pseudo: 'Alpha', guild: 'ALPHA', uid: 'uid1', overall_power: 100000000 },
+    { pseudo: 'Bravo', guild: 'ALPHA', uid: 'uid2', overall_power: 50000000 },
+    { pseudo: 'Charlie', guild: 'ALPHA', uid: 'uid3', overall_power: 10000000 },
+    { pseudo: 'Delta', guild: 'ALPHA', uid: 'uid4', overall_power: 75000000 },
 ];
 
 let tables = {};
 
 function chained(value) {
+    const filters = [];
     const chain = {
         select: () => chain,
         order: () => chain,
-        eq: () => chain,
-        in: () => chain,
+        eq: (field, val) => { filters.push(r => r[field] === val); return chain; },
+        in: (field, list) => { filters.push(r => list.indexOf(r[field]) !== -1); return chain; },
         limit: () => chain,
         single: () => chain,
-        maybeSingle: () => chained(value && value[0] ? value[0] : null),
-        then: (resolve) => resolve({ data: value, error: null })
+        maybeSingle: () => ({
+            then: (resolve) => {
+                let res = (value || []).slice();
+                filters.forEach(f => { res = res.filter(f); });
+                return Promise.resolve({ data: res[0] || null, error: null }).then(resolve);
+            }
+        }),
+        then: (resolve) => {
+            let res = (value || []).slice();
+            filters.forEach(f => { res = res.filter(f); });
+            return Promise.resolve({ data: res, error: null }).then(resolve);
+        }
     };
     return chain;
 }
@@ -51,20 +62,20 @@ beforeEach(() => {
     GM.showToast = vi.fn();
     tables = {
         event_status: [
-            { event_name: 'Shadowfront Squad 1', is_active: true, session_id: 'S1', start_at: '2026-08-02T12:00:00Z' },
-            { event_name: 'Shadowfront Squad 2', is_active: false, session_id: null, start_at: null },
+            { event_name: 'Shadowfront Squad 1', guild: 'ALPHA', is_active: true, session_id: 'S1', start_at: '2026-08-02T12:00:00Z' },
+            { event_name: 'Shadowfront Squad 2', guild: 'ALPHA', is_active: false, session_id: null, start_at: null },
         ],
         guild_members: MEMBERS,
         shadowfront_squads: [
-            { pseudo: 'Alpha', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' },
+            { pseudo: 'Alpha', guild: 'ALPHA', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' },
         ],
         event_participants: [
-            { pseudo: 'Alpha', event_name: 'Shadowfront', session_id: 'S1', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
+            { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S1', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
         ],
         shadowfront_signups: [
-            { pseudo: 'Alpha', availability: 'squad1', week_start: '2026-08-02' },
-            { pseudo: 'Bravo', availability: 'squad2', week_start: '2026-08-02' },
-            { pseudo: 'Delta', availability: 'squad1', week_start: '2026-08-02' },
+            { pseudo: 'Alpha', guild: 'ALPHA', availability: 'squad1', week_start: '2026-08-02' },
+            { pseudo: 'Bravo', guild: 'ALPHA', availability: 'squad2', week_start: '2026-08-02' },
+            { pseudo: 'Delta', guild: 'ALPHA', availability: 'squad1', week_start: '2026-08-02' },
         ],
     };
     GM.db = { from: fromMock, functions: { invoke: async () => ({ data: { ok: false, error: 'n/a' } }) } };
@@ -127,7 +138,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
     });
 
     it('shares the composition on Discord through the shadowfront webhook', async () => {
-        tables.guild_config = [{ value: 'https://discord.test/hook' }];
+        tables.guild_config = [{ key: 'webhook_shadowfront', guild: 'ALPHA', value: 'https://discord.test/hook' }];
         const fetchMock = vi.fn().mockResolvedValue({ ok: true });
         vi.stubGlobal('fetch', fetchMock);
 
@@ -147,15 +158,15 @@ describe('GM_SHADOWFRONT UI/UX', () => {
 
     it('resets the UI for an ended squad instead of keeping composition', async () => {
         tables.event_status = [
-            { event_name: 'Shadowfront Squad 1', is_active: false, session_id: 'S1', start_at: null },
-            { event_name: 'Shadowfront Squad 2', is_active: true, session_id: 'S2', start_at: '2026-08-05T12:00:00Z' },
+            { event_name: 'Shadowfront Squad 1', guild: 'ALPHA', is_active: false, session_id: 'S1', start_at: null },
+            { event_name: 'Shadowfront Squad 2', guild: 'ALPHA', is_active: true, session_id: 'S2', start_at: '2026-08-05T12:00:00Z' },
         ];
         tables.event_participants = [
-            { pseudo: 'Alpha', event_name: 'Shadowfront', session_id: 'S1', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
-            { pseudo: 'Bravo', event_name: 'Shadowfront', session_id: 'S2', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
+            { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S1', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
+            { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S2', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
         ];
         tables.shadowfront_squads = [
-            { pseudo: 'Alpha', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' },
+            { pseudo: 'Alpha', guild: 'ALPHA', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' },
         ];
 
         await SF.load();
@@ -164,5 +175,24 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         expect(text).toContain('Start');
         expect(text).not.toContain('1. Squad Composition');
         expect(text).not.toContain('2. Participation Tracking');
+    });
+
+    it('correctly calculates participation percentage for past ended sessions across all members', async () => {
+        // Mock past ended session S0 with Bravo participating
+        tables.event_status = [
+            { event_name: 'Shadowfront Squad 1', guild: 'ALPHA', is_active: true, session_id: 'S1', start_at: '2026-08-05T12:00:00Z' },
+            { event_name: 'Shadowfront Squad 2', guild: 'ALPHA', is_active: false, session_id: null, start_at: null },
+        ];
+        tables.shadowfront_squads = [
+            { pseudo: 'Bravo', guild: 'ALPHA', session_id: 'S0_PAST', squad: 'squad1', role: 'participant', week_start: '2026-07-27' },
+        ];
+        tables.event_participants = [
+            { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S0_PAST', participated: 1, late: false, excused: false, sub_present: false, week_start: '2026-07-27' },
+        ];
+
+        await SF.load();
+        // Bravo's participation badge in pool should show 100%
+        const poolCol = area().querySelector('.sf-unassigned');
+        expect(poolCol.textContent).toContain('100%');
     });
 });
