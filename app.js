@@ -1152,12 +1152,12 @@
             renderAccountCardsToContainer(containerMember, countMember, memberAccountsList, isSuperAdminUser);
         }
 
-        // Target 2: Super Admin Section (#superadmin-account-list) - all admin accounts across guilds
+        // Target 2: Super Admin Section (#superadmin-account-list) - ONLY guild_admin accounts across guilds
         var containerR5 = document.getElementById('superadmin-account-list');
         var countR5 = document.getElementById('superadmin-account-count');
         if (containerR5) {
             var listR5 = accounts.filter(function (acc) {
-                return acc.role !== 'super_admin';
+                return acc.role === 'guild_admin';
             });
             listR5.sort(function (a, b) {
                 var gA = a.guild || '';

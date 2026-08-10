@@ -1,14 +1,13 @@
-:straight_ruler: **MATCHUP TABLE OVERFLOW FIX & STRICT ALIGNMENT — v39**
+:shield: **SUPER ADMIN ACCOUNTS LIST FILTER — v40**
 
-Eliminated right-side table card overflow in both SvS and GvG matchup tabs.
+Updated the Super Admin Accounts & Access dashboard to display strictly Guild Admin accounts.
 
 ---
 
 :new: **What's new**
 
-- :shield: **Zero Table Overflow:** Applied `minmax(0, 1fr)` grid constraints and tight cell paddings (`.3rem .2rem`).
-- :text: **Ellipsis on Long Pseudos:** Long player pseudos automatically truncate with `...` (`max-width: 110px`), displaying the full name on mouse hover.
-- :sparkles: **Perfect Vertical Alignment:** Right edge of side-by-side roster tables aligns 100% with top selector boxes and summary cards.
+- :users: **Guild Admin Filter:** The "Active Guild Admin Accounts" list in the Super Admin dashboard now displays **ONLY** `guild_admin` accounts (`acc.role === 'guild_admin'`).
+- :prohibited: **Member Accounts Excluded:** Player portal `member` accounts are excluded from this card for a clear overview of guild administrators.
 
 ---
 
