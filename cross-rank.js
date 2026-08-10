@@ -1,7 +1,7 @@
 /**
- * cross-rank.js — Classement inter-guilde (onglet « Settings », superadmin).
- * Vue consolidée de tous les joueurs de toutes les guildes : puissance,
- * taux de participation SvS / GvG / Shadowfront / Glory et taux global.
+ * cross-rank.js — Classement inter-guilde & Mercato (onglet « Draft », superadmin).
+ * Vue consolidée de tous les joueurs de toutes les guildes et serveurs : puissance,
+ * guilde, serveur, et taux de participation aux événements (SvS, GvG, Shadowfront, Global).
  * Source : RPC gm_cross_guild_ranking() (SECURITY DEFINER, superadmin only).
  * Chargé à la demande par app.js via window.GM_SETTINGS.load().
  */
@@ -11,12 +11,11 @@
     var fmtPower = (window.GM && window.GM.formatPower) || function (n) { return String(n); };
     var t = function (k) { return window.GM_I18N ? window.GM_I18N.t(k) : k; };
 
-    // Taux par type d'événement + taux global (dénominateur = sessions de la guilde)
+    // Taux par type d'événement + taux global (Glory supprimé selon demande)
     var RATE_COLUMNS = [
         { key: 'svs',    label: 'SvS',         icon: 'ph-sword' },
         { key: 'gvg',    label: 'GvG',         icon: 'ph-flag-banner' },
         { key: 'shadow', label: 'Shadowfront', icon: 'ph-ghost' },
-        { key: 'glory',  label: 'Glory',       icon: 'ph-trophy' },
         { key: 'global', label: 'Overall',     icon: 'ph-chart-line' }
     ];
 
@@ -25,7 +24,8 @@
         sortKey: 'global',
         sortDesc: true,
         query: '',
-        guild: 'ALL'
+        guild: 'ALL',
+        server: 'ALL'
     };
 
     function getDb() {
@@ -39,6 +39,13 @@
         return 'var(--error)';
     }
 
+    function formatServerDisplay(rawServer) {
+        if (!rawServer) return '—';
+        var s = String(rawServer).trim();
+        if (s.indexOf('#') === 0) return s;
+        return '#' + s;
+    }
+
     // ── Chargement : RPC superadmin-only ─────────────────────────────────────
     async function load() {
         var container = document.getElementById('cross-rank-container');
@@ -47,6 +54,9 @@
         // Vue fraîche à chaque ouverture de l'onglet
         state.query = '';
         state.guild = 'ALL';
+        state.server = 'ALL';
+        state.sortKey = 'global';
+        state.sortDesc = true;
 
         var db = getDb();
         if (!db) {
@@ -91,21 +101,49 @@
         var q = state.query.trim().toLowerCase();
         var rows = state.rows.filter(function (r) {
             if (state.guild !== 'ALL' && r.guild !== state.guild) return false;
+            var sVal = r.server_number != null ? String(r.server_number) : '';
+            if (state.server !== 'ALL' && sVal !== state.server) return false;
             if (!q) return true;
-            return (String(r.pseudo || '').toLowerCase().indexOf(q) !== -1
-                 || String(r.guild || '').toLowerCase().indexOf(q) !== -1);
+            var pseudoStr = String(r.pseudo || '').toLowerCase();
+            var guildStr = String(r.guild || '').toLowerCase();
+            var serverStr = sVal.toLowerCase();
+            var formattedServer = ('#' + sVal).toLowerCase();
+            return (pseudoStr.indexOf(q) !== -1 ||
+                    guildStr.indexOf(q) !== -1 ||
+                    serverStr.indexOf(q) !== -1 ||
+                    formattedServer.indexOf(q) !== -1);
         });
 
         rows.sort(function (a, b) {
             var dir = state.sortDesc ? -1 : 1;
             var av, bv;
-            if (state.sortKey === 'pseudo') { av = a.pseudo; bv = b.pseudo; return (av < bv ? -1 : av > bv ? 1 : 0) * dir; }
-            if (state.sortKey === 'guild') { av = a.guild; bv = b.guild; return (av < bv ? -1 : av > bv ? 1 : 0) * dir; }
-            if (state.sortKey === 'power') { av = a.power || 0; bv = b.power || 0; return (av - bv) * dir; }
+            if (state.sortKey === 'pseudo') {
+                av = String(a.pseudo || '').toLowerCase();
+                bv = String(b.pseudo || '').toLowerCase();
+                return av.localeCompare(bv) * dir;
+            }
+            if (state.sortKey === 'server') {
+                av = String(a.server_number != null ? a.server_number : '').toLowerCase();
+                bv = String(b.server_number != null ? b.server_number : '').toLowerCase();
+                return av.localeCompare(bv) * dir;
+            }
+            if (state.sortKey === 'guild') {
+                av = String(a.guild || '').toLowerCase();
+                bv = String(b.guild || '').toLowerCase();
+                return av.localeCompare(bv) * dir;
+            }
+            if (state.sortKey === 'power') {
+                av = a.power || 0;
+                bv = b.power || 0;
+                return (av - bv) * dir;
+            }
             av = a[state.sortKey + '_rate'];
             bv = b[state.sortKey + '_rate'];
-            if (av === null || av === undefined) return 1;
-            if (bv === null || bv === undefined) return -1;
+            var aNull = (av === null || av === undefined);
+            var bNull = (bv === null || bv === undefined);
+            if (aNull && bNull) return 0;
+            if (aNull) return 1;
+            if (bNull) return -1;
             return (av - bv) * dir;
         });
         return rows;
@@ -114,7 +152,16 @@
     function guildList() {
         var set = [];
         state.rows.forEach(function (r) {
-            if (set.indexOf(r.guild) === -1) set.push(r.guild);
+            if (r.guild && set.indexOf(r.guild) === -1) set.push(r.guild);
+        });
+        return set.sort();
+    }
+
+    function serverList() {
+        var set = [];
+        state.rows.forEach(function (r) {
+            var s = r.server_number != null ? String(r.server_number) : '';
+            if (s && set.indexOf(s) === -1) set.push(s);
         });
         return set.sort();
     }
@@ -125,8 +172,8 @@
         return ' <span class="gm-dim" style="font-size:.7rem;">' + (state.sortDesc ? '▼' : '▲') + '</span>';
     }
 
-    function headerCell(key, label) {
-        return '<th data-sort="' + key + '" style="cursor:pointer; white-space:nowrap; user-select:none;">' +
+    function headerCell(key, label, extraStyle) {
+        return '<th data-sort="' + key + '" style="cursor:pointer; white-space:nowrap; user-select:none; ' + (extraStyle || '') + '">' +
             label + sortArrow(key) + '</th>';
     }
 
@@ -146,10 +193,18 @@
     }
 
     function rowsHtml(rows) {
+        if (rows.length === 0) {
+            return '<tr><td colspan="9" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">' +
+                '<i class="ph ph-user-minus" style="font-size:2rem; color:var(--fg-dim); margin-bottom:.5rem; display:block;"></i>' +
+                'No players match your server or guild filter.' +
+            '</td></tr>';
+        }
         var html = '';
         rows.forEach(function (r, idx) {
             var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(r.pseudo) : (r.pseudo ? String(r.pseudo).charAt(0).toUpperCase() : '?');
             var rank = '<span class="gm-rank-num">' + (idx + 1) + '</span>';
+            var serverDisplay = formatServerDisplay(r.server_number);
+
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
                     '<td class="gm-center" style="font-weight:700;">' + rank + '</td>' +
@@ -159,7 +214,10 @@
                             '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(r.pseudo) + '</strong>' +
                         '</div>' +
                     '</td>' +
-                    '<td class="gm-center">' +
+                    '<td class="gm-center" data-sort="server">' +
+                        '<span style="background:rgba(59, 130, 246, 0.12); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.25); border-radius:6px; padding:2px 8px; font-weight:700; font-size:.75rem; font-variant-numeric:tabular-nums;">' + esc(serverDisplay) + '</span>' +
+                    '</td>' +
+                    '<td class="gm-center" data-sort="guild">' +
                         '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:2px 8px; font-weight:700; font-size:.72rem; letter-spacing:.03em;">' + esc(r.guild) + '</span>' +
                     '</td>' +
                     '<td data-sort="power" class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums;">' + fmtPower(r.power) + '</td>' +
@@ -172,21 +230,29 @@
     function render(container) {
         var rows = visibleRows();
         var guilds = guildList();
+        var servers = serverList();
 
         var controlsHtml =
             '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1rem;">' +
                 '<div class="gm-row" style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:center;">' +
-                    '<div class="gm-input-with-icon" style="flex:1; min-width:220px; max-width:360px;">' +
+                    '<div class="gm-input-with-icon" style="flex:1; min-width:200px; max-width:320px;">' +
                         '<i class="ph ph-magnifying-glass gm-icon"></i>' +
-                        '<input type="text" id="cross-rank-search" class="gm-input" placeholder="Search player or guild...">' +
+                        '<input type="text" id="cross-rank-search" class="gm-input" value="' + esc(state.query) + '" placeholder="Search player, guild, server...">' +
                     '</div>' +
-                    '<select id="cross-rank-guild" class="gm-input" style="width:auto;">' +
+                    '<select id="cross-rank-server" class="gm-input" style="width:auto; min-width:140px;">' +
+                        '<option value="ALL">All servers</option>' +
+                        servers.map(function (s) {
+                            var label = formatServerDisplay(s);
+                            return '<option value="' + esc(s) + '"' + (state.server === s ? ' selected' : '') + '>Server ' + esc(label) + '</option>';
+                        }).join('') +
+                    '</select>' +
+                    '<select id="cross-rank-guild" class="gm-input" style="width:auto; min-width:130px;">' +
                         '<option value="ALL">All guilds</option>' +
                         guilds.map(function (g) {
                             return '<option value="' + esc(g) + '"' + (state.guild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
                         }).join('') +
                     '</select>' +
-                    '<span class="gm-dim" style="margin-left:auto;">' + rows.length + ' players</span>' +
+                    '<span class="gm-dim" style="margin-left:auto; font-weight:600; font-size:0.88rem;">' + rows.length + ' of ' + state.rows.length + ' players</span>' +
                 '</div>' +
             '</div>';
 
@@ -197,8 +263,9 @@
                         '<thead><tr>' +
                             '<th class="gm-center" style="width:60px;">#</th>' +
                             headerCell('pseudo', t('col_member') || 'Member') +
-                            headerCell('guild', 'Guild') +
-                            headerCell('power', 'Power') +
+                            headerCell('server', 'Server', 'text-align:center;') +
+                            headerCell('guild', 'Guild', 'text-align:center;') +
+                            headerCell('power', 'Power', 'text-align:right;') +
                             RATE_COLUMNS.map(function (c) {
                                 return '<th data-sort="' + c.key + '" class="gm-center" style="cursor:pointer; white-space:nowrap; user-select:none;" title="' + c.label + '">' +
                                     '<i class="ph ' + c.icon + '"></i> ' + c.label + sortArrow(c.key) + '</th>';
@@ -217,6 +284,19 @@
         if (search) {
             search.addEventListener('input', function () {
                 state.query = search.value;
+                render(container);
+                // Keep focus and cursor position in search box
+                var updatedSearch = document.getElementById('cross-rank-search');
+                if (updatedSearch) {
+                    updatedSearch.focus();
+                    updatedSearch.setSelectionRange(updatedSearch.value.length, updatedSearch.value.length);
+                }
+            });
+        }
+        var serverSel = document.getElementById('cross-rank-server');
+        if (serverSel) {
+            serverSel.addEventListener('change', function () {
+                state.server = serverSel.value;
                 render(container);
             });
         }
