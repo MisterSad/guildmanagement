@@ -201,7 +201,7 @@
             var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             var res = await db.from('event_status').select('start_at')
                 .eq('guild', currentG)
-                .eq('event_name', STAGE_EVENTS[stageKey]).single();
+                .eq('event_name', STAGE_EVENTS[stageKey]).maybeSingle();
             if (res.error) throw res.error;
 
             var currentStartAt = res.data ? res.data.start_at : null;

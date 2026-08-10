@@ -39,11 +39,13 @@ async function getIdentity(
   const { data: { user }, error } = await anon.auth.getUser(jwt);
   if (error || !user) return null;
 
-  const { data: acc } = await admin
+  const { data: accs } = await admin
     .from("accounts")
     .select("uid, status, guild")
     .eq("auth_user_id", user.id)
-    .maybeSingle();
+    .limit(1);
+
+  const acc = accs?.[0] ?? null;
 
   if (!acc || acc.status !== "active" || !acc.uid) return null;
 
@@ -55,9 +57,10 @@ async function getPlayer(admin: ReturnType<typeof createClient>, uid: string) {
     .from("guild_members")
     .select("pseudo, guild, overall_power, timezone_offset, power_updated_at")
     .eq("uid", uid)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data;
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error || !data || data.length === 0) return null;
+  return data[0];
 }
 
 // Monday (UTC) of the week containing the given date, as YYYY-MM-DD.
@@ -135,15 +138,16 @@ Deno.serve(async (req: Request) => {
 
     // 2b. Current-week Glory score for the profile (My Info panel)
     const week = getWeekStartIso(new Date());
-    const { data: gloryRow, error: gErr } = await admin
+    const { data: gloryRows, error: gErr } = await admin
       .from("event_participants")
       .select("score")
       .eq("guild", member.guild)
       .eq("event_name", "Glory")
       .eq("week_start", week)
       .eq("pseudo", member.pseudo)
-      .maybeSingle();
+      .limit(1);
     if (gErr) return json({ ok: false, error: "db_error", message: gErr.message }, 200);
+    const gloryRow = gloryRows?.[0] ?? null;
     const glory = gloryRow?.score != null ? gloryRow.score : null;
 
     // 3. For each active session, retrieve the player's participant entry
@@ -190,27 +194,31 @@ Deno.serve(async (req: Request) => {
     }
 
     // 2. Verify that the session is active
-    const { data: activeSession, error: sErr } = await admin
+    const { data: activeSessions, error: sErr } = await admin
       .from("event_status")
       .select("is_active")
       .eq("guild", member.guild)
       .eq("event_name", eventName)
       .eq("session_id", sessionId)
-      .maybeSingle();
+      .limit(1);
+
+    const activeSession = activeSessions?.[0] ?? null;
 
     if (sErr || !activeSession || !activeSession.is_active) {
       return json({ ok: false, error: "session_inactive" }, 400);
     }
 
     // Check existing state to prevent overwriting an officer-validated score
-    const { data: existing } = await admin
+    const { data: existingRows } = await admin
       .from("event_participants")
       .select("is_pending")
       .eq("guild", member.guild)
       .eq("event_name", eventName)
       .eq("session_id", sessionId)
       .eq("pseudo", member.pseudo)
-      .maybeSingle();
+      .limit(1);
+
+    const existing = existingRows?.[0] ?? null;
 
     if (existing && existing.is_pending === false) {
       return json({ ok: false, error: "score_already_validated" }, 400);
@@ -313,11 +321,13 @@ Deno.serve(async (req: Request) => {
     const member = await getPlayer(admin, uid);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
-    const { data: sourceGuild, error: gErr } = await admin
+    const { data: sourceGuilds, error: gErr } = await admin
       .from("guilds")
       .select("server_number")
       .eq("id", member.guild)
-      .maybeSingle();
+      .limit(1);
+
+    const sourceGuild = sourceGuilds?.[0] ?? null;
 
     if (gErr || !sourceGuild || !sourceGuild.server_number) {
       return json({ ok: false, error: "server_not_found" }, 200);
@@ -465,11 +475,12 @@ Deno.serve(async (req: Request) => {
   if (action === "get-badges") {
     // Raw data for the badge engine (computed client-side in badges.js):
     // in-game rank, join date (seniority), combat power and attendance count.
-    const { data: full, error: fErr } = await admin
+    const { data: fullRows, error: fErr } = await admin
       .from("guild_members")
       .select("pseudo, guild, role, created_at, overall_power")
       .eq("uid", uid)
-      .maybeSingle();
+      .limit(1);
+    const full = fullRows?.[0] ?? null;
     if (fErr || !full) return json({ ok: false, error: "player_not_found" }, 200);
 
     // Attendance: distinct scoring keys where the player was present.

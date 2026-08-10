@@ -11,6 +11,7 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Eliminated PostgREST `PGRST116` Multi-Row Errors in Player Portal**: Replaced all `.maybeSingle()` queries in `supabase/functions/member-portal/index.ts` with `.limit(1)` + safe array indexing (`rows?.[0] ?? null`), completely preventing PostgREST `PGRST116` (`"JSON object requested, multiple (or no) rows returned"`) failures when duplicate rows or transferred player profiles exist.
 - **Player Portal Reconnect & Error Recovery Actions**: Redesigned the Player Portal error screen in `portal.js` with clear explanations and immediate action buttons (**"Reconnect / Sign Out"** and **"Retry"**), allowing players to clear stale/expired browser sessions and sign back in smoothly.
 - **Structured Edge Function JSON Errors**: Updated `member-portal` Edge Function to return HTTP 200 with structured JSON error payloads `{ ok: false, error: "db_error", message: "..." }` instead of generic HTTP 500 status codes, preventing Supabase JS SDK from masking underlying database errors with generic `"Edge Function returned a non-2xx status code"`.
 - **Default Current Week Filter & Expanded Stats Timeframes**: Scores in Stats are now filtered **by default on the current week** (`1w`), with dropdown selector support for **1 week** (`1w`), **2 weeks** (`2w`), **4 weeks** (`4w`), **8 weeks** (`8w`), and **All time** (`all`).
@@ -19,17 +20,12 @@ few hours, with an incrementing number in its title.
 - **Shadowfront Cross-Squad Member Pool Exclusion**: Assigning a player to any Shadowfront Squad (Squad One or Squad Two) now automatically excludes them from the available member pool of both squads. Unassigning a player immediately returns them to the available pool for both squads.
 - **Shadowfront 2-Step Workflow & Member Pool**: Streamlined Shadowfront Squad One & Squad Two management by removing the redundant "Availability" step. Admins now directly compose squads from the complete member pool (Column 1) into Main Participants (Column 2) or Substitutes/Reserves (Column 3), followed by live Participation Tracking (Step 2).
 - **Participation Percentage Badge Visibility**: Ensured historical participation rate badges (e.g. `100%`, `85%`, `50%`, `N/A`) are rendered directly in front of member names across all Shadowfront views (Member Pool, Main Participants, Substitutes/Reserves, and Participation Tracking table).
-- **Overview Dashboard Pending Account Approvals**: Relocated pending player registration requests from the Accounts & Access tab to the Overview dashboard (`#pending-accounts-card`) for immediate officer visibility upon logging in.
-- **Account Role Separation in Accounts & Access**: Split the Accounts tab into two distinct sections: "Active Admin Accounts" (`super_admin` & `guild_admin`) and "Player Portal Member Accounts" (`role === 'member'`), with player accounts clearly tagged with a lilac `Member` chip.
-- **On-Demand Password Renewal**: Replaced password reveal button on account cards with an on-demand **Renew Password** action (`ph-arrows-clockwise`). Generates a 12-character random password via Supabase RPC, updates card display, copies password to clipboard, and notifies via English toast.
-- **Detailed SvS & GvG Stats Breakdown**: Added Day 1-5 score (`score_prep`), Day 6 score (`score_pvp`), and Total score columns to SvS and GvG tabs in Stats, while preserving the attendance column (`1/1`).
-- **Weekly Timeline Streamlining (SvS, GvG, Glory)**: Simplified the left timeline column in Event History for weekly events to display only the week number (e.g. `Week 32`), eliminating redundant date strings.
-- **Glory History Tile Harmonization**: Glory events in History are now formatted as weekly events (`Week N`), removing artificial time displays (`12:00 UTC` / `00:00 UTC`).
 
 ---
 
 ## Fixed
 
+- **PostgREST `JSON object requested, multiple (or no) rows returned` Fix**: Resolved PostgREST `PGRST116` query errors during portal login by switching `.maybeSingle()` to `.limit(1)` in `member-portal` Edge Function and updating `.single()` to `.maybeSingle()` in `events.js`, `armsrace.js`, and `shadowfront.js`.
 - **Player Portal Non-2xx Connection Error Masking**: Fixed generic `"Edge Function returned a non-2xx status code"` error screen by updating `member-portal` Edge Function and `portal.js` to return and handle structured JSON error messages with a built-in Reconnect/Sign Out option.
 - **Stats Default Period Selection**: Changed Stats initial timeframe default from `'all'` to `'1w'` (current week) and added missing `2w` option to `stats.js` and `i18n.js`.
 - **Shadowfront Participation Rate Badge Freeze**: Fixed player participation percentage calculation in `shadowfront.js` by separating history exclusion logic (`activeSids`) from current squad assignment fetching (`currentSids`), and combining session data from both `shadowfront_squads` and `event_participants`.
@@ -37,11 +33,6 @@ few hours, with an incrementing number in its title.
 - **Shadowfront Double-Entry Removal**: Eliminated duplicate data entry in Shadowfront by replacing the 3-step Availability declaration flow with a streamlined 2-step Squad Composition and Tracking flow.
 - **Web Push Notifications Setup Fixes**: Resolved multiple push notification registration errors (`updated_at` column missing, missing `ON CONFLICT` constraint, missing `p_ua` parameter) by adding a unique index on `push_subscriptions(endpoint)`, fixing `save_push_subscription` RPC parameters, using `last_seen`, and granting explicit `EXECUTE` permissions.
 - **Phosphor Icons Webfont & CDN CSP Rules**: Updated Content-Security-Policy (CSP) headers in `index.html` to allow `cdn.jsdelivr.net` and `unpkg.com` fonts and stylesheets, restoring event and menu icons across dark theme components.
-- **Glory Participation Count Calculation**: Resolved an issue where Glory history tiles showed `0/165 (0%)` participants despite non-zero total scores (e.g. 5.8B Glory). Updated database RPC `gm_list_event_sessions` (`20260810085000_fix_glory_history_participation_count.sql`) and `history.js` client aggregation to count participants when `participated > 0 OR score > 0`.
-- **Misleading `00:00 UTC` Event Times**: Event history now renders explicit times (`19:30 UTC`) only when an admin explicitly set `start_at`. For unscheduled or historical events without a start time, default midnight timestamps (`00:00 UTC`) are omitted.
-- **DEMO Guild Server Number Fix**: Fixed DEMO tenant `server_number` from `'#0000'` to `'0000'` in `public.guilds` (`20260810095000_fix_demo_server_number.sql`) and added frontend sanitization in `shell.js` to prevent double hash symbols (`##0000`).
-- **Inactive Members UI Truncation**: Redesigned inactive member cards in Stats > Engagement with larger containers and line wrapping to prevent long player pseudos from being truncated.
-- **Glorious Delta (`Glory Δ`) Column Scoping**: Restricted `Glory Δ` column to Global leaderboard mode only, hiding it in event-specific views (SvS, GvG) where it was irrelevant.
 
 ---
 
