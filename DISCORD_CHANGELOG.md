@@ -1,22 +1,15 @@
-:information_source: **CONTEXTUAL HELP SYSTEM & UI FIXES — v49**
+:arrows_counterclockwise: **AUTOMATED ACTIVE EVENT ROSTER SYNC — v50**
 
-Added interactive **ⓘ** info buttons across all sections of the Admin Dashboard and Player Portal, providing instant guidance on how to use each feature.
+Resolved the issue where adding, approving, or transferring members did not update participant lists in already-initiated active events.
 
 ---
 
 :new: **What's new**
 
-- :information_source: **Contextual Help ("i" Buttons):** Click any **ⓘ** icon beside a card title to open a quick guide explaining how that feature works.
-- :key: **Accounts & Access:** Guides for creating admin accounts, managing player registrations, and sharing guild join codes.
-- :bell: **Discord Notifications:** Guidance for configuring webhooks, role pings, event coefficients, and automated reminders.
-- :users: **Members & Portal:** Help tooltips for roster management, transfers, absences, timezones, and player portal tools.
-
----
-
-:wrench: **Fixed**
-
-- :crown: **Role Select Styling:** Fixed crown icon overlapping R1-R5 options in the Edit Member popup.
-- :shield: **RLS Permission Fix:** Resolved `permission denied` issue for guild admin writes by adding JWT fallback in SQL security helpers.
+- :arrows_counterclockwise: **Real-Time Active Event Roster Sync:** Any active (initiated) event (SvS, GvG, DTR, Arms Race) now automatically updates its roster when members change.
+- :arrows_left_right: **Guild Transfers:** Transferring a player automatically cleans up unparticipated active event rows in the old guild and enrolls them into active events in the new guild.
+- :white_check_mark: **Player Approvals:** Approving a player registration immediately enrolls them into all ongoing active events.
+- :lightning: **On-Demand Auto-Sync:** Opening an active event tab automatically pulls in any newly added or transferred guild members instantly.
 
 ---
 

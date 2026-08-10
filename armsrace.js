@@ -76,16 +76,18 @@
                         return p.event_name === evName && p.session_id === sid;
                     });
 
-                    // Self-heal: active stage with 0 participants ⇒ trigger gm_populate_event_participants
-                    if (arState.stages[k].active && sid && arState.stages[k].participants.length === 0) {
+                    // Auto-sync: active stage ⇒ trigger gm_populate_event_participants to catch newly added/transferred members
+                    if (arState.stages[k].active && sid) {
                         var week = window.GM.getWeekStart(arState.stages[k].startAt);
                         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
-                        await db.rpc('gm_populate_event_participants', {
-                            p_event_name: evName,
-                            p_session_id: sid,
-                            p_week_start: week,
-                            p_guild: currentG
-                        });
+                        try {
+                            await db.rpc('gm_populate_event_participants', {
+                                p_event_name: evName,
+                                p_session_id: sid,
+                                p_week_start: week,
+                                p_guild: currentG
+                            });
+                        } catch (_) { /* best-effort */ }
                         var healRes = await db.from('event_participants').select('*')
                             .eq('guild', currentG)
                             .eq('event_name', evName)

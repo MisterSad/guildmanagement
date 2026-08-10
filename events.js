@@ -266,6 +266,18 @@
         var s = state[tabKey];
         if (!s.activeEventName || !s.sessionId) return;
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        var week = window.GM.getWeekStart(s.startAt);
+
+        // Auto-sync missing/transferred guild members into active session before fetching
+        try {
+            await db.rpc('gm_populate_event_participants', {
+                p_event_name: s.activeEventName,
+                p_session_id: s.sessionId,
+                p_week_start: week,
+                p_guild: currentG
+            });
+        } catch (_) { /* best-effort sync */ }
+
         var [partRes, memRes] = await Promise.all([
             db.from('event_participants').select('*')
                 .eq('guild', currentG)
