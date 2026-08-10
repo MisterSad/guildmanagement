@@ -5,8 +5,8 @@
  * - Puissance < 60M : gros malus (x0.30)
  * - Puissance 60M à 90M : malus modéré (x0.65)
  * - Puissance > 91M : dangerosité normale (x1.00)
- * Affiche les MOYENNES des scores "Day 1 to 5" (Préparation) et "Day 6" (PvP / Invasion)
- * sur une seule ligne (white-space: nowrap + format compact K/M/B).
+ * - Alignement parfait des tuiles et sélecteurs (grid 1fr 1fr avec gap:1.25rem)
+ * - Scores sur une seule ligne (white-space: nowrap + format compact K/M/B)
  * Source : RPC gm_svs_server_matchup() (SECURITY DEFINER, superadmin only).
  */
 (function () {
@@ -247,7 +247,7 @@
         var statsA = computeStats(rowsA);
         var statsB = computeStats(rowsB);
 
-        // Barre d'outils et sélecteurs de Matchup
+        // Barre d'outils et sélecteurs de Matchup (Grid 1fr 1fr aligné avec gap:1.25rem)
         var headerHtml =
             '<div class="gm-card glass-card gm-section" style="padding:1.5rem; margin-bottom:1.5rem;">' +
                 '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">' +
@@ -269,8 +269,8 @@
                     '</div>' +
                 '</div>' +
 
-                '<!-- Matchup Server Selectors -->' +
-                '<div style="display:grid; grid-template-columns: 1fr auto 1fr; gap:1rem; align-items:center;">' +
+                '<!-- Matchup Server Selectors: Grille 1fr 1fr alignée avec les tuiles de résumé et les tableaux -->' +
+                '<div style="position:relative; display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; align-items:center;">' +
                     '<!-- Server A Selection -->' +
                     '<div style="background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:12px; padding:1rem;">' +
                         '<div style="font-weight:800; color:#60a5fa; font-size:0.85rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem;">' +
@@ -292,9 +292,9 @@
                         '</div>' +
                     '</div>' +
 
-                    '<!-- VS Badge -->' +
-                    '<div style="text-align:center;">' +
-                        '<div style="width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, #ef4444, #f97316); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:900; font-size:1.1rem; box-shadow:0 4px 15px rgba(239,68,68,0.4); border:2px solid rgba(255,255,255,0.2);">' +
+                    '<!-- VS Badge Absolument Centré sur le gap -->' +
+                    '<div style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); z-index:5; pointer-events:none;">' +
+                        '<div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg, #ef4444, #f97316); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:900; font-size:1rem; box-shadow:0 4px 15px rgba(239,68,68,0.5); border:2px solid rgba(255,255,255,0.25);">' +
                             'VS' +
                         '</div>' +
                     '</div>' +
@@ -322,7 +322,7 @@
                 '</div>' +
 
                 '<!-- Search Bar -->' +
-                '<div style="margin-top:1rem; display:flex; gap:1rem; align-items:center;">' +
+                '<div style="margin-top:1.25rem; display:flex; gap:1rem; align-items:center;">' +
                     '<div class="gm-input-with-icon" style="flex:1;">' +
                         '<i class="ph ph-magnifying-glass gm-icon"></i>' +
                         '<input type="text" id="svs-matchup-search" class="gm-input" value="' + esc(state.query) + '" placeholder="Search player pseudo, guild, or server number...">' +
@@ -390,7 +390,7 @@
                 '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:.75rem; background:rgba(0,0,0,0.2); padding:.75rem; border-radius:8px; text-align:center;">' +
                     '<div>' +
                         '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 1-5 Avg</div>' +
-                        '<div style="font-weight:700; color:var(--fg); font-size:.85rem; white-space:nowrap;">' + fmtScore(statsB.avgPrep) + '</div>' +
+                        '<div style="font-weight:700; color:var(--fg); font-size:.85rem; white-space:nowrap;">' + fmtScore(statsA.avgPrep) + '</div>' +
                     '</div>' +
                     '<div>' +
                         '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 6 Avg</div>' +

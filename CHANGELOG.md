@@ -11,12 +11,10 @@ few hours, with an incrementing number in its title.
 
 ## New
 
-- **Super Admin GvG Guild A vs Guild B Matchup Dashboard**: Updated the **GvG** tab (`gvg-matchup.js`, `20260810200000_gvg_player_matchup_rpc.sql`) under the `SUPER ADMIN` section to function exactly like the **SvS** tab, but with main dropdown selectors choosing **Guild A** vs **Guild B** directly (e.g. `ALPHA (Server #1058)`, `OMEGA (Server #1064)`, `IMK (Server #1058)`, `YARR (Server #1064)`, etc.).
-- **Full Player Roster Comparison for Selected Guilds**: Side-by-side tables display the complete player rosters of Guild A and Guild B with individual player stats:
-  - **Power** (with power penalty multipliers: <60M x0.30, 60M-90M x0.65, >91M x1.00)
-  - **Day 1-5 Avg** (average preparation phase GvG score per player)
-  - **Day 6 Avg** (average Saturday castle battle GvG score per player)
-  - **Threat Badge** (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`)
+- **Pixel-Perfect Tile & Grid Alignment**: Standardized selector grids in both **SvS Matchup** (`svs-matchup.js`) and **GvG Matchup** (`gvg-matchup.js`) tabs with a unified `display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;` layout.
+- **Centered Floating VS Badge**: Positioned the central `VS` badge absolutely at `left: 50%` over the grid gap, ensuring the right and left borders of top selector boxes align down to the exact pixel with the summary cards and side-by-side roster tables below.
+- **Super Admin GvG Guild A vs Guild B Matchup Dashboard**: Added a dedicated **GvG** tab (`gvg-matchup.js`, `20260810200000_gvg_player_matchup_rpc.sql`) under the `SUPER ADMIN` section to compare **Guild A vs Guild B** directly through dedicated guild selection dropdowns (`ALPHA (Server #1058)`, `OMEGA (Server #1064)`, `IMK (Server #1058)`, `YARR (Server #1064)`, etc.).
+- **Full Player Roster Comparison for Selected Guilds**: Side-by-side tables display the complete player rosters of Guild A and Guild B with individual player stats (Power, Day 1-5 Avg, Day 6 Avg, Threat Badge).
 - **Single-Line Score Formatting & No-Wrap Styling**: Enforced compact numeric score formatting (`K`/`M`/`B`) and `white-space: nowrap` styling across all table cells and headers.
 - **SvS Dangerosity Power Penalty Thresholds**: Applied combat power penalty multipliers to SvS Dangerosity Scoring (<60M: 0.30x, 61M-90M: 0.65x, >91M: 1.00x).
 - **Draft Weighted Coefficient Calculation Formula**: Applied event coefficients to the **Overall** (Global) participation rate calculation on the **Draft** page (`cross-rank.js` & migration `20260810160000_draft_weighted_coefficients.sql`): SvS (5), GvG (5), Shadowfront (3), DTR (2), Arms Race (2).
@@ -27,8 +25,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
-- **GvG Selector Parity with SvS**: Aligned GvG tab controls with the SvS tab layout by using primary Guild A and Guild B selectors, displaying comparative summary cards, and rendering side-by-side player rosters with server badges (`#1058`, `#1064`).
-- **Super Admin GvG Navigation**: Added new `GvG` item under `SUPER ADMIN` section in `shell.js` with banner icon (`ph-flag-banner`) and r5Only protection.
+- **Tile & Card Vertical Misalignment**: Resolved offset between top selector boxes and lower summary/roster cards in SvS and GvG tabs by aligning grid column dimensions.
 - **Table Score Text Overflow / Multi-Line Wrapping**: Fixed multi-line wrapping of scores in matchup table cells by applying `white-space: nowrap;` and compact notation (`19.3M`), ensuring all table rows remain strictly single-line.
 - **Dangerosity Tier Balance**: Penalized low-power accounts (<60M power) so they cannot artificially inflate threat levels to EXTREME or HIGH without sufficient combat power.
 

@@ -1,15 +1,14 @@
-:swords: **GVG GUILD A VS GUILD B MATCHUP DASHBOARD — v36**
+:straight_ruler: **PIXEL-PERFECT TILE ALIGNMENT IN SVS & GVG MATCHUPS — v37**
 
-Updated the GvG tab to function identically to the SvS tab, but with direct Guild A vs Guild B selection and full player rosters.
+Standardized grid column widths and layout spacing across all cards in the SvS and GvG matchup dashboards.
 
 ---
 
 :new: **What's new**
 
-- :flag_white: **Guild A vs Guild B Selectors:** Primary dropdowns select **Guild A** vs **Guild B** (e.g. `ALPHA (Server #1058)` vs `OMEGA (Server #1064)`).
-- :users: **Side-by-Side Player Rosters:** Left table displays Guild A's player roster, right table displays Guild B's player roster.
-- :bar_chart: **GvG Player Metrics:** Displays individual player Power, Server number tag, Day 1-5 Avg GvG score, Day 6 Avg GvG castle battle score, and Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
-- :straight_ruler: **Single-Line Formatting:** Full `white-space: nowrap` styling and compact K/M/B numbers for clean alignment.
+- :layout: **Pixel-Perfect Grid Alignment:** Top selector boxes, middle summary cards, and bottom roster tables now share identical 2-column widths (`grid-template-columns: 1fr 1fr; gap: 1.25rem;`).
+- :crossed_swords: **Floating Centered VS Badge:** Positioned the `VS` badge centered over the grid gap, eliminating layout distortion.
+- :sparkles: **Clean Alignment in SvS & GvG Tabs:** Left and right edges of all tiles line up seamlessly from top to bottom.
 
 ---
 
