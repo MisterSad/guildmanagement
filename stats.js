@@ -95,7 +95,7 @@
     var state = {
         activeGuild: 'ALPHA',
         currentMode: 'global', // 'global' | 'SvS' | 'GvG' | 'prince' | 'participation'
-        statsPeriod: 'all',    // 'all' | '1w' | '4w' | '8w'
+        statsPeriod: '1w',     // '1w' | '2w' | '4w' | '8w' | 'all'
         selectedWeek: '',
         allWeeks: [],
         leaderboardData: [],
@@ -207,6 +207,10 @@
         var weeksToLoad = state.allWeeks;
         if (state.statsPeriod === '1w') {
             weeksToLoad = [state.selectedWeek];
+        } else if (state.statsPeriod === '2w') {
+            var idx2 = state.allWeeks.indexOf(state.selectedWeek);
+            if (idx2 === -1) idx2 = 0;
+            weeksToLoad = state.allWeeks.slice(idx2, idx2 + 2);
         } else if (state.statsPeriod === '4w') {
             var idx4 = state.allWeeks.indexOf(state.selectedWeek);
             if (idx4 === -1) idx4 = 0;
@@ -583,10 +587,11 @@
             }).join('');
 
             var periodOpts = [
-                { key: 'all', label: t('stats_period_all') || 'All Time (Total)' },
                 { key: '1w',  label: t('stats_period_1w')  || '1 Week' },
+                { key: '2w',  label: t('stats_period_2w')  || '2 Weeks' },
                 { key: '4w',  label: t('stats_period_4w')  || '4 Weeks' },
-                { key: '8w',  label: t('stats_period_8w')  || '8 Weeks' }
+                { key: '8w',  label: t('stats_period_8w')  || '8 Weeks' },
+                { key: 'all', label: t('stats_period_all') || 'All Time (Total)' }
             ].map(function (p) {
                 return '<option value="' + p.key + '"' + (p.key === state.statsPeriod ? ' selected' : '') + '>' + esc(p.label) + '</option>';
             }).join('');

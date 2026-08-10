@@ -1,27 +1,21 @@
-:rocket: **SHADOWFRONT HISTORICAL PARTICIPATION RATE FIX — v21**
+:rocket: **STATS DEFAULT CURRENT WEEK & TIMEFRAME SELECTION — v22**
 
-Resolved an issue across all tenants where player participation rate percentages in the Shadowfront member pool did not update after completed events.
+Stats now load by default on the **current week**, with a dropdown selector allowing admins and members to inspect 1 week, 2 weeks, 4 weeks, 8 weeks, or all-time history.
 
 ---
 
 :new: **What's new**
 
-- :chart_with_upwards_trend: **Shadowfront Historical Participation Rate Calculation:** Past ended Shadowfront sessions are now properly aggregated into each player's participation history across all tenants (CLAW, ALPHA, OMEGA, BABE, IMK, YARR, DEMO), so participation % badges (`100%`, `85%`, `50%`) reflect all completed events.
-- :ghost: **Cross-Squad Member Pool Exclusion:** When a member is assigned to Squad One (or Squad Two), they are automatically filtered out from the available member pool for the other squad. Unassigning them instantly restores them to the available pool for both squads.
-- :sparkles: **Streamlined 2-Step Shadowfront Workflow:** Removed the redundant "Availability" step. Admins now directly compose squads from the complete member pool into Main Participants or Substitutes/Reserves (Step 1), followed by live Participation Tracking (Step 2).
-- :inbox_tray: **Pending Account Validations in Overview:** Player Portal registration requests appear directly on the Overview dashboard (`#pending-accounts-card`) for instant officer approval.
-- :busts_in_silhouette: **Account Role Separation:** Split Accounts & Access into "Active Admin Accounts" and "Player Portal Member Accounts" (clearly tagged with a lilac `Member` chip).
-- :key: **On-Demand Password Renewal:** Replaced static password reveal buttons with a secure one-click **Renew Password** action (`ph-arrows-clockwise`).
+- :calendar: **Default Current Week View (`1w`):** Opening the Stats module now defaults to displaying performance and scores for the current week (`1w`) rather than the entire historical dataset.
+- :time_box: **Expanded Period Selectors:** Added a **2 Weeks** (`2w`) option to the period dropdown alongside 1 week (`1w`), 4 weeks (`4w`), 8 weeks (`8w`), and All time (`all`).
+- :database: **Updated `gm_leaderboard` RPC:** Deployed SQL migration `20260810100000_update_gm_leaderboard_2w.sql` updating default server-side period calculations to `'1w'` and adding support for `'2w'`.
 
 ---
 
 :bug: **What's fixed**
 
-- :bug: **Shadowfront Participation Rate Freeze:** Fixed `loadShadowfront()` history calculation by using `activeSids` (currently active sessions only) to exclude live sessions while incorporating all past ended sessions from both `shadowfront_squads` and `event_participants`.
-- :shield: **Pre-Launch Squad Exclusion Fix:** Loaded assignment data across all current session IDs (`currentSids`), ensuring assigned members are properly hidden from the unassigned pool even when preparing squads before clicking "Start Event".
-- :no_entry_sign: **Double-Entry Removal in Shadowfront:** Eliminated double entry by removing the Availability step so squad assignments happen directly from the member pool.
-- :bell: **Web Push Notifications Setup Fixes:** Fixed notification registration errors by adding a unique index on `push_subscriptions(endpoint)` and updating `save_push_subscription` RPC.
-- :art: **Phosphor Icons Webfont CSP Fix:** Updated CSP in `index.html` to allow `cdn.jsdelivr.net` & `unpkg.com` fonts.
+- :chart_with_upwards_trend: **Default Stats Period Alignment:** Aligned client-side `statsPeriod` initial state (`stats.js`) with user preference to default to the active week.
+- :globe_with_meridians: **Period Dropdown Ordering:** Reordered timeframe options sequentially: `1 Week`, `2 Weeks`, `4 Weeks`, `8 Weeks`, `All Time (Total)`.
 
 ---
 

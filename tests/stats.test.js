@@ -151,37 +151,37 @@ afterEach(() => {
 });
 
 describe('GM_STATS global mode', () => {
-    it('computes weighted scores with glory deltas and consistency bonus', async () => {
+    it('computes weighted scores with glory deltas and consistency bonus by default for 1w (current week)', async () => {
         await window.GM_STATS.load();
 
         const rows = parseLeaderboard();
-        // GammaGhost appears in the member union (pending rows still join the
-        // member list) but scores 0 and does not inflate event totals.
         expect(rows).toHaveLength(3);
         expect(rows[0].pseudo).toBe('AlphaPrime');
-        expect(rows[0].score).toBe('130 pts');
+        expect(rows[0].score).toBe('65 pts');
         expect(rows[1].pseudo).toBe('BetaKnight');
-        expect(rows[1].score).toBe('50 pts');
+        expect(rows[1].score).toBe('65 pts');
 
-        // AlphaPrime: 2/2 events, glory delta 0 (first declaration never
-        // counts: with only two Glory weeks there is no measurable delta).
-        expect(rows[0].events).toBe('2/2');
+        expect(rows[0].events).toBe('1/1');
         expect(rows[0].glory).toBe('—');
 
-        // BetaKnight: 1/2 events, no glory
-        expect(rows[1].events).toBe('1/2');
+        expect(rows[1].events).toBe('1/1');
         expect(rows[1].glory).toBe('—');
 
-        // Pending-only member gets 0
         const gamma = rows.find((r) => r.pseudo === 'GammaGhost');
         expect(gamma.score).toBe('0 pts');
     });
 
-    it('renders week/period controls', async () => {
+    it('renders week/period controls with 5 timeframe options (1w, 2w, 4w, 8w, all)', async () => {
         await window.GM_STATS.load();
         const controls = document.querySelector('.stats-controls');
         expect(controls.querySelectorAll('.week-select option').length).toBe(2);
-        expect(controls.querySelectorAll('.period-select option').length).toBe(4);
+        const periodOpts = controls.querySelectorAll('.period-select option');
+        expect(periodOpts.length).toBe(5);
+        expect(periodOpts[0].value).toBe('1w');
+        expect(periodOpts[1].value).toBe('2w');
+        expect(periodOpts[2].value).toBe('4w');
+        expect(periodOpts[3].value).toBe('8w');
+        expect(periodOpts[4].value).toBe('all');
     });
 
     it('does not throw when db is missing', async () => {
