@@ -11,6 +11,7 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Shadowfront Cross-Squad Member Pool Exclusion**: Assigning a player to any Shadowfront Squad (Squad One or Squad Two) now automatically excludes them from the available member pool of both squads. Unassigning a player immediately returns them to the available pool for both squads.
 - **Shadowfront 2-Step Workflow & Member Pool**: Streamlined Shadowfront Squad One & Squad Two management by removing the redundant "Availability" step. Admins now directly compose squads from the complete member pool (Column 1) into Main Participants (Column 2) or Substitutes/Reserves (Column 3), followed by live Participation Tracking (Step 2).
 - **Participation Percentage Badge Visibility**: Ensured historical participation rate badges (e.g. `100%`, `85%`, `50%`, `N/A`) are rendered directly in front of member names across all Shadowfront views (Member Pool, Main Participants, Substitutes/Reserves, and Participation Tracking table).
 - **Overview Dashboard Pending Account Approvals**: Relocated pending player registration requests from the Accounts & Access tab to the Overview dashboard (`#pending-accounts-card`) for immediate officer visibility upon logging in.
@@ -24,6 +25,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Shadowfront Cross-Squad Double Booking Prevention**: Fixed `loadShadowfront()` to load assignment data across all current session IDs (`currentSids`) rather than active-only sessions (`activeSids`), ensuring assigned members are properly hidden from the unassigned pool when preparing squads prior to launch.
 - **Shadowfront Double-Entry Removal**: Eliminated duplicate data entry in Shadowfront by replacing the 3-step Availability declaration flow with a streamlined 2-step Squad Composition and Tracking flow.
 - **Web Push Notifications Setup Fixes**: Resolved multiple push notification registration errors (`updated_at` column missing, missing `ON CONFLICT` constraint, missing `p_ua` parameter) by adding a unique index on `push_subscriptions(endpoint)`, fixing `save_push_subscription` RPC parameters, using `last_seen`, and granting explicit `EXECUTE` permissions.
 - **Phosphor Icons Webfont & CDN CSP Rules**: Updated Content-Security-Policy (CSP) headers in `index.html` to allow `cdn.jsdelivr.net` and `unpkg.com` fonts and stylesheets, restoring event and menu icons across dark theme components.
@@ -35,14 +37,12 @@ few hours, with an incrementing number in its title.
 - **Strict 100% English UI Audit**: Audited and localized all UI strings, date formats (`en-GB`), empty state messages, and toast notifications to 100% English across `app.js`, `overview.js`, `history.js`, `sanctions.js`, and `gm-utils.js`.
 - **`admin-accounts` Edge Function Fix**: Resolved `ReferenceError: info is not defined` and edge function network call failures by implementing clean response error handling and fallback logic.
 - **Event History RPC Query & Order Fix**: Resolved event history loading failures ("No session for this filter") caused by invalid `GROUP BY` clauses and unsafe `session_id::timestamptz` casting in `gm_list_event_sessions` (`20260810040000` & `20260810070000`).
-- **Anti-Collision Event Session IDs**: Daily events (DTR, Arms Race Stage A/B, Shadowfront Squad 1/2) now include a sequence suffix in their session ID (`DTR-20260812-1`, `DTR-20260812-2`, etc.), allowing multiple sessions of the same event type on the same UTC day without data collision.
-- **Mandatory Date Picker for SvS and GvG**: Launching a Server vs Server or Guild vs Guild event now requires an explicit admin-set battle date, ensuring the ISO-week session ID always matches the actual battle week.
-- **Session ID Cascade on Schedule Edit**: Editing the battle date of an active event now recalculates and cascades the `session_id` to both `event_status` and `event_participants`, keeping the ID consistent with the actual date.
 
 ---
 
 ## Historical Fixes
 
+- **Anti-Collision Event Session IDs**: Daily events (DTR, Arms Race Stage A/B, Shadowfront Squad 1/2) include a sequence suffix in their session ID (`DTR-20260812-1`, `DTR-20260812-2`, etc.), allowing multiple sessions of the same event type on the same UTC day without data collision.
 - **`gm_session_id_base()` SQL Helper**: SQL function strips the sequence suffix from a session ID (e.g., `DTR-20260812-2` -> `DTR-20260812`) for use in future aggregation queries.
 - **`idx_event_status_guild_session` Index**: Composite index on `event_status(guild, session_id)` accelerates JOIN lookups in `gm_list_event_sessions`.
 - **CRITICAL SQL Crash in `gm_list_event_sessions`**: Replaced unsafe timestamp cast in ORDER BY clause with safe regex extraction of YYYYMMDD date portion.

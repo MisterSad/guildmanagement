@@ -100,6 +100,20 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         expect(text).toContain('Rate');
         expect(text).toContain('Power');
         expect(text).toContain('Share on Discord');
+
+        // Check that Alpha (assigned to Squad 1) is NOT listed in the Member Pool (Column 1)
+        const poolCol = area().querySelector('.sf-unassigned');
+        expect(poolCol.textContent).not.toContain('Alpha');
+        expect(poolCol.textContent).toContain('Bravo');
+    });
+
+    it('excludes members assigned to Squad 1 from Squad 2 member pool', async () => {
+        await SF.load();
+        area().querySelector('.sf-main-tab.squad2').click();
+        const poolCol = area().querySelector('.sf-unassigned');
+        expect(poolCol.textContent).not.toContain('Alpha'); // Alpha is assigned to Squad 1, so excluded from Squad 2 pool
+        expect(poolCol.textContent).toContain('Bravo');
+        area().querySelector('.sf-main-tab.squad1').click();
     });
 
     it('unlocks tracking when a squad is active and offers bulk actions', async () => {

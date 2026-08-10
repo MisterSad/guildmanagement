@@ -143,10 +143,9 @@
 
             // Seules les sessions ACTIVES sont exclues de l'historique des
             // joueurs : une session terminée compte comme une participation
-            // passée (elle ne doit pas être masquée).
-            var activeSids = activeSessionIds();
+            var currentSids = currentSessionIds();
 
-            // Histoire : exclure les sessions de l'occurrence courante et calculer les détails
+            // History: exclude current occurrence sessions from player history
             var hist = {};
             var partMap = {};
             (histParts.data || []).forEach(function (r) {
@@ -159,7 +158,7 @@
             });
 
             (histSquads.data || []).forEach(function (r) {
-                if (activeSids.indexOf(r.session_id) !== -1) return;
+                if (currentSids.indexOf(r.session_id) !== -1) return;
                 if (!hist[r.pseudo]) hist[r.pseudo] = { assigned: 0, participated: 0, excused_count: 0, late_count: 0, sub_present_count: 0 };
                 
                 var partInfo = partMap[r.pseudo + '|' + r.session_id];
@@ -185,12 +184,12 @@
             });
             sfState.history = hist;
 
-            if (activeSids.length) {
+            if (currentSids.length) {
                 var [assignRes, partRes] = await Promise.all([
                     db.from('shadowfront_squads').select('*')
-                        .eq('guild', currentG).in('session_id', activeSids).order('pseudo', { ascending: true }),
+                        .eq('guild', currentG).in('session_id', currentSids).order('pseudo', { ascending: true }),
                     db.from('event_participants').select('*')
-                        .eq('guild', currentG).eq('event_name', EVENT_NAME).in('session_id', activeSids)
+                        .eq('guild', currentG).eq('event_name', EVENT_NAME).in('session_id', currentSids)
                         .order('pseudo', { ascending: true })
                 ]);
                 sfState.assignments  = assignRes.data || [];
