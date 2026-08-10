@@ -342,7 +342,7 @@
             gm_nav_stats:          'Stats',
             gm_nav_sanctions:      'Sanctions',
             gm_nav_banned:         'Banned players',
-            gm_nav_settings:       'Settings',
+            gm_nav_settings:       'Draft',
             gm_nav_benchmark:      'Guild benchmark',
             gm_nav_subscription:   'Subscription',
             gm_sub_subtitle:       'Manage your guild subscription',

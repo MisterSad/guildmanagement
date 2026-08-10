@@ -11,6 +11,7 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Renamed Settings Tab to Draft**: Updated the super admin cross-guild ranking page and navigation menu item from **"Settings"** to **"Draft"** across `i18n.js`, `index.html`, and `shell.js`, updating the navigation icon to `ph-note-pencil`.
 - **Eliminated PostgREST `PGRST116` Multi-Row Errors in Player Portal**: Replaced all `.maybeSingle()` queries in `supabase/functions/member-portal/index.ts` with `.limit(1)` + safe array indexing (`rows?.[0] ?? null`), completely preventing PostgREST `PGRST116` (`"JSON object requested, multiple (or no) rows returned"`) failures when duplicate rows or transferred player profiles exist.
 - **Player Portal Reconnect & Error Recovery Actions**: Redesigned the Player Portal error screen in `portal.js` with clear explanations and immediate action buttons (**"Reconnect / Sign Out"** and **"Retry"**), allowing players to clear stale/expired browser sessions and sign back in smoothly.
 - **Structured Edge Function JSON Errors**: Updated `member-portal` Edge Function to return HTTP 200 with structured JSON error payloads `{ ok: false, error: "db_error", message: "..." }` instead of generic HTTP 500 status codes, preventing Supabase JS SDK from masking underlying database errors with generic `"Edge Function returned a non-2xx status code"`.
