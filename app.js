@@ -1462,83 +1462,144 @@
                 return;
             }
 
-            var html = '<div class="gm-cred-grid">';
+            // Group guilds by Server
+            var groupedByServer = {};
             guildsListRaw.forEach(function (g) {
                 var guildId = g.id;
-                var type = g.subscription_type || 'Unlimited';
-                var end = g.subscription_end;
                 var serverNum = g.server_number || (window.guildsData && window.guildsData[guildId] ? window.guildsData[guildId].server_number : '') || localStorage.getItem('gm_server_number_' + guildId) || '';
-                var dateVal = end ? end.split('T')[0] : '';
-
-                // Calculate countdown html
-                var countdownHtml = '';
-                if (type === 'Unlimited') {
-                    countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Unlimited</span>';
-                } else if (type === 'Lifetime') {
-                    countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Lifetime</span>';
-                } else {
-                    if (end) {
-                        var endMs = new Date(end).getTime();
-                        var nowMs = Date.now();
-                        var diff = endMs - nowMs;
-                        if (diff <= 0) {
-                            countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-lock-keyhole"></i> Expired</span>';
-                        } else {
-                            var secs = Math.floor(diff / 1000);
-                            var mins = Math.floor(secs / 60);
-                            var hours = Math.floor(mins / 60);
-                            var days = Math.floor(hours / 24);
-
-                            var timeStr = '';
-                            if (days > 0) {
-                                timeStr = days + 'd ' + (hours % 24) + 'h';
-                            } else if (hours > 0) {
-                                timeStr = hours + 'h ' + (mins % 60) + 'm';
-                            } else {
-                                timeStr = mins + 'm';
-                            }
-                            countdownHtml = '<span class="gm-chip gm-chip-warning" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ' + timeStr + ' remaining</span>';
-                        }
-                    } else {
-                        countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700;">No date (Expired)</span>';
-                    }
+                var sKey = serverNum ? ('Server #' + serverNum) : 'Unassigned Server';
+                if (!groupedByServer[sKey]) {
+                    groupedByServer[sKey] = { serverKey: sKey, sNum: serverNum, guilds: [] };
                 }
+                groupedByServer[sKey].guilds.push(g);
+            });
 
-                var serverTag = serverNum ? ' <span style="font-size:0.8rem; font-weight:500; color:var(--fg-dim);">(Server #' + esc(serverNum) + ')</span>' : '';
+            // Sort server keys (numerically by server # first)
+            var serverKeys = Object.keys(groupedByServer).sort(function (a, b) {
+                var numA = parseInt(a.replace(/\D/g, ''), 10) || 999999;
+                var numB = parseInt(b.replace(/\D/g, ''), 10) || 999999;
+                if (numA !== numB) return numA - numB;
+                return a.localeCompare(b);
+            });
+
+            var html = '';
+            serverKeys.forEach(function (sKey, index) {
+                var group = groupedByServer[sKey];
+                var guildsListStr = group.guilds.map(function(item){ return item.id; }).sort().join(', ');
+                var gCount = group.guilds.length;
+                var isFirst = (index === 0);
 
                 html +=
-                    '<div class="gm-cred-card" data-guild-id="' + esc(guildId) + '">' +
-                        '<div class="gm-row" style="justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">' +
-                            '<div class="gm-cred-name" style="font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
-                                '<i class="ph ph-shield"></i> ' + esc(guildId) + serverTag +
+                    '<div class="gm-card glass-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">' +
+                        '<div class="gm-accordion-header" style="padding:0.9rem 1.2rem; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); transition:background 0.2s ease;">' +
+                            '<div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">' +
+                                '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size:0.85rem; font-family:var(--font-display);">' +
+                                    '<i class="ph ph-hard-drives" style="margin-right:4px;"></i>' + esc(sKey) +
+                                '</span>' +
+                                '<span style="font-weight:700; color:var(--fg); font-size:0.9rem;">' + esc(guildsListStr) + '</span>' +
+                                '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:0.75rem;">' + gCount + ' guild' + (gCount > 1 ? 's' : '') + '</span>' +
                             '</div>' +
-                            '<div class="countdown-badge-wrapper">' + countdownHtml + '</div>' +
+                            '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size:1.2rem; color:var(--fg-dim); transition:transform 0.25s ease;' + (isFirst ? ' transform:rotate(180deg);' : '') + '"></i>' +
                         '</div>' +
-                        '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
-                            '<div class="gm-col" style="flex: 1; gap: 0.25rem; min-width:100px;">' +
-                                '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Server #</label>' +
-                                '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' + esc(guildId) + '" value="' + esc(serverNum) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;" placeholder="e.g. 1089">' +
+                        '<div class="gm-accordion-body" style="padding:1rem 1.25rem;' + (isFirst ? ' display:block;' : ' display:none;') + '">' +
+                            '<div class="gm-cred-grid">';
+
+                group.guilds.forEach(function (g) {
+                    var guildId = g.id;
+                    var type = g.subscription_type || 'Unlimited';
+                    var end = g.subscription_end;
+                    var serverNum = g.server_number || (window.guildsData && window.guildsData[guildId] ? window.guildsData[guildId].server_number : '') || localStorage.getItem('gm_server_number_' + guildId) || '';
+                    var dateVal = end ? end.split('T')[0] : '';
+
+                    // Calculate countdown html
+                    var countdownHtml = '';
+                    if (type === 'Unlimited') {
+                        countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Unlimited</span>';
+                    } else if (type === 'Lifetime') {
+                        countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Lifetime</span>';
+                    } else {
+                        if (end) {
+                            var endMs = new Date(end).getTime();
+                            var nowMs = Date.now();
+                            var diff = endMs - nowMs;
+                            if (diff <= 0) {
+                                countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-lock-keyhole"></i> Expired</span>';
+                            } else {
+                                var secs = Math.floor(diff / 1000);
+                                var mins = Math.floor(secs / 60);
+                                var hours = Math.floor(mins / 60);
+                                var days = Math.floor(hours / 24);
+
+                                var timeStr = '';
+                                if (days > 0) {
+                                    timeStr = days + 'd ' + (hours % 24) + 'h';
+                                } else if (hours > 0) {
+                                    timeStr = hours + 'h ' + (mins % 60) + 'm';
+                                } else {
+                                    timeStr = mins + 'm';
+                                }
+                                countdownHtml = '<span class="gm-chip gm-chip-warning" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ' + timeStr + ' remaining</span>';
+                            }
+                        } else {
+                            countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700;">No date (Expired)</span>';
+                        }
+                    }
+
+                    var serverTag = serverNum ? ' <span style="font-size:0.8rem; font-weight:500; color:var(--fg-dim);">(Server #' + esc(serverNum) + ')</span>' : '';
+
+                    html +=
+                        '<div class="gm-cred-card" data-guild-id="' + esc(guildId) + '">' +
+                            '<div class="gm-row" style="justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">' +
+                                '<div class="gm-cred-name" style="font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
+                                    '<i class="ph ph-shield"></i> ' + esc(guildId) + serverTag +
+                                '</div>' +
+                                '<div class="countdown-badge-wrapper">' + countdownHtml + '</div>' +
                             '</div>' +
-                            '<div class="gm-col" style="flex: 1.2; gap: 0.25rem; min-width:110px;">' +
-                                '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Type</label>' +
-                                '<select class="gm-select gm-select-sm guild-sub-type" data-guild="' + esc(guildId) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
-                                    '<option value="Unlimited"' + (type === 'Unlimited' ? ' selected' : '') + '>Unlimited</option>' +
-                                    '<option value="Premium"' + (type === 'Premium' ? ' selected' : '') + '>Premium</option>' +
-                                    '<option value="Lifetime"' + (type === 'Lifetime' ? ' selected' : '') + '>Lifetime</option>' +
-                                '</select>' +
+                            '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
+                                '<div class="gm-col" style="flex: 1; gap: 0.25rem; min-width:100px;">' +
+                                    '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Server #</label>' +
+                                    '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' + esc(guildId) + '" value="' + esc(serverNum) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;" placeholder="e.g. 1089">' +
+                                '</div>' +
+                                '<div class="gm-col" style="flex: 1.2; gap: 0.25rem; min-width:110px;">' +
+                                    '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Type</label>' +
+                                    '<select class="gm-select gm-select-sm guild-sub-type" data-guild="' + esc(guildId) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
+                                        '<option value="Unlimited"' + (type === 'Unlimited' ? ' selected' : '') + '>Unlimited</option>' +
+                                        '<option value="Premium"' + (type === 'Premium' ? ' selected' : '') + '>Premium</option>' +
+                                        '<option value="Lifetime"' + (type === 'Lifetime' ? ' selected' : '') + '>Lifetime</option>' +
+                                    '</select>' +
+                                '</div>' +
+                                '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:110px; ' + (type !== 'Premium' ? 'display: none;' : '') + '">' +
+                                    '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">End Date</label>' +
+                                    '<input type="date" class="gm-input gm-input-sm guild-sub-end" data-guild="' + esc(guildId) + '" value="' + dateVal + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
+                                '</div>' +
+                                '<button class="gm-btn gm-btn-primary save-guild-sub-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+                                    '<i class="ph ph-floppy-disk"></i> Save' +
+                                '</button>' +
                             '</div>' +
-                            '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:110px; ' + (type !== 'Premium' ? 'display: none;' : '') + '">' +
-                                '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">End Date</label>' +
-                                '<input type="date" class="gm-input gm-input-sm guild-sub-end" data-guild="' + esc(guildId) + '" value="' + dateVal + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
-                            '</div>' +
-                            '<button class="gm-btn gm-btn-primary save-guild-sub-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
-                                '<i class="ph ph-floppy-disk"></i> Save' +
-                            '</button>' +
-                        '</div>' +
-                    '</div>';
+                        '</div>';
+                });
+
+                html += '</div></div></div>';
             });
-            html += '</div>';
+
             container.innerHTML = html;
+
+            // Wire accordion header click toggles
+            container.querySelectorAll('.gm-accordion-header').forEach(function (headerEl) {
+                headerEl.addEventListener('click', function () {
+                    var bodyEl = headerEl.nextElementSibling;
+                    var arrowEl = headerEl.querySelector('.gm-accordion-arrow');
+                    if (!bodyEl) return;
+                    var isHidden = (bodyEl.style.display === 'none');
+                    if (isHidden) {
+                        bodyEl.style.display = 'block';
+                        if (arrowEl) arrowEl.style.transform = 'rotate(180deg)';
+                    } else {
+                        bodyEl.style.display = 'none';
+                        if (arrowEl) arrowEl.style.transform = 'rotate(0deg)';
+                    }
+                });
+            });
 
             // Wire change listener to type dropdown to show/hide end date
             container.querySelectorAll('.guild-sub-type').forEach(function (select) {

@@ -11,6 +11,8 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Server-Grouped Accordions for Guild Subscriptions & Server Numbers**: Grouped the **Subscription Management & Server Numbers** section in Super Admin Accounts & Access (`app.js`) into collapsible accordion cards by **Server** (e.g. `Server #1058`, `Server #1064`, `Unassigned Server`).
+- **Subscription Accordion UI Features**: Each server accordion header highlights the server badge, list of hosted guilds (`ALPHA, IMK, BABE`), guild count badge (`3 guilds`), and an animated toggle arrow (`ph-caret-down`). The first server section opens by default, and header clicks expand/collapse sections dynamically.
 - **Server-Grouped Accordion View for Super Admin Accounts**: Grouped **Active Guild Admin Accounts** in the Super Admin Accounts & Access dashboard (`app.js`) by **Server** (e.g. `Server #1058`, `Server #1064`, etc.) using collapsible accordion cards.
 - **Accordion Card UI Elements**: Each server group features a server badge (`Server #1058`), a list of associated guilds (`ALPHA, IMK, BABE`), account count badge (`3 admins`), and an animated toggle arrow (`ph-caret-down`). The first server section is open by default, and clicking any header toggles expand/collapse.
 - **Super Admin Accounts & Access Filter Update**: Filtered the **Active Guild Admin Accounts** section in the Super Admin Accounts & Access dashboard (`app.js`) to display **ONLY** `guild_admin` accounts (`acc.role === 'guild_admin'`), completely excluding player portal `member` accounts.
@@ -34,6 +36,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Subscription Management Layout**: Organized flat guild subscription list into server-level collapsible accordions for clean cross-server navigation.
 - **Syntax Error in `app.js` Login Flow**: Removed extra closing brace on line 1264 of `app.js` that blocked script execution and login.
 - **Super Admin Accounts Organization**: Replaced unstructured account list with server-level accordion grouping for easy cross-server administration.
 - **Super Admin Accounts List Pollution**: Prevented player portal `member` accounts from appearing in the Super Admin "Active Guild Admin Accounts" overview card.
