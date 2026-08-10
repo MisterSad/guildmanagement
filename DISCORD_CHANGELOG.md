@@ -1,14 +1,14 @@
-:sparkles: **COMPACT SIDEBAR SUBSCRIPTION WIDGET — v38**
+:straight_ruler: **MATCHUP TABLE OVERFLOW FIX & STRICT ALIGNMENT — v39**
 
-Redesigned the bottom-left sidebar subscription widget to display only essential controls.
+Eliminated right-side table card overflow in both SvS and GvG matchup tabs.
 
 ---
 
 :new: **What's new**
 
-- :dropdown_symbol: **Streamlined Sidebar Card:** Retains **ONLY** the Guild Dropdown Selector (`ALPHA (#1058)`) and the Subscription Plan Status Badge (`Unlimited`, `Premium`, `Free`).
-- :scissors: **Cleaner UI:** Removed the bulky top glowing icon, header text, and description subtitle.
-- :space_invader: **Reduced Height:** Card height is reduced by over 70%, freeing up vertical space in the sidebar menu.
+- :shield: **Zero Table Overflow:** Applied `minmax(0, 1fr)` grid constraints and tight cell paddings (`.3rem .2rem`).
+- :text: **Ellipsis on Long Pseudos:** Long player pseudos automatically truncate with `...` (`max-width: 110px`), displaying the full name on mouse hover.
+- :sparkles: **Perfect Vertical Alignment:** Right edge of side-by-side roster tables aligns 100% with top selector boxes and summary cards.
 
 ---
 

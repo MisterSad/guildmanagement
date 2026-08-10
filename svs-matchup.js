@@ -5,7 +5,7 @@
  * - Puissance < 60M : gros malus (x0.30)
  * - Puissance 60M à 90M : malus modéré (x0.65)
  * - Puissance > 91M : dangerosité normale (x1.00)
- * - Alignement parfait des tuiles et sélecteurs (grid 1fr 1fr avec gap:1.25rem)
+ * - Alignement parfait au pixel près (grid minmax(0, 1fr) avec max-width/ellipsis pour zéro débordement)
  * - Scores sur une seule ligne (white-space: nowrap + format compact K/M/B)
  * Source : RPC gm_svs_server_matchup() (SECURITY DEFINER, superadmin only).
  */
@@ -71,15 +71,15 @@
     function getDangerBadge(tier, score) {
         var tUpper = String(tier || '').toUpperCase();
         if (tUpper === 'EXTREME') {
-            return '<span class="gm-badge" style="background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.3); font-weight:800; font-size:0.7rem; white-space:nowrap;"><i class="ph ph-fire-simple"></i> EXTREME</span>';
+            return '<span class="gm-badge" style="background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.3); font-weight:800; font-size:0.65rem; padding:1px 5px; white-space:nowrap;"><i class="ph ph-fire-simple"></i> EXTREME</span>';
         }
         if (tUpper === 'HIGH') {
-            return '<span class="gm-badge" style="background:rgba(249, 115, 22, 0.15); color:#fb923c; border:1px solid rgba(249, 115, 22, 0.3); font-weight:800; font-size:0.7rem; white-space:nowrap;"><i class="ph ph-warning"></i> HIGH</span>';
+            return '<span class="gm-badge" style="background:rgba(249, 115, 22, 0.15); color:#fb923c; border:1px solid rgba(249, 115, 22, 0.3); font-weight:800; font-size:0.65rem; padding:1px 5px; white-space:nowrap;"><i class="ph ph-warning"></i> HIGH</span>';
         }
         if (tUpper === 'MEDIUM') {
-            return '<span class="gm-badge" style="background:rgba(234, 179, 8, 0.15); color:#facc15; border:1px solid rgba(234, 179, 8, 0.3); font-weight:700; font-size:0.7rem; white-space:nowrap;"><i class="ph ph-shield"></i> MEDIUM</span>';
+            return '<span class="gm-badge" style="background:rgba(234, 179, 8, 0.15); color:#facc15; border:1px solid rgba(234, 179, 8, 0.3); font-weight:700; font-size:0.65rem; padding:1px 5px; white-space:nowrap;"><i class="ph ph-shield"></i> MEDIUM</span>';
         }
-        return '<span class="gm-badge" style="background:rgba(34, 197, 94, 0.12); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.25); font-weight:600; font-size:0.7rem; white-space:nowrap;"><i class="ph ph-check-circle"></i> LOW</span>';
+        return '<span class="gm-badge" style="background:rgba(34, 197, 94, 0.12); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.25); font-weight:600; font-size:0.65rem; padding:1px 5px; white-space:nowrap;"><i class="ph ph-check-circle"></i> LOW</span>';
     }
 
     // ── Chargement des données ───────────────────────────────────────────────
@@ -247,43 +247,43 @@
         var statsA = computeStats(rowsA);
         var statsB = computeStats(rowsB);
 
-        // Barre d'outils et sélecteurs de Matchup (Grid 1fr 1fr aligné avec gap:1.25rem)
+        // Barre d'outils et sélecteurs de Matchup (Grid minmax(0, 1fr) avec gap:1.25rem)
         var headerHtml =
-            '<div class="gm-card glass-card gm-section" style="padding:1.5rem; margin-bottom:1.5rem;">' +
+            '<div class="gm-card glass-card gm-section" style="padding:1.25rem; margin-bottom:1.25rem;">' +
                 '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">' +
                     '<div>' +
-                        '<h2 style="margin:0; font-family:var(--font-display); font-size:1.4rem; display:flex; align-items:center; gap:.6rem;">' +
+                        '<h2 style="margin:0; font-family:var(--font-display); font-size:1.3rem; display:flex; align-items:center; gap:.6rem;">' +
                             '<i class="ph ph-sword" style="color:var(--accent);"></i> SvS Server Matchup & Dangerosity' +
                         '</h2>' +
-                        '<div class="gm-dim" style="font-size:0.85rem; margin-top:.25rem;">' +
+                        '<div class="gm-dim" style="font-size:0.8rem; margin-top:.2rem;">' +
                             'Compare Server vs Server player rosters with Day 1-5 Avg & Day 6 Avg scores and power penalties (<60M: -70% | 60-90M: -35% | >91M: Normal).' +
                         '</div>' +
                     '</div>' +
                     '<div style="display:flex; gap:.5rem;">' +
-                        '<button id="svs-mode-side" class="gm-btn ' + (state.viewMode === 'side-by-side' ? 'gm-btn-primary' : 'gm-btn-secondary') + '" style="font-weight:600;">' +
+                        '<button id="svs-mode-side" class="gm-btn ' + (state.viewMode === 'side-by-side' ? 'gm-btn-primary' : 'gm-btn-secondary') + '" style="font-weight:600; padding:.4rem .8rem; font-size:.8rem;">' +
                             '<i class="ph ph-columns"></i> Side by Side' +
                         '</button>' +
-                        '<button id="svs-mode-combined" class="gm-btn ' + (state.viewMode === 'combined' ? 'gm-btn-primary' : 'gm-btn-secondary') + '" style="font-weight:600;">' +
+                        '<button id="svs-mode-combined" class="gm-btn ' + (state.viewMode === 'combined' ? 'gm-btn-primary' : 'gm-btn-secondary') + '" style="font-weight:600; padding:.4rem .8rem; font-size:.8rem;">' +
                             '<i class="ph ph-list-numbers"></i> Combined Ranking' +
                         '</button>' +
                     '</div>' +
                 '</div>' +
 
-                '<!-- Matchup Server Selectors: Grille 1fr 1fr alignée avec les tuiles de résumé et les tableaux -->' +
-                '<div style="position:relative; display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; align-items:center;">' +
+                '<!-- Matchup Server Selectors: Grille minmax(0, 1fr) minmax(0, 1fr) alignée -->' +
+                '<div style="position:relative; display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap:1.25rem; align-items:center;">' +
                     '<!-- Server A Selection -->' +
-                    '<div style="background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:12px; padding:1rem;">' +
-                        '<div style="font-weight:800; color:#60a5fa; font-size:0.85rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem;">' +
+                    '<div style="background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:12px; padding:.75rem 1rem;">' +
+                        '<div style="font-weight:800; color:#60a5fa; font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.4rem; display:flex; align-items:center; gap:.4rem;">' +
                             '<i class="ph ph-shield-star"></i> Server A (Defender / Attacker)' +
                         '</div>' +
                         '<div style="display:flex; gap:.5rem;">' +
-                            '<select id="svs-select-server-a" class="gm-input" style="flex:1; font-weight:700;">' +
+                            '<select id="svs-select-server-a" class="gm-input" style="flex:1; font-weight:700; font-size:.9rem;">' +
                                 '<option value="ALL">All Servers</option>' +
                                 servers.map(function (s) {
                                     return '<option value="' + esc(s) + '"' + (state.serverA === s ? ' selected' : '') + '>Server ' + esc(formatServerDisplay(s)) + '</option>';
                                 }).join('') +
                             '</select>' +
-                            '<select id="svs-select-guild-a" class="gm-input" style="width:auto; min-width:110px;">' +
+                            '<select id="svs-select-guild-a" class="gm-input" style="width:auto; min-width:95px; font-size:.85rem;">' +
                                 '<option value="ALL">All Guilds</option>' +
                                 guildsA.map(function (g) {
                                     return '<option value="' + esc(g) + '"' + (state.guildA === g ? ' selected' : '') + '>' + esc(g) + '</option>';
@@ -292,26 +292,26 @@
                         '</div>' +
                     '</div>' +
 
-                    '<!-- VS Badge Absolument Centré sur le gap -->' +
+                    '<!-- VS Badge Absolument Centré -->' +
                     '<div style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); z-index:5; pointer-events:none;">' +
-                        '<div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg, #ef4444, #f97316); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:900; font-size:1rem; box-shadow:0 4px 15px rgba(239,68,68,0.5); border:2px solid rgba(255,255,255,0.25);">' +
+                        '<div style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, #ef4444, #f97316); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:900; font-size:.95rem; box-shadow:0 4px 15px rgba(239,68,68,0.5); border:2px solid rgba(255,255,255,0.25);">' +
                             'VS' +
                         '</div>' +
                     '</div>' +
 
                     '<!-- Server B Selection -->' +
-                    '<div style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:12px; padding:1rem;">' +
-                        '<div style="font-weight:800; color:#f87171; font-size:0.85rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem;">' +
+                    '<div style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:12px; padding:.75rem 1rem;">' +
+                        '<div style="font-weight:800; color:#f87171; font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.4rem; display:flex; align-items:center; gap:.4rem;">' +
                             '<i class="ph ph-crosshair"></i> Server B (Opponent / Target)' +
                         '</div>' +
                         '<div style="display:flex; gap:.5rem;">' +
-                            '<select id="svs-select-server-b" class="gm-input" style="flex:1; font-weight:700;">' +
+                            '<select id="svs-select-server-b" class="gm-input" style="flex:1; font-weight:700; font-size:.9rem;">' +
                                 '<option value="ALL">All Servers</option>' +
                                 servers.map(function (s) {
                                     return '<option value="' + esc(s) + '"' + (state.serverB === s ? ' selected' : '') + '>Server ' + esc(formatServerDisplay(s)) + '</option>';
                                 }).join('') +
                             '</select>' +
-                            '<select id="svs-select-guild-b" class="gm-input" style="width:auto; min-width:110px;">' +
+                            '<select id="svs-select-guild-b" class="gm-input" style="width:auto; min-width:95px; font-size:.85rem;">' +
                                 '<option value="ALL">All Guilds</option>' +
                                 guildsB.map(function (g) {
                                     return '<option value="' + esc(g) + '"' + (state.guildB === g ? ' selected' : '') + '>' + esc(g) + '</option>';
@@ -322,7 +322,7 @@
                 '</div>' +
 
                 '<!-- Search Bar -->' +
-                '<div style="margin-top:1.25rem; display:flex; gap:1rem; align-items:center;">' +
+                '<div style="margin-top:1rem; display:flex; gap:1rem; align-items:center;">' +
                     '<div class="gm-input-with-icon" style="flex:1;">' +
                         '<i class="ph ph-magnifying-glass gm-icon"></i>' +
                         '<input type="text" id="svs-matchup-search" class="gm-input" value="' + esc(state.query) + '" placeholder="Search player pseudo, guild, or server number...">' +
@@ -346,84 +346,84 @@
 
     // ── Cartes de Synthèse et Barres Comparatives ────────────────────────────
     function renderComparisonCards(statsA, statsB) {
-        return '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-bottom:1.5rem;">' +
+        return '<div style="display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap:1.25rem; margin-bottom:1.25rem;">' +
             '<!-- Server A Summary -->' +
-            '<div class="gm-card glass-card" style="padding:1.25rem; border-left:4px solid #3b82f6;">' +
-                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">' +
+            '<div class="gm-card glass-card" style="padding:1.1rem; border-left:4px solid #3b82f6;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.85rem;">' +
                     '<div>' +
-                        '<div style="font-weight:800; font-size:1.1rem; color:#60a5fa;">Server ' + esc(formatServerDisplay(state.serverA)) + '</div>' +
-                        '<div class="gm-dim" style="font-size:0.8rem;">' + statsA.count + ' players analyzed</div>' +
+                        '<div style="font-weight:800; font-size:1.05rem; color:#60a5fa;">Server ' + esc(formatServerDisplay(state.serverA)) + '</div>' +
+                        '<div class="gm-dim" style="font-size:0.78rem;">' + statsA.count + ' players analyzed</div>' +
                     '</div>' +
                     '<div style="text-align:right;">' +
-                        '<div style="font-weight:800; font-size:1.2rem; font-variant-numeric:tabular-nums; color:var(--fg);">' + fmtPower(statsA.totalPower) + '</div>' +
-                        '<div class="gm-dim" style="font-size:0.75rem;">Total Power</div>' +
+                        '<div style="font-weight:800; font-size:1.15rem; font-variant-numeric:tabular-nums; color:var(--fg);">' + fmtPower(statsA.totalPower) + '</div>' +
+                        '<div class="gm-dim" style="font-size:0.72rem;">Total Power</div>' +
                     '</div>' +
                 '</div>' +
-                '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:.75rem; background:rgba(0,0,0,0.2); padding:.75rem; border-radius:8px; text-align:center;">' +
+                '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:.5rem; background:rgba(0,0,0,0.2); padding:.6rem; border-radius:8px; text-align:center;">' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 1-5 Avg</div>' +
-                        '<div style="font-weight:700; color:var(--fg); font-size:.85rem; white-space:nowrap;">' + fmtScore(statsA.avgPrep) + '</div>' +
+                        '<div class="gm-dim" style="font-size:.68rem; text-transform:uppercase;">Day 1-5 Avg</div>' +
+                        '<div style="font-weight:700; color:var(--fg); font-size:.82rem; white-space:nowrap;">' + fmtScore(statsA.avgPrep) + '</div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 6 Avg</div>' +
-                        '<div style="font-weight:800; color:#f87171; font-size:.85rem; white-space:nowrap;">' + fmtScore(statsA.avgPvp) + '</div>' +
+                        '<div class="gm-dim" style="font-size:.68rem; text-transform:uppercase;">Day 6 Avg</div>' +
+                        '<div style="font-weight:800; color:#f87171; font-size:.82rem; white-space:nowrap;">' + fmtScore(statsA.avgPvp) + '</div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Threats</div>' +
-                        '<div style="font-weight:800; color:#fb923c; font-size:.85rem; white-space:nowrap;">' + (statsA.extremeCount + statsA.highCount) + ' High+</div>' +
+                        '<div class="gm-dim" style="font-size:.68rem; text-transform:uppercase;">Threats</div>' +
+                        '<div style="font-weight:800; color:#fb923c; font-size:.82rem; white-space:nowrap;">' + (statsA.extremeCount + statsA.highCount) + ' High+</div>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
 
             '<!-- Server B Summary -->' +
-            '<div class="gm-card glass-card" style="padding:1.25rem; border-left:4px solid #ef4444;">' +
-                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">' +
+            '<div class="gm-card glass-card" style="padding:1.1rem; border-left:4px solid #ef4444;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.85rem;">' +
                     '<div>' +
-                        '<div style="font-weight:800; font-size:1.1rem; color:#f87171;">Server ' + esc(formatServerDisplay(state.serverB)) + '</div>' +
-                        '<div class="gm-dim" style="font-size:0.8rem;">' + statsB.count + ' players analyzed</div>' +
+                        '<div style="font-weight:800; font-size:1.05rem; color:#f87171;">Server ' + esc(formatServerDisplay(state.serverB)) + '</div>' +
+                        '<div class="gm-dim" style="font-size:0.78rem;">' + statsB.count + ' players analyzed</div>' +
                     '</div>' +
                     '<div style="text-align:right;">' +
-                        '<div style="font-weight:800; font-size:1.2rem; font-variant-numeric:tabular-nums; color:var(--fg);">' + fmtPower(statsB.totalPower) + '</div>' +
-                        '<div class="gm-dim" style="font-size:0.75rem;">Total Power</div>' +
+                        '<div style="font-weight:800; font-size:1.15rem; font-variant-numeric:tabular-nums; color:var(--fg);">' + fmtPower(statsB.totalPower) + '</div>' +
+                        '<div class="gm-dim" style="font-size:0.72rem;">Total Power</div>' +
                     '</div>' +
                 '</div>' +
-                '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:.75rem; background:rgba(0,0,0,0.2); padding:.75rem; border-radius:8px; text-align:center;">' +
+                '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:.5rem; background:rgba(0,0,0,0.2); padding:.6rem; border-radius:8px; text-align:center;">' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 1-5 Avg</div>' +
-                        '<div style="font-weight:700; color:var(--fg); font-size:.85rem; white-space:nowrap;">' + fmtScore(statsA.avgPrep) + '</div>' +
+                        '<div class="gm-dim" style="font-size:.68rem; text-transform:uppercase;">Day 1-5 Avg</div>' +
+                        '<div style="font-weight:700; color:var(--fg); font-size:.82rem; white-space:nowrap;">' + fmtScore(statsB.avgPrep) + '</div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 6 Avg</div>' +
-                        '<div style="font-weight:800; color:#f87171; font-size:.85rem; white-space:nowrap;">' + fmtScore(statsB.avgPvp) + '</div>' +
+                        '<div class="gm-dim" style="font-size:.68rem; text-transform:uppercase;">Day 6 Avg</div>' +
+                        '<div style="font-weight:800; color:#f87171; font-size:.82rem; white-space:nowrap;">' + fmtScore(statsB.avgPvp) + '</div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Threats</div>' +
-                        '<div style="font-weight:800; color:#fb923c; font-size:.85rem; white-space:nowrap;">' + (statsB.extremeCount + statsB.highCount) + ' High+</div>' +
+                        '<div class="gm-dim" style="font-size:.68rem; text-transform:uppercase;">Threats</div>' +
+                        '<div style="font-weight:800; color:#fb923c; font-size:.82rem; white-space:nowrap;">' + (statsB.extremeCount + statsB.highCount) + ' High+</div>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
         '</div>';
     }
 
-    // ── Vue Side-by-Side (Deux Tableaux Côte à Côte) ────────────────────────
+    // ── Vue Side-by-Side (Deux Tableaux Côte à Côte sans Débordement) ────────
     function renderSideBySideView(rowsA, rowsB) {
-        return '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">' +
+        return '<div style="display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap:1.25rem;">' +
             '<!-- Server A Table -->' +
-            '<div class="gm-card glass-card" style="padding:1rem;">' +
-                '<div style="font-weight:800; font-size:0.95rem; color:#60a5fa; margin-bottom:.75rem; display:flex; align-items:center; justify-content:space-between;">' +
+            '<div class="gm-card glass-card" style="padding:.85rem; overflow:hidden;">' +
+                '<div style="font-weight:800; font-size:0.9rem; color:#60a5fa; margin-bottom:.65rem; display:flex; align-items:center; justify-content:space-between;">' +
                     '<span><i class="ph ph-shield"></i> Server ' + esc(formatServerDisplay(state.serverA)) + ' Roster</span>' +
-                    '<span class="gm-dim" style="font-size:.8rem; font-weight:600;">' + rowsA.length + ' players</span>' +
+                    '<span class="gm-dim" style="font-size:.78rem; font-weight:600;">' + rowsA.length + ' players</span>' +
                 '</div>' +
                 '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
-                    '<table class="gm-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">' +
+                    '<table class="gm-table" style="width:100%; border-collapse:collapse; font-size:0.8rem;">' +
                         '<thead><tr>' +
-                            '<th class="gm-center" style="width:30px; white-space:nowrap;">#</th>' +
-                            '<th style="white-space:nowrap;">Member</th>' +
-                            '<th class="gm-center" style="white-space:nowrap;">Guild</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;">Power</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average PvP Score">Day 6</th>' +
-                            '<th class="gm-center" style="white-space:nowrap;">Threat</th>' +
+                            '<th class="gm-center" style="width:24px; white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">#</th>' +
+                            '<th style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">Member</th>' +
+                            '<th class="gm-center" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">Guild</th>' +
+                            '<th class="gm-right" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">Power</th>' +
+                            '<th class="gm-right" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
+                            '<th class="gm-right" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;" title="Day 6 Average PvP Score">Day 6</th>' +
+                            '<th class="gm-center" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">Threat</th>' +
                         '</tr></thead><tbody>' +
                             renderRosterRows(rowsA) +
                         '</tbody>' +
@@ -432,21 +432,21 @@
             '</div>' +
 
             '<!-- Server B Table -->' +
-            '<div class="gm-card glass-card" style="padding:1rem;">' +
-                '<div style="font-weight:800; font-size:0.95rem; color:#f87171; margin-bottom:.75rem; display:flex; align-items:center; justify-content:space-between;">' +
+            '<div class="gm-card glass-card" style="padding:.85rem; overflow:hidden;">' +
+                '<div style="font-weight:800; font-size:0.9rem; color:#f87171; margin-bottom:.65rem; display:flex; align-items:center; justify-content:space-between;">' +
                     '<span><i class="ph ph-crosshair"></i> Server ' + esc(formatServerDisplay(state.serverB)) + ' Roster</span>' +
-                    '<span class="gm-dim" style="font-size:.8rem; font-weight:600;">' + rowsB.length + ' players</span>' +
+                    '<span class="gm-dim" style="font-size:.78rem; font-weight:600;">' + rowsB.length + ' players</span>' +
                 '</div>' +
                 '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
-                    '<table class="gm-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">' +
+                    '<table class="gm-table" style="width:100%; border-collapse:collapse; font-size:0.8rem;">' +
                         '<thead><tr>' +
-                            '<th class="gm-center" style="width:30px; white-space:nowrap;">#</th>' +
-                            '<th style="white-space:nowrap;">Member</th>' +
-                            '<th class="gm-center" style="white-space:nowrap;">Guild</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;">Power</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
-                            '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average PvP Score">Day 6</th>' +
-                            '<th class="gm-center" style="white-space:nowrap;">Threat</th>' +
+                            '<th class="gm-center" style="width:24px; white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">#</th>' +
+                            '<th style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">Member</th>' +
+                            '<th class="gm-center" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">Guild</th>' +
+                            '<th class="gm-right" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">Power</th>' +
+                            '<th class="gm-right" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
+                            '<th class="gm-right" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;" title="Day 6 Average PvP Score">Day 6</th>' +
+                            '<th class="gm-center" style="white-space:nowrap; padding:.35rem .2rem; font-size:.7rem;">Threat</th>' +
                         '</tr></thead><tbody>' +
                             renderRosterRows(rowsB) +
                         '</tbody>' +
@@ -458,7 +458,7 @@
 
     function renderRosterRows(rows) {
         if (!rows || rows.length === 0) {
-            return '<tr><td colspan="7" class="gm-center" style="padding:2rem; color:var(--fg-dim);">No players found.</td></tr>';
+            return '<tr><td colspan="7" class="gm-center" style="padding:1.5rem; color:var(--fg-dim);">No players found.</td></tr>';
         }
         var html = '';
         rows.forEach(function (r, idx) {
@@ -466,20 +466,20 @@
             var dScore = computeDangerScore(r);
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
-                    '<td class="gm-center" style="font-weight:700; color:var(--fg-dim); white-space:nowrap;">' + (idx + 1) + '</td>' +
-                    '<td style="white-space:nowrap;">' +
-                        '<div style="display:flex; align-items:center; gap:.5rem;">' +
-                            '<div class="gm-avatar gm-avatar-squircle" style="width:26px; height:26px; font-size:.78rem; font-weight:700;">' + esc(initial) + '</div>' +
-                            '<strong style="color:var(--fg); font-size:.82rem;">' + esc(r.pseudo) + '</strong>' +
+                    '<td class="gm-center" style="font-weight:700; color:var(--fg-dim); white-space:nowrap; padding:.3rem .2rem; font-size:.75rem;">' + (idx + 1) + '</td>' +
+                    '<td style="white-space:nowrap; padding:.3rem .2rem; max-width:110px;">' +
+                        '<div style="display:flex; align-items:center; gap:.4rem; overflow:hidden;">' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:22px; height:22px; font-size:.7rem; font-weight:700; flex-shrink:0;">' + esc(initial) + '</div>' +
+                            '<strong style="color:var(--fg); font-size:.78rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="' + esc(r.pseudo) + '">' + esc(r.pseudo) + '</strong>' +
                         '</div>' +
                     '</td>' +
-                    '<td class="gm-center" style="white-space:nowrap;">' +
-                        '<span style="background:var(--accent-soft); color:var(--accent); border-radius:4px; padding:1px 6px; font-weight:700; font-size:.68rem;">' + esc(r.guild) + '</span>' +
+                    '<td class="gm-center" style="white-space:nowrap; padding:.3rem .2rem;">' +
+                        '<span style="background:var(--accent-soft); color:var(--accent); border-radius:4px; padding:1px 5px; font-weight:700; font-size:.65rem;">' + esc(r.guild) + '</span>' +
                     '</td>' +
-                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem;">' + fmtPower(r.power) + '</td>' +
-                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem; color:var(--fg);" title="' + fmtNum(r.avg_prep_score) + '">' + fmtScore(r.avg_prep_score) + '</td>' +
-                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem; color:#f87171;" title="' + fmtNum(r.avg_pvp_score) + '">' + fmtScore(r.avg_pvp_score) + '</td>' +
-                    '<td class="gm-center" style="white-space:nowrap;">' + getDangerBadge(r.danger_tier, dScore) + '</td>' +
+                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.78rem; padding:.3rem .2rem;">' + fmtPower(r.power) + '</td>' +
+                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.78rem; color:var(--fg); padding:.3rem .2rem;" title="' + fmtNum(r.avg_prep_score) + '">' + fmtScore(r.avg_prep_score) + '</td>' +
+                    '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.78rem; color:#f87171; padding:.3rem .2rem;" title="' + fmtNum(r.avg_pvp_score) + '">' + fmtScore(r.avg_pvp_score) + '</td>' +
+                    '<td class="gm-center" style="white-space:nowrap; padding:.3rem .2rem;">' + getDangerBadge(r.danger_tier, dScore) + '</td>' +
                 '</tr>';
         });
         return html;

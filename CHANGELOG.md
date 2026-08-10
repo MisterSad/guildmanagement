@@ -11,6 +11,8 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Strict Right-Edge Alignment & Zero Overflow**: Enforced `grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)` across all 3 card rows in both **SvS Matchup** (`svs-matchup.js`) and **GvG Matchup** (`gvg-matchup.js`).
+- **Compact Roster Row Styling & Truncation**: Added `max-width: 110px`, `text-overflow: ellipsis`, and `overflow: hidden` on player pseudos in side-by-side tables. Adjusted cell padding (`padding: .3rem .2rem`) and badge sizes so the right roster table fits 100% inside its container with zero horizontal overflow.
 - **Compact Sidebar Subscription Widget**: Compacted the bottom left sidebar subscription card (`shell.js`, `shell.css`) to retain only the essential elements requested:
   - **Guild Dropdown Selector** (`ALPHA (#1058)`, `OMEGA (#1064)`, etc.)
   - **Subscription Plan Status Pill/Badge** (`Unlimited`, `Premium`, `Free`)
@@ -29,6 +31,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Table Overflow on Right Border**: Fixed right side overflow of player roster tables by capping column grid widths with `minmax(0, 1fr)` and truncating long player pseudos with ellipsis (`...`).
 - **Sidebar Space Efficiency**: Reduced vertical height of the sidebar subscription model card by 70%, keeping only the guild switcher dropdown and plan status badge.
 - **Tile & Card Vertical Misalignment**: Resolved offset between top selector boxes and lower summary/roster cards in SvS and GvG tabs by aligning grid column dimensions.
 - **Table Score Text Overflow / Multi-Line Wrapping**: Fixed multi-line wrapping of scores in matchup table cells by applying `white-space: nowrap;` and compact notation (`19.3M`), ensuring all table rows remain strictly single-line.
