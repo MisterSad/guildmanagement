@@ -1,7 +1,8 @@
 /**
  * cross-rank.js — Classement inter-guilde & Mercato (onglet « Draft », superadmin).
  * Vue consolidée de tous les joueurs de toutes les guildes et serveurs : puissance,
- * guilde, serveur, et taux de participation aux événements (SvS, GvG, Shadowfront, Global).
+ * guilde, serveur, et taux de participation pondéré selon les coefficients des événements
+ * (SvS coef 5, GvG coef 5, Shadowfront coef 3, DTR coef 2, Arms Race coef 2).
  * Source : RPC gm_cross_guild_ranking() (SECURITY DEFINER, superadmin only).
  * Chargé à la demande par app.js via window.GM_SETTINGS.load().
  */
@@ -11,12 +12,14 @@
     var fmtPower = (window.GM && window.GM.formatPower) || function (n) { return String(n); };
     var t = function (k) { return window.GM_I18N ? window.GM_I18N.t(k) : k; };
 
-    // Taux par type d'événement + taux global (Glory supprimé selon demande)
+    // Colonnes d'événements avec leurs coefficients respectifs
     var RATE_COLUMNS = [
-        { key: 'svs',    label: 'SvS',         icon: 'ph-sword' },
-        { key: 'gvg',    label: 'GvG',         icon: 'ph-flag-banner' },
-        { key: 'shadow', label: 'Shadowfront', icon: 'ph-ghost' },
-        { key: 'global', label: 'Overall',     icon: 'ph-chart-line' }
+        { key: 'svs',    label: 'SvS (x5)',         icon: 'ph-sword' },
+        { key: 'gvg',    label: 'GvG (x5)',         icon: 'ph-flag-banner' },
+        { key: 'shadow', label: 'Shadowfront (x3)', icon: 'ph-ghost' },
+        { key: 'dtr',    label: 'DTR (x2)',         icon: 'ph-shield' },
+        { key: 'arms',   label: 'Arms Race (x2)',   icon: 'ph-target' },
+        { key: 'global', label: 'Overall',          icon: 'ph-chart-line' }
     ];
 
     var state = {
@@ -44,6 +47,37 @@
         var s = String(rawServer).trim();
         if (s.indexOf('#') === 0) return s;
         return '#' + s;
+    }
+
+    function getWeightedGlobalRate(r) {
+        if (r.global_rate !== null && r.global_rate !== undefined) {
+            return r.global_rate;
+        }
+        var totalWeight = 0;
+        var weightedSum = 0;
+
+        if (r.svs_total > 0 && r.svs_rate != null) {
+            totalWeight += 5;
+            weightedSum += 5 * r.svs_rate;
+        }
+        if (r.gvg_total > 0 && r.gvg_rate != null) {
+            totalWeight += 5;
+            weightedSum += 5 * r.gvg_rate;
+        }
+        if (r.shadow_total > 0 && r.shadow_rate != null) {
+            totalWeight += 3;
+            weightedSum += 3 * r.shadow_rate;
+        }
+        if (r.dtr_total > 0 && r.dtr_rate != null) {
+            totalWeight += 2;
+            weightedSum += 2 * r.dtr_rate;
+        }
+        if (r.arms_total > 0 && r.arms_rate != null) {
+            totalWeight += 2;
+            weightedSum += 2 * r.arms_rate;
+        }
+        if (totalWeight === 0) return null;
+        return Math.round((weightedSum / totalWeight) * 10) / 10;
     }
 
     // ── Chargement : RPC superadmin-only ─────────────────────────────────────
@@ -77,6 +111,7 @@
         container.innerHTML = loadingHtml();
 
         try {
+            // Utilisation de .range(0, 99999) pour s'affranchir du cap par défaut de 1000 lignes de PostgREST
             var query = db.rpc('gm_cross_guild_ranking');
             if (query && typeof query.range === 'function') {
                 query = query.range(0, 99999);
@@ -102,7 +137,7 @@
         if (btn) btn.addEventListener('click', load);
     }
 
-    // ── Filtres & tri (par régularité & volume) ──────────────────────────────
+    // ── Filtres & tri (par régularité & volume pondéré) ──────────────────────
     function visibleRows() {
         var q = state.query.trim().toLowerCase();
         var rows = state.rows.filter(function (r) {
@@ -147,9 +182,15 @@
                 return (av - bv) * dir;
             }
 
-            // Tri par taux (% de participation) avec départage par régularité (nombre d'événements joués)
-            av = a[state.sortKey + '_rate'];
-            bv = b[state.sortKey + '_rate'];
+            // Tri par taux (% de participation) avec départage par régularité
+            if (state.sortKey === 'global') {
+                av = getWeightedGlobalRate(a);
+                bv = getWeightedGlobalRate(b);
+            } else {
+                av = a[state.sortKey + '_rate'];
+                bv = b[state.sortKey + '_rate'];
+            }
+
             var aNull = (av === null || av === undefined);
             var bNull = (bv === null || bv === undefined);
             if (aNull && bNull) return (b.power || 0) - (a.power || 0);
@@ -159,13 +200,13 @@
             if (av !== bv) return (av - bv) * dir;
 
             // Départage 1 : Nombre de présences réelles (plus de matchs joués = plus régulier)
-            var aAtt = a[state.sortKey + '_attended'] || 0;
-            var bAtt = b[state.sortKey + '_attended'] || 0;
+            var aAtt = a[state.sortKey + '_attended'] || a.global_attended || 0;
+            var bAtt = b[state.sortKey + '_attended'] || b.global_attended || 0;
             if (aAtt !== bAtt) return (aAtt - bAtt) * dir;
 
             // Départage 2 : Nombre total d'événements
-            var aTot = a[state.sortKey + '_total'] || 0;
-            var bTot = b[state.sortKey + '_total'] || 0;
+            var aTot = a[state.sortKey + '_total'] || a.global_total || 0;
+            var bTot = b[state.sortKey + '_total'] || b.global_total || 0;
             if (aTot !== bTot) return (aTot - bTot) * dir;
 
             // Départage 3 : Puissance de combat
@@ -203,7 +244,7 @@
     }
 
     function rateCell(row, prefix) {
-        var rate = row[prefix + '_rate'];
+        var rate = (prefix === 'global') ? getWeightedGlobalRate(row) : row[prefix + '_rate'];
         var att = row[prefix + '_attended'];
         var tot = row[prefix + '_total'];
         if (rate === null || rate === undefined) {
@@ -219,7 +260,7 @@
 
     function rowsHtml(rows) {
         if (rows.length === 0) {
-            return '<tr><td colspan="9" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">' +
+            return '<tr><td colspan="11" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">' +
                 '<i class="ph ph-user-minus" style="font-size:2rem; color:var(--fg-dim); margin-bottom:.5rem; display:block;"></i>' +
                 'No players match your server or guild filter.' +
             '</td></tr>';

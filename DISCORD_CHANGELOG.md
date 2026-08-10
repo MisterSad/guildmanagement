@@ -1,13 +1,19 @@
-:bug: **FIXED PL/PGSQL AMBIGUOUS COLUMN ERROR ON DRAFT PAGE — v29**
+:balance_scale: **DRAFT WEIGHTED EVENT COEFFICIENTS — v30**
 
-Fixed the database error `column reference "guild" is ambiguous` when opening the **Draft** page.
+Applied weighted event coefficients to the **Overall** participation score on the **Draft** page.
 
 ---
 
 :new: **What's new**
 
-- :wrench: **Disambiguated SQL Column Names:** Migration `20260810150000_fix_cross_guild_ranking_ambiguous_guild.sql` uses explicit `guild_id` column aliases across all intermediate CTEs in `gm_cross_guild_ranking()`.
-- :rocket: **Seamless Draft Load:** The Draft Mercato dashboard now loads instantly without PL/pgSQL SQL variable collision errors.
+- :abacus: **Weighted Overall Calculation:**
+  - :swords: **SvS:** Coefficient **5**
+  - :triangular_flag_on_post: **GvG:** Coefficient **5**
+  - :ghost: **Shadowfront:** Coefficient **3**
+  - :shield: **DTR:** Coefficient **2**
+  - :target: **Arms Race:** Coefficient **2**
+- :bar_chart: **Clear Column Headers:** Displays `SvS (x5)`, `GvG (x5)`, `Shadowfront (x3)`, `DTR (x2)`, `Arms Race (x2)`, and `Overall` (Weighted %).
+- :database: **Updated RPC `gm_cross_guild_ranking`:** Migration `20260810160000_draft_weighted_coefficients.sql` computes the weighted global rate directly in PostgreSQL.
 
 ---
 
