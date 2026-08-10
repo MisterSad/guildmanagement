@@ -1,14 +1,16 @@
-:straight_ruler: **SINGLE-LINE SCORE FORMATTING & SVS MATCHUP POLISH — v33**
+:flag_white: **SUPER ADMIN GVG GUILD VS GUILD MATCHUP DASHBOARD — v34**
 
-Fixed score text wrapping on table cells by enforcing single-line formatting and compact score display.
+Added a dedicated **GvG** tab in the Super Admin menu to compare Server vs Server guild rosters, scores, and dangerosity.
 
 ---
 
 :new: **What's new**
 
-- :one: **Single-Line Table Display:** Applied `white-space: nowrap` and compact notation (`19.3M`, `2.39M`) to prevent scores like `19 307 310` from breaking onto 3 separate lines.
-- :mag: **Full Exact Scores on Hover:** Hovering over any score displays the exact unformatted integer in a browser tooltip.
-- :art: **Polished Table Typography:** Scaled font sizes (`0.78rem` to `0.82rem`) and column widths for clean alignment in Side-by-Side view.
+- :triangular_flag_on_post: **Server vs Server Guild Matchup:** Compare all **guilds** of **Server A** vs all **guilds** of **Server B** side by side.
+- :bar_chart: **Guild Metrics & Day 1-5 / Day 6 Scores:** Displays total guild power, member count, average member power, Day 1 to 5 average score per member, and Day 6 castle battle score per member.
+- :warning: **Guild Dangerosity Score & Badges:** Calculates a weighted Guild Dangerosity Score and assigns Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
+- :columns: **Dual View Modes:** Switch between **Side by Side Guilds** comparison and **Combined Guild Ranking**.
+- :database: **New RPC `gm_gvg_guild_matchup`:** Migration `20260810190000_gvg_guild_matchup_rpc.sql` deployed to calculate GvG guild matchup data in PostgreSQL.
 
 ---
 

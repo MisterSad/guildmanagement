@@ -37,7 +37,8 @@
         { id: 'superadmin-accounts', tabId: 'admin-superadmin', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
         { id: 'benchmark', tabId: 'tab-benchmark', icon: 'ph-buildings', labelKey: 'gm_nav_benchmark', section: 'superadmin', r5Only: true, panels: ['tab-benchmark'] },
         { id: 'settings', tabId: 'tab-settings', icon: 'ph-note-pencil', labelKey: 'gm_nav_settings', section: 'superadmin', r5Only: true, panels: ['tab-settings'] },
-        { id: 'svs-matchup', tabId: 'tab-svs-matchup', icon: 'ph-sword', labelKey: 'gm_nav_svs_matchup', section: 'superadmin', r5Only: true, panels: ['tab-svs-matchup'] }
+        { id: 'svs-matchup', tabId: 'tab-svs-matchup', icon: 'ph-sword', labelKey: 'gm_nav_svs_matchup', section: 'superadmin', r5Only: true, panels: ['tab-svs-matchup'] },
+        { id: 'gvg-matchup', tabId: 'tab-gvg-matchup', icon: 'ph-flag-banner', labelKey: 'gm_nav_gvg_matchup', section: 'superadmin', r5Only: true, panels: ['tab-gvg-matchup'] }
     ];
 
     function visibleNavItems() {
