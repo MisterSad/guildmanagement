@@ -1,13 +1,13 @@
-:no_entry_sign: **DEMO GUILD EXCLUDED FROM DRAFT MERCATO LIST — v28**
+:bug: **FIXED PL/PGSQL AMBIGUOUS COLUMN ERROR ON DRAFT PAGE — v29**
 
-Excluded all players belonging to the `DEMO` tenant from appearing in the superadmin **Draft** Mercato overview.
+Fixed the database error `column reference "guild" is ambiguous` when opening the **Draft** page.
 
 ---
 
 :new: **What's new**
 
-- :shield: **DEMO Guild Filtered Out:** `cross-rank.js` and migration `20260810140000_draft_exclude_demo_guild.sql` updated to exclude `m.guild = 'DEMO'` at both database and client levels.
-- :sparkles: **Clean Mercato View:** The Draft leaderboard now exclusively features real player profiles from active competitive guilds.
+- :wrench: **Disambiguated SQL Column Names:** Migration `20260810150000_fix_cross_guild_ranking_ambiguous_guild.sql` uses explicit `guild_id` column aliases across all intermediate CTEs in `gm_cross_guild_ranking()`.
+- :rocket: **Seamless Draft Load:** The Draft Mercato dashboard now loads instantly without PL/pgSQL SQL variable collision errors.
 
 ---
 

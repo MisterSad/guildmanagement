@@ -11,21 +11,20 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **PL/pgSQL Column Ambiguity Fix**: Created migration `20260810150000_fix_cross_guild_ranking_ambiguous_guild.sql` using explicit `guild_id` column aliases across all CTEs (`roster`, `player_stats`, `sess_totals`, `sess`, `es_sess`, `ep`), resolving the PostgreSQL `column reference "guild" is ambiguous` PL/pgSQL error on the **Draft** page.
 - **Excluded DEMO Guild from Draft Mercato Ranking**: Updated SECURITY DEFINER RPC `gm_cross_guild_ranking()` (`20260810140000_draft_exclude_demo_guild.sql`) and `cross-rank.js` client logic to filter out all members belonging to the `DEMO` tenant, keeping the Draft Mercato list focused strictly on real competitive guilds.
 - **Draft Regularity Sort Tie-Breaker & Volume Order**: Updated player ranking on the **Draft** page (`cross-rank.js`) to order players by **Regularity** (rate %, followed by number of attended events, total sessions, and combat power). Players with a long-standing active record (e.g. 22/23 attended) are now ranked above players with few total sessions (e.g. 5/5).
 - **PostgREST 1000-Row Limit Bypass & Dynamic Player Counter**: Fixed the pagination cap on `cross-rank.js` by invoking `.range(0, 99999)` on `gm_cross_guild_ranking()`. Updated top-right header counter to display dynamic counts (e.g. `1420 players` when unfiltered, `45 of 1420 players` when filtered).
 - **Union Session Denominators in Database SQL**: Created migration `20260810130000_draft_ranking_session_union_and_regularity.sql` combining event sessions from `event_status` and `event_participants`. If a guild has held Shadowfront sessions in `event_status`, members who did not participate display `0% (0/N)` rather than `— (0/0)`.
-- **Draft Mercato & Server Transfer Leaderboard**: Overhauled the **Draft** page (`cross-rank.js`) into a dedicated Mercato dashboard for cross-server recruitment and guild transfer planning. Displays players ranked by event participation rates (**SvS**, **GvG**, **Shadowfront**, and **Overall**), while removing the irrelevant Glory column.
-- **Server Number Visibility & Multi-Filter Controls**: Added **Server Number** (`#1058`, `#1064`, `#0000`, etc.) and **Guild** tags for every player row. Introduced dropdown filters for **Server** and **Guild**, text search for player pseudo/guild/server, and full sorting support across all columns.
 
 ---
 
 ## Fixed
 
+- **PostgreSQL PL/pgSQL Ambiguous Column Error**: Resolved `column reference "guild" is ambiguous` in `gm_cross_guild_ranking()` RPC by qualifying CTE select columns with `guild_id`.
 - **DEMO Guild Player Exposure**: Excluded test/demo accounts (`DEMO` tenant) from appearing in superadmin Mercato & Transfer rankings.
 - **PostgREST 1000 Row Truncation**: Resolved issue where player count was hardcoded/capped at `1000 of 1000 players` by bypassing the default REST pagination range limit.
 - **Cross-Guild Ranking Null Rate Sorting**: Fixed rate sorting logic in `cross-rank.js` so players without event records are placed at the bottom regardless of sort direction.
-- **PostgREST `JSON object requested, multiple (or no) rows returned` Fix**: Resolved PostgREST `PGRST116` query errors during portal login by switching `.maybeSingle()` to `.limit(1)` in `member-portal` Edge Function and updating `.single()` to `.maybeSingle()` in `events.js`, `armsrace.js`, and `shadowfront.js`.
 
 ---
 
