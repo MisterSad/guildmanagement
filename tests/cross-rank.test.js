@@ -60,10 +60,20 @@ function rowPseudos() {
     );
 }
 
+function createMockDb(data, error = null) {
+    return {
+        rpc: () => {
+            const p = Promise.resolve({ data, error });
+            p.range = () => p;
+            return p;
+        }
+    };
+}
+
 beforeEach(() => {
     document.body.innerHTML = '<div id="cross-rank-container"></div>';
     localStorage.setItem('gm_role', 'super_admin');
-    GM.db = { rpc: async () => ({ data: FIXTURE, error: null }) };
+    GM.db = createMockDb(FIXTURE);
 });
 
 afterEach(() => {
@@ -111,11 +121,11 @@ describe('GM_SETTINGS cross-guild Draft Mercato ranking', () => {
     it('sorts by server column when server header is clicked', async () => {
         await SETTINGS.load();
         container().querySelector('th[data-sort="server"]').click();
-        // Server descending: '1064' (BetaKnight, Hax), '1058' (AlphaKing, OmegaStar), '0000' (GammaGhost)
-        expect(rowPseudos()).toEqual(['BetaKnight', '<b>Hax</b>', 'AlphaKing', 'OmegaStar', 'GammaGhost']);
+        // Server descending: '1064' (Hax power 1000 > BetaKnight power 0), '1058' (AlphaKing, OmegaStar), '0000' (GammaGhost)
+        expect(rowPseudos()).toEqual(['<b>Hax</b>', 'BetaKnight', 'AlphaKing', 'OmegaStar', 'GammaGhost']);
         container().querySelector('th[data-sort="server"]').click();
-        // Server ascending: '0000' (GammaGhost), '1058' (AlphaKing, OmegaStar), '1064' (BetaKnight, Hax)
-        expect(rowPseudos()).toEqual(['GammaGhost', 'AlphaKing', 'OmegaStar', 'BetaKnight', '<b>Hax</b>']);
+        // Server ascending: '0000' (GammaGhost), '1058' (AlphaKing, OmegaStar), '1064' (Hax, BetaKnight)
+        expect(rowPseudos()).toEqual(['GammaGhost', 'AlphaKing', 'OmegaStar', '<b>Hax</b>', 'BetaKnight']);
     });
 
     it('sorts by power when power header is clicked', async () => {
@@ -150,7 +160,7 @@ describe('GM_SETTINGS cross-guild Draft Mercato ranking', () => {
 
     it('shows player count and total', async () => {
         await SETTINGS.load();
-        expect(container().textContent).toContain('5 of 5 players');
+        expect(container().textContent).toContain('5 players');
     });
 
     it('shows a denied state for non-super-admin callers', async () => {
@@ -162,7 +172,7 @@ describe('GM_SETTINGS cross-guild Draft Mercato ranking', () => {
     });
 
     it('shows an error state with a retry button when the RPC fails', async () => {
-        GM.db = { rpc: async () => ({ data: null, error: { message: 'boom' } }) };
+        GM.db = createMockDb(null, { message: 'boom' });
         await SETTINGS.load();
         expect(container().querySelector('#cross-rank-retry')).not.toBeNull();
         expect(container().textContent).toContain('boom');

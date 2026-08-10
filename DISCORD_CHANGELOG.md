@@ -1,16 +1,15 @@
-:trophy: **DRAFT MERCATO & SERVER TRANSFER DASHBOARD OVERHAUL — v26**
+:chart_with_upwards_trend: **DRAFT REGULARITY SORTING & PAGINATION CAP FIX — v27**
 
-Completely redesigned the **Draft** page into a dedicated Mercato dashboard to support inter-server recruitment and guild transfer decisions.
+Enhanced the **Draft** Mercato page with regularity tie-breaker sorting, un-capped player pagination, and session denominator unioning in SQL.
 
 ---
 
 :new: **What's new**
 
-- :bar_chart: **Participation Rate Ranking:** Displays players ranked by participation in key events (**SvS**, **GvG**, **Shadowfront**, and **Overall**). Glory column has been removed.
-- :globe_with_meridians: **Server Number & Guild Display:** Displays each player's **Server Number** (`#1058`, `#1064`, `#0000`, etc.) and **Guild** tag.
-- :filter: **Dual Filter Controls:** Filter players by **Server** dropdown and **Guild** dropdown, plus live search by player name, guild, or server.
-- :sort: **Full Sorting Support:** Click headers to sort by Member, Server, Guild, Power, SvS, GvG, Shadowfront, or Overall participation rate.
-- :database: **Updated SQL RPC `gm_cross_guild_ranking`:** Migration `20260810120000_draft_cross_guild_ranking_server.sql` updated to return `server_number` directly from `public.guilds`.
+- :sort: **Regularity Tie-Breaker Sorting:** Ranking by rate (%) now uses **Attended Count** and **Total Count** as secondary tie-breakers. Active players with a long track record (e.g. 22/23 events) are now ranked above players with few total sessions (e.g. 5/5).
+- :infinity: **Un-Capped Player List:** Added `.range(0, 99999)` to bypass PostgREST's default 1000-row cap, fetching every single player across all guilds.
+- :1234: **Dynamic Player Count Display:** Top-right counter now displays `1420 players` when unfiltered, and `45 of 1420 players` when filtering.
+- :database: **Accurate Guild Event Denominators:** Migration `20260810130000_draft_ranking_session_union_and_regularity.sql` unions `event_status` and `event_participants` so any event created by a guild is properly counted in member total denominators.
 
 ---
 

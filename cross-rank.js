@@ -77,7 +77,11 @@
         container.innerHTML = loadingHtml();
 
         try {
-            var res = await db.rpc('gm_cross_guild_ranking');
+            var query = db.rpc('gm_cross_guild_ranking');
+            if (query && typeof query.range === 'function') {
+                query = query.range(0, 99999);
+            }
+            var res = await query;
             if (res && res.error) {
                 container.innerHTML = errorHtml((res.error.message || 'RPC failed'));
                 wireRetry(container);
@@ -96,7 +100,7 @@
         if (btn) btn.addEventListener('click', load);
     }
 
-    // ── Filtres & tri ────────────────────────────────────────────────────────
+    // ── Filtres & tri (par régularité & volume) ──────────────────────────────
     function visibleRows() {
         var q = state.query.trim().toLowerCase();
         var rows = state.rows.filter(function (r) {
@@ -125,26 +129,44 @@
             if (state.sortKey === 'server') {
                 av = String(a.server_number != null ? a.server_number : '').toLowerCase();
                 bv = String(b.server_number != null ? b.server_number : '').toLowerCase();
-                return av.localeCompare(bv) * dir;
+                if (av !== bv) return av.localeCompare(bv) * dir;
+                return (b.power || 0) - (a.power || 0);
             }
             if (state.sortKey === 'guild') {
                 av = String(a.guild || '').toLowerCase();
                 bv = String(b.guild || '').toLowerCase();
-                return av.localeCompare(bv) * dir;
+                if (av !== bv) return av.localeCompare(bv) * dir;
+                return (b.power || 0) - (a.power || 0);
             }
             if (state.sortKey === 'power') {
                 av = a.power || 0;
                 bv = b.power || 0;
                 return (av - bv) * dir;
             }
+
+            // Tri par taux (% de participation) avec départage par régularité (nombre d'événements joués)
             av = a[state.sortKey + '_rate'];
             bv = b[state.sortKey + '_rate'];
             var aNull = (av === null || av === undefined);
             var bNull = (bv === null || bv === undefined);
-            if (aNull && bNull) return 0;
+            if (aNull && bNull) return (b.power || 0) - (a.power || 0);
             if (aNull) return 1;
             if (bNull) return -1;
-            return (av - bv) * dir;
+
+            if (av !== bv) return (av - bv) * dir;
+
+            // Départage 1 : Nombre de présences réelles (plus de matchs joués = plus régulier)
+            var aAtt = a[state.sortKey + '_attended'] || 0;
+            var bAtt = b[state.sortKey + '_attended'] || 0;
+            if (aAtt !== bAtt) return (aAtt - bAtt) * dir;
+
+            // Départage 2 : Nombre total d'événements
+            var aTot = a[state.sortKey + '_total'] || 0;
+            var bTot = b[state.sortKey + '_total'] || 0;
+            if (aTot !== bTot) return (aTot - bTot) * dir;
+
+            // Départage 3 : Puissance de combat
+            return (b.power || 0) - (a.power || 0);
         });
         return rows;
     }
@@ -232,6 +254,11 @@
         var guilds = guildList();
         var servers = serverList();
 
+        var isFiltered = (state.guild !== 'ALL' || state.server !== 'ALL' || !!state.query.trim());
+        var countText = isFiltered
+            ? rows.length + ' of ' + state.rows.length + ' players'
+            : state.rows.length + ' players';
+
         var controlsHtml =
             '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1rem;">' +
                 '<div class="gm-row" style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:center;">' +
@@ -252,7 +279,7 @@
                             return '<option value="' + esc(g) + '"' + (state.guild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
                         }).join('') +
                     '</select>' +
-                    '<span class="gm-dim" style="margin-left:auto; font-weight:600; font-size:0.88rem;">' + rows.length + ' of ' + state.rows.length + ' players</span>' +
+                    '<span class="gm-dim" style="margin-left:auto; font-weight:600; font-size:0.88rem;">' + esc(countText) + '</span>' +
                 '</div>' +
             '</div>';
 
@@ -285,7 +312,6 @@
             search.addEventListener('input', function () {
                 state.query = search.value;
                 render(container);
-                // Keep focus and cursor position in search box
                 var updatedSearch = document.getElementById('cross-rank-search');
                 if (updatedSearch) {
                     updatedSearch.focus();
