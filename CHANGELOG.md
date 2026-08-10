@@ -11,8 +11,8 @@ few hours, with an incrementing number in its title.
 
 ## New
 
-- **Super Admin GvG Guild A vs Guild B Matchup Dashboard**: Updated the **GvG** tab (`gvg-matchup.js`, `20260810200000_gvg_player_matchup_rpc.sql`) under the `SUPER ADMIN` section to compare **Guild A vs Guild B** directly through dedicated guild selection dropdowns (`ALPHA (#1058)`, `OMEGA (#1064)`, `IMK (#1058)`, `YARR (#1064)`, etc.).
-- **Complete Player Roster Comparison for Selected Guilds**: Side-by-side tables display the complete player rosters of Guild A and Guild B with individual player stats:
+- **Super Admin GvG Guild A vs Guild B Matchup Dashboard**: Updated the **GvG** tab (`gvg-matchup.js`, `20260810200000_gvg_player_matchup_rpc.sql`) under the `SUPER ADMIN` section to function exactly like the **SvS** tab, but with main dropdown selectors choosing **Guild A** vs **Guild B** directly (e.g. `ALPHA (Server #1058)`, `OMEGA (Server #1064)`, `IMK (Server #1058)`, `YARR (Server #1064)`, etc.).
+- **Full Player Roster Comparison for Selected Guilds**: Side-by-side tables display the complete player rosters of Guild A and Guild B with individual player stats:
   - **Power** (with power penalty multipliers: <60M x0.30, 60M-90M x0.65, >91M x1.00)
   - **Day 1-5 Avg** (average preparation phase GvG score per player)
   - **Day 6 Avg** (average Saturday castle battle GvG score per player)
@@ -27,7 +27,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
-- **GvG Selection Mode**: Switched GvG tab dropdowns to list Guilds (with server number tags) rather than raw server numbers, allowing direct 1-vs-1 guild roster comparisons.
+- **GvG Selector Parity with SvS**: Aligned GvG tab controls with the SvS tab layout by using primary Guild A and Guild B selectors, displaying comparative summary cards, and rendering side-by-side player rosters with server badges (`#1058`, `#1064`).
 - **Super Admin GvG Navigation**: Added new `GvG` item under `SUPER ADMIN` section in `shell.js` with banner icon (`ph-flag-banner`) and r5Only protection.
 - **Table Score Text Overflow / Multi-Line Wrapping**: Fixed multi-line wrapping of scores in matchup table cells by applying `white-space: nowrap;` and compact notation (`19.3M`), ensuring all table rows remain strictly single-line.
 - **Dangerosity Tier Balance**: Penalized low-power accounts (<60M power) so they cannot artificially inflate threat levels to EXTREME or HIGH without sufficient combat power.

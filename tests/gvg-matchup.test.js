@@ -73,7 +73,7 @@ describe('GM_GVG_MATCHUP — Guild vs Guild Matchup & Dangerosity Ranking', () =
     it('renders guild selectors (Guild A vs Guild B) and player matchup cards', async () => {
         await GVG.load();
         const text = container().textContent;
-        expect(text).toContain('GvG Guild vs Guild Matchup');
+        expect(text).toContain('GvG Guild Matchup & Dangerosity');
         expect(text).toContain('ALPHA');
         expect(text).toContain('OMEGA');
         expect(text).toContain('AlphaWarlord');

@@ -1,15 +1,15 @@
-:swords: **GVG GUILD A VS GUILD B PLAYER ROSTER MATCHUP — v35**
+:swords: **GVG GUILD A VS GUILD B MATCHUP DASHBOARD — v36**
 
-Updated the GvG tab to compare Guild A vs Guild B directly with full player rosters.
+Updated the GvG tab to function identically to the SvS tab, but with direct Guild A vs Guild B selection and full player rosters.
 
 ---
 
 :new: **What's new**
 
-- :flag_white: **Guild A vs Guild B Selectors:** Select boxes now list Guilds directly (e.g. `ALPHA (#1058)`, `OMEGA (#1064)`, `IMK (#1058)`, `YARR (#1064)`).
-- :users: **Full Player Rosters:** Displays the complete list of players for Guild A on the left and Guild B on the right.
-- :bar_chart: **GvG Player Scores & Dangerosity:** Shows Day 1-5 Avg, Day 6 Castle Battle Avg, Power, and Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
-- :database: **New RPC `gm_gvg_player_matchup`:** Migration `20260810200000_gvg_player_matchup_rpc.sql` deployed to serve GvG player matchup data in PostgreSQL.
+- :flag_white: **Guild A vs Guild B Selectors:** Primary dropdowns select **Guild A** vs **Guild B** (e.g. `ALPHA (Server #1058)` vs `OMEGA (Server #1064)`).
+- :users: **Side-by-Side Player Rosters:** Left table displays Guild A's player roster, right table displays Guild B's player roster.
+- :bar_chart: **GvG Player Metrics:** Displays individual player Power, Server number tag, Day 1-5 Avg GvG score, Day 6 Avg GvG castle battle score, and Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
+- :straight_ruler: **Single-Line Formatting:** Full `white-space: nowrap` styling and compact K/M/B numbers for clean alignment.
 
 ---
 

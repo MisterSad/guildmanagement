@@ -1,10 +1,11 @@
 /**
  * gvg-matchup.js — Super Admin GvG Guild vs Guild Matchup & Dangerosity Ranking.
- * Permet de comparer GUILDE A vs GUILDE B directement (ex: ALPHA vs OMEGA),
- * en affichant l'ensemble des joueurs de chaque guilde avec leurs moyennes GvG :
- * - Scores "Day 1 to 5" (Préparation GvG)
- * - Scores "Day 6" (Combat de château GvG du samedi)
- * - Scoring de dangerosité du joueur (avec malus de puissance : <60M x0.30, 60-90M x0.65, >91M x1.00)
+ * Fonctionne EXACTEMENT comme l'onglet SvS, mais au niveau Guilde :
+ * - Liste déroulante principale Gauche : Choix de la GUILDE A (ex: ALPHA)
+ * - Liste déroulante principale Droite : Choix de la GUILDE B (ex: OMEGA)
+ * - Affiche les cartes comparatives des 2 guildes (Puissance totale, Moyennes Day 1-5, Day 6, Menaces)
+ * - Affiche le roster complet des joueurs de la Guilde A et de la Guilde B avec leurs scores individuels
+ * - Scoring de dangerosité joueur avec malus de puissance (<60M x0.30, 60-90M x0.65, >91M x1.00)
  * Source : RPC gm_gvg_player_matchup() (SECURITY DEFINER, superadmin only).
  */
 (function () {
@@ -249,7 +250,7 @@
                 '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">' +
                     '<div>' +
                         '<h2 style="margin:0; font-family:var(--font-display); font-size:1.4rem; display:flex; align-items:center; gap:.6rem;">' +
-                            '<i class="ph ph-flag-banner" style="color:var(--accent);"></i> GvG Guild vs Guild Matchup' +
+                            '<i class="ph ph-flag-banner" style="color:var(--accent);"></i> GvG Guild Matchup & Dangerosity' +
                         '</h2>' +
                         '<div class="gm-dim" style="font-size:0.85rem; margin-top:.25rem;">' +
                             'Compare full player rosters of Guild A vs Guild B with Day 1-5 Avg & Day 6 Castle Battle Avg scores.' +
@@ -270,7 +271,7 @@
                     '<!-- Guild A Selection -->' +
                     '<div style="background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:12px; padding:1rem;">' +
                         '<div style="font-weight:800; color:#60a5fa; font-size:0.85rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem;">' +
-                            '<i class="ph ph-shield-star"></i> Guild A' +
+                            '<i class="ph ph-shield-star"></i> Guild A (Defender / Attacker)' +
                         '</div>' +
                         '<select id="gvg-select-guild-a" class="gm-input" style="width:100%; font-weight:700; font-size:1.05rem;">' +
                             '<option value="ALL">All Guilds</option>' +
@@ -291,7 +292,7 @@
                     '<!-- Guild B Selection -->' +
                     '<div style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:12px; padding:1rem;">' +
                         '<div style="font-weight:800; color:#f87171; font-size:0.85rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem;">' +
-                            '<i class="ph ph-crosshair"></i> Guild B' +
+                            '<i class="ph ph-crosshair"></i> Guild B (Opponent / Target)' +
                         '</div>' +
                         '<select id="gvg-select-guild-b" class="gm-input" style="width:100%; font-weight:700; font-size:1.05rem;">' +
                             '<option value="ALL">All Guilds</option>' +
@@ -404,6 +405,7 @@
                         '<thead><tr>' +
                             '<th class="gm-center" style="width:30px; white-space:nowrap;">#</th>' +
                             '<th style="white-space:nowrap;">Member</th>' +
+                            '<th class="gm-center" style="white-space:nowrap;">Server</th>' +
                             '<th class="gm-right" style="white-space:nowrap;">Power</th>' +
                             '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
                             '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average Castle Battle Score">Day 6</th>' +
@@ -426,6 +428,7 @@
                         '<thead><tr>' +
                             '<th class="gm-center" style="width:30px; white-space:nowrap;">#</th>' +
                             '<th style="white-space:nowrap;">Member</th>' +
+                            '<th class="gm-center" style="white-space:nowrap;">Server</th>' +
                             '<th class="gm-right" style="white-space:nowrap;">Power</th>' +
                             '<th class="gm-right" style="white-space:nowrap;" title="Day 1 to 5 Average Prep Score">Day 1-5</th>' +
                             '<th class="gm-right" style="white-space:nowrap;" title="Day 6 Average Castle Battle Score">Day 6</th>' +
@@ -441,11 +444,12 @@
 
     function renderPlayerRows(rows) {
         if (!rows || rows.length === 0) {
-            return '<tr><td colspan="6" class="gm-center" style="padding:2rem; color:var(--fg-dim);">No players found.</td></tr>';
+            return '<tr><td colspan="7" class="gm-center" style="padding:2rem; color:var(--fg-dim);">No players found.</td></tr>';
         }
         var html = '';
         rows.forEach(function (r, idx) {
             var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(r.pseudo) : (r.pseudo ? String(r.pseudo).charAt(0).toUpperCase() : '?');
+            var sDisplay = formatServerDisplay(r.server_number);
             var dScore = computeDangerScore(r);
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
@@ -455,6 +459,9 @@
                             '<div class="gm-avatar gm-avatar-squircle" style="width:26px; height:26px; font-size:.78rem; font-weight:700;">' + esc(initial) + '</div>' +
                             '<strong style="color:var(--fg); font-size:.82rem;">' + esc(r.pseudo) + '</strong>' +
                         '</div>' +
+                    '</td>' +
+                    '<td class="gm-center" style="white-space:nowrap;">' +
+                        '<span style="background:rgba(59, 130, 246, 0.12); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.25); border-radius:4px; padding:1px 6px; font-weight:700; font-size:.68rem;">' + esc(sDisplay) + '</span>' +
                     '</td>' +
                     '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem;">' + fmtPower(r.power) + '</td>' +
                     '<td class="gm-right" style="font-variant-numeric:tabular-nums; white-space:nowrap; font-size:.82rem; color:var(--fg);" title="' + fmtNum(r.avg_prep_score) + '">' + fmtScore(r.avg_prep_score) + '</td>' +
