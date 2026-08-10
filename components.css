@@ -3357,3 +3357,163 @@
     .gm-kpi-grid { grid-template-columns: repeat(2, 1fr); }
     .gm-kpi-tile-value { font-size: 1.25rem; }
 }
+
+/* ─── Contextual Help System ─── */
+.gm-help-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-soft, rgba(255,255,255,0.12));
+    background: transparent;
+    color: var(--fg-dim);
+    font-size: 0.85rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+    margin-left: 0.45rem;
+    padding: 0;
+    line-height: 1;
+}
+.gm-help-btn:hover {
+    background: rgba(99,102,241,0.15);
+    color: var(--primary, #6366f1);
+    border-color: var(--primary, #6366f1);
+    transform: scale(1.12);
+}
+.gm-help-btn:focus-visible {
+    outline: 2px solid var(--primary, #6366f1);
+    outline-offset: 2px;
+}
+.gm-help-btn i {
+    pointer-events: none;
+    font-size: 0.82rem;
+}
+
+/* Popover container */
+#gm-help-popover {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+#gm-help-popover.gm-help-open {
+    pointer-events: auto;
+    opacity: 1;
+}
+
+/* Backdrop */
+.gm-help-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+/* Slide-up panel */
+.gm-help-panel {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 1rem 1rem;
+    background: var(--bg-1, #16162a);
+    border: 1px solid var(--border-soft, rgba(255,255,255,0.1));
+    border-radius: var(--radius-lg, 16px);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.55);
+    overflow: hidden;
+    transform: translateY(24px);
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+#gm-help-popover.gm-help-open .gm-help-panel {
+    transform: translateY(0);
+}
+
+.gm-help-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1rem 1rem 0.85rem;
+    border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.08));
+    background: rgba(99,102,241,0.07);
+}
+
+.gm-help-panel-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(99,102,241,0.18);
+    color: var(--primary, #6366f1);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.gm-help-panel-title {
+    flex: 1;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--fg, #e2e8f0);
+    letter-spacing: 0.01em;
+}
+
+.gm-help-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border-soft, rgba(255,255,255,0.1));
+    background: transparent;
+    color: var(--fg-dim);
+    cursor: pointer;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+.gm-help-close:hover {
+    background: rgba(239,68,68,0.15);
+    color: #ef4444;
+    border-color: rgba(239,68,68,0.3);
+}
+
+.gm-help-panel-body {
+    padding: 1rem;
+    font-size: 0.875rem;
+    color: var(--fg-dim, rgba(226,232,240,0.75));
+    line-height: 1.65;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+.gm-help-panel-body p { margin: 0 0 0.65rem; }
+.gm-help-panel-body p:last-child { margin-bottom: 0; }
+.gm-help-panel-body ul,
+.gm-help-panel-body ol {
+    margin: 0 0 0.65rem 1.2rem;
+    padding: 0;
+}
+.gm-help-panel-body li { margin-bottom: 0.35rem; }
+.gm-help-panel-body strong { color: var(--fg); }
+.gm-help-panel-body i.ph { font-size: 0.85rem; vertical-align: middle; color: var(--primary, #6366f1); }
+.gm-help-panel-body em { color: var(--accent-lime, #a3e635); font-style: normal; }
+
+@media (min-width: 600px) {
+    #gm-help-popover {
+        align-items: center;
+    }
+    .gm-help-panel {
+        margin: 0;
+        max-height: 80vh;
+    }
+}

@@ -1012,7 +1012,7 @@
             '<div class="portal-settings-grid">' +
 
                 '<div class="portal-card">' +
-                    '<div class="portal-card-title"><i class="ph ph-sword"></i> My Power</div>' +
+                    '<div class="portal-card-title"><i class="ph ph-sword"></i> My Power<button class="gm-help-btn" data-help-id="help-portal-power" aria-label="Help: My Power"><i class="ph ph-info"></i></button></div>' +
                     '<div class="portal-row">' +
                         '<input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 80000000" value="' + esc(portalState.player.overall_power || '') + '">' +
                         '<button type="button" id="portal-update-power-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
@@ -1020,7 +1020,7 @@
                 '</div>' +
 
                 '<div class="portal-card">' +
-                    '<div class="portal-card-title"><i class="ph ph-trophy"></i> My Glory</div>' +
+                    '<div class="portal-card-title"><i class="ph ph-trophy"></i> My Glory<button class="gm-help-btn" data-help-id="help-portal-events" aria-label="Help: My Glory"><i class="ph ph-info"></i></button></div>' +
                     '<div class="portal-row">' +
                         '<input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000" value="' + esc(portalState.player.glory != null ? portalState.player.glory : '') + '">' +
                         '<button type="button" id="portal-update-glory-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
@@ -1030,7 +1030,7 @@
                 '</div>' +
 
                 '<div class="portal-card">' +
-                    '<div class="portal-card-title"><i class="ph ph-clock"></i> My Timezone</div>' +
+                    '<div class="portal-card-title"><i class="ph ph-clock"></i> My Timezone<button class="gm-help-btn" data-help-id="help-portal-timezone" aria-label="Help: My Timezone"><i class="ph ph-info"></i></button></div>' +
                     '<div class="portal-row">' +
                         '<select id="portal-timezone-select" class="gm-input"></select>' +
                         '<button type="button" id="portal-timezone-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
@@ -1040,7 +1040,7 @@
                 '</div>' +
 
                 '<div class="portal-card">' +
-                    '<div class="portal-card-title"><i class="ph ph-bell-ringing"></i> Notifications</div>' +
+                    '<div class="portal-card-title"><i class="ph ph-bell-ringing"></i> Notifications<button class="gm-help-btn" data-help-id="help-portal-dashboard" aria-label="Help: Notifications"><i class="ph ph-info"></i></button></div>' +
                     '<div class="portal-notif-hint"><i class="ph ph-info"></i> Choose which web-push reminders you want to receive.</div>' +
                     '<div class="portal-notif-options">' +
                         '<label class="portal-notif-opt"><input type="checkbox" id="portal-notif-events" value="events"><span><strong>Event reminders</strong><small>Starts, reminders and battle openings</small></span></label>' +
@@ -1054,7 +1054,7 @@
                 '</div>' +
 
                 '<div class="portal-card">' +
-                    '<div class="portal-card-title"><i class="ph ph-swap"></i> Request Guild Transfer</div>' +
+                    '<div class="portal-card-title"><i class="ph ph-swap"></i> Request Guild Transfer<button class="gm-help-btn" data-help-id="help-portal-transfer" aria-label="Help: Guild Transfer"><i class="ph ph-info"></i></button></div>' +
                     '<div class="portal-row">' +
                         '<select id="portal-transfer-select" class="gm-input"><option value="">Select Target Guild...</option></select>' +
                         '<button type="button" id="portal-transfer-btn" class="gm-btn gm-btn-primary gm-btn-sm" disabled><i class="ph ph-paper-plane-tilt"></i><span>Send</span></button>' +

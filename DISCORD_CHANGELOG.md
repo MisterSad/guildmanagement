@@ -1,14 +1,22 @@
-:key: **FIXED SHADOW ACCOUNT SECRET SYNC & LOGINS — v48**
+:information_source: **CONTEXTUAL HELP SYSTEM & UI FIXES — v49**
 
-Resolved the issue where resetting an admin password caused GoTrue shadow user authentication to fail.
+Added interactive **ⓘ** info buttons across all sections of the Admin Dashboard and Player Portal, providing instant guidance on how to use each feature.
 
 ---
 
 :new: **What's new**
 
-- :wrench: **Shadow Secret Isolation:** `admin-accounts` now updates `password_enc` without corrupting the GoTrue shadow secret (`gotrue_secret_enc`).
-- :hospital: **Automatic Self-Healing:** `auth-login` automatically detects and re-syncs GoTrue credentials on the fly if a shadow account secret ever diverged.
-- :rocket: **Deployed & Live:** Redeployed `admin-accounts` and `auth-login` Edge Functions.
+- :information_source: **Contextual Help ("i" Buttons):** Click any **ⓘ** icon beside a card title to open a quick guide explaining how that feature works.
+- :key: **Accounts & Access:** Guides for creating admin accounts, managing player registrations, and sharing guild join codes.
+- :bell: **Discord Notifications:** Guidance for configuring webhooks, role pings, event coefficients, and automated reminders.
+- :users: **Members & Portal:** Help tooltips for roster management, transfers, absences, timezones, and player portal tools.
+
+---
+
+:wrench: **Fixed**
+
+- :crown: **Role Select Styling:** Fixed crown icon overlapping R1-R5 options in the Edit Member popup.
+- :shield: **RLS Permission Fix:** Resolved `permission denied` issue for guild admin writes by adding JWT fallback in SQL security helpers.
 
 ---
 
