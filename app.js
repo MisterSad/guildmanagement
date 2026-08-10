@@ -1261,7 +1261,6 @@
             });
         });
     }
-    }
 
     function renderAccountCardsToContainer(container, countEl, listToRender, isSuperAdminUser) {
         if (!container) return;

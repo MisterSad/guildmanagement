@@ -34,6 +34,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Syntax Error in `app.js` Login Flow**: Removed extra closing brace on line 1264 of `app.js` that blocked script execution and login.
 - **Super Admin Accounts Organization**: Replaced unstructured account list with server-level accordion grouping for easy cross-server administration.
 - **Super Admin Accounts List Pollution**: Prevented player portal `member` accounts from appearing in the Super Admin "Active Guild Admin Accounts" overview card.
 - **Table Overflow on Right Border**: Fixed right side overflow of player roster tables by capping column grid widths with `minmax(0, 1fr)` and truncating long player pseudos with ellipsis (`...`).

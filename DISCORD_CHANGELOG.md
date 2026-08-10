@@ -1,14 +1,14 @@
-:hard_drives: **SERVER ACCORDION GROUPING FOR ADMIN ACCOUNTS — v41**
+:key: **LOGIN RESTORED & SERVER ACCORDION VIEW — v42**
 
-Organized Super Admin Accounts & Access dashboard into server-level collapsible accordion cards.
+Fixed script syntax error in `app.js` and restored full login functionality.
 
 ---
 
 :new: **What's new**
 
-- :file_folder: **Grouped by Server:** Guild Admin accounts are grouped into accordion cards by **Server** (e.g. `Server #1058`, `Server #1064`).
+- :wrench: **Login Restored:** Fixed an extra closing brace syntax error in `app.js` that blocked script execution.
+- :hard_drives: **Grouped by Server:** Guild Admin accounts are grouped into accordion cards by **Server** (e.g. `Server #1058`, `Server #1064`).
 - :arrows_counterclockwise: **Collapsible Menus:** Click any server header to expand or collapse its accounts list. Animated caret arrow shows current state.
-- :label: **Server Badges & Guild List:** Each accordion header highlights the Server number, list of guilds (`ALPHA, IMK, BABE`), and active admin account count.
 
 ---
 
