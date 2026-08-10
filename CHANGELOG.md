@@ -11,6 +11,9 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Super Admin SvS Server vs Server Matchup Dashboard**: Added a dedicated **SvS Matchup** tab (`svs-matchup.js`, `20260810170000_svs_server_matchup_rpc.sql`) under the `SUPER ADMIN` section to compare all guilds of any Server A against all guilds of Server B.
+- **Detailed SvS Dangerosity & Scoring Breakdown**: Displays complete player rosters for both servers with score breakdowns for **Day 1 to 5** (Preparation Phase) and **Day 6** (PvP / Invasion Battle Day), calculating an integrated Dangerosity Score ($\text{Power} + 2 \times \text{Prep Avg} + 5 \times \text{PvP Avg}$) and assigning Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
+- **Side-by-Side & Combined Leaderboard Modes**: Includes a dual-pane **Side by Side** view comparing Server A and Server B rosters, along with a **Combined Leaderboard** mode allowing sorting across all servers by Danger Score, Day 6 PvP, Day 1-5 Prep, Power, or Guild.
 - **Draft Weighted Coefficient Calculation Formula**: Applied event coefficients to the **Overall** (Global) participation rate calculation on the **Draft** page (`cross-rank.js` & migration `20260810160000_draft_weighted_coefficients.sql`):
   - **SvS**: Coefficient 5
   - **GvG**: Coefficient 5
@@ -18,18 +21,17 @@ few hours, with an incrementing number in its title.
   - **DTR (Defend Trade Route)**: Coefficient 2
   - **Arms Race**: Coefficient 2
 - **Expanded Event Rate Columns**: Displayed rate columns with clear coefficient indicators (`SvS (x5)`, `GvG (x5)`, `Shadowfront (x3)`, `DTR (x2)`, `Arms Race (x2)`, and `Overall (Weighted %)`) for total transparency.
-- **PL/pgSQL Column Ambiguity Fix**: Created migration `20260810150000_fix_cross_guild_ranking_ambiguous_guild.sql` using explicit `guild_id` column aliases across all CTEs (`roster`, `player_stats`, `sess_totals`, `sess`, `es_sess`, `ep`), resolving the PostgreSQL `column reference "guild" is ambiguous` PL/pgSQL error on the **Draft** page.
-- **Excluded DEMO Guild from Draft Mercato Ranking**: Updated SECURITY DEFINER RPC `gm_cross_guild_ranking()` (`20260810140000_draft_exclude_demo_guild.sql`) and `cross-rank.js` client logic to filter out all members belonging to the `DEMO` tenant, keeping the Draft Mercato list focused strictly on real competitive guilds.
-- **Draft Regularity Sort Tie-Breaker & Volume Order**: Updated player ranking on the **Draft** page (`cross-rank.js`) to order players by **Regularity** (rate %, followed by number of attended events, total sessions, and combat power). Players with a long-standing active record (e.g. 22/23 attended) are now ranked above players with few total sessions (e.g. 5/5).
-- **PostgREST 1000-Row Limit Bypass & Dynamic Player Counter**: Fixed the pagination cap on `cross-rank.js` by invoking `.range(0, 99999)` on `gm_cross_guild_ranking()`. Updated top-right header counter to display dynamic counts.
+- **PL/pgSQL Column Ambiguity Fix**: Created migration `20260810150000_fix_cross_guild_ranking_ambiguous_guild.sql` using explicit `guild_id` column aliases across all CTEs, resolving the PostgreSQL `column reference "guild" is ambiguous` error.
+- **Excluded DEMO Guild from Draft & SvS Rankings**: Updated SECURITY DEFINER RPCs `gm_cross_guild_ranking()` and `gm_svs_server_matchup()` to filter out all members belonging to the `DEMO` tenant.
 
 ---
 
 ## Fixed
 
+- **Super Admin Navigation**: Added new `SvS` item under `SUPER ADMIN` section in `shell.js` with sword icon (`ph-sword`) and r5Only protection.
 - **Global Participation Rate Weighting**: Standardized Overall score calculation on the Draft page so high-impact major guild events (SvS and GvG) carry 5x weight, Shadowfront carries 3x weight, and daily events (DTR & Arms Race) carry 2x weight.
 - **PostgreSQL PL/pgSQL Ambiguous Column Error**: Resolved `column reference "guild" is ambiguous` in `gm_cross_guild_ranking()` RPC by qualifying CTE select columns with `guild_id`.
-- **DEMO Guild Player Exposure**: Excluded test/demo accounts (`DEMO` tenant) from appearing in superadmin Mercato & Transfer rankings.
+- **DEMO Guild Player Exposure**: Excluded test/demo accounts (`DEMO` tenant) from appearing in superadmin Mercato & Transfer rankings and SvS Matchup.
 - **PostgREST 1000 Row Truncation**: Resolved issue where player count was hardcoded/capped at `1000 of 1000 players` by bypassing the default REST pagination range limit.
 
 ---

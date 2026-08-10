@@ -1,19 +1,16 @@
-:balance_scale: **DRAFT WEIGHTED EVENT COEFFICIENTS — v30**
+:swords: **SUPER ADMIN SVS SERVER MATCHUP & DANGEROSITY DASHBOARD — v31**
 
-Applied weighted event coefficients to the **Overall** participation score on the **Draft** page.
+Added a dedicated **SvS Matchup** tab in the Super Admin menu to compare Server vs Server guild rosters and dangerosity scores.
 
 ---
 
 :new: **What's new**
 
-- :abacus: **Weighted Overall Calculation:**
-  - :swords: **SvS:** Coefficient **5**
-  - :triangular_flag_on_post: **GvG:** Coefficient **5**
-  - :ghost: **Shadowfront:** Coefficient **3**
-  - :shield: **DTR:** Coefficient **2**
-  - :target: **Arms Race:** Coefficient **2**
-- :bar_chart: **Clear Column Headers:** Displays `SvS (x5)`, `GvG (x5)`, `Shadowfront (x3)`, `DTR (x2)`, `Arms Race (x2)`, and `Overall` (Weighted %).
-- :database: **Updated RPC `gm_cross_guild_ranking`:** Migration `20260810160000_draft_weighted_coefficients.sql` computes the weighted global rate directly in PostgreSQL.
+- :crossed_swords: **Server vs Server Matchup:** Compare all guilds of **Server A** vs all guilds of **Server B** side by side.
+- :calendar: **Day 1 to 5 vs Day 6 Scoring:** Tracks player scores during **Day 1-5 (Prep Phase)** and **Day 6 (PvP / Invasion Day)**.
+- :warning: **Dangerosity Score & Badges:** Calculates a weighted Dangerosity Score ($\text{Power} + 2 \times \text{Prep} + 5 \times \text{PvP}$) and assigns Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
+- :columns: **Dual View Modes:** Switch between **Side by Side** server roster comparison and **Combined Leaderboard**.
+- :database: **New RPC `gm_svs_server_matchup`:** Migration `20260810170000_svs_server_matchup_rpc.sql` deployed to calculate dangerosity scores in PostgreSQL.
 
 ---
 

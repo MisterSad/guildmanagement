@@ -343,6 +343,8 @@
             gm_nav_sanctions:      'Sanctions',
             gm_nav_banned:         'Banned players',
             gm_nav_settings:       'Draft',
+            gm_nav_svs_matchup:    'SvS',
+            gm_svs_matchup_sub:    'Server vs Server Matchup & Dangerosity Ranking',
             gm_nav_benchmark:      'Guild benchmark',
             gm_nav_subscription:   'Subscription',
             gm_sub_subtitle:       'Manage your guild subscription',

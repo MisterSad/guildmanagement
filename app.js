@@ -427,6 +427,9 @@
         if (tabId === 'tab-settings' && window.GM_SETTINGS) {
             window.GM_SETTINGS.load();
         }
+        if ((tabId === 'tab-svs-matchup' || tabId === 'svs-matchup') && window.GM_SVS_MATCHUP) {
+            window.GM_SVS_MATCHUP.load();
+        }
         if (tabId === 'tab-benchmark' && window.GM_BENCHMARK) {
             window.GM_BENCHMARK.load();
         }
