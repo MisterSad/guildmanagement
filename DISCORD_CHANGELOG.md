@@ -1,16 +1,19 @@
-:swords: **SUPER ADMIN SVS SERVER MATCHUP & DANGEROSITY DASHBOARD — v31**
+:chart_with_downwards_trend: **SVS DANGEROSITY POWER PENALTIES & SCORE AVERAGES — v32**
 
-Added a dedicated **SvS Matchup** tab in the Super Admin menu to compare Server vs Server guild rosters and dangerosity scores.
+Applied combat power penalty multipliers to Dangerosity Scoring and updated table columns to display average scores.
 
 ---
 
 :new: **What's new**
 
-- :crossed_swords: **Server vs Server Matchup:** Compare all guilds of **Server A** vs all guilds of **Server B** side by side.
-- :calendar: **Day 1 to 5 vs Day 6 Scoring:** Tracks player scores during **Day 1-5 (Prep Phase)** and **Day 6 (PvP / Invasion Day)**.
-- :warning: **Dangerosity Score & Badges:** Calculates a weighted Dangerosity Score ($\text{Power} + 2 \times \text{Prep} + 5 \times \text{PvP}$) and assigns Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
-- :columns: **Dual View Modes:** Switch between **Side by Side** server roster comparison and **Combined Leaderboard**.
-- :database: **New RPC `gm_svs_server_matchup`:** Migration `20260810170000_svs_server_matchup_rpc.sql` deployed to calculate dangerosity scores in PostgreSQL.
+- :weight_lifting: **Power Penalties on Dangerosity Score:**
+  - **< 60M Power:** Big Penalty (`0.30x` multiplier)
+  - **61M - 90M Power:** Moderate Penalty (`0.65x` multiplier)
+  - **> 91M Power:** Normal Dangerosity (`1.00x` multiplier, no penalty)
+- :bar_chart: **Average Scores Displayed:**
+  - **Day 1 to 5 (Avg):** Displays average preparation phase score.
+  - **Day 6 (Avg):** Displays average PvP invasion score.
+- :database: **Updated RPC `gm_svs_server_matchup`:** Migration `20260810180000_svs_matchup_power_penalty.sql` deployed to calculate penalized dangerosity scores in PostgreSQL.
 
 ---
 

@@ -11,28 +11,24 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **SvS Dangerosity Power Penalty Thresholds**: Updated the **SvS Matchup** RPC (`20260810180000_svs_matchup_power_penalty.sql`) and client logic (`svs-matchup.js`) to apply power penalties to Dangerosity Scoring:
+  - **Power < 60M**: Big Penalty (`0.30x` multiplier)
+  - **Power 61M to 90M**: Moderate Penalty (`0.65x` multiplier)
+  - **Power > 91M**: Normal Dangerosity (`1.00x` multiplier, no penalty)
+- **Day 1 to 5 & Day 6 Average Score Display**: Updated SvS Matchup tables (Side by Side and Combined Leaderboard) to explicitly display the **Average Day 1 to 5 score** and **Average Day 6 PvP score** for each player.
 - **Super Admin SvS Server vs Server Matchup Dashboard**: Added a dedicated **SvS Matchup** tab (`svs-matchup.js`, `20260810170000_svs_server_matchup_rpc.sql`) under the `SUPER ADMIN` section to compare all guilds of any Server A against all guilds of Server B.
-- **Detailed SvS Dangerosity & Scoring Breakdown**: Displays complete player rosters for both servers with score breakdowns for **Day 1 to 5** (Preparation Phase) and **Day 6** (PvP / Invasion Battle Day), calculating an integrated Dangerosity Score ($\text{Power} + 2 \times \text{Prep Avg} + 5 \times \text{PvP Avg}$) and assigning Threat Badges (`EXTREME 🔴`, `HIGH 🟠`, `MEDIUM 🟡`, `LOW 🟢`).
-- **Side-by-Side & Combined Leaderboard Modes**: Includes a dual-pane **Side by Side** view comparing Server A and Server B rosters, along with a **Combined Leaderboard** mode allowing sorting across all servers by Danger Score, Day 6 PvP, Day 1-5 Prep, Power, or Guild.
-- **Draft Weighted Coefficient Calculation Formula**: Applied event coefficients to the **Overall** (Global) participation rate calculation on the **Draft** page (`cross-rank.js` & migration `20260810160000_draft_weighted_coefficients.sql`):
-  - **SvS**: Coefficient 5
-  - **GvG**: Coefficient 5
-  - **Shadowfront**: Coefficient 3
-  - **DTR (Defend Trade Route)**: Coefficient 2
-  - **Arms Race**: Coefficient 2
-- **Expanded Event Rate Columns**: Displayed rate columns with clear coefficient indicators (`SvS (x5)`, `GvG (x5)`, `Shadowfront (x3)`, `DTR (x2)`, `Arms Race (x2)`, and `Overall (Weighted %)`) for total transparency.
-- **PL/pgSQL Column Ambiguity Fix**: Created migration `20260810150000_fix_cross_guild_ranking_ambiguous_guild.sql` using explicit `guild_id` column aliases across all CTEs, resolving the PostgreSQL `column reference "guild" is ambiguous` error.
+- **Draft Weighted Coefficient Calculation Formula**: Applied event coefficients to the **Overall** (Global) participation rate calculation on the **Draft** page (`cross-rank.js` & migration `20260810160000_draft_weighted_coefficients.sql`): SvS (5), GvG (5), Shadowfront (3), DTR (2), Arms Race (2).
+- **PL/pgSQL Column Ambiguity Fix**: Created migration `20260810150000_fix_cross_guild_ranking_ambiguous_guild.sql` using explicit `guild_id` column aliases across all CTEs.
 - **Excluded DEMO Guild from Draft & SvS Rankings**: Updated SECURITY DEFINER RPCs `gm_cross_guild_ranking()` and `gm_svs_server_matchup()` to filter out all members belonging to the `DEMO` tenant.
 
 ---
 
 ## Fixed
 
+- **Dangerosity Tier Balance**: Penalized low-power accounts (<60M power) so they cannot artificially inflate threat levels to EXTREME or HIGH without sufficient combat power.
 - **Super Admin Navigation**: Added new `SvS` item under `SUPER ADMIN` section in `shell.js` with sword icon (`ph-sword`) and r5Only protection.
 - **Global Participation Rate Weighting**: Standardized Overall score calculation on the Draft page so high-impact major guild events (SvS and GvG) carry 5x weight, Shadowfront carries 3x weight, and daily events (DTR & Arms Race) carry 2x weight.
 - **PostgreSQL PL/pgSQL Ambiguous Column Error**: Resolved `column reference "guild" is ambiguous` in `gm_cross_guild_ranking()` RPC by qualifying CTE select columns with `guild_id`.
-- **DEMO Guild Player Exposure**: Excluded test/demo accounts (`DEMO` tenant) from appearing in superadmin Mercato & Transfer rankings and SvS Matchup.
-- **PostgREST 1000 Row Truncation**: Resolved issue where player count was hardcoded/capped at `1000 of 1000 players` by bypassing the default REST pagination range limit.
 
 ---
 

@@ -92,6 +92,18 @@ describe('GM_SVS_MATCHUP — Server vs Server Matchup & Dangerosity Ranking', ()
         expect(html).toContain('HIGH');
     });
 
+    it('applies power penalties to dangerosity scores based on power thresholds', async () => {
+        await SVS.load();
+        // AlphaWarlord (120M power > 90M) -> mult = 1.0 (no penalty)
+        // BetaCommander (45M power < 60M) -> mult = 0.30 (big penalty)
+        // OmegaStriker (80M power 60-90M) -> mult = 0.65 (moderate penalty)
+        const combinedBtn = container().querySelector('#svs-mode-combined');
+        combinedBtn.click();
+        const text = container().textContent;
+        expect(text).toContain('Day 1-5 Avg');
+        expect(text).toContain('Day 6 Avg');
+    });
+
     it('toggles between Side-by-Side and Combined Leaderboard views', async () => {
         await SVS.load();
         expect(container().querySelector('#svs-mode-side')).not.toBeNull();

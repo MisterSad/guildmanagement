@@ -1,8 +1,11 @@
 /**
  * svs-matchup.js — Super Admin SvS Server vs Server Matchup & Dangerosity Ranking.
  * Permet de comparer les guildes d'un serveur vs les guildes d'un autre serveur,
- * avec la liste complète des joueurs et leur scoring de dangerosité dans les journées
- * "Day 1 to 5" (Préparation) et "Day 6" (PvP / Invasion).
+ * avec la liste complète des joueurs et leur scoring de dangerosité pondéré selon la puissance :
+ * - Puissance < 60M : gros malus (x0.30)
+ * - Puissance 60M à 90M : malus modéré (x0.65)
+ * - Puissance > 91M : dangerosité normale (x1.00)
+ * Affiche les MOYENNES des scores "Day 1 to 5" (Préparation) et "Day 6" (PvP / Invasion).
  * Source : RPC gm_svs_server_matchup() (SECURITY DEFINER, superadmin only).
  */
 (function () {
@@ -36,6 +39,23 @@
         var s = String(rawServer).trim();
         if (s.indexOf('#') === 0) return s;
         return '#' + s;
+    }
+
+    function computeDangerScore(r) {
+        if (r.danger_score !== undefined && r.danger_score !== null) {
+            return r.danger_score;
+        }
+        var p = r.power || 0;
+        var prep = r.avg_prep_score || 0;
+        var pvp = r.avg_pvp_score || 0;
+        var raw = p + (prep * 2) + (pvp * 5);
+        var mult = 1.0;
+        if (p < 60000000) {
+            mult = 0.30;
+        } else if (p <= 90000000) {
+            mult = 0.65;
+        }
+        return Math.round(raw * mult);
     }
 
     function getDangerBadge(tier, score) {
@@ -163,8 +183,13 @@
                 if (av !== bv) return av.localeCompare(bv) * dir;
                 return (b.power || 0) - (a.power || 0);
             }
-            av = a[sortKey] || 0;
-            bv = b[sortKey] || 0;
+            if (sortKey === 'danger_score') {
+                av = computeDangerScore(a);
+                bv = computeDangerScore(b);
+            } else {
+                av = a[sortKey] || 0;
+                bv = b[sortKey] || 0;
+            }
             if (av !== bv) return (av - bv) * dir;
             return (b.power || 0) - (a.power || 0);
         });
@@ -183,7 +208,7 @@
             totalPower += (r.power || 0);
             totalPrep += (r.avg_prep_score || 0);
             totalPvp += (r.avg_pvp_score || 0);
-            totalDanger += (r.danger_score || 0);
+            totalDanger += computeDangerScore(r);
             var tier = String(r.danger_tier || '').toUpperCase();
             if (tier === 'EXTREME') extremeCount++;
             if (tier === 'HIGH') highCount++;
@@ -221,7 +246,7 @@
                             '<i class="ph ph-sword" style="color:var(--accent);"></i> SvS Server Matchup & Dangerosity' +
                         '</h2>' +
                         '<div class="gm-dim" style="font-size:0.85rem; margin-top:.25rem;">' +
-                            'Compare Server vs Server player rosters, prep phase (Day 1-5) & PvP invasion (Day 6) scores.' +
+                            'Compare Server vs Server player rosters with Day 1-5 Avg & Day 6 Avg scores and power penalties (<60M: -70% | 60-90M: -35% | >91M: Normal).' +
                         '</div>' +
                     '</div>' +
                     '<div style="display:flex; gap:.5rem;">' +
@@ -311,9 +336,6 @@
 
     // ── Cartes de Synthèse et Barres Comparatives ────────────────────────────
     function renderComparisonCards(statsA, statsB) {
-        var powerRatioA = (statsA.totalPower + statsB.totalPower) > 0 ? (statsA.totalPower / (statsA.totalPower + statsB.totalPower)) * 100 : 50;
-        var pvpRatioA = (statsA.avgPvp + statsB.avgPvp) > 0 ? (statsA.avgPvp / (statsA.avgPvp + statsB.avgPvp)) * 100 : 50;
-
         return '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-bottom:1.5rem;">' +
             '<!-- Server A Summary -->' +
             '<div class="gm-card glass-card" style="padding:1.25rem; border-left:4px solid #3b82f6;">' +
@@ -333,7 +355,7 @@
                         '<div style="font-weight:700; color:var(--fg); font-size:.9rem;">' + fmtNum(statsA.avgPrep) + '</div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 6 PvP Avg</div>' +
+                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 6 Avg</div>' +
                         '<div style="font-weight:800; color:#f87171; font-size:.9rem;">' + fmtNum(statsA.avgPvp) + '</div>' +
                     '</div>' +
                     '<div>' +
@@ -361,7 +383,7 @@
                         '<div style="font-weight:700; color:var(--fg); font-size:.9rem;">' + fmtNum(statsB.avgPrep) + '</div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 6 PvP Avg</div>' +
+                        '<div class="gm-dim" style="font-size:.7rem; text-transform:uppercase;">Day 6 Avg</div>' +
                         '<div style="font-weight:800; color:#f87171; font-size:.9rem;">' + fmtNum(statsB.avgPvp) + '</div>' +
                     '</div>' +
                     '<div>' +
@@ -378,7 +400,7 @@
         return '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">' +
             '<!-- Server A Table -->' +
             '<div class="gm-card glass-card" style="padding:1rem;">' +
-                '<div style="font-weight:800; font-size:0.95rem; color:#60a5fa; margin-bottom:.75rem; display:flex; align-items:center; justify-space-between;">' +
+                '<div style="font-weight:800; font-size:0.95rem; color:#60a5fa; margin-bottom:.75rem; display:flex; align-items:center; justify-content:space-between;">' +
                     '<span><i class="ph ph-shield"></i> Server ' + esc(formatServerDisplay(state.serverA)) + ' Roster</span>' +
                     '<span class="gm-dim" style="font-size:.8rem; font-weight:600;">' + rowsA.length + ' players</span>' +
                 '</div>' +
@@ -389,8 +411,8 @@
                             '<th>Member</th>' +
                             '<th class="gm-center">Guild</th>' +
                             '<th class="gm-right">Power</th>' +
-                            '<th class="gm-right" title="Day 1 to 5 Prep Score">Day 1-5</th>' +
-                            '<th class="gm-right" title="Day 6 PvP Score">Day 6</th>' +
+                            '<th class="gm-right" title="Day 1 to 5 Average Prep Score">Day 1-5 (Avg)</th>' +
+                            '<th class="gm-right" title="Day 6 Average PvP Score">Day 6 (Avg)</th>' +
                             '<th class="gm-center">Threat</th>' +
                         '</tr></thead><tbody>' +
                             renderRosterRows(rowsA) +
@@ -401,7 +423,7 @@
 
             '<!-- Server B Table -->' +
             '<div class="gm-card glass-card" style="padding:1rem;">' +
-                '<div style="font-weight:800; font-size:0.95rem; color:#f87171; margin-bottom:.75rem; display:flex; align-items:center; justify-space-between;">' +
+                '<div style="font-weight:800; font-size:0.95rem; color:#f87171; margin-bottom:.75rem; display:flex; align-items:center; justify-content:space-between;">' +
                     '<span><i class="ph ph-crosshair"></i> Server ' + esc(formatServerDisplay(state.serverB)) + ' Roster</span>' +
                     '<span class="gm-dim" style="font-size:.8rem; font-weight:600;">' + rowsB.length + ' players</span>' +
                 '</div>' +
@@ -412,8 +434,8 @@
                             '<th>Member</th>' +
                             '<th class="gm-center">Guild</th>' +
                             '<th class="gm-right">Power</th>' +
-                            '<th class="gm-right" title="Day 1 to 5 Prep Score">Day 1-5</th>' +
-                            '<th class="gm-right" title="Day 6 PvP Score">Day 6</th>' +
+                            '<th class="gm-right" title="Day 1 to 5 Average Prep Score">Day 1-5 (Avg)</th>' +
+                            '<th class="gm-right" title="Day 6 Average PvP Score">Day 6 (Avg)</th>' +
                             '<th class="gm-center">Threat</th>' +
                         '</tr></thead><tbody>' +
                             renderRosterRows(rowsB) +
@@ -431,6 +453,7 @@
         var html = '';
         rows.forEach(function (r, idx) {
             var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(r.pseudo) : (r.pseudo ? String(r.pseudo).charAt(0).toUpperCase() : '?');
+            var dScore = computeDangerScore(r);
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
                     '<td style="font-weight:700; color:var(--fg-dim);">' + (idx + 1) + '</td>' +
@@ -446,7 +469,7 @@
                     '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums;">' + fmtPower(r.power) + '</td>' +
                     '<td class="gm-right" style="font-variant-numeric:tabular-nums; color:var(--fg);">' + (r.avg_prep_score > 0 ? fmtNum(r.avg_prep_score) : '—') + '</td>' +
                     '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums; color:#f87171;">' + (r.avg_pvp_score > 0 ? fmtNum(r.avg_pvp_score) : '—') + '</td>' +
-                    '<td class="gm-center">' + getDangerBadge(r.danger_tier, r.danger_score) + '</td>' +
+                    '<td class="gm-center">' + getDangerBadge(r.danger_tier, dScore) + '</td>' +
                 '</tr>';
         });
         return html;
@@ -474,10 +497,8 @@
                         header('server', 'Server') +
                         header('guild', 'Guild') +
                         '<th class="gm-right" data-sort="power" style="cursor:pointer;">Power</th>' +
-                        '<th class="gm-right" data-sort="avg_prep_score" style="cursor:pointer;" title="Avg Day 1 to 5 Prep score">Day 1-5 Avg</th>' +
-                        '<th class="gm-right" data-sort="max_prep_score" style="cursor:pointer;" title="Peak Day 1 to 5 Prep score">Day 1-5 Max</th>' +
-                        '<th class="gm-right" data-sort="avg_pvp_score" style="cursor:pointer;" title="Avg Day 6 PvP score">Day 6 Avg</th>' +
-                        '<th class="gm-right" data-sort="max_pvp_score" style="cursor:pointer;" title="Peak Day 6 PvP score">Day 6 Max</th>' +
+                        '<th class="gm-right" data-sort="avg_prep_score" style="cursor:pointer;" title="Average Day 1 to 5 Prep score">Day 1-5 Avg</th>' +
+                        '<th class="gm-right" data-sort="avg_pvp_score" style="cursor:pointer;" title="Average Day 6 PvP score">Day 6 Avg</th>' +
                         '<th class="gm-right" data-sort="danger_score" style="cursor:pointer;">Danger Score</th>' +
                         '<th class="gm-center" data-sort="danger_tier" style="cursor:pointer;">Danger Tier</th>' +
                     '</tr></thead><tbody>' +
@@ -490,12 +511,13 @@
 
     function renderCombinedRows(rows) {
         if (!rows || rows.length === 0) {
-            return '<tr><td colspan="11" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">No players match the selected criteria.</td></tr>';
+            return '<tr><td colspan="9" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">No players match the selected criteria.</td></tr>';
         }
         var html = '';
         rows.forEach(function (r, idx) {
             var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(r.pseudo) : (r.pseudo ? String(r.pseudo).charAt(0).toUpperCase() : '?');
             var sDisplay = formatServerDisplay(r.server_number);
+            var dScore = computeDangerScore(r);
 
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
@@ -513,12 +535,10 @@
                         '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:2px 8px; font-weight:700; font-size:.72rem;">' + esc(r.guild) + '</span>' +
                     '</td>' +
                     '<td class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums;">' + fmtPower(r.power) + '</td>' +
-                    '<td class="gm-right" style="font-variant-numeric:tabular-nums;">' + (r.avg_prep_score > 0 ? fmtNum(r.avg_prep_score) : '—') + '</td>' +
-                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; color:var(--fg-dim); font-size:0.8rem;">' + (r.max_prep_score > 0 ? fmtNum(r.max_prep_score) : '—') + '</td>' +
+                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; font-weight:600;">' + (r.avg_prep_score > 0 ? fmtNum(r.avg_prep_score) : '—') + '</td>' +
                     '<td class="gm-right" style="font-weight:800; font-variant-numeric:tabular-nums; color:#f87171;">' + (r.avg_pvp_score > 0 ? fmtNum(r.avg_pvp_score) : '—') + '</td>' +
-                    '<td class="gm-right" style="font-variant-numeric:tabular-nums; color:#fca5a5; font-size:0.8rem;">' + (r.max_pvp_score > 0 ? fmtNum(r.max_pvp_score) : '—') + '</td>' +
-                    '<td class="gm-right" style="font-weight:900; font-variant-numeric:tabular-nums; color:var(--accent);">' + fmtNum(r.danger_score) + '</td>' +
-                    '<td class="gm-center">' + getDangerBadge(r.danger_tier, r.danger_score) + '</td>' +
+                    '<td class="gm-right" style="font-weight:900; font-variant-numeric:tabular-nums; color:var(--accent);">' + fmtNum(dScore) + '</td>' +
+                    '<td class="gm-center">' + getDangerBadge(r.danger_tier, dScore) + '</td>' +
                 '</tr>';
         });
         return html;
