@@ -11,6 +11,8 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Shadowfront 2-Step Workflow & Member Pool**: Streamlined Shadowfront Squad One & Squad Two management by removing the redundant "Availability" step. Admins now directly compose squads from the complete member pool (Column 1) into Main Participants (Column 2) or Substitutes/Reserves (Column 3), followed by live Participation Tracking (Step 2).
+- **Participation Percentage Badge Visibility**: Ensured historical participation rate badges (e.g. `100%`, `85%`, `50%`, `N/A`) are rendered directly in front of member names across all Shadowfront views (Member Pool, Main Participants, Substitutes/Reserves, and Participation Tracking table).
 - **Overview Dashboard Pending Account Approvals**: Relocated pending player registration requests from the Accounts & Access tab to the Overview dashboard (`#pending-accounts-card`) for immediate officer visibility upon logging in.
 - **Account Role Separation in Accounts & Access**: Split the Accounts tab into two distinct sections: "Active Admin Accounts" (`super_admin` & `guild_admin`) and "Player Portal Member Accounts" (`role === 'member'`), with player accounts clearly tagged with a lilac `Member` chip.
 - **On-Demand Password Renewal**: Replaced password reveal button on account cards with an on-demand **Renew Password** action (`ph-arrows-clockwise`). Generates a 12-character random password via Supabase RPC, updates card display, copies password to clipboard, and notifies via English toast.
@@ -22,6 +24,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Shadowfront Double-Entry Removal**: Eliminated duplicate data entry in Shadowfront by replacing the 3-step Availability declaration flow with a streamlined 2-step Squad Composition and Tracking flow.
 - **Web Push Notifications Setup Fixes**: Resolved multiple push notification registration errors (`updated_at` column missing, missing `ON CONFLICT` constraint, missing `p_ua` parameter) by adding a unique index on `push_subscriptions(endpoint)`, fixing `save_push_subscription` RPC parameters, using `last_seen`, and granting explicit `EXECUTE` permissions.
 - **Phosphor Icons Webfont & CDN CSP Rules**: Updated Content-Security-Policy (CSP) headers in `index.html` to allow `cdn.jsdelivr.net` and `unpkg.com` fonts and stylesheets, restoring event and menu icons across dark theme components.
 - **Glory Participation Count Calculation**: Resolved an issue where Glory history tiles showed `0/165 (0%)` participants despite non-zero total scores (e.g. 5.8B Glory). Updated database RPC `gm_list_event_sessions` (`20260810085000_fix_glory_history_participation_count.sql`) and `history.js` client aggregation to count participants when `participated > 0 OR score > 0`.
@@ -48,6 +51,3 @@ few hours, with an incrementing number in its title.
 - **Arms Race Historical `week_start` Backfill**: Recalculated `week_start` from YYYYMMDD part of `session_id` for historical rows.
 - **Server-Side Leaderboard Engine (`gm_leaderboard` RPC)**: Calculated 100% in SQL via SECURITY DEFINER function.
 - **Secure Password Reset API**: Replaced legacy plaintext password retrieval endpoint with secure password reset action.
-- **Atomic Shadowfront Unassign RPC (`gm_unsync_shadowfront_participant`)**: Atomically deletes squad assignment and cleans up `event_participants`.
-- **Security Headers via `vercel.json`**: Implemented strict CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy.
-- **Explicit Webhook Discord Validation**: Added URL scheme and hostname validation to block SSRF.

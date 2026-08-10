@@ -158,14 +158,13 @@
             col_score_pvp:         'Day 6 score',
 
             /* ── Shadowfront ───────────────────── */
-            sf_step_availability:  '1. Availability',
-            sf_step_composition:   '2. Squad Composition',
-            sf_step_tracking:      '3. Participation Tracking',
+            sf_step_composition:   '1. Squad Composition',
+            sf_step_tracking:      '2. Participation Tracking',
             sf_squad1:             'Squad One',
             sf_squad2:             'Squad Two',
             sf_declared:           'Available',
-            sf_pool:               'Available (unconfirmed)',
-            sf_pool_empty:         'No players declared for this squad yet.',
+            sf_pool:               'Member Pool',
+            sf_pool_empty:         'No available players in pool.',
             sf_availability_hint:  'Players declare their availability in-game. Enter here the players who told you they are available for each squad, then compose the final squads.',
             sf_members:            'All members',
             sf_n_selected:         '{n} selected',

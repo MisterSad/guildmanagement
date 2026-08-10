@@ -36,7 +36,7 @@
     };
 
     var sfFilter      = 'all';      // 'all' | 'excellent' | 'good' | 'average' | 'poor' | 'none'
-    var sfActiveTab   = 'availability'; // 'availability' | 'composition' | 'tracking'
+    var sfActiveTab   = 'composition'; // 'composition' | 'tracking'
     var sfActiveSquad = 'squad1';   // 'squad1' | 'squad2'
     var sfSort        = 'rate';     // 'rate' | 'power'
     var sfSelected    = {};         // pseudo → true (multi-select in Availability step)
@@ -726,16 +726,11 @@
             return;
         }
 
-        // 3. Stepper navigation (3 steps)
-        var hasAnyDeclared   = sfState.signups.length > 0;
-        var hasAnyAssignment = sfState.assignments.length > 0;
-        // Une session trackable = un squad avec un session_id, qu'il soit
-        // encore actif ou tout juste terminé (pour saisir les scores après End).
+        // 2. Stepper navigation (2 steps)
         var hasTrackableSession = currentSessionIds().length > 0;
 
-        if ((sfActiveTab === 'tracking' && !hasTrackableSession) ||
-            (sfActiveTab === 'composition' && !hasAnyDeclared && !hasAnyAssignment)) {
-            sfActiveTab = 'availability';
+        if (sfActiveTab === 'tracking' && !hasTrackableSession) {
+            sfActiveTab = 'composition';
         }
 
         var stepBtn = function (key, icon, label, enabled) {
@@ -748,9 +743,7 @@
 
         html +=
             '<div class="sf-stepper" style="margin-bottom: 1.5rem;">' +
-                stepBtn('availability', 'ph-clipboard-text', t('sf_step_availability'), true) +
-                '<span class="sf-step-sep"></span>' +
-                stepBtn('composition', 'ph-users-three', t('sf_step_composition'), hasAnyDeclared || hasAnyAssignment) +
+                stepBtn('composition', 'ph-users-three', t('sf_step_composition'), true) +
                 '<span class="sf-step-sep"></span>' +
                 stepBtn('tracking', 'ph-chart-bar', t('sf_step_tracking'), hasTrackableSession) +
             '</div>';
@@ -765,11 +758,10 @@
         if (sfActiveTab === 'composition') {
             var assignedPseudos = sfState.assignments.map(function (a) { return a.pseudo; });
 
-            // Declared pool for the active squad (declared but not yet confirmed)
-            var poolPseudos = sfState.signups.filter(function (s) {
-                var matches = (s.availability === sfActiveSquad || s.availability === 'both');
-                return matches && assignedPseudos.indexOf(s.pseudo) === -1;
-            }).map(function (s) { return s.pseudo; });
+            // Member pool: all guild members not currently assigned to any squad
+            var poolPseudos = sfState.allMembers.filter(function (pseudo) {
+                return assignedPseudos.indexOf(pseudo) === -1;
+            });
 
             var confirmedParticipants = sfState.assignments.filter(function (a) {
                 return a.squad === sfActiveSquad && a.role === 'participant';
@@ -889,62 +881,6 @@
 
             // Columns 2 & 3: Participants & Reserves
             html += renderSquadColumn(sfActiveSquad, squadParticipants, squadReserves);
-            html += '</div>'; // sf-layout
-            html += '</div>'; // active sub panel
-        }
-
-        // ── Panel: Availability ─────────────────────────────────────────────────
-        else if (sfActiveTab === 'availability') {
-            html += '<div class="sf-sub-panel active">';
-            html += '<div class="glass-card" style="padding: 1rem 1.25rem; border:1px solid var(--card-border); border-radius:var(--radius-lg); margin-bottom: 1.5rem; display:flex; align-items:center; gap:0.75rem;">' +
-                '<i class="ph-fill ph-info" style="font-size:1.2rem; color:var(--primary); flex-shrink:0;"></i>' +
-                '<div style="font-size:0.9rem; color:var(--text-muted);">' + t('sf_availability_hint') + '</div>' +
-            '</div>';
-            html += '<div class="sf-layout">';
-
-            // Columns 1 & 2: Declared pools per squad
-            html += renderAvailabilityPool('squad1');
-            html += renderAvailabilityPool('squad2');
-
-            // Column 3: Member entry (multi-select + bulk add)
-            var selectedCount = Object.keys(sfSelected).filter(function (p) { return sfSelected[p]; }).length;
-            html +=
-                '<div class="sf-column sf-entry">' +
-                '<div class="sf-col-header"><i class="ph-fill ph-user-plus"></i> ' + t('sf_members') +
-                    ' <span class="count-badge">' + sfState.allMembers.length + '</span></div>' +
-                '<div class="sf-bulk-bar" style="display:flex; gap:0.35rem; padding:0.5rem; flex-wrap:wrap; align-items:center; border-bottom:1px solid var(--card-border);">' +
-                    '<span class="gm-chip sf-selected-count" style="font-size:0.72rem; padding:0.15rem 0.35rem;">' + t('sf_n_selected').replace('{n}', selectedCount) + '</span>' +
-                    '<button class="gm-btn gm-btn-xs sf-bulk-add-btn" data-squad="squad1" style="font-size:0.72rem; flex:1; min-width:90px;"><i class="ph ph-plus"></i> ' + t('sf_add_s1') + '</button>' +
-                    '<button class="gm-btn gm-btn-xs sf-bulk-add-btn" data-squad="squad2" style="font-size:0.72rem; flex:1; min-width:90px;"><i class="ph ph-plus"></i> ' + t('sf_add_s2') + '</button>' +
-                '</div>' +
-                '<div class="sf-col-body" style="max-height: 480px; overflow-y: auto;">';
-
-            var entrySorted = sfState.membersData.slice().sort(function (a, b) {
-                return (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
-            });
-            entrySorted.forEach(function (m) {
-                var signup = sfState.signups.find(function (s) { return s.pseudo === m.pseudo; });
-                var avail = signup ? signup.availability : 'none';
-                var tier = window.GM.getPowerTier(m.overall_power, sfState.maxPower);
-                var meta = window.GM.getPowerTierMeta(tier);
-                var powerBadge = m.overall_power > 0
-                    ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + meta.color + '; border:1px solid ' + meta.color + '22; background:' + meta.color + '05; display:inline-flex; align-items:center; gap:0.15rem;"><span style="font-size:0.75rem;">' + meta.icon + '</span> ' + window.GM.formatPower(m.overall_power) + '</span>'
-                    : '';
-                var declaredChip = avail !== 'none'
-                    ? '<span class="gm-chip" style="font-size:0.65rem; padding:0.05rem 0.25rem; background:rgba(16,185,129,0.1); color:var(--success); border:1px solid rgba(16,185,129,0.2);">' + (avail === 'both' ? 'S1+S2' : (avail === 'squad1' ? 'S1' : 'S2')) + '</span>'
-                    : '';
-
-                html +=
-                    '<div class="sf-entry-row" data-pseudo="' + esc(m.pseudo) + '" style="display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.04);">' +
-                        '<input type="checkbox" class="sf-select-cb" data-pseudo="' + esc(m.pseudo) + '"' + (sfSelected[m.pseudo] ? ' checked' : '') + ' style="flex-shrink:0; accent-color:var(--primary);">' +
-                        getParticipationBadgeHtml(m.pseudo) +
-                        '<span class="sf-pseudo" style="flex:1; font-size:0.83rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.pseudo) + '</span>' +
-                        powerBadge +
-                        declaredChip +
-                    '</div>';
-            });
-
-            html += '</div></div>'; // Column 3: Entry
             html += '</div>'; // sf-layout
             html += '</div>'; // active sub panel
         }

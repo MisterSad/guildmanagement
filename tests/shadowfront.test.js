@@ -78,37 +78,23 @@ afterEach(() => {
 });
 
 describe('GM_SHADOWFRONT UI/UX', () => {
-    it('renders a 3-step stepper without the running tab or approve flow', async () => {
+    it('renders a 2-step stepper without availability step or approve flow', async () => {
         await SF.load();
         const text = area().textContent;
-        expect(text).toContain('1. Availability');
-        expect(text).toContain('2. Squad Composition');
-        expect(text).toContain('3. Participation Tracking');
+        expect(text).toContain('1. Squad Composition');
+        expect(text).toContain('2. Participation Tracking');
+        expect(text).not.toContain('Availability');
         expect(text).not.toContain('Running Tab');
         expect(text).not.toContain('Approve');
     });
 
-    it('shows the availability step with both squad pools and bulk actions', async () => {
+    it('composition step shows member pool, confirmed squads and sorting controls', async () => {
         await SF.load();
         const text = area().textContent;
-        expect(text).toContain('Squad One — Available');
-        expect(text).toContain('Squad Two — Available');
-        expect(text).toContain('Add to Squad One');
-        expect(text).toContain('Add to Squad Two');
-        expect(text).toContain('0 selected');
-        expect(text).toContain('Alpha');
-        expect(text).toContain('Bravo');
-        expect(text).toContain('Charlie');
-    });
-
-    it('composition step shows declared pool, confirmed squads and sorting controls', async () => {
-        await SF.load();
-        stepByLabel('2. Squad Composition').click();
-        const text = area().textContent;
-        expect(text).toContain('Available (unconfirmed)');
+        expect(text).toContain('Member Pool');
         expect(text).toContain('Main Participants');
         expect(text).toContain('Substitutes');
-        expect(text).toContain('Delta');   // declared for squad1, not confirmed yet
+        expect(text).toContain('Bravo');   // unassigned member in pool
         expect(text).toContain('Alpha');   // confirmed participant
         expect(text).toContain('Avg rate');
         expect(text).toContain('Rate');
@@ -118,7 +104,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
 
     it('unlocks tracking when a squad is active and offers bulk actions', async () => {
         await SF.load();
-        stepByLabel('3. Participation Tracking').click();
+        stepByLabel('2. Participation Tracking').click();
         const text = area().textContent;
         expect(text).toContain('All present');
         expect(text).toContain('All absent');
@@ -132,23 +118,20 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         await SF.load();
-        stepByLabel('2. Squad Composition').click();
+        stepByLabel('1. Squad Composition').click();
         area().querySelector('.sf-share-discord-btn').click();
         await new Promise((r) => setTimeout(r, 0));
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
         const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-        // Only the active squad is shared: embed title carries the squad name,
-        // with just two fields (participants + reserves).
         expect(body.embeds[0].title).toContain('Squad One');
         expect(body.embeds[0].fields).toHaveLength(2);
         expect(body.embeds[0].fields[0].value).toContain('👑 Alpha');
         expect(body.embeds[0].fields[1].value).toBe('None yet');
     });
 
-    it('resets the UI for an ended squad instead of keeping availability and composition', async () => {
-        // Squad 1 ended: inactive but session S1 still has participants.
+    it('resets the UI for an ended squad instead of keeping composition', async () => {
         tables.event_status = [
             { event_name: 'Shadowfront Squad 1', is_active: false, session_id: 'S1', start_at: null },
             { event_name: 'Shadowfront Squad 2', is_active: true, session_id: 'S2', start_at: '2026-08-05T12:00:00Z' },
@@ -163,10 +146,9 @@ describe('GM_SHADOWFRONT UI/UX', () => {
 
         await SF.load();
         const text = area().textContent;
-        // Ended squad1 shows the reset empty state, not the old availability/composition.
         expect(text).toContain('No active session');
         expect(text).toContain('Start');
-        expect(text).not.toContain('1. Availability');
-        expect(text).not.toContain('2. Squad Composition');
+        expect(text).not.toContain('1. Squad Composition');
+        expect(text).not.toContain('2. Participation Tracking');
     });
 });

@@ -6,8 +6,8 @@ import '../overview.js';
 const GM = window.GM;
 const OV = window.GM_OVERVIEW;
 
-const W_CUR = '2026-08-03';
-const W_PREV = '2026-07-27';
+const W_CUR = GM.getWeekStart();
+const W_PREV = GM.getPrevWeekStart();
 
 // ── Mock query builder (mirrors the db.from wrapper contract) ──────────────
 class MockBuilder {
