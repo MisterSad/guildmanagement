@@ -11,6 +11,10 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Compact Sidebar Subscription Widget**: Compacted the bottom left sidebar subscription card (`shell.js`, `shell.css`) to retain only the essential elements requested:
+  - **Guild Dropdown Selector** (`ALPHA (#1058)`, `OMEGA (#1064)`, etc.)
+  - **Subscription Plan Status Pill/Badge** (`Unlimited`, `Premium`, `Free`)
+  - Removed the bulky top avatar badge icon, title text, and long description string for a clean, ultra-sleek sidebar layout.
 - **Pixel-Perfect Tile & Grid Alignment**: Standardized selector grids in both **SvS Matchup** (`svs-matchup.js`) and **GvG Matchup** (`gvg-matchup.js`) tabs with a unified `display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;` layout.
 - **Centered Floating VS Badge**: Positioned the central `VS` badge absolutely at `left: 50%` over the grid gap, ensuring the right and left borders of top selector boxes align down to the exact pixel with the summary cards and side-by-side roster tables below.
 - **Super Admin GvG Guild A vs Guild B Matchup Dashboard**: Added a dedicated **GvG** tab (`gvg-matchup.js`, `20260810200000_gvg_player_matchup_rpc.sql`) under the `SUPER ADMIN` section to compare **Guild A vs Guild B** directly through dedicated guild selection dropdowns (`ALPHA (Server #1058)`, `OMEGA (Server #1064)`, `IMK (Server #1058)`, `YARR (Server #1064)`, etc.).
@@ -25,6 +29,7 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Sidebar Space Efficiency**: Reduced vertical height of the sidebar subscription model card by 70%, keeping only the guild switcher dropdown and plan status badge.
 - **Tile & Card Vertical Misalignment**: Resolved offset between top selector boxes and lower summary/roster cards in SvS and GvG tabs by aligning grid column dimensions.
 - **Table Score Text Overflow / Multi-Line Wrapping**: Fixed multi-line wrapping of scores in matchup table cells by applying `white-space: nowrap;` and compact notation (`19.3M`), ensuring all table rows remain strictly single-line.
 - **Dangerosity Tier Balance**: Penalized low-power accounts (<60M power) so they cannot artificially inflate threat levels to EXTREME or HIGH without sufficient combat power.

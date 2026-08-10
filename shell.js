@@ -354,11 +354,6 @@
         }
 
         return '<div class="gm-sidebar-sub-card">' +
-            '<div class="gm-sub-card-badge-avatar">' +
-                '<i class="ph-fill ' + icon + '"></i>' +
-            '</div>' +
-            '<div class="gm-sub-card-title">' + cardTitle + '</div>' +
-            '<div class="gm-sub-card-subtext">' + cardDesc + '</div>' +
             renderGuildSelectorHtml() +
             '<div class="gm-sub-card-pill ' + pillClass + '">' +
                 '<i class="ph-fill ' + icon + '"></i> ' + pillLabel +
