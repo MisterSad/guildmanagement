@@ -1,13 +1,13 @@
-:wrench: **GUILD TRANSFER FIX & AUTO-ENROLL — v52**
+:checkered_flag: **ACTIVE EVENT BACKFILL FOR TRANSFERRED PLAYERS — v53**
 
-Resolved the authorization error encountered during player transfers between guilds on the same server.
+Backfilled active event participant records for all existing transferred players (including player **Dust** moved from OMEGA to ALPHA).
 
 ---
 
 :wrench: **Fixed**
 
-- :arrows_left_right: **Guild Transfer Authorization Fix:** Fixed a `not_authorized` check in `gm_add_member_to_active_events` that broke transfers when a guild admin moved a player to another guild. Transmitting players between guilds on the same server now completes smoothly.
-- :arrows_counterclockwise: **Active Event Roster Auto-Sync:** Transferred players are cleanly removed from active events in their old guild and enrolled into active events in their new guild.
+- :sparkles: **Transferred Players Roster Repair:** Ran a database migration (`20260811002000`) that immediately populates transferred players (like **Dust**) into ongoing active events of their new guild (ALPHA), while cleaning up stale unparticipated rows in their old guild (OMEGA).
+- :arrows_counterclockwise: **Real-Time Active Event Roster Sync:** Any future transfers, additions, or approvals automatically sync active event participant lists on the fly.
 
 ---
 

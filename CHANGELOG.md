@@ -23,7 +23,8 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
-- **Cross-Guild Transfer Auto-Enroll Authorization Exception**: Fixed migration `20260811001000_fix_transfer_auto_enroll_authorization.sql` where `gm_add_member_to_active_events` raised a `not_authorized` exception during a player transfer. When a `guild_admin` of the source guild transferred a player to a target guild, `gm_add_member_to_active_events` erroneously compared the target guild against the caller's source guild and aborted the transaction. Relaxed the check to verify that the member belongs to the target guild in `guild_members`, ensuring smooth transfers across all guilds.
+- **Dust & Existing Transferred Players Backfill (`20260811002000_backfill_active_events_for_all_members.sql`)**: Ran a database backfill script that enrolled existing transferred members (including player Dust who was transferred from OMEGA to ALPHA) into their target guild's active event sessions, and purged unparticipated active event rows from their previous guilds.
+- **Cross-Guild Transfer Auto-Enroll Authorization Exception**: Fixed migration `20260811001000_fix_transfer_auto_enroll_authorization.sql` where `gm_add_member_to_active_events` raised a `not_authorized` exception during a player transfer.
 - **Stale Participant Rosters in Active Events**: Resolved issue where members added or transferred after an event session was started did not appear in active event participant lists, and transferred members remained stuck in the old guild's active events.
 - **Crown Icon Overlap in Member Role Dropdown**: Fixed the `ph-crown` icon overlapping the selected role text (R1-R5) in the Edit Member modal (`app.js`).
 - **RLS Write Check Fallback**: Updated RLS SECURITY DEFINER helper functions to fall back to matching by JWT `sub` claim when `auth_user_id` is temporarily unlinked.
