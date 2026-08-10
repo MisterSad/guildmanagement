@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
       .eq("guild", member.guild)
       .eq("is_active", true);
 
-    if (sErr) return json({ ok: false, error: "db_error", message: sErr.message }, 500);
+    if (sErr) return json({ ok: false, error: "db_error", message: sErr.message }, 200);
 
     // 2b. Current-week Glory score for the profile (My Info panel)
     const week = getWeekStartIso(new Date());
@@ -143,7 +143,7 @@ Deno.serve(async (req: Request) => {
       .eq("week_start", week)
       .eq("pseudo", member.pseudo)
       .maybeSingle();
-    if (gErr) return json({ ok: false, error: "db_error", message: gErr.message }, 500);
+    if (gErr) return json({ ok: false, error: "db_error", message: gErr.message }, 200);
     const glory = gloryRow?.score != null ? gloryRow.score : null;
 
     // 3. For each active session, retrieve the player's participant entry
@@ -159,7 +159,7 @@ Deno.serve(async (req: Request) => {
       .eq("pseudo", member.pseudo)
       .in("session_id", sessionIds);
 
-    if (pErr) return json({ ok: false, error: "db_error", message: pErr.message }, 500);
+    if (pErr) return json({ ok: false, error: "db_error", message: pErr.message }, 200);
 
     // Combine active session info with participant row
     const sessions = activeSessions.map(sess => {
@@ -253,7 +253,7 @@ Deno.serve(async (req: Request) => {
       .eq("pseudo", member.pseudo);
 
     if (uErr) {
-      return json({ ok: false, error: "update_failed", message: uErr.message }, 500);
+      return json({ ok: false, error: "update_failed", message: uErr.message }, 200);
     }
 
     return json({ ok: true });
@@ -273,7 +273,7 @@ Deno.serve(async (req: Request) => {
       .eq("uid", uid);
 
     if (uErr) {
-      return json({ ok: false, error: "update_failed", message: uErr.message }, 500);
+      return json({ ok: false, error: "update_failed", message: uErr.message }, 200);
     }
 
     return json({ ok: true });
@@ -300,7 +300,7 @@ Deno.serve(async (req: Request) => {
       p_glory: glory,
     });
     if (rErr) {
-      return json({ ok: false, error: "update_failed", message: rErr.message }, 500);
+      return json({ ok: false, error: "update_failed", message: rErr.message }, 200);
     }
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "save_failed" }, 200);
@@ -367,7 +367,7 @@ Deno.serve(async (req: Request) => {
       .eq("pseudo", member.pseudo)
       .order("week_start", { ascending: false });
 
-    if (hErr) return json({ ok: false, error: "db_error", message: hErr.message }, 500);
+    if (hErr) return json({ ok: false, error: "db_error", message: hErr.message }, 200);
 
     // Keep most recent 60 rows per player; group by event_name (case-insensitive).
     // Events with a score column are the only ones that produce progression charts.
@@ -414,7 +414,7 @@ Deno.serve(async (req: Request) => {
   if (action === "get-absences") {
     // Player's own absence declarations.
     const { data, error } = await admin.rpc("gm_get_player_absences", { p_uid: uid });
-    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     return json({ ok: true, absences: data ?? [] });
   }
 
@@ -442,7 +442,7 @@ Deno.serve(async (req: Request) => {
       p_kind: kind,
       p_note: note || null,
     });
-    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "save_failed" }, 200);
     return json({ ok: true });
@@ -456,7 +456,7 @@ Deno.serve(async (req: Request) => {
       p_id: absenceId,
       p_uid: uid,
     });
-    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "delete_failed" }, 200);
     return json({ ok: true });
@@ -482,7 +482,7 @@ Deno.serve(async (req: Request) => {
       .eq("pseudo", full.pseudo)
       .or("participated.gt.0,sub_present.eq.true");
 
-    if (cErr) return json({ ok: false, error: "db_error", message: cErr.message }, 500);
+    if (cErr) return json({ ok: false, error: "db_error", message: cErr.message }, 200);
 
     const attendedKeys = new Set<string>();
     for (const row of attendRows ?? []) {
@@ -506,7 +506,7 @@ Deno.serve(async (req: Request) => {
       .gt("score", 0)
       .order("week_start", { ascending: true });
 
-    if (gErr) return json({ ok: false, error: "db_error", message: gErr.message }, 500);
+    if (gErr) return json({ ok: false, error: "db_error", message: gErr.message }, 200);
 
     let gloryBest = 0;
     if ((gloryRows ?? []).length > 1) {
@@ -548,7 +548,7 @@ Deno.serve(async (req: Request) => {
       .eq("pseudo", member.pseudo)
       .neq("event_name", "Glory")
       .or(`participated.gt.0,sub_present.eq.true`);
-    if (pErr) return json({ ok: false, error: "db_error", message: pErr.message }, 500);
+    if (pErr) return json({ ok: false, error: "db_error", message: pErr.message }, 200);
 
     const attended = new Set<string>();
     const seasonAttended = new Set<string>();
@@ -569,7 +569,7 @@ Deno.serve(async (req: Request) => {
       .eq("week_start", week)
       .gt("score", 0)
       .limit(1);
-    if (gwErr) return json({ ok: false, error: "db_error", message: gwErr.message }, 500);
+    if (gwErr) return json({ ok: false, error: "db_error", message: gwErr.message }, 200);
     const gloryDone = (gloryThisWeek ?? []).length > 0;
 
     // Power refreshed this week?
@@ -604,7 +604,7 @@ Deno.serve(async (req: Request) => {
     // Computed server-side by gm_personal_kpis (service_role); the player
     // only ever receives their own aggregates and guild-wide ranks.
     const { data, error } = await admin.rpc("gm_personal_kpis", { p_uid: uid });
-    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean } | null;
     if (!row || !row.ok) return json({ ok: false, error: "kpis_failed" }, 200);
     return json(row);
@@ -620,7 +620,7 @@ Deno.serve(async (req: Request) => {
       p_uid: uid,
       p_offset: offset,
     });
-    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "update_failed" }, 200);
     return json({ ok: true });
@@ -630,7 +630,7 @@ Deno.serve(async (req: Request) => {
     // The caller's web-push notification preferences (event types they want
     // to be notified about). Resolved server-side from auth.
     const { data, error } = await admin.rpc("gm_get_push_prefs", { p_uid: uid });
-    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { event_types?: string[] } | null;
     return json({
       ok: true,
@@ -649,7 +649,7 @@ Deno.serve(async (req: Request) => {
       p_uid: uid,
       p_event_types: types,
     });
-    if (error) return json({ ok: false, error: "db_error", message: error.message }, 500);
+    if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "update_failed" }, 200);
     return json({ ok: true });

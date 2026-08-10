@@ -84,7 +84,21 @@
         ]);
 
         if (!profile.ok) {
-            root.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your portal.</div><div class="gm-empty-sub">' + esc(profile.error || 'unknown error') + '</div></div>';
+            var rawErr = profile.error || 'unknown_error';
+            var displayMsg = profile.message || rawErr;
+            if (rawErr === 'Edge Function returned a non-2xx status code' || rawErr === 'unauthorized' || rawErr === 'player_not_found') {
+                displayMsg = 'Session expired or player account not active. Please reconnect.';
+            }
+            root.innerHTML =
+                '<div class="gm-empty" style="padding: 3rem 1.5rem; text-align: center; max-width: 480px; margin: 2rem auto; background: var(--bg-1); border-radius: var(--radius-xl); border: 1px solid var(--border-soft);">' +
+                    '<i class="ph ph-warning-circle gm-icon" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem; display: block;"></i>' +
+                    '<div class="gm-empty-title" style="font-size: 1.25rem; font-weight: 700; color: var(--fg); margin-bottom: 0.5rem;">Unable to load your portal</div>' +
+                    '<div class="gm-empty-sub" style="color: var(--fg-dim); font-size: 0.95rem; margin: 0 auto 1.5rem auto;">' + esc(displayMsg) + '</div>' +
+                    '<div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">' +
+                        '<button class="gm-btn gm-btn-primary" onclick="if(window.GM&&window.GM.logout){window.GM.logout();}else{localStorage.clear();location.reload();}"><i class="ph ph-sign-out"></i> Reconnect / Sign Out</button>' +
+                        '<button class="gm-btn gm-btn-outline" onclick="window.location.reload()"><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
+                    '</div>' +
+                '</div>';
             return;
         }
 

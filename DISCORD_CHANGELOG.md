@@ -1,21 +1,21 @@
-:rocket: **STATS DEFAULT CURRENT WEEK & TIMEFRAME SELECTION — v22**
+:rocket: **PLAYER PORTAL ERROR RECOVERY & CONNECTIVITY FIX — v23**
 
-Stats now load by default on the **current week**, with a dropdown selector allowing admins and members to inspect 1 week, 2 weeks, 4 weeks, 8 weeks, or all-time history.
+Fixed an issue where stale browser sessions or Edge Function HTTP error statuses produced an unrecoverable "Edge Function returned a non-2xx status code" error screen.
 
 ---
 
 :new: **What's new**
 
-- :calendar: **Default Current Week View (`1w`):** Opening the Stats module now defaults to displaying performance and scores for the current week (`1w`) rather than the entire historical dataset.
-- :time_box: **Expanded Period Selectors:** Added a **2 Weeks** (`2w`) option to the period dropdown alongside 1 week (`1w`), 4 weeks (`4w`), 8 weeks (`8w`), and All time (`all`).
-- :database: **Updated `gm_leaderboard` RPC:** Deployed SQL migration `20260810100000_update_gm_leaderboard_2w.sql` updating default server-side period calculations to `'1w'` and adding support for `'2w'`.
+- :sign_in: **One-Click Reconnect Action:** Added an interactive **"Reconnect / Sign Out"** button to the Player Portal error screen (`portal.js`), allowing players with expired tokens or stale sessions to instantly clear their session and sign back in.
+- :arrows_counterclockwise: **Retry Option:** Added a **"Retry"** button to quickly reload the portal if network or database latency occurs.
+- :cloud: **Redeployed `member-portal` Edge Function:** Deployed the updated Edge Function to Supabase Edge Runtime (`supabase functions deploy member-portal --no-verify-jwt`), returning structured JSON error payloads instead of raw HTTP 500 status codes.
 
 ---
 
 :bug: **What's fixed**
 
-- :chart_with_upwards_trend: **Default Stats Period Alignment:** Aligned client-side `statsPeriod` initial state (`stats.js`) with user preference to default to the active week.
-- :globe_with_meridians: **Period Dropdown Ordering:** Reordered timeframe options sequentially: `1 Week`, `2 Weeks`, `4 Weeks`, `8 Weeks`, `All Time (Total)`.
+- :bug: **Error Masking Fix:** Prevented Supabase JS SDK from obscuring real API/database error details with generic `"Edge Function returned a non-2xx status code"` text.
+- :shield: **Session Recovery:** Players stuck on a dark error screen can now immediately log out and re-authenticate with a single click.
 
 ---
 
