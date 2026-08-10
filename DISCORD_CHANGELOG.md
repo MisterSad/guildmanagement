@@ -1,13 +1,13 @@
-:checkered_flag: **ACTIVE EVENT BACKFILL FOR TRANSFERRED PLAYERS — v53**
+:target: **TENANT-ISOLATED EVENT INDEX & ARMS RACE FIX — v54**
 
-Backfilled active event participant records for all existing transferred players (including player **Dust** moved from OMEGA to ALPHA).
+Resolved the index collision issue that prevented transferred players (like **Dust**) from appearing in active Arms Race Stage B sessions.
 
 ---
 
 :wrench: **Fixed**
 
-- :sparkles: **Transferred Players Roster Repair:** Ran a database migration (`20260811002000`) that immediately populates transferred players (like **Dust**) into ongoing active events of their new guild (ALPHA), while cleaning up stale unparticipated rows in their old guild (OMEGA).
-- :arrows_counterclockwise: **Real-Time Active Event Roster Sync:** Any future transfers, additions, or approvals automatically sync active event participant lists on the fly.
+- :target: **Arms Race Stage B & Transferred Players Fix:** Replaced legacy global database indexes on `event_participants` with tenant-scoped unique indexes `(guild, event_name, session_id, pseudo)`.
+- :shield: **Tenant Isolation:** Transferred players (including **Dust** in ALPHA) now cleanly enroll into all active sessions (Arms Race Stage A/B, SvS, GvG, DTR) without colliding with session IDs from their previous guild.
 
 ---
 

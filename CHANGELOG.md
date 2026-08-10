@@ -23,8 +23,9 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
-- **Dust & Existing Transferred Players Backfill (`20260811002000_backfill_active_events_for_all_members.sql`)**: Ran a database backfill script that enrolled existing transferred members (including player Dust who was transferred from OMEGA to ALPHA) into their target guild's active event sessions, and purged unparticipated active event rows from their previous guilds.
+- **Tenant-Isolated Unique Indexes on `event_participants` (`20260811003000_fix_tenant_isolated_event_participants_indexes.sql`)**: Resolved global unique index collision issue on `event_participants` where an old non-tenant unique index `(event_name, session_id, pseudo)` blocked enrolling transferred players (like **Dust**) into active sessions of target guilds (e.g. Arms Race Stage B of ALPHA) when their old guild (OMEGA) held the same session ID. Created clean tenant-scoped unique indexes `idx_ep_tenant_session_unique` on `(guild, event_name, session_id, pseudo)`.
+- **Dust & Existing Transferred Players Backfill (`20260811002000_backfill_active_events_for_all_members.sql`)**: Ran a database backfill script that enrolled existing transferred members into their target guild's active event sessions, and purged unparticipated active event rows from their previous guilds.
 - **Cross-Guild Transfer Auto-Enroll Authorization Exception**: Fixed migration `20260811001000_fix_transfer_auto_enroll_authorization.sql` where `gm_add_member_to_active_events` raised a `not_authorized` exception during a player transfer.
-- **Stale Participant Rosters in Active Events**: Resolved issue where members added or transferred after an event session was started did not appear in active event participant lists, and transferred members remained stuck in the old guild's active events.
+- **Stale Participant Rosters in Active Events**: Resolved issue where members added or transferred after an event session was started did not appear in active event participant lists.
 - **Crown Icon Overlap in Member Role Dropdown**: Fixed the `ph-crown` icon overlapping the selected role text (R1-R5) in the Edit Member modal (`app.js`).
 - **RLS Write Check Fallback**: Updated RLS SECURITY DEFINER helper functions to fall back to matching by JWT `sub` claim when `auth_user_id` is temporarily unlinked.
