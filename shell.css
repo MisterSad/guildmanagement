@@ -162,6 +162,7 @@ html, body {
     box-sizing: border-box;
     padding-right: 2px;
     margin-bottom: 1rem;
+    padding-bottom: 6rem; /* Prevent overlap with absolute sub-card */
 }
 .gm-nav-section-label {
     font-family: var(--font-display);
@@ -247,7 +248,11 @@ html, body {
 
 /* ── Bottom Guild Subscription Model Card ── */
 .gm-sidebar-sub-card {
-    margin-top: auto;
+    position: absolute;
+    bottom: 1.25rem;
+    left: 1rem;
+    width: calc(100% - 2rem);
+    box-sizing: border-box;
     background: linear-gradient(145deg, oklch(0.25 0.08 250 / 0.9), oklch(0.18 0.05 260 / 0.9));
     border: 1px solid oklch(0.38 0.10 250 / 0.4);
     border-radius: var(--radius-lg);
@@ -257,10 +262,6 @@ html, body {
     gap: 0.5rem;
     align-items: center;
     text-align: center;
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
-    flex-shrink: 0;
     overflow: hidden;
     box-shadow: 0 10px 30px -5px oklch(0 0 0 / 0.5);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
