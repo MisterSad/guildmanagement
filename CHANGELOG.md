@@ -18,5 +18,6 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Admin Approval & Service Role Authorization (`20260811192500_fix_admin_approval_and_event_sync_auth.sql`)**: Fixed `gm_approve_player_account`, `gm_add_member_to_active_events`, and `gm_populate_event_participants` to support service-role Edge Function calls. Removed invalid `auth.uid()` checks inside `gm_approve_player_account` (which caused `unauthorized` errors when admins approved pending player registrations from `admin-accounts` edge function) and added resilient JWT `sub` fallback for event participant loaders.
 - **NIGHTWRAITH Tenant Casing & Server Number (`20260811191000_fix_nightwraith_tenant_and_server.sql`)**: Corrected tenant ID casing to uppercase `NIGHTWRAITH`, assigned server number `1078`, migrated all 129 member rows from `Nightwraith` to `NIGHTWRAITH`, and purged the stray `Nightwraith` entry from `public.guilds`.
 - **Roster & Power Seeding Integrity**: Ensured idempotent composite unique key handling on `(guild, pseudo)` during guild member batch inserts and triggered PostgREST schema cache reload.

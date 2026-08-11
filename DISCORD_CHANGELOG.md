@@ -1,12 +1,13 @@
-:wrench: **NIGHTWRAITH TENANT & SERVER FIX — v57**
+:shield: **PLAYER APPROVAL & EVENT SYNC AUTH FIX — v58**
 
-Corrected tenant ID casing to **NIGHTWRAITH** and assigned server number **1078**.
+Resolved the issue preventing guild admins from approving new player registrations and auto-enrolling members into active events.
 
 ---
 
 :wrench: **Fixed**
 
-- :shield: **Tenant Alignment:** Migrated all 129 member records to `NIGHTWRAITH` (server `#1078`) and cleaned up the mis-cased tenant entry.
+- :key: **Registration Approvals:** Fixed `unauthorized` errors when approving pending player registrations by removing conflicting client-context checks in backend service-role procedures.
+- :sparkles: **Active Event Auto-Enroll:** Updated `gm_add_member_to_active_events` and `gm_populate_event_participants` to support resilient admin identity lookups and service-role execution.
 
 ---
 
