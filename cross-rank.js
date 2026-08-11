@@ -43,7 +43,7 @@
     }
 
     function formatServerDisplay(rawServer) {
-        if (!rawServer) return '—';
+        if (!rawServer) return '-';
         var s = String(rawServer).trim();
         if (s.indexOf('#') === 0) return s;
         return '#' + s;
@@ -248,7 +248,7 @@
         var att = row[prefix + '_attended'];
         var tot = row[prefix + '_total'];
         if (rate === null || rate === undefined) {
-            return '<td class="gm-center"><span class="gm-dim">—</span></td>';
+            return '<td class="gm-center"><span class="gm-dim">-</span></td>';
         }
         return '<td class="gm-center">' +
             '<div style="font-weight:700; color:' + rateColor(rate) + '; font-variant-numeric:tabular-nums;">' +

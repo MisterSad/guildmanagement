@@ -634,7 +634,7 @@
         var selectR4 = document.getElementById('account-guild');
         if (selectR4) {
             var myGuild = window.currentGuildRestriction || window.currentGuild || 'ALPHA';
-            selectR4.innerHTML = '<option value="' + myGuild + '">' + myGuild + '</option>';
+            selectR4.innerHTML = '<option value="' + esc(myGuild) + '">' + esc(myGuild) + '</option>';
             selectR4.value = myGuild;
             selectR4.disabled = true;
         }
@@ -644,7 +644,7 @@
             var html = '';
             (window.guildsList || []).forEach(function (g) {
                 var sNum = (window.guildsData && window.guildsData[g] && window.guildsData[g].server_number) ? ' (#' + window.guildsData[g].server_number + ')' : '';
-                html += '<option value="' + g + '">' + g + sNum + '</option>';
+                html += '<option value="' + esc(g) + '">' + esc(g) + sNum + '</option>';
             });
             selectR5.innerHTML = html;
         }
@@ -971,7 +971,7 @@
 
         var html = '<div class="gm-cred-grid">';
         pending.forEach(function (acc) {
-            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
             html +=
                 '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
                     '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
@@ -1281,7 +1281,7 @@
                 roleLabel = 'Member';
                 chipCls = 'gm-chip-lilac';
             }
-            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' }) : '-';
             var guildLabel = acc.guild ? 'Guild: ' + acc.guild : 'All Guilds';
             var guildCls = acc.guild ? 'gm-chip-warning' : 'gm-chip-success';
 
@@ -1319,7 +1319,7 @@
             if (acc.role !== 'super_admin' && isSuperAdminUser) {
                 var options = '<option value="ALL"' + (!acc.guild ? ' selected' : '') + '>All Guilds</option>';
                 (window.guildsList || []).forEach(function (g) {
-                    options += '<option value="' + g + '"' + (acc.guild === g ? ' selected' : '') + '>' + g + '</option>';
+                    options += '<option value="' + esc(g) + '"' + (acc.guild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
                 });
                 guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
                                       options +
@@ -2084,11 +2084,11 @@
         filtered.forEach(function (bp) {
             var dateStr = bp.created_at
                 ? new Date(bp.created_at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                : '—';
-            var pseudoVal = bp.pseudo || '—';
-            var reasonVal = bp.reason || '—';
-            var author = bp.created_by || '—';
-            var initial = window.GM.avatarInit(pseudoVal !== '—' ? pseudoVal : fallbackName);
+                : '-';
+            var pseudoVal = bp.pseudo || '-';
+            var reasonVal = bp.reason || '-';
+            var author = bp.created_by || '-';
+            var initial = window.GM.avatarInit(pseudoVal !== '-' ? pseudoVal : fallbackName);
             
             html += '<div class="gm-member-row" data-uid="' + esc(bp.uid) + '">' +
                 '<div class="gm-member-id">' +
@@ -2445,10 +2445,10 @@
     function memberTileHtml(m, i, withActions, maxPower, portalUids) {
         var lang = (window.GM_I18N && window.GM_I18N.getLang) ? window.GM_I18N.getLang() : 'en';
         var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
-        var uidVal = m.uid || '—';
+        var uidVal = m.uid || '-';
         var dateStr = m.created_at
             ? new Date(m.created_at).toLocaleDateString(locale, { day:'2-digit', month:'2-digit', year:'numeric' })
-            : '—';
+            : '-';
         var initial = window.GM.avatarInit(m.pseudo);
 
         var powerVal = parseInt(m.overall_power) || 0;
@@ -2472,7 +2472,7 @@
         var absenceBadge = absenceBadgeHtml(m);
         var timezoneChip = timezoneChipHtml(m);
 
-        var hasPortal = portalUids && uidVal !== '—' && !!portalUids[String(uidVal)];
+        var hasPortal = portalUids && uidVal !== '-' && !!portalUids[String(uidVal)];
         var portalBadge = hasPortal
             ? '<span class="gm-portal-chip" title="Player Portal account (validated)" style="color:#34d399; border:1px solid rgba(52,211,153,0.35); background:rgba(52,211,153,0.10); border-radius:999px; padding:0.05rem 0.35rem; font-size:0.68rem; display:inline-flex; align-items:center; gap:0.2rem;"><i class="ph ph-user-check"></i> Portal</span>'
             : '';
@@ -2520,7 +2520,7 @@
         var bg = active ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)';
         var border = active ? 'rgba(248,113,113,0.35)' : 'rgba(251,191,36,0.35)';
         var range = esc(match.start_date) + ' → ' + esc(match.end_date);
-        return '<span class="gm-absence-chip" style="color:' + color + '; border: 1px solid ' + border + '; background:' + bg + ';" title="' + kindLabel + ' ' + range + (match.note ? ' — ' + esc(match.note) : '') + '">' +
+        return '<span class="gm-absence-chip" style="color:' + color + '; border: 1px solid ' + border + '; background:' + bg + ';" title="' + kindLabel + ' ' + range + (match.note ? ' - ' + esc(match.note) : '') + '">' +
                     '<i class="ph ' + (active ? 'ph-user-minus' : 'ph-hourglass') + '"></i> ' + (active ? kindLabel : kindLabel + ' soon') +
                 '</span>';
     }

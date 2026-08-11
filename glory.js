@@ -119,7 +119,7 @@
                         '</div>' +
                     '</td>' +
                     '<td class="gm-right gm-num gm-dim glory-prev-val" data-label="' + t('glory_prev_week') + '">' +
-                        (prev !== null ? fmt(prev) : '—') +
+                        (prev !== null ? fmt(prev) : '-') +
                     '</td>' +
                     '<td class="gm-right" data-label="' + t('glory_input') + '">' +
                         '<div class="glory-input-wrapper" style="position:relative; display:inline-flex; align-items:center;">' +
@@ -160,7 +160,7 @@
 
                 var currCell = row.querySelector('.glory-curr-val');
                 if (currCell) {
-                    currCell.innerHTML = curr !== null ? '<span>' + fmt(curr) + '</span>' : '<span class="glory-na">—</span>';
+                    currCell.innerHTML = curr !== null ? '<span>' + fmt(curr) + '</span>' : '<span class="glory-na">-</span>';
                 }
 
                 var pctCell = row.querySelector('.glory-pct-cell');
@@ -182,10 +182,10 @@
     }
 
     function buildEvolutionPctBadge(curr, prev) {
-        if (curr === null || curr === '' || prev === null || prev === 0) return '<span class="gm-dim">—</span>';
+        if (curr === null || curr === '' || prev === null || prev === 0) return '<span class="gm-dim">-</span>';
         var c = typeof curr === 'number' ? curr : window.GM.parseNumber(curr);
         var p = typeof prev === 'number' ? prev : parseInt(prev, 10);
-        if (c === null || isNaN(p) || p === 0) return '<span class="gm-dim">—</span>';
+        if (c === null || isNaN(p) || p === 0) return '<span class="gm-dim">-</span>';
         var diff = c - p;
         var pct = (diff / p) * 100;
 

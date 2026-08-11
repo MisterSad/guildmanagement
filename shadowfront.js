@@ -256,7 +256,7 @@
             // Sync all assigned members to event_participants
             await syncParticipantRows(sessionId);
 
-            window.GM.showToast(squadLabel(squad) + ' — ' + t('sf_squad_started'), 'success');
+            window.GM.showToast(squadLabel(squad) + ' - ' + t('sf_squad_started'), 'success');
 
             if (window.GM.notifyDiscordEvent) {
                 window.GM.notifyDiscordEvent(SQUAD_EVENT[squad], startAt || sessionId, 'start');
@@ -313,7 +313,7 @@
             var currentStartAt = res.data ? res.data.start_at : null;
 
             window.GM.pickEventStart({
-                eventLabel: squadLabel(squad) + ' — ' + t('edit_title'),
+                eventLabel: squadLabel(squad) + ' - ' + t('edit_title'),
                 defaultVal: currentStartAt
             }, async function (startAt) {
                 if (!startAt) return;
@@ -457,7 +457,7 @@
         var squad = squadField(squadKey);
 
         var body = {
-            content: '📋 **Shadowfront — ' + squadLabel(squadKey) + ' Composition**',
+            content: '📋 **Shadowfront - ' + squadLabel(squadKey) + ' Composition**',
             embeds: [{
                 title: squadLabel(squadKey),
                 color: 9442302, // Lilac (#8B5CF6)
@@ -856,7 +856,7 @@
                         : 'N/A';
                     var stats = h.assigned > 0
                         ? '<span class="sf-hist-stat">' + h.participated + '/' + h.assigned + '</span>'
-                        : '<span class="sf-hist-stat">—</span>';
+                        : '<span class="sf-hist-stat">-</span>';
                     var tooltipText = h.assigned > 0
                         ? h.participated + ' Play / ' + missed + ' Miss / ' + h.excused_count + ' Exc'
                         : 'No history';
@@ -938,7 +938,7 @@
 
         var html =
             '<div class="sf-column sf-avail-pool">' +
-            '<div class="sf-col-header squad-header ' + squadKey + '"><i class="ph-fill ph-users-three"></i> ' + squadLabel(squadKey) + ' — ' + t('sf_declared') +
+            '<div class="sf-col-header squad-header ' + squadKey + '"><i class="ph-fill ph-users-three"></i> ' + squadLabel(squadKey) + ' - ' + t('sf_declared') +
                 ' <span class="count-badge">' + declared.length + '</span></div>' +
             '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
 
@@ -1088,8 +1088,8 @@
         participants.forEach(function (p) {
             var assignment = sfState.assignments.find(function (a) { return a.pseudo === p.pseudo; });
             var squadLbl = assignment
-                ? squadLabel(assignment.squad) + ' — ' + (assignment.role === 'participant' ? t('sf_participant') : t('sf_reserve'))
-                : '—';
+                ? squadLabel(assignment.squad) + ' - ' + (assignment.role === 'participant' ? t('sf_participant') : t('sf_reserve'))
+                : '-';
             var isChecked = p.participated > 0;
             var isLateChecked = !!p.late;
             var isExcusedChecked = !!p.excused;
@@ -1242,7 +1242,7 @@
         if (startBtn) {
             startBtn.addEventListener('click', function () {
                 var squad = startBtn.getAttribute('data-squad');
-                window.GM.pickEventStart({ eventLabel: 'Shadowfront — ' + squadLabel(squad) }, function (startAt) {
+                window.GM.pickEventStart({ eventLabel: 'Shadowfront - ' + squadLabel(squad) }, function (startAt) {
                     if (!startAt) return; // annulé
                     startSquad(squad, startAt);
                 });

@@ -287,7 +287,7 @@
             var guildOptions = guilds.map(function(g) {
                 var sVal = (window.guildsData && window.guildsData[g] && window.guildsData[g].server_number) ? String(window.guildsData[g].server_number).replace(/^#+/, '') : '';
                 var sNum = sVal ? ' (#' + esc(sVal) + ')' : '';
-                return '<option value="' + g + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + esc(g) + sNum + '</option>';
+                return '<option value="' + esc(g) + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + esc(g) + sNum + '</option>';
             }).join('');
             return '<div class="gm-sidebar-guild-select-wrapper">' +
                 '<select class="gm-sidebar-guild-select" data-gm-guild-select>' +
@@ -472,7 +472,7 @@
             localStorage.setItem('gm_current_guild', window.currentGuildRestriction);
         }
         var guildOptions = guilds.map(function(g) {
-            return '<option value="' + g + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + g + '</option>';
+            return '<option value="' + esc(g) + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
         }).join('');
 
         var selectStyle = isSuperAdmin

@@ -109,7 +109,7 @@ describe('GM_SETTINGS cross-guild Draft Mercato ranking', () => {
     it('renders a dash for players without recorded data', async () => {
         await SETTINGS.load();
         const row = container().querySelector('tbody tr:nth-child(4)');
-        expect(row.textContent).toContain('—');
+        expect(row.textContent).toContain('-');
     });
 
     it('escapes player pseudos', async () => {

@@ -511,10 +511,10 @@
                 }
                 
                 if (isDualScore) {
-                    scoreCells = '<td class="gm-right">' + (r.score_prep != null ? fmt(r.score_prep) : '—') + '</td>' +
-                        '<td class="gm-right">' + (r.score_pvp  != null ? fmt(r.score_pvp)  : '—') + '</td>';
+                    scoreCells = '<td class="gm-right">' + (r.score_prep != null ? fmt(r.score_prep) : '-') + '</td>' +
+                        '<td class="gm-right">' + (r.score_pvp  != null ? fmt(r.score_pvp)  : '-') + '</td>';
                 } else if (meta.hasScore) {
-                    scoreCells = '<td class="gm-right">' + (r.score != null ? fmt(r.score) : '—') + '</td>';
+                    scoreCells = '<td class="gm-right">' + (r.score != null ? fmt(r.score) : '-') + '</td>';
                 }
             }
 

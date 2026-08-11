@@ -5,6 +5,7 @@
   "type": "module",
   "description": "FGF Guild Management Tool — client-side app (vanilla JS + Supabase)",
   "scripts": {
+    "dev": "serve .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"

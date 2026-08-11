@@ -445,7 +445,7 @@
         var historyHtml = '';
         (ev.history || []).slice(0, 8).forEach(function (h) {
             var label = h.week_start || h.session_id || '?';
-            var scoreText = anyScore ? window.GM.formatNumber(h.score || 0) : '—';
+            var scoreText = anyScore ? window.GM.formatNumber(h.score || 0) : '-';
             historyHtml +=
                 '<div class="portal-chart-row">' +
                     '<span class="portal-chart-row-label">' + esc(String(label).slice(0, 10)) + '</span>' +

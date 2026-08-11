@@ -714,7 +714,7 @@
                             '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
                             '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' : ''
                         ) +
-                        (showGloryCol ? '<td class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '—') + '</td>' : '') +
+                        (showGloryCol ? '<td class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '-') + '</td>' : '') +
                         '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + fmt(m.score) + ' pts</span></td>' +
                     '</tr>';
             });
@@ -1131,7 +1131,7 @@
     }
 
     function shortDate(iso) {
-        if (!iso) return '—';
+        if (!iso) return '-';
         return String(iso).slice(5, 10);
     }
 

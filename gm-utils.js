@@ -682,7 +682,7 @@
             '<div class="confirm-card glass-card">' +
                 '<div class="confirm-icon"><i class="ph-fill ph-calendar-plus text-accent"></i></div>' +
                 '<h3>' + t('event_start_when_title') + '</h3>' +
-                '<p>' + (opts.eventLabel ? '<strong>' + escapeHTML(opts.eventLabel) + '</strong> — ' : '') + t('event_start_when_body') + '</p>' +
+                '<p>' + (opts.eventLabel ? '<strong>' + escapeHTML(opts.eventLabel) + '</strong> - ' : '') + t('event_start_when_body') + '</p>' +
                 '<div class="gm-col" style="gap:.75rem; text-align:left; margin:.25rem 0 1.2rem;">' +
                     '<div class="gm-col" style="gap:.3rem;">' +
                         '<span class="gm-dim" style="font-size:.8rem;">' + t('event_start_date') + '</span>' +
@@ -947,7 +947,7 @@
     }
 
     function formatPower(val) {
-        if (!val) return '—';
+        if (!val) return '-';
         var num = parseInt(val) || 0;
         if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B';
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';

@@ -155,7 +155,7 @@
 
             if (rpcRes.error) throw rpcRes.error;
 
-            window.GM.showToast('Arms Race ' + stageLabel(stageKey) + ' — ' + (t('event_started') || 'Started'), 'success');
+            window.GM.showToast('Arms Race ' + stageLabel(stageKey) + ' - ' + (t('event_started') || 'Started'), 'success');
 
             if (window.GM.notifyDiscordEvent) {
                 window.GM.notifyDiscordEvent(evName, startAt || sessionId, 'start');
@@ -209,7 +209,7 @@
             var currentStartAt = res.data ? res.data.start_at : null;
 
             window.GM.pickEventStart({
-                eventLabel: 'Arms Race ' + stageLabel(stageKey) + ' — ' + t('edit_title'),
+                eventLabel: 'Arms Race ' + stageLabel(stageKey) + ' - ' + t('edit_title'),
                 defaultVal: currentStartAt
             }, async function (startAt) {
                 if (!startAt) return;

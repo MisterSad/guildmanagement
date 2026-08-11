@@ -129,7 +129,7 @@ function parseLeaderboard() {
         return {
             pseudo: tds[1].querySelector('.gm-member-pseudo').textContent.trim(),
             events: tds[2].textContent.trim(),
-            glory: hasGlory ? tds[3].textContent.trim() : '—',
+            glory: hasGlory ? tds[3].textContent.trim() : '-',
             score: (hasGlory ? tds[4] : tds[3]).textContent.trim()
         };
     });
@@ -162,10 +162,10 @@ describe('GM_STATS global mode', () => {
         expect(rows[1].score).toBe('65 pts');
 
         expect(rows[0].events).toBe('1/1');
-        expect(rows[0].glory).toBe('—');
+        expect(rows[0].glory).toBe('-');
 
         expect(rows[1].events).toBe('1/1');
-        expect(rows[1].glory).toBe('—');
+        expect(rows[1].glory).toBe('-');
 
         const gamma = rows.find((r) => r.pseudo === 'GammaGhost');
         expect(gamma.score).toBe('0 pts');

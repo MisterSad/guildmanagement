@@ -136,7 +136,7 @@ describe('formatPower', () => {
         expect(RAD.formatPower(1500000)).toBe('1.5M');
         expect(RAD.formatPower(1500)).toBe('1.5K');
         expect(RAD.formatPower(999)).toBe('999');
-        expect(RAD.formatPower('')).toBe('—');
+        expect(RAD.formatPower('')).toBe('-');
     });
 });
 

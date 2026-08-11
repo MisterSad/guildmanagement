@@ -20,7 +20,7 @@
     var t = function (k) { return window.GM_I18N ? window.GM_I18N.t(k) : k; };
 
     function fmtScore(n) {
-        if (n == null || isNaN(n) || n === 0) return '—';
+        if (n == null || isNaN(n) || n === 0) return '-';
         if (n >= 1000000000) return (n / 1000000000).toFixed(1) + 'B';
         if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
         if (n >= 10000) return (n / 1000).toFixed(0) + 'K';
@@ -45,7 +45,7 @@
     }
 
     function formatServerDisplay(rawServer) {
-        if (!rawServer) return '—';
+        if (!rawServer) return '-';
         var s = String(rawServer).trim();
         if (s.indexOf('#') === 0) return s;
         return '#' + s;

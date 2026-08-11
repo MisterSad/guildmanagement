@@ -365,7 +365,7 @@
             var currentStartAt = res.data ? res.data.start_at : null;
             
             window.GM.pickEventStart({ 
-                eventLabel: s.activeEventName + ' — ' + t('edit_title'), 
+                eventLabel: s.activeEventName + ' - ' + t('edit_title'), 
                 defaultVal: currentStartAt 
             }, async function (startAt) {
                 if (!startAt) return;
@@ -642,13 +642,13 @@
                         : '') +
                     (isSvsOrGvg
                         ? '<td class="gm-right" data-label="' + t('col_score_prep') + '">' +
-                              '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? fmt(p.score_prep) : '') + '" placeholder="—" data-pseudo="' + esc(p.pseudo) + '">' +
+                              '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? fmt(p.score_prep) : '') + '" placeholder="-" data-pseudo="' + esc(p.pseudo) + '">' +
                           '</td>' +
                           '<td class="gm-right" data-label="' + t('col_score_pvp') + '">' +
-                              '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? fmt(p.score_pvp) : '') + '" placeholder="—" data-pseudo="' + esc(p.pseudo) + '">' +
+                              '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? fmt(p.score_pvp) : '') + '" placeholder="-" data-pseudo="' + esc(p.pseudo) + '">' +
                           '</td>'
                         : (hasScore ? '<td class="gm-right" data-label="' + t('col_score') + '">' +
-                              '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? fmt(p.score) : '') + '" placeholder="—" data-pseudo="' + esc(p.pseudo) + '">' +
+                              '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? fmt(p.score) : '') + '" placeholder="-" data-pseudo="' + esc(p.pseudo) + '">' +
                           '</td>' : '')) +
                     (pendingCount > 0 ? '<td class="gm-center" data-label="Actions">' + actionBtn + '</td>' : '') +
                 '</tr>';

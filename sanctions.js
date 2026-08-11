@@ -53,7 +53,7 @@
             var dateStr = new Date(s.created_at).toLocaleDateString(locale, {
                 day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
             });
-            var author = s.created_by || '—';
+            var author = s.created_by || '-';
             var initial = window.GM.avatarInit(s.pseudo);
             html +=
                 '<div class="gm-sanction-row">' +

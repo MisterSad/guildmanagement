@@ -8,17 +8,17 @@
 
     var HELP_DB = {
         // ====================================================
-        // ADMIN — Accounts & Access
+        // ADMIN - Accounts & Access
         // ====================================================
         'help-create-account': {
             icon: 'ph-key',
             title: 'New Account',
-            body: '<p>Create a login account for a guild admin. Enter a username (e.g. the person\'s in-game name), select the guild, and click <strong>Generate Access</strong>.</p><p>A secure password is generated automatically. Copy and share it with the admin — they can use it to log in immediately.</p><p>The account gets <strong>Guild Admin</strong> access and can only manage their own guild\'s data.</p>'
+            body: '<p>Create a login account for a guild admin. Enter a username (e.g. the person\'s in-game name), select the guild, and click <strong>Generate Access</strong>.</p><p>A secure password is generated automatically. Copy and share it with the admin - they can use it to log in immediately.</p><p>The account gets <strong>Guild Admin</strong> access and can only manage their own guild\'s data.</p>'
         },
         'help-active-accounts': {
             icon: 'ph-shield-check',
             title: 'Active Admin Accounts',
-            body: '<p>Lists all admin accounts for your guild. For each account you can:</p><ul><li><i class="ph ph-arrow-counter-clockwise"></i> <strong>Reset password</strong> — generates a new password and shows it once. The old password is immediately invalidated.</li><li><i class="ph ph-trash"></i> <strong>Delete</strong> — permanently removes the account. The person will no longer be able to log in.</li></ul>'
+            body: '<p>Lists all admin accounts for your guild. For each account you can:</p><ul><li><i class="ph ph-arrow-counter-clockwise"></i> <strong>Reset password</strong> - generates a new password and shows it once. The old password is immediately invalidated.</li><li><i class="ph ph-trash"></i> <strong>Delete</strong> - permanently removes the account. The person will no longer be able to log in.</li></ul>'
         },
         'help-member-accounts': {
             icon: 'ph-users-three',
@@ -28,11 +28,11 @@
         'help-join-code': {
             icon: 'ph-key',
             title: 'Guild Join Code',
-            body: '<p>This is the unique code for your guild. Give it to players who want to self-register on the Player Portal.</p><p>On the login screen, players enter their <strong>username</strong> and this <strong>Join Code</strong> to create an account. Their account will be <em>pending</em> until you approve it in the <strong>Player Portal Accounts</strong> section above.</p><p>The code is permanent and never changes — you can freely share it in Discord.</p>'
+            body: '<p>This is the unique code for your guild. Give it to players who want to self-register on the Player Portal.</p><p>On the login screen, players enter their <strong>username</strong> and this <strong>Join Code</strong> to create an account. Their account will be <em>pending</em> until you approve it in the <strong>Player Portal Accounts</strong> section above.</p><p>The code is permanent and never changes - you can freely share it in Discord.</p>'
         },
 
         // ====================================================
-        // ADMIN — Discord Notifications
+        // ADMIN - Discord Notifications
         // ====================================================
         'help-guild-config': {
             icon: 'ph-sliders',
@@ -56,7 +56,7 @@
         },
 
         // ====================================================
-        // ADMIN — Members
+        // ADMIN - Members
         // ====================================================
         'help-members-list': {
             icon: 'ph-users',
@@ -71,12 +71,12 @@
         'help-absences': {
             icon: 'ph-calendar-x',
             title: 'Member Absences',
-            body: '<p>Players can declare upcoming absences through the Player Portal. This section shows all declared absences so you can plan your event rosters accordingly.</p><p>Absences are informational only — they do not automatically affect participation tracking.</p>'
+            body: '<p>Players can declare upcoming absences through the Player Portal. This section shows all declared absences so you can plan your event rosters accordingly.</p><p>Absences are informational only - they do not automatically affect participation tracking.</p>'
         },
         'help-timezones': {
             icon: 'ph-globe-hemisphere-west',
             title: 'Member Timezones',
-            body: '<p>Shows the UTC timezone offset declared by each player in the Player Portal. Useful for scheduling events across different regions.</p><p>The offset is set by the player themselves and is informational — it doesn\'t change how event times are displayed.</p>'
+            body: '<p>Shows the UTC timezone offset declared by each player in the Player Portal. Useful for scheduling events across different regions.</p><p>The offset is set by the player themselves and is informational - it doesn\'t change how event times are displayed.</p>'
         },
 
         // ====================================================
@@ -85,7 +85,7 @@
         'help-event-svs': {
             icon: 'ph-sword',
             title: 'Server vs Server (SvS)',
-            body: '<p>Tracks participation for the weekly SvS event. To use:</p><ol><li>Click <strong>Start SvS</strong> to open the current week\'s session.</li><li>Check off the members who participated (or import from Discord).</li><li>Set each player\'s score if applicable.</li><li>Click <strong>Validate</strong> to save. The session auto-groups by ISO week.</li></ol><p>Re-opening the same week reuses the existing session — no duplicate data.</p>'
+            body: '<p>Tracks participation for the weekly SvS event. To use:</p><ol><li>Click <strong>Start SvS</strong> to open the current week\'s session.</li><li>Check off the members who participated (or import from Discord).</li><li>Set each player\'s score if applicable.</li><li>Click <strong>Validate</strong> to save. The session auto-groups by ISO week.</li></ol><p>Re-opening the same week reuses the existing session - no duplicate data.</p>'
         },
         'help-event-gvg': {
             icon: 'ph-flag-banner',
@@ -105,7 +105,7 @@
         'help-event-armsrace': {
             icon: 'ph-target',
             title: 'Arms Race',
-            body: '<p>Arms Race has two stages: <strong>Stage A</strong> and <strong>Stage B</strong>. Each stage is a separate session tracked by date.</p><p>Scoring: Stage A and Stage B count independently — a player who does both A and B in the same week earns two participation points.</p>'
+            body: '<p>Arms Race has two stages: <strong>Stage A</strong> and <strong>Stage B</strong>. Each stage is a separate session tracked by date.</p><p>Scoring: Stage A and Stage B count independently - a player who does both A and B in the same week earns two participation points.</p>'
         },
         'help-event-glory': {
             icon: 'ph-trophy',
@@ -133,7 +133,7 @@
         'help-sanctions': {
             icon: 'ph-warning-octagon',
             title: 'Sanctions',
-            body: '<p>Log disciplinary actions for members (warnings, bench, removal).</p><ul><li>Select the member, pick a sanction type, and add a reason.</li><li>Sanctions are visible to all admins of your guild.</li><li>A sanction does not automatically restrict access — it is a record-keeping tool.</li></ul>'
+            body: '<p>Log disciplinary actions for members (warnings, bench, removal).</p><ul><li>Select the member, pick a sanction type, and add a reason.</li><li>Sanctions are visible to all admins of your guild.</li><li>A sanction does not automatically restrict access - it is a record-keeping tool.</li></ul>'
         },
         'help-banned': {
             icon: 'ph-prohibit',
@@ -152,7 +152,7 @@
         'help-portal-power': {
             icon: 'ph-sword',
             title: 'Update Your Power',
-            body: '<p>Enter your current in-game <strong>Overall Combat Power</strong> and click Save. Your guild admin uses this to track roster strength.</p><p>Update it regularly — especially after a major troop upgrade or research completion.</p>'
+            body: '<p>Enter your current in-game <strong>Overall Combat Power</strong> and click Save. Your guild admin uses this to track roster strength.</p><p>Update it regularly - especially after a major troop upgrade or research completion.</p>'
         },
         'help-portal-absence': {
             icon: 'ph-calendar-x',
