@@ -1,18 +1,12 @@
-:flying_saucer: **NIGHTWRAITH ROSTER EXPANSION — v56**
+:wrench: **NIGHTWRAITH TENANT & SERVER FIX — v57**
 
-Added 61 additional members to **Nightwraith**, bringing the total guild roster to 129 players with updated combat power values.
-
----
-
-:sparkles: **New**
-
-- :crossed_swords: **129 Total Members Imported:** Added new members (Rohaz, MadTomcat1953, Marijus, mykka, Hgx, GipsiUa, etc.) to `Nightwraith` with their exact combat power scores.
+Corrected tenant ID casing to **NIGHTWRAITH** and assigned server number **1078**.
 
 ---
 
 :wrench: **Fixed**
 
-- :zap: **Roster Power Sync:** Applied `(guild, pseudo)` upserts to refresh combat power for all players without duplicating records.
+- :shield: **Tenant Alignment:** Migrated all 129 member records to `NIGHTWRAITH` (server `#1078`) and cleaned up the mis-cased tenant entry.
 
 ---
 
