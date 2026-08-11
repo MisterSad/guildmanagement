@@ -11,21 +11,12 @@ few hours, with an incrementing number in its title.
 
 ## New
 
-- **Automated Active Event Roster Sync on Member Changes**: Created migration `20260811000000_sync_active_event_participants_on_member_changes.sql` and updated frontend loaders (`events.js`, `armsrace.js`) to automatically synchronize participant lists for all active (already initiated) event sessions whenever a member is added, approved, deleted, or transferred between guilds.
-  - **Guild Transfers**: Transferring a member (`gm_transfer_guild_member` & `resolve_guild_transfer`) now automatically removes their unparticipated active event rows from the old guild and auto-enrolls them into all active event sessions of their new target guild.
-  - **Player Approvals**: Approving a pending player registration (`gm_approve_player_account`) automatically enrolls the new member into all active event sessions of their guild.
-  - **Member Deletions**: Deleting a member cleans up unparticipated active event entries while preserving past completed event history.
-  - **On-Demand Loader Sync**: Opening or fetching any active event session (`events.js`, `armsrace.js`) runs `gm_populate_event_participants` on the fly to guarantee 100% real-time alignment with the current guild roster.
-
-- **Contextual Help Tooltips ("i" Info Buttons)**: Added a small circular **ⓘ** info button beside section headers across the admin dashboard and player portal. Clicking any info button opens a sleek slide-up modal (`gm-help.js`) with plain-English guidance explaining how to use that specific feature.
+- **Nightwraith Guild & Roster Import**: Created migration `20260811190000_add_nightwraith_guild_and_members.sql` provisioning the guild `Nightwraith` in `public.guilds` with unlimited subscription status, and importing 129 unique members (Ducksauce, Rohaz, Lionheart, BartiZ, Hanssssolo, MadTomcat1953, Marijus, mykka, adones, QII7, etc.) with their exact combat power values into `public.guild_members`.
+- **Automated Active Event Roster Sync on Member Changes**: Created migration `20260811000000_sync_active_event_participants_on_member_changes.sql` and updated frontend loaders (`events.js`, `armsrace.js`) to automatically synchronize participant lists for all active event sessions whenever a member is added, approved, deleted, or transferred.
 
 ---
 
 ## Fixed
 
-- **Tenant-Isolated Unique Indexes on `event_participants` (`20260811003000_fix_tenant_isolated_event_participants_indexes.sql`)**: Resolved global unique index collision issue on `event_participants` where an old non-tenant unique index `(event_name, session_id, pseudo)` blocked enrolling transferred players (like **Dust**) into active sessions of target guilds (e.g. Arms Race Stage B of ALPHA) when their old guild (OMEGA) held the same session ID. Created clean tenant-scoped unique indexes `idx_ep_tenant_session_unique` on `(guild, event_name, session_id, pseudo)`.
-- **Dust & Existing Transferred Players Backfill (`20260811002000_backfill_active_events_for_all_members.sql`)**: Ran a database backfill script that enrolled existing transferred members into their target guild's active event sessions, and purged unparticipated active event rows from their previous guilds.
-- **Cross-Guild Transfer Auto-Enroll Authorization Exception**: Fixed migration `20260811001000_fix_transfer_auto_enroll_authorization.sql` where `gm_add_member_to_active_events` raised a `not_authorized` exception during a player transfer.
-- **Stale Participant Rosters in Active Events**: Resolved issue where members added or transferred after an event session was started did not appear in active event participant lists.
-- **Crown Icon Overlap in Member Role Dropdown**: Fixed the `ph-crown` icon overlapping the selected role text (R1-R5) in the Edit Member modal (`app.js`).
-- **RLS Write Check Fallback**: Updated RLS SECURITY DEFINER helper functions to fall back to matching by JWT `sub` claim when `auth_user_id` is temporarily unlinked.
+- **Roster & Power Seeding Integrity**: Ensured idempotent composite unique key handling on `(guild, pseudo)` during guild member batch inserts and triggered PostgREST schema cache reload.
+- **Tenant-Isolated Unique Indexes on `event_participants` (`20260811003000_fix_tenant_isolated_event_participants_indexes.sql`)**: Resolved global unique index collision issue on `event_participants` where an old non-tenant unique index `(event_name, session_id, pseudo)` blocked enrolling transferred players into active sessions of target guilds.

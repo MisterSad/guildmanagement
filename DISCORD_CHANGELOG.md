@@ -1,13 +1,18 @@
-:target: **TENANT-ISOLATED EVENT INDEX & ARMS RACE FIX — v54**
+:flying_saucer: **NIGHTWRAITH ROSTER EXPANSION — v56**
 
-Resolved the index collision issue that prevented transferred players (like **Dust**) from appearing in active Arms Race Stage B sessions.
+Added 61 additional members to **Nightwraith**, bringing the total guild roster to 129 players with updated combat power values.
+
+---
+
+:sparkles: **New**
+
+- :crossed_swords: **129 Total Members Imported:** Added new members (Rohaz, MadTomcat1953, Marijus, mykka, Hgx, GipsiUa, etc.) to `Nightwraith` with their exact combat power scores.
 
 ---
 
 :wrench: **Fixed**
 
-- :target: **Arms Race Stage B & Transferred Players Fix:** Replaced legacy global database indexes on `event_participants` with tenant-scoped unique indexes `(guild, event_name, session_id, pseudo)`.
-- :shield: **Tenant Isolation:** Transferred players (including **Dust** in ALPHA) now cleanly enroll into all active sessions (Arms Race Stage A/B, SvS, GvG, DTR) without colliding with session IDs from their previous guild.
+- :zap: **Roster Power Sync:** Applied `(guild, pseudo)` upserts to refresh combat power for all players without duplicating records.
 
 ---
 
