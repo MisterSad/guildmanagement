@@ -156,6 +156,7 @@ html, body {
 .gm-sidebar-nav {
     display: flex; flex-direction: column; gap: 4px;
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -256,7 +257,10 @@ html, body {
     gap: 0.5rem;
     align-items: center;
     text-align: center;
-    position: relative;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    flex-shrink: 0;
     overflow: hidden;
     box-shadow: 0 10px 30px -5px oklch(0 0 0 / 0.5);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
