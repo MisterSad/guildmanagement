@@ -1,11 +1,11 @@
-:sparkles: **UI TWEAKS & LAYOUT FIXES — v61**
+:sparkles: **UI TWEAKS & LAYOUT FIXES — v62**
 
 ---
 
 :wrench: **Fixed**
 
-- :art: **Sidebar Layout Fixed** - Corrected a layout issue where the subscription card was floating or getting pushed off-screen. It is now absolutely positioned at the bottom of the sidebar, ensuring it stays firmly glued to the bottom of the screen regardless of the navigation menu length.
-- :rocket: **Cache busted** - Bumped CSS cache version (`v13`) so everyone gets the new layout immediately.
+- :art: **Sidebar Layout Fixed** - Resolved the root cause causing the sidebar container to stretch with page content height. Added `align-self: flex-start` and dynamic viewport locking (`height: 100dvh`), so the sidebar remains glued to the left screen while the subscription card stays firmly anchored at the bottom of the viewport at all times.
+- :rocket: **Cache busted** - Bumped CSS cache version (`v14`) so everyone gets the new layout immediately.
 
 ---
 
