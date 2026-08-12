@@ -1732,15 +1732,54 @@
     var ocrInitialized = false;
     var GEMINI_FALLBACK_KEY = (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || '';
 
+    function openOcrModal() {
+        initOcrGeminiModule();
+        var modal = document.getElementById('ocr-modal-overlay');
+        if (modal) {
+            modal.style.display = 'flex';
+            requestAnimationFrame(function () {
+                modal.classList.add('visible');
+            });
+            resetOcrModalState();
+        }
+    }
+
+    function closeOcrModal() {
+        var modal = document.getElementById('ocr-modal-overlay');
+        if (modal) {
+            modal.classList.remove('visible');
+            setTimeout(function () {
+                modal.style.display = 'none';
+            }, 250);
+        }
+    }
+
+    function resetOcrModalState() {
+        ocrExtractedPlayers = [];
+        var dropzone = document.getElementById('ocr-dropzone');
+        var loading = document.getElementById('ocr-loading');
+        var resultsContainer = document.getElementById('ocr-results-container');
+        var btnCommit = document.getElementById('ocr-commit-btn');
+        var fileInput = document.getElementById('ocr-file-input');
+
+        if (dropzone) dropzone.style.display = 'block';
+        if (loading) loading.style.display = 'none';
+        if (resultsContainer) resultsContainer.style.display = 'none';
+        if (btnCommit) btnCommit.style.display = 'none';
+        if (fileInput) fileInput.value = '';
+    }
+
+    window.GM = window.GM || {};
+    window.GM.openOcrModal = openOcrModal;
+    window.GM.closeOcrModal = closeOcrModal;
+
     function initOcrGeminiModule() {
         var modal = document.getElementById('ocr-modal-overlay');
-        var btnTriggers = document.querySelectorAll('.btn-ocr-trigger, #btn-ocr-import');
+        var btnTriggers = document.querySelectorAll('.btn-ocr-trigger, #btn-ocr-import, #btn-ocr-import-member');
         var btnClose = document.getElementById('ocr-modal-close');
         var btnCancel = document.getElementById('ocr-modal-cancel');
         var dropzone = document.getElementById('ocr-dropzone');
         var fileInput = document.getElementById('ocr-file-input');
-        var loading = document.getElementById('ocr-loading');
-        var resultsContainer = document.getElementById('ocr-results-container');
         var btnReset = document.getElementById('ocr-reset-btn');
         var btnSelectAll = document.getElementById('ocr-select-all-btn');
         var cbToggleAll = document.getElementById('ocr-toggle-all-cb');
@@ -1748,36 +1787,18 @@
 
         if (!modal) return;
 
-        function openModal() {
-            modal.classList.add('visible');
-            resetModalState();
-        }
-
-        function closeModal() {
-            modal.classList.remove('visible');
-        }
-
-        function resetModalState() {
-            ocrExtractedPlayers = [];
-            if (dropzone) dropzone.style.display = 'block';
-            if (loading) loading.style.display = 'none';
-            if (resultsContainer) resultsContainer.style.display = 'none';
-            if (btnCommit) btnCommit.style.display = 'none';
-            if (fileInput) fileInput.value = '';
-        }
-
         if (btnTriggers.length > 0) {
             btnTriggers.forEach(function (btn) {
-                btn.onclick = openModal;
+                btn.onclick = openOcrModal;
             });
         }
         if (ocrInitialized) return;
         ocrInitialized = true;
-        if (btnClose) btnClose.addEventListener('click', closeModal);
-        if (btnCancel) btnCancel.addEventListener('click', closeModal);
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) closeModal();
-        });
+        if (btnClose) btnClose.onclick = closeOcrModal;
+        if (btnCancel) btnCancel.onclick = closeOcrModal;
+        modal.onclick = function (e) {
+            if (e.target === modal) closeOcrModal();
+        };
 
         if (dropzone && fileInput) {
             dropzone.addEventListener('click', function () {
