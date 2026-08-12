@@ -1,17 +1,16 @@
-:sparkles: **DEDICATED SUPER ADMIN OPPONENT WEBHOOKS — v78**
+:sparkles: **DISCORD WEBHOOK ROBUSTNESS & CORS FALLBACK — v79**
 
 ---
 
 :party_popper: **New**
 
-- :lock: **Isolated Super Admin Webhooks** - Created dedicated webhook keys (`webhook_svs_opponent` & `webhook_gvg_opponent`) specifically for Opponent Roster exports in SvS and GvG. Completely isolated from standard public guild webhooks to ensure full privacy.
-- :link: **In-Tab Webhook Controls** - Enter and save your secret Opponent Webhook URL directly inside the SvS and GvG Super Admin matchup cards.
+- :shield: **Discord Webhook Fallback & Diagnostics** - Added CORS fallback and detailed error reporting for Opponent Roster sharing so you see exact error details (HTTP status or network block) if a webhook URL is invalid or blocked.
 
 ---
 
 :wrench: **Fixed**
 
-- :key: **Login & Security Hardening** - Fixed client app syntax issue and hardened database access policies for multi-tenant sessions.
+- :bug: **Webhook CORS & Payload Error Handling** - Added fallback form payload mode and URL cleaning to resolve browser CORS blocks.
 
 ---
 

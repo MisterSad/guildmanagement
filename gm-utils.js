@@ -868,7 +868,10 @@
             if (!inputUrl || !inputUrl.trim()) return false;
             webhookUrl = inputUrl.trim();
         }
-        webhookUrl = webhookUrl.trim();
+        webhookUrl = webhookUrl.trim().replace(/^["']|["']$/g, '');
+        if (webhookUrl.indexOf('http') !== 0) {
+            webhookUrl = 'https://' + webhookUrl;
+        }
 
         var totalPower = 0;
         var extremeCount = 0;
@@ -915,21 +918,61 @@
         }
 
         var successCount = 0;
+        var lastErrReason = '';
+
         for (var cIdx = 0; cIdx < chunks.length; cIdx++) {
+            var payloadStr = JSON.stringify({ content: chunks[cIdx] });
+            var posted = false;
+
+            // Attempt 1: Standard JSON fetch
             try {
                 var res = await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: chunks[cIdx] })
+                    body: payloadStr
                 });
-                if (res.ok || res.status === 204) {
-                    successCount++;
-                }
-                if (chunks.length > 1) {
-                    await new Promise(function (res) { setTimeout(res, 300); });
+                if (res.ok || res.status === 204 || res.status === 200) {
+                    posted = true;
+                } else {
+                    var errBody = '';
+                    try { errBody = await res.text(); } catch (e) {}
+                    lastErrReason = 'HTTP ' + res.status + ' ' + (res.statusText || '') + (errBody ? ': ' + errBody : '');
+                    console.error('Discord webhook returned status ' + res.status + ':', errBody);
                 }
             } catch (err) {
-                console.error('Failed to post chunk to Discord:', err);
+                console.warn('Standard JSON fetch to Discord failed, trying form payload fallback:', err);
+                lastErrReason = (err && err.message) || 'Network/CORS error';
+            }
+
+            // Attempt 2: Form payload fallback (URLSearchParams) to bypass CORS preflight issues
+            if (!posted) {
+                try {
+                    var params = new URLSearchParams();
+                    params.append('payload_json', payloadStr);
+                    var resForm = await fetch(webhookUrl, {
+                        method: 'POST',
+                        body: params
+                    });
+                    if (resForm.ok || resForm.status === 204 || resForm.status === 200) {
+                        posted = true;
+                        lastErrReason = '';
+                    } else {
+                        var errText = '';
+                        try { errText = await resForm.text(); } catch (e) {}
+                        lastErrReason = 'HTTP ' + resForm.status + (errText ? ': ' + errText : '');
+                    }
+                } catch (formErr) {
+                    console.error('Form fallback fetch to Discord failed:', formErr);
+                    lastErrReason = (formErr && formErr.message) || lastErrReason || 'Connection failed';
+                }
+            }
+
+            if (posted) {
+                successCount++;
+            }
+
+            if (chunks.length > 1) {
+                await new Promise(function (r) { setTimeout(r, 300); });
             }
         }
 
@@ -942,7 +985,7 @@
             }
             return true;
         } else {
-            var errStr = 'Failed to post roster to Discord webhook.';
+            var errStr = 'Failed to post roster to Discord: ' + (lastErrReason || 'Unknown error');
             if (window.GM_APP && window.GM_APP.showToast) {
                 window.GM_APP.showToast(errStr, 'error');
             } else if (typeof showToast === 'function') {
