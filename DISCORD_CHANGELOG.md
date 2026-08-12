@@ -1,22 +1,17 @@
-📸 **FGF Guild Management Tool — Member & Power OCR Import Update v88** 📸
+📸 **FGF Guild Management Tool — Member & Power OCR Import Update v89** 📸
 
-We have updated the OCR Import tool with a **clean, white-label design** specifically dedicated to roster member creation and power updates!
+We have added **Interactive API Key Configuration** to the OCR Import tool!
 
 ---
 
+🔑 **Interactive API Key Configuration**
+• **Automatic Setup Prompt**: If your browser has no API key set or encounters a `403 Permission Denied` error, a key setup prompt automatically appears inside the OCR modal.
+• **Key Settings Icon**: Click the new 🔑 key icon in the modal header to view or update your key anytime.
+• **Device Persistence**: Your key is securely stored in your browser's local storage for seamless future scans.
+
 🔍 **Dedicated Roster & Power OCR Scanner**
-• **Dedicated Action Button**: Button in **Add a member** renamed to **"Import Members (OCR)"**.
-• **Clear Purpose Modal**: Header updated to **"Import Members & Power (OCR)"** with explicit subtitle: *"Upload roster screenshots to import new members and update power levels"*.
-• **White-Label Clean UI**: All provider brand names ("Gemini") removed from buttons, modals, spinners, and toast notifications.
-• **Future Modular OCR Expansion**: Structured for seamless addition of dedicated OCR tools in future event & stats sections.
-
-📋 **Interactive Verification & Review Grid**
-• **Smart Match Detection**: Automatic status tagging (`New Player`, `Update`, `Unchanged`) compared against your existing roster.
-• **Human-in-the-Loop Validation**: Select/deselect players or correct usernames before committing changes.
-
-⚡ **High-Speed Bulk Database Sync**
-• **Postgres Bulk Upsert RPC**: `gm_bulk_upsert_members` handles multi-row updates in a single database transaction.
-• **Multi-Tenant Security**: Full RLS tenant isolation and active subscription write-gating.
+• **Dedicated Action Button**: **"Import Members (OCR)"** in the **Add a member** card.
+• **White-Label Clean UI**: Clean 100% English interface with clear match detection (`New Player`, `Update`, `Unchanged`).
 
 ---
 
