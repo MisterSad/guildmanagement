@@ -721,15 +721,11 @@
             <!-- Tab: Admin Members -->
             <main class="dashboard-content tab-panel" id="admin-members">
                 <div class="gm-page">
-                    <header class="gm-page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom: 1.5rem;">
+                    <header class="gm-page-header">
                         <div>
                             <h1 class="gm-page-title" data-i18n="members_title">Guild Members</h1>
                             <p class="gm-page-subtitle" data-i18n="members_subtitle">Manage in-game members and UIDs</p>
                         </div>
-                        <button type="button" class="btn-ocr-trigger gm-btn" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.65rem 1.2rem; font-weight:700; font-size:0.95rem; border-radius:8px; display:inline-flex; align-items:center; gap:0.6rem; cursor:pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
-                            <i class="ph ph-camera" style="font-size:1.3rem;"></i>
-                            <span>📸 Importer Captures (OCR Gemini)</span>
-                        </button>
                     </header>
 
                     <div class="gm-card gm-card-padded gm-section">
@@ -738,9 +734,9 @@
                                 <i class="ph ph-user-plus"></i>
                                 <span data-i18n="card_add_member">Add a member</span>
                             </div>
-                            <button type="button" id="btn-ocr-import" class="gm-btn gm-btn-accent" style="gap:0.4rem; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.4rem 0.8rem; font-weight:600; cursor:pointer;">
+                            <button type="button" id="btn-ocr-import" class="btn-ocr-trigger gm-btn gm-btn-accent" style="gap:0.4rem; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.4rem 0.8rem; font-weight:600; cursor:pointer;">
                                 <i class="ph ph-scan" style="font-size:1.1rem;"></i>
-                                <span>Scan OCR Gemini</span>
+                                <span>Scan OCR</span>
                             </button>
                         </div>
                         <form id="add-member-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
@@ -1255,22 +1251,22 @@
 
             <!-- Tab: Member Members -->
             <main class="dashboard-content tab-panel" id="member-members">
-                <header class="dashboard-header slide-up" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom: 1.5rem;">
-                    <div>
-                        <h1 data-i18n="members_title">Guild Members</h1>
-                        <p data-i18n="members_subtitle">Manage guild in-game members</p>
-                    </div>
-                    <button type="button" class="btn-ocr-trigger gm-btn" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.65rem 1.2rem; font-weight:700; font-size:0.95rem; border-radius:8px; display:inline-flex; align-items:center; gap:0.6rem; cursor:pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
-                        <i class="ph ph-camera" style="font-size:1.3rem;"></i>
-                        <span>📸 Importer Captures (OCR Gemini)</span>
-                    </button>
+                <header class="dashboard-header slide-up">
+                    <h1 data-i18n="members_title">Guild Members</h1>
+                    <p data-i18n="members_subtitle">Manage guild in-game members</p>
                 </header>
                 <div class="admin-home-layout">
                     <!-- Horizontal Banner for adding member -->
                     <div class="glass-card action-card horizontal-banner slide-up" style="animation-delay:0.1s">
-                        <div class="banner-header">
-                            <i class="ph-fill ph-user-plus text-accent"></i>
-                            <h3 data-i18n="card_add_member">Add a member</h3>
+                        <div class="banner-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <i class="ph-fill ph-user-plus text-accent"></i>
+                                <h3 data-i18n="card_add_member">Add a member</h3>
+                            </div>
+                            <button type="button" id="btn-ocr-import-member" class="btn-ocr-trigger gm-btn gm-btn-accent" style="gap:0.4rem; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.4rem 0.8rem; font-weight:600; cursor:pointer;">
+                                <i class="ph ph-scan" style="font-size:1.1rem;"></i>
+                                <span>Scan OCR</span>
+                            </button>
                         </div>
                         <form id="add-member-form-member" class="horizontal-form">
                             <div class="input-group">
