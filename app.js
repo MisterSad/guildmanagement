@@ -1858,7 +1858,7 @@
 
         var imageFiles = files.filter(function (f) { return f.type.startsWith('image/'); });
         if (imageFiles.length === 0) {
-            showToast('Veuillez sélectionner un fichier image (PNG, JPG, WEBP).', 'error');
+            showToast('Please select a valid image file (PNG, JPG, WEBP).', 'error');
             return;
         }
 
@@ -1887,7 +1887,7 @@
             renderOcrResults(ocrExtractedPlayers);
         } catch (err) {
             console.error('OCR processing error:', err);
-            showToast('Échec de l\'analyse OCR : ' + (err.message || 'Erreur Gemini'), 'error');
+            showToast('OCR Analysis failed: ' + (err.message || 'Gemini Error'), 'error');
             if (loading) loading.style.display = 'none';
             if (dropzone) dropzone.style.display = 'block';
         }
@@ -1945,7 +1945,7 @@
         var resJson = await response.json();
         var jsonText = resJson && resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content && resJson.candidates[0].content.parts && resJson.candidates[0].content.parts[0] ? resJson.candidates[0].content.parts[0].text : '';
         
-        if (!jsonText) throw new Error('Aucun texte extrait par Gemini.');
+        if (!jsonText) throw new Error('No text extracted by Gemini.');
 
         var parsed = JSON.parse(jsonText);
         var rawList = Array.isArray(parsed.players) ? parsed.players : (Array.isArray(parsed) ? parsed : []);
@@ -1982,11 +1982,11 @@
             var existing = existingMap[p.pseudo.toLowerCase()];
             var badgeHtml = '';
             if (!existing) {
-                badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> Nouveau</span>';
+                badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
             } else if (existing.overall_power !== p.overall_power) {
-                badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> MAJ (' + window.GM.formatNumber(existing.overall_power) + ' &rarr; ' + window.GM.formatNumber(p.overall_power) + ')</span>';
+                badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + window.GM.formatNumber(existing.overall_power) + ' &rarr; ' + window.GM.formatNumber(p.overall_power) + ')</span>';
             } else {
-                badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Inchangé</span>';
+                badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
             }
 
             html += '<tr>' +
@@ -2025,7 +2025,7 @@
         var selectedCbs = tbody.querySelectorAll('.ocr-row-cb:checked');
         var count = selectedCbs.length;
         var span = btnCommit.querySelector('span');
-        if (span) span.textContent = 'Appliquer la mise à jour (' + count + ')';
+        if (span) span.textContent = 'Apply Roster Update (' + count + ')';
         btnCommit.disabled = count === 0;
     }
 
@@ -2040,7 +2040,7 @@
         });
 
         if (selectedIndices.length === 0) {
-            showToast('Aucun joueur sélectionné.', 'error');
+            showToast('No players selected.', 'error');
             return;
         }
 
@@ -2048,7 +2048,7 @@
 
         btnCommit.disabled = true;
         var span = btnCommit.querySelector('span');
-        if (span) span.textContent = 'Enregistrement...';
+        if (span) span.textContent = 'Saving...';
 
         try {
             var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
@@ -2077,18 +2077,21 @@
                 }
             }
 
-            showToast(selectedPlayers.length + ' membre(s) mis à jour avec succès via OCR Gemini !', 'success');
+            showToast(selectedPlayers.length + ' member(s) successfully updated via Gemini OCR!', 'success');
             
             var modal = document.getElementById('ocr-modal-overlay');
-            if (modal) modal.classList.remove('visible');
+            if (modal) {
+                modal.classList.remove('visible');
+                modal.style.display = 'none';
+            }
 
             fetchGuildMembers();
         } catch (err) {
             console.error('Commit OCR failed:', err);
-            showToast('Erreur lors de l\'enregistrement des membres : ' + err.message, 'error');
+            showToast('Error saving member updates: ' + err.message, 'error');
         } finally {
             btnCommit.disabled = false;
-            if (span) span.textContent = 'Appliquer la mise à jour';
+            if (span) span.textContent = 'Apply Roster Update';
         }
     }
 

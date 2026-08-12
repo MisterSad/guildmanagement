@@ -1378,8 +1378,8 @@
                         <i class="ph ph-scan" style="font-size:1.3rem;"></i>
                     </div>
                     <div>
-                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">Importation / Scan OCR Gemini</h3>
-                        <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted);">Scannez vos captures d'écran de guilde pour mettre à jour les membres & puissances</p>
+                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">Gemini OCR Import</h3>
+                        <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted);">Scan your guild screenshots to update member power levels</p>
                     </div>
                 </div>
                 <button type="button" class="gm-mini-btn" id="ocr-modal-close" style="cursor: pointer;"><i class="ph ph-x"></i></button>
@@ -1389,27 +1389,27 @@
                 <!-- Step 1: Upload Dropzone -->
                 <div id="ocr-dropzone" style="border: 2px dashed rgba(99, 102, 241, 0.4); border-radius: 12px; padding: 2rem 1rem; text-align: center; background: rgba(99, 102, 241, 0.03); cursor: pointer; transition: all 0.2s ease;">
                     <i class="ph ph-cloud-arrow-up" style="font-size: 2.8rem; color: var(--accent); margin-bottom: 0.5rem; display: inline-block;"></i>
-                    <h4 style="margin: 0 0 0.4rem 0; font-size: 1rem;">Glissez vos captures d'écran ici ou cliquez pour choisir</h4>
-                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Formats supportés: PNG, JPG, WEBP (Listes de membres, classement guilde)</p>
+                    <h4 style="margin: 0 0 0.4rem 0; font-size: 1rem;">Drop your roster screenshots here or click to browse</h4>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Supported formats: PNG, JPG, WEBP (Member lists, guild rankings)</p>
                     <input type="file" id="ocr-file-input" accept="image/*" multiple style="display: none;">
                 </div>
 
                 <!-- Processing Spinner -->
                 <div id="ocr-loading" style="display: none; text-align: center; padding: 2.5rem 1rem;">
                     <div class="gm-spinner" style="width: 42px; height: 42px; border-width: 3px; border-top-color: #8b5cf6; margin: 0 auto 1rem auto;"></div>
-                    <h4 style="margin: 0 0 0.4rem 0; font-size: 1rem;">Analyse OCR en cours par Gemini...</h4>
-                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Extraction des pseudos et des puissances des joueurs...</p>
+                    <h4 style="margin: 0 0 0.4rem 0; font-size: 1rem;">Analyzing screenshots with Gemini OCR...</h4>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Extracting player usernames and power levels...</p>
                 </div>
 
                 <!-- Step 2: Results Table & Review -->
                 <div id="ocr-results-container" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; justify-space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
                         <div style="font-size: 0.85rem; font-weight: 600;">
-                            Joueurs détectés : <span id="ocr-detected-count" style="color: var(--accent);">0</span>
+                            Detected Players: <span id="ocr-detected-count" style="color: var(--accent);">0</span>
                         </div>
                         <div style="display: flex; gap: 0.5rem;">
-                            <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" id="ocr-select-all-btn">Tout sélectionner</button>
-                            <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" id="ocr-reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Autre image</button>
+                            <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" id="ocr-select-all-btn">Select All</button>
+                            <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" id="ocr-reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Clear / New Image</button>
                         </div>
                     </div>
 
@@ -1418,9 +1418,9 @@
                             <thead>
                                 <tr>
                                     <th style="width: 38px; text-align: center;"><input type="checkbox" id="ocr-toggle-all-cb" checked></th>
-                                    <th>Joueur (Pseudo)</th>
-                                    <th>Puissance Détectée</th>
-                                    <th>Statut Roster</th>
+                                    <th>Player Username</th>
+                                    <th>Detected Power</th>
+                                    <th>Roster Status</th>
                                 </tr>
                             </thead>
                             <tbody id="ocr-results-tbody">
@@ -1432,10 +1432,10 @@
             </div>
 
             <div class="gm-modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.8rem; border-top: 1px solid var(--border-soft);">
-                <button type="button" class="gm-btn gm-btn-ghost" id="ocr-modal-cancel">Annuler</button>
+                <button type="button" class="gm-btn gm-btn-ghost" id="ocr-modal-cancel">Cancel</button>
                 <button type="button" class="gm-btn gm-btn-primary" id="ocr-commit-btn" style="display: none; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">
                     <i class="ph ph-check-circle"></i>
-                    <span>Appliquer la mise à jour (0)</span>
+                    <span>Apply Roster Update (0)</span>
                 </button>
             </div>
         </div>
