@@ -1,18 +1,10 @@
-📸 **FGF Guild Management Tool — Member & Power OCR Import Update v89** 📸
+📢 **FGF Guild Management Tool Update — v90**
 
-We have added **Interactive API Key Configuration** to the OCR Import tool!
+✨ **New Features & Improvements:**
+- 🔍 **Interactive OCR Review & Validation Grid**: Scan results are now displayed in a review table before any roster updates take place.
+- ✏️ **Inline Real-Time Editing**: Admins can edit extracted usernames or power levels directly in the review table to correct any misread digits before saving.
+- 🏷️ **Live Status Badges**: Displays dynamic counters for `New Players`, `Power Updates`, and `Unchanged Members`.
+- ✅ **Explicit Validation Step**: Clear green **`Validate & Apply Updates`** button ensures full admin control before saving data to the guild database.
 
----
-
-🔑 **Interactive API Key Configuration**
-• **Automatic Setup Prompt**: If your browser has no API key set or encounters a `403 Permission Denied` error, a key setup prompt automatically appears inside the OCR modal.
-• **Key Settings Icon**: Click the new 🔑 key icon in the modal header to view or update your key anytime.
-• **Device Persistence**: Your key is securely stored in your browser's local storage for seamless future scans.
-
-🔍 **Dedicated Roster & Power OCR Scanner**
-• **Dedicated Action Button**: **"Import Members (OCR)"** in the **Add a member** card.
-• **White-Label Clean UI**: Clean 100% English interface with clear match detection (`New Player`, `Update`, `Unchanged`).
-
----
-
-⚡ **Quality & Reliability**: Passed type-check with 0 errors and 200/200 green Vitest tests!
+🛠️ **Fixes & System Integrity:**
+- 🛡️ Verified multi-tenant scoping and 100% test battery pass (200/200 tests green).
