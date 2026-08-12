@@ -1,10 +1,10 @@
-:sparkles: **SUPER ADMIN TENANT DELETION — v65**
+:sparkles: **OBSIDIANSTAR ROSTER CORRECTION — v66**
 
 ---
 
-:rocket: **New**
+:wrench: **Fixed**
 
-- :wastebasket: **Tenant Deletion Feature** - Super Admins can now delete any guild/tenant directly from the Super Admin dashboard. Includes full cascade deletion of members, sessions, squads, transfers, and accounts, secured with confirmation modals and server-side role checks.
+- :shield: **ObsidianStar Tenant Corrected** - Transferred all 126 members and combat power data to the existing tenant `OBSIDIANSTAR` (Server #1078) and removed the draft `OBSIDANSTAR` record.
 
 ---
 
