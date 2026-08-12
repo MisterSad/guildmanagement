@@ -124,7 +124,7 @@ Return ONLY a JSON object matching this schema:
       {
         ok: false,
         error: "ocr_processing_failed",
-        message: lastError || "Failed to parse image with Gemini API",
+        message: lastError || "Failed to parse image with AI OCR engine",
       },
       500
     );
