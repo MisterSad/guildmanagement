@@ -1903,6 +1903,11 @@
             return;
         }
 
+        if (imageFiles.length > 15) {
+            showToast('Processing maximum 15 screenshots per batch.', 'info');
+            imageFiles = imageFiles.slice(0, 15);
+        }
+
         if (dropzone) dropzone.style.display = 'none';
         if (loading) loading.style.display = 'block';
         if (resultsContainer) resultsContainer.style.display = 'none';
