@@ -11,6 +11,7 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **ASTRAL_LIBERION Guild Roster Import (`20260812050000`)**: Created migration `20260812050000_import_astral_liberion_members.sql` importing 73 members into the existing `ASTRAL_LIBERION` tenant (Server #1078) with their respective combat power ratings.
 - **NIGHTWRAITH Guild Roster Clean & Sync (`20260812045500`)**: Created migration `20260812045500_clean_obsolete_nightwraith_members.sql` purging 7 obsolete member records (old pseudos, case variants, and past roster entries) so that `NIGHTWRAITH` (Server #1078) reflects exactly the 147 current members.
 - **NIGHTWRAITH Guild Roster & Power Update (`20260812045000`)**: Created migration `20260812045000_upsert_nightwraith_members.sql` upserting 147 members into the existing `NIGHTWRAITH` tenant (Server #1078) with updated overall combat power ratings.
 - **OBSIDIANSTAR Guild Roster Correction (`20260812043000`)**: Created migration `20260812043000_fix_obsidianstar_typo_and_move_members.sql` transferring all 126 imported members to the correct tenant `OBSIDIANSTAR` (server #1078) and deleting the erroneous `OBSIDANSTAR` tenant.

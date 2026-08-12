@@ -1,10 +1,10 @@
-:sparkles: **NIGHTWRAITH ROSTER CLEANUP — v72**
+:sparkles: **ASTRAL_LIBERION MEMBER IMPORT — v73**
 
 ---
 
-:wrench: **Fixed**
+:party_popper: **New**
 
-- :broom: **NIGHTWRAITH Roster Purged** - Removed 7 obsolete member records (old pseudos/case variants) so `NIGHTWRAITH` contains exactly the 147 current members.
+- :shield: **ASTRAL_LIBERION Roster Import** - Imported 73 members with combat power into the `ASTRAL_LIBERION` tenant (Server #1078).
 
 ---
 
