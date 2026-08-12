@@ -2,21 +2,18 @@
 
 ## New
 
-- **Admin Interactive OCR Validation Grid (v90)**:
-  - **Human-in-the-Loop Verification**: Once screenshot scanning completes, extracted data is displayed in an interactive review table before any database updates occur.
-  - **Inline Real-Time Editing**: Admins can directly edit extracted player usernames (`.ocr-edit-pseudo`) or power levels (`.ocr-edit-power`) right inside the preview table before validating.
-  - **Summary Breakdown Badges**: Added real-time summary indicators above the table for `New Players`, `Power Updates`, and `Unchanged Members`.
-  - **Explicit Validation Action**: Button updated to **`Validate & Apply Updates (X)`** highlighted in green, requiring explicit admin click to commit to the active guild database.
+- **Intelligent Roster Name Reconciliation & Fuzzy Matching (v91)**:
+  - **Fuzzy Levenshtein Similarity Matcher**: Integrated `findBestMatchingMember` using Levenshtein distance and normalized string matching to compare extracted OCR pseudos against existing database members.
+  - **Automatic Reconciled Tagging**: Automatically detects OCR transcription typos (e.g. `RAWK3T` vs `RAWKET`), extra spaces, or guild tags (e.g. `[ALPHA] HawkEye` vs `HawkEye`) and links them directly to the matching DB member.
+  - **Gold Reconciled Chip Indicator**: Displays a dedicated golden badge `<span class="gm-chip"><i class="ph ph-sparkle"></i> Reconciled ("RAWKET") &rarr; 115M</span>` and summary counter in the review table.
+  - **Prevents Duplicate Ghost Players**: Automatically updates existing member power records instead of creating duplicate player entries.
 
-- **Interactive OCR API Key Setup (v89)**:
-  - **Inline Key Configuration Prompt**: When no API key is detected or if an HTTP 403 Permission Denied error occurs, the OCR modal automatically displays an interactive setup box.
-  - **Key Settings Button**: Added a dedicated key icon button (`#ocr-key-config-btn`) in the modal header to view, update, or edit the saved API key anytime.
-
-- **Dedicated Roster & Power OCR Import (v88)**:
-  - **White-Label AI Integration**: Completely removed all references to external AI provider names ("Gemini") across all user-facing UI elements, buttons, titles, dropzone hints, loading spinners, and toast notifications.
-  - **Clear Purpose & Scope**: Re-labeled the button in the `Add a member` card to **`Import Members (OCR)`** and updated the modal header to **`Import Members & Power (OCR)`** to explicitly clarify its dedicated function.
+- **Multimodal OCR Batching & Auto 429 Retry (v90)**:
+  - **Multimodal Payload Grouping**: Groups up to 4 screenshots per single Gemini API request, reducing total API call volume by 75% for large 200+ player rosters.
+  - **Inter-Batch Delay**: 1.2s pause between batch requests to stay comfortably below free-tier RPM quotas.
+  - **Automatic Rate Limit Retry**: Intercepts HTTP 429 errors, displays a clear status countdown on screen, and retries automatically.
 
 ## Fixed
 
-- **Inline Verification Flow**: Ensures no automatic or background data commits occur until the admin reviews and clicks **`Validate & Apply Updates`**.
-- **Type Safety & Build Verification**: All scripts pass with 0 errors (`npm run type-check`) and 200/200 green Vitest tests (`npm test`).
+- **Roster Alignment**: Ensures fuzzy matches above 75% similarity map to existing players while keeping genuine new players tagged as `New Player`.
+- **Quality Gate**: Passed 0 errors (`npm run type-check`) and 200/200 green Vitest unit tests (`npm test`).

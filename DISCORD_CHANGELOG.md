@@ -1,10 +1,10 @@
-📢 **FGF Guild Management Tool Update — v90**
+📢 **FGF Guild Management Tool Update — v91**
 
 ✨ **New Features & Improvements:**
-- 🔍 **Interactive OCR Review & Validation Grid**: Scan results are now displayed in a review table before any roster updates take place.
-- ✏️ **Inline Real-Time Editing**: Admins can edit extracted usernames or power levels directly in the review table to correct any misread digits before saving.
-- 🏷️ **Live Status Badges**: Displays dynamic counters for `New Players`, `Power Updates`, and `Unchanged Members`.
-- ✅ **Explicit Validation Step**: Clear green **`Validate & Apply Updates`** button ensures full admin control before saving data to the guild database.
+- 🧠 **Intelligent Name Reconciliation (Fuzzy Matching)**: Automatically reconciles OCR-extracted pseudos with existing database members, even if there are typos, l33tspeak, spaces, or guild tags (e.g. `R4WKET` &rarr; `RAWKET`).
+- 🏷️ **Gold Reconciled Badges**: Reconciled players are clearly highlighted in gold in the preview table with their matched DB username.
+- 🚫 **Prevents Duplicate Ghost Players**: Guarantees that power updates target existing players in the database rather than creating duplicate accounts.
+- 📦 **Multimodal OCR Batching**: Groups 4 screenshots per request for ultra-fast scanning of 200+ players with automatic HTTP 429 rate limit retries.
 
-🛠️ **Fixes & System Integrity:**
+🛠️ **System Integrity:**
 - 🛡️ Verified multi-tenant scoping and 100% test battery pass (200/200 tests green).
