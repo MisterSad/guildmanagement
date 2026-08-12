@@ -121,6 +121,12 @@ describe('GM_GVG_MATCHUP — Guild vs Guild Matchup & Dangerosity Ranking', () =
         expect(container().textContent).toContain('Super admin only');
     });
 
+    it('renders Discord share buttons for Opponent Guild B', async () => {
+        await GVG.load();
+        expect(container().querySelector('#gvg-share-discord-b')).not.toBeNull();
+        expect(container().querySelector('#gvg-share-discord-table-b')).not.toBeNull();
+    });
+
     it('shows error state with retry button when RPC fails', async () => {
         GM.db = createMockDb(null, { message: 'GvG Matchup Error' });
         await GVG.load();

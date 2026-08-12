@@ -290,8 +290,11 @@
 
                     '<!-- Guild B Selection -->' +
                     '<div style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:12px; padding:.75rem 1rem;">' +
-                        '<div style="font-weight:800; color:#f87171; font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.4rem; display:flex; align-items:center; gap:.4rem;">' +
-                            '<i class="ph ph-crosshair"></i> Guild B (Opponent / Target)' +
+                        '<div style="font-weight:800; color:#f87171; font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.4rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.4rem;">' +
+                            '<span style="display:flex; align-items:center; gap:.4rem;"><i class="ph ph-crosshair"></i> Guild B (Opponent / Target)</span>' +
+                            '<button id="gvg-share-discord-b" class="gm-btn gm-btn-primary gm-btn-sm" style="font-size:0.75rem; padding:0.2rem 0.5rem; display:inline-flex; align-items:center; gap:0.3rem; height:auto; line-height:1.2;">' +
+                                '<i class="ph ph-discord-logo"></i> Share to Discord' +
+                            '</button>' +
                         '</div>' +
                         '<select id="gvg-select-guild-b" class="gm-input" style="width:100%; font-weight:700; font-size:1rem;">' +
                             '<option value="ALL">All Guilds</option>' +
@@ -418,9 +421,14 @@
 
             '<!-- Guild B Roster Table -->' +
             '<div class="gm-card glass-card" style="padding:.85rem; overflow:hidden;">' +
-                '<div style="font-weight:800; font-size:0.9rem; color:#f87171; margin-bottom:.65rem; display:flex; align-items:center; justify-content:space-between;">' +
+                '<div style="font-weight:800; font-size:0.9rem; color:#f87171; margin-bottom:.65rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.4rem;">' +
                     '<span><i class="ph ph-crosshair"></i> ' + esc(state.guildB === 'ALL' ? 'All Guilds' : state.guildB) + ' Roster</span>' +
-                    '<span class="gm-dim" style="font-size:.78rem; font-weight:600;">' + rowsB.length + ' players</span>' +
+                    '<div style="display:flex; align-items:center; gap:.5rem;">' +
+                        '<span class="gm-dim" style="font-size:.78rem; font-weight:600;">' + rowsB.length + ' players</span>' +
+                        '<button id="gvg-share-discord-table-b" class="gm-btn gm-btn-secondary gm-btn-sm" style="font-size:0.72rem; padding:0.18rem 0.45rem; display:inline-flex; align-items:center; gap:0.25rem; height:auto; line-height:1.2;">' +
+                            '<i class="ph ph-discord-logo"></i> Discord' +
+                        '</button>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
                     '<table class="gm-table" style="width:100%; border-collapse:collapse; font-size:0.8rem;">' +
@@ -597,6 +605,35 @@
                 render(container);
             });
         });
+
+        function handleShareGvG(btn) {
+            var origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i> Sharing...';
+            var rowsB = sortRows(filterRows(state.guildB), state.sortKey, state.sortDesc);
+            var label = 'Guild ' + (state.guildB === 'ALL' ? 'All Guilds' : state.guildB);
+
+            if (window.GM && window.GM.shareMatchupRosterToDiscord) {
+                window.GM.shareMatchupRosterToDiscord({
+                    title: 'GvG Target Guild Roster',
+                    eventPrefix: 'gvg',
+                    rows: rowsB,
+                    targetLabel: label
+                }).finally(function () {
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml;
+                });
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        }
+
+        var btnShareB = document.getElementById('gvg-share-discord-b');
+        if (btnShareB) btnShareB.addEventListener('click', function () { handleShareGvG(btnShareB); });
+
+        var btnShareTableB = document.getElementById('gvg-share-discord-table-b');
+        if (btnShareTableB) btnShareTableB.addEventListener('click', function () { handleShareGvG(btnShareTableB); });
     }
 
     function loadingHtml() {

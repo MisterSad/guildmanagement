@@ -133,6 +133,12 @@ describe('GM_SVS_MATCHUP — Server vs Server Matchup & Dangerosity Ranking', ()
         expect(container().textContent).toContain('Super admin only');
     });
 
+    it('renders Discord share buttons for Opponent Server B', async () => {
+        await SVS.load();
+        expect(container().querySelector('#svs-share-discord-b')).not.toBeNull();
+        expect(container().querySelector('#svs-share-discord-table-b')).not.toBeNull();
+    });
+
     it('shows error state with retry button when RPC fails', async () => {
         GM.db = createMockDb(null, { message: 'Server Matchup Error' });
         await SVS.load();

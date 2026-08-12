@@ -841,6 +841,111 @@
         }
     }
 
+    async function shareMatchupRosterToDiscord(options) {
+        options = options || {};
+        var title = options.title || 'Target Roster';
+        var eventPrefix = options.eventPrefix || 'svs';
+        var rows = options.rows || [];
+        var targetLabel = options.targetLabel || 'Target';
+
+        if (!rows || rows.length === 0) {
+            if (window.GM_APP && window.GM_APP.showToast) {
+                window.GM_APP.showToast('No players in roster to share.', 'warning');
+            } else if (typeof showToast === 'function') {
+                showToast('No players in roster to share.', 'warning');
+            }
+            return false;
+        }
+
+        var webhookUrl = await resolveDiscordWebhook(eventPrefix);
+        if (!webhookUrl || !webhookUrl.trim()) {
+            var inputUrl = window.prompt('No ' + eventPrefix.toUpperCase() + ' Discord Webhook URL configured. Please enter Webhook URL:');
+            if (!inputUrl || !inputUrl.trim()) return false;
+            webhookUrl = inputUrl.trim();
+        }
+
+        var totalPower = 0;
+        var extremeCount = 0;
+        var highCount = 0;
+
+        rows.forEach(function (r) {
+            totalPower += (r.power || 0);
+            var tier = String(r.danger_tier || '').toUpperCase();
+            if (tier === 'EXTREME') extremeCount++;
+            if (tier === 'HIGH') highCount++;
+        });
+
+        var highPlusCount = extremeCount + highCount;
+
+        var headerText = '⚔️ **' + title + ' — ' + targetLabel + '**\n' +
+            '📊 **Players:** ' + rows.length + ' | 💥 **Total Power:** ' + formatPower(totalPower) + ' | ⚠️ **Threats (High+):** ' + highPlusCount + '\n\n' +
+            '**Member** | **Guild** | **Power** | **Threat**\n' +
+            '----------------------------------------\n';
+
+        var playerLines = rows.map(function (r, idx) {
+            var tier = String(r.danger_tier || '').toUpperCase();
+            var threatBadge = '🟢 LOW';
+            if (tier === 'EXTREME') threatBadge = '🔴 EXTREME';
+            else if (tier === 'HIGH') threatBadge = '🟠 HIGH';
+            else if (tier === 'MEDIUM') threatBadge = '🟡 MEDIUM';
+
+            return '#' + (idx + 1) + ' `' + (r.pseudo || '') + '` | `' + (r.guild || '') + '` | ' + formatPower(r.power || 0) + ' | ' + threatBadge;
+        });
+
+        var chunks = [];
+        var currentChunk = headerText;
+
+        for (var i = 0; i < playerLines.length; i++) {
+            var line = playerLines[i] + '\n';
+            if (currentChunk.length + line.length > 1850) {
+                chunks.push(currentChunk);
+                currentChunk = line;
+            } else {
+                currentChunk += line;
+            }
+        }
+        if (currentChunk.trim().length > 0) {
+            chunks.push(currentChunk);
+        }
+
+        var successCount = 0;
+        for (var cIdx = 0; cIdx < chunks.length; cIdx++) {
+            try {
+                var res = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: chunks[cIdx] })
+                });
+                if (res.ok || res.status === 204) {
+                    successCount++;
+                }
+                if (chunks.length > 1) {
+                    await new Promise(function (res) { setTimeout(res, 300); });
+                }
+            } catch (err) {
+                console.error('Failed to post chunk to Discord:', err);
+            }
+        }
+
+        if (successCount > 0) {
+            var msg = 'Target roster shared to Discord successfully! (' + successCount + ' message' + (successCount > 1 ? 's' : '') + ')';
+            if (window.GM_APP && window.GM_APP.showToast) {
+                window.GM_APP.showToast(msg, 'success');
+            } else if (typeof showToast === 'function') {
+                showToast(msg, 'success');
+            }
+            return true;
+        } else {
+            var errStr = 'Failed to post roster to Discord webhook.';
+            if (window.GM_APP && window.GM_APP.showToast) {
+                window.GM_APP.showToast(errStr, 'error');
+            } else if (typeof showToast === 'function') {
+                showToast(errStr, 'error');
+            }
+            return false;
+        }
+    }
+
     async function notifyDiscordEvent(eventName, eventStart, action) {
         if (!getClient()) return;
 
@@ -1067,7 +1172,8 @@
             set: setGuildConfig
         },
         notifyDiscordEvent: notifyDiscordEvent,
-        sendDiscordWebhook: sendDiscordWebhook
+        sendDiscordWebhook: sendDiscordWebhook,
+        shareMatchupRosterToDiscord: shareMatchupRosterToDiscord
     };
 
 })();
