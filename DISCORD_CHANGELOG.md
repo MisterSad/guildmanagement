@@ -1,10 +1,10 @@
-:sparkles: **SUPER ADMIN AUTH VERIFICATION — v68**
+:sparkles: **RLS SECURITY DEFINER HARDENING — v69**
 
 ---
 
 :wrench: **Fixed**
 
-- :key: **Super Admin Authentication Pipeline** - Verified HawkEye account status, RPC function, and Edge Function token generation in database. Enhanced UI login error reporting to display server error responses clearly.
+- :shield: **RLS Policy Standardized** - Purged inline `auth.jwt()` queries on `accounts` and `guilds` tables in favor of `SECURITY DEFINER` helpers (`gm_can_read_account`, `gm_can_read_guilds`, `is_super_admin`). Prevents PostgREST permission errors when reading account/guild details after sign-in.
 
 ---
 

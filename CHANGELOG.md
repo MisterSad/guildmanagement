@@ -18,5 +18,6 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **RLS Policy Standardization for Accounts and Guilds (`20260812044000`)**: Created migration `20260812044000_harden_accounts_and_guilds_rls_helpers.sql` introducing `gm_can_read_account(id)` helper and purging inline `auth.jwt()` checks from `accounts` and `guilds` policies. Resolves PostgREST 403 / permission errors during initial login data fetching.
 - **Super Admin Login Verification & Error Feedback (`app.js`, `index.html`)**: Verified database authentication pipeline and Edge Function authorization for `HawkEye`. Improved UI login error display to report specific server responses directly without masking errors or hanging.
 - **Login Casing & Session Refresh Robustness (`app.js`, `gm-utils.js`)**: Fixed login issues where entering an identifier with different letter casing led to failed guild restriction lookup and lost permissions. Enforced canonical user ID usage returned by `auth-login`, updated DB account lookups to use case-insensitive `.ilike()`, and enabled automatic token refresh (`forceRefreshPortalSession`) for all account sessions upon page load.
