@@ -1903,9 +1903,9 @@
             return;
         }
 
-        if (imageFiles.length > 15) {
-            showToast('Processing maximum 15 screenshots per batch.', 'info');
-            imageFiles = imageFiles.slice(0, 15);
+        if (imageFiles.length > 25) {
+            showToast('Processing maximum 25 screenshots per batch (200+ players).', 'info');
+            imageFiles = imageFiles.slice(0, 25);
         }
 
         if (dropzone) dropzone.style.display = 'none';
@@ -1923,9 +1923,15 @@
 
             var uniqueMap = {};
             allPlayers.forEach(function (p) {
-                var key = p.pseudo.toLowerCase();
-                if (!uniqueMap[key] || p.overall_power > uniqueMap[key].overall_power) {
-                    uniqueMap[key] = p;
+                if (!p || !p.pseudo) return;
+                var cleanPseudo = p.pseudo.trim();
+                var key = cleanPseudo.toLowerCase();
+                if (!uniqueMap[key] || (p.overall_power && p.overall_power > uniqueMap[key].overall_power)) {
+                    uniqueMap[key] = {
+                        pseudo: cleanPseudo,
+                        overall_power: p.overall_power || 0,
+                        uid: p.uid || null
+                    };
                 }
             });
 
