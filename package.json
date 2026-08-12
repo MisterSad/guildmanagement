@@ -6,7 +6,7 @@
   "description": "FGF Guild Management Tool — client-side app (vanilla JS + Supabase)",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp -f *.js *.css manifest.webmanifest apple-touch-icon.png favicon.png icon-*.png dist/",
+    "build": "node scripts/build.js",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
