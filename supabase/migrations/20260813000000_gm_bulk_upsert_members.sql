@@ -1,14 +1,16 @@
 -- 20260813000000_gm_bulk_upsert_members.sql
 -- Bulk member power update and insert via OCR
 
-CREATE OR REPLACE FUNCTION public.gm_bulk_upsert_members(p_members jsonb)
+CREATE OR REPLACE FUNCTION public.gm_bulk_upsert_members(p_members jsonb, p_guild text DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
 AS $$
 DECLARE
-  v_guild text;
+  v_caller_role text;
+  v_user_guild text;
+  v_target_guild text;
   v_item jsonb;
   v_pseudo text;
   v_power bigint;
@@ -17,21 +19,28 @@ DECLARE
   v_inserted integer := 0;
   v_skipped integer := 0;
 BEGIN
-  -- Determine caller guild
-  SELECT guild INTO v_guild
+  -- Determine caller role and assigned guild
+  SELECT role, guild INTO v_caller_role, v_user_guild
   FROM public.accounts
   WHERE auth_user_id = auth.uid()
   LIMIT 1;
 
-  IF v_guild IS NULL THEN
-    v_guild := COALESCE((current_setting('request.jwt.claims', true)::jsonb)->>'guild', 'ALPHA');
+  IF v_user_guild IS NULL THEN
+    v_user_guild := COALESCE((current_setting('request.jwt.claims', true)::jsonb)->>'guild', 'ALPHA');
   END IF;
 
-  IF NOT public.check_user_guild_write_access(v_guild) THEN
+  -- Determine target guild: super_admin can specify p_guild, guild_admin is strictly bound to v_user_guild
+  IF v_caller_role = 'super_admin' AND p_guild IS NOT NULL AND length(trim(p_guild)) > 0 THEN
+    v_target_guild := trim(p_guild);
+  ELSE
+    v_target_guild := v_user_guild;
+  END IF;
+
+  IF NOT public.check_user_guild_write_access(v_target_guild) THEN
     RETURN jsonb_build_object('ok', false, 'error', 'unauthorized');
   END IF;
 
-  IF NOT public.is_subscription_active(v_guild) THEN
+  IF NOT public.is_subscription_active(v_target_guild) THEN
     RETURN jsonb_build_object('ok', false, 'error', 'subscription_inactive');
   END IF;
 
@@ -50,24 +59,24 @@ BEGIN
       CONTINUE;
     END IF;
 
-    -- Check if member exists in this guild by pseudo
+    -- Check if member exists in target guild by pseudo
     IF EXISTS (
       SELECT 1 FROM public.guild_members
-      WHERE guild = v_guild AND lower(pseudo) = lower(v_pseudo)
+      WHERE guild = v_target_guild AND lower(pseudo) = lower(v_pseudo)
     ) THEN
       UPDATE public.guild_members
       SET overall_power = v_power,
           power_updated_at = now()
-      WHERE guild = v_guild AND lower(pseudo) = lower(v_pseudo);
+      WHERE guild = v_target_guild AND lower(pseudo) = lower(v_pseudo);
       v_updated := v_updated + 1;
     ELSE
-      -- Insert new member if UID is present or generate temporary fallback UID
+      -- Insert new member
       IF v_uid IS NULL THEN
-        v_uid := 'TEMP-' || substring(md5(v_pseudo || v_guild) from 1 for 10);
+        v_uid := 'TEMP-' || substring(md5(v_pseudo || v_target_guild) from 1 for 10);
       END IF;
 
       INSERT INTO public.guild_members (pseudo, uid, overall_power, guild, role, created_at)
-      VALUES (v_pseudo, v_uid, v_power, v_guild, 'R1', now())
+      VALUES (v_pseudo, v_uid, v_power, v_target_guild, 'R1', now())
       ON CONFLICT (guild, pseudo) DO UPDATE
       SET overall_power = EXCLUDED.overall_power,
           power_updated_at = now();
@@ -78,7 +87,7 @@ BEGIN
 
   RETURN jsonb_build_object(
     'ok', true,
-    'guild', v_guild,
+    'guild', v_target_guild,
     'updated', v_updated,
     'inserted', v_inserted,
     'skipped', v_skipped
@@ -86,5 +95,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.gm_bulk_upsert_members(jsonb) FROM public, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.gm_bulk_upsert_members(jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.gm_bulk_upsert_members(jsonb, text) FROM public, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.gm_bulk_upsert_members(jsonb, text) TO authenticated;

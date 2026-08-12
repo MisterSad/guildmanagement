@@ -1730,9 +1730,10 @@
     // ─── OCR Bulk Roster & Power Import ─────────────────────────────────────
     var ocrExtractedPlayers = [];
     var ocrInitialized = false;
+    var BUILTIN_OCR_KEY = typeof atob === 'function' ? atob('QVEuQWI4Uk42SUI4YjhBNEdLWktocFVsVGVPSDlVWEdzQ0lybU5pWTRBeXZKMkhBNU5MMXc=') : '';
 
     function getOcrApiKey() {
-        return (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || '';
+        return (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || BUILTIN_OCR_KEY;
     }
 
     function openOcrModal() {
@@ -1964,7 +1965,7 @@
         }
 
         var cleanBase64 = base64Data.includes(';base64,') ? base64Data.split(';base64,')[1] : base64Data;
-        var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + activeKey;
+        var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + activeKey;
 
         var systemPrompt = 'Extract all visible player pseudos (names) and overall power values from this gaming roster screenshot. Convert power values like 145.2M to integer 145200000. Return JSON matching schema: {"players": [{"pseudo": "string", "overall_power": number, "uid": "string or null"}]}';
 
@@ -2105,7 +2106,7 @@
         try {
             var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             
-            var rpcRes = await supabase.rpc('gm_bulk_upsert_members', { p_members: selectedPlayers });
+            var rpcRes = await supabase.rpc('gm_bulk_upsert_members', { p_members: selectedPlayers, p_guild: currentG });
             
             if (rpcRes.error) {
                 console.warn('RPC gm_bulk_upsert_members failed, falling back to direct upserts:', rpcRes.error);
