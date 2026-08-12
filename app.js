@@ -1733,13 +1733,10 @@
     var GEMINI_FALLBACK_KEY = (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || '';
 
     function openOcrModal() {
-        initOcrGeminiModule();
         var modal = document.getElementById('ocr-modal-overlay');
         if (modal) {
             modal.style.display = 'flex';
-            requestAnimationFrame(function () {
-                modal.classList.add('visible');
-            });
+            modal.classList.add('visible');
             resetOcrModalState();
         }
     }
@@ -1748,9 +1745,7 @@
         var modal = document.getElementById('ocr-modal-overlay');
         if (modal) {
             modal.classList.remove('visible');
-            setTimeout(function () {
-                modal.style.display = 'none';
-            }, 250);
+            modal.style.display = 'none';
         }
     }
 
@@ -1769,13 +1764,24 @@
         if (fileInput) fileInput.value = '';
     }
 
+    window.openOcrModal = openOcrModal;
+    window.closeOcrModal = closeOcrModal;
     window.GM = window.GM || {};
     window.GM.openOcrModal = openOcrModal;
     window.GM.closeOcrModal = closeOcrModal;
 
+    // Document-level event delegation for OCR trigger buttons
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('#btn-ocr-import, #btn-ocr-import-member, .btn-ocr-trigger');
+        if (btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            openOcrModal();
+        }
+    });
+
     function initOcrGeminiModule() {
         var modal = document.getElementById('ocr-modal-overlay');
-        var btnTriggers = document.querySelectorAll('.btn-ocr-trigger, #btn-ocr-import, #btn-ocr-import-member');
         var btnClose = document.getElementById('ocr-modal-close');
         var btnCancel = document.getElementById('ocr-modal-cancel');
         var dropzone = document.getElementById('ocr-dropzone');
@@ -1786,14 +1792,9 @@
         var btnCommit = document.getElementById('ocr-commit-btn');
 
         if (!modal) return;
-
-        if (btnTriggers.length > 0) {
-            btnTriggers.forEach(function (btn) {
-                btn.onclick = openOcrModal;
-            });
-        }
         if (ocrInitialized) return;
         ocrInitialized = true;
+
         if (btnClose) btnClose.onclick = closeOcrModal;
         if (btnCancel) btnCancel.onclick = closeOcrModal;
         modal.onclick = function (e) {
