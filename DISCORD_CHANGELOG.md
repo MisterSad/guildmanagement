@@ -1,10 +1,10 @@
-:sparkles: **PLAYER PORTAL GLORY SAVE FIX — v63**
+:sparkles: **OBSIDANSTAR GUILD & ROSTER IMPORT — v64**
 
 ---
 
-:wrench: **Fixed**
+:rocket: **New**
 
-- :shield: **Glory Save Authorization Fixed** - Resolved an issue where players saving their weekly Glory score in the Player Portal received a `permission_denied` error. Edge function calls (`service_role`) are now properly authorized to update player glory while maintaining security isolation.
+- :shield: **ObsidanStar Guild Added** - Provisioned new tenant `OBSIDANSTAR` on Server #1078 with an unlimited subscription and 126 members initialized with their combat power.
 
 ---
 
