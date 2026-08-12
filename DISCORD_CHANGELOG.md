@@ -1,10 +1,10 @@
-:sparkles: **ASTRAL_LIBERION MEMBER IMPORT — v73**
+:sparkles: **BLACKTHUNDER MEMBER IMPORT — v74**
 
 ---
 
 :party_popper: **New**
 
-- :shield: **ASTRAL_LIBERION Roster Import** - Imported 73 members with combat power into the `ASTRAL_LIBERION` tenant (Server #1078).
+- :shield: **BlackThunder Roster Import** - Imported 71 members with combat power into the `BLACKTHUNDER` tenant (Server #1078).
 
 ---
 
