@@ -1725,6 +1725,8 @@
         } catch (err) {
             container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' + esc(err.message) + '</div></div>';
         }
+    }
+
     // ─── Guild Members & Transfers ──────────────────────────────────────────
     var pendingTransfers = [];
 

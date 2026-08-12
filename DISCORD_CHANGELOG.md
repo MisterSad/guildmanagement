@@ -1,10 +1,10 @@
-:sparkles: **RLS SECURITY DEFINER HARDENING — v69**
+:sparkles: **CLIENT JS SYNTAX FIX — v70**
 
 ---
 
 :wrench: **Fixed**
 
-- :shield: **RLS Policy Standardized** - Purged inline `auth.jwt()` queries on `accounts` and `guilds` tables in favor of `SECURITY DEFINER` helpers (`gm_can_read_account`, `gm_can_read_guilds`, `is_super_admin`). Prevents PostgREST permission errors when reading account/guild details after sign-in.
+- :bug: **Frontend App Parsing Fixed** - Restored missing closing syntax brace in `app.js` that previously caused a script parsing error on page load. Fully validated live browser login flow via end-to-end tests for `HawkEye`.
 
 ---
 
