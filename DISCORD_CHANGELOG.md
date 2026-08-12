@@ -1,10 +1,10 @@
-:sparkles: **OBSIDANSTAR GUILD & ROSTER IMPORT — v64**
+:sparkles: **SUPER ADMIN TENANT DELETION — v65**
 
 ---
 
 :rocket: **New**
 
-- :shield: **ObsidanStar Guild Added** - Provisioned new tenant `OBSIDANSTAR` on Server #1078 with an unlimited subscription and 126 members initialized with their combat power.
+- :wastebasket: **Tenant Deletion Feature** - Super Admins can now delete any guild/tenant directly from the Super Admin dashboard. Includes full cascade deletion of members, sessions, squads, transfers, and accounts, secured with confirmation modals and server-side role checks.
 
 ---
 

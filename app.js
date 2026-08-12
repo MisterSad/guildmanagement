@@ -1572,6 +1572,9 @@
                                 '<button class="gm-btn gm-btn-primary save-guild-sub-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
                                     '<i class="ph ph-floppy-disk"></i> Save' +
                                 '</button>' +
+                                '<button class="gm-btn gm-btn-danger-ghost delete-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+                                    '<i class="ph ph-trash"></i> Delete' +
+                                '</button>' +
                             '</div>' +
                         '</div>';
                 });
@@ -1670,11 +1673,49 @@
                 });
             });
 
+            // Wire delete button listeners
+            container.querySelectorAll('.delete-guild-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var guildId = btn.getAttribute('data-guild');
+                    window.showConfirm(
+                        t('confirm_delete_guild_title'),
+                        t('confirm_delete_guild_body') + ' <strong>' + esc(guildId) + '</strong>' + t('confirm_delete_guild_body2'),
+                        async function () {
+                            btn.disabled = true;
+                            var origText = btn.innerHTML;
+                            btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i>...';
+
+                            try {
+                                var res = await supabase.rpc('gm_delete_guild', { p_guild_id: guildId });
+                                if (res.error) throw new Error(res.error.message || JSON.stringify(res.error));
+                                var row = (Array.isArray(res.data) ? res.data[0] : res.data) || {};
+                                if (!row.ok) throw new Error(row.error || 'Failed to delete guild');
+
+                                // Clean memory caches / localStorage
+                                localStorage.removeItem('gm_server_number_' + guildId);
+                                if (window.guildsData) delete window.guildsData[guildId];
+                                if (window.guildsList) {
+                                    var idx = window.guildsList.indexOf(guildId);
+                                    if (idx !== -1) window.guildsList.splice(idx, 1);
+                                }
+
+                                showToast('Guild ' + guildId + ' deleted successfully', 'success');
+                                await fetchGuilds();
+                                renderGuildsSubscriptionList();
+                                if (window.populateGuildSelects) window.populateGuildSelects();
+                            } catch (err) {
+                                showToast('Error deleting guild: ' + err.message, 'error');
+                                btn.disabled = false;
+                                btn.innerHTML = origText;
+                            }
+                        }
+                    );
+                });
+            });
+
         } catch (err) {
             container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' + esc(err.message) + '</div></div>';
         }
-    }
-
     // ─── Guild Members & Transfers ──────────────────────────────────────────
     var pendingTransfers = [];
 

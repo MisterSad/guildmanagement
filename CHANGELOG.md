@@ -11,6 +11,7 @@ few hours, with an incrementing number in its title.
 
 ## New
 
+- **Super Admin Tenant Deletion (`20260812042000`)**: Created `public.gm_delete_guild(p_guild_id)` SECURITY DEFINER RPC allowing super admins to permanently delete a tenant and all its associated data (members, events, squads, transfers, configs, non-super-admin accounts). Added Delete button with confirmation modal to the Super Admin dashboard in `app.js`.
 - **ObsidanStar Guild & Roster Import**: Created migration `20260812041000_add_obsidanstar_guild_and_members.sql` provisioning the guild `OBSIDANSTAR` (server 1078) with unlimited subscription and 126 unique members with their combat power values.
 - **Glory Upsert Edge Function Authorization (`20260812033000`)**: Created migration `20260812033000_fix_glory_upsert_service_role_access.sql` allowing `service_role` (Edge Functions) to execute `gm_upsert_player_glory` on behalf of validated players.
 
