@@ -11,19 +11,10 @@ few hours, with an incrementing number in its title.
 
 ## New
 
-- **Nightwraith Guild & Roster Import**: Created migration `20260811190000_add_nightwraith_guild_and_members.sql` provisioning the guild `NIGHTWRAITH` (server 1078) with unlimited subscription and 129 unique members with their combat power values.
-- **Automated Active Event Roster Sync**: Created migration `20260811000000_sync_active_event_participants_on_member_changes.sql` to auto-synchronize participant lists for active event sessions whenever members are added, approved, deleted, or transferred.
-- **Full Codebase Audit & Hardening Pass**: Conducted a comprehensive 5-domain audit (frontend core, feature modules, migrations/RLS, edge functions, tests/config) and applied all identified fixes.
+- **Glory Upsert Edge Function Authorization (`20260812033000`)**: Created migration `20260812033000_fix_glory_upsert_service_role_access.sql` allowing `service_role` (Edge Functions) to execute `gm_upsert_player_glory` on behalf of validated players.
 
 ---
 
 ## Fixed
 
-- **P0 Security: `guild_config` Dual SELECT Policy (`20260811193000`)**: Replaced the `FOR ALL` policy `gm_guild_config_write` (which doubled as an unintended second SELECT policy combining with OR) with separate `FOR INSERT`, `FOR UPDATE`, and `FOR DELETE` policies. Now exactly one permissive SELECT policy exists per AGENTS.md rules.
-- **P1 Standards: SECURITY DEFINER `search_path` (`20260811193000`)**: Standardized `is_subscription_active`, `list_event_sessions`, `list_event_weeks`, and `is_super_admin` to use `SET search_path TO ''` with fully qualified `public.table` references. Added JWT `sub` fallback for resilient identity resolution.
-- **P1 Standards: Em-dashes removed from UI text**: Replaced all em-dashes (`—`) with hyphens (`-`) in user-visible strings across 15 JS files (toasts, labels, placeholders, Discord content, help text).
-- **P2 Code Quality: `esc()` added to guild `<option>` elements**: Applied `escapeHTML` defense-in-depth to guild name rendering in `app.js` and `shell.js`.
-- **P2 Code Quality: Added `dev` script to `package.json`**: `npm run dev` now starts a local dev server via `serve`.
-- **UI Layout: Sidebar Sub-card scroll fix**: Resolved the root cause in `.gm-sidebar` (`shell.css` v14) where flex stretching from `.gm-shell` expanded the sidebar container height beyond the viewport. Added `align-self: flex-start; max-height: 100vh; max-height: 100dvh;` to lock the sidebar to 100% viewport height, ensuring `position: sticky; top: 0` keeps the sidebar fixed while the subscription card remains pinned to the bottom of the viewport screen (`margin-top: auto`).
-- **Admin Approval & Service Role Authorization (`20260811192500`)**: Fixed `gm_approve_player_account`, `gm_add_member_to_active_events`, and `gm_populate_event_participants` to support service-role Edge Function calls (removed invalid `auth.uid()` checks causing `unauthorized` errors).
-- **NIGHTWRAITH Tenant Casing & Server Number (`20260811191000`)**: Corrected tenant ID to uppercase `NIGHTWRAITH`, set server `1078`, migrated 129 member rows.
+- **Player Portal Glory Save (`20260812033000`)**: Fixed an issue where `member` accounts received `Failed to save: permission_denied` when updating their weekly Glory score in the Player Portal. `check_user_guild_write_access` now authorizes `service_role` Edge Function execution while maintaining strict RLS write restrictions on direct client database access.
