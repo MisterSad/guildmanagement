@@ -1,17 +1,17 @@
-📸 **FGF Guild Management Tool — Gemini OCR AI Roster Import Update v87** 📸
+📸 **FGF Guild Management Tool — Member & Power OCR Import Update v88** 📸
 
-We are super excited to launch the **AI-Powered OCR Gemini Roster Importer**! Updating member power and adding new players to your guild roster is now **100x faster**: simply take a screenshot of your in-game leaderboard or alliance list, and let Gemini AI do the rest!
+We have updated the OCR Import tool with a **clean, white-label design** specifically dedicated to roster member creation and power updates!
 
 ---
 
-🔍 **Gemini 2.5 Flash OCR Scanner**
-• **One-Click OCR Import**: New **"Scan OCR"** button directly inside the **Add a member** section of the **Members** tab.
-• **Drag & Drop Screenshots**: Upload single or multiple game screenshots (PNG, JPG, WEBP).
-• **Structured AI Extraction**: Gemini 2.5 Flash extracts player usernames and converts power levels (e.g. `145.2M` ➔ `145,200,000`) with high precision.
-• **100% English Localization**: Fully standardized UI titles, dropzone hints, review tables, and status tags (`New Player`, `Update`, `Unchanged`).
+🔍 **Dedicated Roster & Power OCR Scanner**
+• **Dedicated Action Button**: Button in **Add a member** renamed to **"Import Members (OCR)"**.
+• **Clear Purpose Modal**: Header updated to **"Import Members & Power (OCR)"** with explicit subtitle: *"Upload roster screenshots to import new members and update power levels"*.
+• **White-Label Clean UI**: All provider brand names ("Gemini") removed from buttons, modals, spinners, and toast notifications.
+• **Future Modular OCR Expansion**: Structured for seamless addition of dedicated OCR tools in future event & stats sections.
 
 📋 **Interactive Verification & Review Grid**
-• **Smart Match Detection**: Automatic status tagging compared against your existing guild roster.
+• **Smart Match Detection**: Automatic status tagging (`New Player`, `Update`, `Unchanged`) compared against your existing roster.
 • **Human-in-the-Loop Validation**: Select/deselect players or correct usernames before committing changes.
 
 ⚡ **High-Speed Bulk Database Sync**
@@ -19,12 +19,5 @@ We are super excited to launch the **AI-Powered OCR Gemini Roster Importer**! Up
 • **Multi-Tenant Security**: Full RLS tenant isolation and active subscription write-gating.
 
 ---
-
-🚀 **Ultimate Release Features (v85-v87)**
-⚔️ **SvS & GvG Matchup & Dangerosity Engine**: 60 FPS Web Worker calculations & Discord sharing.
-🏰 **Shadowfront Squad Builder**: Smart Squad 1 & Squad 2 roster composition with duplicate checking.
-📊 **Player Portal & Canvas Charts**: High-DPI 2D power growth charts and personal KPI tracking.
-📱 **PWA & Offline Support**: Mobile home screen shortcuts & offline status monitoring.
-💳 **12-Month Subscriptions**: Best value plan with 37% total savings.
 
 ⚡ **Quality & Reliability**: Passed type-check with 0 errors and 200/200 green Vitest tests!
