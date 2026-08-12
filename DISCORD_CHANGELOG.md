@@ -1,10 +1,10 @@
-:sparkles: **NIGHTWRAITH ROSTER & POWER UPDATE — v71**
+:sparkles: **NIGHTWRAITH ROSTER CLEANUP — v72**
 
 ---
 
-:party_popper: **New**
+:wrench: **Fixed**
 
-- :shield: **NIGHTWRAITH Roster Upsert** - Updated combat power and registered 147 members into the existing `NIGHTWRAITH` tenant (Server #1078).
+- :broom: **NIGHTWRAITH Roster Purged** - Removed 7 obsolete member records (old pseudos/case variants) so `NIGHTWRAITH` contains exactly the 147 current members.
 
 ---
 
