@@ -37,7 +37,8 @@
         viewMode: 'side-by-side', // 'side-by-side' ou 'combined'
         sortKey: 'danger_score',
         sortDesc: true,
-        query: ''
+        query: '',
+        webhookUrl: ''
     };
 
     function getDb() {
@@ -118,6 +119,13 @@
             state.rows = ((res && res.data) || []).filter(function (r) {
                 return r.guild !== 'DEMO';
             });
+
+            if (window.GM && window.GM.config) {
+                state.webhookUrl = await window.GM.config.get('webhook_svs');
+                if (!state.webhookUrl || !state.webhookUrl.trim()) {
+                    state.webhookUrl = await window.GM.config.get('discord_webhook_url');
+                }
+            }
 
             // Auto-sélection des 2 premiers serveurs s'ils ne sont pas encore configurés
             var sList = serverList();
@@ -320,6 +328,15 @@
                                     return '<option value="' + esc(g) + '"' + (state.guildB === g ? ' selected' : '') + '>' + esc(g) + '</option>';
                                 }).join('') +
                             '</select>' +
+                        '</div>' +
+                        '<div style="margin-top:.6rem; padding-top:.5rem; border-top:1px dashed rgba(239, 68, 68, 0.25); display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;">' +
+                            '<div style="font-size:0.75rem; font-weight:700; color:#cbd5e1; display:flex; align-items:center; gap:.3rem; white-space:nowrap;">' +
+                                '<i class="ph ph-discord-logo" style="color:#5865F2;"></i> Webhook:' +
+                            '</div>' +
+                            '<input type="url" id="svs-webhook-input" class="gm-input" value="' + esc(state.webhookUrl || '') + '" placeholder="https://discord.com/api/webhooks/..." style="flex:1; min-width:180px; font-size:0.78rem; padding:0.25rem 0.5rem; height:auto;" />' +
+                            '<button id="svs-save-webhook-btn" class="gm-btn gm-btn-secondary gm-btn-sm" style="font-size:0.72rem; padding:0.25rem 0.55rem; height:auto; line-height:1.2; display:inline-flex; align-items:center; gap:.3rem;">' +
+                                '<i class="ph ph-floppy-disk"></i> Save' +
+                            '</button>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -637,7 +654,33 @@
             });
         });
 
+        var saveWebhookBtn = document.getElementById('svs-save-webhook-btn');
+        var webhookInput = document.getElementById('svs-webhook-input');
+        if (saveWebhookBtn && webhookInput) {
+            saveWebhookBtn.addEventListener('click', async function () {
+                var val = webhookInput.value.trim();
+                state.webhookUrl = val;
+                if (window.GM && window.GM.config) {
+                    await window.GM.config.set('webhook_svs', val);
+                    await window.GM.config.set('discord_webhook_url', val);
+                }
+                if (window.GM_APP && window.GM_APP.showToast) {
+                    window.GM_APP.showToast('SvS Discord Webhook URL saved successfully!', 'success');
+                }
+            });
+        }
+
         function handleShareSvS(btn) {
+            var webhookVal = document.getElementById('svs-webhook-input') ? document.getElementById('svs-webhook-input').value.trim() : state.webhookUrl;
+            if (!webhookVal) {
+                if (window.GM_APP && window.GM_APP.showToast) {
+                    window.GM_APP.showToast('Please enter and save a Discord Webhook URL first.', 'warning');
+                }
+                var inp = document.getElementById('svs-webhook-input');
+                if (inp) inp.focus();
+                return;
+            }
+
             var origHtml = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i> Sharing...';
@@ -648,6 +691,7 @@
                 window.GM.shareMatchupRosterToDiscord({
                     title: 'SvS Target Roster',
                     eventPrefix: 'svs',
+                    webhookUrl: webhookVal,
                     rows: rowsB,
                     targetLabel: label
                 }).finally(function () {

@@ -2,6 +2,7 @@
 
 ## New
 
+- **In-Tab Webhook Configuration for SvS & GvG**: Added an inline Discord Webhook input field and **Save** button directly inside both the **SvS** and **GvG** Super Admin matchup cards. Super admins can configure, save, or update the target Webhook URL directly from either tab without navigating away.
 - **Discord Roster Sharing in SvS & GvG Matchups**: Added one-click Discord Webhook integration in the Super Admin **SvS** and **GvG** matchup tabs to export and post the Opponent / Target server or guild roster directly to Discord. Each shared entry includes Member pseudo, Guild, Power, and Threat level tier. Automatically chunks long rosters into clean sequential messages to comply with Discord payload limits.
 - **TWILIGHT Roster Import**: Imported 181 members with combat power into the `TWILIGHT` tenant (Server #1078).
 - **BLACKTHUNDER Roster Import**: Imported 71 members with combat power into the `BLACKTHUNDER` tenant (Server #1078).

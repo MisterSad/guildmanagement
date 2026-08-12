@@ -1,11 +1,11 @@
-:sparkles: **DISCORD TARGET ROSTER SHARING (SVS & GVG) — v76**
+:sparkles: **IN-TAB SVS & GVG DISCORD WEBHOOK INPUT — v77**
 
 ---
 
 :party_popper: **New**
 
-- :swords: **SvS & GvG Target Roster Sharing** - Added one-click Discord Webhook sharing buttons in Super Admin SvS and GvG tabs to export Opponent/Target server and guild rosters to Discord with Member, Guild, Power, and Threat level.
-- :shield: **Server #1078 Roster Imports** - Imported 181 TWILIGHT, 71 BLACKTHUNDER, 73 ASTRAL_LIBERION, and 147 NIGHTWRAITH members.
+- :link: **In-Tab Webhook Configuration** - Added an inline Discord Webhook input field and Save button directly inside the SvS and GvG Super Admin matchup tabs so you can enter or change the webhook URL on the fly.
+- :swords: **SvS & GvG Target Roster Sharing** - Export Opponent/Target rosters to Discord with Member, Guild, Power, and Threat level.
 
 ---
 

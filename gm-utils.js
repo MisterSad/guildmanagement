@@ -857,7 +857,7 @@
             return false;
         }
 
-        var webhookUrl = await resolveDiscordWebhook(eventPrefix);
+        var webhookUrl = (options.webhookUrl && options.webhookUrl.trim()) ? options.webhookUrl.trim() : await resolveDiscordWebhook(eventPrefix);
         if (!webhookUrl || !webhookUrl.trim()) {
             var inputUrl = window.prompt('No ' + eventPrefix.toUpperCase() + ' Discord Webhook URL configured. Please enter Webhook URL:');
             if (!inputUrl || !inputUrl.trim()) return false;
