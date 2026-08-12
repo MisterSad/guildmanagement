@@ -738,6 +738,8 @@
         webhook_calamity: '',
         webhook_gvg: '',
         webhook_svs: '',
+        webhook_svs_opponent: '',
+        webhook_gvg_opponent: '',
         notify_armsrace_reminder_30: 'true',
         notify_armsrace_reminder_5: 'true',
         notify_armsrace_start: 'true',
@@ -857,12 +859,16 @@
             return false;
         }
 
-        var webhookUrl = (options.webhookUrl && options.webhookUrl.trim()) ? options.webhookUrl.trim() : await resolveDiscordWebhook(eventPrefix);
+        var webhookUrl = (options.webhookUrl && options.webhookUrl.trim()) ? options.webhookUrl.trim() : null;
+        if (!webhookUrl) {
+            webhookUrl = await getGuildConfig('webhook_' + eventPrefix + '_opponent');
+        }
         if (!webhookUrl || !webhookUrl.trim()) {
-            var inputUrl = window.prompt('No ' + eventPrefix.toUpperCase() + ' Discord Webhook URL configured. Please enter Webhook URL:');
+            var inputUrl = window.prompt('No dedicated ' + eventPrefix.toUpperCase() + ' Opponent Discord Webhook URL configured. Please enter Webhook URL:');
             if (!inputUrl || !inputUrl.trim()) return false;
             webhookUrl = inputUrl.trim();
         }
+        webhookUrl = webhookUrl.trim();
 
         var totalPower = 0;
         var extremeCount = 0;

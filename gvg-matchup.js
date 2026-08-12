@@ -117,10 +117,7 @@
             });
 
             if (window.GM && window.GM.config) {
-                state.webhookUrl = await window.GM.config.get('webhook_gvg');
-                if (!state.webhookUrl || !state.webhookUrl.trim()) {
-                    state.webhookUrl = await window.GM.config.get('discord_webhook_url');
-                }
+                state.webhookUrl = await window.GM.config.get('webhook_gvg_opponent');
             }
 
             // Auto-sélection des 2 premières guildes si non encore configurées
@@ -312,8 +309,8 @@
                             }).join('') +
                         '</select>' +
                         '<div style="margin-top:.6rem; padding-top:.5rem; border-top:1px dashed rgba(239, 68, 68, 0.25); display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;">' +
-                            '<div style="font-size:0.75rem; font-weight:700; color:#cbd5e1; display:flex; align-items:center; gap:.3rem; white-space:nowrap;">' +
-                                '<i class="ph ph-discord-logo" style="color:#5865F2;"></i> Webhook:' +
+                            '<div style="font-size:0.75rem; font-weight:700; color:#cbd5e1; display:flex; align-items:center; gap:.3rem; white-space:nowrap;" title="Super Admin Opponent Webhook">' +
+                                '<i class="ph ph-discord-logo" style="color:#5865F2;"></i> Opponent Webhook:' +
                             '</div>' +
                             '<input type="url" id="gvg-webhook-input" class="gm-input" value="' + esc(state.webhookUrl || '') + '" placeholder="https://discord.com/api/webhooks/..." style="flex:1; min-width:180px; font-size:0.78rem; padding:0.25rem 0.5rem; height:auto;" />' +
                             '<button id="gvg-save-webhook-btn" class="gm-btn gm-btn-secondary gm-btn-sm" style="font-size:0.72rem; padding:0.25rem 0.55rem; height:auto; line-height:1.2; display:inline-flex; align-items:center; gap:.3rem;">' +
@@ -630,11 +627,10 @@
                 var val = webhookInput.value.trim();
                 state.webhookUrl = val;
                 if (window.GM && window.GM.config) {
-                    await window.GM.config.set('webhook_gvg', val);
-                    await window.GM.config.set('discord_webhook_url', val);
+                    await window.GM.config.set('webhook_gvg_opponent', val);
                 }
                 if (window.GM_APP && window.GM_APP.showToast) {
-                    window.GM_APP.showToast('GvG Discord Webhook URL saved successfully!', 'success');
+                    window.GM_APP.showToast('Dedicated GvG Opponent Webhook URL saved successfully!', 'success');
                 }
             });
         }

@@ -1,11 +1,11 @@
-:sparkles: **IN-TAB SVS & GVG DISCORD WEBHOOK INPUT — v77**
+:sparkles: **DEDICATED SUPER ADMIN OPPONENT WEBHOOKS — v78**
 
 ---
 
 :party_popper: **New**
 
-- :link: **In-Tab Webhook Configuration** - Added an inline Discord Webhook input field and Save button directly inside the SvS and GvG Super Admin matchup tabs so you can enter or change the webhook URL on the fly.
-- :swords: **SvS & GvG Target Roster Sharing** - Export Opponent/Target rosters to Discord with Member, Guild, Power, and Threat level.
+- :lock: **Isolated Super Admin Webhooks** - Created dedicated webhook keys (`webhook_svs_opponent` & `webhook_gvg_opponent`) specifically for Opponent Roster exports in SvS and GvG. Completely isolated from standard public guild webhooks to ensure full privacy.
+- :link: **In-Tab Webhook Controls** - Enter and save your secret Opponent Webhook URL directly inside the SvS and GvG Super Admin matchup cards.
 
 ---
 
