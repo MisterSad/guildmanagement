@@ -1896,6 +1896,8 @@
         var dropzone = document.getElementById('ocr-dropzone');
         var loading = document.getElementById('ocr-loading');
         var resultsContainer = document.getElementById('ocr-results-container');
+        var loadingH4 = loading ? loading.querySelector('h4') : null;
+        var loadingP = loading ? loading.querySelector('p') : null;
 
         var imageFiles = files.filter(function (f) { return f.type.startsWith('image/'); });
         if (imageFiles.length === 0) {
@@ -1912,13 +1914,38 @@
         if (loading) loading.style.display = 'block';
         if (resultsContainer) resultsContainer.style.display = 'none';
 
+        if (loadingH4) loadingH4.textContent = 'Analyzing screenshots with AI OCR...';
+
         var allPlayers = [];
         try {
+            var imageItems = [];
             for (var i = 0; i < imageFiles.length; i++) {
                 var file = imageFiles[i];
-                var base64Data = await fileToBase64(file);
-                var extracted = await callGeminiOcrApi(base64Data, file.type);
+                var b64 = await fileToBase64(file);
+                imageItems.push({ mimeType: file.type, base64Data: b64 });
+            }
+
+            var chunkSize = 4;
+            var chunks = [];
+            for (var c = 0; c < imageItems.length; c += chunkSize) {
+                chunks.push(imageItems.slice(c, c + chunkSize));
+            }
+
+            for (var b = 0; b < chunks.length; b++) {
+                var currentChunk = chunks[b];
+                if (loadingP) {
+                    loadingP.textContent = 'Processing screenshots batch ' + (b + 1) + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
+                }
+
+                var extracted = await callGeminiOcrBatchApi(currentChunk, function (statusMsg) {
+                    if (loadingP) loadingP.textContent = statusMsg;
+                });
+
                 allPlayers = allPlayers.concat(extracted);
+
+                if (b < chunks.length - 1) {
+                    await new Promise(function (r) { setTimeout(r, 1200); });
+                }
             }
 
             var uniqueMap = {};
@@ -1954,73 +1981,96 @@
         });
     }
 
-    async function callGeminiOcrApi(base64Data, mimeType) {
-        try {
-            if (supabase && supabase.functions) {
-                var res = await supabase.functions.invoke('ocr-guild-members', {
-                    body: { imageBase64: base64Data, mimeType: mimeType }
-                });
-                if (res.data && res.data.ok && Array.isArray(res.data.players)) {
-                    return res.data.players;
-                }
-            }
-        } catch (edgeErr) {
-            console.warn('Edge function invoke failed, attempting direct API call:', edgeErr);
-        }
-
+    async function callGeminiOcrBatchApi(batchImageItems, updateStatusCallback) {
         var activeKey = getOcrApiKey();
         if (!activeKey) {
             var prompt = document.getElementById('ocr-key-prompt');
             if (prompt) prompt.style.display = 'block';
-            throw new Error('API Key Required. Please paste your API key above.');
+            throw new Error('API Key Required. Please check your API key configuration.');
         }
 
-        var cleanBase64 = base64Data.includes(';base64,') ? base64Data.split(';base64,')[1] : base64Data;
         var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + activeKey;
+        var systemPrompt = 'Extract all visible player pseudos (names) and overall power values from these gaming roster screenshots. Convert power values like 145.2M to integer 145200000. Return JSON matching schema: {"players": [{"pseudo": "string", "overall_power": number, "uid": "string or null"}]}';
 
-        var systemPrompt = 'Extract all visible player pseudos (names) and overall power values from this gaming roster screenshot. Convert power values like 145.2M to integer 145200000. Return JSON matching schema: {"players": [{"pseudo": "string", "overall_power": number, "uid": "string or null"}]}';
+        var parts = [{ text: systemPrompt }];
+        batchImageItems.forEach(function (item) {
+            var cleanBase64 = item.base64Data.includes(';base64,') ? item.base64Data.split(';base64,')[1] : item.base64Data;
+            parts.push({
+                inline_data: {
+                    mime_type: item.mimeType || 'image/png',
+                    data: cleanBase64
+                }
+            });
+        });
 
         var payload = {
-            contents: [{
-                parts: [
-                    { text: systemPrompt },
-                    { inline_data: { mime_type: mimeType || 'image/png', data: cleanBase64 } }
-                ]
-            }],
+            contents: [{ parts: parts }],
             generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
         };
 
-        var response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        var maxRetries = 3;
+        var attempt = 0;
 
-        if (!response.ok) {
-            var errText = await response.text();
-            if (response.status === 403) {
-                var keyPromptBox = document.getElementById('ocr-key-prompt');
-                if (keyPromptBox) keyPromptBox.style.display = 'block';
-                throw new Error('Invalid or missing API Key (HTTP 403). Please enter your API key above.');
+        while (attempt < maxRetries) {
+            attempt++;
+            try {
+                var response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.status === 429) {
+                    var errBody = '';
+                    try { errBody = await response.text(); } catch (e) {}
+                    var waitSec = 6;
+                    var match = errBody.match(/retryDelay["\s:]+["']?(\d+)/i) || errBody.match(/retry in ([\d\.]+)s/i);
+                    if (match && match[1]) {
+                        waitSec = Math.max(3, Math.ceil(parseFloat(match[1])));
+                    }
+
+                    if (attempt < maxRetries) {
+                        if (updateStatusCallback) {
+                            updateStatusCallback('Rate limit reached. Retrying automatically in ' + waitSec + 's (Attempt ' + attempt + '/' + maxRetries + ')...');
+                        }
+                        await new Promise(function (r) { setTimeout(r, waitSec * 1000); });
+                        continue;
+                    } else {
+                        throw new Error('API Rate Limit Exceeded (HTTP 429). Please wait a moment and try again.');
+                    }
+                }
+
+                if (!response.ok) {
+                    var errText = await response.text();
+                    if (response.status === 403) {
+                        var keyPromptBox = document.getElementById('ocr-key-prompt');
+                        if (keyPromptBox) keyPromptBox.style.display = 'block';
+                        throw new Error('Invalid or missing API Key (HTTP 403). Please enter your API key above.');
+                    }
+                    throw new Error('OCR API HTTP ' + response.status);
+                }
+
+                var resJson = await response.json();
+                var jsonText = resJson && resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content && resJson.candidates[0].content.parts && resJson.candidates[0].content.parts[0] ? resJson.candidates[0].content.parts[0].text : '';
+                
+                if (!jsonText) return [];
+
+                var parsed = JSON.parse(jsonText);
+                var rawList = Array.isArray(parsed.players) ? parsed.players : (Array.isArray(parsed) ? parsed : []);
+                return rawList.map(function (p) {
+                    return {
+                        pseudo: String(p.pseudo || '').trim(),
+                        overall_power: typeof p.overall_power === 'number' ? Math.round(p.overall_power) : parseInt(String(p.overall_power).replace(/[^0-9]/g, ''), 10) || 0,
+                        uid: p.uid ? String(p.uid).trim() : null
+                    };
+                }).filter(function (p) { return p.pseudo.length > 0 && p.overall_power >= 0; });
+            } catch (err) {
+                if (attempt >= maxRetries || (err.message && !err.message.includes('429'))) {
+                    throw err;
+                }
             }
-            throw new Error('OCR API HTTP ' + response.status + ': ' + errText);
         }
-
-        var resJson = await response.json();
-        var jsonText = resJson && resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content && resJson.candidates[0].content.parts && resJson.candidates[0].content.parts[0] ? resJson.candidates[0].content.parts[0].text : '';
-        
-        if (!jsonText) throw new Error('No text extracted by Gemini.');
-
-        var parsed = JSON.parse(jsonText);
-        var rawList = Array.isArray(parsed.players) ? parsed.players : (Array.isArray(parsed) ? parsed : []);
-        
-        return rawList.map(function (p) {
-            return {
-                pseudo: String(p.pseudo || '').trim(),
-                overall_power: typeof p.overall_power === 'number' ? Math.round(p.overall_power) : parseInt(String(p.overall_power).replace(/[^0-9]/g, ''), 10) || 0,
-                uid: p.uid ? String(p.uid).trim() : null
-            };
-        }).filter(function (p) { return p.pseudo.length > 0 && p.overall_power >= 0; });
+        return [];
     }
 
     function renderOcrResults(players) {
