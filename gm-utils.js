@@ -131,7 +131,7 @@
         try {
             var info = await sessionInfo();
             if (!info || !info.accountId) return null;
-            var res = await c.from('accounts').select('guild').eq('id', info.accountId).maybeSingle();
+            var res = await c.from('accounts').select('guild').ilike('id', info.accountId).maybeSingle();
             if (res && res.data && res.data.guild) {
                 window.currentGuildRestriction = res.data.guild;
                 window.currentGuild = res.data.guild;

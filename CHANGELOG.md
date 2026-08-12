@@ -18,4 +18,5 @@ few hours, with an incrementing number in its title.
 
 ## Fixed
 
+- **Login Casing & Session Refresh Robustness (`app.js`, `gm-utils.js`)**: Fixed login issues where entering an identifier with different letter casing (e.g. lowercase) led to failed guild restriction lookup and lost permissions. Enforced canonical user ID usage returned by `auth-login`, updated DB account lookups to use case-insensitive `.ilike()`, and enabled automatic token refresh (`forceRefreshPortalSession`) for all account sessions upon page load.
 - **Player Portal Glory Save (`20260812033000`)**: Fixed an issue where `member` accounts received `Failed to save: permission_denied` when updating their weekly Glory score in the Player Portal. `check_user_guild_write_access` now authorizes `service_role` Edge Function execution while maintaining strict RLS write restrictions on direct client database access.

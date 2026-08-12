@@ -1,10 +1,10 @@
-:sparkles: **OBSIDIANSTAR ROSTER CORRECTION — v66**
+:sparkles: **LOGIN & SESSION REFRESH FIX — v67**
 
 ---
 
 :wrench: **Fixed**
 
-- :shield: **ObsidianStar Tenant Corrected** - Transferred all 126 members and combat power data to the existing tenant `OBSIDIANSTAR` (Server #1078) and removed the draft `OBSIDANSTAR` record.
+- :key: **Login & Session Stability** - Resolved login failures and restriction loss caused by identifier casing mismatches or expired tokens. Username lookups are now strictly case-insensitive, canonical IDs are preserved, and session token auto-refresh is active across all roles.
 
 ---
 

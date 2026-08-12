@@ -56,7 +56,7 @@
         }
 
         var info = await window.GM.sessionInfo();
-        if (!info && portalSession) {
+        if (!info) {
             // supabase-js could not restore the session on reload: try a manual
             // refresh-token exchange against GoTrue and re-inject the session.
             info = await window.GM.forceRefreshPortalSession();
@@ -101,7 +101,7 @@
         // Fetch guild restriction if guild_admin
         if (info.role === 'guild_admin' && info.accountId) {
             try {
-                var { data } = await supabase.from('accounts').select('guild').eq('id', info.accountId).maybeSingle();
+                var { data } = await supabase.from('accounts').select('guild').ilike('id', info.accountId).maybeSingle();
                 if (data && data.guild) {
                     window.currentGuildRestriction = data.guild;
                     window.currentGuild = data.guild;
@@ -176,6 +176,7 @@
             var resp = await window.GM.login(user, pass);
 
             if (resp.ok) {
+                var canonicalUser = resp.id || user;
                 loginError.classList.add('hidden');
                 document.getElementById('password').value = '';
 
@@ -185,7 +186,7 @@
                 // Fetch guild restriction for new logins if guild_admin
                 if (window.GM.normalizeRole(resp.role) === 'guild_admin') {
                     try {
-                        var { data } = await supabase.from('accounts').select('guild').eq('id', user).maybeSingle();
+                        var { data } = await supabase.from('accounts').select('guild').ilike('id', canonicalUser).maybeSingle();
                         if (data && data.guild) {
                             window.currentGuildRestriction = data.guild;
                             window.currentGuild = data.guild;
@@ -207,9 +208,9 @@
 
                 var role = window.GM.normalizeRole(resp.role);
                 localStorage.setItem('gm_role', role);
-                localStorage.setItem('gm_user', user);
+                localStorage.setItem('gm_user', canonicalUser);
                 // Store in memory for reliable access
-                window.GM.currentAccountId = user;
+                window.GM.currentAccountId = canonicalUser;
 
                 showAdminDashboard(role);
                 if (role !== 'member' && window.GM_SHELL && window.GM_SHELL.renderShell) {
