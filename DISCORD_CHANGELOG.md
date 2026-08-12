@@ -1,10 +1,10 @@
-:sparkles: **LOGIN & SESSION REFRESH FIX — v67**
+:sparkles: **SUPER ADMIN AUTH VERIFICATION — v68**
 
 ---
 
 :wrench: **Fixed**
 
-- :key: **Login & Session Stability** - Resolved login failures and restriction loss caused by identifier casing mismatches or expired tokens. Username lookups are now strictly case-insensitive, canonical IDs are preserved, and session token auto-refresh is active across all roles.
+- :key: **Super Admin Authentication Pipeline** - Verified HawkEye account status, RPC function, and Edge Function token generation in database. Enhanced UI login error reporting to display server error responses clearly.
 
 ---
 

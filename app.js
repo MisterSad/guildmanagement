@@ -221,12 +221,20 @@
                 loginError.classList.remove('hidden');
                 var pe = loginError.querySelector('span');
                 if (pe) pe.textContent = 'Your account is awaiting approval by a guild admin.';
+            } else if (resp && resp.error === 'invalid_credentials') {
+                loginError.classList.remove('hidden');
+                var pe = loginError.querySelector('span');
+                if (pe) pe.textContent = t('login_error');
             } else {
-                throw new Error('invalid');
+                loginError.classList.remove('hidden');
+                var pe = loginError.querySelector('span');
+                if (pe) pe.textContent = (resp && resp.error) ? resp.error : t('login_error');
             }
         } catch (err) {
             console.error('Login error details:', err);
             loginError.classList.remove('hidden');
+            var pe = loginError.querySelector('span');
+            if (pe && err && err.message) pe.textContent = err.message;
             var card = document.querySelector('.login-card');
             if (card) {
                 card.style.animation = 'none';
