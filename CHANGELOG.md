@@ -2,9 +2,10 @@
 
 ## New
 
-- **Gemini 2.5 Flash OCR Bulk Member Import (v86)**:
-  - **Scan Button & Modal**: Integrated a dedicated "Scan OCR Gemini" button in the `Members` tab (`id="admin-members"` in `index.html`).
-  - **Interactive Verification Grid**: Drag-and-drop or upload game screenshots (leaderboards, guild roster lists) to preview detected player names, extracted power values, and match status (`Nouveau`, `Mise à jour`, `Inchangé`).
+- **Gemini 2.5 Flash OCR Bulk Member Import (v87)**:
+  - **Scan Button & Modal**: Integrated a dedicated "Scan OCR" button in the `Members` tab (`Add a member` section).
+  - **100% English UI & Localization**: Standardized all modal titles, headers, dropzone instructions, review table columns, status tags (`New Player`, `Update`, `Unchanged`), and toast notifications in English.
+  - **Interactive Verification Grid**: Drag-and-drop or upload game screenshots (leaderboards, guild roster lists) to preview detected player names, extracted power values, and match status.
   - **Supabase Edge Function**: Created `supabase/functions/ocr-guild-members/index.ts` leveraging Google Gemini API (`gemini-2.5-flash`) with structured JSON schema outputs (`response_mime_type: "application/json"`).
   - **Postgres Bulk Upsert RPC**: Added migration `supabase/migrations/20260813000000_gm_bulk_upsert_members.sql` (`gm_bulk_upsert_members`) with strict RLS authorization and tenant scoping.
   - **Fallback Integration**: Automatic fallback to direct Gemini API with key `GEMINI_API_KEY` stored in `.env` and `supabase/.env`.
@@ -22,6 +23,8 @@
 
 ## Fixed
 
+- **OCR Modal UI & Click Event Delegation**: Document-level click handler ensures modal opens immediately from any view state.
+- **Strict English Localization**: Replaced all remaining French UI strings with clean, standardized English terminology.
 - **OCR Roster Sync**: Seamless bulk updates of member overall power levels without manual line-by-line entry.
 - **Seamless PWA Offline Experience**: Gracefully notifies users when network connection drops without breaking active views or displaying blank screens.
 - **Canvas Rendering Stability**: Explicit double-buffering and `clearRect` in `PortalChart.ts` prevents canvas overlay artifacts.
