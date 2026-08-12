@@ -721,17 +721,27 @@
             <!-- Tab: Admin Members -->
             <main class="dashboard-content tab-panel" id="admin-members">
                 <div class="gm-page">
-                    <header class="gm-page-header">
+                    <header class="gm-page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom: 1.5rem;">
                         <div>
                             <h1 class="gm-page-title" data-i18n="members_title">Guild Members</h1>
                             <p class="gm-page-subtitle" data-i18n="members_subtitle">Manage in-game members and UIDs</p>
                         </div>
+                        <button type="button" class="btn-ocr-trigger gm-btn" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.65rem 1.2rem; font-weight:700; font-size:0.95rem; border-radius:8px; display:inline-flex; align-items:center; gap:0.6rem; cursor:pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+                            <i class="ph ph-camera" style="font-size:1.3rem;"></i>
+                            <span>📸 Importer Captures (OCR Gemini)</span>
+                        </button>
                     </header>
 
                     <div class="gm-card gm-card-padded gm-section">
-                        <div class="gm-section-title" style="margin-bottom: .75rem;">
-                            <i class="ph ph-user-plus"></i>
-                            <span data-i18n="card_add_member">Add a member</span>
+                        <div class="gm-section-title" style="margin-bottom: .75rem; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <i class="ph ph-user-plus"></i>
+                                <span data-i18n="card_add_member">Add a member</span>
+                            </div>
+                            <button type="button" id="btn-ocr-import" class="gm-btn gm-btn-accent" style="gap:0.4rem; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.4rem 0.8rem; font-weight:600; cursor:pointer;">
+                                <i class="ph ph-scan" style="font-size:1.1rem;"></i>
+                                <span>Scan OCR Gemini</span>
+                            </button>
                         </div>
                         <form id="add-member-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
                             <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
@@ -1245,9 +1255,15 @@
 
             <!-- Tab: Member Members -->
             <main class="dashboard-content tab-panel" id="member-members">
-                <header class="dashboard-header slide-up">
-                    <h1 data-i18n="members_title">Guild Members</h1>
-                    <p data-i18n="members_subtitle">Manage guild in-game members</p>
+                <header class="dashboard-header slide-up" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <h1 data-i18n="members_title">Guild Members</h1>
+                        <p data-i18n="members_subtitle">Manage guild in-game members</p>
+                    </div>
+                    <button type="button" class="btn-ocr-trigger gm-btn" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.65rem 1.2rem; font-weight:700; font-size:0.95rem; border-radius:8px; display:inline-flex; align-items:center; gap:0.6rem; cursor:pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+                        <i class="ph ph-camera" style="font-size:1.3rem;"></i>
+                        <span>📸 Importer Captures (OCR Gemini)</span>
+                    </button>
                 </header>
                 <div class="admin-home-layout">
                     <!-- Horizontal Banner for adding member -->
@@ -1346,6 +1362,9 @@
     <!-- Toast Notification -->
     <div id="toast-container"></div>
 
+    <!-- Vite ES Module entrypoint -->
+    <script type="module" src="/src/main.ts"></script>
+
     <!-- Scripts: i18n first, then Three.js 3D, Supabase, icons, utils, modules, then app.js & shell.js -->
     <script src="i18n.js?v=33"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1354,6 +1373,78 @@
     <script src="push.js?v=4"></script>
     <script src="events.js?v=27"></script>
     <script src="shadowfront.js?v=30"></script>
+    <!-- OCR Gemini Modal Overlay -->
+    <div id="ocr-modal-overlay" class="confirm-overlay">
+        <div class="gm-modal-card" style="max-width: 780px; width: 94%; max-height: 90vh; display: flex; flex-direction: column; text-align: left; overflow: hidden;">
+            <div class="gm-modal-header" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border-soft);">
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <div style="width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg, #6366f1, #8b5cf6); display:flex; align-items:center; justify-content:center; color:#fff;">
+                        <i class="ph ph-scan" style="font-size:1.3rem;"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">Importation / Scan OCR Gemini</h3>
+                        <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted);">Scannez vos captures d'écran de guilde pour mettre à jour les membres & puissances</p>
+                    </div>
+                </div>
+                <button type="button" class="gm-mini-btn" id="ocr-modal-close" style="cursor: pointer;"><i class="ph ph-x"></i></button>
+            </div>
+
+            <div class="gm-modal-body" style="padding: 1rem 0; overflow-y: auto; flex: 1;">
+                <!-- Step 1: Upload Dropzone -->
+                <div id="ocr-dropzone" style="border: 2px dashed rgba(99, 102, 241, 0.4); border-radius: 12px; padding: 2rem 1rem; text-align: center; background: rgba(99, 102, 241, 0.03); cursor: pointer; transition: all 0.2s ease;">
+                    <i class="ph ph-cloud-arrow-up" style="font-size: 2.8rem; color: var(--accent); margin-bottom: 0.5rem; display: inline-block;"></i>
+                    <h4 style="margin: 0 0 0.4rem 0; font-size: 1rem;">Glissez vos captures d'écran ici ou cliquez pour choisir</h4>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Formats supportés: PNG, JPG, WEBP (Listes de membres, classement guilde)</p>
+                    <input type="file" id="ocr-file-input" accept="image/*" multiple style="display: none;">
+                </div>
+
+                <!-- Processing Spinner -->
+                <div id="ocr-loading" style="display: none; text-align: center; padding: 2.5rem 1rem;">
+                    <div class="gm-spinner" style="width: 42px; height: 42px; border-width: 3px; border-top-color: #8b5cf6; margin: 0 auto 1rem auto;"></div>
+                    <h4 style="margin: 0 0 0.4rem 0; font-size: 1rem;">Analyse OCR en cours par Gemini...</h4>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Extraction des pseudos et des puissances des joueurs...</p>
+                </div>
+
+                <!-- Step 2: Results Table & Review -->
+                <div id="ocr-results-container" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div style="font-size: 0.85rem; font-weight: 600;">
+                            Joueurs détectés : <span id="ocr-detected-count" style="color: var(--accent);">0</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" id="ocr-select-all-btn">Tout sélectionner</button>
+                            <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" id="ocr-reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Autre image</button>
+                        </div>
+                    </div>
+
+                    <div class="gm-table-wrap" style="max-height: 340px; overflow-y: auto; border: 1px solid var(--border-soft); border-radius: 8px;">
+                        <table class="gm-table" style="width: 100%; font-size: 0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 38px; text-align: center;"><input type="checkbox" id="ocr-toggle-all-cb" checked></th>
+                                    <th>Joueur (Pseudo)</th>
+                                    <th>Puissance Détectée</th>
+                                    <th>Statut Roster</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ocr-results-tbody">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gm-modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.8rem; border-top: 1px solid var(--border-soft);">
+                <button type="button" class="gm-btn gm-btn-ghost" id="ocr-modal-cancel">Annuler</button>
+                <button type="button" class="gm-btn gm-btn-primary" id="ocr-commit-btn" style="display: none; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">
+                    <i class="ph ph-check-circle"></i>
+                    <span>Appliquer la mise à jour (0)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="armsrace.js?v=12"></script>
     <script src="glory.js?v=16"></script>
     <script src="history.js?v=23"></script>

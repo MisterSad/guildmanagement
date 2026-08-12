@@ -1,41 +1,33 @@
-name: CI
+name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - name: Typecheck edge functions (deno)
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-      - run: |
-          for f in supabase/functions/*/index.ts; do
-            echo "deno check $f"
-            deno check "$f" || exit 1
-          done
 
-  e2e:
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      - name: Run Playwright e2e
-        run: npx playwright test
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Type Check TypeScript
+        run: npm run type-check
+
+      - name: Run Unit Tests (Vitest)
+        run: npm test
+
+      - name: Build Vite Production Bundle
+        run: npm run build

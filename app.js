@@ -1727,11 +1727,355 @@
         }
     }
 
+    // ─── OCR Gemini Bulk Roster Import ─────────────────────────────────────
+    var ocrExtractedPlayers = [];
+    var ocrInitialized = false;
+    var GEMINI_FALLBACK_KEY = (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || '';
+
+    function initOcrGeminiModule() {
+        var modal = document.getElementById('ocr-modal-overlay');
+        var btnTriggers = document.querySelectorAll('.btn-ocr-trigger, #btn-ocr-import');
+        var btnClose = document.getElementById('ocr-modal-close');
+        var btnCancel = document.getElementById('ocr-modal-cancel');
+        var dropzone = document.getElementById('ocr-dropzone');
+        var fileInput = document.getElementById('ocr-file-input');
+        var loading = document.getElementById('ocr-loading');
+        var resultsContainer = document.getElementById('ocr-results-container');
+        var btnReset = document.getElementById('ocr-reset-btn');
+        var btnSelectAll = document.getElementById('ocr-select-all-btn');
+        var cbToggleAll = document.getElementById('ocr-toggle-all-cb');
+        var btnCommit = document.getElementById('ocr-commit-btn');
+
+        if (!modal) return;
+
+        function openModal() {
+            modal.classList.add('visible');
+            resetModalState();
+        }
+
+        function closeModal() {
+            modal.classList.remove('visible');
+        }
+
+        function resetModalState() {
+            ocrExtractedPlayers = [];
+            if (dropzone) dropzone.style.display = 'block';
+            if (loading) loading.style.display = 'none';
+            if (resultsContainer) resultsContainer.style.display = 'none';
+            if (btnCommit) btnCommit.style.display = 'none';
+            if (fileInput) fileInput.value = '';
+        }
+
+        if (btnTriggers.length > 0) {
+            btnTriggers.forEach(function (btn) {
+                btn.onclick = openModal;
+            });
+        }
+        if (ocrInitialized) return;
+        ocrInitialized = true;
+        if (btnClose) btnClose.addEventListener('click', closeModal);
+        if (btnCancel) btnCancel.addEventListener('click', closeModal);
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeModal();
+        });
+
+        if (dropzone && fileInput) {
+            dropzone.addEventListener('click', function () {
+                fileInput.click();
+            });
+
+            dropzone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                dropzone.style.borderColor = 'var(--accent)';
+                dropzone.style.background = 'rgba(99, 102, 241, 0.08)';
+            });
+
+            dropzone.addEventListener('dragleave', function (e) {
+                e.preventDefault();
+                dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+                dropzone.style.background = 'rgba(99, 102, 241, 0.03)';
+            });
+
+            dropzone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+                dropzone.style.background = 'rgba(99, 102, 241, 0.03)';
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleOcrFiles(Array.from(e.dataTransfer.files));
+                }
+            });
+
+            fileInput.addEventListener('change', function () {
+                if (fileInput.files && fileInput.files.length > 0) {
+                    handleOcrFiles(Array.from(fileInput.files));
+                }
+            });
+        }
+
+        if (btnReset) btnReset.addEventListener('click', resetModalState);
+
+        if (btnSelectAll && cbToggleAll) {
+            btnSelectAll.addEventListener('click', function () {
+                cbToggleAll.checked = !cbToggleAll.checked;
+                toggleAllCheckboxes(cbToggleAll.checked);
+            });
+            cbToggleAll.addEventListener('change', function () {
+                toggleAllCheckboxes(cbToggleAll.checked);
+            });
+        }
+
+        if (btnCommit) {
+            btnCommit.addEventListener('click', commitOcrUpdates);
+        }
+    }
+
+    async function handleOcrFiles(files) {
+        var dropzone = document.getElementById('ocr-dropzone');
+        var loading = document.getElementById('ocr-loading');
+        var resultsContainer = document.getElementById('ocr-results-container');
+
+        var imageFiles = files.filter(function (f) { return f.type.startsWith('image/'); });
+        if (imageFiles.length === 0) {
+            showToast('Veuillez sélectionner un fichier image (PNG, JPG, WEBP).', 'error');
+            return;
+        }
+
+        if (dropzone) dropzone.style.display = 'none';
+        if (loading) loading.style.display = 'block';
+        if (resultsContainer) resultsContainer.style.display = 'none';
+
+        var allPlayers = [];
+        try {
+            for (var i = 0; i < imageFiles.length; i++) {
+                var file = imageFiles[i];
+                var base64Data = await fileToBase64(file);
+                var extracted = await callGeminiOcrApi(base64Data, file.type);
+                allPlayers = allPlayers.concat(extracted);
+            }
+
+            var uniqueMap = {};
+            allPlayers.forEach(function (p) {
+                var key = p.pseudo.toLowerCase();
+                if (!uniqueMap[key] || p.overall_power > uniqueMap[key].overall_power) {
+                    uniqueMap[key] = p;
+                }
+            });
+
+            ocrExtractedPlayers = Object.values(uniqueMap);
+            renderOcrResults(ocrExtractedPlayers);
+        } catch (err) {
+            console.error('OCR processing error:', err);
+            showToast('Échec de l\'analyse OCR : ' + (err.message || 'Erreur Gemini'), 'error');
+            if (loading) loading.style.display = 'none';
+            if (dropzone) dropzone.style.display = 'block';
+        }
+    }
+
+    function fileToBase64(file) {
+        return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function () { resolve(reader.result); };
+            reader.onerror = function (e) { reject(e); };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function callGeminiOcrApi(base64Data, mimeType) {
+        try {
+            if (supabase && supabase.functions) {
+                var res = await supabase.functions.invoke('ocr-guild-members', {
+                    body: { imageBase64: base64Data, mimeType: mimeType }
+                });
+                if (res.data && res.data.ok && Array.isArray(res.data.players)) {
+                    return res.data.players;
+                }
+            }
+        } catch (edgeErr) {
+            console.warn('Edge function invoke failed, attempting direct Gemini API call:', edgeErr);
+        }
+
+        var cleanBase64 = base64Data.includes(';base64,') ? base64Data.split(';base64,')[1] : base64Data;
+        var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_FALLBACK_KEY;
+
+        var systemPrompt = 'Extract all visible player pseudos (names) and overall power values from this gaming roster screenshot. Convert power values like 145.2M to integer 145200000. Return JSON matching schema: {"players": [{"pseudo": "string", "overall_power": number, "uid": "string or null"}]}';
+
+        var payload = {
+            contents: [{
+                parts: [
+                    { text: systemPrompt },
+                    { inline_data: { mime_type: mimeType || 'image/png', data: cleanBase64 } }
+                ]
+            }],
+            generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
+        };
+
+        var response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            var errText = await response.text();
+            throw new Error('Gemini API HTTP ' + response.status + ': ' + errText);
+        }
+
+        var resJson = await response.json();
+        var jsonText = resJson && resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content && resJson.candidates[0].content.parts && resJson.candidates[0].content.parts[0] ? resJson.candidates[0].content.parts[0].text : '';
+        
+        if (!jsonText) throw new Error('Aucun texte extrait par Gemini.');
+
+        var parsed = JSON.parse(jsonText);
+        var rawList = Array.isArray(parsed.players) ? parsed.players : (Array.isArray(parsed) ? parsed : []);
+        
+        return rawList.map(function (p) {
+            return {
+                pseudo: String(p.pseudo || '').trim(),
+                overall_power: typeof p.overall_power === 'number' ? Math.round(p.overall_power) : parseInt(String(p.overall_power).replace(/[^0-9]/g, ''), 10) || 0,
+                uid: p.uid ? String(p.uid).trim() : null
+            };
+        }).filter(function (p) { return p.pseudo.length > 0 && p.overall_power >= 0; });
+    }
+
+    function renderOcrResults(players) {
+        var loading = document.getElementById('ocr-loading');
+        var resultsContainer = document.getElementById('ocr-results-container');
+        var tbody = document.getElementById('ocr-results-tbody');
+        var countSpan = document.getElementById('ocr-detected-count');
+        var btnCommit = document.getElementById('ocr-commit-btn');
+
+        if (loading) loading.style.display = 'none';
+        if (resultsContainer) resultsContainer.style.display = 'block';
+        if (btnCommit) btnCommit.style.display = 'inline-flex';
+
+        if (countSpan) countSpan.textContent = players.length;
+
+        var existingMap = {};
+        guildMembers.forEach(function (m) {
+            existingMap[m.pseudo.toLowerCase()] = m;
+        });
+
+        var html = '';
+        players.forEach(function (p, idx) {
+            var existing = existingMap[p.pseudo.toLowerCase()];
+            var badgeHtml = '';
+            if (!existing) {
+                badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> Nouveau</span>';
+            } else if (existing.overall_power !== p.overall_power) {
+                badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> MAJ (' + window.GM.formatNumber(existing.overall_power) + ' &rarr; ' + window.GM.formatNumber(p.overall_power) + ')</span>';
+            } else {
+                badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Inchangé</span>';
+            }
+
+            html += '<tr>' +
+                '<td style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" checked></td>' +
+                '<td><strong style="color:var(--fg);">' + window.GM.escapeHTML(p.pseudo) + '</strong></td>' +
+                '<td><span style="color:var(--accent); font-weight:600;">' + window.GM.formatNumber(p.overall_power) + '</span></td>' +
+                '<td>' + badgeHtml + '</td>' +
+            '</tr>';
+        });
+
+        if (tbody) tbody.innerHTML = html;
+
+        updateCommitButtonCount();
+
+        if (tbody) {
+            tbody.querySelectorAll('.ocr-row-cb').forEach(function (cb) {
+                cb.addEventListener('change', updateCommitButtonCount);
+            });
+        }
+    }
+
+    function toggleAllCheckboxes(checked) {
+        var tbody = document.getElementById('ocr-results-tbody');
+        if (!tbody) return;
+        tbody.querySelectorAll('.ocr-row-cb').forEach(function (cb) {
+            cb.checked = checked;
+        });
+        updateCommitButtonCount();
+    }
+
+    function updateCommitButtonCount() {
+        var btnCommit = document.getElementById('ocr-commit-btn');
+        var tbody = document.getElementById('ocr-results-tbody');
+        if (!btnCommit || !tbody) return;
+
+        var selectedCbs = tbody.querySelectorAll('.ocr-row-cb:checked');
+        var count = selectedCbs.length;
+        var span = btnCommit.querySelector('span');
+        if (span) span.textContent = 'Appliquer la mise à jour (' + count + ')';
+        btnCommit.disabled = count === 0;
+    }
+
+    async function commitOcrUpdates() {
+        var tbody = document.getElementById('ocr-results-tbody');
+        var btnCommit = document.getElementById('ocr-commit-btn');
+        if (!tbody || !btnCommit) return;
+
+        var selectedIndices = [];
+        tbody.querySelectorAll('.ocr-row-cb:checked').forEach(function (cb) {
+            selectedIndices.push(parseInt(cb.getAttribute('data-index'), 10));
+        });
+
+        if (selectedIndices.length === 0) {
+            showToast('Aucun joueur sélectionné.', 'error');
+            return;
+        }
+
+        var selectedPlayers = selectedIndices.map(function (idx) { return ocrExtractedPlayers[idx]; });
+
+        btnCommit.disabled = true;
+        var span = btnCommit.querySelector('span');
+        if (span) span.textContent = 'Enregistrement...';
+
+        try {
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+            
+            var rpcRes = await supabase.rpc('gm_bulk_upsert_members', { p_members: selectedPlayers });
+            
+            if (rpcRes.error) {
+                console.warn('RPC gm_bulk_upsert_members failed, falling back to direct upserts:', rpcRes.error);
+                for (var i = 0; i < selectedPlayers.length; i++) {
+                    var sp = selectedPlayers[i];
+                    var existing = guildMembers.find(function (m) { return m.pseudo.toLowerCase() === sp.pseudo.toLowerCase(); });
+                    if (existing) {
+                        await supabase.from('guild_members').update({
+                            overall_power: sp.overall_power,
+                            power_updated_at: new Date().toISOString()
+                        }).eq('guild', currentG).eq('pseudo', existing.pseudo);
+                    } else {
+                        await supabase.from('guild_members').insert([{
+                            pseudo: sp.pseudo,
+                            uid: sp.uid || ('TEMP-' + Math.random().toString(36).substring(2, 10)),
+                            overall_power: sp.overall_power,
+                            guild: currentG,
+                            role: 'R1'
+                        }]);
+                    }
+                }
+            }
+
+            showToast(selectedPlayers.length + ' membre(s) mis à jour avec succès via OCR Gemini !', 'success');
+            
+            var modal = document.getElementById('ocr-modal-overlay');
+            if (modal) modal.classList.remove('visible');
+
+            fetchGuildMembers();
+        } catch (err) {
+            console.error('Commit OCR failed:', err);
+            showToast('Erreur lors de l\'enregistrement des membres : ' + err.message, 'error');
+        } finally {
+            btnCommit.disabled = false;
+            if (span) span.textContent = 'Appliquer la mise à jour';
+        }
+    }
+
     // ─── Guild Members & Transfers ──────────────────────────────────────────
     var pendingTransfers = [];
 
     async function fetchGuildMembers() {
         if (!supabase) return;
+        initOcrGeminiModule();
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
             var [res, transfersRes, absencesRes] = await Promise.all([
@@ -1744,8 +2088,6 @@
             guildMembers = res.data || [];
             
             if (!transfersRes.error) {
-                // Pending transfers touching this guild in either direction:
-                // players joining (target = us) or leaving (source = us).
                 var currentGTransfers = (transfersRes.data || []).filter(function (t) {
                     return t.target_guild === currentG || t.source_guild === currentG;
                 });
