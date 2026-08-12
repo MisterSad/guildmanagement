@@ -1727,10 +1727,13 @@
         }
     }
 
-    // ─── OCR Gemini Bulk Roster Import ─────────────────────────────────────
+    // ─── OCR Bulk Roster & Power Import ─────────────────────────────────────
     var ocrExtractedPlayers = [];
     var ocrInitialized = false;
-    var GEMINI_FALLBACK_KEY = (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || '';
+
+    function getOcrApiKey() {
+        return (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || '';
+    }
 
     function openOcrModal() {
         var modal = document.getElementById('ocr-modal-overlay');
@@ -1751,11 +1754,18 @@
 
     function resetOcrModalState() {
         ocrExtractedPlayers = [];
+        var keyPrompt = document.getElementById('ocr-key-prompt');
         var dropzone = document.getElementById('ocr-dropzone');
         var loading = document.getElementById('ocr-loading');
         var resultsContainer = document.getElementById('ocr-results-container');
         var btnCommit = document.getElementById('ocr-commit-btn');
         var fileInput = document.getElementById('ocr-file-input');
+
+        if (!getOcrApiKey() && keyPrompt) {
+            keyPrompt.style.display = 'block';
+        } else if (keyPrompt) {
+            keyPrompt.style.display = 'none';
+        }
 
         if (dropzone) dropzone.style.display = 'block';
         if (loading) loading.style.display = 'none';
@@ -1790,10 +1800,35 @@
         var btnSelectAll = document.getElementById('ocr-select-all-btn');
         var cbToggleAll = document.getElementById('ocr-toggle-all-cb');
         var btnCommit = document.getElementById('ocr-commit-btn');
+        var keyConfigBtn = document.getElementById('ocr-key-config-btn');
+        var keyPrompt = document.getElementById('ocr-key-prompt');
+        var keyInput = document.getElementById('ocr-api-key-input');
+        var saveKeyBtn = document.getElementById('ocr-save-key-btn');
 
         if (!modal) return;
         if (ocrInitialized) return;
         ocrInitialized = true;
+
+        if (keyConfigBtn && keyPrompt) {
+            keyConfigBtn.onclick = function () {
+                var isHidden = keyPrompt.style.display === 'none';
+                keyPrompt.style.display = isHidden ? 'block' : 'none';
+                if (isHidden && keyInput) keyInput.value = getOcrApiKey();
+            };
+        }
+
+        if (saveKeyBtn && keyInput) {
+            saveKeyBtn.onclick = function () {
+                var val = (keyInput.value || '').trim();
+                if (val) {
+                    localStorage.setItem('gm_gemini_key', val);
+                    showToast('API key saved successfully!', 'success');
+                    if (keyPrompt) keyPrompt.style.display = 'none';
+                } else {
+                    showToast('Please paste a valid API key.', 'error');
+                }
+            };
+        }
 
         if (btnClose) btnClose.onclick = closeOcrModal;
         if (btnCancel) btnCancel.onclick = closeOcrModal;
@@ -1822,25 +1857,30 @@
                 e.preventDefault();
                 dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)';
                 dropzone.style.background = 'rgba(99, 102, 241, 0.03)';
-                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    handleOcrFiles(Array.from(e.dataTransfer.files));
-                }
+                var files = Array.from(e.dataTransfer.files);
+                handleOcrFiles(files);
             });
 
-            fileInput.addEventListener('change', function () {
-                if (fileInput.files && fileInput.files.length > 0) {
-                    handleOcrFiles(Array.from(fileInput.files));
-                }
+            fileInput.addEventListener('change', function (e) {
+                var files = Array.from(e.target.files);
+                handleOcrFiles(files);
             });
         }
 
-        if (btnReset) btnReset.addEventListener('click', resetModalState);
+        if (btnReset) {
+            btnReset.addEventListener('click', function () {
+                resetOcrModalState();
+            });
+        }
 
         if (btnSelectAll && cbToggleAll) {
             btnSelectAll.addEventListener('click', function () {
                 cbToggleAll.checked = !cbToggleAll.checked;
                 toggleAllCheckboxes(cbToggleAll.checked);
             });
+        }
+
+        if (cbToggleAll) {
             cbToggleAll.addEventListener('change', function () {
                 toggleAllCheckboxes(cbToggleAll.checked);
             });
@@ -1887,7 +1927,7 @@
             renderOcrResults(ocrExtractedPlayers);
         } catch (err) {
             console.error('OCR processing error:', err);
-            showToast('OCR Analysis failed: ' + (err.message || 'Gemini Error'), 'error');
+            showToast(err.message || 'OCR Analysis failed', 'error');
             if (loading) loading.style.display = 'none';
             if (dropzone) dropzone.style.display = 'block';
         }
@@ -1913,11 +1953,18 @@
                 }
             }
         } catch (edgeErr) {
-            console.warn('Edge function invoke failed, attempting direct Gemini API call:', edgeErr);
+            console.warn('Edge function invoke failed, attempting direct API call:', edgeErr);
+        }
+
+        var activeKey = getOcrApiKey();
+        if (!activeKey) {
+            var prompt = document.getElementById('ocr-key-prompt');
+            if (prompt) prompt.style.display = 'block';
+            throw new Error('API Key Required. Please paste your API key above.');
         }
 
         var cleanBase64 = base64Data.includes(';base64,') ? base64Data.split(';base64,')[1] : base64Data;
-        var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_FALLBACK_KEY;
+        var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + activeKey;
 
         var systemPrompt = 'Extract all visible player pseudos (names) and overall power values from this gaming roster screenshot. Convert power values like 145.2M to integer 145200000. Return JSON matching schema: {"players": [{"pseudo": "string", "overall_power": number, "uid": "string or null"}]}';
 
@@ -1939,7 +1986,12 @@
 
         if (!response.ok) {
             var errText = await response.text();
-            throw new Error('Gemini API HTTP ' + response.status + ': ' + errText);
+            if (response.status === 403) {
+                var keyPromptBox = document.getElementById('ocr-key-prompt');
+                if (keyPromptBox) keyPromptBox.style.display = 'block';
+                throw new Error('Invalid or missing API Key (HTTP 403). Please enter your API key above.');
+            }
+            throw new Error('OCR API HTTP ' + response.status + ': ' + errText);
         }
 
         var resJson = await response.json();
