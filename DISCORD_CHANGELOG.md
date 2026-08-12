@@ -1,10 +1,10 @@
-:sparkles: **CLIENT JS SYNTAX FIX — v70**
+:sparkles: **NIGHTWRAITH ROSTER & POWER UPDATE — v71**
 
 ---
 
-:wrench: **Fixed**
+:party_popper: **New**
 
-- :bug: **Frontend App Parsing Fixed** - Restored missing closing syntax brace in `app.js` that previously caused a script parsing error on page load. Fully validated live browser login flow via end-to-end tests for `HawkEye`.
+- :shield: **NIGHTWRAITH Roster Upsert** - Updated combat power and registered 147 members into the existing `NIGHTWRAITH` tenant (Server #1078).
 
 ---
 
