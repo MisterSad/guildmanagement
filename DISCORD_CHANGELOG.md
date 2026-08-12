@@ -1,10 +1,10 @@
-:sparkles: **BLACKTHUNDER MEMBER IMPORT — v74**
+:sparkles: **TWILIGHT MEMBER IMPORT — v75**
 
 ---
 
 :party_popper: **New**
 
-- :shield: **BlackThunder Roster Import** - Imported 71 members with combat power into the `BLACKTHUNDER` tenant (Server #1078).
+- :shield: **TWILIGHT Roster Import** - Imported 181 members with combat power into the `TWILIGHT` tenant (Server #1078).
 
 ---
 
