@@ -1417,9 +1417,12 @@
 
                 <!-- Step 2: Results Table & Review -->
                 <div id="ocr-results-container" style="display: none;">
-                    <div style="display: flex; justify-space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-                        <div style="font-size: 0.85rem; font-weight: 600;">
-                            Detected Players: <span id="ocr-detected-count" style="color: var(--accent);">0</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                            <div style="font-size: 0.85rem; font-weight: 600;">
+                                Extracted: <span id="ocr-detected-count" style="color: var(--accent);">0</span>
+                            </div>
+                            <div id="ocr-summary-badges" style="display: flex; gap: 0.4rem; align-items: center;"></div>
                         </div>
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" id="ocr-select-all-btn">Select All</button>
@@ -1433,7 +1436,7 @@
                                 <tr>
                                     <th style="width: 38px; text-align: center;"><input type="checkbox" id="ocr-toggle-all-cb" checked></th>
                                     <th>Player Username</th>
-                                    <th>Detected Power</th>
+                                    <th>Extracted Power</th>
                                     <th>Roster Status</th>
                                 </tr>
                             </thead>
@@ -1447,9 +1450,9 @@
 
             <div class="gm-modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.8rem; border-top: 1px solid var(--border-soft);">
                 <button type="button" class="gm-btn gm-btn-ghost" id="ocr-modal-cancel">Cancel</button>
-                <button type="button" class="gm-btn gm-btn-primary" id="ocr-commit-btn" style="display: none; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">
+                <button type="button" class="gm-btn gm-btn-primary" id="ocr-commit-btn" style="display: none; background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 600;">
                     <i class="ph ph-check-circle"></i>
-                    <span>Apply Roster Update (0)</span>
+                    <span>Validate & Apply Updates (0)</span>
                 </button>
             </div>
         </div>

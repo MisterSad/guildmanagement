@@ -2017,6 +2017,7 @@
         var resultsContainer = document.getElementById('ocr-results-container');
         var tbody = document.getElementById('ocr-results-tbody');
         var countSpan = document.getElementById('ocr-detected-count');
+        var summaryBadges = document.getElementById('ocr-summary-badges');
         var btnCommit = document.getElementById('ocr-commit-btn');
 
         if (loading) loading.style.display = 'none';
@@ -2030,25 +2031,39 @@
             existingMap[m.pseudo.toLowerCase()] = m;
         });
 
+        var newCount = 0;
+        var updateCount = 0;
+        var unchangedCount = 0;
+
         var html = '';
         players.forEach(function (p, idx) {
             var existing = existingMap[p.pseudo.toLowerCase()];
             var badgeHtml = '';
             if (!existing) {
+                newCount++;
                 badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
             } else if (existing.overall_power !== p.overall_power) {
+                updateCount++;
                 badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + window.GM.formatNumber(existing.overall_power) + ' &rarr; ' + window.GM.formatNumber(p.overall_power) + ')</span>';
             } else {
+                unchangedCount++;
                 badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
             }
 
             html += '<tr>' +
                 '<td style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" checked></td>' +
-                '<td><strong style="color:var(--fg);">' + window.GM.escapeHTML(p.pseudo) + '</strong></td>' +
-                '<td><span style="color:var(--accent); font-weight:600;">' + window.GM.formatNumber(p.overall_power) + '</span></td>' +
+                '<td><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + window.GM.escapeHTML(p.pseudo) + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                '<td><input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + p.overall_power + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:var(--accent); width:100%; max-width:140px;"></td>' +
                 '<td>' + badgeHtml + '</td>' +
             '</tr>';
         });
+
+        if (summaryBadges) {
+            summaryBadges.innerHTML = 
+                '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>' +
+                '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Updates</span>' +
+                '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' + unchangedCount + ' Unchanged</span>';
+        }
 
         if (tbody) tbody.innerHTML = html;
 
@@ -2057,6 +2072,24 @@
         if (tbody) {
             tbody.querySelectorAll('.ocr-row-cb').forEach(function (cb) {
                 cb.addEventListener('change', updateCommitButtonCount);
+            });
+
+            tbody.querySelectorAll('.ocr-edit-pseudo').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    var idx = parseInt(input.getAttribute('data-index'), 10);
+                    if (ocrExtractedPlayers[idx]) {
+                        ocrExtractedPlayers[idx].pseudo = input.value.trim();
+                    }
+                });
+            });
+
+            tbody.querySelectorAll('.ocr-edit-power').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    var idx = parseInt(input.getAttribute('data-index'), 10);
+                    if (ocrExtractedPlayers[idx]) {
+                        ocrExtractedPlayers[idx].overall_power = parseInt(input.value, 10) || 0;
+                    }
+                });
             });
         }
     }
@@ -2078,7 +2111,7 @@
         var selectedCbs = tbody.querySelectorAll('.ocr-row-cb:checked');
         var count = selectedCbs.length;
         var span = btnCommit.querySelector('span');
-        if (span) span.textContent = 'Apply Roster Update (' + count + ')';
+        if (span) span.textContent = 'Validate & Apply Updates (' + count + ')';
         btnCommit.disabled = count === 0;
     }
 
@@ -2101,7 +2134,7 @@
 
         btnCommit.disabled = true;
         var span = btnCommit.querySelector('span');
-        if (span) span.textContent = 'Saving...';
+        if (span) span.textContent = 'Validating & Saving...';
 
         try {
             var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
@@ -2130,7 +2163,7 @@
                 }
             }
 
-            showToast(selectedPlayers.length + ' member(s) successfully updated via Gemini OCR!', 'success');
+            showToast(selectedPlayers.length + ' member(s) successfully validated and updated!', 'success');
             
             var modal = document.getElementById('ocr-modal-overlay');
             if (modal) {
@@ -2144,7 +2177,7 @@
             showToast('Error saving member updates: ' + err.message, 'error');
         } finally {
             btnCommit.disabled = false;
-            if (span) span.textContent = 'Apply Roster Update';
+            if (span) span.textContent = 'Validate & Apply Updates';
         }
     }
 
