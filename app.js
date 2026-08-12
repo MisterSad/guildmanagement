@@ -2073,6 +2073,90 @@
         return [];
     }
 
+    function calculateStringSimilarity(str1, str2) {
+        if (!str1 || !str2) return 0;
+        var s1 = String(str1).toLowerCase().trim();
+        var s2 = String(str2).toLowerCase().trim();
+        if (s1 === s2) return 1.0;
+
+        var clean1 = s1.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+        var clean2 = s2.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+        if (clean1 && clean1 === clean2) return 0.95;
+
+        var len1 = s1.length;
+        var len2 = s2.length;
+        var maxLen = Math.max(len1, len2);
+        if (maxLen === 0) return 1.0;
+
+        var dist = levenshteinDistance(s1, s2);
+        var sim = 1.0 - (dist / maxLen);
+
+        var cleanMax = Math.max(clean1.length, clean2.length);
+        if (cleanMax > 0) {
+            var cleanDist = levenshteinDistance(clean1, clean2);
+            var cleanSim = 1.0 - (cleanDist / cleanMax);
+            if (cleanSim > sim) sim = cleanSim;
+        }
+
+        return sim;
+    }
+
+    function levenshteinDistance(a, b) {
+        var matrix = [];
+        for (var i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+        for (var j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+        for (var i = 1; i <= b.length; i++) {
+            for (var j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+                    );
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+
+    function findBestMatchingMember(ocrPseudo, members) {
+        if (!ocrPseudo || !members || members.length === 0) return null;
+        var target = String(ocrPseudo).trim().toLowerCase();
+
+        var exact = members.find(function (m) {
+            return m.pseudo && m.pseudo.trim().toLowerCase() === target;
+        });
+        if (exact) return { member: exact, matchType: 'exact', score: 1.0 };
+
+        var targetClean = target.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+        if (targetClean.length >= 3) {
+            var normMatch = members.find(function (m) {
+                var mClean = (m.pseudo || '').trim().toLowerCase().replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+                return mClean === targetClean;
+            });
+            if (normMatch) return { member: normMatch, matchType: 'normalized', score: 0.95 };
+        }
+
+        var bestMember = null;
+        var bestScore = 0;
+
+        members.forEach(function (m) {
+            if (!m || !m.pseudo) return;
+            var score = calculateStringSimilarity(ocrPseudo, m.pseudo);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMember = m;
+            }
+        });
+
+        if (bestMember && bestScore >= 0.75) {
+            return { member: bestMember, matchType: 'fuzzy', score: bestScore };
+        }
+
+        return null;
+    }
+
     function renderOcrResults(players) {
         var loading = document.getElementById('ocr-loading');
         var resultsContainer = document.getElementById('ocr-results-container');
@@ -2087,22 +2171,31 @@
 
         if (countSpan) countSpan.textContent = players.length;
 
-        var existingMap = {};
-        guildMembers.forEach(function (m) {
-            existingMap[m.pseudo.toLowerCase()] = m;
-        });
-
         var newCount = 0;
         var updateCount = 0;
         var unchangedCount = 0;
+        var reconciledCount = 0;
 
         var html = '';
         players.forEach(function (p, idx) {
-            var existing = existingMap[p.pseudo.toLowerCase()];
+            var matchRes = findBestMatchingMember(p.pseudo, guildMembers);
+            var existing = matchRes ? matchRes.member : null;
+            var matchType = matchRes ? matchRes.matchType : null;
+
+            var effectivePseudo = p.pseudo;
+            if (existing && (matchType === 'normalized' || matchType === 'fuzzy') && p.pseudo !== existing.pseudo) {
+                effectivePseudo = existing.pseudo;
+                p.pseudo = existing.pseudo;
+                reconciledCount++;
+            }
+
             var badgeHtml = '';
             if (!existing) {
                 newCount++;
                 badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
+            } else if (matchType === 'fuzzy' || matchType === 'normalized') {
+                updateCount++;
+                badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + window.GM.escapeHTML(existing.pseudo) + '") &rarr; ' + window.GM.formatNumber(p.overall_power) + '</span>';
             } else if (existing.overall_power !== p.overall_power) {
                 updateCount++;
                 badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + window.GM.formatNumber(existing.overall_power) + ' &rarr; ' + window.GM.formatNumber(p.overall_power) + ')</span>';
@@ -2113,7 +2206,7 @@
 
             html += '<tr>' +
                 '<td style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" checked></td>' +
-                '<td><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + window.GM.escapeHTML(p.pseudo) + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                '<td><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + window.GM.escapeHTML(effectivePseudo) + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
                 '<td><input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + p.overall_power + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:var(--accent); width:100%; max-width:140px;"></td>' +
                 '<td>' + badgeHtml + '</td>' +
             '</tr>';
@@ -2123,6 +2216,7 @@
             summaryBadges.innerHTML = 
                 '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>' +
                 '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Updates</span>' +
+                (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
                 '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' + unchangedCount + ' Unchanged</span>';
         }
 
