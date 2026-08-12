@@ -921,49 +921,44 @@
         var lastErrReason = '';
 
         for (var cIdx = 0; cIdx < chunks.length; cIdx++) {
-            var payloadStr = JSON.stringify({ content: chunks[cIdx] });
             var posted = false;
 
-            // Attempt 1: Standard JSON fetch
-            try {
-                var res = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: payloadStr
-                });
-                if (res.ok || res.status === 204 || res.status === 200) {
-                    posted = true;
-                } else {
-                    var errBody = '';
-                    try { errBody = await res.text(); } catch (e) {}
-                    lastErrReason = 'HTTP ' + res.status + ' ' + (res.statusText || '') + (errBody ? ': ' + errBody : '');
-                    console.error('Discord webhook returned status ' + res.status + ':', errBody);
+            // Attempt 1: Invoke Edge Function Proxy (bypasses browser CORS & adblocker restrictions)
+            var client = getClient();
+            if (client && client.functions && typeof client.functions.invoke === 'function') {
+                try {
+                    var invokeRes = await client.functions.invoke('discord-webhook-proxy', {
+                        body: { webhookUrl: webhookUrl, content: chunks[cIdx] }
+                    });
+                    if (invokeRes && invokeRes.data && invokeRes.data.ok) {
+                        posted = true;
+                    } else if (invokeRes && invokeRes.data && invokeRes.data.error) {
+                        lastErrReason = invokeRes.data.error;
+                    } else if (invokeRes && invokeRes.error) {
+                        lastErrReason = (invokeRes.error.message || String(invokeRes.error));
+                    }
+                } catch (eProxy) {
+                    console.warn('Edge Function proxy invoke failed, trying direct fetch fallback:', eProxy);
                 }
-            } catch (err) {
-                console.warn('Standard JSON fetch to Discord failed, trying form payload fallback:', err);
-                lastErrReason = (err && err.message) || 'Network/CORS error';
             }
 
-            // Attempt 2: Form payload fallback (URLSearchParams) to bypass CORS preflight issues
+            // Attempt 2: Fallback direct fetch if Edge Function proxy is unavailable
             if (!posted) {
                 try {
-                    var params = new URLSearchParams();
-                    params.append('payload_json', payloadStr);
-                    var resForm = await fetch(webhookUrl, {
+                    var res = await fetch(webhookUrl, {
                         method: 'POST',
-                        body: params
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: chunks[cIdx] })
                     });
-                    if (resForm.ok || resForm.status === 204 || resForm.status === 200) {
+                    if (res.ok || res.status === 204 || res.status === 200) {
                         posted = true;
-                        lastErrReason = '';
                     } else {
-                        var errText = '';
-                        try { errText = await resForm.text(); } catch (e) {}
-                        lastErrReason = 'HTTP ' + resForm.status + (errText ? ': ' + errText : '');
+                        var errBody = '';
+                        try { errBody = await res.text(); } catch (e) {}
+                        lastErrReason = 'HTTP ' + res.status + ' ' + (res.statusText || '') + (errBody ? ': ' + errBody : '');
                     }
-                } catch (formErr) {
-                    console.error('Form fallback fetch to Discord failed:', formErr);
-                    lastErrReason = (formErr && formErr.message) || lastErrReason || 'Connection failed';
+                } catch (err) {
+                    lastErrReason = (err && err.message) || lastErrReason || 'Network/CORS error';
                 }
             }
 

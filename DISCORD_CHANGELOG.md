@@ -1,16 +1,16 @@
-:sparkles: **DISCORD WEBHOOK ROBUSTNESS & CORS FALLBACK — v79**
+:sparkles: **SUPABASE EDGE FUNCTION DISCORD PROXY DEPLOYED — v80**
 
 ---
 
 :party_popper: **New**
 
-- :shield: **Discord Webhook Fallback & Diagnostics** - Added CORS fallback and detailed error reporting for Opponent Roster sharing so you see exact error details (HTTP status or network block) if a webhook URL is invalid or blocked.
+- :rocket: **Discord Webhook Edge Function Proxy** - Deployed `discord-webhook-proxy` Edge Function to handle Discord Webhook deliveries server-side in Deno, eliminating browser CORS blocks and adblocker `NetworkError` failures.
 
 ---
 
 :wrench: **Fixed**
 
-- :bug: **Webhook CORS & Payload Error Handling** - Added fallback form payload mode and URL cleaning to resolve browser CORS blocks.
+- :bug: **NetworkError / CORS Resolution** - Roster sharing to Discord now works seamlessly across all browsers and extensions without CORS limitations.
 
 ---
 
