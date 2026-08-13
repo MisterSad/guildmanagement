@@ -180,7 +180,8 @@ describe('GM_SHADOWFRONT UI/UX', () => {
 
     it('shares the composition on Discord through the shadowfront webhook fallback fetch', async () => {
         tables.guild_config = [{ key: 'webhook_shadowfront', guild: 'ALPHA', value: 'https://discord.test/hook' }];
-        const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+        GM.db.functions.invoke = vi.fn().mockResolvedValue({ data: { ok: false } });
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
         vi.stubGlobal('fetch', fetchMock);
 
         await SF.load();

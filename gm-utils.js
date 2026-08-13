@@ -881,7 +881,7 @@
                     return { ok: true };
                 }
 
-                if (invokeRes && invokeRes.error) {
+                if (invokeRes && (invokeRes.error || (invokeRes.data && !invokeRes.data.ok))) {
                     console.warn('Proxy invocation error, attempting direct apikey proxy fallback...', invokeRes.error);
                     try {
                         var rawProxyRes = await fetch(SUPABASE_URL + '/functions/v1/discord-webhook-proxy', {
