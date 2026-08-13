@@ -2,6 +2,14 @@
 
 ## Fixed
 
+- **OCR Import Results Modal Display & Resilient Gemini JSON Parsing (v99)**:
+  - **Robust Markdown Fence JSON Cleaning**: Added `parseGeminiJson` helper function in `gm-utils.js` and `app.js` to strip Markdown code fences (` ```json ` and ` ``` `), trim whitespace, and extract valid `{...}` / `[...]` JSON substrings from Gemini AI responses.
+  - **Multi-Model Endpoint Fallback**: Added automatic fallback in `callGeminiOcrBatchApi` across `gemini-1.5-flash`, `gemini-2.0-flash`, and `gemini-flash-latest` endpoints to prevent HTTP 404 model errors from breaking imports.
+  - **Modal Event Listener Initialization**: `openOcrModal()` now explicitly ensures `initOcrGeminiModule()` is executed, preventing uninitialized event listener states when clicking "Import Members (OCR)" in the Members tab.
+  - **Safe UI Rendering & Empty State**: Replaced direct `window.GM` calls in `renderOcrResults` with null-safe local fallback helpers (`esc` and `fmtNum`), and added a friendly warning row when 0 players are extracted.
+  - **Vitest Unit Test Suite**: Added `tests/ocr.test.js` to verify JSON parsing across raw, Markdown-wrapped, and substring-embedded payloads.
+  - **Quality Gate**: Passed 0 type errors (`npm run type-check`), successful Vite production build (`npm run build`), and **206/206 green Vitest unit tests** (`npm test`).
+
 - **Shadowfront Discord Embeds Fix & Proxy Upgrade (v98)**:
   - **Proxy Upgrade**: Upgraded the `discord-webhook-proxy` Edge Function on Supabase to correctly forward JSON `embeds` to Discord, replacing an outdated v80 version that silently stripped them.
   - **Code Cleanup**: Removed temporary diagnostic UI embeds from [shadowfront.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/shadowfront.js) after verifying proxy stability.
@@ -41,8 +49,3 @@
   - **Multimodal Payload Grouping**: Groups up to 4 screenshots per single Gemini API request, reducing total API call volume by 75% for large 200+ player rosters.
   - **Inter-Batch Delay**: 1.2s pause between batch requests to stay comfortably below free-tier RPM quotas.
   - **Automatic Rate Limit Retry**: Intercepts HTTP 429 errors, displays a clear status countdown on screen, and retries automatically.
-
-## Fixed
-
-- **Shadowfront Roster Sharing to Discord**: Resolved issues causing "Failed to send to Discord" toasts when guild admins share squad rosters.
-- **Quality Gate**: Passed 0 errors (`npm run type-check`), full production build (`npm run build`), and 202/202 green Vitest unit tests (`npm test`).

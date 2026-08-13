@@ -1736,7 +1736,45 @@
         return (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || BUILTIN_OCR_KEY;
     }
 
+    function parseGeminiJson(jsonText) {
+        if (!jsonText) return null;
+        var cleaned = String(jsonText).replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+        try {
+            return JSON.parse(cleaned);
+        } catch (e) {
+            var firstObj = cleaned.indexOf('{');
+            var lastObj = cleaned.lastIndexOf('}');
+            var firstArr = cleaned.indexOf('[');
+            var lastArr = cleaned.lastIndexOf(']');
+            
+            var start = -1;
+            var end = -1;
+
+            if (firstObj !== -1 && lastObj > firstObj) {
+                start = firstObj;
+                end = lastObj + 1;
+            }
+            if (firstArr !== -1 && lastArr > firstArr) {
+                if (start === -1 || (firstArr !== -1 && firstArr < start)) {
+                    start = firstArr;
+                    end = lastArr + 1;
+                }
+            }
+
+            if (start !== -1 && end > start) {
+                var sub = cleaned.substring(start, end);
+                try {
+                    return JSON.parse(sub);
+                } catch (e2) {
+                    console.warn('Fallback OCR JSON substring parse failed:', e2);
+                }
+            }
+            throw e;
+        }
+    }
+
     function openOcrModal() {
+        initOcrGeminiModule();
         var modal = document.getElementById('ocr-modal-overlay');
         if (modal) {
             modal.style.display = 'flex';
@@ -1780,6 +1818,7 @@
     window.GM = window.GM || {};
     window.GM.openOcrModal = openOcrModal;
     window.GM.closeOcrModal = closeOcrModal;
+    window.GM.parseGeminiJson = parseGeminiJson;
 
     // Document-level event delegation for OCR trigger buttons
     document.addEventListener('click', function (e) {
@@ -1989,7 +2028,6 @@
             throw new Error('API Key Required. Please check your API key configuration.');
         }
 
-        var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + activeKey;
         var systemPrompt = 'Extract all visible player pseudos (names) and overall power values from these gaming roster screenshots. Convert power values like 145.2M to integer 145200000. Return JSON matching schema: {"players": [{"pseudo": "string", "overall_power": number, "uid": "string or null"}]}';
 
         var parts = [{ text: systemPrompt }];
@@ -2008,68 +2046,99 @@
             generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
         };
 
+        var modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
         var maxRetries = 3;
-        var attempt = 0;
+        var lastErr = null;
 
-        while (attempt < maxRetries) {
-            attempt++;
-            try {
-                var response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+        for (var m = 0; m < modelsToTry.length; m++) {
+            var modelName = modelsToTry[m];
+            var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + activeKey;
+            var attempt = 0;
 
-                if (response.status === 429) {
-                    var errBody = '';
-                    try { errBody = await response.text(); } catch (e) {}
-                    var waitSec = 6;
-                    var match = errBody.match(/retryDelay["\s:]+["']?(\d+)/i) || errBody.match(/retry in ([\d\.]+)s/i);
-                    if (match && match[1]) {
-                        waitSec = Math.max(3, Math.ceil(parseFloat(match[1])));
-                    }
+            while (attempt < maxRetries) {
+                attempt++;
+                try {
+                    var response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-                    if (attempt < maxRetries) {
-                        if (updateStatusCallback) {
-                            updateStatusCallback('Rate limit reached. Retrying automatically in ' + waitSec + 's (Attempt ' + attempt + '/' + maxRetries + ')...');
+                    if (response.status === 429) {
+                        var errBody = '';
+                        try { errBody = await response.text(); } catch (e) {}
+                        var waitSec = 6;
+                        var match = errBody.match(/retryDelay["\s:]+["']?(\d+)/i) || errBody.match(/retry in ([\d\.]+)s/i);
+                        if (match && match[1]) {
+                            waitSec = Math.max(3, Math.ceil(parseFloat(match[1])));
                         }
-                        await new Promise(function (r) { setTimeout(r, waitSec * 1000); });
-                        continue;
-                    } else {
-                        throw new Error('API Rate Limit Exceeded (HTTP 429). Please wait a moment and try again.');
+
+                        if (attempt < maxRetries) {
+                            if (updateStatusCallback) {
+                                updateStatusCallback('Rate limit reached. Retrying automatically in ' + waitSec + 's (Attempt ' + attempt + '/' + maxRetries + ')...');
+                            }
+                            await new Promise(function (r) { setTimeout(r, waitSec * 1000); });
+                            continue;
+                        } else {
+                            throw new Error('API Rate Limit Exceeded (HTTP 429). Please wait a moment and try again.');
+                        }
                     }
-                }
 
-                if (!response.ok) {
-                    var errText = await response.text();
-                    if (response.status === 403) {
-                        var keyPromptBox = document.getElementById('ocr-key-prompt');
-                        if (keyPromptBox) keyPromptBox.style.display = 'block';
-                        throw new Error('Invalid or missing API Key (HTTP 403). Please enter your API key above.');
+                    if (!response.ok) {
+                        var errText = await response.text();
+                        if (response.status === 403) {
+                            var keyPromptBox = document.getElementById('ocr-key-prompt');
+                            if (keyPromptBox) keyPromptBox.style.display = 'block';
+                            throw new Error('Invalid or missing API Key (HTTP 403). Please enter your API key above.');
+                        }
+                        if (response.status === 404 && m < modelsToTry.length - 1) {
+                            console.warn('Model ' + modelName + ' not available (HTTP 404), trying next model...');
+                            break;
+                        }
+                        throw new Error('OCR API HTTP ' + response.status);
                     }
-                    throw new Error('OCR API HTTP ' + response.status);
-                }
 
-                var resJson = await response.json();
-                var jsonText = resJson && resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content && resJson.candidates[0].content.parts && resJson.candidates[0].content.parts[0] ? resJson.candidates[0].content.parts[0].text : '';
-                
-                if (!jsonText) return [];
+                    var resJson = await response.json();
+                    var jsonText = resJson && resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content && resJson.candidates[0].content.parts && resJson.candidates[0].content.parts[0] ? resJson.candidates[0].content.parts[0].text : '';
+                    
+                    if (!jsonText) return [];
 
-                var parsed = JSON.parse(jsonText);
-                var rawList = Array.isArray(parsed.players) ? parsed.players : (Array.isArray(parsed) ? parsed : []);
-                return rawList.map(function (p) {
-                    return {
-                        pseudo: String(p.pseudo || '').trim(),
-                        overall_power: typeof p.overall_power === 'number' ? Math.round(p.overall_power) : parseInt(String(p.overall_power).replace(/[^0-9]/g, ''), 10) || 0,
-                        uid: p.uid ? String(p.uid).trim() : null
-                    };
-                }).filter(function (p) { return p.pseudo.length > 0 && p.overall_power >= 0; });
-            } catch (err) {
-                if (attempt >= maxRetries || (err.message && !err.message.includes('429'))) {
-                    throw err;
+                    var parsed = parseGeminiJson(jsonText);
+                    var rawList = [];
+                    if (Array.isArray(parsed)) {
+                        rawList = parsed;
+                    } else if (parsed && typeof parsed === 'object') {
+                        rawList = parsed.players || parsed.members || parsed.roster || parsed.data || [];
+                        if (!Array.isArray(rawList)) {
+                            var keys = Object.keys(parsed);
+                            for (var k = 0; k < keys.length; k++) {
+                                if (Array.isArray(parsed[keys[k]])) {
+                                    rawList = parsed[keys[k]];
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    return rawList.map(function (p) {
+                        return {
+                            pseudo: String(p.pseudo || p.name || p.username || '').trim(),
+                            overall_power: typeof p.overall_power === 'number' ? Math.round(p.overall_power) : (typeof p.power === 'number' ? Math.round(p.power) : (parseInt(String(p.overall_power || p.power || '').replace(/[^0-9]/g, ''), 10) || 0)),
+                            uid: p.uid ? String(p.uid).trim() : null
+                        };
+                    }).filter(function (p) { return p.pseudo.length > 0 && p.overall_power >= 0; });
+                } catch (err) {
+                    lastErr = err;
+                    if (attempt >= maxRetries || (err.message && !err.message.includes('429'))) {
+                        if (err.message && err.message.includes('404') && m < modelsToTry.length - 1) {
+                            break;
+                        }
+                        throw err;
+                    }
                 }
             }
         }
+        if (lastErr) throw lastErr;
         return [];
     }
 
@@ -2121,7 +2190,7 @@
     }
 
     function findBestMatchingMember(ocrPseudo, members) {
-        if (!ocrPseudo || !members || members.length === 0) return null;
+        if (!ocrPseudo || !members || !Array.isArray(members) || members.length === 0) return null;
         var target = String(ocrPseudo).trim().toLowerCase();
 
         var exact = members.find(function (m) {
@@ -2165,11 +2234,29 @@
         var summaryBadges = document.getElementById('ocr-summary-badges');
         var btnCommit = document.getElementById('ocr-commit-btn');
 
+        var esc = (window.GM && window.GM.escapeHTML) ? window.GM.escapeHTML : function (s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        };
+        var fmtNum = (window.GM && window.GM.formatNumber) ? window.GM.formatNumber : function (n) {
+            return String(n || 0);
+        };
+
         if (loading) loading.style.display = 'none';
         if (resultsContainer) resultsContainer.style.display = 'block';
         if (btnCommit) btnCommit.style.display = 'inline-flex';
 
-        if (countSpan) countSpan.textContent = players.length;
+        if (countSpan) countSpan.textContent = players ? players.length : 0;
+
+        if (!players || players.length === 0) {
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="ph ph-warning-circle" style="font-size:1.5rem; display:block; margin-bottom:0.5rem; color:#facc15;"></i>No player usernames or power values were detected in the uploaded image(s). Please try clearer roster screenshots.</td></tr>';
+            }
+            if (summaryBadges) {
+                summaryBadges.innerHTML = '<span class="gm-chip" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-x-circle"></i> 0 Detected</span>';
+            }
+            updateCommitButtonCount();
+            return;
+        }
 
         var newCount = 0;
         var updateCount = 0;
@@ -2195,10 +2282,10 @@
                 badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
             } else if (matchType === 'fuzzy' || matchType === 'normalized') {
                 updateCount++;
-                badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + window.GM.escapeHTML(existing.pseudo) + '") &rarr; ' + window.GM.formatNumber(p.overall_power) + '</span>';
+                badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + esc(existing.pseudo) + '") &rarr; ' + fmtNum(p.overall_power) + '</span>';
             } else if (existing.overall_power !== p.overall_power) {
                 updateCount++;
-                badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + window.GM.formatNumber(existing.overall_power) + ' &rarr; ' + window.GM.formatNumber(p.overall_power) + ')</span>';
+                badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + fmtNum(existing.overall_power) + ' &rarr; ' + fmtNum(p.overall_power) + ')</span>';
             } else {
                 unchangedCount++;
                 badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
@@ -2206,7 +2293,7 @@
 
             html += '<tr>' +
                 '<td style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" checked></td>' +
-                '<td><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + window.GM.escapeHTML(effectivePseudo) + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                '<td><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
                 '<td><input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + p.overall_power + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:var(--accent); width:100%; max-width:140px;"></td>' +
                 '<td>' + badgeHtml + '</td>' +
             '</tr>';

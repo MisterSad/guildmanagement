@@ -1263,6 +1263,43 @@
         return !!window.guildsData[g].paymentsDisabled;
     }
 
+    function parseGeminiJson(jsonText) {
+        if (!jsonText) return null;
+        var cleaned = String(jsonText).replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+        try {
+            return JSON.parse(cleaned);
+        } catch (e) {
+            var firstObj = cleaned.indexOf('{');
+            var lastObj = cleaned.lastIndexOf('}');
+            var firstArr = cleaned.indexOf('[');
+            var lastArr = cleaned.lastIndexOf(']');
+            
+            var start = -1;
+            var end = -1;
+
+            if (firstObj !== -1 && lastObj > firstObj) {
+                start = firstObj;
+                end = lastObj + 1;
+            }
+            if (firstArr !== -1 && lastArr > firstArr) {
+                if (start === -1 || (firstArr !== -1 && firstArr < start)) {
+                    start = firstArr;
+                    end = lastArr + 1;
+                }
+            }
+
+            if (start !== -1 && end > start) {
+                var sub = cleaned.substring(start, end);
+                try {
+                    return JSON.parse(sub);
+                } catch (e2) {
+                    console.warn('Fallback OCR JSON substring parse failed:', e2);
+                }
+            }
+            throw e;
+        }
+    }
+
     window.GM = {
         db: db,
         t: t,
@@ -1299,6 +1336,7 @@
         validateUid: validateUid,
         formatNumber: formatNumber,
         parseNumber: parseNumber,
+        parseGeminiJson: parseGeminiJson,
         attachNumberFormatter: attachNumberFormatter,
         avatarInit: avatarInit,
         MAX_NUMERIC: MAX_NUMERIC,
