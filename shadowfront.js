@@ -488,11 +488,6 @@
             content: content,
             embeds: [
                 {
-                    title: "Diagnostic Embed UI",
-                    color: 9442302,
-                    fields: [ { name: "Test", value: "This embed proves the app sends embeds properly.", inline: true } ]
-                },
-                {
                     title: squadLabel(squadKey),
                     color: 9442302, // Lilac (#8B5CF6)
                     fields: [
