@@ -486,24 +486,31 @@
 
         var body = {
             content: content,
-            embeds: [{
-                title: squadLabel(squadKey),
-                color: 9442302, // Lilac (#8B5CF6)
-                fields: [
-                    {
-                        name: t('sf_participants') + ' (' + squad.participantsCount + '/20)',
-                        value: squad.participantsText,
-                        inline: true
-                    },
-                    {
-                        name: t('sf_reserves') + ' (' + squad.reservesCount + '/10)',
-                        value: squad.reservesText,
-                        inline: true
-                    }
-                ],
-                timestamp: new Date().toISOString(),
-                footer: { text: 'FGF Guild Management Tool' }
-            }]
+            embeds: [
+                {
+                    title: "Diagnostic Embed UI",
+                    color: 9442302,
+                    fields: [ { name: "Test", value: "This embed proves the app sends embeds properly.", inline: true } ]
+                },
+                {
+                    title: squadLabel(squadKey),
+                    color: 9442302, // Lilac (#8B5CF6)
+                    fields: [
+                        {
+                            name: t('sf_participants') + ' (' + squad.participantsCount + '/20)',
+                            value: squad.participantsText || 'None yet',
+                            inline: true
+                        },
+                        {
+                            name: t('sf_reserves') + ' (' + squad.reservesCount + '/10)',
+                            value: squad.reservesText || 'None yet',
+                            inline: true
+                        }
+                    ],
+                    timestamp: new Date().toISOString(),
+                    footer: { text: 'FGF Guild Management Tool' }
+                }
+            ]
         };
 
         var res = await window.GM.sendDiscordWebhookDetailed('shadowfront', body);
