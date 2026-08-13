@@ -2,6 +2,10 @@
 
 ## New
 
+- **Shadowfront Active Session Filtering & Squad Roster Formatting Fix (v96)**:
+  - **Active Session Filtering**: Updated `squadField` in [shadowfront.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/shadowfront.js) to strictly filter squad assignments by the active squad's `sessionId`.
+  - **Complete Roster Formatting & Deduplication**: Ensures all 20 main participants and 10 substitutes are formatted, deduplicated, and posted to Discord without list truncation or historical session pollution.
+
 - **Server-Side Webhook Resolution & Tenant Context Resilience (v95)**:
   - **Server-Side Proxy Webhook Resolution**: Enhanced `discord-webhook-proxy` Edge Function ([discord-webhook-proxy/index.ts](file:///Users/andrevieira/Documents/GitHub/guildmanagement/supabase/functions/discord-webhook-proxy/index.ts)) to accept `guild` and `eventPrefix`. If the client-side session lacks a resolved webhook URL (due to RLS or missing local storage), the Edge Function automatically resolves the webhook URL for that tenant using `SUPABASE_SERVICE_ROLE_KEY`.
   - **Unstoppable Webhook Invocation**: Updated `sendDiscordWebhook` ([gm-utils.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/gm-utils.js)) to always invoke the server proxy with tenant context (`guild` & `eventPrefix`) even when client-side resolution yields `null`.

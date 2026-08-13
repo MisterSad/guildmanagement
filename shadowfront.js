@@ -432,23 +432,37 @@
         if (!db) return;
 
         var squadField = function (squadKey) {
-            var members = sfState.assignments.filter(function (a) { return a.squad === squadKey; });
-            var participants = members.filter(function (a) { return a.role === 'participant'; });
-            var reserves = members.filter(function (a) { return a.role === 'reserve'; });
+            var sq = sfState.squads[squadKey];
+            var sid = sq ? sq.sessionId : null;
+            var members = sfState.assignments.filter(function (a) {
+                return a.squad === squadKey && (!sid || a.session_id === sid);
+            });
 
             var fmtList = function (list) {
-                if (list.length === 0) return 'None yet';
-                var str = list.map(function (a) {
+                if (list.length === 0) return { count: 0, text: 'None yet' };
+                var seen = {};
+                var uniqueList = [];
+                list.forEach(function (a) {
+                    if (!seen[a.pseudo]) {
+                        seen[a.pseudo] = true;
+                        uniqueList.push(a);
+                    }
+                });
+                var str = uniqueList.map(function (a) {
                     return (a.is_commander ? '👑 ' : '') + discordEscape(a.pseudo);
                 }).join('\n');
-                return str.length > 1024 ? str.substring(0, 1020) + '...' : str;
+                var formattedText = str.length > 1024 ? str.substring(0, 1020) + '...' : str;
+                return { count: uniqueList.length, text: formattedText };
             };
 
+            var participantsRes = fmtList(members.filter(function (a) { return a.role === 'participant'; }));
+            var reservesRes = fmtList(members.filter(function (a) { return a.role === 'reserve'; }));
+
             return {
-                participants: participants,
-                reserves: reserves,
-                participantsText: fmtList(participants),
-                reservesText: fmtList(reserves)
+                participantsCount: participantsRes.count,
+                reservesCount: reservesRes.count,
+                participantsText: participantsRes.text,
+                reservesText: reservesRes.text
             };
         };
 
@@ -476,12 +490,12 @@
                 color: 9442302, // Lilac (#8B5CF6)
                 fields: [
                     {
-                        name: t('sf_participants') + ' (' + squad.participants.length + '/20)',
+                        name: t('sf_participants') + ' (' + squad.participantsCount + '/20)',
                         value: squad.participantsText,
                         inline: true
                     },
                     {
-                        name: t('sf_reserves') + ' (' + squad.reserves.length + '/10)',
+                        name: t('sf_reserves') + ' (' + squad.reservesCount + '/10)',
                         value: squad.reservesText,
                         inline: true
                     }

@@ -1,9 +1,8 @@
-📢 **FGF Guild Management Tool Update — Server-Side Webhook Resilience — v95**
+📢 **FGF Guild Management Tool Update — Full Shadowfront Roster Formatting — v96**
 
-🛠️ **Fixed: Cross-Tenant Discord Webhook Delivery**
+🛠️ **Fixed: Complete Squad Roster Publishing**
 
 ✨ **What was changed:**
-- **Server-Side Webhook Resolution**: `discord-webhook-proxy` now automatically resolves your guild's webhook URL on the server using service role permissions if local browser storage or RLS policies block client-side reading.
-- **Unstoppable Delivery**: Webhook pings (Shadowfront compositions, event notifications) now deliver reliably across all tenants and browser session states!
+- **Full Roster Display**: Updated `shadowfront.js` to strictly filter assignments by active session and deduplicate player lists. All 20 main participants and 10 substitutes are now formatted and published in full on Discord!
 
 Feel free to test sharing squad compositions in the **Shadowfront** tab! 🎯
