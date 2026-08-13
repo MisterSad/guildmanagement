@@ -1,9 +1,10 @@
-📢 **FGF Guild Management Tool Update — Session Refresh & Webhook Resilience — v97**
+📢 **FGF Guild Management Tool Update — Discord Embed Fix — v98**
 
-🛠️ **Fixed: Long-Session Webhook Delivery**
+🛠️ **Fixed: Shadowfront Discord Embeds Dropping**
 
 ✨ **What was changed:**
-- **Automatic Token Refresh**: `ensureAuthSession` in `gm-utils.js` automatically refreshes expired authentication tokens.
-- **Resilient Webhook Fallback**: If an expired session token triggers a 401 error, `sendDiscordWebhook` instantly retries the proxy with the public API key, ensuring webhooks post cleanly even on long-open browser tabs!
+- **Proxy Update**: Deployed the long-awaited v93 Edge Function to the Supabase cloud, replacing a very old v80 function that was silently stripping Discord embeds.
+- **Discord Formatting Restored**: All Shadowfront squad compositions and other rich Discord embeds now display correctly in Discord with their full formatting and participant lists!
+- **Code Cleanup**: Removed temporary diagnostic UI embeds from `shadowfront.js`.
 
-Feel free to test sharing squad compositions in the **Shadowfront** tab! 🎯
+Enjoy your beautiful purple Discord messages! 🚀

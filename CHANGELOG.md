@@ -1,5 +1,11 @@
 # Changelog
 
+## Fixed
+
+- **Shadowfront Discord Embeds Fix & Proxy Upgrade (v98)**:
+  - **Proxy Upgrade**: Upgraded the `discord-webhook-proxy` Edge Function on Supabase to correctly forward JSON `embeds` to Discord, replacing an outdated v80 version that silently stripped them.
+  - **Code Cleanup**: Removed temporary diagnostic UI embeds from [shadowfront.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/shadowfront.js) after verifying proxy stability.
+
 ## New
 
 - **Automatic Session Token Refresh & Proxy Retry on Expired JWTs (v97)**:
