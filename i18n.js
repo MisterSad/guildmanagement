@@ -161,6 +161,7 @@
             col_score_pvp:         'Day 6 score',
 
             /* ── Shadowfront ───────────────────── */
+            sf_subtitle:           'Squad 1 & Squad 2 - 20 participants + 10 reserves',
             sf_step_composition:   '1. Squad Composition',
             sf_step_tracking:      '2. Participation Tracking',
             sf_squad1:             'Squad One',

@@ -236,4 +236,43 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         const poolCol = area().querySelector('.sf-unassigned');
         expect(poolCol.textContent).toContain('100%');
     });
+
+    it('exports window.GM.formatDiscordRoleMention and safely pings role ID on Shadowfront share', async () => {
+        expect(typeof GM.formatDiscordRoleMention).toBe('function');
+        expect(GM.formatDiscordRoleMention('1465165299648303282')).toBe('<@&1465165299648303282>');
+
+        tables.guild_config = [
+            { key: 'discord_role_id_shadowfront', value: '1465165299648303282', guild: 'ALPHA' },
+            { key: 'webhook_shadowfront', value: 'https://discord.test/hook', guild: 'ALPHA' }
+        ];
+
+        tables.event_status = [
+            { event_name: 'Shadowfront Squad 1', guild: 'ALPHA', is_active: true, session_id: 'S1', start_at: '2026-08-05T12:00:00Z' },
+        ];
+        tables.shadowfront_squads = [
+            { pseudo: 'Alpha', guild: 'ALPHA', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' }
+        ];
+
+        const invokeMock = vi.fn().mockResolvedValue({ data: { ok: true } });
+        GM.db.functions.invoke = invokeMock;
+
+        await SF.load();
+
+        const shareBtn = area().querySelector('.sf-share-discord-btn');
+        expect(shareBtn).not.toBeNull();
+        shareBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
+        expect(invokeMock).toHaveBeenCalledTimes(1);
+        expect(invokeMock).toHaveBeenCalledWith('discord-webhook-proxy', expect.objectContaining({
+            body: expect.objectContaining({
+                content: expect.stringContaining('<@&1465165299648303282>')
+            })
+        }));
+    });
+
+    it('translates sf_subtitle correctly without returning raw key', () => {
+        expect(GM.t('sf_subtitle')).toBe('Squad 1 & Squad 2 - 20 participants + 10 reserves');
+    });
 });

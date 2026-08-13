@@ -2,6 +2,10 @@
 
 ## New
 
+- **Shadowfront Discord Role Ping Crash Fix & `sf_subtitle` i18n Localization (v94)**:
+  - **Export `formatDiscordRoleMention`**: Exported `formatDiscordRoleMention` in `window.GM` ([gm-utils.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/gm-utils.js)) and added defensive checks in [shadowfront.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/shadowfront.js) to resolve uncaught `TypeError: window.GM.formatDiscordRoleMention is not a function` runtime crashes for guilds with a configured Discord Role ID.
+  - **Localization of `sf_subtitle`**: Added missing `sf_subtitle` translation key to [i18n.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/i18n.js) ('Squad 1 & Squad 2 - 20 participants + 10 reserves'), eliminating raw key display on all tenant pages.
+
 - **Robust Discord Webhook Proxy, Multi-Domain Validation & Fallback Resolution (v93)**:
   - **Guild Webhook Fallback Resolution**: `resolveDiscordWebhook` in `gm-utils.js` now falls back to any configured guild event webhook (`webhook_armsrace`, `webhook_svs`, `webhook_gvg`, `webhook_dtr`, `webhook_calamity`) if the dedicated `webhook_shadowfront` field is left empty.
   - **Multi-Domain & Subdomain Discord Support**: Upgraded `discord-webhook-proxy` and `event-reminders` Edge Functions to validate and accept all official Discord subdomains (`canary.discord.com`, `ptb.discord.com`), versioned paths (`/api/v10/webhooks/`), and clean angle-bracketed URLs (`<https://...>`).

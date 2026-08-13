@@ -1248,6 +1248,7 @@
             get: getGuildConfig,
             set: setGuildConfig
         },
+        formatDiscordRoleMention: formatDiscordRoleMention,
         notifyDiscordEvent: notifyDiscordEvent,
         sendDiscordWebhook: sendDiscordWebhook,
         shareMatchupRosterToDiscord: shareMatchupRosterToDiscord

@@ -1,11 +1,9 @@
-📢 **FGF Guild Management Tool Update — Discord Webhooks Reliability Fix — v93**
+📢 **FGF Guild Management Tool Update — Shadowfront & i18n Fixes — v94**
 
-🛠️ **Fixed: Shadowfront & Guild Discord Webhooks**
-All guild admins can now reliably share Shadowfront team compositions and receive event reminders on Discord without configuration friction!
+🛠️ **Fixed: Shadowfront Discord Share & Subtitle Display**
 
 ✨ **What was changed:**
-- **Smart Webhook Fallback**: If `webhook_shadowfront` is left empty, the tool automatically uses your guild's primary event webhook (e.g. Arms Race, SvS, GvG).
-- **Expanded Discord URL Compatibility**: Added support for Discord webhooks from Canary (`canary.discord.com`), PTB (`ptb.discord.com`), API v10, and URLs copied with angle brackets (`<https://...>`).
-- **Embed Safety & Role Mentions**: Rosters are automatically capped to Discord's embed limits and include your configured Discord role tag so members get notified instantly.
+- **Discord Role Mention Crash Resolved**: Exported `formatDiscordRoleMention` on `window.GM` to fix an uncaught runtime error when sharing Shadowfront squad compositions for guilds with a configured Discord Role ID.
+- **i18n Localization**: Added missing `sf_subtitle` translation key to eliminate raw key text display on all guild tenant pages.
 
 Feel free to test sharing squad compositions in the **Shadowfront** tab! 🎯

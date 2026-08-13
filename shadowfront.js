@@ -457,7 +457,16 @@
         var squad = squadField(squadKey);
 
         var roleId = await window.GM.config.get('discord_role_id_shadowfront') || await window.GM.config.get('discord_role_id');
-        var roleMention = roleId ? window.GM.formatDiscordRoleMention(roleId) : '';
+        var roleMention = '';
+        if (roleId) {
+            if (typeof window.GM.formatDiscordRoleMention === 'function') {
+                roleMention = window.GM.formatDiscordRoleMention(roleId);
+            } else {
+                var rStr = String(roleId).trim();
+                var rMatch = rStr.match(/\d{15,22}/);
+                roleMention = rMatch ? '<@&' + rMatch[0] + '>' : rStr;
+            }
+        }
         var content = '📋 **Shadowfront - ' + squadLabel(squadKey) + ' Composition**' + (roleMention ? ' ' + roleMention : '');
 
         var body = {
