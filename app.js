@@ -1733,7 +1733,7 @@
     var BUILTIN_OCR_KEY = typeof atob === 'function' ? atob('QVEuQWI4Uk42SUI4YjhBNEdLWktocFVsVGVPSDlVWEdzQ0lybU5pWTRBeXZKMkhBNU5MMXc=') : '';
 
     function getOcrApiKey() {
-        return (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || BUILTIN_OCR_KEY;
+        return BUILTIN_OCR_KEY;
     }
 
     function getOcrModel() {
@@ -1797,23 +1797,11 @@
 
     function resetOcrModalState() {
         ocrExtractedPlayers = [];
-        var keyPrompt = document.getElementById('ocr-key-prompt');
         var dropzone = document.getElementById('ocr-dropzone');
         var loading = document.getElementById('ocr-loading');
         var resultsContainer = document.getElementById('ocr-results-container');
         var btnCommit = document.getElementById('ocr-commit-btn');
         var fileInput = document.getElementById('ocr-file-input');
-        var modelSelect = document.getElementById('ocr-model-select');
-        var keyInput = document.getElementById('ocr-api-key-input');
-
-        if (modelSelect) modelSelect.value = getOcrModel();
-        if (keyInput) keyInput.value = localStorage.getItem('gm_gemini_key') || '';
-
-        if (!getOcrApiKey() && keyPrompt) {
-            keyPrompt.style.display = 'block';
-        } else if (keyPrompt) {
-            keyPrompt.style.display = 'none';
-        }
 
         if (dropzone) dropzone.style.display = 'block';
         if (loading) loading.style.display = 'none';
@@ -1850,50 +1838,10 @@
         var btnSelectAll = document.getElementById('ocr-select-all-btn');
         var cbToggleAll = document.getElementById('ocr-toggle-all-cb');
         var btnCommit = document.getElementById('ocr-commit-btn');
-        var keyConfigBtn = document.getElementById('ocr-key-config-btn');
-        var keyPrompt = document.getElementById('ocr-key-prompt');
-        var keyInput = document.getElementById('ocr-api-key-input');
-        var saveKeyBtn = document.getElementById('ocr-save-key-btn');
-        var modelSelect = document.getElementById('ocr-model-select');
 
         if (!modal) return;
         if (ocrInitialized) return;
         ocrInitialized = true;
-
-        if (modelSelect) {
-            modelSelect.value = getOcrModel();
-            modelSelect.onchange = function () {
-                localStorage.setItem('gm_ocr_model', modelSelect.value);
-                showToast('OCR AI Model set to ' + (modelSelect.options[modelSelect.selectedIndex] ? modelSelect.options[modelSelect.selectedIndex].text : modelSelect.value), 'info');
-            };
-        }
-
-        if (keyConfigBtn && keyPrompt) {
-            keyConfigBtn.onclick = function () {
-                var isHidden = keyPrompt.style.display === 'none';
-                keyPrompt.style.display = isHidden ? 'block' : 'none';
-                if (isHidden) {
-                    if (keyInput) keyInput.value = localStorage.getItem('gm_gemini_key') || '';
-                    if (modelSelect) modelSelect.value = getOcrModel();
-                }
-            };
-        }
-
-        if (saveKeyBtn) {
-            saveKeyBtn.onclick = function () {
-                var val = keyInput ? (keyInput.value || '').trim() : '';
-                if (val) {
-                    localStorage.setItem('gm_gemini_key', val);
-                } else {
-                    localStorage.removeItem('gm_gemini_key');
-                }
-                if (modelSelect) {
-                    localStorage.setItem('gm_ocr_model', modelSelect.value);
-                }
-                showToast('OCR configuration saved successfully!', 'success');
-                if (keyPrompt) keyPrompt.style.display = 'none';
-            };
-        }
 
         if (btnClose) btnClose.onclick = closeOcrModal;
         if (btnCancel) btnCancel.onclick = closeOcrModal;

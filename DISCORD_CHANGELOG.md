@@ -1,11 +1,10 @@
-📢 **FGF Guild Management Tool Update — Gemini Flash Model Selector & Admin Access Audit — v101**
+📢 **FGF Guild Management Tool Update — Default API Key Enforcement — v102**
 
-⚡ **New Feature: Selectable Gemini AI Models**
-You can now choose your preferred Gemini AI Model directly in the OCR configuration panel!
+🔒 **Default API Key & Clean Interface**
+The default Gemini API key is now active automatically behind the scenes for all OCR roster scans!
 
-✨ **What was added & verified:**
-- **Model Choice Dropdown**: Choose directly between **Gemini 2.0 Flash** (ultra-fast & high accuracy), **Gemini 1.5 Flash**, **Gemini Flash Latest**, or **Auto (Recommended)**.
-- **Preference Storage**: Your model choice is saved automatically in local storage.
-- **Guild Admin Access Verification**: Confirmed that all `guild_admin` accounts (all tenants) and `super_admin` have full access to trigger, process, and validate OCR roster imports in the **Members** tab.
+✨ **What was changed:**
+- **Automatic Default Key**: The default API key is used transparently without requiring any setup or input.
+- **Interface Clean-Up**: Removed all API key inputs, prompts, and configuration buttons from the interface so the key and key settings never appear in the UI.
 
-Enjoy your roster management in the **Members** tab! 📸
+Enjoy smooth roster scanning in the **Members** tab! 📸

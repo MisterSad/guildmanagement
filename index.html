@@ -1383,39 +1383,11 @@
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <button type="button" class="gm-mini-btn" id="ocr-key-config-btn" title="Configure API Key" style="cursor: pointer; font-size: 1.1rem; color: var(--text-muted);"><i class="ph ph-key"></i></button>
                     <button type="button" class="gm-mini-btn" id="ocr-modal-close" style="cursor: pointer;"><i class="ph ph-x"></i></button>
                 </div>
             </div>
 
             <div class="gm-modal-body" style="padding: 1rem 0; overflow-y: auto; flex: 1;">
-                <!-- Step 0: API Key & Model Configuration Prompt -->
-                <div id="ocr-key-prompt" style="display: none; padding: 1.25rem 1rem; border: 1px solid var(--border-soft); border-radius: 12px; background: rgba(99, 102, 241, 0.04); margin-bottom: 1rem;">
-                    <div style="text-align: center; margin-bottom: 1rem;">
-                        <i class="ph ph-sliders" style="font-size: 2rem; color: var(--accent); margin-bottom: 0.3rem; display: inline-block;"></i>
-                        <h4 style="margin: 0 0 0.3rem 0; font-size: 1rem;">AI OCR Configuration</h4>
-                        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Select your preferred Gemini AI model and API key configuration</p>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 0.75rem; max-width: 520px; margin: 0 auto;">
-                        <div>
-                            <label for="ocr-model-select" style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">Gemini AI Model</label>
-                            <select id="ocr-model-select" class="gm-input" style="width: 100%; cursor: pointer;">
-                                <option value="auto">Auto (Recommended - Automatic fallback on busy servers)</option>
-                                <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fastest & High Accuracy)</option>
-                                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Standard Multimodal)</option>
-                                <option value="gemini-flash-latest">Gemini Flash Latest</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="ocr-api-key-input" style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">Google Gemini API Key</label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="password" id="ocr-api-key-input" class="gm-input" placeholder="Paste custom API key or leave blank for built-in key..." style="flex: 1; font-family: monospace;">
-                                <button type="button" class="gm-btn gm-btn-primary" id="ocr-save-key-btn" style="white-space: nowrap;">Save Config</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Step 1: Upload Dropzone -->
                 <div id="ocr-dropzone" style="border: 2px dashed rgba(99, 102, 241, 0.4); border-radius: 12px; padding: 2rem 1rem; text-align: center; background: rgba(99, 102, 241, 0.03); cursor: pointer; transition: all 0.2s ease;">
                     <i class="ph ph-cloud-arrow-up" style="font-size: 2.8rem; color: var(--accent); margin-bottom: 0.5rem; display: inline-block;"></i>
