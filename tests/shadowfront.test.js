@@ -159,6 +159,25 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
     });
 
+    it('falls back to general guild event webhook when webhook_shadowfront is empty and cleans angle brackets', async () => {
+        tables.guild_config = [{ key: 'webhook_armsrace', guild: 'ALPHA', value: '<https://canary.discord.com/api/webhooks/123/abc>' }];
+        const invokeMock = vi.fn().mockResolvedValue({ data: { ok: true } });
+        GM.db.functions.invoke = invokeMock;
+
+        await SF.load();
+        stepByLabel('1. Squad Composition').click();
+        area().querySelector('.sf-share-discord-btn').click();
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(invokeMock).toHaveBeenCalledTimes(1);
+        expect(invokeMock).toHaveBeenCalledWith('discord-webhook-proxy', expect.objectContaining({
+            body: expect.objectContaining({
+                webhookUrl: 'https://canary.discord.com/api/webhooks/123/abc',
+            })
+        }));
+        expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
+    });
+
     it('shares the composition on Discord through the shadowfront webhook fallback fetch', async () => {
         tables.guild_config = [{ key: 'webhook_shadowfront', guild: 'ALPHA', value: 'https://discord.test/hook' }];
         const fetchMock = vi.fn().mockResolvedValue({ ok: true });

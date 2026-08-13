@@ -81,11 +81,13 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
 }
 
 function isValidDiscordWebhook(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const cleanUrl = url.replace(/^[<"'\s]+|[>'"\s]+$/g, '').trim();
   try {
-    const u = new URL(url);
+    const u = new URL(cleanUrl.startsWith('http') ? cleanUrl : 'https://' + cleanUrl);
     return u.protocol === 'https:' &&
-      (u.hostname === 'discord.com' || u.hostname === 'discordapp.com') &&
-      u.pathname.startsWith('/api/webhooks/');
+      (u.hostname === 'discord.com' || u.hostname === 'discordapp.com' || u.hostname.endsWith('.discord.com') || u.hostname.endsWith('.discordapp.com')) &&
+      u.pathname.includes('/webhooks/');
   } catch { return false; }
 }
 

@@ -437,11 +437,11 @@
             var reserves = members.filter(function (a) { return a.role === 'reserve'; });
 
             var fmtList = function (list) {
-                return list.length === 0
-                    ? 'None yet'
-                    : list.map(function (a) {
-                        return (a.is_commander ? '👑 ' : '') + discordEscape(a.pseudo);
-                    }).join('\n');
+                if (list.length === 0) return 'None yet';
+                var str = list.map(function (a) {
+                    return (a.is_commander ? '👑 ' : '') + discordEscape(a.pseudo);
+                }).join('\n');
+                return str.length > 1024 ? str.substring(0, 1020) + '...' : str;
             };
 
             return {
@@ -456,8 +456,12 @@
         var squadKey = sfActiveSquad === 'squad2' ? 'squad2' : 'squad1';
         var squad = squadField(squadKey);
 
+        var roleId = await window.GM.config.get('discord_role_id_shadowfront') || await window.GM.config.get('discord_role_id');
+        var roleMention = roleId ? window.GM.formatDiscordRoleMention(roleId) : '';
+        var content = '📋 **Shadowfront - ' + squadLabel(squadKey) + ' Composition**' + (roleMention ? ' ' + roleMention : '');
+
         var body = {
-            content: '📋 **Shadowfront - ' + squadLabel(squadKey) + ' Composition**',
+            content: content,
             embeds: [{
                 title: squadLabel(squadKey),
                 color: 9442302, // Lilac (#8B5CF6)

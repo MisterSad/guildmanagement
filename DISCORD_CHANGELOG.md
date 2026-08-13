@@ -1,10 +1,11 @@
-📢 **FGF Guild Management Tool Update — Discord Webhook Proxy Fix — v92**
+📢 **FGF Guild Management Tool Update — Discord Webhooks Reliability Fix — v93**
 
-🛠️ **Fixed: Shadowfront Team Discord Sharing**
-Guild admins can now smoothly share Shadowfront squad compositions directly to Discord!
+🛠️ **Fixed: Shadowfront & Guild Discord Webhooks**
+All guild admins can now reliably share Shadowfront team compositions and receive event reminders on Discord without configuration friction!
 
 ✨ **What was changed:**
-- **CORS & Proxy Resolution**: Webhook requests now route through the secure Supabase Edge Function proxy (`discord-webhook-proxy`), bypassing browser CORS and network restriction blocks.
-- **Rich Embed Support**: Upgraded the Edge Function proxy to forward full Discord payload objects, including rich embed cards, squad rosters, reserve lists, and status colors.
+- **Smart Webhook Fallback**: If `webhook_shadowfront` is left empty, the tool automatically uses your guild's primary event webhook (e.g. Arms Race, SvS, GvG).
+- **Expanded Discord URL Compatibility**: Added support for Discord webhooks from Canary (`canary.discord.com`), PTB (`ptb.discord.com`), API v10, and URLs copied with angle brackets (`<https://...>`).
+- **Embed Safety & Role Mentions**: Rosters are automatically capped to Discord's embed limits and include your configured Discord role tag so members get notified instantly.
 
-Feel free to test sharing your squad compositions in the **Shadowfront** tab! 🎯
+Feel free to test sharing squad compositions in the **Shadowfront** tab! 🎯

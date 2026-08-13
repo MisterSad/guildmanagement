@@ -2,9 +2,12 @@
 
 ## New
 
-- **Shadowfront Discord Webhook Edge Proxy & Embed Payload Support (v92)**:
-  - **Supabase Edge Function Proxy Integration**: `sendDiscordWebhook` in `gm-utils.js` now routes webhook payloads through the `discord-webhook-proxy` Edge Function as primary with fallback to direct `fetch`. This bypasses browser CORS restrictions and adblocker issues that previously blocked Discord webhook POST calls in Chrome/Firefox/Safari.
-  - **Full Discord Embed Payload Forwarding**: Upgraded `discord-webhook-proxy` Edge Function to parse and forward full Discord payloads (including squad roster `embeds`, `fields`, `content`, `color`, and formatting) instead of strictly requiring plain text strings.
+- **Robust Discord Webhook Proxy, Multi-Domain Validation & Fallback Resolution (v93)**:
+  - **Guild Webhook Fallback Resolution**: `resolveDiscordWebhook` in `gm-utils.js` now falls back to any configured guild event webhook (`webhook_armsrace`, `webhook_svs`, `webhook_gvg`, `webhook_dtr`, `webhook_calamity`) if the dedicated `webhook_shadowfront` field is left empty.
+  - **Multi-Domain & Subdomain Discord Support**: Upgraded `discord-webhook-proxy` and `event-reminders` Edge Functions to validate and accept all official Discord subdomains (`canary.discord.com`, `ptb.discord.com`), versioned paths (`/api/v10/webhooks/`), and clean angle-bracketed URLs (`<https://...>`).
+  - **Discord 1024-Character Embed Safety**: Updated `fmtList` in `shadowfront.js` to safely truncate squad participant and reserve roster lists at 1024 characters, preventing Discord HTTP 400 Bad Request errors.
+  - **Discord Role Mention Integration**: Shadowfront composition sharing now automatically appends configured Discord role pings (`discord_role_id_shadowfront` or `discord_role_id`).
+  - **Enhanced Proxy Error Logging**: `sendDiscordWebhook` now logs detailed error messages from proxy responses for faster diagnosis.
 
 - **Intelligent Roster Name Reconciliation & Fuzzy Matching (v91)**:
   - **Fuzzy Levenshtein Similarity Matcher**: Integrated `findBestMatchingMember` using Levenshtein distance and normalized string matching to compare extracted OCR pseudos against existing database members.
@@ -19,6 +22,5 @@
 
 ## Fixed
 
-- **Shadowfront Discord Webhook Sharing**: Fixed an issue preventing guild admins from sharing Shadowfront team compositions to Discord. Now successfully sends full squad rosters and reserve lists directly to Discord channels.
-- **Roster Alignment**: Ensures fuzzy matches above 75% similarity map to existing players while keeping genuine new players tagged as `New Player`.
-- **Quality Gate**: Passed 0 errors (`npm run type-check`), full production build (`npm run build`), and 201/201 green Vitest unit tests (`npm test`).
+- **Shadowfront Roster Sharing to Discord**: Resolved issues causing "Failed to send to Discord" toasts when guild admins share squad rosters.
+- **Quality Gate**: Passed 0 errors (`npm run type-check`), full production build (`npm run build`), and 202/202 green Vitest unit tests (`npm test`).

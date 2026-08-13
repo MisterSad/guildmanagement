@@ -821,6 +821,16 @@
         if (!webhookUrl || webhookUrl.trim() === '') {
             webhookUrl = await getGuildConfig('discord_webhook_url');
         }
+        if (!webhookUrl || webhookUrl.trim() === '') {
+            var fallbackKeys = ['webhook_armsrace', 'webhook_svs', 'webhook_gvg', 'webhook_dtr', 'webhook_calamity', 'webhook_shadowfront'];
+            for (var k = 0; k < fallbackKeys.length; k++) {
+                var fb = await getGuildConfig(fallbackKeys[k]);
+                if (fb && fb.trim() !== '') {
+                    webhookUrl = fb;
+                    break;
+                }
+            }
+        }
         return (webhookUrl && webhookUrl.trim() !== '') ? webhookUrl : null;
     }
 
@@ -828,7 +838,7 @@
         var webhookUrl = await resolveDiscordWebhook(eventPrefix);
         if (!webhookUrl) return false;
 
-        webhookUrl = webhookUrl.trim().replace(/^["']|["']$/g, '');
+        webhookUrl = webhookUrl.trim().replace(/^[<"'\s]+|[>'"\s]+$/g, '');
         if (webhookUrl.indexOf('http') !== 0) {
             webhookUrl = 'https://' + webhookUrl;
         }
@@ -838,10 +848,14 @@
         if (client && client.functions && typeof client.functions.invoke === 'function') {
             try {
                 var invokeRes = await client.functions.invoke('discord-webhook-proxy', {
-                    body: { webhookUrl: webhookUrl, payload: body }
+                    body: Object.assign({ webhookUrl: webhookUrl, payload: body }, body)
                 });
                 if (invokeRes && invokeRes.data && invokeRes.data.ok) {
                     return true;
+                } else if (invokeRes && invokeRes.data && invokeRes.data.error) {
+                    console.warn('Discord webhook proxy returned error:', invokeRes.data.error);
+                } else if (invokeRes && invokeRes.error) {
+                    console.warn('Edge Function proxy invoke error:', invokeRes.error);
                 }
             } catch (eProxy) {
                 console.warn('Edge Function proxy invoke failed, trying direct fetch fallback:', eProxy);
@@ -887,7 +901,7 @@
             if (!inputUrl || !inputUrl.trim()) return false;
             webhookUrl = inputUrl.trim();
         }
-        webhookUrl = webhookUrl.trim().replace(/^["']|["']$/g, '');
+        webhookUrl = webhookUrl.trim().replace(/^[<"'\s]+|[>'"\s]+$/g, '');
         if (webhookUrl.indexOf('http') !== 0) {
             webhookUrl = 'https://' + webhookUrl;
         }

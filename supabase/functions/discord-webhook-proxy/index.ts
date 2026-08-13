@@ -26,13 +26,17 @@ serve(async (req: Request) => {
   let payload: any = null;
 
   try {
-    const body = await req.json();
-    webhookUrl = (body?.webhookUrl ?? "").toString().trim();
+    const rawBody = await req.json();
+    const body = (rawBody && typeof rawBody === "object" && rawBody.body && typeof rawBody.body === "object")
+      ? rawBody.body
+      : rawBody;
+
+    webhookUrl = (body?.webhookUrl ?? body?.url ?? "").toString().trim();
 
     if (body?.payload && typeof body.payload === "object") {
       payload = body.payload;
     } else {
-      const { webhookUrl: _w, ...rest } = body;
+      const { webhookUrl: _w, url: _u, ...rest } = body;
       payload = rest;
     }
   } catch {
@@ -46,16 +50,24 @@ serve(async (req: Request) => {
     return json({ ok: false, error: "missing_webhook_url_or_content" }, 400);
   }
 
-  webhookUrl = webhookUrl.replace(/^["']|["']$/g, "").trim();
+  webhookUrl = webhookUrl.replace(/^[<"'\s]+|[>'"\s]+$/g, "").trim();
   if (!webhookUrl.startsWith("http://") && !webhookUrl.startsWith("https://")) {
     webhookUrl = "https://" + webhookUrl;
   }
 
-  if (
-    !webhookUrl.includes("discord.com/api/webhooks") &&
-    !webhookUrl.includes("discordapp.com/api/webhooks") &&
-    !webhookUrl.includes("discord.com/api/v")
-  ) {
+  try {
+    const u = new URL(webhookUrl);
+    const hostValid = u.protocol === "https:" && (
+      u.hostname === "discord.com" ||
+      u.hostname === "discordapp.com" ||
+      u.hostname.endsWith(".discord.com") ||
+      u.hostname.endsWith(".discordapp.com")
+    );
+    const pathValid = u.pathname.includes("/webhooks/");
+    if (!hostValid || !pathValid) {
+      return json({ ok: false, error: "invalid_discord_webhook_url" }, 400);
+    }
+  } catch {
     return json({ ok: false, error: "invalid_discord_webhook_url" }, 400);
   }
 
