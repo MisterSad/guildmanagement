@@ -1,11 +1,11 @@
-📢 **FGF Guild Management Tool Update — OCR AI Overload Auto-Retry (HTTP 503) — v100**
+📢 **FGF Guild Management Tool Update — Gemini Flash Model Selector & Admin Access Audit — v101**
 
-🛠️ **Fixed: Google AI Temporary Server Overloads (HTTP 503 / 500)**
-When Google's Gemini servers experience transient load spikes or high traffic, the OCR tool now automatically retries with exponential backoff instead of throwing an error!
+⚡ **New Feature: Selectable Gemini AI Models**
+You can now choose your preferred Gemini AI Model directly in the OCR configuration panel!
 
-✨ **What was changed:**
-- **Automatic Retry with Backoff**: Intercepts HTTP 503 (Service Unavailable) and 500/502/504 server overload responses and automatically retries with progressive delays (2s, 4s).
-- **Live Status Feedback**: Displays live progress notifications in the loading window so you know when an automatic retry is in progress.
-- **Model Cluster Switching**: If a specific model pool is busy, the tool automatically switches to an alternative model cluster (`gemini-1.5-flash` ➔ `gemini-2.0-flash` ➔ `gemini-flash-latest`) to complete your scan smoothly.
+✨ **What was added & verified:**
+- **Model Choice Dropdown**: Choose directly between **Gemini 2.0 Flash** (ultra-fast & high accuracy), **Gemini 1.5 Flash**, **Gemini Flash Latest**, or **Auto (Recommended)**.
+- **Preference Storage**: Your model choice is saved automatically in local storage.
+- **Guild Admin Access Verification**: Confirmed that all `guild_admin` accounts (all tenants) and `super_admin` have full access to trigger, process, and validate OCR roster imports in the **Members** tab.
 
-Feel free to scan your roster screenshots in the **Members** tab! 📸
+Enjoy your roster management in the **Members** tab! 📸

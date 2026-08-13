@@ -1,5 +1,12 @@
 # Changelog
 
+## New
+
+- **Explicit Gemini AI Model Selector & Guild Admin Access Verification (v101)**:
+  - **Gemini Model Choice Dropdown**: Added a model selection dropdown (`#ocr-model-select`) inside the OCR configuration panel, allowing users to explicitly target `Gemini 2.0 Flash`, `Gemini 1.5 Flash`, `Gemini Flash Latest`, or `Auto-Select / Fallback`.
+  - **Model Preference Persistence**: Model selection preference is saved in `localStorage` (`gm_ocr_model`) and automatically restored when opening the OCR modal.
+  - **Guild Admin Role Access Audit**: Verified that all `guild_admin` accounts across all tenants (ALPHA, OMEGA, BABE, IMK, YARR, CLAW, DEMO, SEN, NIGHTWRAITH, OBSIDIANSTAR, ASTRAL_LIBERION, BLACKTHUNDER, TWILIGHT) and `super_admin` have full access to view, launch, and commit OCR imports in their respective guild member panels (`admin-members`).
+
 ## Fixed
 
 - **Automated HTTP 503 / 500 / 502 / 504 Transient Server Error Retry & Exponential Backoff (v100)**:

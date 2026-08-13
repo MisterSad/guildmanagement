@@ -1736,6 +1736,10 @@
         return (typeof window !== 'undefined' && window.GM_GEMINI_KEY) || localStorage.getItem('gm_gemini_key') || BUILTIN_OCR_KEY;
     }
 
+    function getOcrModel() {
+        return localStorage.getItem('gm_ocr_model') || 'auto';
+    }
+
     function parseGeminiJson(jsonText) {
         if (!jsonText) return null;
         var cleaned = String(jsonText).replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
@@ -1799,6 +1803,11 @@
         var resultsContainer = document.getElementById('ocr-results-container');
         var btnCommit = document.getElementById('ocr-commit-btn');
         var fileInput = document.getElementById('ocr-file-input');
+        var modelSelect = document.getElementById('ocr-model-select');
+        var keyInput = document.getElementById('ocr-api-key-input');
+
+        if (modelSelect) modelSelect.value = getOcrModel();
+        if (keyInput) keyInput.value = localStorage.getItem('gm_gemini_key') || '';
 
         if (!getOcrApiKey() && keyPrompt) {
             keyPrompt.style.display = 'block';
@@ -1819,6 +1828,7 @@
     window.GM.openOcrModal = openOcrModal;
     window.GM.closeOcrModal = closeOcrModal;
     window.GM.parseGeminiJson = parseGeminiJson;
+    window.GM.getOcrModel = getOcrModel;
 
     // Document-level event delegation for OCR trigger buttons
     document.addEventListener('click', function (e) {
@@ -1844,29 +1854,44 @@
         var keyPrompt = document.getElementById('ocr-key-prompt');
         var keyInput = document.getElementById('ocr-api-key-input');
         var saveKeyBtn = document.getElementById('ocr-save-key-btn');
+        var modelSelect = document.getElementById('ocr-model-select');
 
         if (!modal) return;
         if (ocrInitialized) return;
         ocrInitialized = true;
 
+        if (modelSelect) {
+            modelSelect.value = getOcrModel();
+            modelSelect.onchange = function () {
+                localStorage.setItem('gm_ocr_model', modelSelect.value);
+                showToast('OCR AI Model set to ' + (modelSelect.options[modelSelect.selectedIndex] ? modelSelect.options[modelSelect.selectedIndex].text : modelSelect.value), 'info');
+            };
+        }
+
         if (keyConfigBtn && keyPrompt) {
             keyConfigBtn.onclick = function () {
                 var isHidden = keyPrompt.style.display === 'none';
                 keyPrompt.style.display = isHidden ? 'block' : 'none';
-                if (isHidden && keyInput) keyInput.value = getOcrApiKey();
+                if (isHidden) {
+                    if (keyInput) keyInput.value = localStorage.getItem('gm_gemini_key') || '';
+                    if (modelSelect) modelSelect.value = getOcrModel();
+                }
             };
         }
 
-        if (saveKeyBtn && keyInput) {
+        if (saveKeyBtn) {
             saveKeyBtn.onclick = function () {
-                var val = (keyInput.value || '').trim();
+                var val = keyInput ? (keyInput.value || '').trim() : '';
                 if (val) {
                     localStorage.setItem('gm_gemini_key', val);
-                    showToast('API key saved successfully!', 'success');
-                    if (keyPrompt) keyPrompt.style.display = 'none';
                 } else {
-                    showToast('Please paste a valid API key.', 'error');
+                    localStorage.removeItem('gm_gemini_key');
                 }
+                if (modelSelect) {
+                    localStorage.setItem('gm_ocr_model', modelSelect.value);
+                }
+                showToast('OCR configuration saved successfully!', 'success');
+                if (keyPrompt) keyPrompt.style.display = 'none';
             };
         }
 
@@ -2046,7 +2071,15 @@
             generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
         };
 
-        var modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+        var chosenModel = getOcrModel();
+        var modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+        if (chosenModel && chosenModel !== 'auto') {
+            modelsToTry.unshift(chosenModel);
+        }
+        modelsToTry = modelsToTry.filter(function (item, pos) {
+            return modelsToTry.indexOf(item) === pos;
+        });
+
         var maxRetries = 3;
         var lastErr = null;
 
