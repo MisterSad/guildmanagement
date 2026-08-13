@@ -479,7 +479,16 @@
         if (!c) return null;
         try {
             var s = await c.auth.getSession();
-            if (s && s.data && s.data.session) return s.data.session;
+            var session = (s && s.data) ? s.data.session : null;
+            if (session) {
+                var exp = session.expires_at;
+                var now = Math.floor(Date.now() / 1000);
+                if (exp && (exp - now < 60)) {
+                    var ref = await c.auth.refreshSession();
+                    if (ref && ref.data && ref.data.session) return ref.data.session;
+                }
+                return session;
+            }
             await new Promise(function (resolve) { setTimeout(resolve, 300); });
             s = await c.auth.getSession();
             return (s && s.data) ? s.data.session : null;
@@ -835,6 +844,7 @@
     }
 
     async function sendDiscordWebhook(eventPrefix, body) {
+        try { await ensureAuthSession(); } catch (_) {}
         var currentG = getActiveGuild();
         var webhookUrl = await resolveDiscordWebhook(eventPrefix);
         if (webhookUrl) {
@@ -848,19 +858,45 @@
         // Passes guild and eventPrefix so server-side proxy can resolve webhook if client-side is null/empty
         var client = getClient();
         if (client && client.functions && typeof client.functions.invoke === 'function') {
+            var payloadToSend = Object.assign({
+                webhookUrl: webhookUrl || '',
+                eventPrefix: eventPrefix,
+                guild: currentG,
+                payload: body
+            }, body);
+
             try {
-                var payloadToSend = Object.assign({
-                    webhookUrl: webhookUrl || '',
-                    eventPrefix: eventPrefix,
-                    guild: currentG,
-                    payload: body
-                }, body);
                 var invokeRes = await client.functions.invoke('discord-webhook-proxy', {
                     body: payloadToSend
                 });
+
                 if (invokeRes && invokeRes.data && invokeRes.data.ok) {
                     return true;
-                } else if (invokeRes && invokeRes.data && invokeRes.data.error) {
+                }
+
+                // If proxy call failed due to an expired/invalid JWT token error (invokeRes.error),
+                // fallback to invoking proxy directly via fetch using the public apikey (no-verify-jwt).
+                if (invokeRes && invokeRes.error) {
+                    console.warn('Proxy invocation error, attempting direct apikey proxy fallback...', invokeRes.error);
+                    try {
+                        var rawProxyRes = await fetch(SUPABASE_URL + '/functions/v1/discord-webhook-proxy', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'apikey': SUPABASE_KEY
+                            },
+                            body: JSON.stringify(payloadToSend)
+                        });
+                        if (rawProxyRes && typeof rawProxyRes.json === 'function') {
+                            var rawData = await rawProxyRes.json();
+                            if (rawData && rawData.ok) return true;
+                        }
+                    } catch (eRaw) {
+                        console.warn('Direct apikey proxy fallback failed:', eRaw);
+                    }
+                }
+
+                if (invokeRes && invokeRes.data && invokeRes.data.error) {
                     console.warn('Discord webhook proxy returned error:', invokeRes.data.error);
                 } else if (invokeRes && invokeRes.error) {
                     console.warn('Edge Function proxy invoke error:', invokeRes.error);

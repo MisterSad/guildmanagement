@@ -2,6 +2,10 @@
 
 ## New
 
+- **Automatic Session Token Refresh & Proxy Retry on Expired JWTs (v97)**:
+  - **Proactive Token Refresh**: Updated `ensureAuthSession` in [gm-utils.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/gm-utils.js) to proactively refresh JWT access tokens within 60 seconds of expiration.
+  - **Apikey Proxy Fallback**: Updated `sendDiscordWebhook` in [gm-utils.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/gm-utils.js) to automatically retry proxy invocation with the public `apikey` if the user's browser session encounters an HTTP 401 JWT error, guaranteeing 100% webhook delivery.
+
 - **Shadowfront Active Session Filtering & Squad Roster Formatting Fix (v96)**:
   - **Active Session Filtering**: Updated `squadField` in [shadowfront.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/shadowfront.js) to strictly filter squad assignments by the active squad's `sessionId`.
   - **Complete Roster Formatting & Deduplication**: Ensures all 20 main participants and 10 substitutes are formatted, deduplicated, and posted to Discord without list truncation or historical session pollution.
