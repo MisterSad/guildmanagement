@@ -23,17 +23,26 @@ serve(async (req: Request) => {
   }
 
   let webhookUrl = "";
-  let content = "";
+  let payload: any = null;
 
   try {
     const body = await req.json();
     webhookUrl = (body?.webhookUrl ?? "").toString().trim();
-    content = (body?.content ?? "").toString();
+
+    if (body?.payload && typeof body.payload === "object") {
+      payload = body.payload;
+    } else {
+      const { webhookUrl: _w, ...rest } = body;
+      payload = rest;
+    }
   } catch {
     return json({ ok: false, error: "bad_request" }, 400);
   }
 
-  if (!webhookUrl || !content) {
+  const hasContent = typeof payload?.content === "string" && payload.content.trim().length > 0;
+  const hasEmbeds = Array.isArray(payload?.embeds) && payload.embeds.length > 0;
+
+  if (!webhookUrl || (!hasContent && !hasEmbeds)) {
     return json({ ok: false, error: "missing_webhook_url_or_content" }, 400);
   }
 
@@ -54,7 +63,7 @@ serve(async (req: Request) => {
     const discordRes = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify(payload),
     });
 
     if (discordRes.ok || discordRes.status === 204 || discordRes.status === 200) {
@@ -70,3 +79,4 @@ serve(async (req: Request) => {
     return json({ ok: false, error: `Server fetch to Discord failed: ${err?.message ?? err}` }, 200);
   }
 });
+

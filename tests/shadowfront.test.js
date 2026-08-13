@@ -137,7 +137,29 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         expect(text).not.toContain('Approve');
     });
 
-    it('shares the composition on Discord through the shadowfront webhook', async () => {
+    it('shares the composition on Discord through the shadowfront webhook via Edge Function proxy', async () => {
+        tables.guild_config = [{ key: 'webhook_shadowfront', guild: 'ALPHA', value: 'https://discord.test/hook' }];
+        const invokeMock = vi.fn().mockResolvedValue({ data: { ok: true } });
+        GM.db.functions.invoke = invokeMock;
+
+        await SF.load();
+        stepByLabel('1. Squad Composition').click();
+        area().querySelector('.sf-share-discord-btn').click();
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(invokeMock).toHaveBeenCalledTimes(1);
+        expect(invokeMock).toHaveBeenCalledWith('discord-webhook-proxy', expect.objectContaining({
+            body: expect.objectContaining({
+                webhookUrl: 'https://discord.test/hook',
+                payload: expect.objectContaining({
+                    content: expect.stringContaining('Shadowfront'),
+                })
+            })
+        }));
+        expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
+    });
+
+    it('shares the composition on Discord through the shadowfront webhook fallback fetch', async () => {
         tables.guild_config = [{ key: 'webhook_shadowfront', guild: 'ALPHA', value: 'https://discord.test/hook' }];
         const fetchMock = vi.fn().mockResolvedValue({ ok: true });
         vi.stubGlobal('fetch', fetchMock);

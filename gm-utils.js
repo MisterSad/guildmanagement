@@ -825,18 +825,37 @@
     }
 
     async function sendDiscordWebhook(eventPrefix, body) {
-        if (!getClient()) return false;
-
         var webhookUrl = await resolveDiscordWebhook(eventPrefix);
         if (!webhookUrl) return false;
 
+        webhookUrl = webhookUrl.trim().replace(/^["']|["']$/g, '');
+        if (webhookUrl.indexOf('http') !== 0) {
+            webhookUrl = 'https://' + webhookUrl;
+        }
+
+        // Attempt 1: Invoke Edge Function Proxy (bypasses browser CORS & adblocker restrictions)
+        var client = getClient();
+        if (client && client.functions && typeof client.functions.invoke === 'function') {
+            try {
+                var invokeRes = await client.functions.invoke('discord-webhook-proxy', {
+                    body: { webhookUrl: webhookUrl, payload: body }
+                });
+                if (invokeRes && invokeRes.data && invokeRes.data.ok) {
+                    return true;
+                }
+            } catch (eProxy) {
+                console.warn('Edge Function proxy invoke failed, trying direct fetch fallback:', eProxy);
+            }
+        }
+
+        // Attempt 2: Direct fetch fallback
         try {
-            await fetch(webhookUrl, {
+            var res = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
-            return true;
+            return res.ok || res.status === 204 || res.status === 200;
         } catch (e) {
             console.error('Discord webhook notify failed', e);
             return false;
