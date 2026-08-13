@@ -1,12 +1,11 @@
-📢 **FGF Guild Management Tool Update — OCR Member Import Results Fix — v99**
+📢 **FGF Guild Management Tool Update — OCR AI Overload Auto-Retry (HTTP 503) — v100**
 
-🛠️ **Fixed: OCR Roster Screenshot Import & Validation Window**
-The validation results window with extracted player pseudos, power levels, and reconciliation badges now opens smoothly after screenshot analysis!
+🛠️ **Fixed: Google AI Temporary Server Overloads (HTTP 503 / 500)**
+When Google's Gemini servers experience transient load spikes or high traffic, the OCR tool now automatically retries with exponential backoff instead of throwing an error!
 
 ✨ **What was changed:**
-- **Robust Gemini JSON Parsing**: Fixed a `SyntaxError` caused by Markdown code blocks (` ```json ... ``` `) in Gemini API responses. Added `parseGeminiJson` to clean and extract valid JSON payloads reliably.
-- **Model Endpoint Fallback**: Added automatic fallback between `gemini-1.5-flash`, `gemini-2.0-flash`, and `gemini-flash-latest` endpoints to prevent 404 model errors.
-- **Guaranteed Modal Binding**: Clicking "Import Members (OCR)" in the Members tab now guarantees initialization of modal dropzone and file drag-and-drop listeners.
-- **Safe Rendering & Empty State**: Replaced unhandled helper calls with safe local formatters and added clear warning feedback when 0 players are detected.
+- **Automatic Retry with Backoff**: Intercepts HTTP 503 (Service Unavailable) and 500/502/504 server overload responses and automatically retries with progressive delays (2s, 4s).
+- **Live Status Feedback**: Displays live progress notifications in the loading window so you know when an automatic retry is in progress.
+- **Model Cluster Switching**: If a specific model pool is busy, the tool automatically switches to an alternative model cluster (`gemini-1.5-flash` ➔ `gemini-2.0-flash` ➔ `gemini-flash-latest`) to complete your scan smoothly.
 
-Feel free to upload your roster screenshots in the **Members** tab! 📸
+Feel free to scan your roster screenshots in the **Members** tab! 📸

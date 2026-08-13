@@ -2,6 +2,11 @@
 
 ## Fixed
 
+- **Automated HTTP 503 / 500 / 502 / 504 Transient Server Error Retry & Exponential Backoff (v100)**:
+  - **Automatic Overload Retry**: `callGeminiOcrBatchApi` in `app.js` now intercepts HTTP 503 (Service Unavailable) and transient server errors (500, 502, 504), automatically retrying up to 3 times per model with exponential backoff (2s, 4s).
+  - **Live UI Retry Feedback**: Displays clear progress status updates on screen during transient server overloads (e.g. `Google AI service busy (HTTP 503). Retrying in 2s (1/3)...`).
+  - **Automatic Multi-Model Pool Switching**: If a model endpoint remains overloaded after max retries, the tool automatically switches to the next model in the pool (`gemini-1.5-flash` -> `gemini-2.0-flash` -> `gemini-flash-latest`) to reach an available server cluster.
+
 - **OCR Import Results Modal Display & Resilient Gemini JSON Parsing (v99)**:
   - **Robust Markdown Fence JSON Cleaning**: Added `parseGeminiJson` helper function in `gm-utils.js` and `app.js` to strip Markdown code fences (` ```json ` and ` ``` `), trim whitespace, and extract valid `{...}` / `[...]` JSON substrings from Gemini AI responses.
   - **Multi-Model Endpoint Fallback**: Added automatic fallback in `callGeminiOcrBatchApi` across `gemini-1.5-flash`, `gemini-2.0-flash`, and `gemini-flash-latest` endpoints to prevent HTTP 404 model errors from breaking imports.

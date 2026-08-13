@@ -2064,6 +2064,7 @@
                         body: JSON.stringify(payload)
                     });
 
+                    // 429 Rate Limit handling with auto delay
                     if (response.status === 429) {
                         var errBody = '';
                         try { errBody = await response.text(); } catch (e) {}
@@ -2075,24 +2076,41 @@
 
                         if (attempt < maxRetries) {
                             if (updateStatusCallback) {
-                                updateStatusCallback('Rate limit reached. Retrying automatically in ' + waitSec + 's (Attempt ' + attempt + '/' + maxRetries + ')...');
+                                updateStatusCallback('API Rate Limit (429). Auto-retrying in ' + waitSec + 's (Attempt ' + attempt + '/' + maxRetries + ')...');
                             }
                             await new Promise(function (r) { setTimeout(r, waitSec * 1000); });
                             continue;
                         } else {
-                            throw new Error('API Rate Limit Exceeded (HTTP 429). Please wait a moment and try again.');
+                            lastErr = new Error('API Rate Limit Exceeded (HTTP 429). Please wait a moment and try again.');
+                            break;
+                        }
+                    }
+
+                    // 503 / 500 / 502 / 504 Transient Server Overload handling with retry
+                    if (response.status === 503 || response.status === 500 || response.status === 502 || response.status === 504) {
+                        var backoffSec = attempt * 2;
+                        if (attempt < maxRetries) {
+                            if (updateStatusCallback) {
+                                updateStatusCallback('Google AI service busy (HTTP ' + response.status + '). Retrying in ' + backoffSec + 's (' + attempt + '/' + maxRetries + ')...');
+                            }
+                            await new Promise(function (r) { setTimeout(r, backoffSec * 1000); });
+                            continue;
+                        } else {
+                            console.warn('Model ' + modelName + ' returned HTTP ' + response.status + ' after ' + maxRetries + ' attempts. Trying next model...');
+                            lastErr = new Error('Google AI server temporarily overloaded (HTTP ' + response.status + '). Please wait 15-30 seconds and try again.');
+                            break;
                         }
                     }
 
                     if (!response.ok) {
-                        var errText = await response.text();
                         if (response.status === 403) {
                             var keyPromptBox = document.getElementById('ocr-key-prompt');
                             if (keyPromptBox) keyPromptBox.style.display = 'block';
                             throw new Error('Invalid or missing API Key (HTTP 403). Please enter your API key above.');
                         }
-                        if (response.status === 404 && m < modelsToTry.length - 1) {
+                        if (response.status === 404) {
                             console.warn('Model ' + modelName + ' not available (HTTP 404), trying next model...');
+                            lastErr = new Error('OCR API HTTP 404 (Model not found)');
                             break;
                         }
                         throw new Error('OCR API HTTP ' + response.status);
@@ -2129,11 +2147,11 @@
                     }).filter(function (p) { return p.pseudo.length > 0 && p.overall_power >= 0; });
                 } catch (err) {
                     lastErr = err;
-                    if (attempt >= maxRetries || (err.message && !err.message.includes('429'))) {
-                        if (err.message && err.message.includes('404') && m < modelsToTry.length - 1) {
-                            break;
-                        }
+                    if (err.message && (err.message.includes('403') || err.message.includes('API Key Required'))) {
                         throw err;
+                    }
+                    if (attempt < maxRetries) {
+                        await new Promise(function (r) { setTimeout(r, 1500); });
                     }
                 }
             }
