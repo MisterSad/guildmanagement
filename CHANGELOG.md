@@ -2,6 +2,9 @@
 
 ## Fixed
 
+- **Resilient Multi-Model Fallback for 404 Model Errors (v104)**:
+  - **Automatic Model Resolution**: `callGeminiOcrBatchApi` in `app.js` now uses `gemini-1.5-flash` as primary free production endpoint with automatic fallback to `gemini-2.0-flash-exp`, `gemini-2.0-flash`, and `gemini-flash-latest`. Eliminates HTTP 404 errors when an experimental model identifier is not active on a specific API key.
+
 - **Strict Enforcement of Gemini 2.0 Flash Endpoint (v103)**:
   - **Forced 2.0 Flash Model**: `callGeminiOcrBatchApi` and `getOcrModel()` in `app.js` now target `gemini-2.0-flash` exclusively. Eliminates model fallback to legacy paid endpoints or non-flash models, ensuring zero-cost execution under Google AI Studio's free tier.
 
