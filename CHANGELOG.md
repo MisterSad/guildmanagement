@@ -2,6 +2,10 @@
 
 ## New
 
+- **Server-Side Webhook Resolution & Tenant Context Resilience (v95)**:
+  - **Server-Side Proxy Webhook Resolution**: Enhanced `discord-webhook-proxy` Edge Function ([discord-webhook-proxy/index.ts](file:///Users/andrevieira/Documents/GitHub/guildmanagement/supabase/functions/discord-webhook-proxy/index.ts)) to accept `guild` and `eventPrefix`. If the client-side session lacks a resolved webhook URL (due to RLS or missing local storage), the Edge Function automatically resolves the webhook URL for that tenant using `SUPABASE_SERVICE_ROLE_KEY`.
+  - **Unstoppable Webhook Invocation**: Updated `sendDiscordWebhook` ([gm-utils.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/gm-utils.js)) to always invoke the server proxy with tenant context (`guild` & `eventPrefix`) even when client-side resolution yields `null`.
+
 - **Shadowfront Discord Role Ping Crash Fix & `sf_subtitle` i18n Localization (v94)**:
   - **Export `formatDiscordRoleMention`**: Exported `formatDiscordRoleMention` in `window.GM` ([gm-utils.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/gm-utils.js)) and added defensive checks in [shadowfront.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/shadowfront.js) to resolve uncaught `TypeError: window.GM.formatDiscordRoleMention is not a function` runtime crashes for guilds with a configured Discord Role ID.
   - **Localization of `sf_subtitle`**: Added missing `sf_subtitle` translation key to [i18n.js](file:///Users/andrevieira/Documents/GitHub/guildmanagement/i18n.js) ('Squad 1 & Squad 2 - 20 participants + 10 reserves'), eliminating raw key display on all tenant pages.

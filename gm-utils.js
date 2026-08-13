@@ -835,20 +835,28 @@
     }
 
     async function sendDiscordWebhook(eventPrefix, body) {
+        var currentG = getActiveGuild();
         var webhookUrl = await resolveDiscordWebhook(eventPrefix);
-        if (!webhookUrl) return false;
-
-        webhookUrl = webhookUrl.trim().replace(/^[<"'\s]+|[>'"\s]+$/g, '');
-        if (webhookUrl.indexOf('http') !== 0) {
-            webhookUrl = 'https://' + webhookUrl;
+        if (webhookUrl) {
+            webhookUrl = webhookUrl.trim().replace(/^[<"'\s]+|[>'"\s]+$/g, '');
+            if (webhookUrl.indexOf('http') !== 0) {
+                webhookUrl = 'https://' + webhookUrl;
+            }
         }
 
         // Attempt 1: Invoke Edge Function Proxy (bypasses browser CORS & adblocker restrictions)
+        // Passes guild and eventPrefix so server-side proxy can resolve webhook if client-side is null/empty
         var client = getClient();
         if (client && client.functions && typeof client.functions.invoke === 'function') {
             try {
+                var payloadToSend = Object.assign({
+                    webhookUrl: webhookUrl || '',
+                    eventPrefix: eventPrefix,
+                    guild: currentG,
+                    payload: body
+                }, body);
                 var invokeRes = await client.functions.invoke('discord-webhook-proxy', {
-                    body: Object.assign({ webhookUrl: webhookUrl, payload: body }, body)
+                    body: payloadToSend
                 });
                 if (invokeRes && invokeRes.data && invokeRes.data.ok) {
                     return true;
@@ -861,6 +869,8 @@
                 console.warn('Edge Function proxy invoke failed, trying direct fetch fallback:', eProxy);
             }
         }
+
+        if (!webhookUrl) return false;
 
         // Attempt 2: Direct fetch fallback
         try {

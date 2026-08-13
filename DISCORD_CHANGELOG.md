@@ -1,9 +1,9 @@
-📢 **FGF Guild Management Tool Update — Shadowfront & i18n Fixes — v94**
+📢 **FGF Guild Management Tool Update — Server-Side Webhook Resilience — v95**
 
-🛠️ **Fixed: Shadowfront Discord Share & Subtitle Display**
+🛠️ **Fixed: Cross-Tenant Discord Webhook Delivery**
 
 ✨ **What was changed:**
-- **Discord Role Mention Crash Resolved**: Exported `formatDiscordRoleMention` on `window.GM` to fix an uncaught runtime error when sharing Shadowfront squad compositions for guilds with a configured Discord Role ID.
-- **i18n Localization**: Added missing `sf_subtitle` translation key to eliminate raw key text display on all guild tenant pages.
+- **Server-Side Webhook Resolution**: `discord-webhook-proxy` now automatically resolves your guild's webhook URL on the server using service role permissions if local browser storage or RLS policies block client-side reading.
+- **Unstoppable Delivery**: Webhook pings (Shadowfront compositions, event notifications) now deliver reliably across all tenants and browser session states!
 
 Feel free to test sharing squad compositions in the **Shadowfront** tab! 🎯

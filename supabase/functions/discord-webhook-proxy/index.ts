@@ -33,11 +33,58 @@ serve(async (req: Request) => {
 
     webhookUrl = (body?.webhookUrl ?? body?.url ?? "").toString().trim();
 
+    let guild = (body?.guild ?? "").toString().trim();
+    let eventPrefix = (body?.eventPrefix ?? "").toString().trim();
+
     if (body?.payload && typeof body.payload === "object") {
       payload = body.payload;
     } else {
-      const { webhookUrl: _w, url: _u, ...rest } = body;
+      const { webhookUrl: _w, url: _u, guild: _g, eventPrefix: _ep, ...rest } = body;
       payload = rest;
+    }
+
+    // Server-side fallback resolution if webhookUrl is empty but guild & eventPrefix are provided
+    if (!webhookUrl && guild) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+      if (supabaseUrl && serviceKey) {
+        try {
+          const cfgRes = await fetch(
+            `${supabaseUrl}/rest/v1/guild_config?guild=eq.${encodeURIComponent(guild)}&select=key,value`,
+            {
+              headers: {
+                "apikey": serviceKey,
+                "Authorization": `Bearer ${serviceKey}`,
+              },
+            }
+          );
+          if (cfgRes.ok) {
+            const rows: Array<{ key: string; value: string }> = await cfgRes.json();
+            const configMap: Record<string, string> = {};
+            (rows || []).forEach((r) => { configMap[r.key] = r.value; });
+
+            let resolved = eventPrefix ? configMap[`webhook_${eventPrefix}`] : null;
+            if (!resolved || !resolved.trim()) {
+              resolved = configMap["discord_webhook_url"];
+            }
+            if (!resolved || !resolved.trim()) {
+              const fallbacks = ["webhook_armsrace", "webhook_svs", "webhook_gvg", "webhook_dtr", "webhook_calamity", "webhook_shadowfront"];
+              for (const fk of fallbacks) {
+                if (configMap[fk] && configMap[fk].trim()) {
+                  resolved = configMap[fk];
+                  break;
+                }
+              }
+            }
+            if (resolved && resolved.trim()) {
+              webhookUrl = resolved.trim();
+            }
+          }
+        } catch (eDb) {
+          console.warn("Server-side webhook resolution error:", eDb);
+        }
+      }
     }
   } catch {
     return json({ ok: false, error: "bad_request" }, 400);
