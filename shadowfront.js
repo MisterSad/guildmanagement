@@ -482,10 +482,7 @@
             }
         }
         
-        var fallbackText = '\n\n**' + t('sf_participants') + ' (' + squad.participantsCount + '/20)**\n' + squad.participantsText +
-                           '\n\n**' + t('sf_reserves') + ' (' + squad.reservesCount + '/10)**\n' + squad.reservesText;
-                           
-        var content = '📋 **Shadowfront - ' + squadLabel(squadKey) + ' Composition**' + (roleMention ? ' ' + roleMention : '') + fallbackText;
+        var content = '📋 **Shadowfront - ' + squadLabel(squadKey) + ' Composition**' + (roleMention ? ' ' + roleMention : '');
 
         var body = {
             content: content,
