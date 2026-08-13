@@ -505,11 +505,12 @@
             }]
         };
 
-        var sent = await window.GM.sendDiscordWebhook('shadowfront', body);
-        if (sent) {
+        var res = await window.GM.sendDiscordWebhookDetailed('shadowfront', body);
+        if (res.ok) {
             window.GM.showToast(t('sf_share_discord_sent'), 'success');
         } else {
-            window.GM.showToast(t('sf_share_discord_failed'), 'error');
+            var errMsg = typeof res.error === 'object' ? JSON.stringify(res.error) : res.error;
+            window.GM.showToast("Discord Error: " + errMsg, 'error');
         }
     }
 

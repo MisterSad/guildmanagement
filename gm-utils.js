@@ -843,7 +843,7 @@
         return (webhookUrl && webhookUrl.trim() !== '') ? webhookUrl : null;
     }
 
-    async function sendDiscordWebhook(eventPrefix, body) {
+    async function sendDiscordWebhookDetailed(eventPrefix, body) {
         try { await ensureAuthSession(); } catch (_) {}
         var currentG = getActiveGuild();
         var webhookUrl = await resolveDiscordWebhook(eventPrefix);
@@ -852,6 +852,13 @@
             if (webhookUrl.indexOf('http') !== 0) {
                 webhookUrl = 'https://' + webhookUrl;
             }
+        }
+
+        console.log("=== DISCORD WEBHOOK DIAGNOSTIC ===");
+        console.log("Original body:", JSON.parse(JSON.stringify(body)));
+        console.log("Has embeds array:", Array.isArray(body.embeds));
+        if (body.embeds && body.embeds.length > 0) {
+            console.log("Embeds[0] fields:", body.embeds[0].fields);
         }
 
         // Attempt 1: Invoke Edge Function Proxy (bypasses browser CORS & adblocker restrictions)
@@ -871,11 +878,9 @@
                 });
 
                 if (invokeRes && invokeRes.data && invokeRes.data.ok) {
-                    return true;
+                    return { ok: true };
                 }
 
-                // If proxy call failed due to an expired/invalid JWT token error (invokeRes.error),
-                // fallback to invoking proxy directly via fetch using the public apikey (no-verify-jwt).
                 if (invokeRes && invokeRes.error) {
                     console.warn('Proxy invocation error, attempting direct apikey proxy fallback...', invokeRes.error);
                     try {
@@ -889,7 +894,8 @@
                         });
                         if (rawProxyRes && typeof rawProxyRes.json === 'function') {
                             var rawData = await rawProxyRes.json();
-                            if (rawData && rawData.ok) return true;
+                            if (rawData && rawData.ok) return { ok: true };
+                            return { ok: false, error: rawData ? rawData.error : "Unknown proxy fallback error" };
                         }
                     } catch (eRaw) {
                         console.warn('Direct apikey proxy fallback failed:', eRaw);
@@ -898,15 +904,20 @@
 
                 if (invokeRes && invokeRes.data && invokeRes.data.error) {
                     console.warn('Discord webhook proxy returned error:', invokeRes.data.error);
+                    return { ok: false, error: invokeRes.data.error };
                 } else if (invokeRes && invokeRes.error) {
                     console.warn('Edge Function proxy invoke error:', invokeRes.error);
+                    return { ok: false, error: invokeRes.error.message || invokeRes.error };
                 }
+                
+                return { ok: false, error: "Unknown error from invoke" };
             } catch (eProxy) {
                 console.warn('Edge Function proxy invoke failed, trying direct fetch fallback:', eProxy);
+                return { ok: false, error: eProxy.message || eProxy };
             }
         }
 
-        if (!webhookUrl) return false;
+        if (!webhookUrl) return { ok: false, error: "No webhook URL found" };
 
         // Attempt 2: Direct fetch fallback
         try {
@@ -915,11 +926,17 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
-            return res.ok || res.status === 204 || res.status === 200;
+            if (res.ok || res.status === 204) return { ok: true };
+            return { ok: false, error: "HTTP " + res.status + " " + res.statusText };
         } catch (e) {
-            console.error('Discord webhook notify failed', e);
-            return false;
+            console.error('Discord webhook fetch error:', e);
+            return { ok: false, error: e.message || e };
         }
+    }
+
+    async function sendDiscordWebhook(eventPrefix, body) {
+        var res = await sendDiscordWebhookDetailed(eventPrefix, body);
+        return res.ok;
     }
 
     async function shareMatchupRosterToDiscord(options) {
@@ -1296,6 +1313,7 @@
         },
         formatDiscordRoleMention: formatDiscordRoleMention,
         notifyDiscordEvent: notifyDiscordEvent,
+        sendDiscordWebhookDetailed: sendDiscordWebhookDetailed,
         sendDiscordWebhook: sendDiscordWebhook,
         shareMatchupRosterToDiscord: shareMatchupRosterToDiscord
     };
