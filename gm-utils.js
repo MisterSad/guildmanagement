@@ -861,76 +861,25 @@
             console.log("Embeds[0] fields:", body.embeds[0].fields);
         }
 
-        // Attempt 1: Invoke Edge Function Proxy (bypasses browser CORS & adblocker restrictions)
-        // Passes guild and eventPrefix so server-side proxy can resolve webhook if client-side is null/empty
-        var client = getClient();
-        if (client && client.functions && typeof client.functions.invoke === 'function') {
-            var payloadToSend = Object.assign({
-                webhookUrl: webhookUrl || '',
-                eventPrefix: eventPrefix,
-                guild: currentG,
-                payload: body
-            }, body);
-
-            try {
-                var invokeRes = await client.functions.invoke('discord-webhook-proxy', {
-                    body: payloadToSend
-                });
-
-                if (invokeRes && invokeRes.data && invokeRes.data.ok) {
-                    return { ok: true };
-                }
-
-                if (invokeRes && invokeRes.error) {
-                    console.warn('Proxy invocation error, attempting direct apikey proxy fallback...', invokeRes.error);
-                    try {
-                        var rawProxyRes = await fetch(SUPABASE_URL + '/functions/v1/discord-webhook-proxy', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'apikey': SUPABASE_KEY
-                            },
-                            body: JSON.stringify(payloadToSend)
-                        });
-                        if (rawProxyRes && typeof rawProxyRes.json === 'function') {
-                            var rawData = await rawProxyRes.json();
-                            if (rawData && rawData.ok) return { ok: true };
-                            return { ok: false, error: rawData ? rawData.error : "Unknown proxy fallback error" };
-                        }
-                    } catch (eRaw) {
-                        console.warn('Direct apikey proxy fallback failed:', eRaw);
-                    }
-                }
-
-                if (invokeRes && invokeRes.data && invokeRes.data.error) {
-                    console.warn('Discord webhook proxy returned error:', invokeRes.data.error);
-                    return { ok: false, error: invokeRes.data.error };
-                } else if (invokeRes && invokeRes.error) {
-                    console.warn('Edge Function proxy invoke error:', invokeRes.error);
-                    return { ok: false, error: invokeRes.error.message || invokeRes.error };
-                }
-                
-                return { ok: false, error: "Unknown error from invoke" };
-            } catch (eProxy) {
-                console.warn('Edge Function proxy invoke failed, trying direct fetch fallback:', eProxy);
-                return { ok: false, error: eProxy.message || eProxy };
-            }
-        }
-
-        if (!webhookUrl) return { ok: false, error: "No webhook URL found" };
-
-        // Attempt 2: Direct fetch fallback
+        // Bypass the Edge Function proxy entirely due to a bug in the old deployed proxy version (v80)
+        // that strips embeds. Instead, we use a direct browser fetch with FormData.
+        // FormData is a "simple request" and does not trigger CORS preflight (OPTIONS),
+        // which avoids the standard Discord webhook CORS block in browsers.
         try {
+            var form = new FormData();
+            form.append('payload_json', JSON.stringify(body));
+
             var res = await fetch(webhookUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: form
             });
             if (res.ok || res.status === 204) return { ok: true };
-            return { ok: false, error: "HTTP " + res.status + " " + res.statusText };
+            
+            var errText = await res.text().catch(function() { return ""; });
+            return { ok: false, error: "Discord HTTP " + res.status + ": " + errText };
         } catch (e) {
-            console.error('Discord webhook fetch error:', e);
-            return { ok: false, error: e.message || e };
+            console.error('Discord webhook notify failed', e);
+            return { ok: false, error: e.message || String(e) };
         }
     }
 
@@ -1019,43 +968,24 @@
         for (var cIdx = 0; cIdx < chunks.length; cIdx++) {
             var posted = false;
 
-            // Attempt 1: Invoke Edge Function Proxy (bypasses browser CORS & adblocker restrictions)
-            var client = getClient();
-            if (client && client.functions && typeof client.functions.invoke === 'function') {
-                try {
-                    var invokeRes = await client.functions.invoke('discord-webhook-proxy', {
-                        body: { webhookUrl: webhookUrl, content: chunks[cIdx] }
-                    });
-                    if (invokeRes && invokeRes.data && invokeRes.data.ok) {
-                        posted = true;
-                    } else if (invokeRes && invokeRes.data && invokeRes.data.error) {
-                        lastErrReason = invokeRes.data.error;
-                    } else if (invokeRes && invokeRes.error) {
-                        lastErrReason = (invokeRes.error.message || String(invokeRes.error));
-                    }
-                } catch (eProxy) {
-                    console.warn('Edge Function proxy invoke failed, trying direct fetch fallback:', eProxy);
-                }
-            }
+            // Bypass the Edge Function proxy entirely using FormData to avoid CORS preflight
+            try {
+                var form = new FormData();
+                form.append('payload_json', JSON.stringify({ content: chunks[cIdx] }));
 
-            // Attempt 2: Fallback direct fetch if Edge Function proxy is unavailable
-            if (!posted) {
-                try {
-                    var res = await fetch(webhookUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ content: chunks[cIdx] })
-                    });
-                    if (res.ok || res.status === 204 || res.status === 200) {
-                        posted = true;
-                    } else {
-                        var errBody = '';
-                        try { errBody = await res.text(); } catch (e) {}
-                        lastErrReason = 'HTTP ' + res.status + ' ' + (res.statusText || '') + (errBody ? ': ' + errBody : '');
-                    }
-                } catch (err) {
-                    lastErrReason = (err && err.message) || lastErrReason || 'Network/CORS error';
+                var res = await fetch(webhookUrl, {
+                    method: 'POST',
+                    body: form
+                });
+                if (res.ok || res.status === 204 || res.status === 200) {
+                    posted = true;
+                } else {
+                    var errBody = '';
+                    try { errBody = await res.text(); } catch (e) {}
+                    lastErrReason = 'HTTP ' + res.status + ' ' + (res.statusText || '') + (errBody ? ': ' + errBody : '');
                 }
+            } catch (err) {
+                lastErrReason = (err && err.message) || 'Network/CORS error';
             }
 
             if (posted) {
