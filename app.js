@@ -1737,7 +1737,7 @@
     }
 
     function getOcrModel() {
-        return localStorage.getItem('gm_ocr_model') || 'auto';
+        return 'gemini-2.0-flash';
     }
 
     function parseGeminiJson(jsonText) {
@@ -2019,15 +2019,7 @@
             generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
         };
 
-        var chosenModel = getOcrModel();
-        var modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
-        if (chosenModel && chosenModel !== 'auto') {
-            modelsToTry.unshift(chosenModel);
-        }
-        modelsToTry = modelsToTry.filter(function (item, pos) {
-            return modelsToTry.indexOf(item) === pos;
-        });
-
+        var modelsToTry = ['gemini-2.0-flash'];
         var maxRetries = 3;
         var lastErr = null;
 

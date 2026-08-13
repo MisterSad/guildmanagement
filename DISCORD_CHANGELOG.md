@@ -1,10 +1,9 @@
-📢 **FGF Guild Management Tool Update — Default API Key Enforcement — v102**
+📢 **FGF Guild Management Tool Update — Forced Gemini 2.0 Flash — v103**
 
-🔒 **Default API Key & Clean Interface**
-The default Gemini API key is now active automatically behind the scenes for all OCR roster scans!
+⚡ **Strict Gemini 2.0 Flash Enforcement**
+The OCR tool now uses `gemini-2.0-flash` exclusively!
 
 ✨ **What was changed:**
-- **Automatic Default Key**: The default API key is used transparently without requiring any setup or input.
-- **Interface Clean-Up**: Removed all API key inputs, prompts, and configuration buttons from the interface so the key and key settings never appear in the UI.
+- **Strict 2.0 Flash Endpoint**: Forced `gemini-2.0-flash` for all OCR requests, preventing any fallback to billed or legacy model endpoints.
 
-Enjoy smooth roster scanning in the **Members** tab! 📸
+Enjoy zero-cost roster scanning in the **Members** tab! 📸
