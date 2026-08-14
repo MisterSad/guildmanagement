@@ -363,6 +363,15 @@
 
         populateAccountGuildSelect();
 
+        var systemLogsTabBtn = document.getElementById('nav-tab-system-logs');
+        if (systemLogsTabBtn) {
+            if (role === 'super_admin') {
+                systemLogsTabBtn.classList.remove('hidden');
+            } else {
+                systemLogsTabBtn.classList.add('hidden');
+            }
+        }
+
         if (role !== 'super_admin') { // guild_admin or member
             if (roleLabel) {
                 roleLabel.textContent = window.currentGuildRestriction 
@@ -471,6 +480,9 @@
         }
         if ((tabId === 'stats-admin' || tabId === 'stats-member' || tabId === 'stats') && window.GM_STATS) {
             window.GM_STATS.load();
+        }
+        if ((tabId === 'tab-system-logs' || tabId === 'system-logs') && window.GM_AUDIT) {
+            window.GM_AUDIT.loadLogs();
         }
     }
 

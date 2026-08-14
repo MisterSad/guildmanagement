@@ -21,6 +21,8 @@ import { EventsService } from './modules/events/events.service';
 import { ShadowfrontService } from './modules/shadowfront/shadowfront.service';
 import { StatsService } from './modules/stats/stats.service';
 import { PortalService } from './modules/portal/portal.service';
+import { AuditService } from './modules/audit/audit.service';
+import { AuditView } from './modules/audit/audit-view';
 import { logger } from './core/logger/logger';
 
 import { BaseComponent } from './components/ui/BaseComponent';
@@ -55,7 +57,8 @@ if (typeof window !== 'undefined') {
     events: EventsService,
     shadowfront: ShadowfrontService,
     stats: StatsService,
-    portal: PortalService
+    portal: PortalService,
+    audit: AuditService
   };
 
   (window as any).GM.components = {
@@ -72,8 +75,11 @@ if (typeof window !== 'undefined') {
     setAppNotificationBadge
   };
 
+  (window as any).GM_AUDIT = AuditView;
+
   document.addEventListener('DOMContentLoaded', () => {
     applyTranslations();
     initPWA();
+    AuditView.init();
   });
 }

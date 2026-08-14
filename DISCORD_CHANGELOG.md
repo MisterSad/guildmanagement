@@ -1,11 +1,12 @@
-📢 **FGF Guild Management Tool Update — Security, Observability & Engine Upgrade — v106**
+📢 **FGF Guild Management Tool Update — Real-Time Monitoring & Diagnostic Dashboard — v107**
 
-🛡️ **Major Infrastructure, Security & Performance Upgrade!**
-We have deployed an end-to-end security hardening, real-time structured logging system, and database optimization across all guilds!
+🛠️ **Super Admin Observability & Live Diagnostics Console!**
+We have launched the **System Logs & Diagnostic Dashboard** directly inside the Command Center for Super Admins!
 
-✨ **Highlights & Improvements:**
-- 🔒 **Zero-Trust Security**: Secured Discord Webhook Proxy and Gemini OCR Edge Functions with cryptographic JWT verification and strict admin access control.
-- 📊 **Real-Time Structured Logging**: Added centralized JSON logging on both client and Edge Functions with correlation IDs and credential masking.
-- ⚡ **Database Index Optimizations**: Added foreign key indexes covering high-volume tables (`event_participants`, `shadowfront_squads`, `sanctions`) for lightning-fast queries.
-- 🎯 **Score & Auth Integrity**: Defensive score validation on Player Portal, GoTrue pagination fixes for accounts beyond 50 users, and zero admin dashboard flash.
-- 🧪 **100% Quality Verification**: **218/218 tests passing** (`npm test`) with 0 static type errors! 🚀
+✨ **Highlights & Features:**
+- 🖥️ **Live System Logs Console**: Direct view into Edge Function executions, API calls, and security audit events.
+- 📈 **Real-Time Health KPI Cards**: 24-hour tracking of total events, errors, warnings, and average Edge Function latency.
+- 🔍 **Distributed Tracing Filters**: Instant filtering by Log Level (`ERROR`, `WARN`, `INFO`), Service (`member-portal`, `auth-login`, `discord-proxy`, etc.), Guild tenant, or correlation ID.
+- 🔎 **Deep Inspect Drawer**: Click any event to inspect sanitized payload metadata, error stack traces, and execution timings.
+- ⚡ **Auto-Stream Mode**: 10-second automatic refresh keeps the observability console up to the second.
+- 🧪 **100% Quality Verification**: **219/219 tests passing** (`npm test`) with 0 static type errors! 🚀

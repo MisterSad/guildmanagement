@@ -291,6 +291,10 @@
                             <i class="ph ph-prohibit"></i>
                             <span data-i18n="nav_banned_players">Banned Players</span>
                         </button>
+                        <button class="nav-tab super-admin-only hidden" id="nav-tab-system-logs" data-tab="tab-system-logs" data-view="dashboard-view">
+                            <i class="ph ph-terminal-window"></i>
+                            <span data-i18n="nav_system_logs">System Logs</span>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -917,6 +921,97 @@
                             <div class="gm-empty">
                                 <i class="ph-duotone ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title" data-i18n="empty_banned">No banned players</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- ─ Tab: System Audit Logs (Super Admin only) ─────────────── -->
+            <main class="dashboard-content tab-panel" id="tab-system-logs">
+                <div class="gm-page">
+                    <header class="gm-page-header">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+                                <h1 class="gm-page-title" data-i18n="logs_title">System Logs &amp; Diagnostic</h1>
+                                <span class="gm-badge gm-badge-purple" style="font-size:0.75rem; padding:2px 8px; border-radius:12px;">Super Admin</span>
+                            </div>
+                            <p class="gm-page-subtitle" data-i18n="logs_subtitle">Real-time observability, security auditing &amp; error tracking</p>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <button id="btn-refresh-audit-logs" class="gm-btn gm-btn-secondary gm-btn-sm">
+                                <i class="ph ph-arrows-clockwise"></i> <span data-i18n="btn_refresh">Refresh</span>
+                            </button>
+                            <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.8rem; color:var(--text-muted); cursor:pointer;">
+                                <input type="checkbox" id="chk-auto-refresh-logs" checked>
+                                <span data-i18n="logs_auto_refresh">Auto-refresh (10s)</span>
+                            </label>
+                        </div>
+                    </header>
+
+                    <!-- KPI Stats Grid -->
+                    <div class="gm-grid-4" style="gap:1rem; margin-bottom:1rem;">
+                        <div class="gm-card gm-card-padded" style="border-left: 3px solid #3b82f6;">
+                            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Events (24h)</div>
+                            <div id="stat-total-logs" style="font-size:1.5rem; font-weight:700; color:var(--text-primary); margin-top:0.25rem;">-</div>
+                        </div>
+                        <div class="gm-card gm-card-padded" style="border-left: 3px solid #ef4444;">
+                            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Errors (24h)</div>
+                            <div id="stat-errors-logs" style="font-size:1.5rem; font-weight:700; color:#ef4444; margin-top:0.25rem;">-</div>
+                        </div>
+                        <div class="gm-card gm-card-padded" style="border-left: 3px solid #f59e0b;">
+                            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Warnings (24h)</div>
+                            <div id="stat-warn-logs" style="font-size:1.5rem; font-weight:700; color:#f59e0b; margin-top:0.25rem;">-</div>
+                        </div>
+                        <div class="gm-card gm-card-padded" style="border-left: 3px solid #10b981;">
+                            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Avg Latency (24h)</div>
+                            <div id="stat-latency-logs" style="font-size:1.5rem; font-weight:700; color:var(--text-primary); margin-top:0.25rem;">- ms</div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Toolbar -->
+                    <div class="gm-card gm-card-padded" style="margin-bottom:1rem;">
+                        <div class="gm-row" style="gap:0.75rem; flex-wrap:wrap; align-items:center;">
+                            <div class="gm-input-with-icon" style="flex:2; min-width:200px;">
+                                <i class="ph ph-magnifying-glass gm-icon"></i>
+                                <input type="text" id="filter-logs-search" class="gm-input" placeholder="Search message, correlation ID, user...">
+                            </div>
+                            <div style="flex:1; min-width:130px;">
+                                <select id="filter-logs-level" class="gm-input">
+                                    <option value="ALL">All Levels</option>
+                                    <option value="ERROR">ERROR / FATAL</option>
+                                    <option value="WARN">WARN</option>
+                                    <option value="INFO">INFO</option>
+                                    <option value="DEBUG">DEBUG</option>
+                                </select>
+                            </div>
+                            <div style="flex:1; min-width:140px;">
+                                <select id="filter-logs-service" class="gm-input">
+                                    <option value="ALL">All Services</option>
+                                    <option value="member-portal">member-portal</option>
+                                    <option value="auth-login">auth-login</option>
+                                    <option value="admin-accounts">admin-accounts</option>
+                                    <option value="discord-webhook-proxy">discord-proxy</option>
+                                    <option value="ocr-guild-members">ocr-gemini</option>
+                                    <option value="player-register">player-register</option>
+                                    <option value="event-reminders">event-reminders</option>
+                                    <option value="fgf-client">fgf-client</option>
+                                </select>
+                            </div>
+                            <div style="flex:1; min-width:120px;">
+                                <select id="filter-logs-guild" class="gm-input">
+                                    <option value="ALL">All Guilds</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logs Table Container -->
+                    <div class="gm-card gm-card-padded">
+                        <div id="audit-logs-table-container" style="overflow-x:auto;">
+                            <div class="gm-empty">
+                                <i class="ph-duotone ph-terminal-window gm-icon"></i>
+                                <div class="gm-empty-title">Loading system logs...</div>
                             </div>
                         </div>
                     </div>

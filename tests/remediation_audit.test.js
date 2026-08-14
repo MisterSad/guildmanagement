@@ -91,4 +91,17 @@ describe('Audit Remediation Verification Suite', () => {
     expect(result.members[0].powerPenalty).toBe(0.9);
     expect(result.members[0].adjustedPower).toBe(90_000_000);
   });
+
+  it('SEV-09: verifies AuditService and Super Admin monitoring UI existence', () => {
+    const auditServicePath = path.resolve(__dirname, '../src/modules/audit/audit.service.ts');
+    expect(fs.existsSync(auditServicePath)).toBe(true);
+
+    const auditViewPath = path.resolve(__dirname, '../src/modules/audit/audit-view.ts');
+    expect(fs.existsSync(auditViewPath)).toBe(true);
+
+    const indexHtml = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
+    expect(indexHtml).toContain('id="nav-tab-system-logs"');
+    expect(indexHtml).toContain('id="tab-system-logs"');
+    expect(indexHtml).toContain('id="audit-logs-table-container"');
+  });
 });

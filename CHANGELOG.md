@@ -2,6 +2,14 @@
 
 ## New
 
+- **Super Admin Real-Time Monitoring & Diagnostic Dashboard (v107)**:
+  - **Live Audit & Observability Console**: Added dedicated Super Admin **System Logs & Diagnostic** view (`#tab-system-logs`) backed by `AuditService` (`src/modules/audit/audit.service.ts`) and `AuditView` (`src/modules/audit/audit-view.ts`).
+  - **24h Metric KPI Cards**: Real-time KPI summaries displaying total events (24h), errors, warnings, and average Edge Function execution latency.
+  - **Advanced Distributed Tracing Filters**: Instant filtering by log level (`ERROR`, `WARN`, `INFO`, `DEBUG`), service (`member-portal`, `auth-login`, `admin-accounts`, `discord-proxy`, `ocr-gemini`, etc.), guild tenant, and free text search across messages and correlation IDs.
+  - **JSON Inspection Drawer**: Detailed interactive inspector modal for viewing sanitized payload metadata, error stack traces, execution duration, and distributed request identifiers.
+  - **Automated Stream Refresh**: 10-second background polling toggle with real-time UI indicator.
+  - **Quality Assurance**: Added automated test coverage in `tests/remediation_audit.test.js` bringing total passing unit tests to **219/219 green**.
+
 - **Full Technical & Security Remediation, Structured Real-Time Logging & DB Performance (v106)**:
   - **Structured Real-Time Logging**: Added `EdgeLogger` (`supabase/functions/_shared/logger.ts`) and client-side `ClientLogger` (`src/core/logger/logger.ts`, exposed on `window.GM.logger`) with JSON formatting, execution timing, correlation IDs, and automated credential/PII sanitization (`password`, `secret`, `token`, `key`).
   - **Persistent System Audit Logs**: Created `public.system_audit_logs` table protected with strict RLS (accessible only by `super_admin`), storing critical system and security events.
