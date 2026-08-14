@@ -1749,7 +1749,7 @@
     }
 
     function getOcrModel() {
-        return 'gemini-1.5-flash';
+        return 'gemini-flash-latest';
     }
 
     function parseGeminiJson(jsonText) {
@@ -2055,7 +2055,7 @@
             generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
         };
 
-        var modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-flash-latest'];
+        var modelsToTry = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-3.7-flash', 'gemini-3-flash-preview', 'gemini-flash-lite-latest'];
         var maxRetries = 3;
         var lastErr = null;
 
