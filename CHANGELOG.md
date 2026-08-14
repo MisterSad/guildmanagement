@@ -2,7 +2,11 @@
 
 ## Fixed
 
-- **Resilient Multi-Model Fallback for 404 Model Errors (v104)**:
+- **Shadowfront Pre-Start Session Migration & Duplicate Key Constraint Resolution (v105)**:
+  - **Unblocked Member Assignments**: Resolved database duplicate key constraint violations (`shadowfront_squads_guild_week_start_pseudo_key`) when assigning players to active Shadowfront sessions after a pre-start click.
+  - **Week-Scoped Cleanup in `assign()`**: Modified `assign()` in `shadowfront.js` to delete any existing assignment for the member in the current guild and week (`week_start`), preventing leftover pre-start rows under temporary session IDs from triggering unique constraint conflicts upon upsert.
+  - **Automatic Session ID Migration in `startSquad()`**: Updated `startSquad()` in `shadowfront.js` to migrate any pre-start assignments in `shadowfront_squads` from temporary pre-start session IDs to the new active session ID when starting a squad.
+  - **Tenant Data Repair**: Repaired orphan record for player `Aurora` in guild `SEN`, restoring full functionality and alignment across active sessions.
   - **Automatic Model Resolution**: `callGeminiOcrBatchApi` in `app.js` now uses `gemini-1.5-flash` as primary free production endpoint with automatic fallback to `gemini-2.0-flash-exp`, `gemini-2.0-flash`, and `gemini-flash-latest`. Eliminates HTTP 404 errors when an experimental model identifier is not active on a specific API key.
 
 - **Strict Enforcement of Gemini 2.0 Flash Endpoint (v103)**:

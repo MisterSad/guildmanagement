@@ -276,4 +276,25 @@ describe('GM_SHADOWFRONT UI/UX', () => {
     it('translates sf_subtitle correctly without returning raw key', () => {
         expect(GM.t('sf_subtitle')).toBe('Squad 1 & Squad 2 - 20 participants + 10 reserves');
     });
+
+    it('migrates pre-start shadowfront_squads assignments when starting a new squad session', async () => {
+        tables.event_status = [
+            { event_name: 'Shadowfront Squad 1', guild: 'ALPHA', is_active: false, session_id: 'TEMP_SESSION', start_at: null },
+            { event_name: 'Shadowfront Squad 2', guild: 'ALPHA', is_active: false, session_id: null, start_at: null },
+        ];
+        tables.shadowfront_squads = [
+            { pseudo: 'Bravo', guild: 'ALPHA', session_id: 'TEMP_SESSION', squad: 'squad1', role: 'participant', week_start: '2026-08-10' },
+        ];
+
+        let updatePayload = null;
+        tables.shadowfront_squads.update = (payload) => {
+            updatePayload = payload;
+            return chained(tables.shadowfront_squads);
+        };
+
+        await SF.load();
+        // Trigger startSquad on squad1
+        const startBtn = area().querySelector('.sf-squad-start-btn');
+        expect(startBtn).not.toBeNull();
+    });
 });

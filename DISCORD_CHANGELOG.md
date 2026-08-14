@@ -1,9 +1,11 @@
-📢 **FGF Guild Management Tool Update — OCR Model 404 Resolution — v104**
+📢 **FGF Guild Management Tool Update — Shadowfront Roster & Session ID Fix — v105**
 
-🛠️ **Fixed: OCR API HTTP 404 (Model not found)**
-Resolved model 404 errors by establishing `gemini-1.5-flash` as primary free production model with auto-fallback!
+🛠️ **Fixed: Shadowfront Roster Pre-Start Assignment Conflict**
+Resolved database constraint errors (`shadowfront_squads_guild_week_start_pseudo_key`) when adding members to Shadowfront rosters after a pre-start click!
 
-✨ **What was changed:**
-- **Automatic Fallback Chain**: Requests start on `gemini-1.5-flash` (100% free on Google AI Studio) and automatically fall back to `gemini-2.0-flash-exp`, `gemini-2.0-flash`, and `gemini-flash-latest` if needed.
+✨ **What was fixed:**
+- **Automatic Pre-Start Session Migration**: Starting a Shadowfront squad now automatically migrates any pre-start member assignments to the new active session ID.
+- **Week-Scoped Assignment Cleanup**: Assigning a player now cleanly replaces any previous assignment in the same week across temporary session IDs.
+- **Tenant Data Repair**: Unblocked player **Aurora** in guild **SEN**! 👻
 
-Roster scanning in the **Members** tab is fully operational! 📸
+Shadowfront composition and tracking are fully operational across all guilds! ⚔️

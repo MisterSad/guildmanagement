@@ -225,6 +225,7 @@
         if (!db) return;
         var sq = sfState.squads[squad];
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        var oldSessionId = sq ? sq.sessionId : null;
         var sessionId;
         if (sq && sq.sessionId && !sq.ended) {
             // Reuse existing active session (e.g. page reload mid-event)
@@ -240,6 +241,10 @@
         }
         if (sq) sq.ended = false;
         try {
+            if (oldSessionId && oldSessionId !== sessionId) {
+                await db.from('shadowfront_squads').update({ session_id: sessionId })
+                    .eq('guild', currentG).eq('session_id', oldSessionId);
+            }
             var res = await db.from('event_status').upsert(
                 {
                     guild:      currentG,
@@ -570,10 +575,10 @@
 
         var week = window.GM.getWeekStart(sq.startAt || window.GM.sessionDateFromId(sq.sessionId) || new Date());
 
-        // Supprimer une précédente affectation pour ce membre dans cette session pour éviter le conflit 409
+        // Supprimer une précédente affectation pour ce membre dans cette semaine pour éviter le conflit d'unicité (guild, week_start, pseudo)
         try {
             await db.from('shadowfront_squads').delete()
-                .eq('guild', currentG).eq('session_id', sq.sessionId).eq('pseudo', pseudo);
+                .eq('guild', currentG).eq('week_start', week).eq('pseudo', pseudo);
         } catch (delErr) {
             console.warn('delete old assignment error', delErr);
         }
