@@ -31,6 +31,13 @@ import { PortalChart } from './modules/portal/components/PortalChart';
 import { OverviewView } from './modules/overview/views/OverviewView';
 import { HistoryView } from './modules/history/views/HistoryView';
 import { SanctionsView } from './modules/sanctions/views/SanctionsView';
+import { CrossRankView } from './modules/matchup/cross-rank';
+import { SvSMatchupView } from './modules/matchup/svs-matchup';
+import { GvGMatchupView } from './modules/matchup/gvg-matchup';
+import { ArmsRaceView } from './modules/armsrace/armsrace-view';
+import { GloryView } from './modules/glory/glory-view';
+import { SubscriptionView } from './modules/subscription/subscription-view';
+import { BadgesView } from './modules/badges/badges-view';
 import { initPWA, promptPWAInstall, setAppNotificationBadge } from './core/pwa/pwa';
 
 // Initialize global window.GM bridge for full backward compatibility
@@ -67,7 +74,14 @@ if (typeof window !== 'undefined') {
     PortalChart,
     OverviewView,
     HistoryView,
-    SanctionsView
+    SanctionsView,
+    CrossRankView,
+    SvSMatchupView,
+    GvGMatchupView,
+    ArmsRaceView,
+    GloryView,
+    SubscriptionView,
+    BadgesView
   };
 
   (window as any).GM.pwa = {
@@ -76,6 +90,9 @@ if (typeof window !== 'undefined') {
   };
 
   (window as any).GM_AUDIT = AuditView;
+  (window as any).GM_CROSSRANK = CrossRankView;
+  (window as any).GM_SVS_MATCHUP = SvSMatchupView;
+  (window as any).GM_GVG_MATCHUP = GvGMatchupView;
 
   document.addEventListener('DOMContentLoaded', () => {
     applyTranslations();
