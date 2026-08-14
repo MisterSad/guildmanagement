@@ -1,150 +1,135 @@
-# AGENTS.md — Development Guidelines for AI Agents
+# AGENTS.md — Authoritative Engineering Guidelines for AI Agents & Developers
 
-This file is the single source of truth for anyone (human or AI) modifying
-this repository. **Read it fully before touching any code.** Every change
-must respect the rules below, especially the security model, modern `/src` architecture, and the test battery.
-
----
-
-## 1. Project Overview & Modern Architecture
-
-**FGF Guild Management Tool** is a serverless, multi-tenant web app that
-helps guilds in the game *Foundation Galactic Frontier* manage events,
-members, participation, sanctions, Discord notifications, and SaaS subscriptions.
-
-- **Frontend Architecture**: Modernized ES Modules under `/src`, TypeScript (`tsc --noEmit`), Vite bundler (`vite build`), reactive Pub/Sub Store (`src/core/store/store.ts`), Web Worker for heavy calculations (`src/workers/matchup.worker.ts`), component-based UI (`src/components/ui/BaseComponent.ts`), Phosphor Icons, Three.js 3D login scene, installable PWA.
-- **Backend**: Supabase (Postgres 17 + RLS + `SECURITY DEFINER` functions, Edge Functions in TypeScript/Deno).
-- **Single Source of Truth (SSOT)**: Event session ID building and scoring keys are centralized in `src/core/config/events.ts`.
-- **CI/CD Pipeline**: GitHub Actions (`.github/workflows/ci.yml`) automatically running `npm run type-check`, `npm test`, and `npm run build` on every commit and PR.
-- **Database Seeds**: Test and sample data isolated in `supabase/seeds/dev_seed.sql` away from DDL schema migrations.
-- **Payments**: External merchant API & Stripe (server-side order creation + HMAC-verified webhook). The provider name must never appear in public docs.
-- **Tests**: Vitest + jsdom (`npm test` — **200 tests green**).
-- **Hosting**: Static build output (`dist/`) on Vercel, auto-deploy on push to `main`.
+This document is the **single source of truth** for all human engineers and autonomous AI agents modifying this repository.
+Every modification must strictly comply with the architectural rules, security boundaries, multi-tenant invariants, and verification protocols defined below.
 
 ---
 
-## 2. The Three-Role Access Model (CRITICAL)
+## 1. Project Overview & 2026 Modern Architecture
 
-There are exactly three account roles. **Never blur the boundaries.**
+**FGF Guild Management Tool** is a serverless, multi-tenant SaaS platform that helps guilds in the game *Foundation Galactic Frontier* manage battle events, member rosters, participation rates, sanctions, Discord webhooks, and SaaS subscriptions.
 
-| Role | Access |
-|------|--------|
-| `super_admin` | Reads and writes **every guild**. Single account (HawkEye). Also "base admin" of ALPHA. |
-| `guild_admin` | Reads and writes **only their own guild** (tenants: ALPHA, OMEGA, BABE, IMK, YARR, CLAW, DEMO, SEN, NIGHTWRAITH, OBSIDIANSTAR, ASTRAL_LIBERION, BLACKTHUNDER, TWILIGHT). |
-| `member` | **Player Portal only** (scores, power, timezone, absences, transfers). NO direct database access. |
-
-**A player account must never be able to reach the admin dashboard or read/write any guild data through the REST API.**
-
-### Golden Rules
-
-1. A `member` account gets `[]` (or denial) on **every** tenant table and on `guilds` and `accounts` (except its own row).
-2. A `guild_admin` sees only their guild's rows, and only `guilds` rows (all of them — needed for transfers) plus their own `accounts` row.
-3. `super_admin` bypasses guild scoping everywhere.
-4. The Player Portal (`portal.js` / `PortalService`) must never query tables directly: it only calls the `member-portal` edge function (service_role), which resolves identity from `accounts.auth_user_id` (never from a client-supplied UID).
-5. When a player transfers guilds, their account's `guild` column follows them (`transfer_guild_member` / `resolve_guild_transfer`).
-
-### SaaS Rule (CRITICAL — Never develop for a single tenant)
-
-This is a multi-tenant SaaS. **Every feature, migration, fix, edge function or SQL change must apply to ALL tenants**. Never write per-tenant logic, never special-case one guild, never "fix" only the guild that reported an issue. Verify the impact across tenants in the same change.
-
-### Event Session IDs (SaaS Scheme)
-
-Every event session carries a deterministic, chronologically-sortable `session_id` built from the event type and its battle date, so a re-Start of the same event reuses the same session (no ghost duplicates). **`src/core/config/events.ts`, the SQL helper `public.gm_event_session_id(text, date)`, and `window.GM.buildEventSessionId(eventName, date)` MUST stay in sync** — change all three, never one.
-
-- SvS → `SVS-YYYY-Www` (ISO week of the battle date)
-- GvG → `GVG-YYYY-Www`
-- Glory → `GLORY-YYYY-Www` (weekly, keyed by `week_start`)
-- ARMS RACE STAGE A/B → `ARA-`/`ARB-YYYYMMDD`
-- Defend Trade Route → `DTR-YYYYMMDD`
-- Shadowfront Squad 1/2 → `SF1-`/`SF2-YYYYMMDD`
-
-Rules:
-- Never cast `session_id` to a timestamp (`session_id::timestamptz`): it is a key, not a date. Derive dates from `event_status.start_at` (battle date), falling back to `updated_at` or `week_start`.
-- A guild must never hold two sessions with the same `session_id` for the same event: if the UI or an RPC would mint one, reuse the existing session instead.
-- Participation rates count **distinct sessions** per player, never rows (`gm_personal_kpis`, `stats.service.ts`), or duplicate sessions would inflate them.
-- Scoring key: each Arms Race **Stage session** counts once; Shadowfront, SvS, GvG count once per week; DTR counts once per session. The TS module `src/core/config/events.ts`, the JS `window.GM.eventScoringKey`, the SQL `public.gm_event_scoring_key`, and the `member-portal` edge function MUST stay in sync.
+### 🏛️ Technology Stack & Structure
+- **Language & Documentation Standard**: **100% English strictly required** across all code, comments, UI text, test suites, commit messages, and changelogs.
+- **Frontend Architecture**: Modernized ES Modules under `/src`, strict TypeScript (`tsc --noEmit`), Vite production bundler (`vite build`), reactive Pub/Sub Store (`src/core/store/store.ts`), Web Workers for heavy computations (`src/workers/matchup.worker.ts`), component-based UI (`src/components/ui/BaseComponent.ts`), Phosphor Icons, Three.js 3D login background scene, installable PWA.
+- **Backend Architecture**: Supabase (Postgres 17 + Row Level Security + `SECURITY DEFINER` functions with `SET search_path TO ''`, Deno TypeScript Edge Functions).
+- **Canonical Schema**: Database migrations consolidated into 4 master DDL files under `supabase/migrations/`. Sample and dev seed data isolated in `supabase/seeds/dev_seed.sql`. Legacy migration history safely archived in `supabase/migrations_archive/`.
+- **Distributed Observability & Structured Logging**: Standardized JSON logging on both Edge Functions (`supabase/functions/_shared/logger.ts`) and browser client (`src/core/logger/logger.ts`) with correlation IDs, execution latency tracking, automatic credential sanitization, and persistent audit logs in `public.system_audit_logs`.
+- **CI/CD Pipeline**: GitHub Actions (`.github/workflows/ci.yml`) running static type verification, unit test battery, and production build on every push to `main`.
+- **Quality Gate**: Vitest + jsdom test battery (**219/219 tests green**).
+- **Production Hosting**: Vercel automated deployment from branch `main` with hardened Content Security Policy (CSP).
 
 ---
 
-## 3. Database Security Model (CRITICAL)
+## 2. The Three-Role Zero-Trust Access Model (CRITICAL)
 
-### 3.1 Access-Control Helpers (Use these, don't inline logic)
+Access control is strictly partitioned into three roles. **Never blur the boundaries.**
 
-- `gm_can_read_guild_data(p_guild)` — SELECT policy qualifier for all tenant tables. `super_admin` → true; `guild_admin` → only own guild; `member`/anon → false.
-- `gm_can_read_guilds()` — SELECT policy qualifier for the `guilds` table. `super_admin`/`guild_admin` → true; `member` → false.
-- `check_user_guild_write_access(p_guild)` — INSERT/UPDATE/DELETE policy qualifier. `super_admin` → true everywhere; `guild_admin` → own guild; `member`/anon → false.
-- `is_subscription_active(p_guild)` — write gating (Unlimited/Lifetime never expire; Premium checks the end date; super_admin exempt).
-- `gm_can_admin_see_absences(p_guild)` — admin-only check for `player_absences`.
+| Role | Database & REST Scope | UI Access |
+| :--- | :--- | :--- |
+| `super_admin` | Reads & writes **all guild tenants**. Bypasses tenant scoping. Single account (HawkEye). | Full Admin Command Center + Cross-Guild Draft Ranking, Server Matchups, and Live System Logs & Diagnostics console (`#tab-system-logs`). |
+| `guild_admin` | Reads & writes **only their own guild tenant** rows (tenants: `ALPHA`, `OMEGA`, `BABE`, `IMK`, `YARR`, `CLAW`, `DEMO`, `SEN`, `NIGHTWRAITH`, `OBSIDIANSTAR`, `ASTRAL_LIBERION`, `BLACKTHUNDER`, `TWILIGHT`). | Command Center for their guild: Members, Active Events, Scores, Sanctions, Guild Settings. |
+| `member` | **ZERO direct database access**. Receives `[]` or denial on all tenant tables, `guilds`, and `accounts` (except own row). | **Player Portal only** (`portal.js` / `PortalService`). Communicates exclusively through the `member-portal` Edge Function. |
 
-All of these are `SECURITY DEFINER`, `STABLE`, with `SET search_path TO ''`. Always qualify `public.table` in every query inside these functions.
-
-### 3.2 RLS Rules
-
-- Every tenant table has RLS enabled. `accounts` and `guilds` too.
-- Exactly **one** permissive SELECT policy per table is allowed.
-- INSERT/UPDATE/DELETE policies must use `check_user_guild_write_access` AND `is_subscription_active`.
-- **Never grant EXECUTE to PUBLIC on functions.** Always `revoke all on function public.fn(...) from public, anon, authenticated; grant execute on function public.fn(...) to authenticated;`.
+### 🔒 Security Invariants & Golden Rules
+1. **Player Portal Isolation**: The Player Portal never communicates with Postgres tables directly. It exclusively queries the `member-portal` edge function with service_role privileges, which resolves player identity cryptographically from `accounts.auth_user_id` (never trust client-supplied UIDs).
+2. **Zero-Trust Edge Functions**: All privileged edge functions (`discord-webhook-proxy`, `ocr-guild-members`, `admin-accounts`) require cryptographic JWT verification via `supabase/functions/_shared/auth.ts` and verify caller roles before execution.
+3. **SSRF Protection & URL Validation**: Webhook proxies must strictly enforce whitelist protocols (Discord official webhooks only) and reject arbitrary destination URLs.
+4. **Defensive Score Bounding**: Numerical score submissions from players must be bounded (e.g. `parseSafeScore` bounding non-negative scores to `500_000_000`).
+5. **No Synchronous UI Flash**: Admin views must never be displayed synchronously from unverified `localStorage`. UI routing must be strictly gated on cryptographic session resolution (`window.GM.sessionInfo()`).
 
 ---
 
-## 4. Codebase Architecture & Directory Conventions
+## 3. Multi-Tenant SaaS Rules (CRITICAL)
 
-See `docs/ARCHITECTURE.md` for the complete file tree.
+This is a multi-tenant SaaS. **Every feature, migration, RPC, Edge Function, or bugfix must apply to ALL tenants.**
+- **NEVER** write per-tenant hardcoding (e.g. `if (guild === 'ALPHA')`).
+- **NEVER** patch only the single guild that reported an issue.
+- Verify that every modification preserves tenant isolation and functions uniformly across all guilds.
 
-```
-guildmanagement/
-├── .github/workflows/ci.yml     # Automated CI Quality Gate (type-check, vitest, build)
-├── docs/                        # Architecture & Database Squash documentation
-│   ├── ARCHITECTURE.md          # Complete project structure & file index
-│   └── database_squash_plan.md  # Step-by-step SQL migration squash guide
-├── supabase/
-│   ├── functions/               # Deno/TypeScript Edge Functions
-│   ├── migrations/              # DDL schema migrations
-│   └── seeds/dev_seed.sql       # Test/dev seed data (isolated from migrations)
-├── src/                         # Modernized TypeScript Source Code
-│   ├── components/ui/           # Reactive UI components (BaseComponent, Toast)
-│   ├── core/                    # Infrastructure (API, Auth, Config, i18n, Store)
-│   ├── modules/                 # Domain-driven modules (events, shadowfront, stats, portal, etc.)
-│   ├── types/                   # TypeScript definitions (database.ts)
-│   ├── workers/                 # Web Workers (matchup.worker.ts)
-│   └── main.ts                  # Vite ES Module entrypoint & window.GM bridge
-├── index.html                   # HTML shell (imports /src/main.ts)
-├── package.json                 # Project scripts (dev, build, type-check, test)
-├── tsconfig.json                # Strict TypeScript configuration
-├── vite.config.ts               # Vite bundler configuration
-└── vitest.config.js             # Vitest test runner configuration
-```
+### 📅 Deterministic Event Session IDs (SaaS Scheme)
 
-### Development Commands
+Every event session carries a deterministic, chronologically sortable `session_id` calculated from the event type and battle date. A restart of an ongoing event reuses the same session to prevent ghost duplicates.
+
+**The following three definitions MUST stay in exact synchronization:**
+1. `src/core/config/events.ts` (`buildEventSessionId`)
+2. `public.gm_event_session_id(text, date)` (Postgres SQL)
+3. `window.GM.buildEventSessionId(eventName, date)` (Client bridge)
+
+#### Session ID Formats:
+- **SvS** → `SVS-YYYY-Www` (ISO week of the battle date)
+- **GvG** → `GVG-YYYY-Www` (ISO week of the battle date)
+- **Glory** → `GLORY-YYYY-Www` (weekly, keyed by `week_start`)
+- **Arms Race Stage A / B** → `ARA-YYYYMMDD` / `ARB-YYYYMMDD`
+- **Defend Trade Route (DTR)** → `DTR-YYYYMMDD`
+- **Shadowfront Squad 1 / 2** → `SF-YYYYMMDD`
+
+#### Rules for Event Sessions:
+- **Never cast `session_id` to a timestamp** (`session_id::timestamptz` is forbidden). Derive dates from `event_status.start_at`, falling back to `week_start` or `updated_at`.
+- A guild must never hold two sessions with the same `session_id` for the same event.
+- Participation rates count **distinct sessions** per player, never raw rows (`gm_personal_kpis`, `StatsService`).
+- **Scoring Keys**: Each Arms Race stage session counts once; Shadowfront, SvS, GvG count once per week; DTR counts once per session. `src/core/config/events.ts`, `window.GM.eventScoringKey`, `public.gm_event_scoring_key`, and `member-portal` MUST remain synchronized.
+
+---
+
+## 4. Database & Security Definer Protocol
+
+### 4.1 Access-Control Helpers
+Always use the centralized `SECURITY DEFINER`, `STABLE` access helpers with explicit `SET search_path TO ''` and fully-qualified `public.table_name` references:
+- `public.gm_can_read_guild_data(p_guild text)` — SELECT policy qualifier for tenant tables.
+- `public.gm_can_read_guilds()` — SELECT policy qualifier for `guilds`.
+- `public.gm_can_read_account(p_account_id text)` — SELECT policy qualifier for `accounts`.
+- `public.check_user_guild_write_access(p_guild text)` — INSERT/UPDATE/DELETE qualifier.
+- `public.is_subscription_active(p_guild text)` — SaaS subscription write-gating.
+- `public.gm_can_admin_see_absences(p_guild text)` — Admin absence viewing qualifier.
+
+### 4.2 Row Level Security (RLS) Rules
+- Every table in `public` schema has RLS enabled.
+- Exactly **one** permissive SELECT policy per table.
+- Write policies (INSERT/UPDATE/DELETE) must combine `check_user_guild_write_access` AND `is_subscription_active`.
+- **Never grant EXECUTE to PUBLIC on internal RPCs**. Always revoke public permissions:
+  ```sql
+  REVOKE ALL ON FUNCTION public.fn(...) FROM public, anon;
+  GRANT EXECUTE ON FUNCTION public.fn(...) TO authenticated;
+  ```
+
+---
+
+## 5. Changelog & Documentation Invariants (MANDATORY)
+
+Every modification to the codebase must update the changelogs according to these exact rules:
+
+1. **`CHANGELOG.md` (Cumulative Project History)**:
+   - Must be **incrementally appended** for each new release/version.
+   - Preserves the full chronological history of all versions.
+   - Structured under `## New`, `## Fixed`, and `## Performance`.
+   - **Strictly English only**.
+
+2. **`DISCORD_CHANGELOG.md` (Daily Discord Digest)**:
+   - Must be **rewritten** on each release to group all modifications made during the current day (Day J).
+   - Formatted in clean Discord-friendly Markdown with emoji shortcodes (`🚀`, `🔒`, `⚡`, `🧪`, `🛡️`).
+   - Title must include the incrementing version number (e.g. `📢 **FGF Guild Management Tool Update — ... — v110**`).
+   - Ready for instant copy-pasting to the official Discord announcements channel.
+   - **Strictly English only**.
+
+---
+
+## 6. Development Workflow & Quality Gate
+
+Before committing any code change, executing a pull request, or closing a task, the complete verification sequence must pass:
 
 ```sh
-npm run dev         # Start Vite development server with HMR
-npm run build       # Build production bundle with Vite into dist/
-npm run type-check  # Execute TypeScript static type verification (tsc --noEmit)
-npm test            # Run Vitest unit test suite (200/200 tests green)
+# 1. Static TypeScript Verification (0 errors required)
+npm run type-check
+
+# 2. Automated Vitest Unit Suite (219/219 tests green required)
+npm test
+
+# 3. Production Bundle Compilation (Clean build into dist/ required)
+npm run build
 ```
 
----
-
-## 5. Testing — MANDATORY Battery After EVERY Change
-
-**No change is complete until the full battery passes AND the affected surface is regression-tested.**
-
-### 5.1 Quality Verification Sequence
-
-Before committing any change:
-```sh
-npm run type-check  # Must pass with 0 errors
-npm run build       # Must compile successfully
-npm test            # Must pass 200/200 tests green
-```
-
-Current suite: **200 tests** across `tests/`. When adding a feature, **add unit tests for it** in the matching test file.
-
----
-
-## 6. Repository Hygiene & Changelogs
-
-- Only `main` branch exists; never create long-lived branches.
-- Do not commit `.agents/`, `android/`, `apple-devices/`, build artifacts (`dist/`).
-- **Changelogs are rewritten, not appended**: at every change, update both `CHANGELOG.md` (full history, sections `## New` / `## Fixed`, **English only**) and `DISCORD_CHANGELOG.md` (Discord-paste, English, emoji shortcodes, covering only the last few hours). Every Discord changelog title carries an incrementing number (e.g. `... — v84`).
+### Git & Repository Hygiene:
+- Only branch `main` exists; never create long-lived branches.
+- Never commit `.DS_Store`, `node_modules/`, build outputs (`dist/`), or test artifacts (`test-results/`).
+- Commit messages must follow conventional commits format (e.g., `feat(module): description (vXXX)`).

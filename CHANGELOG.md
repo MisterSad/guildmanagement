@@ -2,6 +2,13 @@
 
 ## New
 
+- **Repository Hygiene, Authoritative AGENTS.md Overhaul & 2026 Standards (v110)**:
+  - **Authoritative AGENTS.md Overhaul**: Completely updated `AGENTS.md` and `docs/ARCHITECTURE.md` to establish strict 2026 SaaS development standards, zero-trust three-role access boundaries (`super_admin`, `guild_admin`, `member`), single sources of truth, and changelog maintenance invariants.
+  - **Repository & Workspace Clean-Up**: Removed temporary build artifacts, macOS metadata, and non-canonical clutter.
+  - **Strict English Standard**: Enforced 100% English requirement across all codebase layers, documentation, tests, and changelogs.
+  - **Daily Discord Digest Automation**: Centralized day-of-change aggregation policy in `DISCORD_CHANGELOG.md`.
+  - **Quality Assurance**: 100% quality gate maintained with **219/219 unit tests passing** (`npm test`).
+
 - **Frontend ES Modules & TypeScript Architecture Modernization (v109)**:
   - **Modular Views Implementation**: Created modern TypeScript domain views under `src/modules/` including `CrossRankView` (`src/modules/matchup/cross-rank.ts`), `SvSMatchupView` (`src/modules/matchup/svs-matchup.ts`), `GvGMatchupView` (`src/modules/matchup/gvg-matchup.ts`), `ArmsRaceView` (`src/modules/armsrace/armsrace-view.ts`), `GloryView` (`src/modules/glory/glory-view.ts`), `SubscriptionView` (`src/modules/subscription/subscription-view.ts`), and `BadgesView` (`src/modules/badges/badges-view.ts`).
   - **Unified Vite Bundling**: Fully integrated domain modules into `src/main.ts`, enabling 78 Vite modules bundled with tree-shaking while maintaining 100% backward-compatible globals (`window.GM_*`).

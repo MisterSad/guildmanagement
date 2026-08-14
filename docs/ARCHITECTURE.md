@@ -13,10 +13,13 @@ guildmanagement/
 │       └── ci.yml               # Automated CI Quality Gate (type-check, vitest, build)
 ├── docs/                        # Project documentation & architecture references
 │   ├── ARCHITECTURE.md          # Complete project structure & file index (this file)
-│   └── database_squash_plan.md  # Step-by-step SQL migration squash guide
+│   └── database_squash_plan.md  # Database squash documentation & completion reference
 ├── supabase/
 │   ├── functions/               # Deno / TypeScript Edge Functions
-│   │   ├── _shared/             # Shared TS utilities (stripe, CORS, auth)
+│   │   ├── _shared/             # Shared TS utilities (logger, auth, pagination, stripe, CORS)
+│   │   │   ├── auth.ts          # Centralized cryptographic JWT & account role validator
+│   │   │   ├── logger.ts        # EdgeLogger structured JSON logger with sanitization
+│   │   │   └── pagination.ts    # Paged GoTrue user finder (bypasses 50 cutoff)
 │   │   ├── admin-accounts/
 │   │   ├── auth-login/
 │   │   ├── discord-webhook-proxy/
@@ -25,8 +28,14 @@ guildmanagement/
 │   │   ├── gm-order-status/
 │   │   ├── gm-stripe-webhook/
 │   │   ├── member-portal/
+│   │   ├── ocr-guild-members/
 │   │   └── player-register/
-│   ├── migrations/              # DDL schema migrations (Postgres 17)
+│   ├── migrations/              # 4 Canonical Master DDL migrations (Postgres 17)
+│   │   ├── 20260812000001_schema_tables_and_indexes.sql
+│   │   ├── 20260812000002_security_rls_policies.sql
+│   │   ├── 20260812000003_functions_and_rpcs.sql
+│   │   └── 20260812000004_triggers_and_crons.sql
+│   ├── migrations_archive/      # Historical 158 incremental migration files preserved
 │   └── seeds/
 │       └── dev_seed.sql         # Test/dev seed data (isolated from migrations)
 ├── src/                         # Modernized TypeScript & ES Modules Source
@@ -44,14 +53,31 @@ guildmanagement/
 │   │   │   └── events.ts        # SSOT: Session IDs, ISO week keys & scoring keys
 │   │   ├── i18n/
 │   │   │   └── i18n.ts          # Internationalization dictionary & translator
+│   │   ├── logger/
+│   │   │   └── logger.ts        # ClientLogger structured browser logger
+│   │   ├── pwa/
+│   │   │   └── pwa.ts           # PWA install prompt & app badge management
 │   │   └── store/
 │   │       └── store.ts         # Centralized reactive Pub/Sub state store
 │   ├── modules/                 # Domain-driven feature modules
+│   │   ├── armsrace/
+│   │   │   └── armsrace-view.ts
+│   │   ├── audit/
+│   │   │   ├── audit.service.ts # Super Admin system audit query service
+│   │   │   └── audit-view.ts    # Real-time System Logs & Diagnostic UI component
+│   │   ├── badges/
+│   │   │   └── badges-view.ts
 │   │   ├── events/
 │   │   │   └── events.service.ts
+│   │   ├── glory/
+│   │   │   └── glory-view.ts
 │   │   ├── history/
 │   │   │   └── views/
 │   │   │       └── HistoryView.ts
+│   │   ├── matchup/
+│   │   │   ├── cross-rank.ts    # Cross-Guild Draft Ranking & Mercato view
+│   │   │   ├── gvg-matchup.ts   # GvG Guild comparison & dangerosity analytics
+│   │   │   └── svs-matchup.ts   # SvS Server comparison & power analytics
 │   │   ├── overview/
 │   │   │   └── views/
 │   │   │       └── OverviewView.ts
@@ -64,30 +90,16 @@ guildmanagement/
 │   │   │       └── SanctionsView.ts
 │   │   ├── shadowfront/
 │   │   │   └── shadowfront.service.ts
-│   │   └── stats/
-│   │       └── stats.service.ts
+│   │   ├── stats/
+│   │   │   └── stats.service.ts
+│   │   └── subscription/
+│   │       └── subscription-view.ts
 │   ├── types/
 │   │   └── database.ts          # TypeScript model & Supabase type definitions
 │   ├── workers/
 │   │   └── matchup.worker.ts    # Web Worker for offloading heavy calculations
 │   └── main.ts                  # Vite entrypoint & window.GM compatibility bridge
-├── tests/                       # Vitest unit test suite (200/200 tests green)
-│   ├── badges.test.js
-│   ├── cross-rank.test.js
-│   ├── gm-utils.test.js
-│   ├── gvg-matchup.test.js
-│   ├── i18n.test.js
-│   ├── overview.test.js
-│   ├── player-register.test.js
-│   ├── roles.test.js
-│   ├── scoping.test.js
-│   ├── security_hardening.test.js
-│   ├── setup.js
-│   ├── shadowfront.test.js
-│   ├── stats.test.js
-│   ├── subscription.test.js
-│   ├── svs-matchup.test.js
-│   └── utils.test.js
+├── tests/                       # Vitest unit test suite (219/219 tests green)
 ├── index.html                   # Application HTML shell
 ├── package.json                 # Project scripts (dev, build, type-check, test)
 ├── tsconfig.json                # TypeScript compiler configuration
@@ -99,23 +111,8 @@ guildmanagement/
 
 ## 📌 CORE ARCHITECTURAL RULES FOR DEVELOPERS & AGENTS
 
-1. **Single Source of Truth (`src/core/config/events.ts`)**:
-   - Never duplicate event session ID generation or scoring key logic in client code.
-   - Always import from `src/core/config/events.ts`.
-
-2. **State Management (`src/core/store/store.ts`)**:
-   - Mutate application state through `appStore.setState()` or dedicated setters.
-   - Subscribe components via `appStore.subscribe()`.
-
-3. **Heavy Computation Offloading (`src/workers/matchup.worker.ts`)**:
-   - Run sorting, dangerosity scoring, and tier computations through the Web Worker to preserve 60 FPS UI performance.
-
-4. **Component Lifecycle (`src/components/ui/BaseComponent.ts`)**:
-   - Extend `BaseComponent` for UI components.
-   - Register event listeners using `this.addEventListener()` to guarantee automatic disposal on unmount.
-
-5. **Quality Verification Battery**:
-   - Every code modification must pass:
-     1. `npm run type-check` (0 errors)
-     2. `npm run build` (Vite build output)
-     3. `npm test` (200/200 tests green)
+1. **English Language Standard**: All code, documentation, comments, tests, UI, commit messages, and changelogs must strictly be written in English.
+2. **Multi-Tenant SaaS Integrity**: Never hardcode guild-specific logic. All features and fixes apply uniformly to all tenant guilds.
+3. **Deterministic Session IDs**: Centralized in `src/core/config/events.ts`, `gm_event_session_id`, and `window.GM.buildEventSessionId`.
+4. **Three-Role Access Model**: `super_admin` (all guilds), `guild_admin` (own guild only), `member` (Player Portal via edge function only).
+5. **Quality Verification**: `npm run type-check`, `npm test` (219/219 green), `npm run build` before every commit.
