@@ -2006,6 +2006,30 @@
     }
 
     async function callGeminiOcrBatchApi(batchImageItems, updateStatusCallback) {
+        var db = (window.GM && window.GM.db) ? window.GM.db : null;
+        var token = localStorage.getItem('gm_token') || '';
+
+        // 1. Try Supabase Edge Function 'ocr-guild-members' (Zero-Trust Serverless)
+        if (db && db.functions) {
+            try {
+                if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR Edge Function...');
+                var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+                var res = await db.functions.invoke('ocr-guild-members', {
+                    body: { images: batchImageItems },
+                    headers: headers
+                });
+                if (res.data && res.data.ok && Array.isArray(res.data.players)) {
+                    return res.data.players;
+                }
+                if (res.error) {
+                    console.warn('Edge Function OCR returned error, attempting direct API fallback:', res.error);
+                }
+            } catch (edgeErr) {
+                console.warn('Edge Function OCR invoke failed, falling back to direct API:', edgeErr);
+            }
+        }
+
+        // 2. Direct Gemini Fallback (with authorized CSP)
         var activeKey = getOcrApiKey();
         if (!activeKey) {
             var prompt = document.getElementById('ocr-key-prompt');
@@ -2031,7 +2055,7 @@
             generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
         };
 
-        var modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-2.0-flash', 'gemini-flash-latest'];
+        var modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-flash-latest'];
         var maxRetries = 3;
         var lastErr = null;
 

@@ -44,33 +44,27 @@ Deno.serve(async (req: Request) => {
 
   let imageBase64 = "";
   let mimeType = "image/png";
+  let imagesArray: Array<{ base64Data: string; mimeType: string }> = [];
 
   try {
     const body = await req.json();
-    imageBase64 = body?.imageBase64 || "";
-    if (body?.mimeType) mimeType = body.mimeType;
+    if (Array.isArray(body?.images) && body.images.length > 0) {
+      imagesArray = body.images;
+    } else {
+      imageBase64 = body?.imageBase64 || "";
+      if (body?.mimeType) mimeType = body.mimeType;
+    }
   } catch (err) {
     logger.error("Failed to parse OCR request body", err);
     return json({ ok: false, error: "bad_request" }, 400);
   }
 
-  if (!imageBase64) {
+  if (!imageBase64 && imagesArray.length === 0) {
     return json({ ok: false, error: "missing_image" }, 400);
   }
 
-  // Strip data URL header if present (e.g. data:image/png;base64,...)
-  if (imageBase64.includes(";base64,")) {
-    const parts = imageBase64.split(";base64,");
-    const header = parts[0];
-    if (header.includes("image/")) {
-      mimeType = header.split("image/")[1].split(";")[0];
-      mimeType = `image/${mimeType}`;
-    }
-    imageBase64 = parts[1];
-  }
-
   const systemInstruction = `You are an OCR expert specializing in gaming leaderboards and guild roster screenshots for Foundation Galactic Frontier (FGF).
-Your task is to analyze the image and extract all players visible in the roster or leaderboard table.
+Your task is to analyze the image(s) and extract all players visible in the roster or leaderboard table.
 
 For each player detected, extract:
 1. "pseudo": The player's exact in-game username/name (preserve case, special characters, and numbers).
@@ -88,20 +82,49 @@ Return ONLY a JSON object matching this schema:
   ]
 }`;
 
-  const promptPayload = {
-    contents: [
-      {
-        parts: [
-          { text: systemInstruction },
-          {
-            inline_data: {
-              mime_type: mimeType,
-              data: imageBase64,
-            },
+  const parts: any[] = [{ text: systemInstruction }];
+
+  if (imagesArray.length > 0) {
+    for (const item of imagesArray) {
+      let b64 = item.base64Data || "";
+      let mType = item.mimeType || "image/png";
+      if (b64.includes(";base64,")) {
+        const p = b64.split(";base64,");
+        if (p[0].includes("image/")) {
+          mType = p[0].split("image/")[1].split(";")[0];
+          mType = `image/${mType}`;
+        }
+        b64 = p[1];
+      }
+      if (b64) {
+        parts.push({
+          inline_data: {
+            mime_type: mType,
+            data: b64,
           },
-        ],
+        });
+      }
+    }
+  } else {
+    // Strip data URL header if present (e.g. data:image/png;base64,...)
+    if (imageBase64.includes(";base64,")) {
+      const p = imageBase64.split(";base64,");
+      if (p[0].includes("image/")) {
+        mimeType = p[0].split("image/")[1].split(";")[0];
+        mimeType = `image/${mimeType}`;
+      }
+      imageBase64 = p[1];
+    }
+    parts.push({
+      inline_data: {
+        mime_type: mimeType,
+        data: imageBase64,
       },
-    ],
+    });
+  }
+
+  const promptPayload = {
+    contents: [{ parts }],
     generationConfig: {
       response_mime_type: "application/json",
       temperature: 0.1,
@@ -109,15 +132,17 @@ Return ONLY a JSON object matching this schema:
   };
 
   const modelsToTry = [
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash-exp",
     "gemini-flash-latest",
-    "gemini-3.6-flash",
-    "gemini-3-flash-preview",
   ];
 
   let geminiResultRaw = "";
   let lastError = "";
 
-  logger.info("Initiating Gemini OCR scan", { mimeType, imageLength: imageBase64.length });
+  logger.info("Initiating Gemini OCR scan", { imageCount: imagesArray.length || 1 });
 
   for (const modelName of modelsToTry) {
     try {

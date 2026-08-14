@@ -37,6 +37,11 @@
 
 ## Fixed
 
+- **OCR Roster Scanner NetworkError & CSP Resolution (v110.2)**:
+  - **Edge Function Routing & Zero-Trust Integration**: Updated `callGeminiOcrBatchApi` in `app.js` to route screenshot analysis through the serverless `ocr-guild-members` Edge Function with authenticated JWT sessions, resolving client-side `NetworkError when attempting to fetch resource`.
+  - **Content Security Policy Alignment**: Updated `vercel.json` CSP `connect-src` to explicitly authorize `https://generativelanguage.googleapis.com` for direct/fallback requests.
+  - **Edge Function Batch & Model Resilience**: Enhanced `supabase/functions/ocr-guild-members/index.ts` with multi-image batch processing support and prioritized production models (`gemini-2.0-flash`, `gemini-1.5-flash`, `gemini-2.5-flash`). Deployed to Supabase edge.
+
 - **Edge Function Security Hardening & Zero-Trust Verification (v106)**:
   - **Discord Webhook Proxy Authorization (`SEV-01`)**: `discord-webhook-proxy` now strictly requires cryptographic JWT validation and verifies `guild_admin` or `super_admin` role, preventing unauthorized cross-guild dispatch and blocking SSRF.
   - **Gemini OCR Endpoint Locking (`SEV-02`)**: `ocr-guild-members` now requires cryptographic JWT validation and admin role verification, protecting Gemini AI API quotas from unauthenticated abuse.
