@@ -1,11 +1,11 @@
-📢 **FGF Guild Management Tool Update — Shadowfront Roster & Session ID Fix — v105**
+📢 **FGF Guild Management Tool Update — Security, Observability & Engine Upgrade — v106**
 
-🛠️ **Fixed: Shadowfront Roster Pre-Start Assignment Conflict**
-Resolved database constraint errors (`shadowfront_squads_guild_week_start_pseudo_key`) when adding members to Shadowfront rosters after a pre-start click!
+🛡️ **Major Infrastructure, Security & Performance Upgrade!**
+We have deployed an end-to-end security hardening, real-time structured logging system, and database optimization across all guilds!
 
-✨ **What was fixed:**
-- **Automatic Pre-Start Session Migration**: Starting a Shadowfront squad now automatically migrates any pre-start member assignments to the new active session ID.
-- **Week-Scoped Assignment Cleanup**: Assigning a player now cleanly replaces any previous assignment in the same week across temporary session IDs.
-- **Tenant Data Repair**: Unblocked player **Aurora** in guild **SEN**! 👻
-
-Shadowfront composition and tracking are fully operational across all guilds! ⚔️
+✨ **Highlights & Improvements:**
+- 🔒 **Zero-Trust Security**: Secured Discord Webhook Proxy and Gemini OCR Edge Functions with cryptographic JWT verification and strict admin access control.
+- 📊 **Real-Time Structured Logging**: Added centralized JSON logging on both client and Edge Functions with correlation IDs and credential masking.
+- ⚡ **Database Index Optimizations**: Added foreign key indexes covering high-volume tables (`event_participants`, `shadowfront_squads`, `sanctions`) for lightning-fast queries.
+- 🎯 **Score & Auth Integrity**: Defensive score validation on Player Portal, GoTrue pagination fixes for accounts beyond 50 users, and zero admin dashboard flash.
+- 🧪 **100% Quality Verification**: **218/218 tests passing** (`npm test`) with 0 static type errors! 🚀

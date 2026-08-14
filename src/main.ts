@@ -21,6 +21,7 @@ import { EventsService } from './modules/events/events.service';
 import { ShadowfrontService } from './modules/shadowfront/shadowfront.service';
 import { StatsService } from './modules/stats/stats.service';
 import { PortalService } from './modules/portal/portal.service';
+import { logger } from './core/logger/logger';
 
 import { BaseComponent } from './components/ui/BaseComponent';
 import { ToastNotification } from './components/ui/Toast';
@@ -48,6 +49,7 @@ if (typeof window !== 'undefined') {
 
   // Store, Worker & Services bridge
   (window as any).GM.store = appStore;
+  (window as any).GM.logger = logger;
   (window as any).GM.calculateMatchupData = calculateMatchupData;
   (window as any).GM.services = {
     events: EventsService,

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { EdgeLogger } from "../_shared/logger.ts";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -6,7 +7,7 @@ const ANON_KEY      = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-correlation-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -17,24 +18,27 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+const MAX_ALLOWED_EVENT_SCORE = 500_000_000;
+
+function parseSafeScore(val: unknown): number | null {
+  if (val === null || val === undefined) return null;
+  const num = typeof val === "number" ? val : parseInt(String(val), 10);
+  if (isNaN(num) || num < 0) return null;
+  return Math.min(Math.round(num), MAX_ALLOWED_EVENT_SCORE);
+}
+
 /**
  * Resolve the authenticated player's identity from their account.
- * The player signs in with identifier + password via auth-login, which
- * provisions a shadow GoTrue user; the JWT of that session maps back to
- * the accounts row (auth_user_id), which carries the in-game UID.
- *
- * The in-game UID is NEVER accepted as an access credential anymore:
- * knowing a UID no longer grants access to someone else's portal data.
  */
 async function getIdentity(
   req: Request,
   admin: ReturnType<typeof createClient>
 ): Promise<{ uid: string | null; pseudo: string | null; guild: string | null } | null> {
   const authHeader = req.headers.get("Authorization") || "";
-  const match = authHeader.match(/^Bearer (.+)$/);
+  const match = authHeader.match(/^Bearer (.+)$/i);
   if (!match) return null;
 
-  const jwt = match[1];
+  const jwt = match[1].trim();
   const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
   const { data: { user }, error } = await anon.auth.getUser(jwt);
   if (error || !user) return null;
@@ -63,27 +67,21 @@ async function getPlayer(admin: ReturnType<typeof createClient>, uid: string) {
   return data[0];
 }
 
-// Monday (UTC) of the week containing the given date, as YYYY-MM-DD.
-// Mirrors gm-utils.getWeekStart() used across the client.
 function getWeekStartIso(date: Date): string {
   const d = new Date(date);
-  const day = d.getUTCDay(); // 0=Sun ... 6=Sat
+  const day = d.getUTCDay();
   const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));  const pad = (n: number) => String(n).padStart(2, "0");
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
+  const pad = (n: number) => String(n).padStart(2, "0");
   return `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`;
 }
 
-// Monday of the previous week (YYYY-MM-DD).
 function getPrevWeekStartIso(weekStart: string): string {
   const d = new Date(weekStart + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() - 7);
   return getWeekStartIso(d);
 }
 
-// Participation scoring key, mirrors gm_event_scoring_key (SQL) and
-// window.GM.eventScoringKey (client). Arms Race counts per session (Stage A
-// and Stage B are separate events), Shadowfront once per week, DTR once per
-// session, SvS/GvG once per week.
 function eventScoringKey(eventName: string, sessionId: string | null, weekStart: string | null): string {
   const up = (eventName || "").toUpperCase();
   const ws = weekStart || "";
@@ -96,8 +94,10 @@ function eventScoringKey(eventName: string, sessionId: string | null, weekStart:
 }
 
 Deno.serve(async (req: Request) => {
+  const logger = new EdgeLogger("member-portal", req);
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST")   return json({ ok: false, error: "method_not_allowed" }, 405);
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   let action = "";
   let payload: any = {};
@@ -105,7 +105,8 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     action = (body?.action ?? "").toString();
     payload = body?.payload ?? {};
-  } catch {
+  } catch (err) {
+    logger.error("Failed to parse request JSON", err);
     return json({ ok: false, error: "bad_request" }, 400);
   }
 
@@ -113,30 +114,31 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
-  // Identity always comes from the signed-in account, never from a client-supplied UID.
   const identity = await getIdentity(req, admin);
   if (!identity || !identity.uid) {
-    return json({ ok: false, error: "unauthorized" }, 200);
+    logger.warn("Unauthorized attempt to access member-portal", { action });
+    return json({ ok: false, error: "unauthorized" }, 401);
   }
   const uid = identity.uid;
+  logger.setContext({ tenantId: identity.guild, userId: uid });
 
   if (action === "get-active-sessions") {
-    // 1. Look up player in guild_members
     const member = await getPlayer(admin, uid);
     if (!member) {
       return json({ ok: false, error: "player_not_found" }, 200);
     }
 
-    // 2. Look up active event sessions for that guild
     const { data: activeSessions, error: sErr } = await admin
       .from("event_status")
       .select("event_name, session_id, start_at")
       .eq("guild", member.guild)
       .eq("is_active", true);
 
-    if (sErr) return json({ ok: false, error: "db_error", message: sErr.message }, 200);
+    if (sErr) {
+      logger.error("DB error fetching active sessions", sErr, { guild: member.guild });
+      return json({ ok: false, error: "db_error", message: sErr.message }, 200);
+    }
 
-    // 2b. Current-week Glory score for the profile (My Info panel)
     const week = getWeekStartIso(new Date());
     const { data: gloryRows, error: gErr } = await admin
       .from("event_participants")
@@ -150,7 +152,6 @@ Deno.serve(async (req: Request) => {
     const gloryRow = gloryRows?.[0] ?? null;
     const glory = gloryRow?.score != null ? gloryRow.score : null;
 
-    // 3. For each active session, retrieve the player's participant entry
     if (!activeSessions || activeSessions.length === 0) {
       return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, timezone_offset: member.timezone_offset ?? null, glory, sessions: [] });
     }
@@ -165,7 +166,6 @@ Deno.serve(async (req: Request) => {
 
     if (pErr) return json({ ok: false, error: "db_error", message: pErr.message }, 200);
 
-    // Combine active session info with participant row
     const sessions = activeSessions.map(sess => {
       const part = (participants || []).find(p => p.session_id === sess.session_id);
       return {
@@ -187,13 +187,11 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "missing_parameters" }, 400);
     }
 
-    // 1. Verify player membership
     const member = await getPlayer(admin, uid);
     if (!member) {
       return json({ ok: false, error: "player_not_found" }, 400);
     }
 
-    // 2. Verify that the session is active
     const { data: activeSessions, error: sErr } = await admin
       .from("event_status")
       .select("is_active")
@@ -208,7 +206,6 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "session_inactive" }, 400);
     }
 
-    // Check existing state to prevent overwriting an officer-validated score
     const { data: existingRows } = await admin
       .from("event_participants")
       .select("is_pending")
@@ -224,22 +221,26 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "score_already_validated" }, 400);
     }
 
-    // 3. Prepare update data
-    const update: any = {
+    const update: Record<string, unknown> = {
       is_pending: true
     };
 
     if (payload.participated !== undefined) {
       update.participated = payload.participated ? 1 : 0;
     }
+
+    // FIX (SEV-05): Strict defensive parsing and bounding on numerical scores
     if (payload.score !== undefined) {
-      update.score = payload.score;
+      const parsed = parseSafeScore(payload.score);
+      if (parsed !== null) update.score = parsed;
     }
     if (payload.score_prep !== undefined) {
-      update.score_prep = payload.score_prep;
+      const parsed = parseSafeScore(payload.score_prep);
+      if (parsed !== null) update.score_prep = parsed;
     }
     if (payload.score_pvp !== undefined) {
-      update.score_pvp = payload.score_pvp;
+      const parsed = parseSafeScore(payload.score_pvp);
+      if (parsed !== null) update.score_pvp = parsed;
     }
     if (payload.late !== undefined) {
       update.late = !!payload.late;
@@ -251,7 +252,6 @@ Deno.serve(async (req: Request) => {
       update.appointed = !!payload.appointed;
     }
 
-    // 4. Update row in event_participants
     const { error: uErr } = await admin
       .from("event_participants")
       .update(update)
@@ -261,9 +261,11 @@ Deno.serve(async (req: Request) => {
       .eq("pseudo", member.pseudo);
 
     if (uErr) {
+      logger.error("Failed to update participant score", uErr, { eventName, sessionId });
       return json({ ok: false, error: "update_failed", message: uErr.message }, 200);
     }
 
+    logger.info("Player submitted event scores", { pseudo: member.pseudo, eventName, sessionId });
     return json({ ok: true });
   }
 
@@ -271,29 +273,24 @@ Deno.serve(async (req: Request) => {
     const rawPower = parseInt(payload?.power) || 0;
     const MAX_POWER = 100_000_000;
     const power = Math.min(Math.max(0, rawPower), MAX_POWER);
-    if (!uid) return json({ ok: false, error: "missing_uid" }, 400);
 
-    // Update the player's overall_power in guild_members (and stamp the
-    // power refresh for the weekly "keep your power current" challenge).
     const { error: uErr } = await admin
       .from("guild_members")
       .update({ overall_power: power, power_updated_at: new Date().toISOString() })
       .eq("uid", uid);
 
     if (uErr) {
+      logger.error("Failed to update player power", uErr, { uid, power });
       return json({ ok: false, error: "update_failed", message: uErr.message }, 200);
     }
 
+    logger.info("Player updated power", { uid, power });
     return json({ ok: true });
   }
 
   if (action === "update-glory") {
-    // Player submits/modifies their weekly Glory score. Glory lives in
-    // event_participants with event_name='Glory', indexed by week_start
-    // (no session_id). We resolve the player's guild + pseudo server-side
-    // and upsert their row for the current week.
-    const glory = parseInt(payload?.glory);
-    if (isNaN(glory) || glory < 0) {
+    const rawGlory = parseSafeScore(payload?.glory);
+    if (rawGlory === null) {
       return json({ ok: false, error: "invalid_glory" }, 400);
     }
 
@@ -305,19 +302,20 @@ Deno.serve(async (req: Request) => {
       p_guild: member.guild,
       p_pseudo: member.pseudo,
       p_week_start: week,
-      p_glory: glory,
+      p_glory: rawGlory,
     });
     if (rErr) {
+      logger.error("Failed gm_upsert_player_glory", rErr, { week, rawGlory });
       return json({ ok: false, error: "update_failed", message: rErr.message }, 200);
     }
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "save_failed" }, 200);
 
-    return json({ ok: true, week, glory });
+    logger.info("Player updated weekly glory", { pseudo: member.pseudo, week, glory: rawGlory });
+    return json({ ok: true, week, glory: rawGlory });
   }
 
   if (action === "get-transfer-guilds") {
-    // Get player's current guild and its server number
     const member = await getPlayer(admin, uid);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
@@ -333,7 +331,6 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "server_not_found" }, 200);
     }
 
-    // Get all other guilds on the same server
     const { data: guilds, error: guildsErr } = await admin
       .from("guilds")
       .select("id")
@@ -341,7 +338,7 @@ Deno.serve(async (req: Request) => {
       .neq("id", member.guild);
 
     if (guildsErr) {
-        return json({ ok: false, error: "db_error: " + guildsErr.message }, 200);
+      return json({ ok: false, error: "db_error: " + guildsErr.message }, 200);
     }
 
     return json({ ok: true, guilds: guilds });
@@ -349,24 +346,23 @@ Deno.serve(async (req: Request) => {
 
   if (action === "submit-transfer-request") {
     const targetGuild = (payload?.targetGuild ?? "").toString().trim();
-
     if (!targetGuild) return json({ ok: false, error: "missing_target_guild" }, 400);
 
-    // Call the RPC to handle the complex logic securely
     const { data, error } = await admin.rpc("request_guild_transfer", {
       p_uid: uid,
       p_target_guild: targetGuild
     });
 
     if (error) {
+      logger.error("Failed request_guild_transfer", error, { uid, targetGuild });
       return json({ ok: false, error: "rpc_failed: " + error.message, message: error.message }, 200);
     }
 
-    return json(data); // Returns the jsonb output from the RPC
+    logger.info("Player submitted guild transfer request", { uid, targetGuild });
+    return json(data);
   }
 
   if (action === "get-history") {
-    // Player's participation history, grouped per event type, for charts.
     const member = await getPlayer(admin, uid);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
@@ -379,14 +375,11 @@ Deno.serve(async (req: Request) => {
 
     if (hErr) return json({ ok: false, error: "db_error", message: hErr.message }, 200);
 
-    // Keep most recent 60 rows per player; group by event_name (case-insensitive).
-    // Events with a score column are the only ones that produce progression charts.
     const byEvent: Record<string, any[]> = {};
     const hasScoreEvent = (name: string): boolean => {
       const n = (name || "").toUpperCase();
       if (n.indexOf("SVS") !== -1 || n.indexOf("GVG") !== -1) return true;
       if (n.indexOf("GLORY") !== -1) return true;
-      // DTR / Shadowfront / Arms Race have no player score
       return false;
     };
     (rows || []).forEach((r: any) => {
@@ -422,14 +415,12 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "get-absences") {
-    // Player's own absence declarations.
     const { data, error } = await admin.rpc("gm_get_player_absences", { p_uid: uid });
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     return json({ ok: true, absences: data ?? [] });
   }
 
   if (action === "set-absence") {
-    // Declare (or edit) an absence / reduced-activity period for the player.
     const startDate = (payload?.start_date ?? "").toString().trim();
     const endDate = (payload?.end_date ?? "").toString().trim();
     const kind = (payload?.kind ?? "full").toString().trim();
@@ -473,8 +464,6 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "get-badges") {
-    // Raw data for the badge engine (computed client-side in badges.js):
-    // in-game rank, join date (seniority), combat power and attendance count.
     const { data: fullRows, error: fErr } = await admin
       .from("guild_members")
       .select("pseudo, guild, role, created_at, overall_power")
@@ -483,9 +472,6 @@ Deno.serve(async (req: Request) => {
     const full = fullRows?.[0] ?? null;
     if (fErr || !full) return json({ ok: false, error: "player_not_found" }, 200);
 
-    // Attendance: distinct scoring keys where the player was present.
-    // Arms/Shadowfront count once per week, DTR per session (see
-    // gm_event_scoring_key / window.GM.eventScoringKey).
     const { data: attendRows, error: cErr } = await admin
       .from("event_participants")
       .select("event_name, session_id, week_start")
@@ -502,12 +488,6 @@ Deno.serve(async (req: Request) => {
     }
     const attended = attendedKeys.size;
 
-    // Glory badge track: the player's best positive Glory week, EXCLUDING
-    // their first-ever declaration. The app just launched: if the first
-    // declaration counted, a player entering their real Glory score would
-    // instantly unlock every Glory badge. So badges only start tracking from
-    // the second declaration onwards. A player with a single positive entry
-    // (or none) gets glory_best = 0 and unlocks nothing.
     const { data: gloryRows, error: gErr } = await admin
       .from("event_participants")
       .select("score, week_start")
@@ -521,7 +501,6 @@ Deno.serve(async (req: Request) => {
 
     let gloryBest = 0;
     if ((gloryRows ?? []).length > 1) {
-      // Drop the first (earliest) positive entry, then take the max of the rest.
       gloryBest = (gloryRows ?? [])
         .slice(1)
         .reduce((m: number, r: any) => Math.max(m, Number(r.score) || 0), 0);
@@ -538,11 +517,6 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "get-weekly-challenges") {
-    // Weekly challenges + season progression, computed server-side.
-    //   - events: attend 1/3/5 distinct events this week (scoring key)
-    //   - glory:  submit a positive Glory score this week
-    //   - power:  refresh your power this week
-    // Season = the last 4 weeks; each completed challenge adds 1 point.
     const member = await getPlayer(admin, uid);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
@@ -551,7 +525,6 @@ Deno.serve(async (req: Request) => {
     const prevPrev = getPrevWeekStartIso(prevWeek);
     const prev3 = getPrevWeekStartIso(prevPrev);
 
-    // Distinct events attended this week (and over the season window).
     const { data: partRows, error: pErr } = await admin
       .from("event_participants")
       .select("event_name, session_id, week_start")
@@ -570,7 +543,6 @@ Deno.serve(async (req: Request) => {
       if (r.week_start >= prev3 && r.week_start <= week) seasonAttended.add(key);
     }
 
-    // Glory this week: a positive Glory row exists for the current week.
     const { data: gloryThisWeek, error: gwErr } = await admin
       .from("event_participants")
       .select("score")
@@ -583,7 +555,6 @@ Deno.serve(async (req: Request) => {
     if (gwErr) return json({ ok: false, error: "db_error", message: gwErr.message }, 200);
     const gloryDone = (gloryThisWeek ?? []).length > 0;
 
-    // Power refreshed this week?
     const powerDone = !!member.power_updated_at &&
       new Date(member.power_updated_at).getTime() >= new Date(week + "T00:00:00Z").getTime();
 
@@ -596,7 +567,6 @@ Deno.serve(async (req: Request) => {
       { id: "power", label: "Refresh your power", icon: "ph-gauge", done: powerDone, progress: powerDone ? 1 : 0, target: 1 }
     ];
 
-    // Season: total events attended over the window as a rough score.
     const seasonScore = seasonAttended.size;
     const level = seasonScore >= 15 ? "Gold" : seasonScore >= 8 ? "Silver" : seasonScore >= 3 ? "Bronze" : "None";
 
@@ -611,9 +581,6 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "get-personal-kpis") {
-    // Advanced personal KPIs + positioning vs the rest of the guild.
-    // Computed server-side by gm_personal_kpis (service_role); the player
-    // only ever receives their own aggregates and guild-wide ranks.
     const { data, error } = await admin.rpc("gm_personal_kpis", { p_uid: uid });
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean } | null;
@@ -638,8 +605,6 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "get-push-prefs") {
-    // The caller's web-push notification preferences (event types they want
-    // to be notified about). Resolved server-side from auth.
     const { data, error } = await admin.rpc("gm_get_push_prefs", { p_uid: uid });
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { event_types?: string[] } | null;

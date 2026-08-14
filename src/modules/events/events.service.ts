@@ -6,8 +6,9 @@
  */
 
 import { getSupabaseClient } from '../../core/api/supabase';
-import { buildEventSessionId, eventScoringKey } from '../../core/config/events';
+import { buildEventSessionId } from '../../core/config/events';
 import { EventStatus, EventParticipant } from '../../types/database';
+import { logger } from '../../core/logger/logger';
 
 export class EventsService {
   public static async getActiveSessions(guild: string): Promise<EventStatus[]> {
@@ -18,10 +19,10 @@ export class EventsService {
       .from('event_status')
       .select('*')
       .eq('guild', guild)
-      .eq('active', true);
+      .eq('is_active', true);
 
     if (error) {
-      console.error('Error fetching active event sessions:', error);
+      logger.error('Error fetching active event sessions', error, { guild });
       return [];
     }
 
@@ -46,17 +47,18 @@ export class EventsService {
         event_name: eventName,
         guild,
         session_id: sessionId,
-        active: true,
+        is_active: true,
         start_at: startAt || new Date().toISOString()
       }, { onConflict: 'guild,event_name' })
       .select()
       .single();
 
     if (error) {
-      console.error('Error starting event session:', error);
+      logger.error('Error starting event session', error, { eventName, guild, sessionId });
       return { ok: false, error: error.message };
     }
 
+    logger.info('Event session started successfully', { eventName, guild, sessionId });
     return { ok: true, session_id: data.session_id };
   }
 
@@ -71,7 +73,7 @@ export class EventsService {
       .upsert(participant, { onConflict: 'guild,event_name,session_id,pseudo' });
 
     if (error) {
-      console.error('Error submitting participant score:', error);
+      logger.error('Error submitting participant score', error, { pseudo: participant.pseudo, eventName: participant.event_name });
       return { ok: false, error: error.message };
     }
 

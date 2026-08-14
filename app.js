@@ -50,9 +50,9 @@
         var localUser = localStorage.getItem('gm_user');
         var portalSession = localStorage.getItem('gm_portal_session') === '1';
 
-        // Restauration synchrone immédiate pour éviter le flash de l'écran de connexion
-        if (localRole && !portalSession) {
-            showAdminDashboard(localRole);
+        // Avoid insecure flash of admin dashboard before cryptographic JWT verification
+        if (localRole || localUser) {
+            loginView.classList.add('hidden');
         }
 
         var info = await window.GM.sessionInfo();

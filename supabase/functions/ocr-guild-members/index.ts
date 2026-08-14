@@ -1,8 +1,14 @@
+import { EdgeLogger } from "../_shared/logger.ts";
+import { validateCallerAuth } from "../_shared/auth.ts";
+
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-correlation-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -14,8 +20,27 @@ function json(body: unknown, status = 200): Response {
 }
 
 Deno.serve(async (req: Request) => {
+  const logger = new EdgeLogger("ocr-guild-members", req);
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
+
+  // 1. Mandatory JWT & RBAC Verification (SEV-02 Fix)
+  const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
+  if (!caller.authenticated || !caller.role || (caller.role !== "guild_admin" && caller.role !== "super_admin")) {
+    logger.warn("Unauthorized attempt to access OCR endpoint", {
+      authenticated: caller.authenticated,
+      role: caller.role,
+    });
+    return json({ ok: false, error: "forbidden" }, 403);
+  }
+
+  logger.setContext({ tenantId: caller.guild, userId: caller.accountId });
+
+  if (!GEMINI_API_KEY) {
+    logger.error("GEMINI_API_KEY is not configured in Supabase secrets");
+    return json({ ok: false, error: "not_configured" }, 500);
+  }
 
   let imageBase64 = "";
   let mimeType = "image/png";
@@ -24,7 +49,8 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     imageBase64 = body?.imageBase64 || "";
     if (body?.mimeType) mimeType = body.mimeType;
-  } catch {
+  } catch (err) {
+    logger.error("Failed to parse OCR request body", err);
     return json({ ok: false, error: "bad_request" }, 400);
   }
 
@@ -91,6 +117,8 @@ Return ONLY a JSON object matching this schema:
   let geminiResultRaw = "";
   let lastError = "";
 
+  logger.info("Initiating Gemini OCR scan", { mimeType, imageLength: imageBase64.length });
+
   for (const modelName of modelsToTry) {
     try {
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
@@ -103,7 +131,7 @@ Return ONLY a JSON object matching this schema:
       if (!resp.ok) {
         const errTxt = await resp.text();
         lastError = `Model ${modelName} returned ${resp.status}: ${errTxt}`;
-        console.warn(lastError);
+        logger.warn("Gemini model attempt failed", { modelName, status: resp.status });
         continue;
       }
 
@@ -111,15 +139,17 @@ Return ONLY a JSON object matching this schema:
       const textCandidate = respData?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (textCandidate) {
         geminiResultRaw = textCandidate;
+        logger.info("Gemini OCR extraction succeeded", { modelName });
         break;
       }
     } catch (e: any) {
       lastError = `Fetch exception for ${modelName}: ${e.message}`;
-      console.warn(lastError);
+      logger.warn("Exception during Gemini fetch", { modelName, error: e.message });
     }
   }
 
   if (!geminiResultRaw) {
+    logger.error("All Gemini OCR models failed", undefined, { lastError });
     return json(
       {
         ok: false,
@@ -133,8 +163,8 @@ Return ONLY a JSON object matching this schema:
   try {
     const parsed = JSON.parse(geminiResultRaw);
     const rawList = Array.isArray(parsed?.players) ? parsed.players : (Array.isArray(parsed) ? parsed : []);
-    
-    // Clean and validate players
+
+    // Clean and validate players defensively
     const players = rawList
       .map((p: any) => {
         const pseudo = String(p.pseudo || "").trim();
@@ -146,12 +176,14 @@ Return ONLY a JSON object matching this schema:
           power = parseInt(rawP, 10) || 0;
         }
         const uid = p.uid ? String(p.uid).trim() : null;
-        return { pseudo, overall_power: power, uid };
+        return { pseudo, overall_power: Math.max(0, power), uid };
       })
       .filter((p: any) => p.pseudo.length > 0 && p.overall_power >= 0);
 
+    logger.info("OCR Extraction completed", { detectedCount: players.length });
     return json({ ok: true, players, count: players.length });
   } catch (e: any) {
+    logger.error("Failed to parse Gemini OCR JSON response", e, { raw: geminiResultRaw });
     return json(
       { ok: false, error: "json_parse_failed", raw: geminiResultRaw },
       500

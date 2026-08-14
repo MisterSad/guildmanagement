@@ -6,12 +6,14 @@
  */
 
 import { getSupabaseClient } from '../../core/api/supabase';
+import { logger } from '../../core/logger/logger';
 
 export interface PortalResponse<T = any> {
   ok: boolean;
   data?: T;
   error?: string;
   message?: string;
+  [key: string]: any;
 }
 
 export class PortalService {
@@ -28,6 +30,7 @@ export class PortalService {
       });
 
       if (!res || !res.data) {
+        logger.error(`PortalService action [${action}] failed without data`, res?.error);
         return {
           ok: false,
           error: (res && res.error && res.error.message) || 'request_failed'
@@ -36,7 +39,7 @@ export class PortalService {
 
       return res.data as PortalResponse<T>;
     } catch (e: any) {
-      console.error(`PortalService action [${action}] failed:`, e);
+      logger.error(`PortalService action [${action}] threw exception`, e);
       return { ok: false, error: 'request_failed' };
     }
   }
@@ -58,11 +61,16 @@ export class PortalService {
     sessionId: string,
     score: number
   ): Promise<PortalResponse> {
-    return this.invokeAction('submit-score', { event_name: eventName, session_id: sessionId, score });
+    return this.invokeAction('submit-scores', {
+      event_name: eventName,
+      session_id: sessionId,
+      score,
+      participated: true
+    });
   }
 
   public static async updatePower(overallPower: number): Promise<PortalResponse> {
-    return this.invokeAction('update-power', { overall_power: overallPower });
+    return this.invokeAction('update-power', { power: overallPower });
   }
 
   public static async declareAbsence(
@@ -70,6 +78,11 @@ export class PortalService {
     endDate: string,
     reason: string
   ): Promise<PortalResponse> {
-    return this.invokeAction('declare-absence', { start_date: startDate, end_date: endDate, reason });
+    return this.invokeAction('set-absence', {
+      start_date: startDate,
+      end_date: endDate,
+      kind: 'full',
+      note: reason
+    });
   }
 }
