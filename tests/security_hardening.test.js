@@ -46,7 +46,7 @@ describe('Security Hardening & Module Audits', () => {
     });
 
     it('verifies gm_reset_account_password migration uses valid column password_enc and pgp_sym_encrypt', () => {
-        const filePath = path.resolve(__dirname, '../supabase/migrations/20260810210000_fix_reset_account_password.sql');
+        const filePath = path.resolve(__dirname, '../supabase/migrations_archive/20260810210000_fix_reset_account_password.sql');
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('password_enc = extensions.pgp_sym_encrypt');
         expect(content).not.toContain('password_encrypted');

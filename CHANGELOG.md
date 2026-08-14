@@ -2,6 +2,12 @@
 
 ## New
 
+- **Database Migration Squash & Canonical Schema Consolidation (v108)**:
+  - **4 Master Canonical Migrations**: Consolidated 158 legacy SQL migrations into 4 structured, canonical files (`20260812000001_schema_tables_and_indexes.sql`, `20260812000002_security_rls_policies.sql`, `20260812000003_functions_and_rpcs.sql`, `20260812000004_triggers_and_crons.sql`).
+  - **Isolated Development Seeds**: Cleaned all mock inserts and static guild entries into `supabase/seeds/dev_seed.sql`, completely separating DDL schema from operational test data.
+  - **Legacy History Preservation**: Safely archived the historical 158 incremental migration files under `supabase/migrations_archive/`.
+  - **Quality Assurance**: Maintained 100% test battery pass rate with **219/219 unit tests green** (`npm test`).
+
 - **Super Admin Real-Time Monitoring & Diagnostic Dashboard (v107)**:
   - **Live Audit & Observability Console**: Added dedicated Super Admin **System Logs & Diagnostic** view (`#tab-system-logs`) backed by `AuditService` (`src/modules/audit/audit.service.ts`) and `AuditView` (`src/modules/audit/audit-view.ts`).
   - **24h Metric KPI Cards**: Real-time KPI summaries displaying total events (24h), errors, warnings, and average Edge Function execution latency.

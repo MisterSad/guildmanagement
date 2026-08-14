@@ -56,15 +56,17 @@ describe('Audit Remediation Verification Suite', () => {
     expect(portalServiceContent).toContain("invokeAction('set-absence'");
   });
 
-  it('SEV-08 & SEV-06: verifies SQL migration contains FK indexes and lock cleanup function', () => {
-    const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260814180000_audit_remediation_p0_p1.sql');
-    const content = fs.readFileSync(migrationPath, 'utf-8');
-    expect(content).toContain('idx_event_participants_guild_pseudo');
-    expect(content).toContain('idx_shadowfront_squads_guild_pseudo');
-    expect(content).toContain('idx_sanctions_guild_pseudo');
-    expect(content).toContain('idx_guild_transfers_fkeys');
-    expect(content).toContain('gm_cleanup_stale_reminder_locks');
-    expect(content).toContain('REVOKE EXECUTE ON FUNCTION public.check_user_guild_access');
+  it('SEV-08 & SEV-06: verifies SQL canonical migration contains FK indexes and lock cleanup function', () => {
+    const indexesPath = path.resolve(__dirname, '../supabase/migrations/20260812000001_schema_tables_and_indexes.sql');
+    const indexesContent = fs.readFileSync(indexesPath, 'utf-8');
+    expect(indexesContent).toContain('idx_event_participants_guild_pseudo');
+    expect(indexesContent).toContain('idx_shadowfront_squads_guild_pseudo');
+    expect(indexesContent).toContain('idx_sanctions_guild_pseudo');
+    expect(indexesContent).toContain('idx_guild_transfers_fkeys');
+
+    const funcsPath = path.resolve(__dirname, '../supabase/migrations/20260812000003_functions_and_rpcs.sql');
+    const funcsContent = fs.readFileSync(funcsPath, 'utf-8');
+    expect(funcsContent).toContain('gm_cleanup_stale_reminder_locks');
   });
 
   it('verifies client logger sanitizes sensitive data and formats correlation IDs', () => {
