@@ -105,10 +105,15 @@ Every modification to the codebase must update the changelogs according to these
    - Structured under `## New`, `## Fixed`, and `## Performance`.
    - **Strictly English only**.
 
-2. **`DISCORD_CHANGELOG.md` (Daily Discord Digest)**:
+2. **`DISCORD_CHANGELOG.md` (Daily User-Centric Discord Digest)**:
    - Must be **rewritten** on each release to group all modifications made during the current day (Day J).
-   - Formatted in clean Discord-friendly Markdown with emoji shortcodes (`🚀`, `🔒`, `⚡`, `🧪`, `🛡️`).
-   - Title must include the incrementing version number (e.g. `📢 **FGF Guild Management Tool Update — ... — v110**`).
+   - **Target Audience & Tone**: Written directly for **end users / players / guild leaders** so they clearly understand what each improvement brings to them.
+   - **Solo Creator Voice**: Must strictly use **"I" (first person singular)** instead of "WE", written in a natural, friendly, human tone as an independent solo creator.
+   - **Strict Version Naming Format**:
+     - `CHANG_V<Major>` for major platform releases and overhauls (e.g. `CHANG_V1`, `CHANG_V2`).
+     - `CHANG_V<Major>.<Minor>` for minor updates, fixes, and additions (e.g. `CHANG_V1.1`, `CHANG_V1.2`, `CHANG_V2.1`).
+   - Formatted in clean Discord-friendly Markdown with emojis (`🚀`, `🔒`, `⚡`, `🧪`, `🛡️`, `⚔️`).
+   - Title format: `📢 **FGF Guild Management Tool Update — CHANG_V<X>[.<Y>]**`.
    - Ready for instant copy-pasting to the official Discord announcements channel.
    - **Strictly English only**.
 
