@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.guilds (
 -- 2. ACCOUNTS
 CREATE TABLE IF NOT EXISTS public.accounts (
     id TEXT PRIMARY KEY,
-    role TEXT DEFAULT 'R4',
+    role TEXT DEFAULT 'R4' CHECK (role IN ('super_admin', 'server_admin', 'guild_admin', 'member', 'R5', 'R4', 'admin')),
     guild TEXT REFERENCES public.guilds(id) ON DELETE SET NULL,
     server_number TEXT,
     uid TEXT,
@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS public.accounts (
     auth_user_id UUID,
     password_enc BYTEA,
     gotrue_secret_enc BYTEA,
-    created_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now(),
+    CONSTRAINT accounts_guild_required CHECK (role IN ('super_admin', 'server_admin') OR guild IS NOT NULL)
 );
 
 -- 3. GUILD MEMBERS
