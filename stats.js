@@ -4,8 +4,9 @@
  * Architecture épurée en 3 Vues Claires :
  * 1. 🩺 Guild Cockpit (Santé macro, Inactifs 2w+, Tendance 8w, Mobilisation par type d'événement, Structure Roster & Opérations)
  * 2. 🏆 Player Leaderboard (Classement composite pondéré, Taux de présence pure, Podium 3D, Recherche temps réel)
- * 3. ⚔️ Event Deep-Dive (Analyse détaillée dédiée avec sélecteur d'événement : SvS, GvG, Shadowfront avec Squads & Présence, Arms Race avec Stages A/B, DTR)
+ * 3. ⚔️ Event Deep-Dive (Analyse détaillée par événement : SvS, GvG, Shadowfront avec Squads & Présence, Arms Race avec Stages A/B, DTR)
  * 
+ * - Filtrage dynamique et réactif des périodes (1w, 2w, 4w, 8w, All Time) et semaines sélectionnées
  * - Isolement strict multi-tenant par guilde active
  * - Compatibilité 100% avec la suite de tests Vitest
  */
@@ -123,11 +124,28 @@
         selectedWeek: '',
         searchQuery: '',
         allWeeks: [],
+        activeWeeksLoaded: [],
         leaderboardData: [],
         uidMap: {},
         lastMaxPossible: 100,
         isLoading: false
     };
+
+    function getWeeksToLoad() {
+        if (state.statsPeriod === 'all') {
+            return state.allWeeks.slice();
+        }
+        var count = 1;
+        if (state.statsPeriod === '2w') count = 2;
+        else if (state.statsPeriod === '4w') count = 4;
+        else if (state.statsPeriod === '8w') count = 8;
+
+        var idx = state.allWeeks.indexOf(state.selectedWeek);
+        if (idx === -1) idx = 0;
+        var weeks = state.allWeeks.slice(idx, idx + count);
+        if (!weeks.length && state.selectedWeek) weeks = [state.selectedWeek];
+        return weeks;
+    }
 
     // ── Public API ──────────────────────────────────────────────────────────────
     window.GM_STATS = {
@@ -567,7 +585,7 @@
                 return '<div class="gm-kpi-row" style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">' +
                     '<span class="gm-kpi-label" style="min-width:90px; font-weight:600; font-size:0.83rem; color:var(--fg);">' + esc(weekLabel) + '</span>' +
                     '<div class="gm-kpi-bar-track" style="flex:1; height:22px; background:var(--bg-3); border-radius:6px; overflow:hidden; position:relative;">' +
-                        '<div class="gm-kpi-bar" style="width:' + pctRate + '%; height:100%; background:' + barColor + '; border-radius:6px; transition:width .4s ease;"></div>' +
+                    '<div class="gm-kpi-bar" style="width:' + pctRate + '%; height:100%; background:' + barColor + '; border-radius:6px; transition:width .4s ease;"></div>' +
                     '</div>' +
                     '<span class="gm-kpi-value" style="min-width:120px; text-align:right; font-weight:700; font-size:0.85rem; font-family:var(--font-display); color:var(--fg);">' +
                         pctRate + '% <span style="font-size:0.75rem; font-weight:500; color:var(--fg-dim);">(' + d.present + '/' + d.memberCount + ')</span>' +
@@ -703,30 +721,11 @@
             return;
         }
 
+        var weeksToLoad = getWeeksToLoad();
+
         if (state.primaryView === 'events' || ['SvS', 'GvG', 'Shadowfront', 'Arms Race', 'DTR'].indexOf(state.currentMode) !== -1) {
-            await loadSingleEventMode(state.selectedEvent || state.currentMode);
+            await loadSingleEventMode(state.selectedEvent || state.currentMode, weeksToLoad);
             return;
-        }
-
-        var weeksToLoad = state.allWeeks;
-        if (state.statsPeriod === '1w') {
-            weeksToLoad = [state.selectedWeek];
-        } else if (state.statsPeriod === '2w') {
-            var idx2 = state.allWeeks.indexOf(state.selectedWeek);
-            if (idx2 === -1) idx2 = 0;
-            weeksToLoad = state.allWeeks.slice(idx2, idx2 + 2);
-        } else if (state.statsPeriod === '4w') {
-            var idx4 = state.allWeeks.indexOf(state.selectedWeek);
-            if (idx4 === -1) idx4 = 0;
-            weeksToLoad = state.allWeeks.slice(idx4, idx4 + 4);
-        } else if (state.statsPeriod === '8w') {
-            var idx8 = state.allWeeks.indexOf(state.selectedWeek);
-            if (idx8 === -1) idx8 = 0;
-            weeksToLoad = state.allWeeks.slice(idx8, idx8 + 8);
-        }
-
-        if (!weeksToLoad || !weeksToLoad.length) {
-            weeksToLoad = [state.selectedWeek || (window.GM ? window.GM.getWeekStart() : '')];
         }
 
         await loadGlobalMode(weeksToLoad);
@@ -767,6 +766,8 @@
             var actualWeeks = isAllTime
                 ? Array.from(new Set(partRows.map(function (r) { return r.week_start; }).concat(gloryRows.map(function (r) { return r.week_start; })).filter(Boolean))).sort()
                 : weeksToLoad;
+
+            state.activeWeeksLoaded = actualWeeks;
 
             var computed = computeWeightedScores(membersList, partRows, gloryRows, actualWeeks, squadRows);
             state.leaderboardData = computed.scores;
@@ -889,9 +890,12 @@
         return { scores: scores, maxPossible: maxPossibleScore };
     }
 
-    async function loadSingleEventMode(eventName) {
+    async function loadSingleEventMode(eventName, explicitWeeks) {
         var db = getDb();
         try {
+            var weeksToLoad = explicitWeeks || getWeeksToLoad();
+            var isAllTime = (state.statsPeriod === 'all');
+
             var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
             var raw = dataRes.data || null;
             var allParts = (raw && raw.participants) || [];
@@ -900,10 +904,16 @@
             var rows = allParts.filter(function (r) { return matchesEventName(r.event_name, eventName); });
             rows = keepOnlyPastOrCurrent(rows);
 
-            if (state.statsPeriod !== 'all' && state.selectedWeek) {
-                rows = rows.filter(function (r) { return r.week_start === state.selectedWeek; });
-                allSquads = allSquads.filter(function (s) { return s.week_start === state.selectedWeek; });
+            if (!isAllTime && weeksToLoad && weeksToLoad.length > 0) {
+                rows = rows.filter(function (r) { return weeksToLoad.indexOf(r.week_start) !== -1; });
+                allSquads = allSquads.filter(function (s) { return weeksToLoad.indexOf(s.week_start) !== -1; });
             }
+
+            var actualWeeks = isAllTime
+                ? Array.from(new Set(rows.map(function (r) { return r.week_start; }).filter(Boolean))).sort()
+                : weeksToLoad;
+
+            state.activeWeeksLoaded = actualWeeks;
 
             var byMember = {};
             var squadCounts = {};
@@ -1096,6 +1106,10 @@
                 return;
             }
 
+            // Timeframe Context Pill
+            var periodDesc = state.statsPeriod === 'all' ? 'All Time (Total History)' : (state.statsPeriod === '1w' ? ('Week ' + (getWeekNumber(state.selectedWeek) || shortDate(state.selectedWeek))) : (state.statsPeriod + ' window starting ' + shortDate(state.selectedWeek)));
+            var weeksCount = (state.activeWeeksLoaded && state.activeWeeksLoaded.length) || 1;
+
             // Top 3 Podium Stage
             var podHtml = '';
             if (state.leaderboardData.length >= 3) {
@@ -1112,7 +1126,7 @@
                         '</div>' +
                         '<div class="gm-stats-leaderboard-banner">' +
                             '<h3>CLIMB THE LEADERBOARD &amp; CLAIM GUILD GLORY</h3>' +
-                            '<p>Track live attendance, weekly score gains, and top guild contributors.</p>' +
+                            '<p>Aggregated across <strong>' + esc(periodDesc) + '</strong> (' + weeksCount + ' week' + (weeksCount > 1 ? 's' : '') + ').</p>' +
                         '</div>' +
                     '</div>';
             }
