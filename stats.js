@@ -4,7 +4,7 @@
  * Architecture épurée en 3 Vues Claires :
  * 1. 🩺 Guild Cockpit (Santé macro, Inactifs 2w+, Tendance 8w, Mobilisation par type d'événement, Structure Roster & Opérations)
  * 2. 🏆 Player Leaderboard (Classement composite pondéré, Taux de présence pure, Podium 3D, Recherche temps réel)
- * 3. ⚔️ Event Analytics (Analyse dédiée avec sélecteur d'événement : SvS, GvG, Shadowfront, Arms Race, DTR)
+ * 3. ⚔️ Event Deep-Dive (Analyse détaillée dédiée avec sélecteur d'événement : SvS, GvG, Shadowfront avec Squads & Présence, Arms Race avec Stages A/B, DTR)
  * 
  * - Isolement strict multi-tenant par guilde active
  * - Compatibilité 100% avec la suite de tests Vitest
@@ -249,11 +249,11 @@
                 var eventsList = [
                     { key: 'SvS',         label: '⚔️ SvS Battle' },
                     { key: 'GvG',         label: '🚩 GvG War' },
-                    { key: 'Shadowfront', label: '🌌 Shadowfront' },
-                    { key: 'Arms Race',   label: '🚀 Arms Race' },
+                    { key: 'Shadowfront', label: '🌌 Shadowfront (Squads & Attendance)' },
+                    { key: 'Arms Race',   label: '🚀 Arms Race (Stage A & B)' },
                     { key: 'DTR',         label: '🛡️ DTR (Defend Route)' }
                 ];
-                eventPickerHtml = '<select class="gm-select event-select" style="width:auto; min-width:170px; font-weight:700;">' +
+                eventPickerHtml = '<select class="gm-select event-select" style="width:auto; min-width:180px; font-weight:700;">' +
                     eventsList.map(function (ev) {
                         return '<option value="' + ev.key + '"' + (ev.key === (state.selectedEvent || state.currentMode) ? ' selected' : '') + '>' + esc(ev.label) + '</option>';
                     }).join('') +
@@ -895,14 +895,25 @@
             var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
             var raw = dataRes.data || null;
             var allParts = (raw && raw.participants) || [];
+            var allSquads = (raw && raw.squads) || [];
+
             var rows = allParts.filter(function (r) { return matchesEventName(r.event_name, eventName); });
             rows = keepOnlyPastOrCurrent(rows);
 
             if (state.statsPeriod !== 'all' && state.selectedWeek) {
                 rows = rows.filter(function (r) { return r.week_start === state.selectedWeek; });
+                allSquads = allSquads.filter(function (s) { return s.week_start === state.selectedWeek; });
             }
 
             var byMember = {};
+            var squadCounts = {};
+            if (eventName === 'Shadowfront') {
+                allSquads.forEach(function (sq) {
+                    var norm = normalizePseudo(sq.pseudo);
+                    squadCounts[norm] = (squadCounts[norm] || 0) + 1;
+                });
+            }
+
             rows.forEach(function (r) {
                 var norm = normalizePseudo(r.pseudo);
                 if (!byMember[norm]) {
@@ -912,7 +923,10 @@
                         score_prep: 0,
                         score_pvp: 0,
                         events_done: 0,
-                        events_total: 0
+                        events_total: 0,
+                        sub_count: 0,
+                        ara_count: 0,
+                        arb_count: 0
                     };
                 }
                 var prep = r.score_prep || 0;
@@ -922,8 +936,21 @@
                 byMember[norm].score_prep += prep;
                 byMember[norm].score_pvp += pvp;
                 byMember[norm].score += tot;
-                if (r.participated > 0 || r.sub_present === true || prep > 0 || pvp > 0 || sc > 0) {
+
+                var attended = (r.participated > 0) || (r.sub_present === true) || prep > 0 || pvp > 0 || sc > 0;
+                if (attended) {
                     byMember[norm].events_done += 1;
+                }
+                if (r.sub_present === true) {
+                    byMember[norm].sub_count += 1;
+                }
+
+                var evLower = (r.event_name || '').toLowerCase();
+                if (evLower.indexOf('stage a') !== -1 || (r.session_id || '').indexOf('ARA-') !== -1) {
+                    if (attended) byMember[norm].ara_count += 1;
+                }
+                if (evLower.indexOf('stage b') !== -1 || (r.session_id || '').indexOf('ARB-') !== -1) {
+                    if (attended) byMember[norm].arb_count += 1;
                 }
                 byMember[norm].events_total += 1;
             });
@@ -939,12 +966,24 @@
                         score_prep: 0,
                         score_pvp: 0,
                         events_done: 0,
-                        events_total: 0
+                        events_total: 0,
+                        sub_count: 0,
+                        ara_count: 0,
+                        arb_count: 0
                     };
                 }
             });
 
             state.leaderboardData = Object.values(byMember).map(function (m) {
+                var norm = normalizePseudo(m.pseudo);
+                var assignedCount = squadCounts[norm] || 0;
+                var rate = 0;
+                if (eventName === 'Shadowfront') {
+                    rate = assignedCount > 0 ? (m.events_done / assignedCount) : (m.events_done > 0 ? 1 : 0);
+                } else {
+                    rate = m.events_total > 0 ? (m.events_done / m.events_total) : 0;
+                }
+
                 return {
                     pseudo: m.pseudo,
                     score: m.score,
@@ -952,7 +991,11 @@
                     score_pvp: m.score_pvp,
                     events_done: m.events_done,
                     events_total: m.events_total,
-                    attendance_rate: m.events_total > 0 ? m.events_done / m.events_total : 0,
+                    sub_count: m.sub_count,
+                    assigned_count: assignedCount,
+                    ara_count: m.ara_count,
+                    arb_count: m.arb_count,
+                    attendance_rate: rate,
                     glory_delta: 0,
                     glory_bonus: 0,
                     consistency_bonus: 0
@@ -960,6 +1003,7 @@
             }).sort(function (a, b) {
                 if (b.score !== a.score) return b.score - a.score;
                 if (b.events_done !== a.events_done) return b.events_done - a.events_done;
+                if (b.attendance_rate !== a.attendance_rate) return b.attendance_rate - a.attendance_rate;
                 return a.pseudo.localeCompare(b.pseudo);
             });
 
@@ -1073,49 +1117,89 @@
                     '</div>';
             }
 
-            var isBattleEventMode = (state.primaryView === 'events' && (state.selectedEvent === 'SvS' || state.selectedEvent === 'GvG')) || (state.currentMode === 'SvS' || state.currentMode === 'GvG');
+            var currentEvent = state.selectedEvent || state.currentMode;
+            var isBattleEventMode = (state.primaryView === 'events' && (currentEvent === 'SvS' || currentEvent === 'GvG')) || (state.currentMode === 'SvS' || state.currentMode === 'GvG');
+            var isShadowfrontMode = (state.primaryView === 'events' && currentEvent === 'Shadowfront') || state.currentMode === 'Shadowfront';
+            var isArmsRaceMode = (state.primaryView === 'events' && currentEvent === 'Arms Race') || state.currentMode === 'Arms Race';
             var showGloryCol = (state.primaryView === 'leaderboard' && state.currentMode === 'global');
+
+            // Table Headers
+            var theadCols = '<th class="gm-center" style="width:65px;">#</th>' +
+                            '<th>' + (t('col_member') || 'Member') + '</th>';
+
+            if (isShadowfrontMode) {
+                theadCols += '<th class="gm-center">Squad Assigned</th>' +
+                             '<th class="gm-center">Present (Attended)</th>' +
+                             '<th class="gm-center">Substitute</th>' +
+                             '<th class="gm-center">Attendance Rate</th>' +
+                             '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
+            } else if (isArmsRaceMode) {
+                theadCols += '<th class="gm-center">Stage A</th>' +
+                             '<th class="gm-center">Stage B</th>' +
+                             '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
+                             '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
+            } else if (isBattleEventMode) {
+                theadCols += '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
+                             '<th class="gm-center">' + (t('col_score_prep') || 'Day 1 to 5 score') + '</th>' +
+                             '<th class="gm-center">' + (t('col_score_pvp') || 'Day 6 score') + '</th>' +
+                             '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
+            } else {
+                theadCols += '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
+                             (showGloryCol ? '<th class="gm-center">' + (t('stats_glory_delta') || 'Glory Δ') + '</th>' : '') +
+                             '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
+            }
 
             var tableHtml =
                 '<div class="gm-card glass-card" style="padding:1.25rem;">' +
                     '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
                         '<table class="gm-table" style="width:100%; border-collapse:collapse;">' +
-                            '<thead><tr>' +
-                                '<th class="gm-center" style="width:65px;">#</th>' +
-                                '<th>' + (t('col_member') || 'Member') + '</th>' +
-                                '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
-                                (isBattleEventMode ?
-                                    '<th class="gm-center">' + (t('col_score_prep') || 'Day 1 to 5 score') + '</th>' +
-                                    '<th class="gm-center">' + (t('col_score_pvp') || 'Day 6 score') + '</th>' : ''
-                                ) +
-                                (showGloryCol ? '<th class="gm-center">' + (t('stats_glory_delta') || 'Glory Δ') + '</th>' : '') +
-                                '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>' +
-                            '</tr></thead><tbody>';
+                            '<thead><tr>' + theadCols + '</tr></thead><tbody>';
 
             state.leaderboardData.forEach(function (m, idx) {
                 var rank = idx + 1;
                 var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(m.pseudo) : (m.pseudo ? m.pseudo.charAt(0).toUpperCase() : '?');
                 var rankBadge = rank === 1 ? '<span class="gm-rank-badge">🥇</span>' : rank === 2 ? '<span class="gm-rank-badge">🥈</span>' : rank === 3 ? '<span class="gm-rank-badge">🥉</span>' : '<span class="gm-rank-num">' + rank + '</span>';
 
-                var scoreDisplay = (m.score > 0) ? (fmt(m.score) + ' pts') : (m.events_done > 0 ? (m.events_done + ' attended') : '0 pts');
+                var scoreDisplay = (m.score > 0) ? (fmt(m.score) + ' pts') : (m.events_done > 0 ? (m.events_done + ' pts') : '0 pts');
 
-                tableHtml +=
-                    '<tr style="border-bottom:1px solid var(--border-soft);">' +
-                        '<td class="gm-center" style="font-weight:700;">' + rankBadge + '</td>' +
-                        '<td>' +
-                            '<div class="gm-member-id" style="display:flex; align-items:center; gap:.75rem;">' +
-                                '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size:1rem; font-weight:700;">' + esc(initial) + '</div>' +
-                                '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(m.pseudo) + '</strong>' +
-                            '</div>' +
-                        '</td>' +
+                var rowCells = '<td class="gm-center" style="font-weight:700;">' + rankBadge + '</td>' +
+                    '<td>' +
+                        '<div class="gm-member-id" style="display:flex; align-items:center; gap:.75rem;">' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size:1rem; font-weight:700;">' + esc(initial) + '</div>' +
+                            '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(m.pseudo) + '</strong>' +
+                        '</div>' +
+                    '</td>';
+
+                if (isShadowfrontMode) {
+                    var ratePct = Math.round((m.attendance_rate || 0) * 100);
+                    var rateBadge = ratePct >= 80 ? '<span style="color:#34d399; font-weight:700;">' + ratePct + '%</span>' : (ratePct >= 50 ? '<span style="color:#fbbf24; font-weight:700;">' + ratePct + '%</span>' : '<span style="color:var(--fg-dim);">' + ratePct + '%</span>');
+
+                    rowCells +=
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.assigned_count > 0 ? (m.assigned_count + ' squads') : '-') + '</td>' +
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.events_done > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.events_done + '</span>') : '<span style="color:var(--fg-dim);">0</span>') + '</td>' +
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.sub_count > 0 ? ('<span style="color:#fbbf24; font-weight:700;">🔁 ' + m.sub_count + '</span>') : '-') + '</td>' +
+                        '<td class="gm-center" style="font-family:var(--font-display);">' + rateBadge + '</td>' +
+                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                } else if (isArmsRaceMode) {
+                    rowCells +=
+                        '<td class="gm-center">' + (m.ara_count > 0 ? '✅' : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
+                        '<td class="gm-center">' + (m.arb_count > 0 ? '✅' : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
                         '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
-                        (isBattleEventMode ?
-                            '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
-                            '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' : ''
-                        ) +
+                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                } else if (isBattleEventMode) {
+                    rowCells +=
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' +
+                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                } else {
+                    rowCells +=
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
                         (showGloryCol ? '<td class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '-') + '</td>' : '') +
-                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>' +
-                    '</tr>';
+                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                }
+
+                tableHtml += '<tr style="border-bottom:1px solid var(--border-soft);">' + rowCells + '</tr>';
             });
 
             tableHtml += '</tbody></table></div></div>';
