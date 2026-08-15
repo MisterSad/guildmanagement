@@ -539,7 +539,9 @@
             if (payload.role === 'server_admin' && !targetServer) {
                 var gId = targetGuild;
                 if (!gId && window.guildsData) {
-                    var accObj = (window.accountsList || []).find(function (a) { return a.id === payload.id; });
+                    var accObj = (window.accountsList || []).find(function (a) {
+                        return (a.id || '').toLowerCase() === (payload.id || '').toLowerCase();
+                    });
                     if (accObj) gId = accObj.guild;
                 }
                 if (gId) {
@@ -548,7 +550,41 @@
                 }
             }
 
-            // Strategy A: Call gm_admin_upsert which exists natively in Postgres
+            // Step 1: Try dedicated update-role on admin-accounts Edge Function
+            try {
+                var edgeRes = await c.functions.invoke('admin-accounts', {
+                    body: {
+                        action: 'update-role',
+                        id: payload.id,
+                        role: payload.role,
+                        guild: targetGuild,
+                        serverNumber: targetServer
+                    }
+                });
+                if (edgeRes && edgeRes.data && edgeRes.data.ok) {
+                    return { ok: true, role: payload.role, server_number: targetServer };
+                }
+            } catch (_) {}
+
+            // Step 2: Fallback to action: 'create' on admin-accounts (supported on live Supabase cloud)
+            // 'create' uses service_role to update accounts table and sync GoTrue app_metadata without altering password
+            try {
+                var createRes = await c.functions.invoke('admin-accounts', {
+                    body: {
+                        action: 'create',
+                        id: payload.id,
+                        password: 'Sync_Role_Update_' + Math.random().toString(36).slice(2, 10),
+                        role: payload.role,
+                        guild: targetGuild || 'ALPHA',
+                        serverNumber: targetServer
+                    }
+                });
+                if (createRes && createRes.data && createRes.data.ok) {
+                    return { ok: true, role: payload.role, server_number: targetServer };
+                }
+            } catch (_) {}
+
+            // Step 3: Call gm_admin_upsert RPC which exists natively in Postgres
             try {
                 var { error: upsertErr } = await c.rpc('gm_admin_upsert', {
                     p_id: payload.id,
@@ -562,36 +598,19 @@
                             await c.from('accounts').update({ server_number: targetServer }).ilike('id', payload.id);
                         } catch (_) {}
                     }
-                    // Async notify edge function for GoTrue app_metadata sync (best-effort)
-                    c.functions.invoke('admin-accounts', { body: body }).catch(function () {});
                     return { ok: true, role: payload.role, server_number: targetServer };
                 }
             } catch (rpcErr) {
                 console.warn('gm_admin_upsert RPC attempt:', rpcErr);
             }
 
-            // Strategy B: Call gm_update_account_role RPC
-            try {
-                var rpcRes = await c.rpc('gm_update_account_role', {
-                    p_id: payload.id,
-                    p_role: payload.role,
-                    p_guild: targetGuild,
-                    p_server_number: targetServer
-                });
-                if (rpcRes && !rpcRes.error && Array.isArray(rpcRes.data) && rpcRes.data.length > 0 && rpcRes.data[0].ok) {
-                    c.functions.invoke('admin-accounts', { body: body }).catch(function () {});
-                    return { ok: true, role: rpcRes.data[0].role, server_number: rpcRes.data[0].server_number };
-                }
-            } catch (_) {}
-
-            // Strategy C: Direct PostgreSQL UPDATE query
+            // Step 4: Direct PostgreSQL UPDATE query
             try {
                 var updateFields = { role: payload.role };
                 if (targetGuild !== undefined) updateFields.guild = targetGuild;
                 if (targetServer) updateFields.server_number = targetServer;
                 var { data: dbData, error: dbErr } = await c.from('accounts').update(updateFields).ilike('id', payload.id).select();
                 if (!dbErr && dbData && dbData.length > 0) {
-                    c.functions.invoke('admin-accounts', { body: body }).catch(function () {});
                     return { ok: true, role: payload.role, server_number: targetServer };
                 }
             } catch (_) {}

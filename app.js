@@ -1506,7 +1506,7 @@
             sel.addEventListener('change', async function () {
                 var id = sel.getAttribute('data-id');
                 var newRole = sel.value;
-                var acc = accounts.find(function (a) { return a.id === id; });
+                var acc = accounts.find(function (a) { return (a.id || '').toLowerCase() === (id || '').toLowerCase(); });
                 sel.disabled = true;
                 try {
                     var res = await window.GM.adminAccounts('update-role', {
