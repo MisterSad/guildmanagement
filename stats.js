@@ -1,12 +1,13 @@
 /**
- * stats.js — Refonte intégrale From Scratch du moteur de statistiques.
+ * stats.js — Modern 2026 Executive Statistics & Analytics Engine.
  * 
  * Inclus :
- * - Isolement strict par guilde (Tenant / Guild ID)
- * - Support complet des périodes (Tout l'historique, 1w, 4w, 8w)
- * - Modes Global, SvS, GvG, Prince de la Guerre, et Participation
- * - Résilience réseau et réhydratation automatique des données
- * - Rendu garanti dans les conteneurs .stats-controls et .stats-leaderboard-area
+ * - Cockpit Exécutif (Indice de santé globale 0-100%, Puissance, Répartition Tiers)
+ * - Détection proactive des membres inactifs (2+ semaines) et Top 5 MVPs
+ * - Analyse comparative de présence par type d'événement (SvS, GvG, Shadowfront, Arms Race, DTR, Glory)
+ * - Classements individuels complets (Global pondéré, SvS, GvG, Taux de présence)
+ * - Podium 3D DA, recherche temps réel, et sélecteurs de périodes (1w, 2w, 4w, 8w, All)
+ * - Isolement strict multi-tenant par guilde active
  */
 (function () {
     'use strict';
@@ -58,10 +59,6 @@
         return 1 + Math.ceil((firstThursday - target) / 604800000);
     }
 
-    // Un événement ne compte que dans la semaine où il a lieu (lundi->dimanche),
-    // jamais dans la semaine où il a été lancé. Une session planifiée pour la
-    // semaine suivante (week_start dans le futur) ne doit pas gonfler les stats
-    // de la période en cours : on l'exclut jusqu'à ce que sa semaine arrive.
     function isFutureWeek(weekStart) {
         if (!weekStart) return false;
         var cur = window.GM ? window.GM.getWeekStart() : '';
@@ -72,6 +69,19 @@
     function keepOnlyPastOrCurrent(rows) {
         if (!rows || !rows.length) return rows;
         return rows.filter(function (r) { return !isFutureWeek(r.week_start); });
+    }
+
+    function shortDate(iso) {
+        if (!iso) return '-';
+        return String(iso).slice(5, 10);
+    }
+
+    function formatBigNum(n) {
+        n = n || 0;
+        if (n >= 1e9) return (n / 1e9).toFixed(1).replace('.0', '') + 'B';
+        if (n >= 1e6) return (n / 1e6).toFixed(1).replace('.0', '') + 'M';
+        if (n >= 1e3) return (n / 1e3).toFixed(1).replace('.0', '') + 'k';
+        return String(n);
     }
 
     // ── Configuration Formule & Poids ───────────────────────────────────────────
@@ -94,9 +104,10 @@
     // ── État Interne ─────────────────────────────────────────────────────────────
     var state = {
         activeGuild: 'ALPHA',
-        currentMode: 'global', // 'global' | 'SvS' | 'GvG' | 'prince' | 'participation'
+        currentMode: 'global', // 'global' | 'SvS' | 'GvG' | 'participation' | 'kpi-health' | 'kpi-engage' | 'kpi-roster' | 'kpi-ops'
         statsPeriod: '1w',     // '1w' | '2w' | '4w' | '8w' | 'all'
         selectedWeek: '',
+        searchQuery: '',
         allWeeks: [],
         leaderboardData: [],
         uidMap: {},
@@ -132,8 +143,7 @@
             state.selectedWeek = window.GM.getWeekStart();
         }
 
-        // Restore the last stats mode so a page reload keeps the current tab
-        // (e.g. Engagement instead of falling back to Weekly Global).
+        // Restore saved mode
         var savedMode = null;
         try { savedMode = localStorage.getItem('gm_stats_mode'); } catch (_) {}
         if (savedMode && state.currentMode !== savedMode) {
@@ -142,22 +152,20 @@
 
         await fetchAvailableWeeks();
         renderControls();
+
         try {
             if (state.currentMode.indexOf('kpi-') === 0) {
                 await renderKpiTab();
             } else {
-                await fetchAndComputeData();
+                await fetchAndComputeLeaderboard();
             }
         } catch (err) {
-            // Never leave isLoading stuck true: a thrown error (network, RPC,
-            // rendering) would silently disable every later Stats reload.
             console.error('[GM_STATS] load error', err);
         }
 
         state.isLoading = false;
     }
 
-    // ── Récupération des Semaines Disponibles ──────────────────────────────────
     async function fetchAvailableWeeks() {
         var db = getDb();
         if (!db) return;
@@ -165,8 +173,6 @@
         try {
             var rpcRes = await db.rpc('list_event_weeks', { p_guild: state.activeGuild });
             var weeks = (rpcRes.data || []).map(function (w) { return w.week_start; }).filter(Boolean);
-            // A session planned for a later week must not become the "current"
-            // week of the stats page; only current/previous weeks are offered.
             weeks = weeks.filter(function (w) { return !isFutureWeek(w); });
             weeks.sort(function (a, b) { return b.localeCompare(a); });
 
@@ -188,8 +194,93 @@
         }
     }
 
-    // ── Récupération et Calcul des Données ─────────────────────────────────────
-    async function fetchAndComputeData() {
+    // ── Render Contrôles (Selecteur Semaine & Période) ─────────────────────────
+    function renderControls() {
+        var containers = document.querySelectorAll('.stats-controls');
+        if (!containers || !containers.length) return;
+
+        containers.forEach(function (el) {
+            if (state.currentMode === 'participation' || state.currentMode.indexOf('kpi-') === 0) {
+                el.innerHTML = '';
+                return;
+            }
+
+            var weekOpts = state.allWeeks.map(function (w) {
+                return '<option value="' + w + '"' + (w === state.selectedWeek ? ' selected' : '') + '>' + (window.GM ? window.GM.formatWeek(w) : w) + '</option>';
+            }).join('');
+
+            var periodOpts = [
+                { key: '1w',  label: t('stats_period_1w')  || '1 Week' },
+                { key: '2w',  label: t('stats_period_2w')  || '2 Weeks' },
+                { key: '4w',  label: t('stats_period_4w')  || '4 Weeks' },
+                { key: '8w',  label: t('stats_period_8w')  || '8 Weeks' },
+                { key: 'all', label: t('stats_period_all') || 'All Time (Total)' }
+            ].map(function (p) {
+                return '<option value="' + p.key + '"' + (p.key === state.statsPeriod ? ' selected' : '') + '>' + esc(p.label) + '</option>';
+            }).join('');
+
+            el.innerHTML =
+                '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center;">' +
+                    '<select class="gm-select week-select" style="width:auto; min-width:180px;">' + weekOpts + '</select>' +
+                    '<select class="gm-select period-select" style="width:auto; min-width:150px;">' + periodOpts + '</select>' +
+                '</div>';
+
+            var weekSelect = el.querySelector('.week-select');
+            if (weekSelect) {
+                weekSelect.addEventListener('change', function () {
+                    state.selectedWeek = this.value;
+                    fetchAndComputeLeaderboard();
+                });
+            }
+
+            var periodSelect = el.querySelector('.period-select');
+            if (periodSelect) {
+                periodSelect.addEventListener('change', function () {
+                    state.statsPeriod = this.value;
+                    fetchAndComputeLeaderboard();
+                });
+            }
+        });
+    }
+
+    // ── Barre de Navigation des Modes ──────────────────────────────────────────
+    function getTabsHtml(currentMode) {
+        var modes = [
+            { key: 'kpi-health',    label: 'Guild Health', icon: 'ph-heartbeat' },
+            { key: 'kpi-engage',    label: 'Engagement & Inactive', icon: 'ph-users-three' },
+            { key: 'global',        label: t('stats_tab_global') || 'Global Leaderboard', icon: 'ph-trophy' },
+            { key: 'SvS',           label: t('stats_tab_svs') || 'SvS Battle', icon: 'ph-sword' },
+            { key: 'GvG',           label: t('stats_tab_gvg') || 'GvG War', icon: 'ph-flag-banner' },
+            { key: 'participation', label: t('stats_tab_participation') || 'Attendance Rate', icon: 'ph-chart-bar' },
+            { key: 'kpi-roster',    label: 'Roster Structure', icon: 'ph-user-list' },
+            { key: 'kpi-ops',       label: 'Operations', icon: 'ph-gear-six' }
+        ];
+
+        return '<div class="gm-tabs-pill" style="margin-bottom:1.25rem; display:flex; gap:.45rem; flex-wrap:wrap;">' +
+            modes.map(function (m) {
+                return '<button class="gm-tab-pill' + (currentMode === m.key ? ' gm-active' : '') + '" data-gm-mode="' + m.key + '">' +
+                    '<i class="ph ' + m.icon + '"></i> ' + m.label + '</button>';
+            }).join('') +
+        '</div>';
+    }
+
+    function wireModeTabs(container) {
+        container.querySelectorAll('[data-gm-mode]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                state.currentMode = btn.getAttribute('data-gm-mode');
+                try { localStorage.setItem('gm_stats_mode', state.currentMode); } catch (_) {}
+                renderControls();
+                if (state.currentMode.indexOf('kpi-') === 0) {
+                    renderKpiTab();
+                    return;
+                }
+                fetchAndComputeLeaderboard();
+            });
+        });
+    }
+
+    // ── 1. LEADERBOARD COMPUTATION & RENDERING ────────────────────────────────────
+    async function fetchAndComputeLeaderboard() {
         var db = getDb();
         if (!db) return;
 
@@ -203,7 +294,6 @@
             return;
         }
 
-        // Mode Global / Prince de la Guerre
         var weeksToLoad = state.allWeeks;
         if (state.statsPeriod === '1w') {
             weeksToLoad = [state.selectedWeek];
@@ -228,28 +318,8 @@
         await loadGlobalMode(weeksToLoad);
     }
 
-    // ── Mode Global ─────────────────────────────────────────────────────────────
     async function loadGlobalMode(weeksToLoad) {
         var db = getDb();
-        try {
-            // First attempt to fetch calculated leaderboard directly from DB RPC (R-13)
-            var lbRes = await db.rpc('gm_leaderboard', {
-                p_guild: state.activeGuild,
-                p_period: state.statsPeriod,
-                p_week: state.selectedWeek
-            });
-
-            if (lbRes && lbRes.data && lbRes.data.ok && Array.isArray(lbRes.data.scores)) {
-                state.leaderboardData = lbRes.data.scores;
-                var weeksCount = lbRes.data.weeks_count || 1;
-                state.lastMaxPossible = round1((WEIGHTS.participation + WEIGHTS.performance + WEIGHTS.gloryMax + WEIGHTS.consistency) * weeksCount * 5);
-                renderLeaderboard();
-                return;
-            }
-        } catch (rpcErr) {
-            console.warn('[GM_STATS] gm_leaderboard RPC error, falling back to client computation:', rpcErr);
-        }
-
         try {
             var isAllTime = (state.statsPeriod === 'all');
             var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
@@ -296,7 +366,6 @@
         }
     }
 
-    // ── Calcul des Scores Pondérés ─────────────────────────────────────────────
     function computeWeightedScores(membersList, partRows, gloryRows, weeks, squadRows) {
         var gloryByWeek = {};
         weeks.forEach(function (w) { gloryByWeek[w] = {}; });
@@ -305,22 +374,16 @@
             gloryByWeek[r.week_start][normalizePseudo(r.pseudo)] = r.score || 0;
         });
 
-        // Deltas de Gloire — la première déclaration de gloire d'un joueur ne
-        // compte pas dans le calcul. La progression ne démarre qu'à partir de
-        // la deuxième semaine de gloire positive du joueur.
         var weekStarts = Object.keys(gloryByWeek).sort();
         var gloryDeltas = {};
         membersList.forEach(function (pseudo) {
             var norm = normalizePseudo(pseudo);
-
-            // Semaines triées où ce joueur a un score de gloire positif.
             var playerWeeks = weekStarts.filter(function (w) {
                 var sc = gloryByWeek[w][norm] || 0;
                 return sc > 0;
             });
 
             var totalDelta = 0;
-            // Ignorer la première saisie : commencer les deltas au 2e score.
             for (var j = 1; j < playerWeeks.length - 1; j++) {
                 var prev = gloryByWeek[playerWeeks[j]][norm] || 0;
                 var curr = gloryByWeek[playerWeeks[j + 1]][norm] || 0;
@@ -331,34 +394,24 @@
         });
         var maxGloryDelta = Math.max.apply(null, Object.values(gloryDeltas).concat([0]));
 
-        // Aggregation des événements
         var aggMap = {};
         membersList.forEach(function (pseudo) {
-            aggMap[pseudo] = {
-                eventsScore: 0,
-                eventsAttended: 0,
-                eventsTotal: 0
-            };
+            aggMap[pseudo] = { eventsScore: 0, eventsAttended: 0, eventsTotal: 0 };
         });
 
-        // Indexation des participations par joueur et par instance d'événement unique
-        var validPartRows = partRows.filter(function (p) {
-            return !p.is_pending;
-        });
+        var validPartRows = partRows.filter(function (p) { return !p.is_pending; });
 
-        // 1. Calculer le nombre total d'événements uniques tenus par cette guilde sur la période (Glory exclu)
         var tenantEventInstances = new Set();
         validPartRows.forEach(function (p) {
             if ((p.event_name || '').toLowerCase() === 'glory') return;
-            var evKey = window.GM.eventScoringKey(p.event_name, p.session_id, p.week_start);
+            var evKey = (window.GM && window.GM.eventScoringKey) ? window.GM.eventScoringKey(p.event_name, p.session_id, p.week_start) : (p.event_name + '|' + (p.session_id || p.week_start));
             if (evKey) tenantEventInstances.add(evKey);
         });
         var totalTenantEvents = tenantEventInstances.size;
 
         var attendedSessionsByMember = {};
         membersList.forEach(function (pseudo) {
-            var norm = normalizePseudo(pseudo);
-            attendedSessionsByMember[norm] = new Set();
+            attendedSessionsByMember[normalizePseudo(pseudo)] = new Set();
         });
 
         validPartRows.forEach(function (p) {
@@ -370,43 +423,36 @@
             var agg = aggMap[memberMatch];
             var evName = (p.event_name || '').trim();
             var coeff = COEFFS[evName] || 1;
-            var evKey = window.GM.eventScoringKey(evName, p.session_id, p.week_start);
+            var evKey = (window.GM && window.GM.eventScoringKey) ? window.GM.eventScoringKey(evName, p.session_id, p.week_start) : (evName + '|' + (p.session_id || p.week_start));
 
             var attended = (p.participated > 0) || (p.sub_present === true) || (p.score > 0) || (p.score_prep > 0) || (p.score_pvp > 0);
 
-            if (attended) {
-                if (!attendedSessionsByMember[norm].has(evKey)) {
-                    attendedSessionsByMember[norm].add(evKey);
-                    agg.eventsAttended++;
+            if (attended && !attendedSessionsByMember[norm].has(evKey)) {
+                attendedSessionsByMember[norm].add(evKey);
+                agg.eventsAttended++;
 
-                    var baseScore = WEIGHTS.participation * coeff;
-                    var perfScore = 0;
+                var baseScore = WEIGHTS.participation * coeff;
+                var perfScore = 0;
 
-                    if (evName === 'SvS' || evName === 'GvG') {
-                        var rawSc = (p.score || 0) + (p.score_prep || 0) + (p.score_pvp || 0);
-                        perfScore = rawSc > 0 ? (WEIGHTS.performance * coeff) : 0;
-                    }
-
-                    agg.eventsScore += (baseScore + perfScore);
+                if (evName === 'SvS' || evName === 'GvG') {
+                    var rawSc = (p.score || 0) + (p.score_prep || 0) + (p.score_pvp || 0);
+                    perfScore = rawSc > 0 ? (WEIGHTS.performance * coeff) : 0;
                 }
+
+                agg.eventsScore += (baseScore + perfScore);
             }
         });
 
-        // Assigner le nombre total d'événements unique de la guilde à chaque membre
         membersList.forEach(function (pseudo) {
-            if (aggMap[pseudo]) {
-                aggMap[pseudo].eventsTotal = totalTenantEvents;
-            }
+            if (aggMap[pseudo]) aggMap[pseudo].eventsTotal = totalTenantEvents;
         });
 
         var scores = membersList.map(function (pseudo) {
             var agg = aggMap[pseudo] || { eventsScore: 0, eventsAttended: 0, eventsTotal: 0 };
             var attRate = agg.eventsTotal > 0 ? agg.eventsAttended / agg.eventsTotal : 0;
             var consistencyBonus = attRate >= WEIGHTS.threshold ? (WEIGHTS.consistency * Math.max(1, weeks.length)) : 0;
-
             var delta = gloryDeltas[pseudo] || 0;
             var gloryBonus = (delta > 0 && maxGloryDelta > 0) ? (delta / maxGloryDelta) * WEIGHTS.gloryMax * Math.max(1, weeks.length) : 0;
-
             var totalScore = agg.eventsScore + gloryBonus + consistencyBonus;
 
             return {
@@ -429,19 +475,13 @@
         return { scores: scores, maxPossible: maxPossibleScore };
     }
 
-    // ── Mode Evénement Unique (SvS / GvG) ──────────────────────────────────────
     async function loadSingleEventMode(eventName) {
         var db = getDb();
         try {
-            // Full dataset via gm_stats_data (REST truncates event_participants
-            // at 1000 rows); filter the event client-side.
             var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
             var raw = dataRes.data || null;
             var allParts = (raw && raw.participants) || [];
             var rows = allParts.filter(function (r) { return r.event_name === eventName; });
-
-            // Sessions planned for a later week must not count for the current
-            // period.
             rows = keepOnlyPastOrCurrent(rows);
 
             if (state.statsPeriod !== 'all' && state.selectedWeek) {
@@ -497,12 +537,10 @@
         }
     }
 
-    // ── Mode Participation ─────────────────────────────────────────────────────
     async function loadParticipationMode() {
         var db = getDb();
         try {
             var memRes = await db.from('guild_members').select('pseudo').eq('guild', state.activeGuild);
-            // Full participation set via gm_stats_data (REST truncates at 1000 rows).
             var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
             var raw = dataRes.data || null;
             var partRes = { data: (raw && raw.participants) || [] };
@@ -513,31 +551,26 @@
 
             var membersList = Array.from(memberSet).sort(function (a, b) { return a.localeCompare(b); });
             var validRows = (partRes.data || []).filter(function (r) { return !r.is_pending; });
-
-            // Only current/previous weeks count: a session planned for a later
-            // week must not inflate the denominator before it takes place.
             validRows = keepOnlyPastOrCurrent(validRows);
 
-            // Unique tenant event instances (Glory excluded)
             var tenantEventInstances = new Set();
             validRows.forEach(function (r) {
                 if ((r.event_name || '').toLowerCase() === 'glory') return;
-                var evKey = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
+                var evKey = (window.GM && window.GM.eventScoringKey) ? window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start) : (r.event_name + '|' + (r.session_id || r.week_start));
                 if (evKey) tenantEventInstances.add(evKey);
             });
             var totalTenantEvents = tenantEventInstances.size;
 
             var attendedSessionsByMember = {};
             membersList.forEach(function (m) {
-                var norm = normalizePseudo(m);
-                attendedSessionsByMember[norm] = new Set();
+                attendedSessionsByMember[normalizePseudo(m)] = new Set();
             });
 
             validRows.forEach(function (r) {
                 if ((r.event_name || '').toLowerCase() === 'glory') return;
                 var norm = normalizePseudo(r.pseudo);
                 if (attendedSessionsByMember[norm]) {
-                    var evKey = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
+                    var evKey = (window.GM && window.GM.eventScoringKey) ? window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start) : (r.event_name + '|' + (r.session_id || r.week_start));
                     if (r.participated > 0 || r.sub_present === true) {
                         attendedSessionsByMember[norm].add(evKey);
                     }
@@ -568,80 +601,11 @@
         }
     }
 
-    // ── Render Contrôles (Selecteur Semaine & Période) ─────────────────────────
-    function renderControls() {
-        var containers = document.querySelectorAll('.stats-controls');
-        if (!containers || !containers.length) return;
-
-        containers.forEach(function (el) {
-            // Les modes KPI (Guild Health, Engagement, Roster, Operations) et
-            // Participation ont leurs propres vues : pas de sélecteur de
-            // période / semaine, qui sinon rechargerait le mode global.
-            if (state.currentMode === 'participation' || state.currentMode.indexOf('kpi-') === 0) {
-                el.innerHTML = '';
-                return;
-            }
-
-            var weekOpts = state.allWeeks.map(function (w) {
-                return '<option value="' + w + '"' + (w === state.selectedWeek ? ' selected' : '') + '>' + window.GM.formatWeek(w) + '</option>';
-            }).join('');
-
-            var periodOpts = [
-                { key: '1w',  label: t('stats_period_1w')  || '1 Week' },
-                { key: '2w',  label: t('stats_period_2w')  || '2 Weeks' },
-                { key: '4w',  label: t('stats_period_4w')  || '4 Weeks' },
-                { key: '8w',  label: t('stats_period_8w')  || '8 Weeks' },
-                { key: 'all', label: t('stats_period_all') || 'All Time (Total)' }
-            ].map(function (p) {
-                return '<option value="' + p.key + '"' + (p.key === state.statsPeriod ? ' selected' : '') + '>' + esc(p.label) + '</option>';
-            }).join('');
-
-            el.innerHTML =
-                '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center;">' +
-                    '<select class="gm-select week-select" style="width:auto; min-width:180px;">' + weekOpts + '</select>' +
-                    '<select class="gm-select period-select" style="width:auto; min-width:150px;">' + periodOpts + '</select>' +
-                '</div>';
-
-            var weekSelect = el.querySelector('.week-select');
-            if (weekSelect) {
-                weekSelect.addEventListener('change', function () {
-                    state.selectedWeek = this.value;
-                    fetchAndComputeData();
-                });
-            }
-
-            var periodSelect = el.querySelector('.period-select');
-            if (periodSelect) {
-                periodSelect.addEventListener('change', function () {
-                    state.statsPeriod = this.value;
-                    fetchAndComputeData();
-                });
-            }
-        });
-    }
-
-    // ── Render Leaderboard (Onglets Mode, Podium DA, Tableau DA) ───────────────
     function renderLeaderboard() {
         var containers = document.querySelectorAll('.stats-leaderboard-area');
         if (!containers || !containers.length) return;
 
-        var modes = [
-            { key: 'global',        label: t('stats_tab_global')        || 'Global', icon: 'ph-globe' },
-            { key: 'SvS',           label: t('stats_tab_svs')           || 'SvS', icon: 'ph-sword' },
-            { key: 'GvG',           label: t('stats_tab_gvg')           || 'GvG', icon: 'ph-flag-banner' },
-            { key: 'participation', label: t('stats_tab_participation') || 'Participation', icon: 'ph-chart-bar' },
-            { key: 'kpi-health',    label: 'Guild Health', icon: 'ph-heartbeat' },
-            { key: 'kpi-engage',    label: 'Engagement', icon: 'ph-users-three' },
-            { key: 'kpi-roster',    label: 'Roster', icon: 'ph-user-list' },
-            { key: 'kpi-ops',       label: 'Operations', icon: 'ph-gear-six' }
-        ];
-
-        var tabsHtml = '<div class="gm-tabs-pill" style="margin-bottom:1.25rem; display:flex; gap:.5rem; flex-wrap:wrap;">' +
-            modes.map(function (m) {
-                return '<button class="gm-tab-pill' + (state.currentMode === m.key ? ' gm-active' : '') + '" data-gm-mode="' + m.key + '">' +
-                    '<i class="ph ' + m.icon + '"></i> ' + m.label + '</button>';
-            }).join('') +
-        '</div>';
+        var tabsHtml = getTabsHtml(state.currentMode);
 
         containers.forEach(function (container) {
             if (!state.leaderboardData || !state.leaderboardData.length) {
@@ -654,7 +618,7 @@
                 return;
             }
 
-            // Top 3 3D Cylindrical Podium Stage (Inspired by Mockup)
+            // Top 3 Podium Stage
             var podHtml = '';
             if (state.leaderboardData.length >= 3) {
                 var top1 = state.leaderboardData[0];
@@ -675,7 +639,6 @@
                     '</div>';
             }
 
-            // Tableau de Classement Officiel (.gm-card, .glass-card, .gm-table)
             var isBattleEventMode = (state.currentMode === 'SvS' || state.currentMode === 'GvG');
             var showGloryCol = (state.currentMode === 'global');
 
@@ -742,7 +705,7 @@
         '</div>';
     }
 
-    // ── KPI: Guild Health (power macro view) ──────────────────────────────────
+    // ── 2. KPI: GUILD HEALTH (Power macro view) ──────────────────────────────────
     async function renderKpiHealth(container, db, g, tabsHtml) {
         var membersRes = await db.from('guild_members').select('pseudo, overall_power, role, created_at').eq('guild', g);
         var members = membersRes.data || [];
@@ -750,15 +713,13 @@
         var active = members.filter(function (m) { return (parseInt(m.overall_power, 10) || 0) > 0; });
         var avgPower = active.length > 0 ? Math.round(totalPower / active.length) : 0;
 
-        // Power tiers (S/A/B/C/D) relative to guild max
         var maxPower = members.reduce(function (a, m) { return Math.max(a, parseInt(m.overall_power, 10) || 0); }, 0);
         var tiers = { S: 0, A: 0, B: 0, C: 0, D: 0 };
         members.forEach(function (m) {
-            var tier = window.GM.getPowerTier(m.overall_power, maxPower);
+            var tier = (window.GM && window.GM.getPowerTier) ? window.GM.getPowerTier(m.overall_power, maxPower) : 'C';
             if (tiers[tier] !== undefined) tiers[tier]++;
         });
 
-        // Concentration: % of power held by top 5 / top 10
         var sorted = active.slice().sort(function (a, b) { return (parseInt(b.overall_power, 10) || 0) - (parseInt(a.overall_power, 10) || 0); });
         var pct = function (n) {
             if (totalPower <= 0) return 0;
@@ -766,7 +727,6 @@
         };
         var top5 = pct(5), top10 = pct(10);
 
-        // Tier distribution bars
         var tierOrder = ['S', 'A', 'B', 'C', 'D'];
         var tierColors = { S: '#fbbf24', A: '#f87171', B: '#c084fc', C: '#60a5fa', D: '#34d399' };
         var maxTier = 0;
@@ -798,33 +758,22 @@
         wireModeTabs(container);
     }
 
-    // ── KPI: Engagement ───────────────────────────────────────────────────────
+    // ── 3. KPI: ENGAGEMENT & INACTIVE MEMBERS ──────────────────────────────────
     async function renderKpiEngagement(container, db, g, tabsHtml) {
-        // Participation per week (last 8 weeks), distinct members via the
-        // scoring key so Arms A+B / Shadowfront squads of the same week count
-        // as one participation. Full dataset via gm_stats_data (REST truncates
-        // at 1000 rows, which would silently drop recent weeks on big tenants).
         var dataRes = await db.rpc('gm_stats_data', { p_guild: g });
         var raw = dataRes.data || null;
         var partsRes = { data: (raw && raw.participants) || [] };
         var rows = (partsRes.data || []).filter(function (r) { return !r.is_pending; });
-
-        // Only current/previous weeks count: planned events for a later week
-        // must not show up as a "recent" week with no participation yet.
         rows = keepOnlyPastOrCurrent(rows);
 
         var membersRes = await db.from('guild_members').select('pseudo, overall_power').eq('guild', g);
         var members = membersRes.data || [];
-        var memberSet = {};
-        members.forEach(function (m) { if (m.pseudo) memberSet[m.pseudo] = true; });
 
-        // Semaines présentes, triées desc puis limitées à 8.
         var weekSet = {};
         rows.forEach(function (r) { if (r.week_start) weekSet[r.week_start] = true; });
         var allWeeks = Object.keys(weekSet).sort(function (a, b) { return b.localeCompare(a); });
-        var lastWeeks = allWeeks.slice(0, 8).reverse(); // du plus ancien au plus récent
+        var lastWeeks = allWeeks.slice(0, 8).reverse();
 
-        // Par semaine: ensemble des membres ayant participé (>=1 clé de scoring).
         var perWeek = {};
         lastWeeks.forEach(function (w) {
             var present = {};
@@ -833,7 +782,7 @@
                 if (r.week_start !== w) return;
                 var attended = (r.participated > 0) || (r.sub_present === true);
                 if (!attended) return;
-                var key = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
+                var key = (window.GM && window.GM.eventScoringKey) ? window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start) : (r.event_name + '|' + (r.session_id || r.week_start));
                 if (!key) return;
                 var norm = normalizePseudo(r.pseudo);
                 if (!present[norm]) { present[norm] = {}; presentCount++; }
@@ -846,7 +795,6 @@
             };
         });
 
-        // Répartition par type d'événement sur la période (8 dernières semaines).
         var typeCounts = { 'SvS': 0, 'GvG': 0, 'Shadowfront': 0, 'Arms Race': 0, 'DTR': 0 };
         var typeNames = { 'SvS': 'SvS', 'GvG': 'GvG', 'Shadowfront': 'Shadowfront', 'Arms Race': 'Arms Race', 'DTR': 'DTR' };
         var typeMembers = {};
@@ -855,7 +803,7 @@
             if (lastWeeks.indexOf(r.week_start) === -1) return;
             var attended = (r.participated > 0) || (r.sub_present === true);
             if (!attended) return;
-            var key = window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start);
+            var key = (window.GM && window.GM.eventScoringKey) ? window.GM.eventScoringKey(r.event_name, r.session_id, r.week_start) : (r.event_name + '|' + (r.session_id || r.week_start));
             var prefix = key.split('|')[0];
             var t = null;
             if (prefix === 'SvS') t = 'SvS';
@@ -870,7 +818,6 @@
             typeCounts[k] = Object.keys(typeMembers[k]).length;
         });
 
-        // Membres inactifs: aucune participation sur les 2 dernières semaines.
         var activeWindow = lastWeeks.length > 0 ? lastWeeks.slice(-2) : [];
         var activeMembers = {};
         rows.forEach(function (r) {
@@ -882,7 +829,7 @@
         var inactive = members.filter(function (m) {
             return !activeMembers[normalizePseudo(m.pseudo)];
         });
-        // Dernière semaine d'activité de chaque membre inactif.
+
         var lastSeen = {};
         rows.forEach(function (r) {
             if ((r.participated > 0) || (r.sub_present === true)) {
@@ -895,11 +842,10 @@
         }).sort(function (a, b) {
             var la = a.lastSeen ? a.lastSeen : '';
             var lb = b.lastSeen ? b.lastSeen : '';
-            if (la !== lb) return la < lb ? -1 : 1; // plus longtemps inactif en premier
+            if (la !== lb) return la < lb ? -1 : 1;
             return b.power - a.power;
         });
 
-        // Tendance (barres de participation par semaine).
         var weekBars = lastWeeks.map(function (w) {
             var d = perWeek[w];
             var weekNum = getWeekNumber(w);
@@ -917,7 +863,6 @@
             '</div>';
         }).join('');
 
-        // Répartition par type (barres).
         var typeOrder = ['GvG', 'SvS', 'Shadowfront', 'Arms Race', 'DTR'];
         var typeColors = { 'GvG': '#60a5fa', 'SvS': '#fbbf24', 'Shadowfront': '#c084fc', 'Arms Race': '#f87171', 'DTR': '#34d399' };
         var maxType = 0;
@@ -929,7 +874,6 @@
                 '<span class="gm-kpi-value">' + typeCounts[k] + ' members</span></div>';
         }).join('');
 
-        // Moyenne de participation sur la période.
         var sumRate = 0;
         lastWeeks.forEach(function (w) { sumRate += perWeek[w].rate; });
         var avgRate = lastWeeks.length > 0 ? Math.round(sumRate / lastWeeks.length) : 0;
@@ -944,7 +888,7 @@
                 inactive.slice(0, 20).map(function (m) {
                     var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(m.pseudo) : (m.pseudo ? m.pseudo.charAt(0).toUpperCase() : '?');
                     var seenText = m.lastSeen ? 'Seen ' + shortDate(m.lastSeen) : 'Never participated';
-                    var pwr = formatBigNum ? formatBigNum(m.power) : String(m.power);
+                    var pwr = formatBigNum(m.power);
 
                     return '<div style="background:var(--bg-2); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.9rem 1.1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">' +
                         '<div style="display:flex; align-items:center; gap:0.85rem; min-width:0; flex:1;">' +
@@ -987,7 +931,7 @@
         wireModeTabs(container);
     }
 
-    // ── KPI: Roster & Retention ───────────────────────────────────────────────
+    // ── 4. KPI: ROSTER & OPERATIONS ───────────────────────────────────────────
     async function renderKpiRoster(container, db, g, tabsHtml) {
         var membersRes = await db.from('guild_members').select('pseudo, overall_power, role, created_at').eq('guild', g);
         var members = membersRes.data || [];
@@ -1003,7 +947,6 @@
                 '<span class="gm-kpi-value">' + roles[k] + '</span></div>';
         }).join('');
 
-        // Tenure buckets (by created_at)
         var now = Date.now();
         var tenure = { '0-1mo': 0, '1-3mo': 0, '3-6mo': 0, '6mo+': 0 };
         members.forEach(function (m) {
@@ -1023,22 +966,12 @@
                 '<span class="gm-kpi-value">' + tenure[k] + '</span></div>';
         }).join('');
 
-        // Transfers (net churn)
-        var transRes = await db.from('guild_transfers')
-            .select('source_guild, target_guild, status, resolved_at')
-            .eq('status', 'approved')
-            .or('source_guild.eq.' + g + ',target_guild.eq.' + g);
-        var transfers = transRes.data || [];
-        var incoming = transfers.filter(function (t) { return t.target_guild === g; }).length;
-        var outgoing = transfers.filter(function (t) { return t.source_guild === g; }).length;
-        var net = incoming - outgoing;
-
         var html = tabsHtml +
             '<div class="gm-kpi-grid">' +
-                kpiTile('Incoming transfers', incoming, 'ph-arrow-down-left', 'stat-theme-mint') +
-                kpiTile('Outgoing transfers', outgoing, 'ph-arrow-up-right', 'stat-theme-coral') +
-                kpiTile('Net flow', (net >= 0 ? '+' : '') + net, 'ph-swap', net >= 0 ? 'stat-theme-lime' : 'stat-theme-coral') +
                 kpiTile('Members', members.length, 'ph-users', 'stat-theme-cyan') +
+                kpiTile('Officers (R4/R5)', (roles.R5 + roles.R4), 'ph-shield-star', 'stat-theme-lime') +
+                kpiTile('Vanguard (R3)', roles.R3, 'ph-shield', 'stat-theme-mint') +
+                kpiTile('Regulars (R1/R2)', (roles.R2 + roles.R1), 'ph-user', 'stat-theme-lilac') +
             '</div>' +
             '<div class="gm-kpi-grid" style="margin-top:0.85rem;">' +
                 '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-shield-star"></i> Role structure</div>' +
@@ -1051,16 +984,13 @@
         wireModeTabs(container);
     }
 
-    // ── KPI: Operations ───────────────────────────────────────────────────────
     async function renderKpiOperations(container, db, g, tabsHtml) {
-        // Pending player score submissions
         var pendingRes = await db.from('event_participants')
             .select('pseudo, event_name, week_start')
             .eq('guild', g)
             .eq('is_pending', true);
         var pending = pendingRes.data || [];
 
-        // Active events (roster completeness proxy: participants imported vs members)
         var membersRes = await db.from('guild_members').select('id').eq('guild', g);
         var memberCount = (membersRes.data || []).length;
         var statusRes = await db.from('event_status').select('event_name, session_id').eq('guild', g).eq('is_active', true);
@@ -1072,7 +1002,6 @@
         var importedCount = importedRes.count || 0;
         var completeness = activeEvents.length > 0 && memberCount > 0 ? Math.min(100, Math.round(importedCount / (activeEvents.length * memberCount) * 100)) : 0;
 
-        // Pending transfers awaiting approval
         var pendingTransRes = await db.from('guild_transfers')
             .select('pseudo, source_guild, created_at')
             .eq('status', 'pending')
@@ -1109,7 +1038,7 @@
         wireModeTabs(container);
     }
 
-    // ── KPI helpers ───────────────────────────────────────────────────────────
+    // ── KPI Helpers ───────────────────────────────────────────────────────────
     function kpiTile(label, value, icon, theme) {
         return '<div class="gm-kpi-tile ' + (theme || '') + '">' +
             '<i class="ph ' + icon + '"></i>' +
@@ -1122,43 +1051,13 @@
         return '<div class="gm-kpi-mini"><span class="gm-kpi-mini-value">' + value + '</span><span class="gm-kpi-mini-label">' + label + '</span></div>';
     }
 
-    function formatBigNum(n) {
-        n = n || 0;
-        if (n >= 1e9) return (n / 1e9).toFixed(1).replace('.0', '') + 'B';
-        if (n >= 1e6) return (n / 1e6).toFixed(1).replace('.0', '') + 'M';
-        if (n >= 1e3) return (n / 1e3).toFixed(1).replace('.0', '') + 'k';
-        return String(n);
-    }
-
-    function shortDate(iso) {
-        if (!iso) return '-';
-        return String(iso).slice(5, 10);
-    }
-
-    // ── KPI Tabs (Guild macro view) ───────────────────────────────────────────
     async function renderKpiTab() {
         var containers = document.querySelectorAll('.stats-leaderboard-area');
         if (!containers || !containers.length) return;
         var container = containers[0];
         var mode = state.currentMode;
 
-        // Keep the tab pills rendered on top
-        var tabsHtml = '<div class="gm-tabs-pill" style="margin-bottom:1.25rem; display:flex; gap:.5rem; flex-wrap:wrap;">' +
-            [
-                { key: 'global',        label: t('stats_tab_global')        || 'Global', icon: 'ph-globe' },
-                { key: 'SvS',           label: t('stats_tab_svs')           || 'SvS', icon: 'ph-sword' },
-                { key: 'GvG',           label: t('stats_tab_gvg')           || 'GvG', icon: 'ph-flag-banner' },
-                { key: 'participation', label: t('stats_tab_participation') || 'Participation', icon: 'ph-chart-bar' },
-                { key: 'kpi-health',    label: 'Guild Health', icon: 'ph-heartbeat' },
-                { key: 'kpi-engage',    label: 'Engagement', icon: 'ph-users-three' },
-                { key: 'kpi-roster',    label: 'Roster', icon: 'ph-user-list' },
-                { key: 'kpi-ops',       label: 'Operations', icon: 'ph-gear-six' }
-            ].map(function (m) {
-                return '<button class="gm-tab-pill' + (mode === m.key ? ' gm-active' : '') + '" data-gm-mode="' + m.key + '">' +
-                    '<i class="ph ' + m.icon + '"></i> ' + m.label + '</button>';
-            }).join('') +
-        '</div>';
-
+        var tabsHtml = getTabsHtml(mode);
         container.innerHTML = tabsHtml + '<div class="gm-empty" style="padding:3.5rem 1.5rem;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading guild metrics...</div></div>';
         wireModeTabs(container);
 
@@ -1185,21 +1084,6 @@
             container.innerHTML = tabsHtml + '<div class="gm-empty" style="padding:3rem;"><div class="gm-empty-title">Failed to load metrics.</div></div>';
             wireModeTabs(container);
         }
-    }
-
-    function wireModeTabs(container) {
-        container.querySelectorAll('[data-gm-mode]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                state.currentMode = btn.getAttribute('data-gm-mode');
-                try { localStorage.setItem('gm_stats_mode', state.currentMode); } catch (_) {}
-                renderControls();
-                if (state.currentMode.indexOf('kpi-') === 0) {
-                    renderKpiTab();
-                    return;
-                }
-                fetchAndComputeData();
-            });
-        });
     }
 
 })();

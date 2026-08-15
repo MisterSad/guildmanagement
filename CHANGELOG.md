@@ -2,6 +2,15 @@
 
 ## New
 
+- **Modernized 2026 Executive Stats Hub & Analytics Engine (v113)**:
+  - **3-Domain Streamlined Architecture**: Reorganized the statistics module into a high-visibility, executive experience:
+    - 🩺 **Guild Health & Overview**: Comprehensive power macro metrics, active roster ratios, power tier distribution, and 8-week historical trend.
+    - ⚠️ **Proactive Inactivity & MVP Detection**: Side-by-side actionable cards highlighting top contributors and flagging at-risk members with 0 attendance over the last 2+ weeks (including last seen dates and power).
+    - 🏆 **Unified Player Rankings**: Composite weighted score formula, 3D podium stage, sub-filters for SvS, GvG, pure attendance rate, and real-time live member search.
+    - ⚔️ **6-Event Activity Breakdown**: Detailed per-event tracking across SvS, GvG, Shadowfront, Arms Race, DTR, and Glory.
+  - **Dynamic Timeframe Management**: Support for 1-week, 2-week, 4-week, 8-week, and All-Time analysis with automatic future week exclusion.
+  - **Quality Assurance**: Maintained 100% quality gate compliance with **222/222 unit tests green** (`npm test`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Four-Role Zero-Trust Access Model, Server Admin Role & Dynamic Role Assignment (v112)**:
   - **New `server_admin` Role Level**: Introduced server-scoped administration allowing federation and server leaders to manage all guilds sharing the same `server_number` across rosters, active events, scores, sanctions, and Discord webhooks without granting global `super_admin` access.
   - **Dynamic Role Promotion & Assignment**: Added real-time role selector on account cards in the Super Admin dashboard, allowing Super Admins to promote any existing `guild_admin` to `server_admin` (or reassign roles) with immediate database, GoTrue JWT metadata, and UI synchronization.
