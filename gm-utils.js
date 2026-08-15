@@ -525,7 +525,7 @@
         }
     }
 
-    // Opérations admin sur les comptes (R5 only — vérifié côté serveur via le
+    // Opérations admin sur les comptes (Super Admin / R5 — vérifié côté serveur via le
     // JWT). La session courante est jointe automatiquement par supabase-js.
     async function adminAccounts(action, payload) {
         var c = getClient();
@@ -535,10 +535,54 @@
         try {
             r = await c.functions.invoke('admin-accounts', { body: body });
         } catch (e) {
-            return { ok: false, error: 'request_failed' };
+            r = { error: e };
         }
         var data = r && r.data;
-        if (!data) return { ok: false, error: (r && r.error && r.error.message) || 'request_failed' };
+        if (!data || data.ok === false) {
+            // Direct DB fallback for Super Admin if edge function returned 4xx or not deployed
+            if (window.GM.isSuperAdmin && window.GM.isSuperAdmin()) {
+                if (action === 'update-role' && payload && payload.id && payload.role) {
+                    try {
+                        var updateObj = { role: payload.role };
+                        if (payload.guild !== undefined) {
+                            updateObj.guild = (payload.guild === 'ALL' ? null : payload.guild);
+                        }
+                        if (payload.serverNumber !== undefined) {
+                            updateObj.server_number = payload.serverNumber;
+                        } else if (payload.role === 'server_admin') {
+                            var gId = payload.guild;
+                            var sNum = (gId && window.guildsData && window.guildsData[gId] && window.guildsData[gId].server_number) || (gId ? localStorage.getItem('gm_server_number_' + gId) : null);
+                            if (sNum) updateObj.server_number = String(sNum);
+                        }
+                        var { data: dbRows, error: dbErr } = await c.from('accounts').update(updateObj).ilike('id', payload.id).select();
+                        if (!dbErr && dbRows && dbRows.length > 0) {
+                            return { ok: true, role: payload.role, server_number: updateObj.server_number };
+                        }
+                    } catch (fbErr) {
+                        console.warn('Direct fallback update-role error:', fbErr);
+                    }
+                } else if (action === 'update-guild' && payload && payload.id) {
+                    try {
+                        var targetGuild = payload.guild === 'ALL' ? null : payload.guild;
+                        var { data: dbRows, error: dbErr } = await c.from('accounts').update({ guild: targetGuild }).ilike('id', payload.id).select();
+                        if (!dbErr && dbRows && dbRows.length > 0) {
+                            return { ok: true };
+                        }
+                    } catch (fbErr) {
+                        console.warn('Direct fallback update-guild error:', fbErr);
+                    }
+                }
+            }
+
+            var errMsg = (data && data.error) || (r && r.error && r.error.message) || 'request_failed';
+            if (r && r.error && r.error.context && typeof r.error.context.json === 'function') {
+                try {
+                    var errJson = await r.error.context.json();
+                    if (errJson && errJson.error) errMsg = errJson.error + (errJson.message ? ': ' + errJson.message : '');
+                } catch (_) {}
+            }
+            return { ok: false, error: errMsg };
+        }
         return data;
     }
 

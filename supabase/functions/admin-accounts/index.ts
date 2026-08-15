@@ -23,10 +23,20 @@ function json(body: unknown, status = 200): Response {
  * Validate the JWT cryptographically using Supabase's auth.getUser(),
  * then fetch the caller's role and guild from the accounts table.
  */
+function normalizeRole(r: string | null | undefined): "super_admin" | "server_admin" | "guild_admin" | "member" {
+  if (!r) return "member";
+  const s = String(r).toLowerCase().trim();
+  if (s === "super_admin" || s === "r5" || s === "admin") return "super_admin";
+  if (s === "server_admin") return "server_admin";
+  if (s === "guild_admin" || s === "r4") return "guild_admin";
+  if (s === "member") return "member";
+  return "member";
+}
+
 async function getCallerInfo(
   req: Request,
   admin: ReturnType<typeof createClient>
-): Promise<{ role: string | null; accountId: string | null; guild: string | null; serverNumber: string | null }> {
+): Promise<{ role: "super_admin" | "server_admin" | "guild_admin" | "member" | null; accountId: string | null; guild: string | null; serverNumber: string | null }> {
   const authHeader = req.headers.get("Authorization") || "";
   const match = authHeader.match(/^Bearer (.+)$/i);
   if (!match) return { role: null, accountId: null, guild: null, serverNumber: null };
@@ -36,16 +46,32 @@ async function getCallerInfo(
   const { data: { user }, error } = await anonClient.auth.getUser(jwt);
   if (error || !user) return { role: null, accountId: null, guild: null, serverNumber: null };
 
-  const { data: acc } = await admin
+  const accountIdFromMeta = user.app_metadata?.account_id || user.user_metadata?.account_id;
+  const roleFromMeta = user.app_metadata?.app_role;
+
+  let acc: any = null;
+  const { data: accByAuth } = await admin
     .from("accounts")
     .select("id, role, guild, server_number")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
-  if (!acc) return { role: null, accountId: null, guild: null, serverNumber: null };
+  acc = accByAuth;
 
-  let serverNumber = acc.server_number ?? null;
-  if (!serverNumber && acc.guild) {
+  if (!acc && accountIdFromMeta) {
+    const { data: accById } = await admin
+      .from("accounts")
+      .select("id, role, guild, server_number")
+      .ilike("id", accountIdFromMeta)
+      .maybeSingle();
+    acc = accById;
+  }
+
+  const rawRole = acc?.role || roleFromMeta;
+  const normalizedRole = normalizeRole(rawRole);
+
+  let serverNumber = acc?.server_number ?? null;
+  if (!serverNumber && acc?.guild) {
     const { data: g } = await admin
       .from("guilds")
       .select("server_number")
@@ -57,9 +83,9 @@ async function getCallerInfo(
   }
 
   return {
-    role: acc.role ?? null,
-    accountId: acc.id ?? null,
-    guild: acc.guild ?? null,
+    role: normalizedRole,
+    accountId: acc?.id ?? accountIdFromMeta ?? null,
+    guild: acc?.guild ?? null,
     serverNumber,
   };
 }
@@ -287,7 +313,7 @@ Deno.serve(async (req: Request) => {
     const { data: targetAcc } = await admin
       .from("accounts")
       .select("id, role, guild, server_number, auth_user_id")
-      .eq("id", id)
+      .ilike("id", id)
       .maybeSingle();
 
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
@@ -314,7 +340,7 @@ Deno.serve(async (req: Request) => {
     const { error: updErr } = await admin
       .from("accounts")
       .update(updateFields)
-      .eq("id", id);
+      .ilike("id", id);
 
     if (updErr) {
       logger.error("Failed to update account role", updErr, { id, newRole });
