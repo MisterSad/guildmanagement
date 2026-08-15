@@ -1,25 +1,24 @@
-📢 **FGF Guild Management Tool Update — CHANG_V2.1**
+📢 **FGF Guild Management Tool Update — CHANG_V2.2**
 
 Hey commanders! 👋
 
-I've just deployed a quick update to fix and enhance the **AI Member OCR Scanner** in the Members tab, along with today's massive engine upgrade!
+I've just deployed a quick fix for the **Shadowfront Participation Stats & Member Pool**, alongside the recent platform upgrades!
 
 Here is what's new:
 
 ---
 
-### 📸 AI Member OCR Scanner Fixed & Accelerated
-- **Zero Network Errors**: I fixed the browser security policy issue that was causing `NetworkError` when uploading screenshots.
-- **Serverless Edge AI Processing**: Screenshot analysis is now routed through dedicated serverless Edge Functions for faster, reliable roster extraction.
-- **Support for Multi-Image Batches**: You can upload up to 25 screenshots at once to scan your entire 100-member roster in seconds without timeouts or rate-limit errors.
+### ⚔️ Shadowfront Stats & Attendance Accuracy Fixed
+- **100% Accurate Attendance Rates**: I fixed an issue where unstarted squad drafts or legacy pre-start sessions were inflating the session count, causing active players to show 67% (2/3) instead of 100% (2/2).
+- **Clean Member Pool History**: Player participation badges in the squad selection pool now accurately reflect only official, completed battle sessions.
+- **Historic Data Reconciliation**: Corrected historical draft sessions in the database for affected guilds so all attendance percentages are immediately accurate.
 
-### ⚡ Blazing Fast Speed & Instant Navigation
-- **Snappier Load Times**: Restructured frontend engine with modern module bundling. Pages and player rosters open instantly with zero lag.
-- **Ultra-Fast Database Queries**: Optimized indexes across all battle records, participant lists, and sanctions for butter-smooth scrolling.
+### 📸 AI Member OCR Scanner
+- **Fast & Reliable Scanning**: Screenshot roster analysis runs on serverless Edge AI with support for multi-image batch imports.
 
-### 🛡️ Ironclad Security & Accurate Battle Scores
-- **Safe Score Submissions**: Player score inputs are bounded with automated safety limits to protect leaderboard integrity.
-- **Bulletproof Discord Webhooks**: Guild alerts and battle summaries are strictly protected against spoofing and dropouts.
+### ⚡ Blazing Fast Speed & Ironclad Security
+- **Snappier Load Times & Instant Navigation**: Modern modular frontend bundling and optimized database indexing.
+- **Safe Submissions & Webhooks**: Zero-trust security on score inputs, admin access, and Discord alert webhooks.
 
 ---
 

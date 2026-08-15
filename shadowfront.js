@@ -157,10 +157,13 @@
                 };
             });
 
-            // Union of unique (pseudo, session_id) pairs from shadowfront_squads and event_participants
+            // Union of unique (pseudo, session_id) pairs from shadowfront_squads and event_participants.
+            // Only started/recorded sessions (present in startedSessions/event_participants) count towards past history,
+            // preventing abandoned drafts or pre-start temporary session IDs from inflating the denominator.
             var histKeys = {};
             (histSquads.data || []).forEach(function (r) {
                 if (activeSids.indexOf(r.session_id) !== -1) return;
+                if (!startedSessions[r.session_id]) return;
                 histKeys[r.pseudo + '|' + r.session_id] = true;
             });
             (histParts.data || []).forEach(function (r) {

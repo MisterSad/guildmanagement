@@ -37,6 +37,11 @@
 
 ## Fixed
 
+- **Shadowfront Historical Participation Rate Calculation & Session Alignment (v110.3)**:
+  - **Unstarted Draft Filtering in Member Pool**: Updated `shadowfront.js` historical participation aggregation to ignore unstarted or abandoned pre-start draft sessions from `shadowfront_squads`, ensuring only sessions recorded in `event_participants` count towards player attendance denominators.
+  - **Database Migration & Tenant Session Reconciliation**: Reconciled historical pre-start squad rows (`SF1-20260805` / `SF2-20260808`) to their official played session IDs (`SF1-20260807` / `SF2-20260807`) for guild `CLAW`, restoring 100% (2/2) participation rates for active commanders.
+  - **Quality Assurance**: Maintained 100% test battery pass rate with **219/219 unit tests green** (`npm test`).
+
 - **OCR Roster Scanner NetworkError & CSP Resolution (v110.2)**:
   - **Edge Function Routing & Zero-Trust Integration**: Updated `callGeminiOcrBatchApi` in `app.js` to route screenshot analysis through the serverless `ocr-guild-members` Edge Function with authenticated JWT sessions, resolving client-side `NetworkError when attempting to fetch resource`.
   - **Content Security Policy Alignment**: Updated `vercel.json` CSP `connect-src` to explicitly authorize `https://generativelanguage.googleapis.com` for direct/fallback requests.
