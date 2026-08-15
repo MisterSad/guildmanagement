@@ -29,7 +29,7 @@ BEGIN
         (((SELECT auth.jwt()) -> 'app_metadata'::text) ->> 'app_role'::text),
         (((SELECT auth.jwt()) -> 'user_metadata'::text) ->> 'app_role'::text)
     );
-    IF v_role = 'super_admin' THEN
+    IF v_role = 'super_admin' OR v_role = 'R5' OR v_role = 'admin' THEN
         RETURN true;
     END IF;
 
@@ -39,7 +39,7 @@ BEGIN
     WHERE a.auth_user_id = v_auth_id AND a.status = 'active'
     LIMIT 1;
 
-    RETURN (v_role = 'super_admin');
+    RETURN (v_role = 'super_admin' OR v_role = 'R5' OR v_role = 'admin');
 END;
 $$;
 
@@ -475,6 +475,55 @@ BEGIN
         role = EXCLUDED.role,
         guild = EXCLUDED.guild,
         status = 'active';
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.gm_update_account_role(
+    p_id text,
+    p_role text,
+    p_guild text DEFAULT NULL,
+    p_server_number text DEFAULT NULL
+)
+RETURNS TABLE(ok boolean, role text, server_number text, error text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $$
+DECLARE
+    v_acc record;
+    v_target_server text;
+BEGIN
+    IF NOT public.is_super_admin() THEN
+        RETURN QUERY SELECT false, NULL::text, NULL::text, 'forbidden'::text;
+        RETURN;
+    END IF;
+
+    SELECT a.id, a.role, a.guild, a.server_number, a.auth_user_id INTO v_acc
+    FROM public.accounts a
+    WHERE a.id ILIKE TRIM(p_id);
+
+    IF v_acc.id IS NULL THEN
+        RETURN QUERY SELECT false, NULL::text, NULL::text, 'not_found'::text;
+        RETURN;
+    END IF;
+
+    v_target_server := p_server_number;
+    IF p_role = 'server_admin' AND v_target_server IS NULL THEN
+        IF p_guild IS NOT NULL AND p_guild <> 'ALL' THEN
+            SELECT g.server_number INTO v_target_server FROM public.guilds g WHERE g.id = p_guild;
+        ELSIF v_acc.guild IS NOT NULL THEN
+            SELECT g.server_number INTO v_target_server FROM public.guilds g WHERE g.id = v_acc.guild;
+        END IF;
+    END IF;
+
+    UPDATE public.accounts
+    SET
+        role = p_role,
+        guild = CASE WHEN p_guild = 'ALL' THEN NULL WHEN p_guild IS NOT NULL THEN p_guild ELSE public.accounts.guild END,
+        server_number = COALESCE(v_target_server, public.accounts.server_number)
+    WHERE id = v_acc.id;
+
+    RETURN QUERY SELECT true, p_role, v_target_server, NULL::text;
 END;
 $$;
 

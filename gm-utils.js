@@ -531,6 +531,26 @@
         var c = getClient();
         if (!c) return { ok: false, error: 'no_client' };
         var body = Object.assign({ action: action }, payload || {});
+
+        // Direct RPC acceleration for role updates (works unconditionally across all envs)
+        if (action === 'update-role' && payload && payload.id && payload.role) {
+            try {
+                var rpcRes = await c.rpc('gm_update_account_role', {
+                    p_id: payload.id,
+                    p_role: payload.role,
+                    p_guild: payload.guild || null,
+                    p_server_number: payload.serverNumber || null
+                });
+                if (rpcRes && !rpcRes.error && Array.isArray(rpcRes.data) && rpcRes.data.length > 0 && rpcRes.data[0].ok) {
+                    // Best-effort GoTrue shadow metadata sync in background
+                    c.functions.invoke('admin-accounts', { body: body }).catch(function () {});
+                    return { ok: true, role: rpcRes.data[0].role, server_number: rpcRes.data[0].server_number };
+                }
+            } catch (rpcErr) {
+                console.warn('gm_update_account_role RPC error:', rpcErr);
+            }
+        }
+
         var r;
         try {
             r = await c.functions.invoke('admin-accounts', { body: body });
@@ -540,7 +560,7 @@
         var data = r && r.data;
         if (!data || data.ok === false) {
             // Direct DB fallback for Super Admin if edge function returned 4xx or not deployed
-            if (window.GM.isSuperAdmin && window.GM.isSuperAdmin()) {
+            if (isSuperAdmin()) {
                 if (action === 'update-role' && payload && payload.id && payload.role) {
                     try {
                         var updateObj = { role: payload.role };
