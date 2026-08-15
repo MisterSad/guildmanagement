@@ -340,25 +340,25 @@ Deno.serve(async (req: Request) => {
     const { error: updErr } = await admin
       .from("accounts")
       .update(updateFields)
-      .ilike("id", id);
+      .eq("id", targetAcc.id);
 
     if (updErr) {
       logger.error("Failed to update account role", updErr, { id, newRole });
-      return json({ ok: false, error: "server_error" }, 500);
+      return json({ ok: false, error: "server_error", message: updErr.message }, 500);
     }
 
     // Synchronize GoTrue app_metadata.app_role
     if (targetAcc.auth_user_id) {
       try {
         await admin.auth.admin.updateUserById(targetAcc.auth_user_id, {
-          app_metadata: { app_role: newRole, account_id: id }
+          app_metadata: { app_role: newRole, account_id: targetAcc.id }
         });
       } catch (err) {
-        logger.warn("Failed to sync GoTrue app_role on update-role", { id, error: err });
+        logger.warn("Failed to sync GoTrue app_role on update-role", { id: targetAcc.id, error: err });
       }
     }
 
-    logger.info("Super Admin updated account role", { id, newRole, serverNumber: targetServerNumber });
+    logger.info("Super Admin updated account role", { id: targetAcc.id, newRole, serverNumber: targetServerNumber });
     return json({ ok: true, role: newRole, server_number: targetServerNumber });
   }
 
