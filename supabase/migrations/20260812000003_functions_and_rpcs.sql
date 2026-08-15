@@ -610,6 +610,7 @@ DECLARE
     v_total_attended int := 0;
     v_total_sessions int := 0;
     v_rate numeric := 0;
+    v_current_week date := (date_trunc('week', CURRENT_DATE)::date);
 BEGIN
     SELECT m.uid, m.pseudo, m.guild, m.overall_power, m.role, m.created_at
     INTO v_member
@@ -621,18 +622,20 @@ BEGIN
         RETURN jsonb_build_object('ok', false, 'error', 'player_not_found');
     END IF;
 
-    SELECT COUNT(DISTINCT public.gm_event_scoring_key(ep.event_name, ep.session_id, ep.week_start))
+    SELECT COUNT(DISTINCT public.gm_event_scoring_key(ep.event_name, ep.session_id, ep.week_start::text))
     INTO v_total_sessions
     FROM public.event_participants ep
     WHERE ep.guild = v_member.guild
+      AND ep.week_start <= v_current_week
       AND LOWER(COALESCE(ep.event_name, '')) != 'glory'
       AND (ep.is_pending IS NOT TRUE);
 
-    SELECT COUNT(DISTINCT public.gm_event_scoring_key(ep.event_name, ep.session_id, ep.week_start))
+    SELECT COUNT(DISTINCT public.gm_event_scoring_key(ep.event_name, ep.session_id, ep.week_start::text))
     INTO v_total_attended
     FROM public.event_participants ep
     WHERE ep.guild = v_member.guild
       AND ep.pseudo = v_member.pseudo
+      AND ep.week_start <= v_current_week
       AND LOWER(COALESCE(ep.event_name, '')) != 'glory'
       AND (ep.is_pending IS NOT TRUE)
       AND (ep.participated > 0 OR ep.sub_present = true OR ep.score > 0 OR ep.score_prep > 0 OR ep.score_pvp > 0);

@@ -37,6 +37,11 @@
 
 ## Fixed
 
+- **Legacy Test Session Database Cleanup & Future Weeks Isolation (v110.5)**:
+  - **Database Test Artifact Purge**: Removed 16 legacy single-row dummy/test sessions from early development testing for tenant `ALPHA`, reducing total session denominator from an inflated 28 down to the 14 authentic guild battles.
+  - **Strict Future-Week RPC Filtering**: Added `ep.week_start <= (date_trunc('week', CURRENT_DATE)::date)` into `public.gm_personal_kpis` SQL function, guaranteeing future scheduled events do not artificially depress attendance rates prior to their battle week.
+  - **Scoring Key Type Resolution**: Added `public.gm_event_scoring_key(text, text, date)` SQL overload for native Postgres `date` inputs.
+
 - **Battle Events Participation Hardening & SQL RPC Parity (v110.4)**:
   - **SQL RPC Parity (`gm_personal_kpis`)**: Updated `public.gm_personal_kpis` to use `public.gm_event_scoring_key` and exclude weekly Glory records, guaranteeing 100% mathematical consistency between the Player Portal and the Admin Command Center.
   - **Single Source of Truth Scoring Key Alignment**: Synchronized deterministic scoring keys across `src/core/config/events.ts`, `src/modules/stats/stats.service.ts`, `gm-utils.js`, `public.gm_event_scoring_key`, and `member-portal`.

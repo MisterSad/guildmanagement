@@ -1,25 +1,19 @@
-📢 **FGF Guild Management Tool Update — CHANG_V2.3**
+📢 **FGF Guild Management Tool Update — CHANG_V2.4**
 
 Hey commanders! 👋
 
-I've just rolled out a complete hardening pass across all **Battle Events & Participation Stats** (Shadowfront, SvS, GvG, Arms Race, and DTR)!
+I've just rolled out a database cleanup and an accuracy hardening pass for **Guild Participation & Event Denominators**!
 
 Here is what's new:
 
 ---
 
-### 🛡️ 100% Reliable & Unified Participation Stats
-- **Player Portal & Admin Parity**: I synchronized the backend math so that your participation rate in the **Player Portal** matches the **Guild Leaderboard** to the decimal.
-- **Accurate Scoring Keys for All Events**:
-  - **Shadowfront**: Squad 1 and Squad 2 on the same weekend count as 1 weekly guild participation (playing in either squad gives 100% credit).
-  - **SvS & GvG**: Counted cleanly as 1 participation per week.
-  - **Arms Race Stage A & Stage B**: Each stage is tracked individually with full precision.
-  - **Defend Trade Route (DTR)**: Tracked accurately per scheduled session.
-  - **Glory**: Excluded from event attendance rates and dedicated purely to power progression.
-- **Unstarted Draft Protection**: Compositions drafted in advance will never penalize players with phantom absences if a battle is rescheduled.
-
-### 📸 AI Member OCR Scanner
-- **Fast & Reliable Scanning**: Screenshot roster analysis runs on serverless Edge AI with support for multi-image batch imports.
+### 🧹 Clean Event History & Accurate Participation Rates
+- **Purged Legacy Test Artifacts**: I removed 16 old dummy test sessions from early development that were artificially inflating the event denominator (e.g. showing 28 events instead of the 14 actual guild battles).
+- **Accurate Global Event Count**:
+  - **ALPHA Tenant**: Now accurately shows **14 real event sessions** across all active weeks (Shadowfront, SvS, GvG, Arms Race A/B, and DTR).
+  - **Future Events Protection**: Scheduled upcoming events for next week are excluded from current attendance rates until their battle date arrives.
+- **100% Synced Stats**: Your attendance rate in the **Player Portal** and the **Guild Leaderboard** is now accurate to the single battle.
 
 ### ⚡ Blazing Fast Speed & Ironclad Security
 - **Snappier Load Times & Instant Navigation**: Modern modular frontend bundling and optimized database indexing.
