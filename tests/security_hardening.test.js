@@ -9,6 +9,7 @@ describe('Security Hardening & Module Audits', () => {
         expect(content).toContain('if (!info.role || (info.role !== "guild_admin" && info.role !== "server_admin" && info.role !== "super_admin"))');
         expect(content).not.toContain('action === "get-password"');
         expect(content).toContain('action === "reset-password"');
+        expect(content).toContain('action === "update-role"');
     });
 
     it('verifies event-reminders index.ts contains isValidDiscordWebhook SSRF check', () => {

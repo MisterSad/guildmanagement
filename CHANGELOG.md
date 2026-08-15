@@ -2,14 +2,16 @@
 
 ## New
 
-- **Four-Role Zero-Trust Access Model & Server Admin Role Implementation (v112)**:
+- **Four-Role Zero-Trust Access Model, Server Admin Role & Dynamic Role Assignment (v112)**:
   - **New `server_admin` Role Level**: Introduced server-scoped administration allowing federation and server leaders to manage all guilds sharing the same `server_number` across rosters, active events, scores, sanctions, and Discord webhooks without granting global `super_admin` access.
-  - **Canonical Database Migrations**: Added `server_number` column to `public.accounts`, implemented `public.is_server_admin()` helper function, and enhanced `public.gm_can_read_guilds()`, `public.gm_can_read_guild_data()`, `public.gm_can_read_account()`, and `public.check_user_guild_write_access()` to enforce strict server-number scoping while eliminating legacy single-tenant fallbacks.
-  - **Edge Functions Authorization**: Updated `admin-accounts`, `discord-webhook-proxy`, and `ocr-guild-members` edge functions to validate `server_admin` claims and enforce server boundaries on account management and webhook dispatches.
+  - **Dynamic Role Promotion & Assignment**: Added real-time role selector on account cards in the Super Admin dashboard, allowing Super Admins to promote any existing `guild_admin` to `server_admin` (or reassign roles) with immediate database, GoTrue JWT metadata, and UI synchronization.
+  - **New Admin Account Role Selection**: Super Admin account creation form now supports selecting between `Guild Admin (R4)` and `Server Admin (Server Leader)` at creation time.
+  - **Edge Function `update-role` Action**: Added dedicated `update-role` mutation in `supabase/functions/admin-accounts/index.ts` with strict Super Admin verification, automated server number resolution, and synchronized GoTrue `app_metadata.app_role` updates.
+  - **Canonical Database Migrations**: Added `server_number` column to `public.accounts`, implemented `public.is_server_admin()` helper function, updated `public.gm_admin_list()` to return `server_number`, and enhanced `public.gm_can_read_guilds()`, `public.gm_can_read_guild_data()`, `public.gm_can_read_account()`, and `public.check_user_guild_write_access()` to enforce strict server-number scoping while eliminating legacy single-tenant fallbacks.
   - **Dynamic Server-Scoped Guild Switcher**: Updated `shell.js` topbar to automatically filter and display only guilds matching the `server_admin`'s assigned `server_number` with seamless switching.
   - **DOM & HTML Hygiene**: Cleaned up `index.html` structure by moving `#ocr-modal-overlay` out of the script tag block into the proper modal section.
   - **Architectural Memory**: Documented the four-role model in `docs/adr/ADR-006-four-role-access-model-with-server-admin.md` and updated `AGENTS.md`.
-  - **Quality Assurance**: Added full test coverage in `tests/roles.test.js`, maintaining **222/222 unit tests green** (`npm test`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+  - **Quality Assurance**: Added full test coverage in `tests/roles.test.js` and `tests/security_hardening.test.js`, maintaining **222/222 unit tests green** (`npm test`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
 
 - **Antigravity 2.0 AI Engineering Infrastructure, MCP Memory & Architecture Decision Records (v111)**:
   - **Persistent MCP Knowledge Graph Memory**: Configured `@modelcontextprotocol/server-memory` to enable long-term cross-session memory, entity relationship mapping, and anti-regression tracking.

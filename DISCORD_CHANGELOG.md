@@ -10,6 +10,7 @@ Here is what's new:
 
 ### 🌐 Multi-Guild Server Administration (`server_admin`)
 - **Server Federation Management**: Server and alliance leaders can now manage all guilds operating on their server from a single account!
+- **Instant Role Promotion**: Super Admin can now promote existing guild admin accounts to Server Admin (or adjust permissions) directly from the Accounts dashboard with a single click!
 - **Dynamic Guild Switcher**: Server admins can switch smoothly between any guild belonging to their server right from the topbar navigation.
 - **Full Roster & Event Scope**: Full access to manage active battle events, player rosters, participation rates, sanctions, and Discord webhook notifications across all your server's guilds.
 - **Strict Server Isolation**: Zero cross-server data leaks — each server admin is strictly scoped to guilds matching their assigned server number.

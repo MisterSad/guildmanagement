@@ -505,7 +505,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.gm_admin_list()
-RETURNS TABLE(id text, role text, guild text, uid text, created_at timestamptz, has_password boolean)
+RETURNS TABLE(id text, role text, guild text, uid text, created_at timestamptz, has_password boolean, server_number text)
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
@@ -514,12 +514,12 @@ AS $$
 BEGIN
     IF public.is_super_admin() THEN
         RETURN QUERY
-        SELECT a.id, a.role, a.guild, a.uid, a.created_at, (a.password_enc IS NOT NULL)
+        SELECT a.id, a.role, a.guild, a.uid, a.created_at, (a.password_enc IS NOT NULL), a.server_number
         FROM public.accounts a
         ORDER BY a.created_at DESC;
     ELSE
         RETURN QUERY
-        SELECT a.id, a.role, a.guild, a.uid, a.created_at, (a.password_enc IS NOT NULL)
+        SELECT a.id, a.role, a.guild, a.uid, a.created_at, (a.password_enc IS NOT NULL), a.server_number
         FROM public.accounts a
         WHERE public.gm_can_read_guild_data(a.guild)
         ORDER BY a.created_at DESC;

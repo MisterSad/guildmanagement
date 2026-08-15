@@ -730,6 +730,9 @@
             var identifier = idInput ? idInput.value.trim() : '';
             if (!identifier) return;
 
+            var roleInput = document.getElementById('superadmin-account-role');
+            var roleSelected = roleInput ? roleInput.value : 'guild_admin';
+
             var guildInput = document.getElementById('superadmin-account-guild');
             var guildSelected = guildInput ? guildInput.value : null;
 
@@ -749,7 +752,7 @@
                 var res = await window.GM.adminAccounts('create', {
                     id: identifier,
                     password: newPassword,
-                    role: 'guild_admin',
+                    role: roleSelected,
                     guild: guildSelected
                 });
                 if (!res.ok) throw new Error(res.error || 'create_failed');
@@ -758,13 +761,13 @@
                 pendingPasswords[identifier] = newPassword;
                 accounts.unshift({ 
                     id: identifier, 
-                    role: 'guild_admin', 
+                    role: roleSelected, 
                     guild: guildSelected, 
                     created_at: new Date().toISOString() 
                 });
                 renderAccounts();
                 if (idInput) idInput.value = '';
-                showToast('Admin account ' + identifier + ' created for guild ' + guildSelected + '!', 'success');
+                showToast('Admin account ' + identifier + ' (' + roleSelected + ') created for guild ' + guildSelected + '!', 'success');
             } catch (err) {
                 showToast(err.message || 'Error creating admin account', 'error');
             } finally {
@@ -1226,7 +1229,7 @@
         var countR5 = document.getElementById('superadmin-account-count');
         if (containerR5) {
             var listR5 = accounts.filter(function (acc) {
-                return acc.role === 'guild_admin';
+                return acc.role === 'guild_admin' || acc.role === 'server_admin' || acc.role === 'super_admin';
             });
             listR5.sort(function (a, b) {
                 var gA = a.guild || '';
@@ -1260,14 +1263,14 @@
         // Group accounts by server
         var groupedByServer = {};
         listToRender.forEach(function (acc) {
-            var g = acc.guild || 'ALPHA';
-            var sNum = getServerNumberForGuild(g);
-            var sKey = sNum ? ('Server #' + sNum) : 'Unassigned Server';
+            var g = acc.guild || '';
+            var sNum = acc.server_number || (g ? getServerNumberForGuild(g) : '');
+            var sKey = sNum ? ('Server #' + sNum) : (acc.role === 'super_admin' ? 'Super Admin Master Accounts' : 'Unassigned Server');
             if (!groupedByServer[sKey]) {
                 groupedByServer[sKey] = { serverKey: sKey, sNum: sNum, accounts: [], guildsSet: {} };
             }
             groupedByServer[sKey].accounts.push(acc);
-            groupedByServer[sKey].guildsSet[g] = true;
+            if (g) groupedByServer[sKey].guildsSet[g] = true;
         });
 
         // Sort server keys (numerically by server # first)
@@ -1292,7 +1295,7 @@
                             '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size:0.85rem; font-family:var(--font-display);">' +
                                 '<i class="ph ph-hard-drives" style="margin-right:4px;"></i>' + esc(sKey) +
                             '</span>' +
-                            '<span style="font-weight:700; color:var(--fg); font-size:0.9rem;">' + esc(guildsList) + '</span>' +
+                            '<span style="font-weight:700; color:var(--fg); font-size:0.9rem;">' + esc(guildsList || 'All Tenants') + '</span>' +
                             '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:0.75rem;">' + accCount + ' admin' + (accCount > 1 ? 's' : '') + '</span>' +
                         '</div>' +
                         '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size:1.2rem; color:var(--fg-dim); transition:transform 0.25s ease;' + (isFirst ? ' transform:rotate(180deg);' : '') + '"></i>' +
@@ -1343,12 +1346,15 @@
         var html = '<div class="gm-cred-grid">';
         listToRender.forEach(function (acc) {
             var role = acc.role || 'guild_admin';
-            var roleLabel = 'Admin';
+            var roleLabel = 'Guild Admin';
             var chipCls = 'gm-chip-info';
 
             if (role === 'super_admin') {
                 roleLabel = 'Super Admin';
                 chipCls = 'gm-chip-accent';
+            } else if (role === 'server_admin') {
+                roleLabel = 'Server Admin';
+                chipCls = 'gm-chip-warning';
             } else if (role === 'member') {
                 roleLabel = 'Member';
                 chipCls = 'gm-chip-lilac';
@@ -1360,11 +1366,9 @@
             var isSuperAdminAccount = (role === 'super_admin');
             
             // Password management permission:
-            // Super Admin account password CANNOT be viewed/copied by regular R4 admins!
             var canManagePass = isSuperAdminUser || !isSuperAdminAccount;
             
             // Delete permission:
-            // Super Admin account CANNOT be deleted by regular R4 admins!
             var canDelete = isSuperAdminUser || !isSuperAdminAccount;
 
             var passHtml = '';
@@ -1387,8 +1391,16 @@
                              '</button>';
             }
 
+            var roleSelectHtml = '';
             var guildSelectHtml = '';
-            if (acc.role !== 'super_admin' && isSuperAdminUser) {
+            if (isSuperAdminUser) {
+                roleSelectHtml = '<select class="gm-select gm-select-sm gm-account-role-select" data-id="' + esc(acc.id) + '" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 105px; border-radius: 4px; line-height: 1.2; font-weight: 600;">' +
+                                     '<option value="guild_admin"' + (role === 'guild_admin' ? ' selected' : '') + '>Guild Admin</option>' +
+                                     '<option value="server_admin"' + (role === 'server_admin' ? ' selected' : '') + '>Server Admin</option>' +
+                                     '<option value="super_admin"' + (role === 'super_admin' ? ' selected' : '') + '>Super Admin</option>' +
+                                     '<option value="member"' + (role === 'member' ? ' selected' : '') + '>Member</option>' +
+                                 '</select>';
+
                 var options = '<option value="ALL"' + (!acc.guild ? ' selected' : '') + '>All Guilds</option>';
                 (window.guildsList || []).forEach(function (g) {
                     options += '<option value="' + esc(g) + '"' + (acc.guild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
@@ -1397,6 +1409,7 @@
                                       options +
                                   '</select>';
             } else {
+                roleSelectHtml = '<span class="gm-chip ' + chipCls + '">' + esc(roleLabel) + '</span>';
                 guildSelectHtml = '<span class="gm-chip ' + guildCls + '" style="font-size: 0.7rem;">' + esc(guildLabel) + '</span>';
             }
 
@@ -1405,7 +1418,7 @@
                     '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
                         '<div class="gm-cred-name">' + esc(acc.id) + '</div>' +
                         '<div class="gm-row" style="gap: 0.25rem; align-items: center;">' +
-                            '<span class="gm-chip ' + chipCls + '">' + esc(roleLabel) + '</span>' +
+                            roleSelectHtml +
                             guildSelectHtml +
                         '</div>' +
                     '</div>' +
@@ -1486,6 +1499,35 @@
                     t('confirm_delete_account_body') + ' <strong>' + esc(id) + '</strong>' + t('confirm_delete_account_body2'),
                     function () { deleteAccount(id); }
                 );
+            });
+        });
+
+        container.querySelectorAll('.gm-account-role-select').forEach(function (sel) {
+            sel.addEventListener('change', async function () {
+                var id = sel.getAttribute('data-id');
+                var newRole = sel.value;
+                var acc = accounts.find(function (a) { return a.id === id; });
+                sel.disabled = true;
+                try {
+                    var res = await window.GM.adminAccounts('update-role', {
+                        id: id,
+                        role: newRole,
+                        guild: acc ? acc.guild : null
+                    });
+                    if (!res.ok) throw new Error(res.error || 'update_failed');
+                    showToast('Role for ' + id + ' updated to ' + newRole + ' successfully!', 'success');
+                    
+                    if (acc) {
+                        acc.role = newRole;
+                        if (res.server_number) acc.server_number = res.server_number;
+                    }
+                    renderAccounts();
+                } catch (err) {
+                    showToast('Error updating role: ' + err.message, 'error');
+                    fetchAccounts();
+                } finally {
+                    sel.disabled = false;
+                }
             });
         });
 

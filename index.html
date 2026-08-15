@@ -679,19 +679,26 @@
                         </div>
                     </div>
 
-                    <!-- 3. Create Admin Account for a Given Guild -->
+                    <!-- 3. Create Admin Account for a Given Guild or Server -->
                     <div class="gm-card gm-card-padded gm-section" id="create-admin-account-card" style="margin-top: 1.5rem;">
                         <div class="gm-section-title" style="margin-bottom: 1rem;">
                             <i class="ph ph-user-plus"></i>
-                            <span>Create Admin Account for Guild</span>
+                            <span>Create Admin Account</span>
                         </div>
                         <form id="create-admin-account-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
-                            <div class="gm-input-with-icon" style="flex:2; min-width: 200px;">
+                            <div class="gm-input-with-icon" style="flex:2; min-width: 180px;">
                                 <i class="ph ph-identification-card gm-icon"></i>
                                 <input type="text" id="superadmin-account-id" class="gm-input" required
                                     placeholder="Admin username (e.g. OfficerAlpha)">
                             </div>
-                            <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
+                            <div class="gm-input-with-icon" style="flex:1.2; min-width: 160px;">
+                                <i class="ph ph-shield-check gm-icon"></i>
+                                <select id="superadmin-account-role" class="gm-select gm-input" style="padding-left: 2.25rem;">
+                                    <option value="guild_admin">Guild Admin (R4)</option>
+                                    <option value="server_admin">Server Admin (Server Leader)</option>
+                                </select>
+                            </div>
+                            <div class="gm-input-with-icon" style="flex:1.2; min-width: 160px;" id="superadmin-account-guild-wrap">
                                 <i class="ph ph-shield gm-icon"></i>
                                 <select id="superadmin-account-guild" class="gm-select gm-input" style="padding-left: 2.25rem;" required>
                                 </select>
@@ -708,7 +715,7 @@
                         <div class="gm-section-head">
                             <div class="gm-section-title">
                                 <i class="ph ph-users-three"></i>
-                                <span>Active Guild Admin Accounts</span>
+                                <span>Active Admin Accounts</span>
                                 <span class="gm-count" id="superadmin-account-count">0</span>
                             </div>
                         </div>

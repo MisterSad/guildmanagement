@@ -211,10 +211,12 @@ Deno.serve(async (req: Request) => {
   if (action === "create") {
     const id = (body?.id ?? "").toString().trim();
     const password = (body?.password ?? "").toString();
+    const serverNumber = (body?.serverNumber ?? null) as string | null;
     if (!id || !password) return json({ ok: false, error: "missing_fields" }, 400);
 
     let accRole = "guild_admin";
     let accGuild = (body?.guild ?? null) as string | null;
+    let accServerNum = serverNumber;
 
     if (info.role === "guild_admin") {
       accRole = "guild_admin";
@@ -225,6 +227,10 @@ Deno.serve(async (req: Request) => {
       accGuild = accGuild === "ALL" ? null : accGuild;
       if (accRole === "guild_admin" && (!accGuild || accGuild === "ALL")) {
         return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
+      }
+      if (accRole === "server_admin" && !accServerNum && accGuild) {
+        const { data: g } = await admin.from("guilds").select("server_number").eq("id", accGuild).maybeSingle();
+        if (g && g.server_number) accServerNum = g.server_number;
       }
     }
 
@@ -251,14 +257,83 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "server_error" }, 500);
     }
 
+    if (accServerNum) {
+      await admin.from("accounts").update({ server_number: accServerNum }).eq("id", id);
+    }
+
     const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: id, p_auth_user_id: uid, p_secret: secret });
     if (aErr) {
       logger.error("Failed gm_attach_shadow", aErr, { id, uid });
       return json({ ok: false, error: "server_error" }, 500);
     }
 
-    logger.info("Admin created account", { createdId: id, role: accRole, guild: accGuild });
+    logger.info("Admin created account", { createdId: id, role: accRole, guild: accGuild, serverNumber: accServerNum });
     return json({ ok: true });
+  }
+
+  if (action === "update-role") {
+    const id = (body?.id ?? "").toString().trim();
+    const newRole = (body?.role ?? "").toString().trim();
+    const serverNumber = (body?.serverNumber ?? null) as string | null;
+    const guild = (body?.guild ?? undefined) as string | null | undefined;
+
+    if (!id || !newRole) return json({ ok: false, error: "missing_fields" }, 400);
+
+    // Only Super Admin can change account roles (e.g. promote guild_admin to server_admin)
+    if (info.role !== "super_admin") {
+      return json({ ok: false, error: "forbidden" }, 403);
+    }
+
+    const { data: targetAcc } = await admin
+      .from("accounts")
+      .select("id, role, guild, server_number, auth_user_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+
+    let targetServerNumber = serverNumber;
+    if (newRole === "server_admin" && !targetServerNumber) {
+      const gId = (guild !== undefined ? guild : targetAcc.guild);
+      if (gId && gId !== "ALL") {
+        const { data: g } = await admin.from("guilds").select("server_number").eq("id", gId).maybeSingle();
+        if (g && g.server_number) targetServerNumber = g.server_number;
+      }
+    }
+
+    const updateFields: Record<string, any> = {
+      role: newRole,
+    };
+    if (guild !== undefined) {
+      updateFields.guild = (guild === "ALL" ? null : guild);
+    }
+    if (targetServerNumber !== undefined) {
+      updateFields.server_number = targetServerNumber;
+    }
+
+    const { error: updErr } = await admin
+      .from("accounts")
+      .update(updateFields)
+      .eq("id", id);
+
+    if (updErr) {
+      logger.error("Failed to update account role", updErr, { id, newRole });
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+
+    // Synchronize GoTrue app_metadata.app_role
+    if (targetAcc.auth_user_id) {
+      try {
+        await admin.auth.admin.updateUserById(targetAcc.auth_user_id, {
+          app_metadata: { app_role: newRole, account_id: id }
+        });
+      } catch (err) {
+        logger.warn("Failed to sync GoTrue app_role on update-role", { id, error: err });
+      }
+    }
+
+    logger.info("Super Admin updated account role", { id, newRole, serverNumber: targetServerNumber });
+    return json({ ok: true, role: newRole, server_number: targetServerNumber });
   }
 
   if (action === "delete") {
