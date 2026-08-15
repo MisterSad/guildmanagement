@@ -1,24 +1,31 @@
-📢 **FGF Guild Management Tool Update — CHANG_V2.5**
+📢 **FGF Guild Management Tool Update — CHANG_V2.6**
 
 Hey commanders! 👋
 
-I've just deployed a major upgrade to the platform's core **Development & Automation Engine** using 2026 AI Agentic & Memory Architecture!
+I've just deployed a major platform update introducing a new **Server Admin** role level, along with key performance, security, and interface improvements!
 
-Here is what's new behind the scenes:
-
----
-
-### 🧠 Persistent Long-Term Memory & Zero-Regressions System
-- **Long-Term Memory Graph**: Connected a dedicated knowledge-graph memory system to remember all architectural decisions, historical bug resolutions, and tenant settings across all future updates.
-- **Architecture Decision Records (ADRs)**: Documented our permanent SaaS design patterns (Zero-Trust Player Portal isolation, deterministic battle session keys, multi-tenant invariants) so no update will ever break existing guild data.
-- **Specialized Engineering Skills**: Set up 5 expert AI skill suites covering SaaS architecture, Postgres Row Level Security, regression prevention, and automated quality verification.
-
-### 🛡️ Ironclad Reliability & Quality Gate
-- **100% Quality Battery**: Every new feature is strictly verified against **220+ unit tests** and strict TypeScript validation before release.
-- **Zero Downtime & Fast Execution**: High reliability and blazing fast response times across all guild dashboards and the Player Portal.
+Here is what's new:
 
 ---
 
-Everything is operational and ready. If you have any feedback or ideas for new features, feel free to reach out on Discord! 🚀
+### 🌐 Multi-Guild Server Administration (`server_admin`)
+- **Server Federation Management**: Server and alliance leaders can now manage all guilds operating on their server from a single account!
+- **Dynamic Guild Switcher**: Server admins can switch smoothly between any guild belonging to their server right from the topbar navigation.
+- **Full Roster & Event Scope**: Full access to manage active battle events, player rosters, participation rates, sanctions, and Discord webhook notifications across all your server's guilds.
+- **Strict Server Isolation**: Zero cross-server data leaks — each server admin is strictly scoped to guilds matching their assigned server number.
 
-Good luck in your guild battles! ⚔️
+### 🛡️ Security & Zero-Trust Architecture
+- **Enhanced Database Policies (RLS)**: Cryptographically verified server matching in PostgreSQL Row Level Security policies and Edge Functions.
+- **Edge Functions Hardening**: Added server-scoped validation to account management, AI OCR roster scanning, and Discord webhook proxies.
+- **Clean HTML5 DOM Layout**: Reorganized core modals for smoother rendering and instant interactions.
+
+### 🧪 100% Verified Quality Gate
+- **222 Automated Tests Passing**: Comprehensive test battery completely green across all role tiers, scoping rules, and battle calculations.
+- **Zero TypeScript Errors**: Ultra-strict type safety across the entire client and Edge Function codebase.
+
+---
+
+The update is live and ready for all guilds. As always, let me know if you have any questions or feedback on Discord! 🚀
+
+Good luck in your upcoming SvS & GvG battles! ⚔️
+

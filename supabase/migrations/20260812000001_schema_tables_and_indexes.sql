@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.accounts (
     id TEXT PRIMARY KEY,
     role TEXT DEFAULT 'R4',
     guild TEXT REFERENCES public.guilds(id) ON DELETE SET NULL,
+    server_number TEXT,
     uid TEXT,
     status TEXT NOT NULL DEFAULT 'active',
     auth_user_id UUID,

@@ -1,9 +1,10 @@
-export type AccountRole = 'super_admin' | 'guild_admin' | 'member';
+export type AccountRole = 'super_admin' | 'server_admin' | 'guild_admin' | 'member';
 
 export interface GuildAccount {
   id: string;
   role: AccountRole;
   guild: string | null;
+  server_number?: string | null;
   status: 'active' | 'pending' | 'disabled';
   uid?: string | null;
   auth_user_id?: string | null;

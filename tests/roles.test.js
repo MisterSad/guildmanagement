@@ -32,6 +32,7 @@ describe('normalizeRole', () => {
     it('maps legacy values to semantic roles', () => {
         expect(GM.normalizeRole('R5')).toBe('super_admin');
         expect(GM.normalizeRole('admin')).toBe('super_admin');
+        expect(GM.normalizeRole('server_admin')).toBe('server_admin');
         expect(GM.normalizeRole('R4')).toBe('guild_admin');
         expect(GM.normalizeRole('super_admin')).toBe('super_admin');
         expect(GM.normalizeRole('guild_admin')).toBe('guild_admin');
@@ -46,6 +47,8 @@ describe('roleFromStorage', () => {
     it('reads normalized values directly', () => {
         localStorage.setItem('gm_role', 'super_admin');
         expect(GM.roleFromStorage()).toBe('super_admin');
+        localStorage.setItem('gm_role', 'server_admin');
+        expect(GM.roleFromStorage()).toBe('server_admin');
         localStorage.setItem('gm_role', 'guild_admin');
         expect(GM.roleFromStorage()).toBe('guild_admin');
         localStorage.setItem('gm_role', 'member');
@@ -59,11 +62,14 @@ describe('roleFromStorage', () => {
         localStorage.setItem('gm_role', 'R4');
         expect(GM.roleFromStorage()).toBe('guild_admin');
     });
-    it('upgrades legacy member-with-restriction to guild_admin', () => {
+    it('upgrades legacy member-with-restriction to guild_admin or server_admin', () => {
         localStorage.setItem('gm_role', 'member');
         window.currentGuildRestriction = 'OMEGA';
         expect(GM.roleFromStorage()).toBe('guild_admin');
         window.currentGuildRestriction = null;
+        localStorage.setItem('gm_server_restriction', '101');
+        expect(GM.roleFromStorage()).toBe('server_admin');
+        localStorage.removeItem('gm_server_restriction');
         expect(GM.roleFromStorage()).toBe('member');
     });
 });
@@ -74,6 +80,11 @@ describe('sessionInfo role normalization', () => {
         let info = await GM.sessionInfo();
         expect(info.role).toBe('super_admin');
         expect(info.accountId).toBe('hawkeye');
+
+        mockSession(makeJwt('server_admin', 'overlord'));
+        info = await GM.sessionInfo();
+        expect(info.role).toBe('server_admin');
+        expect(info.accountId).toBe('overlord');
 
         mockSession(makeJwt('R4', 'officer'));
         info = await GM.sessionInfo();
@@ -99,7 +110,8 @@ describe('getRoleInfo', () => {
         expect(info.role).toBe('super_admin');
         expect(info.isSuperAdmin).toBe(true);
         expect(info.isAdmin).toBe(true);
-        expect(info.isGuildAdmin).toBe(false);
+        expect(info.isServerAdmin).toBe(true);
+        expect(info.isGuildAdmin).toBe(true);
     });
     it('falls back to storage without a session', async () => {
         mockSession(null);
@@ -110,6 +122,18 @@ describe('getRoleInfo', () => {
         expect(info.isGuildAdmin).toBe(true);
         expect(info.guild).toBe('ALPHA');
     });
+    it('correctly populates server_admin info from storage', async () => {
+        mockSession(null);
+        localStorage.setItem('gm_role', 'server_admin');
+        localStorage.setItem('gm_server_restriction', '101');
+        const info = await GM.getRoleInfo();
+        expect(info.role).toBe('server_admin');
+        expect(info.isSuperAdmin).toBe(false);
+        expect(info.isServerAdmin).toBe(true);
+        expect(info.isGuildAdmin).toBe(true);
+        expect(info.isAdmin).toBe(true);
+        expect(info.serverNumber).toBe('101');
+    });
 });
 
 describe('canWriteGuild (server-agnostic client rules)', () => {
@@ -117,6 +141,18 @@ describe('canWriteGuild (server-agnostic client rules)', () => {
         localStorage.setItem('gm_role', 'super_admin');
         expect(GM.canWriteGuild('ALPHA')).toBe(true);
         expect(GM.canWriteGuild('OMEGA')).toBe(true);
+    });
+    it('server admin can write to any guild on their server', () => {
+        localStorage.setItem('gm_role', 'server_admin');
+        localStorage.setItem('gm_server_restriction', '101');
+        window.guildsData = {
+            ALPHA: { server_number: '101', type: 'Unlimited' },
+            BABE: { server_number: '101', type: 'Unlimited' },
+            OMEGA: { server_number: '202', type: 'Unlimited' }
+        };
+        expect(GM.canWriteGuild('ALPHA')).toBe(true);
+        expect(GM.canWriteGuild('BABE')).toBe(true);
+        expect(GM.canWriteGuild('OMEGA')).toBe(false);
     });
     it('guild admin writes only to their restricted guild', () => {
         localStorage.setItem('gm_role', 'guild_admin');

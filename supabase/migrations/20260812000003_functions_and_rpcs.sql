@@ -43,6 +43,41 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.is_server_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO ''
+AS $$
+DECLARE
+    v_role text;
+    v_auth_id uuid;
+BEGIN
+    v_auth_id := (SELECT auth.uid());
+    IF v_auth_id IS NULL THEN
+        RETURN false;
+    END IF;
+
+    -- Check JWT claims
+    v_role := COALESCE(
+        (((SELECT auth.jwt()) -> 'app_metadata'::text) ->> 'app_role'::text),
+        (((SELECT auth.jwt()) -> 'user_metadata'::text) ->> 'app_role'::text)
+    );
+    IF v_role IN ('super_admin', 'server_admin') THEN
+        RETURN true;
+    END IF;
+
+    -- Check accounts table
+    SELECT a.role INTO v_role
+    FROM public.accounts a
+    WHERE a.auth_user_id = v_auth_id AND a.status = 'active'
+    LIMIT 1;
+
+    RETURN (v_role IN ('super_admin', 'server_admin'));
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.gm_can_read_guilds()
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -64,7 +99,7 @@ BEGIN
     WHERE a.auth_user_id = v_auth_id AND a.status = 'active'
     LIMIT 1;
 
-    RETURN (v_role IN ('super_admin', 'guild_admin'));
+    RETURN (v_role IN ('super_admin', 'server_admin', 'guild_admin'));
 END;
 $$;
 
@@ -79,14 +114,18 @@ DECLARE
     v_auth_id uuid;
     v_role text;
     v_user_guild text;
+    v_user_server text;
+    v_target_server text;
 BEGIN
     v_auth_id := (SELECT auth.uid());
     IF v_auth_id IS NULL THEN
         RETURN false;
     END IF;
 
-    SELECT a.role, a.guild INTO v_role, v_user_guild
+    SELECT a.role, a.guild, COALESCE(a.server_number, g.server_number)
+    INTO v_role, v_user_guild, v_user_server
     FROM public.accounts a
+    LEFT JOIN public.guilds g ON g.id = a.guild
     WHERE a.auth_user_id = v_auth_id AND a.status = 'active'
     LIMIT 1;
 
@@ -94,7 +133,15 @@ BEGIN
         RETURN true;
     END IF;
 
-    IF v_role = 'guild_admin' AND (v_user_guild = p_guild OR (v_user_guild IS NULL AND p_guild = 'ALPHA')) THEN
+    IF v_role = 'server_admin' THEN
+        SELECT g2.server_number INTO v_target_server
+        FROM public.guilds g2
+        WHERE g2.id = p_guild
+        LIMIT 1;
+        RETURN (v_target_server IS NOT NULL AND v_user_server IS NOT NULL AND v_target_server = v_user_server);
+    END IF;
+
+    IF v_role = 'guild_admin' AND v_user_guild = p_guild THEN
         RETURN true;
     END IF;
 
@@ -113,15 +160,19 @@ DECLARE
     v_auth_id uuid;
     v_role text;
     v_user_guild text;
+    v_user_server text;
     v_target_guild text;
+    v_target_server text;
 BEGIN
     v_auth_id := (SELECT auth.uid());
     IF v_auth_id IS NULL THEN
         RETURN false;
     END IF;
 
-    SELECT a.role, a.guild INTO v_role, v_user_guild
+    SELECT a.role, a.guild, COALESCE(a.server_number, g.server_number)
+    INTO v_role, v_user_guild, v_user_server
     FROM public.accounts a
+    LEFT JOIN public.guilds g ON g.id = a.guild
     WHERE a.auth_user_id = v_auth_id AND a.status = 'active'
     LIMIT 1;
 
@@ -129,11 +180,22 @@ BEGIN
         RETURN true;
     END IF;
 
+    IF v_role = 'server_admin' THEN
+        SELECT a2.guild, COALESCE(a2.server_number, g2.server_number)
+        INTO v_target_guild, v_target_server
+        FROM public.accounts a2
+        LEFT JOIN public.guilds g2 ON g2.id = a2.guild
+        WHERE a2.id = p_account_id
+        LIMIT 1;
+        RETURN (v_target_server IS NOT NULL AND v_user_server IS NOT NULL AND v_target_server = v_user_server);
+    END IF;
+
     IF v_role = 'guild_admin' THEN
         SELECT a2.guild INTO v_target_guild
         FROM public.accounts a2
-        WHERE a2.id = p_account_id;
-        RETURN (v_target_guild = v_user_guild OR (v_user_guild IS NULL AND v_target_guild = 'ALPHA'));
+        WHERE a2.id = p_account_id
+        LIMIT 1;
+        RETURN (v_target_guild = v_user_guild);
     END IF;
 
     RETURN (p_account_id = (SELECT a.id FROM public.accounts a WHERE a.auth_user_id = v_auth_id));
@@ -151,14 +213,18 @@ DECLARE
     v_auth_id uuid;
     v_role text;
     v_user_guild text;
+    v_user_server text;
+    v_target_server text;
 BEGIN
     v_auth_id := (SELECT auth.uid());
     IF v_auth_id IS NULL THEN
         RETURN false;
     END IF;
 
-    SELECT a.role, a.guild INTO v_role, v_user_guild
+    SELECT a.role, a.guild, COALESCE(a.server_number, g.server_number)
+    INTO v_role, v_user_guild, v_user_server
     FROM public.accounts a
+    LEFT JOIN public.guilds g ON g.id = a.guild
     WHERE a.auth_user_id = v_auth_id AND a.status = 'active'
     LIMIT 1;
 
@@ -166,7 +232,15 @@ BEGIN
         RETURN true;
     END IF;
 
-    IF v_role = 'guild_admin' AND (v_user_guild = p_guild OR (v_user_guild IS NULL AND p_guild = 'ALPHA')) THEN
+    IF v_role = 'server_admin' THEN
+        SELECT g2.server_number INTO v_target_server
+        FROM public.guilds g2
+        WHERE g2.id = p_guild
+        LIMIT 1;
+        RETURN (v_target_server IS NOT NULL AND v_user_server IS NOT NULL AND v_target_server = v_user_server);
+    END IF;
+
+    IF v_role = 'guild_admin' AND v_user_guild = p_guild THEN
         RETURN true;
     END IF;
 

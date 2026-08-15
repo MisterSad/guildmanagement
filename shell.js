@@ -465,18 +465,28 @@
             : '<div class="gm-topbar-brand"></div>';
 
         var isSuperAdmin = window.GM.isSuperAdmin();
+        var isServerAdmin = window.GM.isServerAdmin ? window.GM.isServerAdmin() : false;
+        var serverRestriction = localStorage.getItem('gm_server_restriction');
 
         var guilds = window.guildsList || [];
         if (window.currentGuildRestriction) {
             guilds = [window.currentGuildRestriction];
             window.currentGuild = window.currentGuildRestriction;
             localStorage.setItem('gm_current_guild', window.currentGuildRestriction);
+        } else if (isServerAdmin && serverRestriction && window.guildsData) {
+            guilds = guilds.filter(function(g) {
+                return window.guildsData[g] && String(window.guildsData[g].server_number) === String(serverRestriction);
+            });
+            if (guilds.length > 0 && guilds.indexOf(window.currentGuild) === -1) {
+                window.currentGuild = guilds[0];
+                localStorage.setItem('gm_current_guild', guilds[0]);
+            }
         }
         var guildOptions = guilds.map(function(g) {
             return '<option value="' + esc(g) + '"' + (window.currentGuild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
         }).join('');
 
-        var selectStyle = isSuperAdmin
+        var selectStyle = (isSuperAdmin || (isServerAdmin && guilds.length > 1))
             ? 'padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
             : 'display: none; padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
 

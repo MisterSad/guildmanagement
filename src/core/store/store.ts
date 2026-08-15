@@ -9,6 +9,7 @@ import { AccountRole, GuildMember, EventStatus } from '../../types/database';
 export interface AppState {
   currentGuild: string;
   guildRestriction: string | null;
+  serverRestriction: string | null;
   role: AccountRole;
   userIdentifier: string | null;
   accountId: string | null;
@@ -22,6 +23,7 @@ type Listener = (state: AppState) => void;
 const initialState: AppState = {
   currentGuild: typeof localStorage !== 'undefined' ? localStorage.getItem('gm_current_guild') || 'ALPHA' : 'ALPHA',
   guildRestriction: typeof localStorage !== 'undefined' ? localStorage.getItem('gm_guild_restriction') : null,
+  serverRestriction: typeof localStorage !== 'undefined' ? localStorage.getItem('gm_server_restriction') : null,
   role: 'member',
   userIdentifier: null,
   accountId: null,

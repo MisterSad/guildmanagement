@@ -26,28 +26,41 @@ function json(body: unknown, status = 200): Response {
 async function getCallerInfo(
   req: Request,
   admin: ReturnType<typeof createClient>
-): Promise<{ role: string | null; accountId: string | null; guild: string | null }> {
+): Promise<{ role: string | null; accountId: string | null; guild: string | null; serverNumber: string | null }> {
   const authHeader = req.headers.get("Authorization") || "";
   const match = authHeader.match(/^Bearer (.+)$/i);
-  if (!match) return { role: null, accountId: null, guild: null };
+  if (!match) return { role: null, accountId: null, guild: null, serverNumber: null };
 
   const jwt = match[1].trim();
   const anonClient = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
   const { data: { user }, error } = await anonClient.auth.getUser(jwt);
-  if (error || !user) return { role: null, accountId: null, guild: null };
+  if (error || !user) return { role: null, accountId: null, guild: null, serverNumber: null };
 
   const { data: acc } = await admin
     .from("accounts")
-    .select("id, role, guild")
+    .select("id, role, guild, server_number")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
-  if (!acc) return { role: null, accountId: null, guild: null };
+  if (!acc) return { role: null, accountId: null, guild: null, serverNumber: null };
+
+  let serverNumber = acc.server_number ?? null;
+  if (!serverNumber && acc.guild) {
+    const { data: g } = await admin
+      .from("guilds")
+      .select("server_number")
+      .eq("id", acc.guild)
+      .maybeSingle();
+    if (g && g.server_number) {
+      serverNumber = g.server_number;
+    }
+  }
 
   return {
     role: acc.role ?? null,
     accountId: acc.id ?? null,
     guild: acc.guild ?? null,
+    serverNumber,
   };
 }
 
@@ -89,7 +102,7 @@ Deno.serve(async (req: Request) => {
 
   const info = await getCallerInfo(req, admin);
 
-  if (!info.role || (info.role !== "guild_admin" && info.role !== "super_admin")) {
+  if (!info.role || (info.role !== "guild_admin" && info.role !== "server_admin" && info.role !== "super_admin")) {
     logger.warn("Unauthorized admin-accounts call", { role: info.role });
     return json({ ok: false, error: "forbidden" }, 403);
   }
@@ -123,6 +136,13 @@ Deno.serve(async (req: Request) => {
     let accountsList = data ?? [];
     if (info.role === "guild_admin") {
       accountsList = accountsList.filter((acc: any) => acc.guild === callerGuild);
+    } else if (info.role === "server_admin") {
+      const { data: guildsOnServer } = await admin
+        .from("guilds")
+        .select("id")
+        .eq("server_number", info.serverNumber || "");
+      const allowedGuildIds = new Set((guildsOnServer || []).map((g: any) => g.id));
+      accountsList = accountsList.filter((acc: any) => acc.guild && allowedGuildIds.has(acc.guild));
     }
     return json({ ok: true, accounts: accountsList });
   }

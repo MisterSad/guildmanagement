@@ -14,7 +14,7 @@ import {
   sessionDateFromId,
   buildEventSessionId
 } from './core/config/events';
-import { normalizeRole, roleFromStorage, isSuperAdmin, isGuildAdmin } from './core/auth/roles';
+import { normalizeRole, roleFromStorage, isSuperAdmin, isServerAdmin, isGuildAdmin } from './core/auth/roles';
 import { appStore } from './core/store/store';
 import { calculateMatchupData } from './workers/matchup.worker';
 import { EventsService } from './modules/events/events.service';
@@ -54,6 +54,7 @@ if (typeof window !== 'undefined') {
   (window as any).GM.normalizeRole = normalizeRole;
   (window as any).GM.roleFromStorage = roleFromStorage;
   (window as any).GM.isSuperAdmin = isSuperAdmin;
+  (window as any).GM.isServerAdmin = isServerAdmin;
   (window as any).GM.isGuildAdmin = isGuildAdmin;
 
   // Store, Worker & Services bridge

@@ -5,11 +5,11 @@ import { logger } from '../src/core/logger/logger';
 import { computeMemberTier, calculateMatchupData } from '../src/workers/matchup.worker';
 
 describe('Audit Remediation Verification Suite', () => {
-  it('SEV-01: verifies discord-webhook-proxy requires JWT and checks guild_admin/super_admin roles', () => {
+  it('SEV-01: verifies discord-webhook-proxy requires JWT and checks guild_admin/server_admin/super_admin roles', () => {
     const filePath = path.resolve(__dirname, '../supabase/functions/discord-webhook-proxy/index.ts');
     const content = fs.readFileSync(filePath, 'utf-8');
     expect(content).toContain('validateCallerAuth');
-    expect(content).toContain('caller.role !== "guild_admin" && caller.role !== "super_admin"');
+    expect(content).toContain('caller.role !== "guild_admin" && caller.role !== "server_admin" && caller.role !== "super_admin"');
     expect(content).toContain('isValidDiscordWebhook');
     expect(content).toContain('forbidden_cross_guild');
   });
@@ -18,7 +18,7 @@ describe('Audit Remediation Verification Suite', () => {
     const filePath = path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts');
     const content = fs.readFileSync(filePath, 'utf-8');
     expect(content).toContain('validateCallerAuth');
-    expect(content).toContain('caller.role !== "guild_admin" && caller.role !== "super_admin"');
+    expect(content).toContain('caller.role !== "guild_admin" && caller.role !== "server_admin" && caller.role !== "super_admin"');
     expect(content).toContain('forbidden');
   });
 

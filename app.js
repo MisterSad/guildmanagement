@@ -98,7 +98,7 @@
         // Non-portal session: clear the portal marker.
         localStorage.removeItem('gm_portal_session');
 
-        // Fetch guild restriction if guild_admin
+        // Fetch guild or server restriction
         if (info.role === 'guild_admin' && info.accountId) {
             try {
                 var { data } = await supabase.from('accounts').select('guild').ilike('id', info.accountId).maybeSingle();
@@ -107,18 +107,43 @@
                     window.currentGuild = data.guild;
                     localStorage.setItem('gm_current_guild', data.guild);
                     localStorage.setItem('gm_guild_restriction', data.guild);
+                    localStorage.removeItem('gm_server_restriction');
                 } else {
                     window.currentGuildRestriction = null;
                     localStorage.removeItem('gm_guild_restriction');
+                    localStorage.removeItem('gm_server_restriction');
                 }
             } catch (err) {
                 console.error('Failed to restore account guild restriction:', err);
                 window.currentGuildRestriction = null;
                 localStorage.removeItem('gm_guild_restriction');
+                localStorage.removeItem('gm_server_restriction');
+            }
+        } else if (info.role === 'server_admin' && info.accountId) {
+            try {
+                var { data } = await supabase.from('accounts').select('guild, server_number').ilike('id', info.accountId).maybeSingle();
+                var sNum = data && data.server_number;
+                if (!sNum && data && data.guild) {
+                    var { data: g } = await supabase.from('guilds').select('server_number').eq('id', data.guild).maybeSingle();
+                    if (g && g.server_number) sNum = g.server_number;
+                }
+                if (sNum) {
+                    localStorage.setItem('gm_server_restriction', sNum);
+                } else {
+                    localStorage.removeItem('gm_server_restriction');
+                }
+                window.currentGuildRestriction = null;
+                localStorage.removeItem('gm_guild_restriction');
+            } catch (err) {
+                console.error('Failed to restore server restriction:', err);
+                window.currentGuildRestriction = null;
+                localStorage.removeItem('gm_guild_restriction');
+                localStorage.removeItem('gm_server_restriction');
             }
         } else {
             window.currentGuildRestriction = null;
             localStorage.removeItem('gm_guild_restriction');
+            localStorage.removeItem('gm_server_restriction');
         }
 
         var role = info.role; // already normalized (super_admin | guild_admin | member)
@@ -183,8 +208,9 @@
                 // Fetch guilds list
                 await fetchGuilds();
 
-                // Fetch guild restriction for new logins if guild_admin
-                if (window.GM.normalizeRole(resp.role) === 'guild_admin') {
+                // Fetch restriction for new logins if guild_admin or server_admin
+                var normalizedLoginRole = window.GM.normalizeRole(resp.role);
+                if (normalizedLoginRole === 'guild_admin') {
                     try {
                         var { data } = await supabase.from('accounts').select('guild').ilike('id', canonicalUser).maybeSingle();
                         if (data && data.guild) {
@@ -192,18 +218,43 @@
                             window.currentGuild = data.guild;
                             localStorage.setItem('gm_current_guild', data.guild);
                             localStorage.setItem('gm_guild_restriction', data.guild);
+                            localStorage.removeItem('gm_server_restriction');
                         } else {
                             window.currentGuildRestriction = null;
                             localStorage.removeItem('gm_guild_restriction');
+                            localStorage.removeItem('gm_server_restriction');
                         }
                     } catch (err) {
                         console.error('Failed to load login guild restriction:', err);
                         window.currentGuildRestriction = null;
                         localStorage.removeItem('gm_guild_restriction');
+                        localStorage.removeItem('gm_server_restriction');
+                    }
+                } else if (normalizedLoginRole === 'server_admin') {
+                    try {
+                        var { data } = await supabase.from('accounts').select('guild, server_number').ilike('id', canonicalUser).maybeSingle();
+                        var sNum = data && data.server_number;
+                        if (!sNum && data && data.guild) {
+                            var { data: g } = await supabase.from('guilds').select('server_number').eq('id', data.guild).maybeSingle();
+                            if (g && g.server_number) sNum = g.server_number;
+                        }
+                        if (sNum) {
+                            localStorage.setItem('gm_server_restriction', sNum);
+                        } else {
+                            localStorage.removeItem('gm_server_restriction');
+                        }
+                        window.currentGuildRestriction = null;
+                        localStorage.removeItem('gm_guild_restriction');
+                    } catch (err) {
+                        console.error('Failed to load login server restriction:', err);
+                        window.currentGuildRestriction = null;
+                        localStorage.removeItem('gm_guild_restriction');
+                        localStorage.removeItem('gm_server_restriction');
                     }
                 } else {
                     window.currentGuildRestriction = null;
                     localStorage.removeItem('gm_guild_restriction');
+                    localStorage.removeItem('gm_server_restriction');
                 }
 
                 var role = window.GM.normalizeRole(resp.role);

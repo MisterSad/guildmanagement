@@ -27,7 +27,7 @@ Deno.serve(async (req: Request) => {
 
   // 1. Mandatory JWT & RBAC Verification (SEV-02 Fix)
   const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
-  if (!caller.authenticated || !caller.role || (caller.role !== "guild_admin" && caller.role !== "super_admin")) {
+  if (!caller.authenticated || !caller.role || (caller.role !== "guild_admin" && caller.role !== "server_admin" && caller.role !== "super_admin")) {
     logger.warn("Unauthorized attempt to access OCR endpoint", {
       authenticated: caller.authenticated,
       role: caller.role,

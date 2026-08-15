@@ -42,26 +42,40 @@
     // d'en montrer une liste périmée.
     window.guildsList = window.guildsList || [];
 
-    // ── Rôles : modèle sémantique (super_admin / guild_admin / member) ─────
+    // ── Rôles : modèle sémantique (super_admin / server_admin / guild_admin / member) ─────
     // Les anciennes valeurs numériques (R5/R4) et 'admin' sont normalisées
     // pour la compatibilité avec les sessions persistées en localStorage.
     function normalizeRole(r) {
         if (r === 'R5' || r === 'admin') return 'super_admin';
+        if (r === 'server_admin') return 'server_admin';
         if (r === 'R4') return 'guild_admin';
         if (r === 'super_admin' || r === 'guild_admin' || r === 'member') return r;
         return 'member';
     }
 
     // Rôle courant synchrone (localStorage + restriction). Un rôle 'member'
-    // stocké avec une restriction de guilde désigne un ancien compte R4.
+    // stocké avec une restriction de guilde/serveur désigne un ancien compte d'admin.
     function roleFromStorage() {
         var role = normalizeRole(localStorage.getItem('gm_role'));
-        if (role === 'member' && window.currentGuildRestriction) role = 'guild_admin';
+        if (role === 'member') {
+            if (localStorage.getItem('gm_server_restriction')) role = 'server_admin';
+            else if (window.currentGuildRestriction) role = 'guild_admin';
+        }
         return role;
     }
 
     function isSuperAdmin() {
         return roleFromStorage() === 'super_admin';
+    }
+
+    function isServerAdmin() {
+        var r = roleFromStorage();
+        return r === 'server_admin' || r === 'super_admin';
+    }
+
+    function isGuildAdmin() {
+        var r = roleFromStorage();
+        return r === 'guild_admin' || r === 'server_admin' || r === 'super_admin';
     }
 
     // Rôle courant asynchrone, priorité au JWT (app_metadata), fallback storage.
@@ -71,15 +85,17 @@
         return {
             role: role,
             isSuperAdmin: role === 'super_admin',
-            isGuildAdmin: role === 'guild_admin',
-            isAdmin: role === 'super_admin' || role === 'guild_admin',
-            guild: window.currentGuildRestriction
+            isServerAdmin: role === 'server_admin' || role === 'super_admin',
+            isGuildAdmin: role === 'guild_admin' || role === 'server_admin' || role === 'super_admin',
+            isAdmin: role === 'super_admin' || role === 'server_admin' || role === 'guild_admin',
+            guild: window.currentGuildRestriction,
+            serverNumber: localStorage.getItem('gm_server_restriction') || null
         };
     }
 
     function isGuildSubscriptionExpired(guildId) {
         var role = roleFromStorage();
-        if (role === 'super_admin' || window.currentGuildRestriction === null) {
+        if (role === 'super_admin' || (window.currentGuildRestriction === null && !localStorage.getItem('gm_server_restriction'))) {
             return false; // Super admin (or unrestricted officer) is never restricted
         }
         if (!guildId) return false;
@@ -100,6 +116,17 @@
         // Super admin may write to every guild.
         if (role === 'super_admin') {
             return true;
+        }
+
+        // Server admin can write to any guild on their assigned server
+        if (role === 'server_admin') {
+            var serverRestriction = localStorage.getItem('gm_server_restriction');
+            if (!serverRestriction) return false;
+            var targetData = window.guildsData && window.guildsData[activeG];
+            if (!targetData || String(targetData.server_number) !== String(serverRestriction)) {
+                return false;
+            }
+            return !isGuildSubscriptionExpired(activeG);
         }
 
         // Rule 1: Guild admin can write to their dedicated assigned guild if active
@@ -1314,6 +1341,8 @@
         normalizeRole: normalizeRole,
         roleFromStorage: roleFromStorage,
         isSuperAdmin: isSuperAdmin,
+        isServerAdmin: isServerAdmin,
+        isGuildAdmin: isGuildAdmin,
         getRoleInfo: getRoleInfo,
         getActiveGuild: getActiveGuild,
         getCurrentPseudo: getCurrentPseudo,

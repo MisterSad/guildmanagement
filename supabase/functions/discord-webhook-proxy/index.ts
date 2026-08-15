@@ -52,7 +52,7 @@ serve(async (req: Request) => {
 
   // 1. Mandatory JWT & RBAC Verification (C1 / SEV-01 Fix)
   const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
-  if (!caller.authenticated || !caller.role || (caller.role !== "guild_admin" && caller.role !== "super_admin")) {
+  if (!caller.authenticated || !caller.role || (caller.role !== "guild_admin" && caller.role !== "server_admin" && caller.role !== "super_admin")) {
     logger.warn("Unauthorized attempt to access discord proxy", {
       authenticated: caller.authenticated,
       role: caller.role,
@@ -94,6 +94,18 @@ serve(async (req: Request) => {
         return json({ ok: false, error: "forbidden_cross_guild" }, 403);
       }
       requestedGuild = caller.guild || requestedGuild;
+    } else if (caller.role === "server_admin") {
+      if (requestedGuild && caller.serverNumber) {
+        const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+        const { data: g } = await adminClient.from("guilds").select("server_number").eq("id", requestedGuild).maybeSingle();
+        if (!g || g.server_number !== caller.serverNumber) {
+          logger.warn("Server admin attempted cross-server discord webhook dispatch", {
+            callerServer: caller.serverNumber,
+            requestedGuild,
+          });
+          return json({ ok: false, error: "forbidden_cross_server" }, 403);
+        }
+      }
     }
 
     // Server-side fallback resolution if webhookUrl is empty

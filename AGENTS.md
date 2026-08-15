@@ -21,14 +21,15 @@ Every modification must strictly comply with the architectural rules, security b
 
 ---
 
-## 2. The Three-Role Zero-Trust Access Model (CRITICAL)
+## 2. The Four-Role Zero-Trust Access Model (CRITICAL)
 
-Access control is strictly partitioned into three roles. **Never blur the boundaries.**
+Access control is strictly partitioned into four roles. **Never blur the boundaries.**
 
 | Role | Database & REST Scope | UI Access |
 | :--- | :--- | :--- |
-| `super_admin` | Reads & writes **all guild tenants**. Bypasses tenant scoping. Single account (HawkEye). | Full Admin Command Center + Cross-Guild Draft Ranking, Server Matchups, and Live System Logs & Diagnostics console (`#tab-system-logs`). |
-| `guild_admin` | Reads & writes **only their own guild tenant** rows (tenants: `ALPHA`, `OMEGA`, `BABE`, `IMK`, `YARR`, `CLAW`, `DEMO`, `SEN`, `NIGHTWRAITH`, `OBSIDIANSTAR`, `ASTRAL_LIBERION`, `BLACKTHUNDER`, `TWILIGHT`). | Command Center for their guild: Members, Active Events, Scores, Sanctions, Guild Settings. |
+| `super_admin` | Reads & writes **all guild tenants**. Bypasses tenant scoping. Single master account (HawkEye). | Full Admin Command Center + Cross-Guild Draft Ranking, Server Matchups, and Live System Logs & Diagnostics console (`#tab-system-logs`). |
+| `server_admin` | Reads & writes **all guild tenants sharing their assigned `server_number`**. | Command Center with dynamic server-scoped Guild Switcher dropdown. Can manage rosters, active events, scores, sanctions, and webhooks for all guilds on their server. |
+| `guild_admin` | Reads & writes **only their own single guild tenant** rows (tenants: `ALPHA`, `OMEGA`, `BABE`, `IMK`, `YARR`, `CLAW`, `DEMO`, `SEN`, `NIGHTWRAITH`, `OBSIDIANSTAR`, `ASTRAL_LIBERION`, `BLACKTHUNDER`, `TWILIGHT`). | Command Center for their guild: Members, Active Events, Scores, Sanctions, Guild Settings. |
 | `member` | **ZERO direct database access**. Receives `[]` or denial on all tenant tables, `guilds`, and `accounts` (except own row). | **Player Portal only** (`portal.js` / `PortalService`). Communicates exclusively through the `member-portal` Edge Function. |
 
 ### 🔒 Security Invariants & Golden Rules

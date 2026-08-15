@@ -6,7 +6,7 @@ describe('Security Hardening & Module Audits', () => {
     it('verifies admin-accounts index.ts contains strict role guards', () => {
         const filePath = path.resolve(__dirname, '../supabase/functions/admin-accounts/index.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
-        expect(content).toContain('if (!info.role || (info.role !== "guild_admin" && info.role !== "super_admin"))');
+        expect(content).toContain('if (!info.role || (info.role !== "guild_admin" && info.role !== "server_admin" && info.role !== "super_admin"))');
         expect(content).not.toContain('action === "get-password"');
         expect(content).toContain('action === "reset-password"');
     });

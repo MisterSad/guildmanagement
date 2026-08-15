@@ -12,6 +12,7 @@ Whenever major design decisions, patterns, or critical bug resolutions are estab
 | [ADR-003](./ADR-003-multi-tenant-saas-invariants.md) | Strict Multi-Tenant SaaS Invariants & Cross-Tenant Uniformity | **Accepted** | 2026-08-12 |
 | [ADR-004](./ADR-004-consolidated-database-schema-and-security-definer.md) | Master DDL Consolidation & SECURITY DEFINER Protocol | **Accepted** | 2026-08-12 |
 | [ADR-005](./ADR-005-memory-and-regression-prevention-protocol.md) | Continuous Memory & Anti-Regression Quality Protocol | **Accepted** | 2026-08-15 |
+| [ADR-006](./ADR-006-four-role-access-model-with-server-admin.md) | Four-Role Zero-Trust Access Model with Server Admin Support | **Accepted** | 2026-08-15 |
 
 ---
 

@@ -12,8 +12,9 @@ export interface CallerInfo {
   authenticated: boolean;
   userId: string | null;
   accountId: string | null;
-  role: "super_admin" | "guild_admin" | "member" | null;
+  role: "super_admin" | "server_admin" | "guild_admin" | "member" | null;
   guild: string | null;
+  serverNumber: string | null;
   status: string | null;
 }
 
@@ -32,6 +33,7 @@ export async function validateCallerAuth(
       accountId: null,
       role: null,
       guild: null,
+      serverNumber: null,
       status: null,
     };
   }
@@ -47,6 +49,7 @@ export async function validateCallerAuth(
       accountId: null,
       role: null,
       guild: null,
+      serverNumber: null,
       status: null,
     };
   }
@@ -54,7 +57,7 @@ export async function validateCallerAuth(
   const adminClient = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
   const { data: acc } = await adminClient
     .from("accounts")
-    .select("id, role, guild, status")
+    .select("id, role, guild, server_number, status")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -65,16 +68,30 @@ export async function validateCallerAuth(
       accountId: null,
       role: null,
       guild: null,
+      serverNumber: null,
       status: null,
     };
+  }
+
+  let serverNumber = acc.server_number ?? null;
+  if (!serverNumber && acc.guild) {
+    const { data: g } = await adminClient
+      .from("guilds")
+      .select("server_number")
+      .eq("id", acc.guild)
+      .maybeSingle();
+    if (g && g.server_number) {
+      serverNumber = g.server_number;
+    }
   }
 
   return {
     authenticated: true,
     userId: user.id,
     accountId: acc.id ?? null,
-    role: (acc.role as "super_admin" | "guild_admin" | "member") ?? null,
+    role: (acc.role as "super_admin" | "server_admin" | "guild_admin" | "member") ?? null,
     guild: acc.guild ?? null,
+    serverNumber,
     status: acc.status ?? null,
   };
 }
