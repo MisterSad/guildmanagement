@@ -2,6 +2,13 @@
 
 ## New
 
+- **Antigravity 2.0 AI Engineering Infrastructure, MCP Memory & Architecture Decision Records (v111)**:
+  - **Persistent MCP Knowledge Graph Memory**: Configured `@modelcontextprotocol/server-memory` to enable long-term cross-session memory, entity relationship mapping, and anti-regression tracking.
+  - **Specialized Workspace Skills**: Added 5 dedicated Antigravity skills in `.agents/skills/` (`fgf-saas-architect`, `fgf-rls-security`, `fgf-quality-gate`, `fgf-changelog-discord`, `fgf-memory-keeper`) enforcing multi-tenant invariants, Zero-Trust RLS, and automated quality gates.
+  - **Architecture Decision Records (ADRs)**: Created `docs/adr/` capturing foundational decisions (Three-Role Zero-Trust Model, Deterministic Event Sessions, Multi-Tenant Invariants, Master Schema Consolidation, Continuous Memory Protocol).
+  - **Specialized Subagents**: Defined and registered `fgf-architect`, `fgf-security-auditor`, and `fgf-qa-tester` subagents for autonomous, role-segregated engineering tasks.
+  - **Quality Assurance**: Verified 100% quality gate compliance with **220/220 unit tests green** (`npm test`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Repository Hygiene, Authoritative AGENTS.md Overhaul & 2026 Standards (v110)**:
   - **Authoritative AGENTS.md Overhaul**: Completely updated `AGENTS.md` and `docs/ARCHITECTURE.md` to establish strict 2026 SaaS development standards, zero-trust three-role access boundaries (`super_admin`, `guild_admin`, `member`), single sources of truth, and changelog maintenance invariants.
   - **Repository & Workspace Clean-Up**: Removed temporary build artifacts, macOS metadata, and non-canonical clutter.

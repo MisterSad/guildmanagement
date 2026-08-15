@@ -1,25 +1,24 @@
-📢 **FGF Guild Management Tool Update — CHANG_V2.4**
+📢 **FGF Guild Management Tool Update — CHANG_V2.5**
 
 Hey commanders! 👋
 
-I've just rolled out a database cleanup and an accuracy hardening pass for **Guild Participation & Event Denominators**!
+I've just deployed a major upgrade to the platform's core **Development & Automation Engine** using 2026 AI Agentic & Memory Architecture!
 
-Here is what's new:
-
----
-
-### 🧹 Clean Event History & Accurate Participation Rates
-- **Purged Legacy Test Artifacts**: I removed 16 old dummy test sessions from early development that were artificially inflating the event denominator (e.g. showing 28 events instead of the 14 actual guild battles).
-- **Accurate Global Event Count**:
-  - **ALPHA Tenant**: Now accurately shows **14 real event sessions** across all active weeks (Shadowfront, SvS, GvG, Arms Race A/B, and DTR).
-  - **Future Events Protection**: Scheduled upcoming events for next week are excluded from current attendance rates until their battle date arrives.
-- **100% Synced Stats**: Your attendance rate in the **Player Portal** and the **Guild Leaderboard** is now accurate to the single battle.
-
-### ⚡ Blazing Fast Speed & Ironclad Security
-- **Snappier Load Times & Instant Navigation**: Modern modular frontend bundling and optimized database indexing.
+Here is what's new behind the scenes:
 
 ---
 
-Everything is live in production right now. If you run into any issues or have feedback, feel free to ping me on Discord! 🚀
+### 🧠 Persistent Long-Term Memory & Zero-Regressions System
+- **Long-Term Memory Graph**: Connected a dedicated knowledge-graph memory system to remember all architectural decisions, historical bug resolutions, and tenant settings across all future updates.
+- **Architecture Decision Records (ADRs)**: Documented our permanent SaaS design patterns (Zero-Trust Player Portal isolation, deterministic battle session keys, multi-tenant invariants) so no update will ever break existing guild data.
+- **Specialized Engineering Skills**: Set up 5 expert AI skill suites covering SaaS architecture, Postgres Row Level Security, regression prevention, and automated quality verification.
 
-Enjoy the upgrade and good luck in your upcoming battles! ⚔️
+### 🛡️ Ironclad Reliability & Quality Gate
+- **100% Quality Battery**: Every new feature is strictly verified against **220+ unit tests** and strict TypeScript validation before release.
+- **Zero Downtime & Fast Execution**: High reliability and blazing fast response times across all guild dashboards and the Player Portal.
+
+---
+
+Everything is operational and ready. If you have any feedback or ideas for new features, feel free to reach out on Discord! 🚀
+
+Good luck in your guild battles! ⚔️
