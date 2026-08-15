@@ -507,4 +507,30 @@ describe('GM_STATS KPI tabs', () => {
         expect(bobKeys.size).toBe(1);
         expect(Math.round((bobKeys.size / tenantKeys.size) * 100)).toBe(20);
     });
+
+    it('renders Shadowfront, Arms Race, and DTR event leaderboards', async () => {
+        await window.GM_STATS.load();
+
+        const sfBtn = document.querySelector('button[data-gm-mode="Shadowfront"]');
+        expect(sfBtn).not.toBeNull();
+        sfBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+        expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('AlphaPrime');
+
+        const arBtn = document.querySelector('button[data-gm-mode="Arms Race"]');
+        expect(arBtn).not.toBeNull();
+        arBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+        expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('AlphaPrime');
+
+        const dtrBtn = document.querySelector('button[data-gm-mode="DTR"]');
+        expect(dtrBtn).not.toBeNull();
+        dtrBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+        expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('AlphaPrime');
+    });
 });
+

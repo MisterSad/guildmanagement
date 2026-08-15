@@ -4,7 +4,14 @@
  * Inclus :
  * - Cockpit Exécutif (Indice de santé globale 0-100%, Puissance, Répartition Tiers, Roster Structure, Opérations)
  * - Détection proactive des membres inactifs (2+ semaines) et Engagement par type d'événement
- * - Classements individuels complets (Global pondéré, SvS, GvG, Taux de présence)
+ * - Classements individuels complets pour TOUS les événements :
+ *   • Global Leaderboard (formule composite pondérée)
+ *   • SvS Battle
+ *   • GvG War
+ *   • Shadowfront (Squad 1 & 2)
+ *   • Arms Race (Stage A & B)
+ *   • DTR (Defend Trade Route)
+ *   • Attendance Rate (Taux de présence globale)
  * - Podium 3D DA, recherche temps réel, et sélecteurs de périodes (1w, 2w, 4w, 8w, All)
  * - Isolement strict multi-tenant par guilde active
  */
@@ -83,6 +90,18 @@
         return String(n);
     }
 
+    function matchesEventName(rowEventName, targetMode) {
+        var row = (rowEventName || '').trim().toLowerCase();
+        var target = (targetMode || '').trim().toLowerCase();
+        if (target === 'svs') return row === 'svs';
+        if (target === 'gvg') return row === 'gvg';
+        if (target === 'shadowfront') return row.indexOf('shadowfront') !== -1;
+        if (target === 'arms race') return row.indexOf('arms race') !== -1;
+        if (target === 'dtr') return row.indexOf('dtr') !== -1 || row.indexOf('defend trade route') !== -1;
+        if (target === 'glory') return row.indexOf('glory') !== -1;
+        return row === target;
+    }
+
     // ── Configuration Formule & Poids ───────────────────────────────────────────
     var COEFFS = {
         'SvS':         5,
@@ -103,7 +122,7 @@
     // ── État Interne ─────────────────────────────────────────────────────────────
     var state = {
         activeGuild: 'ALPHA',
-        currentMode: 'global', // 'global' | 'SvS' | 'GvG' | 'participation' | 'kpi-health' | 'kpi-engage' | 'kpi-roster' | 'kpi-ops'
+        currentMode: 'global', // 'global' | 'SvS' | 'GvG' | 'Shadowfront' | 'Arms Race' | 'DTR' | 'participation' | 'kpi-health' | 'kpi-engage'
         statsPeriod: '1w',     // '1w' | '2w' | '4w' | '8w' | 'all'
         selectedWeek: '',
         searchQuery: '',
@@ -250,6 +269,9 @@
             { key: 'global',        label: t('stats_tab_global') || 'Global Leaderboard', icon: 'ph-trophy' },
             { key: 'SvS',           label: t('stats_tab_svs') || 'SvS Battle', icon: 'ph-sword' },
             { key: 'GvG',           label: t('stats_tab_gvg') || 'GvG War', icon: 'ph-flag-banner' },
+            { key: 'Shadowfront',   label: 'Shadowfront', icon: 'ph-shield-chevron' },
+            { key: 'Arms Race',     label: 'Arms Race', icon: 'ph-crosshair' },
+            { key: 'DTR',           label: 'DTR', icon: 'ph-truck' },
             { key: 'participation', label: t('stats_tab_participation') || 'Attendance Rate', icon: 'ph-chart-bar' }
         ];
 
@@ -297,7 +319,7 @@
             return;
         }
 
-        if (state.currentMode === 'SvS' || state.currentMode === 'GvG') {
+        if (state.currentMode === 'SvS' || state.currentMode === 'GvG' || state.currentMode === 'Shadowfront' || state.currentMode === 'Arms Race' || state.currentMode === 'DTR' || state.currentMode === 'Glory') {
             await loadSingleEventMode(state.currentMode);
             return;
         }
@@ -489,7 +511,7 @@
             var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
             var raw = dataRes.data || null;
             var allParts = (raw && raw.participants) || [];
-            var rows = allParts.filter(function (r) { return r.event_name === eventName; });
+            var rows = allParts.filter(function (r) { return matchesEventName(r.event_name, eventName); });
             rows = keepOnlyPastOrCurrent(rows);
 
             if (state.statsPeriod !== 'all' && state.selectedWeek) {
@@ -516,10 +538,26 @@
                 byMember[norm].score_prep += prep;
                 byMember[norm].score_pvp += pvp;
                 byMember[norm].score += tot;
-                if (r.participated > 0 || prep > 0 || pvp > 0 || sc > 0) {
+                if (r.participated > 0 || r.sub_present === true || prep > 0 || pvp > 0 || sc > 0) {
                     byMember[norm].events_done += 1;
                 }
                 byMember[norm].events_total += 1;
+            });
+
+            // Include roster members so they appear on leaderboard
+            var memRes = await db.from('guild_members').select('pseudo').eq('guild', state.activeGuild);
+            (memRes.data || []).forEach(function (gm) {
+                var norm = normalizePseudo(gm.pseudo);
+                if (!byMember[norm]) {
+                    byMember[norm] = {
+                        pseudo: gm.pseudo,
+                        score: 0,
+                        score_prep: 0,
+                        score_pvp: 0,
+                        events_done: 0,
+                        events_total: 0
+                    };
+                }
             });
 
             state.leaderboardData = Object.values(byMember).map(function (m) {
@@ -535,7 +573,11 @@
                     glory_bonus: 0,
                     consistency_bonus: 0
                 };
-            }).sort(function (a, b) { return b.score - a.score; });
+            }).sort(function (a, b) {
+                if (b.score !== a.score) return b.score - a.score;
+                if (b.events_done !== a.events_done) return b.events_done - a.events_done;
+                return a.pseudo.localeCompare(b.pseudo);
+            });
 
             renderLeaderboard();
         } catch (err) {
@@ -671,6 +713,8 @@
                 var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(m.pseudo) : (m.pseudo ? m.pseudo.charAt(0).toUpperCase() : '?');
                 var rankBadge = rank === 1 ? '<span class="gm-rank-badge">🥇</span>' : rank === 2 ? '<span class="gm-rank-badge">🥈</span>' : rank === 3 ? '<span class="gm-rank-badge">🥉</span>' : '<span class="gm-rank-num">' + rank + '</span>';
 
+                var scoreDisplay = (m.score > 0) ? (fmt(m.score) + ' pts') : (m.events_done > 0 ? (m.events_done + ' attended') : '0 pts');
+
                 tableHtml +=
                     '<tr style="border-bottom:1px solid var(--border-soft);">' +
                         '<td class="gm-center" style="font-weight:700;">' + rankBadge + '</td>' +
@@ -680,13 +724,13 @@
                                 '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(m.pseudo) + '</strong>' +
                             '</div>' +
                         '</td>' +
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + '/' + m.events_total + '</td>' +
+                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
                         (isBattleEventMode ?
                             '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
                             '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' : ''
                         ) +
                         (showGloryCol ? '<td class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '-') + '</td>' : '') +
-                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + fmt(m.score) + ' pts</span></td>' +
+                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>' +
                     '</tr>';
             });
 
