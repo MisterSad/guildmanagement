@@ -621,13 +621,21 @@ BEGIN
         RETURN jsonb_build_object('ok', false, 'error', 'player_not_found');
     END IF;
 
-    SELECT COUNT(DISTINCT ep.session_id) INTO v_total_sessions
+    SELECT COUNT(DISTINCT public.gm_event_scoring_key(ep.event_name, ep.session_id, ep.week_start))
+    INTO v_total_sessions
     FROM public.event_participants ep
-    WHERE ep.guild = v_member.guild;
+    WHERE ep.guild = v_member.guild
+      AND LOWER(COALESCE(ep.event_name, '')) != 'glory'
+      AND (ep.is_pending IS NOT TRUE);
 
-    SELECT COUNT(DISTINCT ep.session_id) INTO v_total_attended
+    SELECT COUNT(DISTINCT public.gm_event_scoring_key(ep.event_name, ep.session_id, ep.week_start))
+    INTO v_total_attended
     FROM public.event_participants ep
-    WHERE ep.guild = v_member.guild AND ep.pseudo = v_member.pseudo AND (ep.participated > 0 OR ep.sub_present = true);
+    WHERE ep.guild = v_member.guild
+      AND ep.pseudo = v_member.pseudo
+      AND LOWER(COALESCE(ep.event_name, '')) != 'glory'
+      AND (ep.is_pending IS NOT TRUE)
+      AND (ep.participated > 0 OR ep.sub_present = true OR ep.score > 0 OR ep.score_prep > 0 OR ep.score_pvp > 0);
 
     IF v_total_sessions > 0 THEN
         v_rate := ROUND((v_total_attended::numeric / v_total_sessions::numeric) * 100, 1);

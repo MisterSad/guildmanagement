@@ -37,6 +37,11 @@
 
 ## Fixed
 
+- **Battle Events Participation Hardening & SQL RPC Parity (v110.4)**:
+  - **SQL RPC Parity (`gm_personal_kpis`)**: Updated `public.gm_personal_kpis` to use `public.gm_event_scoring_key` and exclude weekly Glory records, guaranteeing 100% mathematical consistency between the Player Portal and the Admin Command Center.
+  - **Single Source of Truth Scoring Key Alignment**: Synchronized deterministic scoring keys across `src/core/config/events.ts`, `src/modules/stats/stats.service.ts`, `gm-utils.js`, `public.gm_event_scoring_key`, and `member-portal`.
+  - **Comprehensive Vitest Suite**: Added 6-event scoring key and participation test coverage in `tests/stats.test.js` bringing total passing unit tests to **220/220 green**.
+
 - **Shadowfront Historical Participation Rate Calculation & Session Alignment (v110.3)**:
   - **Unstarted Draft Filtering in Member Pool**: Updated `shadowfront.js` historical participation aggregation to ignore unstarted or abandoned pre-start draft sessions from `shadowfront_squads`, ensuring only sessions recorded in `event_participants` count towards player attendance denominators.
   - **Database Migration & Tenant Session Reconciliation**: Reconciled historical pre-start squad rows (`SF1-20260805` / `SF2-20260808`) to their official played session IDs (`SF1-20260807` / `SF2-20260807`) for guild `CLAW`, restoring 100% (2/2) participation rates for active commanders.

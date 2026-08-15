@@ -460,4 +460,51 @@ describe('GM_STATS KPI tabs', () => {
         expect(controls.querySelector('.period-select')).toBeNull();
         expect(controls.querySelector('.week-select')).toBeNull();
     });
+
+    it('accurately groups Shadowfront squads into 1 weekly key and excludes Glory from attendance', () => {
+        const allRecords = [
+            { pseudo: 'Alice', eventName: 'Shadowfront', sessionId: 'SF1-20260814-1', weekStart: '2026-08-10', attended: true },
+            { pseudo: 'Bob', eventName: 'Shadowfront', sessionId: 'SF2-20260814-1', weekStart: '2026-08-10', attended: true },
+            { pseudo: 'Alice', eventName: 'SvS', sessionId: 'SVS-2026-W33', weekStart: '2026-08-10', attended: true },
+            { pseudo: 'Alice', eventName: 'ARMS RACE STAGE A', sessionId: 'ARA-20260811-1', weekStart: '2026-08-10', attended: true },
+            { pseudo: 'Alice', eventName: 'ARMS RACE STAGE B', sessionId: 'ARB-20260811-1', weekStart: '2026-08-10', attended: true },
+            { pseudo: 'Alice', eventName: 'Defend Trade Route', sessionId: 'DTR-20260812-1', weekStart: '2026-08-10', attended: true },
+            { pseudo: 'Alice', eventName: 'Glory', sessionId: 'GLORY-2026-W33', weekStart: '2026-08-10', attended: true }
+        ];
+
+        // Unique tenant keys expected (Glory excluded):
+        // 1. Shadowfront|2026-08-10 (SF1 and SF2 merged into 1)
+        // 2. SvS|2026-08-10
+        // 3. Arms Race|ARA-20260811-1
+        // 4. Arms Race|ARB-20260811-1
+        // 5. DTR|DTR-20260812-1
+        // Total = 5
+
+        const tenantKeys = new Set();
+        allRecords.forEach(r => {
+            if ((r.eventName || '').toLowerCase() === 'glory') return;
+            tenantKeys.add(window.GM.eventScoringKey(r.eventName, r.sessionId, r.weekStart));
+        });
+        expect(tenantKeys.size).toBe(5);
+
+        // Alice attended SF1, SvS, ARA, ARB, DTR -> attended = 5 / 5 = 100%
+        const aliceRecords = allRecords.filter(r => r.pseudo === 'Alice');
+        const aliceKeys = new Set();
+        aliceRecords.forEach(r => {
+            if ((r.eventName || '').toLowerCase() === 'glory') return;
+            if (r.attended) aliceKeys.add(window.GM.eventScoringKey(r.eventName, r.sessionId, r.weekStart));
+        });
+        expect(aliceKeys.size).toBe(5);
+        expect(Math.round((aliceKeys.size / tenantKeys.size) * 100)).toBe(100);
+
+        // Bob only attended SF2 -> attended = 1 / 5 = 20%
+        const bobRecords = allRecords.filter(r => r.pseudo === 'Bob');
+        const bobKeys = new Set();
+        bobRecords.forEach(r => {
+            if ((r.eventName || '').toLowerCase() === 'glory') return;
+            if (r.attended) bobKeys.add(window.GM.eventScoringKey(r.eventName, r.sessionId, r.weekStart));
+        });
+        expect(bobKeys.size).toBe(1);
+        expect(Math.round((bobKeys.size / tenantKeys.size) * 100)).toBe(20);
+    });
 });
