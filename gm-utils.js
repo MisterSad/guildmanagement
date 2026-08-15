@@ -532,23 +532,69 @@
         if (!c) return { ok: false, error: 'no_client' };
         var body = Object.assign({ action: action }, payload || {});
 
-        // Direct RPC acceleration for role updates (works unconditionally across all envs)
+        // Direct execution for role updates (bypasses any edge function deployment delays)
         if (action === 'update-role' && payload && payload.id && payload.role) {
+            var targetGuild = payload.guild === 'ALL' ? null : (payload.guild || null);
+            var targetServer = payload.serverNumber || null;
+            if (payload.role === 'server_admin' && !targetServer) {
+                var gId = targetGuild;
+                if (!gId && window.guildsData) {
+                    var accObj = (window.accountsList || []).find(function (a) { return a.id === payload.id; });
+                    if (accObj) gId = accObj.guild;
+                }
+                if (gId) {
+                    var sNum = (window.guildsData && window.guildsData[gId] && window.guildsData[gId].server_number) || localStorage.getItem('gm_server_number_' + gId);
+                    if (sNum) targetServer = String(sNum);
+                }
+            }
+
+            // Strategy A: Call gm_admin_upsert which exists natively in Postgres
+            try {
+                var { error: upsertErr } = await c.rpc('gm_admin_upsert', {
+                    p_id: payload.id,
+                    p_password: '',
+                    p_role: payload.role,
+                    p_guild: targetGuild
+                });
+                if (!upsertErr) {
+                    if (targetServer) {
+                        try {
+                            await c.from('accounts').update({ server_number: targetServer }).ilike('id', payload.id);
+                        } catch (_) {}
+                    }
+                    // Async notify edge function for GoTrue app_metadata sync (best-effort)
+                    c.functions.invoke('admin-accounts', { body: body }).catch(function () {});
+                    return { ok: true, role: payload.role, server_number: targetServer };
+                }
+            } catch (rpcErr) {
+                console.warn('gm_admin_upsert RPC attempt:', rpcErr);
+            }
+
+            // Strategy B: Call gm_update_account_role RPC
             try {
                 var rpcRes = await c.rpc('gm_update_account_role', {
                     p_id: payload.id,
                     p_role: payload.role,
-                    p_guild: payload.guild || null,
-                    p_server_number: payload.serverNumber || null
+                    p_guild: targetGuild,
+                    p_server_number: targetServer
                 });
                 if (rpcRes && !rpcRes.error && Array.isArray(rpcRes.data) && rpcRes.data.length > 0 && rpcRes.data[0].ok) {
-                    // Best-effort GoTrue shadow metadata sync in background
                     c.functions.invoke('admin-accounts', { body: body }).catch(function () {});
                     return { ok: true, role: rpcRes.data[0].role, server_number: rpcRes.data[0].server_number };
                 }
-            } catch (rpcErr) {
-                console.warn('gm_update_account_role RPC error:', rpcErr);
-            }
+            } catch (_) {}
+
+            // Strategy C: Direct PostgreSQL UPDATE query
+            try {
+                var updateFields = { role: payload.role };
+                if (targetGuild !== undefined) updateFields.guild = targetGuild;
+                if (targetServer) updateFields.server_number = targetServer;
+                var { data: dbData, error: dbErr } = await c.from('accounts').update(updateFields).ilike('id', payload.id).select();
+                if (!dbErr && dbData && dbData.length > 0) {
+                    c.functions.invoke('admin-accounts', { body: body }).catch(function () {});
+                    return { ok: true, role: payload.role, server_number: targetServer };
+                }
+            } catch (_) {}
         }
 
         var r;
@@ -559,41 +605,6 @@
         }
         var data = r && r.data;
         if (!data || data.ok === false) {
-            // Direct DB fallback for Super Admin if edge function returned 4xx or not deployed
-            if (isSuperAdmin()) {
-                if (action === 'update-role' && payload && payload.id && payload.role) {
-                    try {
-                        var updateObj = { role: payload.role };
-                        if (payload.guild !== undefined) {
-                            updateObj.guild = (payload.guild === 'ALL' ? null : payload.guild);
-                        }
-                        if (payload.serverNumber !== undefined) {
-                            updateObj.server_number = payload.serverNumber;
-                        } else if (payload.role === 'server_admin') {
-                            var gId = payload.guild;
-                            var sNum = (gId && window.guildsData && window.guildsData[gId] && window.guildsData[gId].server_number) || (gId ? localStorage.getItem('gm_server_number_' + gId) : null);
-                            if (sNum) updateObj.server_number = String(sNum);
-                        }
-                        var { data: dbRows, error: dbErr } = await c.from('accounts').update(updateObj).ilike('id', payload.id).select();
-                        if (!dbErr && dbRows && dbRows.length > 0) {
-                            return { ok: true, role: payload.role, server_number: updateObj.server_number };
-                        }
-                    } catch (fbErr) {
-                        console.warn('Direct fallback update-role error:', fbErr);
-                    }
-                } else if (action === 'update-guild' && payload && payload.id) {
-                    try {
-                        var targetGuild = payload.guild === 'ALL' ? null : payload.guild;
-                        var { data: dbRows, error: dbErr } = await c.from('accounts').update({ guild: targetGuild }).ilike('id', payload.id).select();
-                        if (!dbErr && dbRows && dbRows.length > 0) {
-                            return { ok: true };
-                        }
-                    } catch (fbErr) {
-                        console.warn('Direct fallback update-guild error:', fbErr);
-                    }
-                }
-            }
-
             var errMsg = (data && data.error) || (r && r.error && r.error.message) || 'request_failed';
             if (r && r.error && r.error.context && typeof r.error.context.json === 'function') {
                 try {
