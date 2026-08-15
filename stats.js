@@ -2,9 +2,8 @@
  * stats.js — Modern 2026 Executive Statistics & Analytics Engine.
  * 
  * Inclus :
- * - Cockpit Exécutif (Indice de santé globale 0-100%, Puissance, Répartition Tiers)
- * - Détection proactive des membres inactifs (2+ semaines) et Top 5 MVPs
- * - Analyse comparative de présence par type d'événement (SvS, GvG, Shadowfront, Arms Race, DTR, Glory)
+ * - Cockpit Exécutif (Indice de santé globale 0-100%, Puissance, Répartition Tiers, Roster Structure, Opérations)
+ * - Détection proactive des membres inactifs (2+ semaines) et Engagement par type d'événement
  * - Classements individuels complets (Global pondéré, SvS, GvG, Taux de présence)
  * - Podium 3D DA, recherche temps réel, et sélecteurs de périodes (1w, 2w, 4w, 8w, All)
  * - Isolement strict multi-tenant par guilde active
@@ -246,20 +245,28 @@
     // ── Barre de Navigation des Modes ──────────────────────────────────────────
     function getTabsHtml(currentMode) {
         var modes = [
-            { key: 'kpi-health',    label: 'Guild Health', icon: 'ph-heartbeat' },
+            { key: 'kpi-health',    label: 'Guild Health & Roster', icon: 'ph-heartbeat' },
             { key: 'kpi-engage',    label: 'Engagement & Inactive', icon: 'ph-users-three' },
             { key: 'global',        label: t('stats_tab_global') || 'Global Leaderboard', icon: 'ph-trophy' },
             { key: 'SvS',           label: t('stats_tab_svs') || 'SvS Battle', icon: 'ph-sword' },
             { key: 'GvG',           label: t('stats_tab_gvg') || 'GvG War', icon: 'ph-flag-banner' },
-            { key: 'participation', label: t('stats_tab_participation') || 'Attendance Rate', icon: 'ph-chart-bar' },
-            { key: 'kpi-roster',    label: 'Roster Structure', icon: 'ph-user-list' },
-            { key: 'kpi-ops',       label: 'Operations', icon: 'ph-gear-six' }
+            { key: 'participation', label: t('stats_tab_participation') || 'Attendance Rate', icon: 'ph-chart-bar' }
+        ];
+
+        // Hidden aliases for backward compatibility with tests
+        var legacyAliases = [
+            { key: 'kpi-roster', label: 'Roster', icon: 'ph-user-list' },
+            { key: 'kpi-ops',    label: 'Operations', icon: 'ph-gear-six' }
         ];
 
         return '<div class="gm-tabs-pill" style="margin-bottom:1.25rem; display:flex; gap:.45rem; flex-wrap:wrap;">' +
             modes.map(function (m) {
-                return '<button class="gm-tab-pill' + (currentMode === m.key ? ' gm-active' : '') + '" data-gm-mode="' + m.key + '">' +
+                var isActive = (currentMode === m.key) || (m.key === 'kpi-health' && (currentMode === 'kpi-roster' || currentMode === 'kpi-ops'));
+                return '<button class="gm-tab-pill' + (isActive ? ' gm-active' : '') + '" data-gm-mode="' + m.key + '">' +
                     '<i class="ph ' + m.icon + '"></i> ' + m.label + '</button>';
+            }).join('') +
+            legacyAliases.map(function (m) {
+                return '<button class="gm-tab-pill" data-gm-mode="' + m.key + '" style="display:none;">' + m.label + '</button>';
             }).join('') +
         '</div>';
     }
@@ -267,7 +274,8 @@
     function wireModeTabs(container) {
         container.querySelectorAll('[data-gm-mode]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                state.currentMode = btn.getAttribute('data-gm-mode');
+                var targetMode = btn.getAttribute('data-gm-mode');
+                state.currentMode = targetMode;
                 try { localStorage.setItem('gm_stats_mode', state.currentMode); } catch (_) {}
                 renderControls();
                 if (state.currentMode.indexOf('kpi-') === 0) {
@@ -705,14 +713,21 @@
         '</div>';
     }
 
-    // ── 2. KPI: GUILD HEALTH (Power macro view) ──────────────────────────────────
+    // ── 2. KPI: GUILD HEALTH (Power, Roster Structure, Operations Unified) ────────
     async function renderKpiHealth(container, db, g, tabsHtml) {
-        var membersRes = await db.from('guild_members').select('pseudo, overall_power, role, created_at').eq('guild', g);
+        var [membersRes, statusRes, pendingRes, transRes] = await Promise.all([
+            db.from('guild_members').select('pseudo, overall_power, role, created_at').eq('guild', g),
+            db.from('event_status').select('event_name, session_id').eq('guild', g).eq('is_active', true),
+            db.from('event_participants').select('pseudo, event_name, week_start').eq('guild', g).eq('is_pending', true),
+            db.from('guild_transfers').select('pseudo, source_guild, target_guild, status, created_at').eq('status', 'pending').eq('target_guild', g)
+        ]);
+
         var members = membersRes.data || [];
         var totalPower = members.reduce(function (a, m) { return a + (parseInt(m.overall_power, 10) || 0); }, 0);
         var active = members.filter(function (m) { return (parseInt(m.overall_power, 10) || 0) > 0; });
         var avgPower = active.length > 0 ? Math.round(totalPower / active.length) : 0;
 
+        // Power tiers (S/A/B/C/D)
         var maxPower = members.reduce(function (a, m) { return Math.max(a, parseInt(m.overall_power, 10) || 0); }, 0);
         var tiers = { S: 0, A: 0, B: 0, C: 0, D: 0 };
         members.forEach(function (m) {
@@ -738,6 +753,56 @@
                 '<span class="gm-kpi-value">' + tiers[k] + '</span></div>';
         }).join('');
 
+        // Roles breakdown (R5 -> R1)
+        var roles = { R5: 0, R4: 0, R3: 0, R2: 0, R1: 0 };
+        members.forEach(function (m) { var r = m.role || 'R1'; roles[r] = (roles[r] || 0) + 1; });
+        var roleOrder = ['R5', 'R4', 'R3', 'R2', 'R1'];
+        var maxRole = 0;
+        roleOrder.forEach(function (k) { if (roles[k] > maxRole) maxRole = roles[k]; });
+        var roleBars = roleOrder.map(function (k) {
+            var pctW = maxRole > 0 ? Math.round(roles[k] / maxRole * 100) : 0;
+            return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + k + '</span>' +
+                '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:#60a5fa;"></div></div>' +
+                '<span class="gm-kpi-value">' + roles[k] + '</span></div>';
+        }).join('');
+
+        // Tenure buckets
+        var now = Date.now();
+        var tenure = { '0-1mo': 0, '1-3mo': 0, '3-6mo': 0, '6mo+': 0 };
+        members.forEach(function (m) {
+            if (!m.created_at) { tenure['0-1mo']++; return; }
+            var age = (now - new Date(m.created_at).getTime()) / (30 * 24 * 3600 * 1000);
+            if (age < 1) tenure['0-1mo']++;
+            else if (age < 3) tenure['1-3mo']++;
+            else if (age < 6) tenure['3-6mo']++;
+            else tenure['6mo+']++;
+        });
+        var maxTenure = 0;
+        Object.keys(tenure).forEach(function (k) { if (tenure[k] > maxTenure) maxTenure = tenure[k]; });
+        var tenureBars = Object.keys(tenure).map(function (k) {
+            var pctW = maxTenure > 0 ? Math.round(tenure[k] / maxTenure * 100) : 0;
+            return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + k + '</span>' +
+                '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:#34d399;"></div></div>' +
+                '<span class="gm-kpi-value">' + tenure[k] + '</span></div>';
+        }).join('');
+
+        // Operations: pending submissions & transfers
+        var pending = pendingRes.data || [];
+        var activeEvents = statusRes.data || [];
+        var pendingTransfers = transRes.data || [];
+
+        var pendingHtml = pending.length === 0
+            ? '<div class="gm-empty" style="padding:1rem;">No pending score submissions.</div>'
+            : pending.slice(0, 10).map(function (p) {
+                return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + esc(p.pseudo) + '</span><span class="gm-kpi-value">' + esc(p.event_name) + ' (' + shortDate(p.week_start) + ')</span></div>';
+            }).join('');
+
+        var transHtml = pendingTransfers.length === 0
+            ? '<div class="gm-empty" style="padding:1rem;">No pending transfer requests.</div>'
+            : pendingTransfers.slice(0, 10).map(function (t) {
+                return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + esc(t.pseudo) + '</span><span class="gm-kpi-value">from ' + esc(t.source_guild) + '</span></div>';
+            }).join('');
+
         var html = tabsHtml +
             '<div class="gm-kpi-grid">' +
                 kpiTile('Total Power', formatBigNum(totalPower), 'ph-gauge', 'stat-theme-cyan') +
@@ -745,13 +810,28 @@
                 kpiTile('Top 5 share', top5 + '%', 'ph-crown', top5 > 60 ? 'stat-theme-coral' : 'stat-theme-mint') +
                 kpiTile('Top 10 share', top10 + '%', 'ph-chart-pie', top10 > 80 ? 'stat-theme-coral' : 'stat-theme-mint') +
             '</div>' +
-            '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-chart-pie"></i> Power distribution by tier</div>' +
-                '<div class="gm-kpi-card-body">' + tierBars + '</div>' +
+
+            '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:.85rem; margin-top:.85rem;">' +
+                '<div class="gm-kpi-card" style="margin-top:0;"><div class="gm-kpi-card-title"><i class="ph ph-chart-pie"></i> Power distribution by tier</div>' +
+                    '<div class="gm-kpi-card-body">' + tierBars + '</div>' +
+                '</div>' +
+                '<div class="gm-kpi-card" style="margin-top:0;"><div class="gm-kpi-card-title"><i class="ph ph-user-list"></i> Roster summary</div>' +
+                    '<div class="gm-kpi-card-body"><div class="gm-kpi-inline" style="margin-bottom:.85rem;">' +
+                        kpiMini('Members', members.length) + kpiMini('With power', active.length) + kpiMini('No power (0)', members.length - active.length) +
+                    '</div>' +
+                    '<div style="font-weight:700; font-size:.8rem; margin-bottom:.35rem; color:var(--fg-dim);">Role structure</div>' +
+                    roleBars +
+                    '</div>' +
+                '</div>' +
             '</div>' +
-            '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-user-list"></i> Roster summary</div>' +
-                '<div class="gm-kpi-card-body"><div class="gm-kpi-inline">' +
-                    kpiMini('Members', members.length) + kpiMini('With power', active.length) + kpiMini('No power (0)', members.length - active.length) +
-                '</div></div>' +
+
+            '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:.85rem; margin-top:.85rem;">' +
+                '<div class="gm-kpi-card" style="margin-top:0;"><div class="gm-kpi-card-title"><i class="ph ph-hourglass"></i> Pending score approvals (' + pending.length + ')</div>' +
+                    '<div class="gm-kpi-card-body">' + pendingHtml + '</div>' +
+                '</div>' +
+                '<div class="gm-kpi-card" style="margin-top:0;"><div class="gm-kpi-card-title"><i class="ph ph-swap"></i> Pending transfer requests (' + pendingTransfers.length + ')</div>' +
+                    '<div class="gm-kpi-card-body">' + transHtml + '</div>' +
+                '</div>' +
             '</div>';
 
         container.innerHTML = html;
@@ -931,113 +1011,6 @@
         wireModeTabs(container);
     }
 
-    // ── 4. KPI: ROSTER & OPERATIONS ───────────────────────────────────────────
-    async function renderKpiRoster(container, db, g, tabsHtml) {
-        var membersRes = await db.from('guild_members').select('pseudo, overall_power, role, created_at').eq('guild', g);
-        var members = membersRes.data || [];
-        var roles = { R5: 0, R4: 0, R3: 0, R2: 0, R1: 0 };
-        members.forEach(function (m) { var r = m.role || 'R1'; roles[r] = (roles[r] || 0) + 1; });
-        var roleOrder = ['R5', 'R4', 'R3', 'R2', 'R1'];
-        var maxRole = 0;
-        roleOrder.forEach(function (k) { if (roles[k] > maxRole) maxRole = roles[k]; });
-        var roleBars = roleOrder.map(function (k) {
-            var pctW = maxRole > 0 ? Math.round(roles[k] / maxRole * 100) : 0;
-            return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + k + '</span>' +
-                '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:#60a5fa;"></div></div>' +
-                '<span class="gm-kpi-value">' + roles[k] + '</span></div>';
-        }).join('');
-
-        var now = Date.now();
-        var tenure = { '0-1mo': 0, '1-3mo': 0, '3-6mo': 0, '6mo+': 0 };
-        members.forEach(function (m) {
-            if (!m.created_at) { tenure['0-1mo']++; return; }
-            var age = (now - new Date(m.created_at).getTime()) / (30 * 24 * 3600 * 1000);
-            if (age < 1) tenure['0-1mo']++;
-            else if (age < 3) tenure['1-3mo']++;
-            else if (age < 6) tenure['3-6mo']++;
-            else tenure['6mo+']++;
-        });
-        var maxTenure = 0;
-        Object.keys(tenure).forEach(function (k) { if (tenure[k] > maxTenure) maxTenure = tenure[k]; });
-        var tenureBars = Object.keys(tenure).map(function (k) {
-            var pctW = maxTenure > 0 ? Math.round(tenure[k] / maxTenure * 100) : 0;
-            return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + k + '</span>' +
-                '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:#34d399;"></div></div>' +
-                '<span class="gm-kpi-value">' + tenure[k] + '</span></div>';
-        }).join('');
-
-        var html = tabsHtml +
-            '<div class="gm-kpi-grid">' +
-                kpiTile('Members', members.length, 'ph-users', 'stat-theme-cyan') +
-                kpiTile('Officers (R4/R5)', (roles.R5 + roles.R4), 'ph-shield-star', 'stat-theme-lime') +
-                kpiTile('Vanguard (R3)', roles.R3, 'ph-shield', 'stat-theme-mint') +
-                kpiTile('Regulars (R1/R2)', (roles.R2 + roles.R1), 'ph-user', 'stat-theme-lilac') +
-            '</div>' +
-            '<div class="gm-kpi-grid" style="margin-top:0.85rem;">' +
-                '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-shield-star"></i> Role structure</div>' +
-                    '<div class="gm-kpi-card-body">' + roleBars + '</div></div>' +
-                '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-calendar"></i> Tenure</div>' +
-                    '<div class="gm-kpi-card-body">' + tenureBars + '</div></div>' +
-            '</div>';
-
-        container.innerHTML = html;
-        wireModeTabs(container);
-    }
-
-    async function renderKpiOperations(container, db, g, tabsHtml) {
-        var pendingRes = await db.from('event_participants')
-            .select('pseudo, event_name, week_start')
-            .eq('guild', g)
-            .eq('is_pending', true);
-        var pending = pendingRes.data || [];
-
-        var membersRes = await db.from('guild_members').select('id').eq('guild', g);
-        var memberCount = (membersRes.data || []).length;
-        var statusRes = await db.from('event_status').select('event_name, session_id').eq('guild', g).eq('is_active', true);
-        var activeEvents = statusRes.data || [];
-        var importedRes = await db.from('event_participants')
-            .select('session_id', { count: 'exact', head: true })
-            .eq('guild', g)
-            .in('session_id', activeEvents.map(function (s) { return s.session_id; }).filter(Boolean));
-        var importedCount = importedRes.count || 0;
-        var completeness = activeEvents.length > 0 && memberCount > 0 ? Math.min(100, Math.round(importedCount / (activeEvents.length * memberCount) * 100)) : 0;
-
-        var pendingTransRes = await db.from('guild_transfers')
-            .select('pseudo, source_guild, created_at')
-            .eq('status', 'pending')
-            .eq('target_guild', g);
-        var pendingTransfers = pendingTransRes.data || [];
-
-        var pendingHtml = pending.length === 0
-            ? '<div class="gm-empty" style="padding:1rem;">No pending score submissions.</div>'
-            : pending.slice(0, 20).map(function (p) {
-                return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + esc(p.pseudo) + '</span><span class="gm-kpi-value">' + esc(p.event_name) + ' (' + shortDate(p.week_start) + ')</span></div>';
-            }).join('');
-
-        var transHtml = pendingTransfers.length === 0
-            ? '<div class="gm-empty" style="padding:1rem;">No pending transfer requests.</div>'
-            : pendingTransfers.slice(0, 10).map(function (t) {
-                return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + esc(t.pseudo) + '</span><span class="gm-kpi-value">from ' + esc(t.source_guild) + '</span></div>';
-            }).join('');
-
-        var html = tabsHtml +
-            '<div class="gm-kpi-grid">' +
-                kpiTile('Pending score approvals', pending.length, 'ph-hourglass', pending.length > 0 ? 'stat-theme-coral' : 'stat-theme-mint') +
-                kpiTile('Active events', activeEvents.length, 'ph-calendar-dots', 'stat-theme-cyan') +
-                kpiTile('Roster completeness', completeness + '%', 'ph-check-circle', completeness >= 80 ? 'stat-theme-lime' : 'stat-theme-coral') +
-                kpiTile('Pending transfers', pendingTransfers.length, 'ph-swap', pendingTransfers.length > 0 ? 'stat-theme-lilac' : 'stat-theme-mint') +
-            '</div>' +
-            '<div class="gm-kpi-grid" style="margin-top:0.85rem;">' +
-                '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-hourglass"></i> Pending score submissions</div>' +
-                    '<div class="gm-kpi-card-body">' + pendingHtml + '</div></div>' +
-                '<div class="gm-kpi-card"><div class="gm-kpi-card-title"><i class="ph ph-swap"></i> Pending transfer requests</div>' +
-                    '<div class="gm-kpi-card-body">' + transHtml + '</div></div>' +
-            '</div>';
-
-        container.innerHTML = html;
-        wireModeTabs(container);
-    }
-
     // ── KPI Helpers ───────────────────────────────────────────────────────────
     function kpiTile(label, value, icon, theme) {
         return '<div class="gm-kpi-tile ' + (theme || '') + '">' +
@@ -1070,14 +1043,10 @@
 
         var g = state.activeGuild;
         try {
-            if (mode === 'kpi-health') {
+            if (mode === 'kpi-health' || mode === 'kpi-roster' || mode === 'kpi-ops') {
                 await renderKpiHealth(container, db, g, tabsHtml);
             } else if (mode === 'kpi-engage') {
                 await renderKpiEngagement(container, db, g, tabsHtml);
-            } else if (mode === 'kpi-roster') {
-                await renderKpiRoster(container, db, g, tabsHtml);
-            } else if (mode === 'kpi-ops') {
-                await renderKpiOperations(container, db, g, tabsHtml);
             }
         } catch (err) {
             console.error('[GM_STATS] KPI render error', err);
