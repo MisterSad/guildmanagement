@@ -34,4 +34,22 @@ describe('parseGeminiJson', () => {
         expect(GM.parseGeminiJson(null)).toBeNull();
         expect(() => GM.parseGeminiJson('Not JSON at all')).toThrow();
     });
+
+    it('parses specialized 7-metric OCR JSON schemas (Fleet, Tech, Glory, etc.)', () => {
+        const fleetJson = '```json\n{\n  "metric": "fleet",\n  "players": [\n    {"pseudo": "Vanguard99", "score": 2160000, "uid": "1001"},\n    {"pseudo": "AdmiralZ", "score": 1850000, "uid": null}\n  ]\n}\n```';
+        const resFleet = GM.parseGeminiJson(fleetJson);
+        expect(resFleet.metric).toBe('fleet');
+        expect(resFleet.players).toHaveLength(2);
+        expect(resFleet.players[0].score).toBe(2160000);
+
+        const techJson = '{"metric":"tech","players":[{"pseudo":"TechMaster","score":15400000}]}';
+        const resTech = GM.parseGeminiJson(techJson);
+        expect(resTech.metric).toBe('tech');
+        expect(resTech.players[0].score).toBe(15400000);
+
+        const gloryJson = '{"metric":"glory","players":[{"pseudo":"GloryKing","score":240000000}]}';
+        const resGlory = GM.parseGeminiJson(gloryJson);
+        expect(resGlory.metric).toBe('glory');
+        expect(resGlory.players[0].score).toBe(240000000);
+    });
 });

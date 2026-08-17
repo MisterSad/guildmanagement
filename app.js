@@ -1932,8 +1932,112 @@
         }
     }
 
-    function openOcrModal() {
+    var OCR_METRICS_META = {
+        power: {
+            title: '1. Power OCR — Overall Total Power',
+            subtitle: 'Upload guild roster screenshots to import new members and update overall power levels',
+            dropTitle: 'Drop Overall Power screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Up to 25 screenshots per batch / 200+ players)',
+            header: 'Extracted Power',
+            field: 'overall_power',
+            color: '#818cf8',
+            icon: 'ph-sword'
+        },
+        fleet: {
+            title: '2. Fleet OCR — Strongest Fleet Rating',
+            subtitle: 'Upload Strongest Fleet / March 1 leaderboards to update strike ratings and rally capabilities',
+            dropTitle: 'Drop Strongest Fleet leaderboard screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts First March rating & rally power)',
+            header: 'Extracted Fleet Rating',
+            field: 'fleet_rating',
+            color: '#60a5fa',
+            icon: 'ph-swords'
+        },
+        tech: {
+            title: '3. Tech OCR — Technology Power',
+            subtitle: 'Upload Technology Power leaderboards to track research advancement across members',
+            dropTitle: 'Drop Technology Power leaderboard screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Alliance/Individual Tech values)',
+            header: 'Extracted Tech Power',
+            field: 'tech_power',
+            color: '#a78bfa',
+            icon: 'ph-atom'
+        },
+        flagship: {
+            title: '4. Flagship OCR — Flagship Power',
+            subtitle: 'Upload Flagship power leaderboards to track capital ship strength and hulls',
+            dropTitle: 'Drop Flagship Power leaderboard screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Flagship combat values)',
+            header: 'Extracted Flagship Power',
+            field: 'flagship_power',
+            color: '#fbbf24',
+            icon: 'ph-rocket'
+        },
+        champs: {
+            title: '5. Champs OCR — Champions Total Power',
+            subtitle: 'Upload Champion Total Power leaderboards to track hero collections and ranks',
+            dropTitle: 'Drop Champions Total Power leaderboard screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Hero/Champion total ratings)',
+            header: 'Extracted Champions Power',
+            field: 'champion_power',
+            color: '#f472b6',
+            icon: 'ph-crown'
+        },
+        crew: {
+            title: '6. Crew OCR — Crew Total Power',
+            subtitle: 'Upload Crew Total Power leaderboards to evaluate Foundation officer development',
+            dropTitle: 'Drop Crew Total Power leaderboard screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Crew/Officer total power)',
+            header: 'Extracted Crew Power',
+            field: 'crew_power',
+            color: '#38bdf8',
+            icon: 'ph-users-three'
+        },
+        glory: {
+            title: '7. Glory OCR — Weekly Glory Score',
+            subtitle: 'Upload Glory rankings to track weekly battle points and PvP contribution',
+            dropTitle: 'Drop Glory Ranking leaderboard screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Glory score points)',
+            header: 'Extracted Glory Score',
+            field: 'glory_score',
+            color: '#34d399',
+            icon: 'ph-trophy'
+        }
+    };
+
+    var currentOcrMetric = 'power';
+
+    function setOcrMetric(metric) {
+        if (!OCR_METRICS_META[metric]) metric = 'power';
+        currentOcrMetric = metric;
+        var meta = OCR_METRICS_META[metric];
+
+        // Update tab buttons visual state
+        document.querySelectorAll('#ocr-metric-tabs .gm-seg-btn').forEach(function (btn) {
+            var m = btn.getAttribute('data-metric');
+            var isActive = (m === metric);
+            btn.classList.toggle('active', isActive);
+            btn.style.background = isActive ? (OCR_METRICS_META[m] ? OCR_METRICS_META[m].color : 'var(--accent)') : 'transparent';
+            btn.style.color = isActive ? '#fff' : 'var(--text-muted)';
+        });
+
+        // Update titles and headers
+        var titleEl = document.getElementById('ocr-modal-title');
+        var subEl = document.getElementById('ocr-modal-subtitle');
+        var dropTitle = document.getElementById('ocr-dropzone-title');
+        var dropDesc = document.getElementById('ocr-dropzone-desc');
+        var metricHeader = document.getElementById('ocr-metric-header');
+
+        if (titleEl) titleEl.textContent = meta.title;
+        if (subEl) subEl.textContent = meta.subtitle;
+        if (dropTitle) dropTitle.textContent = meta.dropTitle;
+        if (dropDesc) dropDesc.textContent = meta.dropDesc;
+        if (metricHeader) metricHeader.textContent = meta.header;
+    }
+
+    function openOcrModal(metric) {
         initOcrGeminiModule();
+        setOcrMetric(metric || 'power');
         var modal = document.getElementById('ocr-modal-overlay');
         if (modal) {
             modal.style.display = 'flex';
@@ -1979,7 +2083,8 @@
         if (btn) {
             e.preventDefault();
             e.stopPropagation();
-            openOcrModal();
+            var metric = btn.getAttribute('data-metric') || 'power';
+            openOcrModal(metric);
         }
     });
 
@@ -2003,6 +2108,17 @@
         modal.onclick = function (e) {
             if (e.target === modal) closeOcrModal();
         };
+
+        // Wire metric switcher tabs inside modal
+        document.querySelectorAll('#ocr-metric-tabs .gm-seg-btn').forEach(function (tabBtn) {
+            tabBtn.onclick = function () {
+                var m = tabBtn.getAttribute('data-metric');
+                setOcrMetric(m);
+                if (ocrExtractedPlayers && ocrExtractedPlayers.length > 0) {
+                    renderOcrResults(ocrExtractedPlayers);
+                }
+            };
+        });
 
         if (dropzone && fileInput) {
             dropzone.addEventListener('click', function () {
@@ -2081,7 +2197,8 @@
         if (loading) loading.style.display = 'block';
         if (resultsContainer) resultsContainer.style.display = 'none';
 
-        if (loadingH4) loadingH4.textContent = 'Analyzing screenshots with AI OCR...';
+        var meta = OCR_METRICS_META[currentOcrMetric] || OCR_METRICS_META.power;
+        if (loadingH4) loadingH4.textContent = 'Analyzing screenshots with AI OCR (' + meta.header + ')...';
 
         var allPlayers = [];
         try {
@@ -2104,7 +2221,7 @@
                     loadingP.textContent = 'Processing screenshots batch ' + (b + 1) + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
                 }
 
-                var extracted = await callGeminiOcrBatchApi(currentChunk, function (statusMsg) {
+                var extracted = await callGeminiOcrBatchApi(currentChunk, currentOcrMetric, function (statusMsg) {
                     if (loadingP) loadingP.textContent = statusMsg;
                 });
 
@@ -2120,10 +2237,12 @@
                 if (!p || !p.pseudo) return;
                 var cleanPseudo = p.pseudo.trim();
                 var key = cleanPseudo.toLowerCase();
-                if (!uniqueMap[key] || (p.overall_power && p.overall_power > uniqueMap[key].overall_power)) {
+                var pScore = p.score != null ? p.score : (p.overall_power || 0);
+                if (!uniqueMap[key] || (pScore && pScore > (uniqueMap[key].score || 0))) {
                     uniqueMap[key] = {
                         pseudo: cleanPseudo,
-                        overall_power: p.overall_power || 0,
+                        score: pScore,
+                        overall_power: pScore,
                         uid: p.uid || null
                     };
                 }
@@ -2148,17 +2267,18 @@
         });
     }
 
-    async function callGeminiOcrBatchApi(batchImageItems, updateStatusCallback) {
+    async function callGeminiOcrBatchApi(batchImageItems, metricType, updateStatusCallback) {
+        metricType = metricType || 'power';
         var db = (window.GM && window.GM.db) ? window.GM.db : null;
         var token = localStorage.getItem('gm_token') || '';
 
         // 1. Try Supabase Edge Function 'ocr-guild-members' (Zero-Trust Serverless)
         if (db && db.functions) {
             try {
-                if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR Edge Function...');
+                if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR Edge Function (' + metricType.toUpperCase() + ')...');
                 var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
                 var res = await db.functions.invoke('ocr-guild-members', {
-                    body: { images: batchImageItems },
+                    body: { images: batchImageItems, metricType: metricType },
                     headers: headers
                 });
                 if (res.data && res.data.ok && Array.isArray(res.data.players)) {
@@ -2180,7 +2300,8 @@
             throw new Error('API Key Required. Please check your API key configuration.');
         }
 
-        var systemPrompt = 'Extract all visible player pseudos (names) and overall power values from these gaming roster screenshots. Convert power values like 145.2M to integer 145200000. Return JSON matching schema: {"players": [{"pseudo": "string", "overall_power": number, "uid": "string or null"}]}';
+        var meta = OCR_METRICS_META[metricType] || OCR_METRICS_META.power;
+        var systemPrompt = 'Extract all visible player usernames (pseudos) and ' + meta.header + ' values from these FGF gaming screenshots. Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "' + metricType + '", "players": [{"pseudo": "string", "score": number, "uid": "string or null"}]}';
 
         var parts = [{ text: systemPrompt }];
         batchImageItems.forEach(function (item) {
@@ -2291,12 +2412,15 @@
                     }
 
                     return rawList.map(function (p) {
+                        var scoreVal = p.score != null ? p.score : (p.overall_power != null ? p.overall_power : (p.power != null ? p.power : 0));
+                        var numScore = typeof scoreVal === 'number' ? Math.round(scoreVal) : (parseInt(String(scoreVal).replace(/[^0-9]/g, ''), 10) || 0);
                         return {
                             pseudo: String(p.pseudo || p.name || p.username || '').trim(),
-                            overall_power: typeof p.overall_power === 'number' ? Math.round(p.overall_power) : (typeof p.power === 'number' ? Math.round(p.power) : (parseInt(String(p.overall_power || p.power || '').replace(/[^0-9]/g, ''), 10) || 0)),
+                            score: numScore,
+                            overall_power: numScore,
                             uid: p.uid ? String(p.uid).trim() : null
                         };
-                    }).filter(function (p) { return p.pseudo.length > 0 && p.overall_power >= 0; });
+                    }).filter(function (p) { return p.pseudo.length > 0 && p.score >= 0; });
                 } catch (err) {
                     lastErr = err;
                     if (err.message && (err.message.includes('403') || err.message.includes('API Key Required'))) {
@@ -2411,6 +2535,9 @@
             return String(n || 0);
         };
 
+        var meta = OCR_METRICS_META[currentOcrMetric] || OCR_METRICS_META.power;
+        var targetField = meta.field;
+
         if (loading) loading.style.display = 'none';
         if (resultsContainer) resultsContainer.style.display = 'block';
         if (btnCommit) btnCommit.style.display = 'inline-flex';
@@ -2419,7 +2546,7 @@
 
         if (!players || players.length === 0) {
             if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="ph ph-warning-circle" style="font-size:1.5rem; display:block; margin-bottom:0.5rem; color:#facc15;"></i>No player usernames or power values were detected in the uploaded image(s). Please try clearer roster screenshots.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="ph ph-warning-circle" style="font-size:1.5rem; display:block; margin-bottom:0.5rem; color:#facc15;"></i>No player usernames or ' + meta.header + ' values were detected in the uploaded image(s). Please try clearer screenshots.</td></tr>';
             }
             if (summaryBadges) {
                 summaryBadges.innerHTML = '<span class="gm-chip" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-x-circle"></i> 0 Detected</span>';
@@ -2446,16 +2573,19 @@
                 reconciledCount++;
             }
 
+            var currentVal = existing ? (parseInt(existing[targetField]) || 0) : 0;
+            var pScore = p.score != null ? p.score : (p.overall_power || 0);
+
             var badgeHtml = '';
             if (!existing) {
                 newCount++;
                 badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
             } else if (matchType === 'fuzzy' || matchType === 'normalized') {
                 updateCount++;
-                badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + esc(existing.pseudo) + '") &rarr; ' + fmtNum(p.overall_power) + '</span>';
-            } else if (existing.overall_power !== p.overall_power) {
+                badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + esc(existing.pseudo) + '") &rarr; ' + fmtNum(pScore) + '</span>';
+            } else if (currentVal !== pScore) {
                 updateCount++;
-                badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + fmtNum(existing.overall_power) + ' &rarr; ' + fmtNum(p.overall_power) + ')</span>';
+                badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:' + meta.color + '; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + fmtNum(currentVal) + ' &rarr; ' + fmtNum(pScore) + ')</span>';
             } else {
                 unchangedCount++;
                 badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
@@ -2464,7 +2594,7 @@
             html += '<tr>' +
                 '<td style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" checked></td>' +
                 '<td><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
-                '<td><input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + p.overall_power + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:var(--accent); width:100%; max-width:140px;"></td>' +
+                '<td><input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;"></td>' +
                 '<td>' + badgeHtml + '</td>' +
             '</tr>';
         });
@@ -2499,7 +2629,9 @@
                 input.addEventListener('input', function () {
                     var idx = parseInt(input.getAttribute('data-index'), 10);
                     if (ocrExtractedPlayers[idx]) {
-                        ocrExtractedPlayers[idx].overall_power = parseInt(input.value, 10) || 0;
+                        var val = parseInt(input.value, 10) || 0;
+                        ocrExtractedPlayers[idx].score = val;
+                        ocrExtractedPlayers[idx].overall_power = val;
                     }
                 });
             });
@@ -2523,7 +2655,8 @@
         var selectedCbs = tbody.querySelectorAll('.ocr-row-cb:checked');
         var count = selectedCbs.length;
         var span = btnCommit.querySelector('span');
-        if (span) span.textContent = 'Validate & Apply Updates (' + count + ')';
+        var meta = OCR_METRICS_META[currentOcrMetric] || OCR_METRICS_META.power;
+        if (span) span.textContent = 'Validate & Apply ' + meta.header + ' (' + count + ')';
         btnCommit.disabled = count === 0;
     }
 
@@ -2543,6 +2676,8 @@
         }
 
         var selectedPlayers = selectedIndices.map(function (idx) { return ocrExtractedPlayers[idx]; });
+        var meta = OCR_METRICS_META[currentOcrMetric] || OCR_METRICS_META.power;
+        var targetField = meta.field;
 
         btnCommit.disabled = true;
         var span = btnCommit.querySelector('span');
@@ -2550,32 +2685,82 @@
 
         try {
             var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
-            
-            var rpcRes = await supabase.rpc('gm_bulk_upsert_members', { p_members: selectedPlayers, p_guild: currentG });
-            
-            if (rpcRes.error) {
-                console.warn('RPC gm_bulk_upsert_members failed, falling back to direct upserts:', rpcRes.error);
-                for (var i = 0; i < selectedPlayers.length; i++) {
-                    var sp = selectedPlayers[i];
-                    var existing = guildMembers.find(function (m) { return m.pseudo.toLowerCase() === sp.pseudo.toLowerCase(); });
-                    if (existing) {
-                        await supabase.from('guild_members').update({
-                            overall_power: sp.overall_power,
-                            power_updated_at: new Date().toISOString()
-                        }).eq('guild', currentG).eq('pseudo', existing.pseudo);
-                    } else {
-                        await supabase.from('guild_members').insert([{
-                            pseudo: sp.pseudo,
-                            uid: sp.uid || ('TEMP-' + Math.random().toString(36).substring(2, 10)),
-                            overall_power: sp.overall_power,
-                            guild: currentG,
-                            role: 'R1'
-                        }]);
+
+            for (var i = 0; i < selectedPlayers.length; i++) {
+                var sp = selectedPlayers[i];
+                var scoreVal = sp.score != null ? sp.score : (sp.overall_power || 0);
+                var existing = guildMembers.find(function (m) { return m.pseudo.toLowerCase() === sp.pseudo.toLowerCase(); });
+
+                var updatePayload = {};
+                updatePayload[targetField] = scoreVal;
+                updatePayload.metrics_updated_at = new Date().toISOString();
+                if (targetField === 'overall_power') {
+                    updatePayload.power_updated_at = new Date().toISOString();
+                }
+
+                if (existing) {
+                    await supabase.from('guild_members')
+                        .update(updatePayload)
+                        .eq('guild', currentG)
+                        .eq('pseudo', existing.pseudo);
+
+                    // Update in-memory member object
+                    existing[targetField] = scoreVal;
+                    existing.metrics_updated_at = updatePayload.metrics_updated_at;
+
+                    // Snapshot to player_metrics_history
+                    if (window.GM && window.GM.upsertPlayerMetrics) {
+                        try {
+                            await window.GM.upsertPlayerMetrics(currentG, existing.pseudo, existing.uid, {
+                                overall_power: existing.overall_power || 0,
+                                fleet_rating: existing.fleet_rating || 0,
+                                tech_power: existing.tech_power || 0,
+                                flagship_power: existing.flagship_power || 0,
+                                champion_power: existing.champion_power || 0,
+                                crew_power: existing.crew_power || 0,
+                                glory_score: existing.glory_score || 0
+                            });
+                        } catch (histErr) {
+                            console.warn('Failed to snapshot player metrics history:', histErr);
+                        }
+                    }
+                } else {
+                    var newMember = {
+                        pseudo: sp.pseudo,
+                        uid: sp.uid || ('TEMP-' + Math.random().toString(36).substring(2, 10)),
+                        overall_power: targetField === 'overall_power' ? scoreVal : 0,
+                        fleet_rating: targetField === 'fleet_rating' ? scoreVal : 0,
+                        tech_power: targetField === 'tech_power' ? scoreVal : 0,
+                        flagship_power: targetField === 'flagship_power' ? scoreVal : 0,
+                        champion_power: targetField === 'champion_power' ? scoreVal : 0,
+                        crew_power: targetField === 'crew_power' ? scoreVal : 0,
+                        glory_score: targetField === 'glory_score' ? scoreVal : 0,
+                        guild: currentG,
+                        role: 'R1'
+                    };
+
+                    await supabase.from('guild_members').insert([newMember]);
+                    guildMembers.push(newMember);
+
+                    if (window.GM && window.GM.upsertPlayerMetrics) {
+                        try {
+                            await window.GM.upsertPlayerMetrics(currentG, newMember.pseudo, newMember.uid, {
+                                overall_power: newMember.overall_power,
+                                fleet_rating: newMember.fleet_rating,
+                                tech_power: newMember.tech_power,
+                                flagship_power: newMember.flagship_power,
+                                champion_power: newMember.champion_power,
+                                crew_power: newMember.crew_power,
+                                glory_score: newMember.glory_score
+                            });
+                        } catch (histErr) {
+                            console.warn('Failed to snapshot new member metrics history:', histErr);
+                        }
                     }
                 }
             }
 
-            showToast(selectedPlayers.length + ' member(s) successfully validated and updated!', 'success');
+            showToast(selectedPlayers.length + ' member(s) successfully updated for ' + meta.header + '!', 'success');
             
             var modal = document.getElementById('ocr-modal-overlay');
             if (modal) {
@@ -2583,13 +2768,14 @@
                 modal.style.display = 'none';
             }
 
-            fetchGuildMembers();
+            renderGuildMembers();
         } catch (err) {
-            console.error('Commit OCR failed:', err);
-            showToast('Error saving member updates: ' + err.message, 'error');
+            console.error('Commit OCR error:', err);
+            showToast('Failed to save OCR updates: ' + (err.message || err), 'error');
         } finally {
             btnCommit.disabled = false;
-            if (span) span.textContent = 'Validate & Apply Updates';
+            var finalSpan = btnCommit.querySelector('span');
+            if (finalSpan) finalSpan.textContent = 'Validate & Apply Updates';
         }
     }
 

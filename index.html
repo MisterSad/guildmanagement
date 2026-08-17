@@ -756,15 +756,21 @@
                     </header>
 
                     <div class="gm-card gm-card-padded gm-section">
-                        <div class="gm-section-title" style="margin-bottom: .75rem; display:flex; justify-content:space-between; align-items:center;">
+                        <div class="gm-section-title" style="margin-bottom: .75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                             <div>
                                 <i class="ph ph-user-plus"></i>
                                 <span data-i18n="card_add_member">Add a member</span>
                             </div>
-                            <button type="button" id="btn-ocr-import" class="btn-ocr-trigger gm-btn gm-btn-accent" onclick="window.GM && window.GM.openOcrModal && window.GM.openOcrModal()" style="gap:0.4rem; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.4rem 0.8rem; font-weight:600; cursor:pointer;">
-                                <i class="ph ph-scan" style="font-size:1.1rem;"></i>
-                                <span>Import Members (OCR)</span>
-                            </button>
+                        </div>
+                        <div class="gm-ocr-toolbar" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem; padding:0.6rem 0.8rem; background:rgba(99,102,241,0.04); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
+                            <span style="font-size:0.78rem; font-weight:700; color:var(--accent); display:inline-flex; align-items:center; gap:0.25rem; margin-right:0.25rem; width:100%;"><i class="ph ph-scan"></i> AI OCR Metric Scanners:</span>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="power" style="gap:0.3rem; background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-sword"></i> 1. Power OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="fleet" style="gap:0.3rem; background:rgba(96,165,250,0.15); color:#60a5fa; border:1px solid rgba(96,165,250,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-swords"></i> 2. Fleet OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="tech" style="gap:0.3rem; background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-atom"></i> 3. Tech OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="flagship" style="gap:0.3rem; background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid rgba(251,191,36,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-rocket"></i> 4. Flagship OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="champs" style="gap:0.3rem; background:rgba(244,114,182,0.15); color:#f472b6; border:1px solid rgba(244,114,182,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-crown"></i> 5. Champs OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="crew" style="gap:0.3rem; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-users-three"></i> 6. Crew OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="glory" style="gap:0.3rem; background:rgba(52,211,153,0.15); color:#34d399; border:1px solid rgba(52,211,153,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-trophy"></i> 7. Glory OCR</button>
                         </div>
                         <form id="add-member-form" class="gm-row" style="gap:.5rem; flex-wrap:wrap;">
                             <div class="gm-input-with-icon" style="flex:1; min-width: 180px;">
@@ -1419,15 +1425,21 @@
                 <div class="admin-home-layout">
                     <!-- Horizontal Banner for adding member -->
                     <div class="glass-card action-card horizontal-banner slide-up" style="animation-delay:0.1s">
-                        <div class="banner-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div class="banner-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                             <div>
                                 <i class="ph-fill ph-user-plus text-accent"></i>
                                 <h3 data-i18n="card_add_member">Add a member</h3>
                             </div>
-                            <button type="button" id="btn-ocr-import-member" class="btn-ocr-trigger gm-btn gm-btn-accent" onclick="window.GM && window.GM.openOcrModal && window.GM.openOcrModal()" style="gap:0.4rem; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; padding:0.4rem 0.8rem; font-weight:600; cursor:pointer;">
-                                <i class="ph ph-scan" style="font-size:1.1rem;"></i>
-                                <span>Import Members (OCR)</span>
-                            </button>
+                        </div>
+                        <div class="gm-ocr-toolbar" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem; padding:0.6rem 0.8rem; background:rgba(99,102,241,0.04); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
+                            <span style="font-size:0.78rem; font-weight:700; color:var(--accent); display:inline-flex; align-items:center; gap:0.25rem; margin-right:0.25rem; width:100%;"><i class="ph ph-scan"></i> AI OCR Metric Scanners:</span>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="power" style="gap:0.3rem; background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-sword"></i> 1. Power OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="fleet" style="gap:0.3rem; background:rgba(96,165,250,0.15); color:#60a5fa; border:1px solid rgba(96,165,250,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-swords"></i> 2. Fleet OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="tech" style="gap:0.3rem; background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-atom"></i> 3. Tech OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="flagship" style="gap:0.3rem; background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid rgba(251,191,36,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-rocket"></i> 4. Flagship OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="champs" style="gap:0.3rem; background:rgba(244,114,182,0.15); color:#f472b6; border:1px solid rgba(244,114,182,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-crown"></i> 5. Champs OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="crew" style="gap:0.3rem; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-users-three"></i> 6. Crew OCR</button>
+                            <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="glory" style="gap:0.3rem; background:rgba(52,211,153,0.15); color:#34d399; border:1px solid rgba(52,211,153,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-trophy"></i> 7. Glory OCR</button>
                         </div>
                         <form id="add-member-form-member" class="horizontal-form">
                             <div class="input-group">
@@ -1517,16 +1529,17 @@
     </div><!-- #app -->
 
     <!-- OCR Gemini Modal Overlay -->
+    <!-- OCR Gemini Modal Overlay -->
     <div id="ocr-modal-overlay" class="confirm-overlay" style="display: none; position: fixed; inset: 0; z-index: 999999; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); align-items: center; justify-content: center;">
-        <div class="gm-modal-card" style="max-width: 780px; width: 94%; max-height: 90vh; display: flex; flex-direction: column; text-align: left; overflow: hidden;">
+        <div class="gm-modal-card" style="max-width: 820px; width: 94%; max-height: 90vh; display: flex; flex-direction: column; text-align: left; overflow: hidden;">
             <div class="gm-modal-header" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border-soft);">
                 <div style="display: flex; align-items: center; gap: 0.6rem;">
                     <div style="width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg, #6366f1, #8b5cf6); display:flex; align-items:center; justify-content:center; color:#fff;">
                         <i class="ph ph-scan" style="font-size:1.3rem;"></i>
                     </div>
                     <div>
-                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">Import Members & Power (OCR)</h3>
-                        <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted);">Upload roster screenshots to import new members and update power levels</p>
+                        <h3 id="ocr-modal-title" style="margin: 0; font-size: 1.15rem; font-weight: 700;">AI OCR Roster & Metric Scanner</h3>
+                        <p id="ocr-modal-subtitle" style="margin: 0; font-size: 0.78rem; color: var(--text-muted);">Upload in-game screenshots to extract and synchronize player metrics</p>
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -1535,11 +1548,22 @@
             </div>
 
             <div class="gm-modal-body" style="padding: 1rem 0; overflow-y: auto; flex: 1;">
+                <!-- Metric Selector Tabs -->
+                <div id="ocr-metric-tabs" class="gm-segmented" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:1rem; padding:0.35rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
+                    <button type="button" class="gm-seg-btn active" data-metric="power" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:var(--accent); color:#fff; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-sword"></i> 1. Power</button>
+                    <button type="button" class="gm-seg-btn" data-metric="fleet" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-swords"></i> 2. Fleet</button>
+                    <button type="button" class="gm-seg-btn" data-metric="tech" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-atom"></i> 3. Tech</button>
+                    <button type="button" class="gm-seg-btn" data-metric="flagship" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-rocket"></i> 4. Flagship</button>
+                    <button type="button" class="gm-seg-btn" data-metric="champs" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-crown"></i> 5. Champs</button>
+                    <button type="button" class="gm-seg-btn" data-metric="crew" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-users-three"></i> 6. Crew</button>
+                    <button type="button" class="gm-seg-btn" data-metric="glory" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-trophy"></i> 7. Glory</button>
+                </div>
+
                 <!-- Step 1: Upload Dropzone -->
                 <div id="ocr-dropzone" style="border: 2px dashed rgba(99, 102, 241, 0.4); border-radius: 12px; padding: 2rem 1rem; text-align: center; background: rgba(99, 102, 241, 0.03); cursor: pointer; transition: all 0.2s ease;">
                     <i class="ph ph-cloud-arrow-up" style="font-size: 2.8rem; color: var(--accent); margin-bottom: 0.5rem; display: inline-block;"></i>
-                    <h4 style="margin: 0 0 0.4rem 0; font-size: 1rem;">Drop your roster screenshots here or click to browse</h4>
-                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Supported formats: PNG, JPG, WEBP (Up to 25 roster screenshots per batch / 200+ players)</p>
+                    <h4 id="ocr-dropzone-title" style="margin: 0 0 0.4rem 0; font-size: 1rem;">Drop your Overall Power screenshots here or click to browse</h4>
+                    <p id="ocr-dropzone-desc" style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Supported formats: PNG, JPG, WEBP (Up to 25 screenshots per batch / 200+ players)</p>
                     <input type="file" id="ocr-file-input" accept="image/*" multiple style="display: none;">
                 </div>
 
@@ -1547,7 +1571,7 @@
                 <div id="ocr-loading" style="display: none; text-align: center; padding: 2.5rem 1rem;">
                     <div class="gm-spinner" style="width: 42px; height: 42px; border-width: 3px; border-top-color: #8b5cf6; margin: 0 auto 1rem auto;"></div>
                     <h4 style="margin: 0 0 0.4rem 0; font-size: 1rem;">Analyzing screenshots with AI OCR...</h4>
-                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Extracting player usernames and power levels...</p>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Extracting player usernames and metric values...</p>
                 </div>
 
                 <!-- Step 2: Results Table & Review -->
@@ -1571,7 +1595,7 @@
                                 <tr>
                                     <th style="width: 38px; text-align: center;"><input type="checkbox" id="ocr-toggle-all-cb" checked></th>
                                     <th>Player Username</th>
-                                    <th>Extracted Power</th>
+                                    <th id="ocr-metric-header">Extracted Score</th>
                                     <th>Roster Status</th>
                                 </tr>
                             </thead>

@@ -2,6 +2,20 @@
 
 ## New
 
+- **7-Metric AI OCR Scanners Engine & Dynamic Metric Synchronization (v119.1)**:
+  - **7 Dedicated Metric OCR Scanners**: Replaced single power OCR with 7 specialized AI OCR tools for *Foundation Galactic Frontier*:
+    1. 🌐 **1. Power OCR**: Overall Total Power (`overall_power`).
+    2. ⚔️ **2. Fleet OCR**: Strongest Fleet Rating / First March (`fleet_rating`).
+    3. 🔬 **3. Tech OCR**: Technology Power (`tech_power`).
+    4. 🚀 **4. Flagship OCR**: Flagship combat power (`flagship_power`).
+    5. 👑 **5. Champs OCR**: Champion / Hero total power (`champion_power`).
+    6. 👥 **6. Crew OCR**: Crew / Officer total power (`crew_power`).
+    7. 🏆 **7. Glory OCR**: Weekly PvP Glory points (`glory_score`).
+  - **Interactive OCR Metric Switcher**: Added a 7-tab segmented bar (`#ocr-metric-tabs`) inside the OCR modal allowing seamless switching between metrics without leaving the modal.
+  - **Context-Aware Gemini AI Prompts**: Edge Function `ocr-guild-members` dynamically adapts its Gemini vision instruction set based on `metricType`, converting OCR leaderboards and score strings into clean integers.
+  - **Targeted Metric Reconciliation & Progression Snapshots**: Validating OCR results updates the targeted metric column in `guild_members` and automatically invokes `gm_upsert_player_metrics` to record progress in `player_metrics_history`.
+  - **Quality Gate**: **250/250 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **7-Score Tactical Military Metrics, Combat Density & Player Force Breakdown Engine (v119.0)**:
   - **7 Native Military Metrics Integration**: Extended player schema across all tenants and the Player Portal with the 7 core numeric metrics of *Foundation Galactic Frontier*:
     - 🌐 **Overall Total Power**: Macro account strength.
