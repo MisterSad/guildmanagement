@@ -42,7 +42,11 @@
     var sfSelected    = {};         // pseudo → true (multi-select in Availability step)
 
     // ── Public API ─────────────────────────────────────────────────────────────
-    window.GM_SHADOWFRONT = { load: loadShadowfront };
+    window.GM_SHADOWFRONT = {
+        load: loadShadowfront,
+        getAssignments: function () { return sfState.assignments || []; },
+        getActiveSquadSession: function (squadKey) { return sfState.squads[squadKey] ? sfState.squads[squadKey].sessionId : null; }
+    };
 
     function squadLabel(squad) { return squad === 'squad1' ? t('sf_squad1') : t('sf_squad2'); }
     function getMemberPower(pseudo) {

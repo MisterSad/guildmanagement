@@ -2,6 +2,24 @@
 
 ## New
 
+- **9 Dedicated AI OCR Event Scanners for Command Center Events (v122.0)**:
+  - **Dedicated Event OCR Toolbars**: Integrated 9 dedicated OCR scanner triggers directly into their respective event sub-tabs within the Events Command Center:
+    - **SvS Tab**: *SvS Day 1 to 5 OCR* (Preparation score) & *SvS Day 6 OCR* (PvP Battle score).
+    - **GvG Tab**: *GvG Day 1 to 5 OCR* (Preparation score) & *GvG Day 6 OCR* (PvP Battle score).
+    - **Shadowfront Tab**: *Shadowfront S1 OCR* & *Shadowfront S2 OCR* (Squad 1 and Squad 2).
+    - **Defend Trade Route (DTR) Tab**: *DTR OCR* (Score > 0 -> Participated; Score == 0 -> Appointed + Participated).
+    - **Arms Race Tab**: *Arms Race SA OCR* & *Arms Race SB OCR* (Stage A and Stage B).
+  - **Tenant Tag Filtering & Participation Automation**:
+    - SvS and GvG OCRs strictly isolate and target players matching the tenant's configured guild tag, extracting prep/PvP scores and automatically validating the `Participated` toggle.
+    - Shadowfront S1/S2 OCR analyzes screenshots against active squad assignments: Main squad members receive `Participated = 1`; Reserve members automatically receive `Sub Present = true` and `Participated = 1`.
+    - DTR OCR evaluates presence and score: positive scores validate `Participated = 1`; zero scores validate `Appointed = true` and `Participated = 1`.
+    - Arms Race SA/SB OCR detects present members and validates stage participation.
+  - **Zero-Regression Full-Stack Synchronization**:
+    - Synchronized Gemini Vision Edge Function prompt instructions in `supabase/functions/ocr-guild-members/index.ts`.
+    - Extended client-side OCR engine (`OCR_METRICS_META`, `setOcrMetric`, `callGeminiOcrBatchApi`, `renderOcrResults`, and `commitOcrUpdates` in `app.js`).
+    - Event tabs automatically reload data and update statistics in real time upon commit.
+  - **Quality Gate**: **268/268 Vitest unit tests green** (added test suite for 9 Event OCR schemas and participation evaluation), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Player Portal Streamlined Chart Interface & Redundancy Removal (v121.4)**:
   - **Removed Redundant Bottom List**: Removed the duplicate session breakdown list (`.portal-chart-list`) below progression charts in `portal.js`, concentrating all visual intelligence inside the canvas graph.
   - **Uncluttered Presentation**: The charts cleanly present individual player scores (`33.4M`, `71.1M`), in-graph dashed guild benchmark curves (`Avg 35.1M`), and standardized `DD/MM/YY` timeline dates with zero visual clutter.

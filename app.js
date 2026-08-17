@@ -2039,6 +2039,132 @@
             color: '#34d399',
             icon: 'ph-trophy',
             isMultiGuild: false
+        },
+        svs_prep: {
+            title: 'SvS Day 1 to 5 OCR — Preparation Stage',
+            subtitle: 'Upload SvS Day 1-5 screenshots to import prep scores and validate participation for your guild',
+            dropTitle: 'Drop SvS Day 1 to 5 screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Targets members with your Guild Tag)',
+            header: 'SvS Prep Score',
+            field: 'score_prep',
+            color: '#f59e0b',
+            icon: 'ph-sword',
+            isMultiGuild: true,
+            isEvent: true,
+            eventType: 'standard',
+            eventKey: 'SvS'
+        },
+        svs_pvp: {
+            title: 'SvS Day 6 OCR — PvP Battle Day',
+            subtitle: 'Upload SvS Day 6 PvP screenshots to import battle scores and validate participation for your guild',
+            dropTitle: 'Drop SvS Day 6 PvP screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Targets members with your Guild Tag)',
+            header: 'SvS PvP Score',
+            field: 'score_pvp',
+            color: '#f97316',
+            icon: 'ph-fire',
+            isMultiGuild: true,
+            isEvent: true,
+            eventType: 'standard',
+            eventKey: 'SvS'
+        },
+        gvg_prep: {
+            title: 'GvG Day 1 to 5 OCR — Preparation Stage',
+            subtitle: 'Upload GvG Day 1-5 screenshots to import prep scores and validate participation for your guild',
+            dropTitle: 'Drop GvG Day 1 to 5 screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Targets members with your Guild Tag)',
+            header: 'GvG Prep Score',
+            field: 'score_prep',
+            color: '#60a5fa',
+            icon: 'ph-flag-banner',
+            isMultiGuild: true,
+            isEvent: true,
+            eventType: 'standard',
+            eventKey: 'GvG'
+        },
+        gvg_pvp: {
+            title: 'GvG Day 6 OCR — PvP Battle Day',
+            subtitle: 'Upload GvG Day 6 PvP screenshots to import battle scores and validate participation for your guild',
+            dropTitle: 'Drop GvG Day 6 PvP screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Targets members with your Guild Tag)',
+            header: 'GvG PvP Score',
+            field: 'score_pvp',
+            color: '#38bdf8',
+            icon: 'ph-swords',
+            isMultiGuild: true,
+            isEvent: true,
+            eventType: 'standard',
+            eventKey: 'GvG'
+        },
+        shadowfront_s1: {
+            title: 'Shadowfront S1 OCR — Squad 1 Battle & Roster',
+            subtitle: 'Upload Shadowfront Squad 1 screenshots to validate Main squad (Participated) and Substitutes (Sub Present + Participated)',
+            dropTitle: 'Drop Shadowfront Squad 1 screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Detects Squad 1 Main & Reserve members)',
+            header: 'Squad 1 Status',
+            field: 'participated',
+            color: '#a855f7',
+            icon: 'ph-users-three',
+            isMultiGuild: false,
+            isEvent: true,
+            eventType: 'shadowfront',
+            squad: 'squad1'
+        },
+        shadowfront_s2: {
+            title: 'Shadowfront S2 OCR — Squad 2 Battle & Roster',
+            subtitle: 'Upload Shadowfront Squad 2 screenshots to validate Main squad (Participated) and Substitutes (Sub Present + Participated)',
+            dropTitle: 'Drop Shadowfront Squad 2 screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Detects Squad 2 Main & Reserve members)',
+            header: 'Squad 2 Status',
+            field: 'participated',
+            color: '#d946ef',
+            icon: 'ph-users-three',
+            isMultiGuild: false,
+            isEvent: true,
+            eventType: 'shadowfront',
+            squad: 'squad2'
+        },
+        dtr: {
+            title: 'DTR OCR — Defend Trade Route',
+            subtitle: 'Upload DTR screenshots to validate Participated (>0 pts) or Appointed + Participated (=0 pts)',
+            dropTitle: 'Drop Defend Trade Route screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Auto-determines Participated vs Appointed)',
+            header: 'DTR Status',
+            field: 'participated',
+            color: '#10b981',
+            icon: 'ph-truck',
+            isMultiGuild: false,
+            isEvent: true,
+            eventType: 'standard',
+            eventKey: 'Defend Trade Route'
+        },
+        armsrace_sa: {
+            title: 'Arms Race SA OCR — Stage A Participation',
+            subtitle: 'Upload Stage A screenshots to validate member participation',
+            dropTitle: 'Drop Arms Race Stage A screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Validates Stage A Participated)',
+            header: 'Stage A Status',
+            field: 'participated',
+            color: '#f43f5e',
+            icon: 'ph-bolt',
+            isMultiGuild: false,
+            isEvent: true,
+            eventType: 'armsrace',
+            stage: 'stageA'
+        },
+        armsrace_sb: {
+            title: 'Arms Race SB OCR — Stage B Participation',
+            subtitle: 'Upload Stage B screenshots to validate member participation',
+            dropTitle: 'Drop Arms Race Stage B screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Validates Stage B Participated)',
+            header: 'Stage B Status',
+            field: 'participated',
+            color: '#ef4444',
+            icon: 'ph-crosshair',
+            isMultiGuild: false,
+            isEvent: true,
+            eventType: 'armsrace',
+            stage: 'stageB'
         }
     };
 
@@ -2085,7 +2211,7 @@
 
         if (meta.isMultiGuild) {
             if (scopeBadge) {
-                scopeBadge.innerHTML = '<i class="ph ph-globe"></i> Server Leaderboard (Multi-Guild)';
+                scopeBadge.innerHTML = '<i class="ph ph-globe"></i> Leaderboard (Tag Filtered)';
                 scopeBadge.style.background = 'rgba(234,179,8,0.18)';
                 scopeBadge.style.color = '#facc15';
             }
@@ -2094,6 +2220,16 @@
                 scopeDesc.textContent = 'Screenshots contain multi-guild players. Targeting members with tag ' + displayTag + '.';
             }
             if (tagInputGroup) tagInputGroup.style.display = 'flex';
+        } else if (meta.isEvent) {
+            if (scopeBadge) {
+                scopeBadge.innerHTML = '<i class="' + (meta.icon || 'ph-sword') + '"></i> Event Session Scan';
+                scopeBadge.style.background = 'rgba(99,102,241,0.18)';
+                scopeBadge.style.color = meta.color || 'var(--accent)';
+            }
+            if (scopeDesc) {
+                scopeDesc.textContent = meta.subtitle || 'Screenshots will update event participants for active session.';
+            }
+            if (tagInputGroup) tagInputGroup.style.display = 'none';
         } else {
             if (scopeBadge) {
                 scopeBadge.innerHTML = '<i class="ph ph-shield-check"></i> Intra-Guild Scan';
@@ -2448,7 +2584,27 @@
         var meta = OCR_METRICS_META[metricType] || OCR_METRICS_META.power;
         var isMulti = !!meta.isMultiGuild;
         var multiGuildClause = isMulti ? ('\nNOTE: Server-wide multi-guild leaderboard.' + (guildTag ? ' Target guild tag is "' + guildTag + '". Clean leading tags from player pseudo.' : '')) : '';
-        var systemPrompt = 'Extract all visible player usernames (pseudos) and ' + meta.header + ' values from these FGF gaming screenshots.' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "' + metricType + '", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
+        
+        var systemPrompt = '';
+        if (metricType === 'svs_prep') {
+            systemPrompt = 'Extract player usernames (pseudos) and Day 1 to 5 Preparation stage score values for Server vs Server (SvS) from these FGF gaming screenshots. ' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "svs_prep", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
+        } else if (metricType === 'svs_pvp') {
+            systemPrompt = 'Extract player usernames (pseudos) and Day 6 PvP battle score values for Server vs Server (SvS) from these FGF gaming screenshots. ' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "svs_pvp", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
+        } else if (metricType === 'gvg_prep') {
+            systemPrompt = 'Extract player usernames (pseudos) and Day 1 to 5 Preparation stage score values for Guild vs Guild (GvG) from these FGF gaming screenshots. ' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "gvg_prep", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
+        } else if (metricType === 'gvg_pvp') {
+            systemPrompt = 'Extract player usernames (pseudos) and Day 6 PvP battle score values for Guild vs Guild (GvG) from these FGF gaming screenshots. ' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "gvg_pvp", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
+        } else if (metricType === 'shadowfront_s1' || metricType === 'shadowfront_s2') {
+            var sqName = metricType === 'shadowfront_s1' ? 'Squad 1' : 'Squad 2';
+            systemPrompt = 'Extract all visible player usernames (pseudos) participating or listed in this Shadowfront ' + sqName + ' battle or roster screenshot(s). Convert any visible score or power to integer. Return JSON matching schema: {"metric": "' + metricType + '", "players": [{"pseudo": "string", "score": number, "uid": "string or null"}]}';
+        } else if (metricType === 'dtr') {
+            systemPrompt = 'Extract all visible player usernames (pseudos) and their score/points from Defend Trade Route (DTR) screenshot(s). If score is explicitly 0 or 0 pts, output score as 0; if positive points, output positive integer score. Return JSON matching schema: {"metric": "dtr", "players": [{"pseudo": "string", "score": number, "uid": "string or null"}]}';
+        } else if (metricType === 'armsrace_sa' || metricType === 'armsrace_sb') {
+            var stgName = metricType === 'armsrace_sa' ? 'Stage A' : 'Stage B';
+            systemPrompt = 'Extract all visible player usernames (pseudos) participating or present in this Arms Race ' + stgName + ' screenshot(s). Return JSON matching schema: {"metric": "' + metricType + '", "players": [{"pseudo": "string", "score": number, "uid": "string or null"}]}';
+        } else {
+            systemPrompt = 'Extract all visible player usernames (pseudos) and ' + meta.header + ' values from these FGF gaming screenshots.' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "' + metricType + '", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
+        }
 
         var parts = [{ text: systemPrompt }];
         batchImageItems.forEach(function (item) {
@@ -2720,6 +2876,12 @@
         var reconciledCount = 0;
         var otherGuildCount = 0;
 
+        var isEventOcr = !!meta.isEvent;
+        var sfAssignments = [];
+        if (isEventOcr && meta.eventType === 'shadowfront' && window.GM_SHADOWFRONT && window.GM_SHADOWFRONT.getAssignments) {
+            sfAssignments = window.GM_SHADOWFRONT.getAssignments();
+        }
+
         var html = '';
         players.forEach(function (p, idx) {
             var matchRes = findBestMatchingMember(p.pseudo, guildMembers, activeGuildTag);
@@ -2740,24 +2902,61 @@
             var badgeHtml = '';
             var isChecked = true;
 
-            if (!existing) {
-                if (isMultiGuild) {
+            if (isEventOcr) {
+                if (!existing) {
                     otherGuildCount++;
                     isChecked = false;
                     badgeHtml = '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild / Non-Member</span>';
+                } else if (meta.eventType === 'shadowfront') {
+                    updateCount++;
+                    var sfAssign = sfAssignments.find(function (a) { return a.pseudo && a.pseudo.toLowerCase() === existing.pseudo.toLowerCase(); });
+                    if (sfAssign && sfAssign.role === 'reserve') {
+                        badgeHtml = '<span class="gm-chip" style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3);"><i class="ph ph-clock-countdown"></i> Substitute &rarr; [Sub Present ✓] + [Participated ✓]</span>';
+                    } else if (sfAssign && sfAssign.role === 'participant') {
+                        badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-shield-check"></i> Main Squad &rarr; [Participated ✓]</span>';
+                    } else {
+                        badgeHtml = '<span class="gm-chip gm-chip-warning"><i class="ph ph-warning"></i> Guild Member &rarr; [Participated ✓]</span>';
+                    }
+                } else if (currentOcrMetric === 'dtr') {
+                    updateCount++;
+                    if (pScore > 0) {
+                        badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> Score: ' + fmtNum(pScore) + ' &rarr; [Participated ✓]</span>';
+                    } else {
+                        badgeHtml = '<span class="gm-chip gm-chip-accent"><i class="ph ph-check-square"></i> Score: 0 &rarr; [Appointed ✓] + [Participated ✓]</span>';
+                    }
+                } else if (meta.eventType === 'armsrace') {
+                    updateCount++;
+                    badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> Present &rarr; [Participated ✓]</span>';
+                } else if (currentOcrMetric === 'svs_prep' || currentOcrMetric === 'gvg_prep') {
+                    updateCount++;
+                    badgeHtml = '<span class="gm-chip" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);"><i class="ph ph-sword"></i> Prep Score: ' + fmtNum(pScore) + ' &rarr; [Participated ✓]</span>';
+                } else if (currentOcrMetric === 'svs_pvp' || currentOcrMetric === 'gvg_pvp') {
+                    updateCount++;
+                    badgeHtml = '<span class="gm-chip" style="background:rgba(249,115,22,0.15); color:#f97316; border:1px solid rgba(249,115,22,0.3);"><i class="ph ph-fire"></i> PvP Score: ' + fmtNum(pScore) + ' &rarr; [Participated ✓]</span>';
                 } else {
-                    newCount++;
-                    badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
+                    updateCount++;
+                    badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-check"></i> ' + meta.header + ': ' + fmtNum(pScore) + ' &rarr; [Participated ✓]</span>';
                 }
-            } else if (matchType === 'fuzzy' || matchType === 'normalized' || matchType === 'clean_tag') {
-                updateCount++;
-                badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + esc(existing.pseudo) + '") &rarr; ' + fmtNum(pScore) + '</span>';
-            } else if (currentVal !== pScore) {
-                updateCount++;
-                badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:' + meta.color + '; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + fmtNum(currentVal) + ' &rarr; ' + fmtNum(pScore) + ')</span>';
             } else {
-                unchangedCount++;
-                badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
+                if (!existing) {
+                    if (isMultiGuild) {
+                        otherGuildCount++;
+                        isChecked = false;
+                        badgeHtml = '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild / Non-Member</span>';
+                    } else {
+                        newCount++;
+                        badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
+                    }
+                } else if (matchType === 'fuzzy' || matchType === 'normalized' || matchType === 'clean_tag') {
+                    updateCount++;
+                    badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + esc(existing.pseudo) + '") &rarr; ' + fmtNum(pScore) + '</span>';
+                } else if (currentVal !== pScore) {
+                    updateCount++;
+                    badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:' + meta.color + '; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + fmtNum(currentVal) + ' &rarr; ' + fmtNum(pScore) + ')</span>';
+                } else {
+                    unchangedCount++;
+                    badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
+                }
             }
 
             html += '<tr>' +
@@ -2769,12 +2968,19 @@
         });
 
         if (summaryBadges) {
-            summaryBadges.innerHTML = 
-                (newCount > 0 ? '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>' : '') +
-                '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Updates</span>' +
-                (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
-                (otherGuildCount > 0 ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' + otherGuildCount + ' Other Guild (Unchecked)</span>' : '') +
-                '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' + unchangedCount + ' Unchanged</span>';
+            if (isEventOcr) {
+                summaryBadges.innerHTML = 
+                    '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Ready to Apply</span>' +
+                    (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
+                    (otherGuildCount > 0 ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' + otherGuildCount + ' Ignored / Non-Tenant</span>' : '');
+            } else {
+                summaryBadges.innerHTML = 
+                    (newCount > 0 ? '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>' : '') +
+                    '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Updates</span>' +
+                    (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
+                    (otherGuildCount > 0 ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' + otherGuildCount + ' Other Guild (Unchecked)</span>' : '') +
+                    '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' + unchangedCount + ' Unchanged</span>';
+            }
         }
 
         if (tbody) tbody.innerHTML = html;
@@ -2854,8 +3060,181 @@
         if (span) span.textContent = 'Validating & Saving...';
 
         try {
+            var db = (window.GM && window.GM.db) ? window.GM.db : supabase;
             var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
+            if (meta.isEvent) {
+                // ── Event OCR Commit Handling ─────────────────────────────
+                if (meta.eventType === 'shadowfront') {
+                    var sqName = meta.squad === 'squad1' ? 'Shadowfront Squad 1' : 'Shadowfront Squad 2';
+                    var sqRes = await db.from('event_status')
+                        .select('session_id, is_active, start_at')
+                        .eq('guild', currentG)
+                        .eq('event_name', sqName)
+                        .maybeSingle();
+
+                    if (!sqRes.data || !sqRes.data.is_active || !sqRes.data.session_id) {
+                        showToast('Please start the ' + (meta.squad === 'squad1' ? 'Squad 1' : 'Squad 2') + ' session in Events before applying OCR updates.', 'error');
+                        btnCommit.disabled = false;
+                        if (span) span.textContent = 'Validate & Apply Updates';
+                        return;
+                    }
+
+                    var activeSid = sqRes.data.session_id;
+
+                    // Fetch assignments to know reserve vs main
+                    var assignRes = await db.from('shadowfront_squads')
+                        .select('pseudo, role, squad')
+                        .eq('guild', currentG)
+                        .eq('session_id', activeSid);
+                    var sfAssignments = assignRes.data || [];
+                    var assignMap = {};
+                    sfAssignments.forEach(function (a) { assignMap[a.pseudo.toLowerCase()] = a.role; });
+
+                    for (var i = 0; i < selectedPlayers.length; i++) {
+                        var sp = selectedPlayers[i];
+                        var role = assignMap[sp.pseudo.toLowerCase()];
+                        var updatePayload = {
+                            participated: 1
+                        };
+                        if (role === 'reserve') {
+                            updatePayload.sub_present = true;
+                        }
+
+                        // Try updating first
+                        var upRes = await db.from('event_participants')
+                            .update(updatePayload)
+                            .eq('guild', currentG)
+                            .eq('event_name', 'Shadowfront')
+                            .eq('session_id', activeSid)
+                            .eq('pseudo', sp.pseudo);
+
+                        // If row didn't exist yet, insert it
+                        if (upRes.data && upRes.data.length === 0) {
+                            var insertPayload = Object.assign({
+                                guild: currentG,
+                                event_name: 'Shadowfront',
+                                session_id: activeSid,
+                                pseudo: sp.pseudo
+                            }, updatePayload);
+                            await db.from('event_participants').insert([insertPayload]);
+                        }
+                    }
+
+                    if (window.GM_SHADOWFRONT && window.GM_SHADOWFRONT.load) {
+                        await window.GM_SHADOWFRONT.load();
+                    }
+                } else if (meta.eventType === 'armsrace') {
+                    var arEvName = meta.stage === 'stageA' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
+                    var arRes = await db.from('event_status')
+                        .select('session_id, is_active, start_at')
+                        .eq('guild', currentG)
+                        .eq('event_name', arEvName)
+                        .maybeSingle();
+
+                    if (!arRes.data || !arRes.data.is_active || !arRes.data.session_id) {
+                        showToast('Please start Arms Race ' + (meta.stage === 'stageA' ? 'Stage A' : 'Stage B') + ' session in Events before applying OCR updates.', 'error');
+                        btnCommit.disabled = false;
+                        if (span) span.textContent = 'Validate & Apply Updates';
+                        return;
+                    }
+
+                    var arSid = arRes.data.session_id;
+
+                    for (var i = 0; i < selectedPlayers.length; i++) {
+                        var sp = selectedPlayers[i];
+                        var upRes = await db.from('event_participants')
+                            .update({ participated: 1 })
+                            .eq('guild', currentG)
+                            .eq('event_name', arEvName)
+                            .eq('session_id', arSid)
+                            .eq('pseudo', sp.pseudo);
+
+                        if (upRes.data && upRes.data.length === 0) {
+                            await db.from('event_participants').insert([{
+                                guild: currentG,
+                                event_name: arEvName,
+                                session_id: arSid,
+                                pseudo: sp.pseudo,
+                                participated: 1
+                            }]);
+                        }
+                    }
+
+                    if (window.GM_ARMSRACE && window.GM_ARMSRACE.load) {
+                        await window.GM_ARMSRACE.load();
+                    }
+                } else {
+                    // Standard events: SvS, GvG, Defend Trade Route
+                    var evName = meta.eventKey;
+                    var evRes = await db.from('event_status')
+                        .select('session_id, is_active, start_at')
+                        .eq('guild', currentG)
+                        .eq('event_name', evName)
+                        .maybeSingle();
+
+                    if (!evRes.data || !evRes.data.is_active || !evRes.data.session_id) {
+                        showToast('Please start the ' + evName + ' session in Events before applying OCR updates.', 'error');
+                        btnCommit.disabled = false;
+                        if (span) span.textContent = 'Validate & Apply Updates';
+                        return;
+                    }
+
+                    var evSid = evRes.data.session_id;
+
+                    for (var i = 0; i < selectedPlayers.length; i++) {
+                        var sp = selectedPlayers[i];
+                        var scoreVal = sp.score != null ? sp.score : 0;
+                        var updatePayload = {};
+
+                        if (currentOcrMetric === 'svs_prep' || currentOcrMetric === 'gvg_prep') {
+                            updatePayload.score_prep = scoreVal;
+                            updatePayload.participated = 1;
+                        } else if (currentOcrMetric === 'svs_pvp' || currentOcrMetric === 'gvg_pvp') {
+                            updatePayload.score_pvp = scoreVal;
+                            updatePayload.participated = 1;
+                        } else if (currentOcrMetric === 'dtr') {
+                            if (scoreVal > 0) {
+                                updatePayload.participated = 1;
+                            } else {
+                                updatePayload.appointed = true;
+                                updatePayload.participated = 1;
+                            }
+                        }
+
+                        var upRes = await db.from('event_participants')
+                            .update(updatePayload)
+                            .eq('guild', currentG)
+                            .eq('event_name', evName)
+                            .eq('session_id', evSid)
+                            .eq('pseudo', sp.pseudo);
+
+                        if (upRes.data && upRes.data.length === 0) {
+                            var insertPayload = Object.assign({
+                                guild: currentG,
+                                event_name: evName,
+                                session_id: evSid,
+                                pseudo: sp.pseudo
+                            }, updatePayload);
+                            await db.from('event_participants').insert([insertPayload]);
+                        }
+                    }
+
+                    if (window.GM_EVENTS && window.GM_EVENTS.loadEvent) {
+                        await window.GM_EVENTS.loadEvent(evName);
+                    }
+                }
+
+                showToast(selectedPlayers.length + ' participant(s) updated for ' + meta.header + '!', 'success');
+                var modal = document.getElementById('ocr-modal-overlay');
+                if (modal) {
+                    modal.classList.remove('visible');
+                    modal.style.display = 'none';
+                }
+                return;
+            }
+
+            // ── Roster Metrics Commit Handling ────────────────────────────
             for (var i = 0; i < selectedPlayers.length; i++) {
                 var sp = selectedPlayers[i];
                 var scoreVal = sp.score != null ? sp.score : (sp.overall_power || 0);

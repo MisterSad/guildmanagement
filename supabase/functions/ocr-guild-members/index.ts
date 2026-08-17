@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "missing_image" }, 400);
   }
 
-  const isMultiGuild = ["fleet", "flagship", "champs", "crew"].includes(metricType);
+  const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp"].includes(metricType);
 
   const metricInstructions: Record<string, string> = {
     power: `Overall Total Power / Puissance Totale. Extract player pseudo and total numerical power. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
@@ -80,7 +80,16 @@ Deno.serve(async (req: Request) => {
     flagship: `Strongest Flagship Power / Puissance Vaisseau Amiral. Multi-guild server ranking. Extract player pseudo and flagship power integer. Convert strings like "10.3M" -> 10300000, "9.8M" -> 9800000.`,
     champs: `Champion Total Power / Puissance Totale des Champions (Heroes / Héros). Multi-guild server ranking. Extract player pseudo and champion total power integer. Convert strings like "32.5M" -> 32500000, "28.4M" -> 28400000.`,
     crew: `Crew Total Power / Puissance Totale de l'Équipage (Foundation Officers). Multi-guild server ranking. Extract player pseudo and crew total power integer. Convert strings like "5.1M" -> 5100000, "4.8M" -> 4800000.`,
-    glory: `Glory Score / Points de Gloire (PvP & Weekly Glory ranking). Extract player pseudo and cumulative Glory points integer. Convert strings like "240M" -> 240000000, "496,000,000" -> 496000000, "50K" -> 50000.`
+    glory: `Glory Score / Points de Gloire (PvP & Weekly Glory ranking). Extract player pseudo and cumulative Glory points integer. Convert strings like "240M" -> 240000000, "496,000,000" -> 496000000, "50K" -> 50000.`,
+    svs_prep: `Server vs Server (SvS) Day 1 to 5 Preparation Stage Score / Score Phase de Préparation SvS (Jours 1 à 5). Extract player pseudo and preparation score integer. Convert strings like "28.5M" -> 28500000, "1,200,000" -> 1200000. Target guild members with guild tag.`,
+    svs_pvp: `Server vs Server (SvS) Day 6 PvP Battle Score / Score Jour 6 PvP SvS. Extract player pseudo and Day 6 PvP score integer. Convert strings like "45.8M" -> 45800000, "3,450,000" -> 3450000. Target guild members with guild tag.`,
+    gvg_prep: `Guild vs Guild (GvG) Day 1 to 5 Preparation Stage Score / Score Phase de Préparation GvG (Jours 1 à 5). Extract player pseudo and preparation score integer. Convert strings like "18.2M" -> 18200000, "950,000" -> 950000. Target guild members with guild tag.`,
+    gvg_pvp: `Guild vs Guild (GvG) Day 6 PvP Battle Score / Score Jour 6 PvP GvG. Extract player pseudo and Day 6 PvP score integer. Convert strings like "35.1M" -> 35100000, "2,100,000" -> 2100000. Target guild members with guild tag.`,
+    shadowfront_s1: `Shadowfront Squad 1 Battle / Composition Roster (Escouade 1). Extract all visible player usernames (pseudos) participating or listed in Squad 1 main squad or reserve substitutes.`,
+    shadowfront_s2: `Shadowfront Squad 2 Battle / Composition Roster (Escouade 2). Extract all visible player usernames (pseudos) participating or listed in Squad 2 main squad or reserve substitutes.`,
+    dtr: `Defend Trade Route (DTR) / Défense de la Route Commerciale. Extract all player usernames (pseudos) and their score/points. If score is explicitly 0 or 0 pts, output score as 0; if score > 0, output positive integer score.`,
+    armsrace_sa: `Arms Race Stage A / Course aux Armements Étape A. Extract all visible player usernames (pseudos) participating or present in Stage A.`,
+    armsrace_sb: `Arms Race Stage B / Course aux Armements Étape B. Extract all visible player usernames (pseudos) participating or present in Stage B.`
   };
 
   const targetMetricDesc = metricInstructions[metricType] || metricInstructions.power;
