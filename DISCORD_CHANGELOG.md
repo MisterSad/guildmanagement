@@ -1,25 +1,25 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.10 (Rally Multipliers: Flagship x4, Champs x1, Glory x1)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.11 (Tech Research Multiplier Boost to 2.25x)**
 
 Hey commanders! 👋
 
-I have fine-tuned our **Rally Readiness & Combat Density** multipliers to give even greater weight to Flagship capital power, Champions, and historical Glory:
+I have fine-tuned our **Rally Readiness & Combat Density** algorithm with a slight upward calibration for **Technology Research Power**:
 
 ---
 
-### 🚀 Calibrated Tactical Multipliers
-* 🚀 **Flagship Power**: Now weighted at **$\times 4.0$** (was 3.0x) for maximum rally aura impact.
+### 🔬 Calibrated Tactical Multipliers
+* 🔬 **Technology Power**: Now weighted at **$\times 2.25$** (was 2.0x) to give higher credit to research tree development.
+* 🚀 **Flagship Power**: Weighted at **$\times 4.0$**.
 * ⚔️ **Strongest Fleet Rating**: Weighted at **$\times 2.5$**.
-* 🔬 **Technology Power**: Weighted at **$\times 2.0$**.
 * 👥 **Crew Power**: Weighted at **$\times 1.5$**.
-* 👑 **Champion Power**: Now weighted at **$\times 1.0$** (was 0.4x).
-* 🏆 **Glory Score**: Now weighted at **$\times 1.0$** (was 0.03x).
+* 👑 **Champion Power**: Weighted at **$\times 1.0$**.
+* 🏆 **Glory Score**: Weighted at **$\times 1.0$**.
 
 ---
 
 ### 🎯 Full Hierarchy:
-$$\text{Power} (\times 1.0) > \text{Flagship} (\times 4.0) > \text{Fleet} (\times 2.5) > \text{Tech} (\times 2.0) > \text{Crew} (\times 1.5) > \text{Champs} (\times 1.0) > \text{Glory} (\times 1.0)$$
+$$\text{Power} (\times 1.0) > \text{Flagship} (\times 4.0) > \text{Fleet} (\times 2.5) > \text{Tech} (\times 2.25) > \text{Crew} (\times 1.5) > \text{Champs} (\times 1.0) > \text{Glory} (\times 1.0)$$
 
-Your **Tactical Force Matrix** automatically recalibrates and re-ranks your roster in real time in strict descending order of Density!
+Your **Tactical Force Matrix** automatically recalibrates and re-ranks your roster in real time!
 
 ---
 
