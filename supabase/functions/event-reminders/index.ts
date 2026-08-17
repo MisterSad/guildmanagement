@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { sendNotification } from "npm:web-push-neo"
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from "../_shared/gvg-tasks.ts"
+import { validateCallerAuth } from "../_shared/auth.ts"
 
 async function sendWebPush(supabase: any, title: string, body: string, guild: string, eventType = "events") {
   try {
@@ -12,6 +12,16 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
 
     if (subError) throw subError;
     if (!subs || subs.length === 0) return;
+
+    let sendNotification: any = null;
+    try {
+      const wp = await import("npm:web-push-neo");
+      sendNotification = wp.sendNotification || wp.default?.sendNotification;
+    } catch (eWp) {
+      console.warn("web-push module not available:", eWp);
+      return;
+    }
+    if (!sendNotification) return;
 
     // Respect per-player push preferences: only notify subscribers whose
     // event_types include this reminder type. Subscribers without a prefs
@@ -182,22 +192,33 @@ function getWeekStart(date: Date | string | number): string {
 }
 
 serve(async (req) => {
-  const authHeader = req.headers.get('Authorization');
-  const xCronSecret = req.headers.get('x-cron-secret');
-  // FIX (C7): CRON_SECRET is now mandatory. If not configured, fail closed (500) rather
-  // than silently accepting all requests.
+  const authHeader = req.headers.get('Authorization') || '';
+  const xCronSecret = req.headers.get('x-cron-secret') || '';
   const cronSecret = Deno.env.get('CRON_SECRET');
-  if (!cronSecret) {
-    console.error('SECURITY: CRON_SECRET env var is not set. Refusing all requests.');
-    return new Response(JSON.stringify({ error: 'Server misconfigured: CRON_SECRET not set' }), { status: 500 });
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
+  let isAuthorized = false;
+  if (cronSecret && (authHeader === `Bearer ${cronSecret}` || xCronSecret === cronSecret)) {
+    isAuthorized = true;
+  } else if (serviceRoleKey && authHeader === `Bearer ${serviceRoleKey}`) {
+    isAuthorized = true;
+  } else if (anonKey && authHeader.startsWith('Bearer ')) {
+    const caller = await validateCallerAuth(req, SUPABASE_URL, anonKey, serviceRoleKey);
+    if (caller.authenticated && (caller.role === 'super_admin' || caller.role === 'server_admin' || caller.role === 'guild_admin')) {
+      isAuthorized = true;
+    }
   }
-  if (authHeader !== `Bearer ${cronSecret}` && xCronSecret !== cronSecret) {
+
+  if (!isAuthorized) {
+    console.warn('Unauthorized invocation of event-reminders', { hasAuth: !!authHeader, hasXCron: !!xCronSecret });
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const reqUrl = new URL(req.url);
   const forceGvg = reqUrl.searchParams.get('force') === 'gvg' || reqUrl.searchParams.get('force') === 'all';
+  const targetGuildParam = reqUrl.searchParams.get('guild');
 
   try {
     // 0. Fetch all active guilds dynamically
@@ -205,7 +226,7 @@ serve(async (req) => {
       .from('guilds')
       .select('id, subscription_type, subscription_end');
     if (guildError) throw guildError;
-    const GUILDS = (guildRows || [])
+    const rawGuilds = (guildRows || [])
       .filter((r: any) => {
         const type = r.subscription_type ?? 'Unlimited';
         if (type === 'Unlimited') return true;
@@ -216,6 +237,10 @@ serve(async (req) => {
         return false;
       })
       .map((r: any) => r.id);
+
+    const GUILDS = targetGuildParam
+      ? rawGuilds.filter((g: string) => g.toUpperCase() === targetGuildParam.toUpperCase())
+      : rawGuilds;
 
     // 1. Fetch all active scheduled events across all guilds
     const { data: allEvents, error: eventError } = await supabase
@@ -268,9 +293,7 @@ serve(async (req) => {
     // Loop through each guild tenant
     for (const guild of GUILDS) {
       const config = configsByGuild[guild];
-      const events = (allEvents || []).filter(e => e.guild === guild);
-
-      const guildTag = '@everyone';
+      const events = (allEvents || []).filter((e: any) => e.guild === guild);
 
       // Check standard events with a start_at time
       for (const event of events) {
@@ -484,7 +507,7 @@ serve(async (req) => {
       const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
         ? eventSpecificRoleId
         : config['discord_role_id'];
-      const guildTag = (discordRoleId && discordRoleId.trim() !== '')
+      const gvgGuildTag = (discordRoleId && discordRoleId.trim() !== '')
         ? `<@&${discordRoleId.trim()}>`
         : '@everyone';
 
@@ -681,7 +704,7 @@ serve(async (req) => {
                 return str
                   .replace(/{event_name}/g, slot.label)
                   .replace(/{date}/g, timeStr)
-                  .replace(/{guild_tag}/g, guildTag);
+                  .replace(/{guild_tag}/g, gvgGuildTag);
               };
 
               if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);
@@ -750,16 +773,23 @@ serve(async (req) => {
       const svsEvent = events.find(e => e.event_name === 'SvS');
       let isSvsActive = false;
       if (svsEvent) {
-        const sessionMs = new Date(svsEvent.start_at || svsEvent.session_id).getTime();
-        const ageDays = (now - sessionMs) / (24 * 3600 * 1000);
-        isSvsActive = ageDays >= 0 && ageDays <= 7.5;
+        let sessionMs = svsEvent.start_at ? new Date(svsEvent.start_at).getTime() : NaN;
+        if (isNaN(sessionMs) && svsEvent.updated_at) {
+          sessionMs = new Date(svsEvent.updated_at).getTime();
+        }
+        if (isNaN(sessionMs)) {
+          isSvsActive = true;
+        } else {
+          const ageDays = (now - sessionMs) / (24 * 3600 * 1000);
+          isSvsActive = ageDays >= 0 && ageDays <= 7.5;
+        }
       }
       if (isSvsActive && config['gvg_svs_calamity_enabled'] !== 'false') {
         const eventSpecificRoleId = config['discord_role_id_svs'];
         const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
           ? eventSpecificRoleId
           : config['discord_role_id'];
-        const guildTag = (discordRoleId && discordRoleId.trim() !== '')
+        const svsGuildTag = (discordRoleId && discordRoleId.trim() !== '')
           ? `<@&${discordRoleId.trim()}>`
           : '@everyone';
 
@@ -949,7 +979,7 @@ serve(async (req) => {
                 return str
                   .replace(/{event_name}/g, 'SvS')
                   .replace(/{date}/g, timeVal)
-                  .replace(/{guild_tag}/g, guildTag);
+                  .replace(/{guild_tag}/g, svsGuildTag);
               };
 
               if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);
@@ -1016,7 +1046,7 @@ serve(async (req) => {
         const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
           ? eventSpecificRoleId
           : config['discord_role_id'];
-        const guildTag = (discordRoleId && discordRoleId.trim() !== '')
+        const calamityGuildTag = (discordRoleId && discordRoleId.trim() !== '')
           ? `<@&${discordRoleId.trim()}>`
           : '@everyone';
 
@@ -1112,7 +1142,7 @@ serve(async (req) => {
                 .replace(/{event_name}/g, 'Calamity Befalls')
                 .replace(/{date}/g, timeStr)
                 .replace(/{round}/g, String(slot.round))
-                .replace(/{guild_tag}/g, guildTag);
+                .replace(/{guild_tag}/g, calamityGuildTag);
             };
 
             if (customContent && customContent.trim() !== '') content = replacePlaceholders(customContent);

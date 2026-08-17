@@ -445,6 +445,7 @@
             notify_calamity_reminder:        '10 min reminder (Rounds)',
             notify_gvg_daily_tasks_desc:     'Daily Tasks breakdown (11:00 UTC)',
             notify_gvg_pvp_desc:             'Enable Day 6',
+            btn_send_gvg_tasks_now:          'Send Today\'s GvG Tasks Now',
             notify_svs_pvp_desc:             'Enable Day 6',
             notify_svs_garrison_desc:        'Garrison reminder',
             notify_svs_won_prep_desc:        'Won Day 1 to 5',

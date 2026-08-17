@@ -1011,6 +1011,48 @@
         });
     }
 
+    var btnDispatchGvgTasks = document.getElementById('btn-dispatch-gvg-tasks');
+    if (btnDispatchGvgTasks) {
+        btnDispatchGvgTasks.addEventListener('click', async function () {
+            btnDispatchGvgTasks.disabled = true;
+            try {
+                var dateUtc = new Date();
+                var curDay = dateUtc.getUTCDay(); // 1=Mon .. 6=Sat
+                if (curDay < 1 || curDay > 6) curDay = 1; // Default to Monday if Sunday
+                
+                var roleInput = document.getElementById('discord-role-id-gvg');
+                var roleVal = roleInput ? roleInput.value.trim() : '';
+                var roleMention = '@everyone';
+                if (roleVal) {
+                    if (roleVal.match(/\d{15,22}/)) roleMention = '<@&' + roleVal.match(/\d{15,22}/)[0] + '>';
+                    else roleMention = roleVal;
+                }
+                
+                var payload = (window.GM && window.GM.gvgTasks && typeof window.GM.gvgTasks.buildGvgDailyTaskEmbed === 'function')
+                    ? window.GM.gvgTasks.buildGvgDailyTaskEmbed(curDay, roleMention)
+                    : (window.GM_GVG_TASKS && typeof window.GM_GVG_TASKS.buildGvgDailyTaskEmbed === 'function')
+                        ? window.GM_GVG_TASKS.buildGvgDailyTaskEmbed(curDay, roleMention)
+                        : null;
+                
+                if (!payload) throw new Error('GvG task generator unavailable');
+                
+                var webhookInput = document.getElementById('webhook-gvg');
+                var webhookUrl = webhookInput ? webhookInput.value.trim() : '';
+                
+                var res = await window.GM.sendDiscordWebhook(webhookUrl, payload, 'gvg');
+                if (res && res.ok) {
+                    showToast('GvG Day ' + curDay + ' tasks successfully sent to Discord!', 'success');
+                } else {
+                    showToast('Failed to send Discord webhook: ' + (res && res.error ? res.error : 'Unknown error'), 'error');
+                }
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            } finally {
+                btnDispatchGvgTasks.disabled = false;
+            }
+        });
+    }
+
     async function renderPendingRegistrations(activeG) {
         var container = document.getElementById('pending-account-list');
         var countEl = document.getElementById('pending-account-count');
