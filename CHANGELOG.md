@@ -2,6 +2,18 @@
 
 ## New
 
+- **Magnitude-Normalized Tactical Combat Scale Calibration (v120.4)**:
+  - **Magnitude Realism Calibration**: Calibrated the multipliers in `calculateCombatDensity` and `calculateRallyScore` in `gm-utils.js` to account for differing natural orders of magnitude across military metrics:
+    - **Strongest Fleet Rating ($\times 80.0$)**: Normalized 1.5M–2.5M march ratings to deliver spearhead combat contribution (~160M–184M).
+    - **Flagship Power ($\times 18.0$)**: Normalized 8M–10.4M capital flagship values to deliver core rally buff weight (~150M–190M).
+    - **Crew Power ($\times 8.0$)**: Normalized 2.5M–4.5M tactical officer ratings (~20M–36M).
+    - **Technology Power ($\times 4.0$)**: Normalized 9M–18.7M permanent tech trees (~36M–75M).
+    - **Base Total Power ($\times 1.0$)**: Direct base force weight (~80M–120M).
+    - **Champion Power ($\times 0.8$)**: Arena hero collection weight (~14M–21M).
+    - **Sunday Glory Score ($\times 0.05$)**: Re-calibrated weekly event score (50M–500M) as a bonus (~3M–25M) instead of completely overpowering base military stats.
+  - **True Tactical Hierarchy**: USAFE accurately ranks #1, Kelisco ranks #2, and HawkEye ranks #7 (decisively above ODIN #11).
+  - **Quality Gate**: **260/260 Vitest unit tests green** (including real full guild roster ranking verification), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Absolute Rally Combat Power Ranking & Dual Display (v120.3)**:
   - **Absolute Strike Force Ranking**: Transitioned Tactical Force Matrix default sorting and Top 16 Rally Leader appointments to **Absolute Rally Combat Power** (`calculateRallyScore`), preventing percentage density ratios from inverting raw military strength.
   - **Whale & Combat Powerhouse Realism**: Players with massive Flagships, high-tier 1st marches, and deep military tech trees are decisively ranked at the top of the command roster (`Leader #1-#16`).

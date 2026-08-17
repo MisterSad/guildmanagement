@@ -23,51 +23,51 @@ describe('Tactical Military Metrics & Calculations', () => {
     };
 
     it('calculates weighted combat density according to tactical hierarchy', () => {
-        // Flagship: 10M * 4.0 = 40M
-        // Fleet: 2M * 3.5 = 7M
-        // Tech: 15M * 2.5 = 37.5M
-        // Crew: 5M * 1.5 = 7.5M
+        // Fleet: 2M * 80.0 = 160M
+        // Flagship: 10M * 18.0 = 180M
+        // Crew: 5M * 8.0 = 40M
+        // Tech: 15M * 4.0 = 60M
         // Champs: 30M * 0.8 = 24M
-        // Glory: 250M * 1.0 = 250M
-        // Sum = 366.0M / 100M = 366.0%
+        // Glory: 250M * 0.05 = 12.5M
+        // Sum = 476.5M / 100M = 476.5%
         const density = window.GM.calculateCombatDensity(mockMember);
-        expect(density).toBe(366);
+        expect(density).toBe(476.5);
     });
 
     it('calculates composite rally score correctly with exact hierarchy Power > Flagship > Fleet > Tech > Crew > Champs > Glory', () => {
-        // 100M (Power) + 366.0M (Weighted Combat) = 466.0M
+        // 100M (Power) + 476.5M (Weighted Combat) = 576.5M
         const rallyScore = window.GM.calculateRallyScore(mockMember);
-        expect(rallyScore).toBe(466000000);
-        expect(window.GM.calculateWarScore(mockMember)).toBe(466000000);
+        expect(rallyScore).toBe(576500000);
+        expect(window.GM.calculateWarScore(mockMember)).toBe(576500000);
     });
 
-    it('prioritizes components in exact order (Power > Flagship > Fleet > Tech > Crew > Champs > Glory)', () => {
+    it('prioritizes components in exact order (Fleet > Flagship > Crew > Tech > Champs > Glory)', () => {
         const base = { overall_power: 100000000, flagship_power: 10000000, fleet_rating: 2000000, tech_power: 10000000, crew_power: 5000000, champion_power: 20000000, glory_score: 100000000 };
         const scoreBase = window.GM.calculateRallyScore(base);
 
-        // +1M to Flagship adds 4M
-        const moreFlag = { ...base, flagship_power: base.flagship_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreFlag) - scoreBase).toBe(4000000);
-
-        // +1M to Fleet adds 3.5M
+        // +1M to Fleet adds 80M
         const moreFleet = { ...base, fleet_rating: base.fleet_rating + 1000000 };
-        expect(window.GM.calculateRallyScore(moreFleet) - scoreBase).toBe(3500000);
+        expect(window.GM.calculateRallyScore(moreFleet) - scoreBase).toBe(80000000);
 
-        // +1M to Tech adds 2.5M
-        const moreTech = { ...base, tech_power: base.tech_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreTech) - scoreBase).toBe(2500000);
+        // +1M to Flagship adds 18M
+        const moreFlag = { ...base, flagship_power: base.flagship_power + 1000000 };
+        expect(window.GM.calculateRallyScore(moreFlag) - scoreBase).toBe(18000000);
 
-        // +1M to Crew adds 1.5M
+        // +1M to Crew adds 8M
         const moreCrew = { ...base, crew_power: base.crew_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreCrew) - scoreBase).toBe(1500000);
+        expect(window.GM.calculateRallyScore(moreCrew) - scoreBase).toBe(8000000);
+
+        // +1M to Tech adds 4M
+        const moreTech = { ...base, tech_power: base.tech_power + 1000000 };
+        expect(window.GM.calculateRallyScore(moreTech) - scoreBase).toBe(4000000);
 
         // +1M to Champs adds 0.8M
         const moreChamps = { ...base, champion_power: base.champion_power + 1000000 };
         expect(window.GM.calculateRallyScore(moreChamps) - scoreBase).toBe(800000);
 
-        // +1M to Glory adds 1.0M
+        // +1M to Glory adds 0.05M (50k)
         const moreGlory = { ...base, glory_score: base.glory_score + 1000000 };
-        expect(window.GM.calculateRallyScore(moreGlory) - scoreBase).toBe(1000000);
+        expect(window.GM.calculateRallyScore(moreGlory) - scoreBase).toBe(50000);
     });
 
     it('handles zero or negative power in combat density gracefully', () => {
@@ -80,7 +80,7 @@ describe('Tactical Military Metrics & Calculations', () => {
         const partialMember = {
             pseudo: 'PartialPlayer',
             overall_power: 100000000,
-            flagship_power: 10000000, // 10M * 4.0 = 40M
+            flagship_power: 10000000, // 10M * 18.0 = 180M
             fleet_rating: null,       // counts as 0
             tech_power: undefined,    // counts as 0
             crew_power: '',           // counts as 0
@@ -88,13 +88,13 @@ describe('Tactical Military Metrics & Calculations', () => {
             glory_score: null         // counts as 0
         };
 
-        // 40M / 100M = 40.0%
+        // 180M / 100M = 180.0%
         const density = window.GM.calculateCombatDensity(partialMember);
-        expect(density).toBe(40);
+        expect(density).toBe(180);
 
-        // 100M + 40M = 140M
+        // 100M + 180M = 280M
         const rallyScore = window.GM.calculateRallyScore(partialMember);
-        expect(rallyScore).toBe(140000000);
+        expect(rallyScore).toBe(280000000);
     });
 
     it('calculates residual volatile troop power correctly', () => {
@@ -290,6 +290,31 @@ describe('Tactical Military Metrics & Calculations', () => {
         });
         expect(sorted[0].pseudo).toBe('GiganticWhale');
         expect(sorted[1].pseudo).toBe('SmallSpecialist');
+    });
+
+    it('ranks real guild roster accurately: USAFE #1, Kelisco #2, HawkEye above ODIN', () => {
+        const guildRoster = [
+            { pseudo: 'Rem', overall_power: 100200000, fleet_rating: 1600000, tech_power: 14000000, flagship_power: 9400000, champion_power: 25500000, crew_power: 4300000, glory_score: 496800000 },
+            { pseudo: 'RAWKET', overall_power: 110300000, fleet_rating: 1800000, tech_power: 15800000, flagship_power: 9800000, champion_power: 26100000, crew_power: 4100000, glory_score: 362100000 },
+            { pseudo: 'Reckard', overall_power: 96600000, fleet_rating: 1800000, tech_power: 15100000, flagship_power: 10400000, champion_power: 23000000, crew_power: 4000000, glory_score: 272000000 },
+            { pseudo: 'USAFE', overall_power: 112200000, fleet_rating: 2300000, tech_power: 15600000, flagship_power: 10100000, champion_power: 25500000, crew_power: 4500000, glory_score: 134200000 },
+            { pseudo: 'roa', overall_power: 104300000, fleet_rating: 1600000, tech_power: 16200000, flagship_power: 8100000, champion_power: 20800000, crew_power: 3000000, glory_score: 146100000 },
+            { pseudo: 'kelisco', overall_power: 116700000, fleet_rating: 2000000, tech_power: 18700000, flagship_power: 10200000, champion_power: 25300000, crew_power: 4000000, glory_score: 94200000 },
+            { pseudo: 'ODIN', overall_power: 104700000, fleet_rating: 1600000, tech_power: 12600000, flagship_power: 8300000, champion_power: 22700000, crew_power: 3200000, glory_score: 133600000 },
+            { pseudo: 'Berry', overall_power: 116200000, fleet_rating: 1900000, tech_power: 17000000, flagship_power: 9000000, champion_power: 24200000, crew_power: 4100000, glory_score: 93400000 },
+            { pseudo: 'HawkEye', overall_power: 106400000, fleet_rating: 1700000, tech_power: 11500000, flagship_power: 10200000, champion_power: 23300000, crew_power: 4100000, glory_score: 71100000 }
+        ];
+
+        const sorted = guildRoster.slice().sort((a, b) => {
+            return window.GM.calculateRallyScore(b) - window.GM.calculateRallyScore(a);
+        });
+
+        expect(sorted[0].pseudo).toBe('USAFE');
+        expect(sorted[1].pseudo).toBe('kelisco');
+
+        const hawkIndex = sorted.findIndex(m => m.pseudo === 'HawkEye');
+        const odinIndex = sorted.findIndex(m => m.pseudo === 'ODIN');
+        expect(hawkIndex).toBeLessThan(odinIndex); // HawkEye is ranked higher than ODIN
     });
 });
 
