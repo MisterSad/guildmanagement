@@ -2,6 +2,11 @@
 
 ## New
 
+- **Technology Power Weight Boost to 6.0x (v120.7)**:
+  - **Calibrated Technology Multiplier**: Increased Technology Research Power weight in `calculateCombatDensity` and `calculateRallyScore` in `gm-utils.js` to **$\times 6.0$** (was 4.0x), elevating the tactical influence of high research levels on the composite Rally Combat Score.
+  - **Hierarchy Preservation**: USAFE remains benchmark #1 (`100/100`), Kelisco rises to `99/100` (`629.5M`), and HawkEye firmly retains Rank 7 (`87/100`, well above ODIN's `80/100`).
+  - **Quality Gate**: **261/261 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Clean Minimalist Rally Grade /100 Column (v120.6)**:
   - **Streamlined Display**: Refactored the `⚡ Rally Score` table cell in `app.js` to render exclusively the sleek tactical grade chip (`⚡ XX/100`), removing secondary power numbers for a cleaner, high-contrast layout.
   - **Tooltip Retention**: The exact absolute combat score remains fully accessible via the chip's hover tooltip (e.g. `Rally Grade: 98/100 (592.1M)`).

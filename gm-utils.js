@@ -1402,9 +1402,9 @@
         var glory = parseSafeMetric(m.glory_score || m.glory);
 
         // Scaled combat density based on natural metric orders of magnitude:
-        // Fleet (80.0x) > Flagship (18.0x) > Crew (8.0x) > Tech (4.0x) > Champs (0.8x) > Glory (0.05x)
+        // Fleet (80.0x) > Flagship (18.0x) > Crew (8.0x) > Tech (6.0x) > Champs (0.8x) > Glory (0.05x)
         // Missing scores default strictly to 0 without penalty/distortion
-        var weightedCombat = (fleet * 80.0) + (flag * 18.0) + (crew * 8.0) + (tech * 4.0) + (champ * 0.8) + (glory * 0.05);
+        var weightedCombat = (fleet * 80.0) + (flag * 18.0) + (crew * 8.0) + (tech * 6.0) + (champ * 0.8) + (glory * 0.05);
         return Math.round((weightedCombat / tot) * 1000) / 10;
     }
 
@@ -1419,7 +1419,7 @@
         var glory = parseSafeMetric(m.glory_score || m.glory);
 
         // Absolute composite rally combat readiness score (scale-normalized)
-        return Math.round(tot + (fleet * 80.0) + (flag * 18.0) + (crew * 8.0) + (tech * 4.0) + (champ * 0.8) + (glory * 0.05));
+        return Math.round(tot + (fleet * 80.0) + (flag * 18.0) + (crew * 8.0) + (tech * 6.0) + (champ * 0.8) + (glory * 0.05));
     }
 
     function calculateRallyGrade(m, maxScore) {

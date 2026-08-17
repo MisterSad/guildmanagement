@@ -26,19 +26,19 @@ describe('Tactical Military Metrics & Calculations', () => {
         // Fleet: 2M * 80.0 = 160M
         // Flagship: 10M * 18.0 = 180M
         // Crew: 5M * 8.0 = 40M
-        // Tech: 15M * 4.0 = 60M
+        // Tech: 15M * 6.0 = 90M
         // Champs: 30M * 0.8 = 24M
         // Glory: 250M * 0.05 = 12.5M
-        // Sum = 476.5M / 100M = 476.5%
+        // Sum = 506.5M / 100M = 506.5%
         const density = window.GM.calculateCombatDensity(mockMember);
-        expect(density).toBe(476.5);
+        expect(density).toBe(506.5);
     });
 
     it('calculates composite rally score correctly with exact hierarchy Power > Flagship > Fleet > Tech > Crew > Champs > Glory', () => {
-        // 100M (Power) + 476.5M (Weighted Combat) = 576.5M
+        // 100M (Power) + 506.5M (Weighted Combat) = 606.5M
         const rallyScore = window.GM.calculateRallyScore(mockMember);
-        expect(rallyScore).toBe(576500000);
-        expect(window.GM.calculateWarScore(mockMember)).toBe(576500000);
+        expect(rallyScore).toBe(606500000);
+        expect(window.GM.calculateWarScore(mockMember)).toBe(606500000);
     });
 
     it('prioritizes components in exact order (Fleet > Flagship > Crew > Tech > Champs > Glory)', () => {
@@ -57,9 +57,9 @@ describe('Tactical Military Metrics & Calculations', () => {
         const moreCrew = { ...base, crew_power: base.crew_power + 1000000 };
         expect(window.GM.calculateRallyScore(moreCrew) - scoreBase).toBe(8000000);
 
-        // +1M to Tech adds 4M
+        // +1M to Tech adds 6M
         const moreTech = { ...base, tech_power: base.tech_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreTech) - scoreBase).toBe(4000000);
+        expect(window.GM.calculateRallyScore(moreTech) - scoreBase).toBe(6000000);
 
         // +1M to Champs adds 0.8M
         const moreChamps = { ...base, champion_power: base.champion_power + 1000000 };
