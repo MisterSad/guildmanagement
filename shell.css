@@ -206,21 +206,32 @@ html, body {
     transform: scale(0.98);
 }
 .gm-nav-item.gm-active {
-    background: var(--bg-3) !important;
-    border: 1px solid var(--border-soft) !important;
-    color: var(--accent-lime) !important;
+    background: var(--md-sys-color-surface-container-highest) !important;
+    border: 1px solid var(--md-sys-color-outline-variant) !important;
+    color: var(--md-sys-color-primary) !important;
     font-weight: 700;
-    box-shadow: 0 4px 20px -4px oklch(0 0 0 / 0.4);
+    box-shadow: var(--md-sys-elevation-level1);
 }
+.gm-nav-item.gm-active .material-symbols-rounded,
 .gm-nav-item.gm-active .ph, .gm-nav-item.gm-active .ph-fill {
-    color: var(--accent-lime);
-    filter: drop-shadow(0 0 8px oklch(0.88 0.19 125 / 0.5));
+    color: var(--md-sys-color-primary);
+    font-variation-settings: 'FILL' 1, 'wght' 600;
+    filter: drop-shadow(0 0 8px rgba(168, 199, 250, 0.4));
 }
 .gm-nav-item.gm-active::before {
     display: none;
 }
-.gm-nav-item .ph, .gm-nav-item .ph-fill { font-size: 1.3rem; flex-shrink: 0; transition: transform 0.2s ease, color 0.2s ease; }
-.gm-nav-item:hover .ph { transform: scale(1.1); color: var(--fg); }
+.gm-nav-item .material-symbols-rounded,
+.gm-nav-item .ph, .gm-nav-item .ph-fill {
+    font-size: 1.35rem;
+    flex-shrink: 0;
+    transition: transform 0.2s ease, color 0.2s ease, font-variation-settings 0.2s ease;
+}
+.gm-nav-item:hover .material-symbols-rounded,
+.gm-nav-item:hover .ph {
+    transform: scale(1.08);
+    color: var(--md-sys-color-on-surface);
+}
 .gm-nav-badge {
     margin-left: auto;
     background: oklch(0.40 0.12 250); color: white;
@@ -490,20 +501,21 @@ html, body {
     transform: scale(0.92);
 }
 .gm-bottom-nav-item.gm-active {
-    color: var(--accent-lime);
+    color: var(--md-sys-color-primary);
     font-weight: 600;
 }
 .gm-bottom-nav-item.gm-active .gm-icon {
     transform: translateY(-2px) scale(1.1);
+    font-variation-settings: 'FILL' 1, 'wght' 600;
 }
 .gm-bottom-nav-item.gm-active::after {
     content: "";
     position: absolute;
     bottom: 4px; left: 35%; right: 35%;
     height: 3px;
-    background: var(--accent-lime);
+    background: var(--md-sys-color-primary);
     border-radius: var(--radius-pill);
-    box-shadow: 0 0 10px var(--accent-lime);
+    box-shadow: 0 0 10px rgba(168, 199, 250, 0.6);
 }
 
 /* ─── Drawer (mobile "More") ─── */

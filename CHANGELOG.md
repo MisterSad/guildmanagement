@@ -2,6 +2,24 @@
 
 ## New
 
+- **Google Material Design 3 (M3) Extended Color Ecosystem, Material Symbols & Elevated Podium Overhaul (v117.0)**:
+  - **Official Google M3 Tonal Palettes**: Completely enriched `tokens.css` with Google Workspace / Android 14+ CAM16/HCT tonal palettes, dedicating a distinct, recognizable Google color for every game event:
+    - 🔵 **GvG (Guild vs Guild)** $\rightarrow$ **Google Cobalt Blue** (`#a8c7fa` / `#062e6f`)
+    - 🟡 **SvS (Server vs Server)** $\rightarrow$ **Google Amber / Gold** (`#ffe088` / `#3b2d00`)
+    - 🟢 **Glory (Weekly Roster)** $\rightarrow$ **Google Emerald Green** (`#6dd58c` / `#0a3818`)
+    - 🟠 **Arms Race (ARA / ARB)** $\rightarrow$ **Google Coral / Orange** (`#ffb787` / `#4e2600`)
+    - 🟣 **Shadowfront (Squad 1 / 2)** $\rightarrow$ **Google Deep Purple / Indigo** (`#d0bcff` / `#381e72`)
+    - 🔷 **Defend Trade Route (DTR)** $\rightarrow$ **Google Cyan / Teal** (`#78d9ec` / `#00363d`)
+    - 🔴 **Sanctions & Bans** $\rightarrow$ **Google Crimson Red** (`#f2b8b5` / `#601410`)
+    - 🪻 **Super Admin & Diagnostics** $\rightarrow$ **Google Magenta / Violet** (`#e8b4f8` / `#43114d`)
+  - **Comprehensive Material Symbols Rounded Integration**: Upgraded navigation items, tabs, topbar, bottom nav, drawer, and buttons across `shell.js` and `index.html` with official Google *Material Symbols Rounded* (`swords`, `rocket_launch`, `trophy`, `bolt`, `radar`, `local_shipping`, `group`, `gavel`, `leaderboard`, `settings`, `terminal`), supporting dynamic fill states (`FILL: 1`) on active tabs.
+  - **Modernized M3 Player Rankings Podium**: Overhauled `.gm-podium-stage` in `stats.js` and `components.css`:
+    - **#1 MVP (Gold)**: Level 3 Elevation, Google Amber tonal container, glowing gold avatar ring, animated floating M3 crown (`crown`), golden tabular score pill.
+    - **#2 (Silver)**: Level 2 Elevation, Titanium tonal container, silver metallic rank badge (`military_tech`).
+    - **#3 (Bronze)**: Level 1 Elevation, Copper/Bronze tonal container (`workspace_premium`).
+    - **Micro-Interactions**: M3 circular avatars with centered rank badges (1, 2, 3) and smooth cubic-bezier hover elevation shifts (`transform: translateY(-6px)` with Level 4 elevation).
+  - **Quality Gate**: Verified with **235/235 Vitest unit tests green**, **7/7 Playwright e2e tests green**, 0 TypeScript errors, and clean Vite build.
+
 - **Material Design 3.0 (M3) & Apple-Inspired Cozy Neutral Design System Overhaul (v116.0)**:
   - **Comprehensive Material 3 Tokens Hierarchy**: Completely refactored `tokens.css` to introduce the official Google Material Design 3 surface containers (`--md-sys-color-surface`, `surface-container-lowest` to `surface-container-highest`), elevation tokens (Levels 0 through 5), corner radii (`--md-sys-shape-corner-*`), and Apple-inspired cozy graphite/titanium palettes with backward-compatible aliases for legacy variables.
   - **Refined Variable Typography & Material Symbols**: Integrated Google Fonts *Plus Jakarta Sans* and *Inter* variable type scales paired with *Material Symbols Rounded* (`wght: 350`, `FILL: 0/1`, `opsz: 24`), delivering crisp, elegant icons with dynamic fill states for active items.

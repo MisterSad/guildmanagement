@@ -966,19 +966,21 @@
     gap: .35rem;
 }
 
-/* ─── Modern Podium (Stats top 3) ─── */
-/* ─── 3D Cylinder Podium Stage (Inspired by Mockup) ─── */
+/* ─── Material Design 3 (M3) Player Rankings Podium Stage ─── */
 .gm-podium-stage-container {
     margin: 1rem 0 2rem;
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 224, 136, 0.08) 0%, transparent 70%);
+    padding: 1.5rem 1rem 1rem;
+    border-radius: var(--md-sys-shape-corner-extra-large);
 }
 
 .gm-podium-stage {
     display: grid;
-    grid-template-columns: 1fr 1.15fr 1fr;
+    grid-template-columns: 1fr 1.18fr 1fr;
     gap: 1.25rem;
     align-items: end;
     width: 100%;
@@ -993,202 +995,213 @@
     align-items: center;
     position: relative;
     cursor: pointer;
+    transition: transform 0.28s cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Hexagonal / Polygonal Avatar Wrapper */
-.gm-podium-avatar-hex {
+.gm-podium-column:hover {
+    transform: translateY(-6px);
+}
+
+/* Floating M3 Crown for #1 Gold */
+.gm-podium-crown-wrap {
+    margin-bottom: 0.15rem;
+    animation: gm-podium-float 3s ease-in-out infinite;
+}
+
+.gm-podium-crown {
+    font-size: 2.2rem;
+    color: var(--gm-event-svs);
+    filter: drop-shadow(0 0 12px rgba(255, 224, 136, 0.6));
+    font-variation-settings: 'FILL' 1, 'wght' 600;
+}
+
+@keyframes gm-podium-float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-4px); }
+}
+
+/* M3 Circular Avatar Wrapper with Floating Badge */
+.gm-podium-avatar-wrap {
     position: relative;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s ease;
+    transition: transform 0.25s ease;
 }
 
-.gm-podium-column:hover .gm-podium-avatar-hex {
-    transform: scale(1.06);
+.gm-podium-column:hover .gm-podium-avatar-wrap {
+    transform: scale(1.05);
 }
 
-.gm-podium-avatar-hex .gm-avatar {
-    width: 64px;
-    height: 64px;
-    font-size: 1.4rem;
+.gm-podium-avatar-wrap .gm-avatar-m3,
+.gm-podium-avatar-wrap .gm-avatar {
+    width: 68px;
+    height: 68px;
+    border-radius: var(--md-sys-shape-corner-full) !important;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
     font-weight: 800;
-    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
-    border-radius: 0 !important;
     display: flex;
     align-items: center;
     justify-content: center;
+    clip-path: none !important;
+    box-shadow: var(--md-sys-elevation-level2);
 }
 
-/* Name & Score Text Above Pedestal */
+/* Gold #1 Avatar */
+.gm-podium-column.gm-gold .gm-avatar-m3,
+.gm-podium-column.gm-gold .gm-avatar {
+    background: linear-gradient(135deg, #ffe088 0%, #d4a017 100%);
+    color: #3b2d00;
+    border: 3px solid #ffe088;
+    box-shadow: 0 0 24px rgba(255, 224, 136, 0.45);
+}
+
+/* Silver #2 Avatar */
+.gm-podium-column.gm-silver .gm-avatar-m3,
+.gm-podium-column.gm-silver .gm-avatar {
+    background: linear-gradient(135deg, #e3e3e3 0%, #9e9e9e 100%);
+    color: #1f1f1f;
+    border: 3px solid #e3e3e3;
+    box-shadow: 0 0 20px rgba(227, 227, 227, 0.35);
+}
+
+/* Bronze #3 Avatar */
+.gm-podium-column.gm-bronze .gm-avatar-m3,
+.gm-podium-column.gm-bronze .gm-avatar {
+    background: linear-gradient(135deg, #ffb787 0%, #d4773d 100%);
+    color: #4e2600;
+    border: 3px solid #ffb787;
+    box-shadow: 0 0 20px rgba(255, 183, 135, 0.35);
+}
+
+/* Floating M3 Rank Badge Pip */
+.gm-podium-rank-badge {
+    position: absolute;
+    bottom: -6px;
+    right: 50%;
+    transform: translateX(50%);
+    width: 26px;
+    height: 26px;
+    border-radius: var(--md-sys-shape-corner-full);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--md-sys-elevation-level2);
+    z-index: 2;
+}
+
+.gm-gold .gm-podium-rank-badge {
+    background: var(--gm-event-svs);
+    color: var(--gm-event-svs-fg);
+    border: 2px solid var(--md-sys-color-surface);
+}
+
+.gm-silver .gm-podium-rank-badge {
+    background: var(--md-sys-color-on-surface);
+    color: var(--md-sys-color-surface);
+    border: 2px solid var(--md-sys-color-surface);
+}
+
+.gm-bronze .gm-podium-rank-badge {
+    background: var(--gm-event-armsrace);
+    color: var(--gm-event-armsrace-fg);
+    border: 2px solid var(--md-sys-color-surface);
+}
+
+/* Player Name & Score */
 .gm-podium-player-name {
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 0.95rem;
-    color: var(--fg);
-    margin-bottom: 0.15rem;
+    color: var(--md-sys-color-on-surface);
+    margin-bottom: 0.2rem;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 130px;
+    max-width: 140px;
 }
 
 .gm-podium-score-val {
     font-family: var(--font-display);
     font-weight: 800;
     font-size: 0.9rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     font-variant-numeric: tabular-nums;
 }
 
-.gm-gold .gm-podium-score-val { color: var(--accent-amber); }
-.gm-silver .gm-podium-score-val { color: var(--fg); }
-.gm-bronze .gm-podium-score-val { color: var(--accent-coral); }
+.gm-gold .gm-podium-score-val { color: var(--gm-event-svs); }
+.gm-silver .gm-podium-score-val { color: var(--md-sys-color-on-surface-variant); }
+.gm-bronze .gm-podium-score-val { color: var(--gm-event-armsrace); }
 
-/* 3D Cylindrical Pedestals */
+/* M3 Elevated Tonal Pedestals */
 .gm-podium-pedestal {
     width: 100%;
-    border-radius: 50% / 18px; /* Creates the curved bottom */
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    padding-top: 1.5rem;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+    justify-content: center;
+    border-radius: 20px 20px 14px 14px;
+    box-shadow: var(--md-sys-elevation-level2);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
-    border: none !important;
+    backdrop-filter: blur(16px);
 }
 
 .gm-podium-column:hover .gm-podium-pedestal {
-    transform: translateY(-4px);
+    box-shadow: var(--md-sys-elevation-level4);
 }
 
-/* Top Ring Lid for 3D Effect */
-.gm-podium-pedestal-top {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 36px;
-    margin-top: -18px;
-    border-radius: 50%;
-    z-index: 1;
-}
-
-/* Gold #1 Cylinder (Center) */
-.gm-podium-column.gm-gold .gm-podium-avatar-hex .gm-avatar {
-    background: linear-gradient(135deg, var(--accent-amber), #ffe89e);
-    color: var(--accent-amber-fg);
-    box-shadow: 0 0 24px oklch(0.85 0.17 85 / 0.5);
-}
-
-.gm-podium-column.gm-gold .gm-podium-pedestal {
-    height: 140px;
-    background: 
-      linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%),
-      linear-gradient(to right,
-        #2b1f05 0%,
-        #594207 20%,
-        #ffd166 40%,
-        #997818 60%,
-        #3d2e05 85%,
-        #171101 100%
-      );
-}
-
-.gm-podium-column.gm-gold .gm-podium-pedestal-top {
-    background: linear-gradient(135deg, #ffea9e 0%, #d1a332 100%);
-    box-shadow: inset 0 -3px 8px rgba(0,0,0,0.4), inset 0 3px 8px rgba(255,255,255,0.6);
-    border: 1px solid #ffea9e;
-}
-
-/* Silver #2 Cylinder (Left) */
-.gm-podium-column.gm-silver .gm-podium-avatar-hex .gm-avatar {
-    background: linear-gradient(135deg, var(--fg-muted), #ffffff);
-    color: var(--bg-0);
-    box-shadow: 0 0 20px oklch(0.80 0.012 250 / 0.45);
-}
-
-.gm-podium-column.gm-silver .gm-podium-pedestal {
-    height: 110px;
-    background: 
-      linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 100%),
-      linear-gradient(to right,
-        #12151c 0%,
-        #2a3242 20%,
-        #cbd5e1 40%,
-        #64748b 60%,
-        #1e293b 85%,
-        #0f172a 100%
-      );
-}
-
-.gm-podium-column.gm-silver .gm-podium-pedestal-top {
-    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
-    box-shadow: inset 0 -3px 8px rgba(0,0,0,0.4), inset 0 3px 8px rgba(255,255,255,0.6);
-    border: 1px solid #e2e8f0;
-}
-
-/* Bronze #3 Cylinder (Right) */
-.gm-podium-column.gm-bronze .gm-podium-avatar-hex .gm-avatar {
-    background: linear-gradient(135deg, var(--accent-coral), #ffcead);
-    color: var(--accent-coral-fg);
-    box-shadow: 0 0 20px oklch(0.78 0.16 50 / 0.45);
-}
-
-.gm-podium-column.gm-bronze .gm-podium-pedestal {
-    height: 90px;
-    background: 
-      linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 100%),
-      linear-gradient(to right,
-        #240e03 0%,
-        #632609 20%,
-        #ffab76 40%,
-        #c7682d 60%,
-        #4a1c06 85%,
-        #170902 100%
-      );
-}
-
-.gm-podium-column.gm-bronze .gm-podium-pedestal-top {
-    background: linear-gradient(135deg, #ffd3b5 0%, #d4773d 100%);
-    box-shadow: inset 0 -3px 8px rgba(0,0,0,0.4), inset 0 3px 8px rgba(255,255,255,0.6);
-    border: 1px solid #ffd3b5;
-}
-
-/* Hexagonal / Shield Rank Badge */
-.gm-podium-hex-rank {
-    width: 32px;
-    height: 32px;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 0.95rem;
+.gm-podium-pedestal-content {
     display: flex;
     align-items: center;
     justify-content: center;
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    z-index: 2;
 }
 
-.gm-gold .gm-podium-hex-rank {
-    background: var(--accent-amber);
-    color: var(--accent-amber-fg);
-    box-shadow: 0 0 12px oklch(0.85 0.17 85 / 0.6);
+.gm-podium-pedestal-icon {
+    font-size: 1.8rem;
+    opacity: 0.85;
 }
 
-.gm-silver .gm-podium-hex-rank {
-    background: var(--fg-muted);
-    color: var(--bg-0);
-    box-shadow: 0 0 12px oklch(0.80 0.012 250 / 0.6);
+/* Gold #1 M3 Pedestal (Center) */
+.gm-podium-column.gm-gold .gm-podium-pedestal {
+    height: 145px;
+    background: linear-gradient(180deg, rgba(255, 224, 136, 0.24) 0%, rgba(255, 224, 136, 0.06) 100%), var(--md-sys-color-surface-container);
+    border: 1px solid rgba(255, 224, 136, 0.38);
+    box-shadow: 0 12px 32px rgba(255, 224, 136, 0.16);
 }
 
-.gm-bronze .gm-podium-hex-rank {
-    background: var(--accent-coral);
-    color: var(--accent-coral-fg);
-    box-shadow: 0 0 12px oklch(0.78 0.16 50 / 0.6);
+.gm-podium-column.gm-gold .gm-podium-pedestal-icon {
+    color: var(--gm-event-svs);
+}
+
+/* Silver #2 M3 Pedestal (Left) */
+.gm-podium-column.gm-silver .gm-podium-pedestal {
+    height: 115px;
+    background: linear-gradient(180deg, rgba(227, 227, 227, 0.18) 0%, rgba(227, 227, 227, 0.04) 100%), var(--md-sys-color-surface-container);
+    border: 1px solid rgba(227, 227, 227, 0.24);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.gm-podium-column.gm-silver .gm-podium-pedestal-icon {
+    color: var(--md-sys-color-on-surface);
+}
+
+/* Bronze #3 M3 Pedestal (Right) */
+.gm-podium-column.gm-bronze .gm-podium-pedestal {
+    height: 95px;
+    background: linear-gradient(180deg, rgba(255, 183, 135, 0.18) 0%, rgba(255, 183, 135, 0.04) 100%), var(--md-sys-color-surface-container);
+    border: 1px solid rgba(255, 183, 135, 0.24);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.gm-podium-column.gm-bronze .gm-podium-pedestal-icon {
+    color: var(--gm-event-armsrace);
 }
 
 /* Sub-header text underneath podium */

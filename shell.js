@@ -20,25 +20,25 @@
     // Mapping panel-actif → item courant : on utilise `panels` pour savoir si
     // une .nav-tab.active appartient à cet item.
     var NAV_ITEMS = [
-        { id: 'overview',  tabId: 'gm-overview', icon: 'ph-squares-four',    labelKey: 'gm_nav_overview',  section: 'play',  panels: ['gm-overview'] },
-        { id: 'members',   tabId: 'admin-members', icon: 'ph-users',         labelKey: 'gm_nav_members',   section: 'play',  panels: ['admin-members'] },
-        { id: 'events',    tabId: 'event-svs',   icon: 'ph-sword',           labelKey: 'gm_nav_events',    section: 'play',
+        { id: 'overview',  tabId: 'gm-overview', m3Icon: 'dashboard', icon: 'ph-squares-four',    labelKey: 'gm_nav_overview',  section: 'play',  panels: ['gm-overview'] },
+        { id: 'members',   tabId: 'admin-members', m3Icon: 'group', icon: 'ph-users',         labelKey: 'gm_nav_members',   section: 'play',  panels: ['admin-members'] },
+        { id: 'events',    tabId: 'event-svs',   m3Icon: 'swords', icon: 'ph-sword',           labelKey: 'gm_nav_events',    section: 'play',
           panels: ['event-svs', 'event-gvg', 'event-shadowfront', 'event-dtr', 'event-arms-race'] },
-        { id: 'glory',     tabId: 'event-glory', icon: 'ph-trophy',          labelKey: 'gm_nav_glory',     section: 'play',  panels: ['event-glory'] },
-        { id: 'history',   tabId: 'event-history', icon: 'ph-clock-counter-clockwise', labelKey: 'gm_nav_history', section: 'play',  panels: ['event-history'] },
-        { id: 'stats',     tabId: 'stats-admin', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
+        { id: 'glory',     tabId: 'event-glory', m3Icon: 'trophy', icon: 'ph-trophy',          labelKey: 'gm_nav_glory',     section: 'play',  panels: ['event-glory'] },
+        { id: 'history',   tabId: 'event-history', m3Icon: 'history', icon: 'ph-clock-counter-clockwise', labelKey: 'gm_nav_history', section: 'play',  panels: ['event-history'] },
+        { id: 'stats',     tabId: 'stats-admin', m3Icon: 'leaderboard', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
 
-        { id: 'accounts',  tabId: 'admin-home',  icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
-        { id: 'subscription', tabId: 'tab-subscription', icon: 'ph-credit-card', labelKey: 'gm_nav_subscription', section: 'admin', adminOnly: true, panels: ['tab-subscription'] },
-        { id: 'discord',   tabId: 'admin-discord', icon: 'ph-bell-ringing',   labelKey: 'gm_nav_discord',   section: 'admin', panels: ['admin-discord'] },
-        { id: 'sanctions', tabId: 'tab-sanctions', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
-        { id: 'banned',    tabId: 'admin-banned', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] },
+        { id: 'accounts',  tabId: 'admin-home',  m3Icon: 'manage_accounts', icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
+        { id: 'subscription', tabId: 'tab-subscription', m3Icon: 'credit_card', icon: 'ph-credit-card', labelKey: 'gm_nav_subscription', section: 'admin', adminOnly: true, panels: ['tab-subscription'] },
+        { id: 'discord',   tabId: 'admin-discord', m3Icon: 'notifications', icon: 'ph-bell-ringing',   labelKey: 'gm_nav_discord',   section: 'admin', panels: ['admin-discord'] },
+        { id: 'sanctions', tabId: 'tab-sanctions', m3Icon: 'gavel', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
+        { id: 'banned',    tabId: 'admin-banned', m3Icon: 'block', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] },
 
-        { id: 'superadmin-accounts', tabId: 'admin-superadmin', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
-        { id: 'settings', tabId: 'tab-settings', icon: 'ph-note-pencil', labelKey: 'gm_nav_settings', section: 'superadmin', r5Only: true, panels: ['tab-settings'] },
-        { id: 'svs-matchup', tabId: 'tab-svs-matchup', icon: 'ph-sword', labelKey: 'gm_nav_svs_matchup', section: 'superadmin', r5Only: true, panels: ['tab-svs-matchup'] },
-        { id: 'gvg-matchup', tabId: 'tab-gvg-matchup', icon: 'ph-flag-banner', labelKey: 'gm_nav_gvg_matchup', section: 'superadmin', r5Only: true, panels: ['tab-gvg-matchup'] },
-        { id: 'system-logs', tabId: 'tab-system-logs', icon: 'ph-terminal-window', labelKey: 'gm_nav_system_logs', section: 'superadmin', r5Only: true, panels: ['tab-system-logs'] }
+        { id: 'superadmin-accounts', tabId: 'admin-superadmin', m3Icon: 'admin_panel_settings', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
+        { id: 'settings', tabId: 'tab-settings', m3Icon: 'tune', icon: 'ph-note-pencil', labelKey: 'gm_nav_settings', section: 'superadmin', r5Only: true, panels: ['tab-settings'] },
+        { id: 'svs-matchup', tabId: 'tab-svs-matchup', m3Icon: 'rocket_launch', icon: 'ph-sword', labelKey: 'gm_nav_svs_matchup', section: 'superadmin', r5Only: true, panels: ['tab-svs-matchup'] },
+        { id: 'gvg-matchup', tabId: 'tab-gvg-matchup', m3Icon: 'flag', icon: 'ph-flag-banner', labelKey: 'gm_nav_gvg_matchup', section: 'superadmin', r5Only: true, panels: ['tab-gvg-matchup'] },
+        { id: 'system-logs', tabId: 'tab-system-logs', m3Icon: 'terminal', icon: 'ph-terminal-window', labelKey: 'gm_nav_system_logs', section: 'superadmin', r5Only: true, panels: ['tab-system-logs'] }
     ];
 
     function visibleNavItems() {
@@ -75,11 +75,11 @@
 
     // ── Events tabs-pill : injectée dans chaque event panel ─────────────────
     var EVENT_TABS = [
-        { id: 'event-svs',          icon: 'ph-swords',       label: 'SvS' },
-        { id: 'event-gvg',          icon: 'ph-flag-banner',  label: 'GvG' },
-        { id: 'event-shadowfront',  icon: 'ph-ghost',        label: 'Shadowfront' },
-        { id: 'event-dtr',          icon: 'ph-truck',        label: 'DTR' },
-        { id: 'event-arms-race',    icon: 'ph-crosshair',    label: 'Arms Race' }
+        { id: 'event-svs',          m3Icon: 'rocket_launch', icon: 'ph-swords',       label: 'SvS', colorVar: 'var(--gm-event-svs)' },
+        { id: 'event-gvg',          m3Icon: 'swords',        icon: 'ph-flag-banner',  label: 'GvG', colorVar: 'var(--gm-event-gvg)' },
+        { id: 'event-shadowfront',  m3Icon: 'radar',         icon: 'ph-ghost',        label: 'Shadowfront', colorVar: 'var(--gm-event-shadowfront)' },
+        { id: 'event-dtr',          m3Icon: 'local_shipping',icon: 'ph-truck',        label: 'DTR', colorVar: 'var(--gm-event-dtr)' },
+        { id: 'event-arms-race',    m3Icon: 'bolt',          icon: 'ph-crosshair',    label: 'Arms Race', colorVar: 'var(--gm-event-armsrace)' }
     ];
 
     function renderEventsTabs() {
@@ -89,8 +89,10 @@
             var html = '<div class="gm-tabs-pill" style="margin-bottom:1rem; flex-wrap:nowrap; overflow-x:auto;">';
             EVENT_TABS.forEach(function (e) {
                 var active = e.id === ownerId;
+                var m3Icon = e.m3Icon || 'swords';
+                var iconStyle = active ? ('style="color:' + e.colorVar + '; font-size:1.15rem; margin-right:0.35rem; vertical-align:middle;"') : 'style="font-size:1.15rem; margin-right:0.35rem; vertical-align:middle;"';
                 html += '<button class="gm-tab-pill' + (active ? ' gm-active' : '') + '" data-gm-event-tab="' + e.id + '">' +
-                    '<i class="ph ' + e.icon + '"></i> ' + e.label +
+                    '<span class="material-symbols-rounded gm-icon" ' + iconStyle + '>' + m3Icon + '</span> ' + e.label +
                 '</button>';
             });
             html += '</div>';
@@ -401,7 +403,7 @@
                         '<div class="gm-sidebar-user-role">' + getUserRoleLong() + '</div>' +
                     '</div>' +
                     '<button class="gm-sidebar-logout" data-gm-logout title="' + t('nav_logout_title') + '">' +
-                        '<i class="ph ph-sign-out"></i>' +
+                        '<span class="material-symbols-rounded">logout</span>' +
                     '</button>' +
                 '</div>' +
             '</div>' +
@@ -446,10 +448,10 @@
     function navItemHtml(item) {
         var isActive = state.active === item.id;
         var label = t(item.labelKey);
-        var icon = item.icon;
+        var m3Icon = item.m3Icon || 'circle';
 
         return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
-                '<i class="ph ' + icon + '"></i>' +
+                '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
                 '<span>' + label + '</span>' +
             '</button>';
     }
@@ -498,7 +500,7 @@
                     guildOptions +
                 '</select>' +
                 '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + t('nav_logout_title') + '">' +
-                    '<i class="ph ph-sign-out"></i>' +
+                    '<span class="material-symbols-rounded">logout</span>' +
                 '</button>' +
             '</div>';
         el.innerHTML = html;
@@ -539,13 +541,14 @@
             var item = NAV_ITEMS.find(function (i) { return i.id === id; });
             if (!item) return;
             var isActive = state.active === id;
+            var m3Icon = item.m3Icon || 'circle';
             html += '<button class="gm-bottom-nav-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + id + '">' +
-                        '<i class="ph ' + item.icon + ' gm-icon"></i>' +
+                        '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
                         '<span>' + t(item.labelKey) + '</span>' +
                     '</button>';
         });
         html += '<button class="gm-bottom-nav-item" data-gm-more>' +
-                    '<i class="ph ph-dots-three-outline gm-icon"></i>' +
+                    '<span class="material-symbols-rounded gm-icon">more_horiz</span>' +
                     '<span>' + t('gm_nav_more') + '</span>' +
                 '</button>';
         html += '</div>';
@@ -569,10 +572,10 @@
         visibleNavItems().forEach(function (item) {
             var isActive = state.active === item.id;
             var label = t(item.labelKey);
-            var icon = item.icon;
+            var m3Icon = item.m3Icon || 'circle';
 
             html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
-                        '<i class="ph ' + icon + ' gm-icon"></i>' +
+                        '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
                         '<span>' + label + '</span>' +
                     '</button>';
         });

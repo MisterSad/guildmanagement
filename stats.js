@@ -1226,15 +1226,19 @@
     function render3DPodiumColumn(member, medalClass, rankNum) {
         if (!member) return '';
         var initial = (window.GM && window.GM.avatarInit) ? window.GM.avatarInit(member.pseudo) : (member.pseudo ? member.pseudo.charAt(0).toUpperCase() : '?');
+        var crownHtml = rankNum === '1' ? '<div class="gm-podium-crown-wrap"><span class="material-symbols-rounded gm-podium-crown">crown</span></div>' : '';
         return '<div class="gm-podium-column gm-' + medalClass + '">' +
-            '<div class="gm-podium-avatar-hex">' +
-                '<div class="gm-avatar">' + esc(initial) + '</div>' +
+            crownHtml +
+            '<div class="gm-podium-avatar-wrap gm-podium-avatar-hex">' +
+                '<div class="gm-avatar gm-avatar-m3">' + esc(initial) + '</div>' +
+                '<div class="gm-podium-rank-badge gm-podium-hex-rank">' + rankNum + '</div>' +
             '</div>' +
             '<div class="gm-podium-player-name">' + esc(member.pseudo) + '</div>' +
             '<div class="gm-podium-score-val">' + fmt(member.score) + ' pts</div>' +
             '<div class="gm-podium-pedestal">' +
-                '<div class="gm-podium-pedestal-top"></div>' +
-                '<div class="gm-podium-hex-rank">' + rankNum + '</div>' +
+                '<div class="gm-podium-pedestal-content">' +
+                    '<span class="material-symbols-rounded gm-podium-pedestal-icon">' + (rankNum === '1' ? 'emoji_events' : rankNum === '2' ? 'military_tech' : 'workspace_premium') + '</span>' +
+                '</div>' +
             '</div>' +
         '</div>';
     }
