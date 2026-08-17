@@ -76,6 +76,27 @@ describe('Tactical Military Metrics & Calculations', () => {
         expect(window.GM.calculateCombatDensity({})).toBe(0);
     });
 
+    it('treats missing, null, undefined, or empty metrics strictly as 0', () => {
+        const partialMember = {
+            pseudo: 'PartialPlayer',
+            overall_power: 100000000,
+            flagship_power: 10000000, // 10M * 4.0 = 40M
+            fleet_rating: null,       // counts as 0
+            tech_power: undefined,    // counts as 0
+            crew_power: '',           // counts as 0
+            champion_power: 0,        // counts as 0
+            glory_score: null         // counts as 0
+        };
+
+        // 40M / 100M = 40.0%
+        const density = window.GM.calculateCombatDensity(partialMember);
+        expect(density).toBe(40);
+
+        // 100M + 40M = 140M
+        const rallyScore = window.GM.calculateRallyScore(partialMember);
+        expect(rallyScore).toBe(140000000);
+    });
+
     it('calculates residual volatile troop power correctly', () => {
         // 100M - (15M + 30M + 5M) = 50M
         const residual = window.GM.calculateResidualPower(mockMember);

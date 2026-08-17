@@ -1382,51 +1382,60 @@
         return { cls: 'tier-d', label: 'Common', color: 'var(--text-muted)', icon: '🛡️' };
     }
 
+    function parseSafeMetric(val) {
+        if (val === null || val === undefined || val === '') return 0;
+        if (typeof val === 'number') return isNaN(val) || val < 0 ? 0 : val;
+        var cleaned = String(val).replace(/,/g, '').trim();
+        var n = parseFloat(cleaned);
+        return isNaN(n) || n < 0 ? 0 : n;
+    }
+
     function calculateCombatDensity(m) {
         if (!m) return 0;
-        var tot = parseInt(m.overall_power || m.total_power) || 0;
+        var tot = parseSafeMetric(m.overall_power || m.total_power);
         if (tot <= 0) return 0;
-        var flag = parseInt(m.flagship_power) || 0;
-        var fleet = parseInt(m.fleet_rating) || 0;
-        var tech = parseInt(m.tech_power) || 0;
-        var crew = parseInt(m.crew_power) || 0;
-        var champ = parseInt(m.champion_power) || 0;
-        var glory = parseInt(m.glory_score || m.glory) || 0;
+        var flag = parseSafeMetric(m.flagship_power);
+        var fleet = parseSafeMetric(m.fleet_rating);
+        var tech = parseSafeMetric(m.tech_power);
+        var crew = parseSafeMetric(m.crew_power);
+        var champ = parseSafeMetric(m.champion_power);
+        var glory = parseSafeMetric(m.glory_score || m.glory);
 
         // Weighted combat density according to tactical rally hierarchy:
         // Power > Flagship (4.0x) > Fleet (3.5x) > Tech (2.25x) > Crew (1.5x) > Glory (1.0x) > Champs (0.8x)
+        // Missing scores default strictly to 0 without penalty/distortion
         var weightedCombat = (flag * 4.0) + (fleet * 3.5) + (tech * 2.25) + (crew * 1.5) + (champ * 0.8) + (glory * 1.0);
         return Math.round((weightedCombat / tot) * 1000) / 10;
     }
 
     function calculateRallyScore(m) {
         if (!m) return 0;
-        var tot = parseInt(m.overall_power || m.total_power) || 0;
-        var flag = parseInt(m.flagship_power) || 0;
-        var fleet = parseInt(m.fleet_rating) || 0;
-        var tech = parseInt(m.tech_power) || 0;
-        var crew = parseInt(m.crew_power) || 0;
-        var champ = parseInt(m.champion_power) || 0;
-        var glory = parseInt(m.glory_score || m.glory) || 0;
+        var tot = parseSafeMetric(m.overall_power || m.total_power);
+        var flag = parseSafeMetric(m.flagship_power);
+        var fleet = parseSafeMetric(m.fleet_rating);
+        var tech = parseSafeMetric(m.tech_power);
+        var crew = parseSafeMetric(m.crew_power);
+        var champ = parseSafeMetric(m.champion_power);
+        var glory = parseSafeMetric(m.glory_score || m.glory);
 
-        // Composite rally combat readiness score
+        // Composite rally combat readiness score (missing scores strictly counted as 0)
         return Math.round(tot + (flag * 4.0) + (fleet * 3.5) + (tech * 2.25) + (crew * 1.5) + (champ * 0.8) + (glory * 1.0));
     }
 
     function calculateResidualPower(m) {
         if (!m) return 0;
-        var tot = parseInt(m.overall_power || m.total_power) || 0;
-        var tech = parseInt(m.tech_power) || 0;
-        var champ = parseInt(m.champion_power) || 0;
-        var crew = parseInt(m.crew_power) || 0;
+        var tot = parseSafeMetric(m.overall_power || m.total_power);
+        var tech = parseSafeMetric(m.tech_power);
+        var champ = parseSafeMetric(m.champion_power);
+        var crew = parseSafeMetric(m.crew_power);
         return Math.max(0, tot - (tech + champ + crew));
     }
 
     function calculateCombativity(m) {
         if (!m) return 0;
-        var tot = parseInt(m.overall_power || m.total_power) || 0;
+        var tot = parseSafeMetric(m.overall_power || m.total_power);
         if (tot <= 0) return 0;
-        var glory = parseInt(m.glory_score || m.glory) || 0;
+        var glory = parseSafeMetric(m.glory_score || m.glory);
         return Math.round((glory / tot) * 100) / 100;
     }
 

@@ -2,6 +2,11 @@
 
 ## New
 
+- **Defensive 0-Defaulting for Missing Tactical Metrics (v120.2)**:
+  - **Safe Score Metric Parsing**: Implemented `parseSafeMetric` helper in `gm-utils.js` to ensure any missing, unrecorded, null, empty string, or undefined military score defaults strictly to `0`.
+  - **Graceful Partial Scoring**: Players with partially submitted or unrecorded metrics are scored safely and accurately across `calculateCombatDensity`, `calculateRallyScore`, `calculateResidualPower`, and `calculateCombativity` without runtime exceptions or calculation distortion.
+  - **Quality Gate**: **258/258 Vitest unit tests green** (added explicit test coverage for partial metric objects), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Fleet Power Multiplier Upward Calibration to 3.5x (v120.1)**:
   - **Calibrated Fleet Multiplier**: Increased Strongest Fleet Rating weight in `calculateCombatDensity` and `calculateRallyScore` to **$\times 3.5$** (was 2.5x), strengthening the tactical importance of 1st march ratings in rally composition.
   - **Complete Hierarchy**: $\text{Power} (\times 1.0) > \text{Flagship} (\times 4.0) > \text{Fleet} (\times 3.5) > \text{Tech} (\times 2.25) > \text{Crew} (\times 1.5) > \text{Glory} (\times 1.0) > \text{Champs} (\times 0.8)$.
