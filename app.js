@@ -300,19 +300,24 @@
 
     if (logoutBtn)       logoutBtn.addEventListener('click', doLogout);
 
-    // ─── Player self-registration ────────────────────────────────────────────
+    // ─── Player self-registration & M3 Segmented Switcher ───────────────────
     var goToRegisterBtn = document.getElementById('go-to-register-btn');
     var registerBackBtn = document.getElementById('register-back-btn');
+    var authTabSignin   = document.getElementById('auth-tab-signin');
+    var authTabRegister = document.getElementById('auth-tab-register');
     var loginCard       = document.querySelector('#login-form');
     var loginHero       = document.querySelector('.gm-login-hero-tag');
 
     function showRegisterForm(show) {
         if (registerForm) registerForm.classList.toggle('hidden', !show);
         if (loginForm) loginForm.classList.toggle('hidden', show);
-        if (loginHero) loginHero.classList.toggle('hidden', show);
         if (registerError) registerError.classList.add('hidden');
+        if (authTabSignin) authTabSignin.classList.toggle('active', !show);
+        if (authTabRegister) authTabRegister.classList.toggle('active', !!show);
     }
 
+    if (authTabSignin) authTabSignin.addEventListener('click', function () { showRegisterForm(false); });
+    if (authTabRegister) authTabRegister.addEventListener('click', function () { showRegisterForm(true); });
     if (goToRegisterBtn) goToRegisterBtn.addEventListener('click', function () { showRegisterForm(true); });
     if (registerBackBtn) registerBackBtn.addEventListener('click', function () { showRegisterForm(false); });
 

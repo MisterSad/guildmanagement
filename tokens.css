@@ -1,98 +1,204 @@
 /**
- * tokens.css — Design system Guild Manager v3
- * Inspired by modern task management mobile & desktop design mockup.
- * Deep slate navy background + high contrast Lime Green, Cyan, and Lilac accents.
+ * tokens.css — Material Design 3.0 (M3) & Apple Cozy Neutral Design System
+ *
+ * Combines Google Material Design 3 surface hierarchies, state layers, and elevations
+ * with Apple-inspired cozy graphite, titanium, and refined mineral accents.
+ * Strictly 100% English. Backward compatible with all existing views.
  */
+
 :root {
-  /* ─── Backgrounds (Deep Slate Navy Palette) ─── */
-  --bg-0:     oklch(0.16 0.022 250);  /* Deep slate navy app background (#121722) */
-  --bg-1:     oklch(0.20 0.025 250);  /* Cards / inputs background (#19202e) */
-  --bg-2:     oklch(0.25 0.028 250);  /* Elevated hover / interactive elements (#21293a) */
-  --bg-3:     oklch(0.30 0.030 250);  /* Active tab pills / highlights */
-  --bg-elev:  oklch(0.22 0.026 250);  /* Main container background */
+  /* ════════════════════════════════════════════════════════════════════════════
+     1. MATERIAL DESIGN 3.0 SURFACE HIERARCHY (Warm Graphite & Titanium)
+     ════════════════════════════════════════════════════════════════════════════ */
+  --md-sys-color-surface:                   #141416; /* Deep warm graphite base canvas */
+  --md-sys-color-surface-dim:               #0e0e10; /* Recessed underlays / dialog scrim backdrop */
+  --md-sys-color-surface-bright:            #242429; /* Elevated highlights */
+  --md-sys-color-surface-container-lowest:  #0f0f11; /* Lowest elevation containers */
+  --md-sys-color-surface-container-low:     #18181b; /* Secondary panels / sidebars */
+  --md-sys-color-surface-container:         #1f1f23; /* Cards / Main content containers */
+  --md-sys-color-surface-container-high:    #27272c; /* Hovered / Interactive elements */
+  --md-sys-color-surface-container-highest: #303036; /* Active tabs / pills / popovers */
 
-  /* ─── Foregrounds ─── */
-  --fg:       oklch(0.97 0.005 250);  /* Primary white text */
-  --fg-muted: oklch(0.80 0.012 250);  /* Soft grey secondary text */
-  --fg-dim:   oklch(0.62 0.016 250);  /* Muted label text */
+  /* ════════════════════════════════════════════════════════════════════════════
+     2. M3 ON-SURFACE CONTRAST & TYPOGRAPHY (Apple Soft White)
+     ════════════════════════════════════════════════════════════════════════════ */
+  --md-sys-color-on-surface:                #f3f3f5; /* Primary crisp text (non-glare) */
+  --md-sys-color-on-surface-variant:        #a0a0a8; /* Secondary labels & subtitles */
+  --md-sys-color-on-surface-dim:            #71717a; /* Muted hints & timestamps */
+  --md-sys-color-outline:                   #3a3a42; /* Hairline card borders */
+  --md-sys-color-outline-variant:           rgba(255, 255, 255, 0.08); /* Frosted dividers */
 
-  /* ─── Borders ─── */
-  --border:      oklch(0.32 0.024 250);
-  --border-soft: oklch(0.26 0.022 250 / 0.7);
+  /* ════════════════════════════════════════════════════════════════════════════
+     3. M3 PRIMARY & SECONDARY MONOCHROME / TITANIUM TOKENS
+     ════════════════════════════════════════════════════════════════════════════ */
+  --md-sys-color-primary:                   #f0f0f3; /* High-contrast Titanium White */
+  --md-sys-color-on-primary:                #141416; /* Dark ink on primary button */
+  --md-sys-color-primary-container:         #2a2a30; /* Soft pill container */
+  --md-sys-color-on-primary-container:      #e5e5ea;
 
-  /* ─── Accent Colors (Inspired by Mockup) ─── */
-  /* 🟢 Lime Green - Priority High / Primary Accent (#d2f872) */
-  --accent-lime:       oklch(0.88 0.19 125);
-  --accent-lime-soft:  oklch(0.35 0.08 125);
-  --accent-lime-fg:    oklch(0.16 0.02 125);
+  --md-sys-color-secondary:                 #d4d4d8;
+  --md-sys-color-on-secondary:              #18181b;
+  --md-sys-color-secondary-container:       #24242a;
+  --md-sys-color-on-secondary-container:    #d1d1d6;
 
-  /* 🔵 Cyan Blue - Priority Medium / Active Accent (#56c6f3) */
-  --accent-cyan:       oklch(0.78 0.16 220);
-  --accent-cyan-soft:  oklch(0.32 0.07 220);
-  --accent-cyan-fg:    oklch(0.16 0.02 220);
+  /* ════════════════════════════════════════════════════════════════════════════
+     4. COZY MINERAL ACCENTS (FGF Game Events & Statuses)
+     ════════════════════════════════════════════════════════════════════════════ */
+  /* 🌿 Sage Green — Glory / Success / Active State */
+  --gm-accent-sage:       #a3c9a8;
+  --gm-accent-sage-soft:  rgba(163, 201, 168, 0.16);
+  --gm-accent-sage-fg:    #0f1f12;
 
-  /* 🟣 Lilac Mauve - Priority Normal / Tertiary Accent (#e4b5f0) */
-  --accent-lilac:      oklch(0.82 0.13 320);
-  --accent-lilac-soft: oklch(0.32 0.06 320);
-  --accent-lilac-fg:   oklch(0.16 0.02 320);
+  /* 🪵 Warm Amber / Sandstone — SvS / Arms Race / Warnings */
+  --gm-accent-amber:      #e2b87f;
+  --gm-accent-amber-soft: rgba(226, 184, 127, 0.16);
+  --gm-accent-amber-fg:   #231705;
 
-  /* 🟠 Warm Coral - GvG Accent (#ffab76) */
-  --accent-coral:      oklch(0.78 0.16 50);
-  --accent-coral-soft: oklch(0.32 0.07 50);
-  --accent-coral-fg:   oklch(0.16 0.02 50);
+  /* ❄️ Ice Cyan — GvG / Defensive / Neutral Info */
+  --gm-accent-ice:        #93b7be;
+  --gm-accent-ice-soft:   rgba(147, 183, 190, 0.16);
+  --gm-accent-ice-fg:     #0c1b1e;
 
-  /* 🟡 Electric Amber - Arms Race Accent (#ffd166) */
-  --accent-amber:      oklch(0.85 0.17 85);
-  --accent-amber-soft: oklch(0.34 0.07 85);
-  --accent-amber-fg:   oklch(0.16 0.02 85);
+  /* 🪸 Soft Coral — Sanctions / Errors / Urgent */
+  --gm-accent-coral:      #e07a70;
+  --gm-accent-coral-soft: rgba(224, 122, 112, 0.16);
+  --gm-accent-coral-fg:   #2b0d0a;
 
-  /* 🟢 Emerald Mint - Glory Accent (#6ee7b7) */
-  --accent-mint:       oklch(0.82 0.15 165);
-  --accent-mint-soft:  oklch(0.32 0.07 165);
-  --accent-mint-fg:    oklch(0.16 0.02 165);
+  /* 🪻 Muted Lavender — Super Admin / Cross-Guild / Special */
+  --gm-accent-lavender:      #c4b5fd;
+  --gm-accent-lavender-soft: rgba(196, 181, 253, 0.16);
+  --gm-accent-lavender-fg:   #19122e;
 
-  /* Primary Default Accent -> Lime Green */
-  --accent:      var(--accent-lime);
-  --accent-2:    oklch(0.82 0.18 125);
-  --accent-soft: var(--accent-lime-soft);
-  --accent-fg:   var(--accent-lime-fg);
+  /* ════════════════════════════════════════════════════════════════════════════
+     5. M3 SHAPE / CORNER RADII TOKENS
+     ════════════════════════════════════════════════════════════════════════════ */
+  --md-sys-shape-corner-none:        0px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small:       8px;
+  --md-sys-shape-corner-medium:      12px;
+  --md-sys-shape-corner-large:       16px;
+  --md-sys-shape-corner-extra-large: 24px;
+  --md-sys-shape-corner-full:        9999px;
 
-  /* ─── Status palette ─── */
-  --info:         var(--accent-cyan);
-  --info-soft:    var(--accent-cyan-soft);
-  --success:      var(--accent-lime);
-  --success-soft: var(--accent-lime-soft);
-  --warning:      oklch(0.82 0.16 80);
-  --warning-soft: oklch(0.32 0.06 80);
-  --danger:       oklch(0.68 0.20 25);
-  --danger-soft:  oklch(0.30 0.08 25);
+  /* ════════════════════════════════════════════════════════════════════════════
+     6. M3 ELEVATION & SHADOW TOKENS (Multi-Layered Ambient Shadows)
+     ════════════════════════════════════════════════════════════════════════════ */
+  --md-sys-elevation-level0: none;
+  --md-sys-elevation-level1: 0px 1px 3px 1px rgba(0, 0, 0, 0.25), 0px 1px 2px 0px rgba(0, 0, 0, 0.35);
+  --md-sys-elevation-level2: 0px 2px 6px 2px rgba(0, 0, 0, 0.28), 0px 1px 2px 0px rgba(0, 0, 0, 0.40);
+  --md-sys-elevation-level3: 0px 4px 12px 3px rgba(0, 0, 0, 0.32), 0px 1px 3px 0px rgba(0, 0, 0, 0.45);
+  --md-sys-elevation-level4: 0px 6px 16px 4px rgba(0, 0, 0, 0.36), 0px 2px 4px 0px rgba(0, 0, 0, 0.50);
+  --md-sys-elevation-level5: 0px 8px 24px 6px rgba(0, 0, 0, 0.40), 0px 4px 8px 0px rgba(0, 0, 0, 0.55);
 
-  /* ─── Radii (Ultra-smooth rounded corners from mockup) ─── */
-  --radius-sm: 8px;
-  --radius:    14px;
-  --radius-lg: 20px;
-  --radius-xl: 26px;
-  --radius-pill: 9999px;
-
-  /* ─── Shadows ─── */
-  --shadow-sm: 0 2px 6px oklch(0 0 0 / 0.25);
-  --shadow:    0 6px 20px oklch(0 0 0 / 0.35);
-  --shadow-lg: 0 16px 48px oklch(0 0 0 / 0.50);
-  --shadow-accent: 0 8px 24px oklch(0.88 0.19 125 / 0.25);
-
-  /* ─── Typography ─── */
-  --font:         "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", "Inter", sans-serif;
+  /* ════════════════════════════════════════════════════════════════════════════
+     7. TYPOGRAPHY
+     ════════════════════════════════════════════════════════════════════════════ */
+  --font:         "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Space Grotesk", -apple-system, sans-serif;
   --font-mono:    "JetBrains Mono", ui-monospace, monospace;
 
-  /* ─── Layout ─── */
+  /* ════════════════════════════════════════════════════════════════════════════
+     8. LAYOUT & DIMENSIONS
+     ════════════════════════════════════════════════════════════════════════════ */
   --sidebar-w:    265px;
   --topbar-h:     64px;
   --bottom-nav-h: 70px;
 
-  /* ─── Glassmorphism & Cards ─── */
-  --card-bg:     oklch(0.22 0.026 250 / 0.75);
-  --card-border: oklch(0.32 0.024 250 / 0.45);
+  /* ════════════════════════════════════════════════════════════════════════════
+     9. BACKWARD COMPATIBILITY ALIASES (Guarantees zero regression on views)
+     ════════════════════════════════════════════════════════════════════════════ */
+  --bg-0:     var(--md-sys-color-surface);
+  --bg-1:     var(--md-sys-color-surface-container);
+  --bg-2:     var(--md-sys-color-surface-container-high);
+  --bg-3:     var(--md-sys-color-surface-container-highest);
+  --bg-elev:  var(--md-sys-color-surface-container);
+
+  --fg:       var(--md-sys-color-on-surface);
+  --fg-muted: var(--md-sys-color-on-surface-variant);
+  --fg-dim:   var(--md-sys-color-on-surface-dim);
+
+  --border:      var(--md-sys-color-outline);
+  --border-soft: var(--md-sys-color-outline-variant);
+
+  --accent:      var(--md-sys-color-primary);
+  --accent-2:    var(--md-sys-color-secondary);
+  --accent-soft: var(--md-sys-color-primary-container);
+  --accent-fg:   var(--md-sys-color-on-primary);
+
+  --accent-lime:       var(--gm-accent-sage);
+  --accent-lime-soft:  var(--gm-accent-sage-soft);
+  --accent-lime-fg:    var(--gm-accent-sage-fg);
+
+  --accent-amber:      var(--gm-accent-amber);
+  --accent-amber-soft: var(--gm-accent-amber-soft);
+  --accent-amber-fg:   var(--gm-accent-amber-fg);
+
+  --accent-cyan:       var(--gm-accent-ice);
+  --accent-cyan-soft:  var(--gm-accent-ice-soft);
+  --accent-cyan-fg:    var(--gm-accent-ice-fg);
+
+  --accent-coral:      var(--gm-accent-coral);
+  --accent-coral-soft: var(--gm-accent-coral-soft);
+  --accent-coral-fg:   var(--gm-accent-coral-fg);
+
+  --accent-mint:       var(--gm-accent-sage);
+  --accent-mint-soft:  var(--gm-accent-sage-soft);
+  --accent-mint-fg:    var(--gm-accent-sage-fg);
+
+  --accent-lilac:      var(--gm-accent-lavender);
+  --accent-lilac-soft: var(--gm-accent-lavender-soft);
+  --accent-lilac-fg:   var(--gm-accent-lavender-fg);
+
+  --info:         var(--gm-accent-ice);
+  --info-soft:    var(--gm-accent-ice-soft);
+  --success:      var(--gm-accent-sage);
+  --success-soft: var(--gm-accent-sage-soft);
+  --warning:      var(--gm-accent-amber);
+  --warning-soft: var(--gm-accent-amber-soft);
+  --danger:       var(--gm-accent-coral);
+  --danger-soft:  var(--gm-accent-coral-soft);
+
+  --radius-sm:   var(--md-sys-shape-corner-small);
+  --radius:      var(--md-sys-shape-corner-large);
+  --radius-lg:   var(--md-sys-shape-corner-extra-large);
+  --radius-xl:   28px;
+  --radius-pill: var(--md-sys-shape-corner-full);
+
+  --shadow-sm: var(--md-sys-elevation-level1);
+  --shadow:    var(--md-sys-elevation-level2);
+  --shadow-lg: var(--md-sys-elevation-level4);
+  --shadow-accent: 0 8px 24px rgba(240, 240, 243, 0.12);
+
+  --card-bg:     rgba(31, 31, 35, 0.82);
+  --card-border: var(--md-sys-color-outline-variant);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   10. LIGHT THEME (Apple Warm Linen & Oyster)
+   ════════════════════════════════════════════════════════════════════════════ */
+[data-theme="light"] {
+  --md-sys-color-surface:                   #fbfbfa;
+  --md-sys-color-surface-dim:               #f0f0ee;
+  --md-sys-color-surface-bright:            #ffffff;
+  --md-sys-color-surface-container-lowest:  #ffffff;
+  --md-sys-color-surface-container-low:     #f6f6f5;
+  --md-sys-color-surface-container:         #f0f0ee;
+  --md-sys-color-surface-container-high:    #e8e8e5;
+  --md-sys-color-surface-container-highest: #dfdfdc;
+
+  --md-sys-color-on-surface:                #1c1c1e;
+  --md-sys-color-on-surface-variant:        #6c6c74;
+  --md-sys-color-on-surface-dim:            #8e8e93;
+  --md-sys-color-outline:                   #d8d8d6;
+  --md-sys-color-outline-variant:           rgba(0, 0, 0, 0.08);
+
+  --md-sys-color-primary:                   #18181b;
+  --md-sys-color-on-primary:                #ffffff;
+  --md-sys-color-primary-container:         #e4e4e7;
+  --md-sys-color-on-primary-container:      #18181b;
+
+  --card-bg:     rgba(240, 240, 238, 0.85);
+  --card-border: var(--md-sys-color-outline-variant);
 }
 
 /* ─── Global Scrollbars Modernization ─── */
@@ -101,14 +207,14 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-0);
+  background: var(--md-sys-color-surface);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-2);
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--bg-0);
+  background: var(--md-sys-color-surface-container-highest);
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid var(--md-sys-color-surface);
   transition: background 0.2s ease;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
+  background: var(--md-sys-color-on-surface-variant);
 }

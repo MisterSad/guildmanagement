@@ -7,14 +7,15 @@
     <meta name="description" content="Guild Management Tool for Foundation Galactic Frontier">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="styles.css?v=6">
-    <link rel="stylesheet" href="tokens.css?v=4">
-    <link rel="stylesheet" href="components.css?v=23">
-    <link rel="stylesheet" href="shell.css?v=14">
+    <link rel="stylesheet" href="tokens.css?v=5">
+    <link rel="stylesheet" href="components.css?v=24">
+    <link rel="stylesheet" href="shell.css?v=15">
     <link rel="icon" type="image/png" href="favicon.png?v=2">
     <link rel="manifest" href="manifest.webmanifest">
-    <meta name="theme-color" content="#15141d">
+    <meta name="theme-color" content="#141416">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FGF GM">
@@ -26,127 +27,145 @@
         <!-- ─── Login View ──────────────────────────────────────── -->
         <div id="login-view" class="view active gm-login-wrap">
             <div class="gm-login-centered-container">
-                <!-- Top Status Badge -->
-                <div class="gm-login-hero-tag">
-                    <span class="gm-live-dot"></span>
-                    <span>SYSTEM ONLINE • SECURE AUTH v3.0</span>
+                <!-- Top Status Badge & Language Switcher -->
+                <div class="gm-login-top-bar">
+                    <div class="gm-login-hero-tag">
+                        <span class="gm-live-dot"></span>
+                        <span>SYSTEM SECURE • v3.1</span>
+                    </div>
                 </div>
 
-                <!-- Static Card Box with Gradient Border -->
+                <!-- Main Card with M3 / Apple Cozy Container -->
                 <div class="gm-animated-card-wrap">
-                    <form id="login-form" class="gm-login-card login-card">
-                        <div class="gm-login-brand-row">
-                            <div class="gm-login-avatar-3d">FGF</div>
-                            <div class="gm-login-title" data-i18n="login_title">FGF GUILD MANAGEMENT</div>
-                            <div class="gm-login-sub" data-i18n="login_subtitle">Foundation Galactic Frontier</div>
+                    <div class="gm-auth-card-container">
+                        <!-- Segmented Pill Switcher (M3 / Apple Pill) -->
+                        <div class="gm-auth-segmented-switch">
+                            <button type="button" class="gm-auth-segment-btn active" id="auth-tab-signin" data-auth-tab="signin">
+                                <span class="material-symbols-rounded">login</span>
+                                <span>Sign In</span>
+                            </button>
+                            <button type="button" class="gm-auth-segment-btn" id="auth-tab-register" data-auth-tab="register">
+                                <span class="material-symbols-rounded">person_add</span>
+                                <span>Register Player</span>
+                            </button>
                         </div>
 
-                        <div class="gm-login-form">
-                            <div class="gm-login-field">
-                                <label for="username" data-i18n="login_label_id">Identifier</label>
-                                <div class="gm-input-with-icon">
-                                    <i class="ph ph-user gm-icon"></i>
-                                    <input type="text" id="username" class="gm-input" required
-                                        data-i18n-placeholder="login_placeholder_id"
-                                        placeholder="Your identifier" autocomplete="username">
-                                    <span class="gm-input-focus-line"></span>
-                                </div>
+                        <!-- ─── Unified Sign In Form ─────────────────────── -->
+                        <form id="login-form" class="gm-login-card login-card">
+                            <div class="gm-login-brand-row">
+                                <div class="gm-login-avatar-3d">FGF</div>
+                                <div class="gm-login-title" data-i18n="login_title">FGF GUILD MANAGEMENT</div>
+                                <div class="gm-login-sub" data-i18n="login_subtitle">Tactical Command & Member Portal</div>
                             </div>
-                            <div class="gm-login-field">
-                                <label for="password" data-i18n="login_label_pass">Password</label>
-                                <div class="gm-input-with-icon gm-login-pwd-wrap">
-                                    <i class="ph ph-lock gm-icon"></i>
-                                    <input type="password" id="password" class="gm-input" required
-                                        data-i18n-placeholder="login_placeholder_pass"
-                                        placeholder="Your password" autocomplete="current-password">
-                                    <span class="gm-input-focus-line"></span>
-                                    <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
-                                        <i class="ph ph-eye"></i>
+
+                            <div class="gm-login-form">
+                                <div class="gm-login-field">
+                                    <label for="username" data-i18n="login_label_id">Identifier</label>
+                                    <div class="gm-input-with-icon">
+                                        <span class="material-symbols-rounded gm-icon">person</span>
+                                        <input type="text" id="username" class="gm-input" required
+                                            data-i18n-placeholder="login_placeholder_id"
+                                            placeholder="Your identifier" autocomplete="username">
+                                        <span class="gm-input-focus-line"></span>
+                                    </div>
+                                </div>
+                                <div class="gm-login-field">
+                                    <label for="password" data-i18n="login_label_pass">Password</label>
+                                    <div class="gm-input-with-icon gm-login-pwd-wrap">
+                                        <span class="material-symbols-rounded gm-icon">lock</span>
+                                        <input type="password" id="password" class="gm-input" required
+                                            data-i18n-placeholder="login_placeholder_pass"
+                                            placeholder="Your password" autocomplete="current-password">
+                                        <span class="gm-input-focus-line"></span>
+                                        <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
+                                            <span class="material-symbols-rounded">visibility</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="login-error" class="gm-login-error hidden">
+                                    <span class="material-symbols-rounded">error</span>
+                                    <span data-i18n="login_error">Invalid credentials.</span>
+                                </div>
+                                <button type="submit" id="login-btn" class="gm-btn gm-btn-primary gm-login-submit">
+                                    <span class="material-symbols-rounded">login</span>
+                                    <span data-i18n="login_btn">Sign in</span>
+                                </button>
+                                <div class="gm-portal-switch-wrap">
+                                    <button type="button" id="go-to-portal-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%;">
+                                        <span class="material-symbols-rounded">pin</span>
+                                        <span>Direct Score Lookup (No Account)</span>
+                                    </button>
+                                    <button type="button" id="go-to-register-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%; margin-top: 0.35rem;">
+                                        <span class="material-symbols-rounded">person_add</span>
+                                        <span>Create a player account</span>
                                     </button>
                                 </div>
                             </div>
-                            <div id="login-error" class="gm-login-error hidden">
-                                <i class="ph ph-warning-circle"></i>
-                                <span data-i18n="login_error">Invalid credentials.</span>
-                            </div>
-                            <button type="submit" id="login-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                                <i class="ph ph-sign-in"></i>
-                                <span data-i18n="login_btn">Sign in</span>
-                            </button>
-                            <div class="gm-portal-switch-wrap">
-                                <button type="button" id="go-to-portal-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%;">
-                                    <i class="ph ph-user-focus"></i>
-                                    <span>Access Player Portal (Submit Scores)</span>
-                                </button>
-                                <button type="button" id="go-to-register-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%; margin-top: 0.35rem;">
-                                    <i class="ph ph-user-plus"></i>
-                                    <span>Create a player account</span>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                        </form>
 
-                    <!-- ─── Player Registration ────────────────────────────── -->
-                    <form id="register-form" class="gm-login-card login-card hidden">
-                        <div class="gm-login-brand-row">
-                            <div class="gm-login-avatar-3d">FGF</div>
-                            <div class="gm-login-title">PLAYER ACCOUNT</div>
-                            <div class="gm-login-sub">Register with your in-game UID and the guild join code</div>
-                        </div>
+                        <!-- ─── Player Registration Form ─────────────────── -->
+                        <form id="register-form" class="gm-login-card login-card hidden">
+                            <div class="gm-login-brand-row">
+                                <div class="gm-login-avatar-3d">FGF</div>
+                                <div class="gm-login-title">PLAYER REGISTRATION</div>
+                                <div class="gm-login-sub">Create your account with your in-game UID and join code</div>
+                            </div>
 
-                        <div class="gm-login-form">
-                            <div class="gm-login-field">
-                                <label for="register-id">Identifier</label>
-                                <div class="gm-input-with-icon">
-                                    <i class="ph ph-user gm-icon"></i>
-                                    <input type="text" id="register-id" class="gm-input" required
-                                        placeholder="Choose an identifier" autocomplete="username">
-                                    <span class="gm-input-focus-line"></span>
+                            <div class="gm-login-form">
+                                <div class="gm-login-field">
+                                    <label for="register-id">Identifier</label>
+                                    <div class="gm-input-with-icon">
+                                        <span class="material-symbols-rounded gm-icon">badge</span>
+                                        <input type="text" id="register-id" class="gm-input" required
+                                            placeholder="Choose an identifier" autocomplete="username">
+                                        <span class="gm-input-focus-line"></span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="gm-login-field">
-                                <label for="register-password">Password</label>
-                                <div class="gm-input-with-icon gm-login-pwd-wrap">
-                                    <i class="ph ph-lock gm-icon"></i>
-                                    <input type="password" id="register-password" class="gm-input" required
-                                        placeholder="At least 8 characters" autocomplete="new-password">
-                                    <span class="gm-input-focus-line"></span>
-                                    <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
-                                        <i class="ph ph-eye"></i>
-                                    </button>
+                                <div class="gm-login-field">
+                                    <label for="register-password">Password</label>
+                                    <div class="gm-input-with-icon gm-login-pwd-wrap">
+                                        <span class="material-symbols-rounded gm-icon">lock</span>
+                                        <input type="password" id="register-password" class="gm-input" required
+                                            placeholder="At least 8 characters" autocomplete="new-password">
+                                        <span class="gm-input-focus-line"></span>
+                                        <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
+                                            <span class="material-symbols-rounded">visibility</span>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="gm-login-field">
-                                <label for="register-uid">In-Game UID</label>
-                                <div class="gm-input-with-icon">
-                                    <i class="ph ph-identification-badge gm-icon"></i>
-                                    <input type="text" id="register-uid" class="gm-input" required placeholder="Your in-game UID">
-                                    <span class="gm-input-focus-line"></span>
+                                <div class="gm-login-field">
+                                    <label for="register-uid">In-Game UID</label>
+                                    <div class="gm-input-with-icon">
+                                        <span class="material-symbols-rounded gm-icon">fingerprint</span>
+                                        <input type="text" id="register-uid" class="gm-input" required
+                                            inputmode="numeric" placeholder="Your 8-digit in-game UID">
+                                        <span class="gm-input-focus-line"></span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="gm-login-field">
-                                <label for="register-code">Guild Join Code</label>
-                                <div class="gm-input-with-icon">
-                                    <i class="ph ph-key gm-icon"></i>
-                                    <input type="text" id="register-code" class="gm-input" required
-                                        placeholder="e.g. FGF-7K2M-X9Q4" autocomplete="off">
-                                    <span class="gm-input-focus-line"></span>
+                                <div class="gm-login-field">
+                                    <label for="register-code">Guild Join Code</label>
+                                    <div class="gm-input-with-icon">
+                                        <span class="material-symbols-rounded gm-icon">key</span>
+                                        <input type="text" id="register-code" class="gm-input" required
+                                            placeholder="e.g. FGF-7K2M-X9Q4" autocomplete="off">
+                                        <span class="gm-input-focus-line"></span>
+                                    </div>
                                 </div>
+                                <div id="register-error" class="gm-login-error hidden">
+                                    <span class="material-symbols-rounded">error</span>
+                                    <span>Registration failed.</span>
+                                </div>
+                                <button type="submit" id="register-btn" class="gm-btn gm-btn-primary gm-login-submit">
+                                    <span class="material-symbols-rounded">person_add</span>
+                                    <span>Create account</span>
+                                </button>
+                                <button type="button" id="register-back-btn" class="gm-btn gm-btn-ghost" style="margin-top: 0.5rem; width: 100%;">
+                                    <span class="material-symbols-rounded">arrow_back</span>
+                                    <span>Back to Sign In</span>
+                                </button>
                             </div>
-                            <div id="register-error" class="gm-login-error hidden">
-                                <i class="ph ph-warning-circle"></i>
-                                <span>Registration failed.</span>
-                            </div>
-                            <button type="submit" id="register-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                                <i class="ph ph-user-plus"></i>
-                                <span>Create account</span>
-                            </button>
-                            <button type="button" id="register-back-btn" class="gm-btn gm-btn-ghost" style="margin-top: 0.5rem; width: 100%;">
-                                <i class="ph ph-arrow-left"></i>
-                                <span>Back to Login</span>
-                            </button>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Discord Community / Tenant Request -->

@@ -569,18 +569,36 @@ html, body {
     border-color: transparent;
 }
 
-/* ─── Login screen & 3D WebGL Canvas ─── */
-/* Static login backdrop (no 3D canvas: keeps the page light) */
+/* ─── Material Symbols Rounded & Global Typography ─── */
+.material-symbols-rounded {
+    font-family: 'Material Symbols Rounded', sans-serif;
+    font-weight: 350;
+    font-style: normal;
+    font-size: 1.25rem;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+}
+
+/* ─── Login screen & Cozy Neutral Atmosphere ─── */
 .gm-login-wrap {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem 1.5rem;
+    padding: 2.5rem 1.5rem;
     position: relative;
     overflow: hidden;
-    background: var(--bg-0);
-    color: var(--fg);
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
     font-family: var(--font);
 }
 
@@ -589,18 +607,20 @@ html, body {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(circle at 15% 25%, oklch(0.88 0.19 125 / 0.08), transparent 45%),
-        radial-gradient(circle at 85% 75%, oklch(0.78 0.16 220 / 0.12), transparent 50%),
-        radial-gradient(circle at 50% 50%, oklch(0.16 0.022 250 / 0.6), oklch(0.12 0.02 250));
+        radial-gradient(circle at 18% 20%, rgba(163, 201, 168, 0.04), transparent 45%),
+        radial-gradient(circle at 82% 80%, rgba(147, 183, 190, 0.05), transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(20, 20, 22, 0.4), var(--md-sys-color-surface));
     pointer-events: none;
     z-index: 0;
 }
 
-.gm-login-lang-pos {
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    z-index: 10;
+/* Top bar with system status */
+.gm-login-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    position: relative;
 }
 
 /* Centered Container */
@@ -609,7 +629,7 @@ html, body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1.5rem;
+    gap: 1.25rem;
     position: relative;
     z-index: 2;
     max-width: 440px;
@@ -619,112 +639,150 @@ html, body {
 .gm-login-hero-tag {
     display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.45rem 1rem;
-    background: oklch(0.22 0.026 250 / 0.7);
-    border: 1px solid oklch(0.88 0.19 125 / 0.35);
-    border-radius: var(--radius-pill);
-    font-family: var(--font-display);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--accent-lime);
+    gap: 0.55rem;
+    padding: 0.35rem 0.95rem;
+    background: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--md-sys-shape-corner-full);
+    font-family: var(--font);
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--md-sys-color-on-surface-variant);
     text-transform: uppercase;
     backdrop-filter: blur(12px);
-    box-shadow: 0 4px 24px oklch(0.88 0.19 125 / 0.18);
+    box-shadow: var(--md-sys-elevation-level1);
 }
 
 .gm-live-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background: var(--accent-lime);
-    box-shadow: 0 0 10px var(--accent-lime);
-    animation: gm-pulse-dot 1.8s infinite ease-in-out;
+    background: var(--gm-accent-sage);
+    box-shadow: 0 0 8px var(--gm-accent-sage);
+    animation: gm-pulse-dot 2s infinite ease-in-out;
 }
 
 @keyframes gm-pulse-dot {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.45); opacity: 0.4; }
+    0%, 100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.35); opacity: 0.4; }
 }
 
-/* Static Gradient Border Card Wrapper (no rotating conic beam) */
+/* Auth Card Wrapper with Apple-style Hairline Border */
 .gm-animated-card-wrap {
     position: relative;
     width: 100%;
-    border-radius: 22px;
-    padding: 3px; /* Glowing border thickness */
-    overflow: hidden;
-    background: linear-gradient(135deg, var(--accent-lime), var(--accent-cyan), var(--accent-lilac));
+    border-radius: 26px;
+    padding: 1px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 100%);
     box-shadow:
-        0 30px 70px oklch(0 0 0 / 0.65),
-        0 0 50px oklch(0.88 0.19 125 / 0.15);
+        0 24px 60px rgba(0, 0, 0, 0.55),
+        0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
-/* Inner Glass Card */
+.gm-auth-card-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    background: var(--md-sys-color-surface-container);
+    border-radius: 25px;
+    padding: 1.5rem 1.75rem 2rem 1.75rem;
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+}
+
+/* M3 / Apple Segmented Pill Switcher */
+.gm-auth-segmented-switch {
+    display: flex;
+    background: var(--md-sys-color-surface-container-low);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--md-sys-shape-corner-full);
+    padding: 4px;
+    gap: 4px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+    margin-bottom: 0.5rem;
+}
+
+.gm-auth-segment-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.9rem;
+    border: none;
+    border-radius: var(--md-sys-shape-corner-full);
+    background: transparent;
+    color: var(--md-sys-color-on-surface-variant);
+    font-family: var(--font);
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.gm-auth-segment-btn:hover {
+    color: var(--md-sys-color-on-surface);
+}
+
+.gm-auth-segment-btn.active {
+    background: var(--md-sys-color-surface-container-highest);
+    color: var(--md-sys-color-on-surface);
+    box-shadow: var(--md-sys-elevation-level1);
+}
+
+.gm-auth-segment-btn.active .material-symbols-rounded {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Inner Card */
 .gm-login-card {
-    background: oklch(0.18 0.024 250 / 0.92);
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border-radius: 19px;
-    padding: 2.25rem 2.25rem;
+    background: transparent;
+    padding: 0;
     width: 100%;
     position: relative;
     z-index: 2;
-}
-
-/* Static top specular glow */
-.gm-login-card::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: radial-gradient(
-        circle at 50% 0%,
-        oklch(0.88 0.19 125 / 0.12),
-        transparent 60%
-    );
-    pointer-events: none;
-    z-index: 1;
 }
 
 .gm-login-brand-row {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.85rem;
-    margin-bottom: 1.75rem;
+    gap: 0.65rem;
+    margin-bottom: 1.5rem;
 }
 
 .gm-login-avatar-3d {
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     border-radius: 16px;
-    background: linear-gradient(135deg, var(--accent-lime), oklch(0.75 0.18 130));
-    color: var(--accent-lime-fg);
+    background: linear-gradient(145deg, #2c2c34, #1a1a1e);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--md-sys-color-on-surface);
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: var(--font-display);
     font-weight: 800;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
+    letter-spacing: 0.05em;
     box-shadow:
-        0 8px 20px oklch(0.88 0.19 125 / 0.35),
-        inset 0 1px 0 oklch(1 0 0 / 0.4);
-    position: relative;
+        0 6px 18px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .gm-login-title {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 1.35rem;
-    color: var(--fg);
+    font-size: 1.28rem;
+    color: var(--md-sys-color-on-surface);
     letter-spacing: -0.01em;
 }
 
 .gm-login-sub {
-    color: var(--fg-dim);
-    font-size: 0.88rem;
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.85rem;
     text-align: center;
     max-width: 320px;
     line-height: 1.45;
@@ -740,8 +798,8 @@ html, body {
     display: block;
     font-size: 0.8rem;
     font-weight: 600;
-    color: var(--fg-muted);
-    margin-bottom: 0.45rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-bottom: 0.4rem;
     letter-spacing: 0.01em;
 }
 
@@ -751,43 +809,43 @@ html, body {
 
 .gm-input-with-icon .gm-icon {
     position: absolute;
-    left: 12px;
+    left: 14px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--fg-dim);
-    font-size: 1.15rem;
-    transition: color 0.25s ease, transform 0.25s ease;
+    color: var(--md-sys-color-on-surface-dim);
+    font-size: 1.2rem;
+    transition: color 0.2s ease, transform 0.2s ease;
     pointer-events: none;
 }
 
 .gm-input-with-icon .gm-input {
-    padding-left: 2.6rem;
-    background: oklch(0.16 0.022 250 / 0.7);
-    border: 1px solid oklch(0.30 0.025 250);
-    border-radius: var(--radius);
-    color: var(--fg);
+    padding-left: 2.75rem;
+    background: var(--md-sys-color-surface-container-low);
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--md-sys-shape-corner-medium);
+    color: var(--md-sys-color-on-surface);
     font-family: var(--font);
     font-size: 0.92rem;
-    height: 46px;
+    height: 48px;
     width: 100%;
-    transition: all 0.25s ease;
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .gm-input-with-icon .gm-input:focus {
     outline: none;
-    border-color: var(--accent-lime);
-    background: oklch(0.18 0.024 250 / 0.85);
-    box-shadow: 0 0 18px oklch(0.88 0.19 125 / 0.22);
+    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-surface-container-high);
+    box-shadow: 0 0 0 3px rgba(240, 240, 243, 0.12);
 }
 
 .gm-input-with-icon .gm-input:focus + .gm-icon,
 .gm-input-with-icon:focus-within .gm-icon {
-    color: var(--accent-lime);
-    transform: translateY(-50%) scale(1.1);
+    color: var(--md-sys-color-on-surface);
+    transform: translateY(-50%) scale(1.06);
 }
 
 .gm-login-pwd-wrap .gm-input {
-    padding-right: 2.75rem;
+    padding-right: 2.85rem;
 }
 
 .gm-login-pwd-toggle {
@@ -797,40 +855,36 @@ html, body {
     transform: translateY(-50%);
     background: transparent;
     border: none;
-    color: var(--fg-dim);
+    color: var(--md-sys-color-on-surface-dim);
     padding: 0.45rem;
     cursor: pointer;
-    border-radius: var(--radius-sm);
+    border-radius: var(--md-sys-shape-corner-small);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all 0.18s ease;
 }
 
 .gm-login-pwd-toggle:hover {
-    color: var(--fg);
-    background: var(--bg-2);
-}
-
-.gm-login-pwd-toggle .ph {
-    font-size: 1.15rem;
+    color: var(--md-sys-color-on-surface);
+    background: var(--md-sys-color-surface-container-high);
 }
 
 .gm-login-error {
     display: flex;
     align-items: center;
     gap: 0.55rem;
-    padding: 0.65rem 0.9rem;
-    background: var(--danger-soft);
-    color: var(--danger);
-    border: 1px solid oklch(0.68 0.18 25 / 0.4);
-    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.95rem;
+    background: var(--gm-accent-coral-soft);
+    color: var(--gm-accent-coral);
+    border: 1px solid rgba(224, 122, 112, 0.35);
+    border-radius: var(--md-sys-shape-corner-small);
     font-size: 0.85rem;
     animation: gm-error-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @keyframes gm-error-pop {
-    from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+    from { opacity: 0; transform: translateY(-4px) scale(0.97); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -840,25 +894,25 @@ html, body {
 
 .gm-login-submit {
     justify-content: center;
-    padding: 0.85rem;
-    margin-top: 0.35rem;
-    font-size: 0.95rem;
+    padding: 0.85rem 1rem;
+    margin-top: 0.4rem;
+    font-size: 0.94rem;
     font-weight: 600;
-    border-radius: var(--radius);
-    background: linear-gradient(135deg, var(--accent-lime), oklch(0.82 0.20 130));
-    color: var(--accent-lime-fg);
+    border-radius: var(--md-sys-shape-corner-medium);
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
     border: none;
-    box-shadow: 0 8px 24px oklch(0.88 0.19 125 / 0.3);
-    transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
     cursor: pointer;
     position: relative;
     overflow: hidden;
 }
 
 .gm-login-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 32px oklch(0.88 0.19 125 / 0.45);
-    filter: brightness(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    filter: brightness(1.04);
 }
 
 .gm-login-submit:active {
@@ -867,9 +921,9 @@ html, body {
 
 .gm-portal-switch-wrap {
     text-align: center;
-    margin-top: 1.25rem;
-    border-top: 1px dashed var(--border-soft);
-    padding-top: 1.25rem;
+    margin-top: 1rem;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    padding-top: 1rem;
 }
 
 /* Discord Community / Tenant Request Button */
@@ -879,38 +933,36 @@ html, body {
     justify-content: center;
     gap: 0.75rem;
     width: 100%;
-    padding: 1.1rem 1.5rem;
-    border-radius: var(--radius);
-    background: linear-gradient(135deg, oklch(0.45 0.22 300), oklch(0.42 0.20 260));
-    border: 1px solid oklch(0.82 0.13 320 / 0.6);
-    color: #fff;
+    padding: 0.95rem 1.4rem;
+    border-radius: var(--md-sys-shape-corner-large);
+    background: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
     font-family: var(--font);
-    font-size: 1.05rem;
-    font-weight: 700;
+    font-size: 0.92rem;
+    font-weight: 600;
     text-decoration: none;
     transition: all 0.2s ease;
-    box-shadow: 0 10px 30px oklch(0.45 0.22 300 / 0.35);
+    box-shadow: var(--md-sys-elevation-level1);
 }
 .gm-login-discord-btn .ph {
-    font-size: 1.7rem;
-    color: #fff;
-    filter: drop-shadow(0 0 6px oklch(0.82 0.13 320 / 0.8));
+    font-size: 1.35rem;
+    color: #5865F2;
     flex-shrink: 0;
 }
 .gm-login-discord-btn:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.1);
-    border-color: var(--accent-lilac);
-    box-shadow: 0 14px 36px oklch(0.45 0.22 300 / 0.5);
+    transform: translateY(-1px);
+    background: var(--md-sys-color-surface-container-high);
+    border-color: var(--md-sys-color-outline);
+    box-shadow: var(--md-sys-elevation-level2);
 }
 
 .gm-login-footer {
-    margin-top: 1.25rem;
+    margin-top: 0.75rem;
     text-align: center;
     font-size: 0.82rem;
-    color: var(--text-muted);
+    color: var(--md-sys-color-on-surface-dim);
     letter-spacing: 0.02em;
-    opacity: 0.8;
 }
 
 /* ─── Responsive Adjustments ─── */

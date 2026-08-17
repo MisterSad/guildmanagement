@@ -11,7 +11,13 @@ Every modification must strictly comply with the architectural rules, security b
 
 ### 🏛️ Technology Stack & Structure
 - **Language & Documentation Standard**: **100% English strictly required** across all code, comments, UI text, test suites, commit messages, and changelogs.
-- **Frontend Architecture**: Modernized ES Modules under `/src`, strict TypeScript (`tsc --noEmit`), Vite production bundler (`vite build`), reactive Pub/Sub Store (`src/core/store/store.ts`), Web Workers for heavy computations (`src/workers/matchup.worker.ts`), component-based UI (`src/components/ui/BaseComponent.ts`), Phosphor Icons, Three.js 3D login background scene, installable PWA.
+- **Frontend Architecture**: Modernized ES Modules under `/src`, strict TypeScript (`tsc --noEmit`), Vite production bundler (`vite build`), reactive Pub/Sub Store (`src/core/store/store.ts`), Web Workers for heavy computations (`src/workers/matchup.worker.ts`), component-based UI (`src/components/ui/BaseComponent.ts`), Material Design 3.0 (M3) design tokens with Apple-inspired cozy neutral aesthetics (warm graphite, titanium, oyster, and muted mineral accents), Material Symbols Rounded variable icons, Three.js 3D login background scene, installable PWA.
+- **UI Design System Standard (Material Design 3.0 + Apple Cozy Neutral)**:
+  - Strict M3 token naming hierarchy (`--md-sys-color-*`, `--md-sys-elevation-*`, `--md-sys-shape-*`).
+  - Apple-inspired warmth: cozy graphite/titanium surfaces (`#141416` to `#303036`), muted text contrasts, hairline borders, and subtle frosted glass (`backdrop-filter: blur(20px)`).
+  - Material Symbols Rounded variable typography (`opsz: 20..48`, `wght: 300..700`, `FILL: 0..1`, `GRAD: -50..200`).
+  - Google Fonts *Plus Jakarta Sans* and *Inter* for crisp typography.
+  - Zero-regression guarantee: preserve all DOM IDs, backend RPC interfaces, and test selectors.
 - **Backend Architecture**: Supabase (Postgres 17 + Row Level Security + `SECURITY DEFINER` functions with `SET search_path TO ''`, Deno TypeScript Edge Functions).
 - **Canonical Schema**: Database migrations consolidated into 4 master DDL files under `supabase/migrations/`. Sample and dev seed data isolated in `supabase/seeds/dev_seed.sql`. Legacy migration history safely archived in `supabase/migrations_archive/`.
 - **Distributed Observability & Structured Logging**: Standardized JSON logging on both Edge Functions (`supabase/functions/_shared/logger.ts`) and browser client (`src/core/logger/logger.ts`) with correlation IDs, execution latency tracking, automatic credential sanitization, and persistent audit logs in `public.system_audit_logs`.

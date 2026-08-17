@@ -123,7 +123,7 @@
         });
     }
 
-    // ── Login : œil show/hide pour le password ──────────────────────────────
+    // ── Login : password visibility toggle (Material Symbols & Phosphor) ───
     function wireLoginPasswordToggle() {
         document.querySelectorAll('[data-gm-pwd-toggle]').forEach(function (btn) {
             var wrap = btn.closest('.gm-input-with-icon');
@@ -134,6 +134,8 @@
                 input.type = isPwd ? 'text' : 'password';
                 var icon = btn.querySelector('i');
                 if (icon) icon.className = isPwd ? 'ph ph-eye-slash' : 'ph ph-eye';
+                var matIcon = btn.querySelector('.material-symbols-rounded');
+                if (matIcon) matIcon.textContent = isPwd ? 'visibility_off' : 'visibility';
             });
         });
     }

@@ -2,6 +2,17 @@
 
 ## New
 
+- **Material Design 3.0 (M3) & Apple-Inspired Cozy Neutral Design System Overhaul (v116.0)**:
+  - **Comprehensive Material 3 Tokens Hierarchy**: Completely refactored `tokens.css` to introduce the official Google Material Design 3 surface containers (`--md-sys-color-surface`, `surface-container-lowest` to `surface-container-highest`), elevation tokens (Levels 0 through 5), corner radii (`--md-sys-shape-corner-*`), and Apple-inspired cozy graphite/titanium palettes with backward-compatible aliases for legacy variables.
+  - **Refined Variable Typography & Material Symbols**: Integrated Google Fonts *Plus Jakarta Sans* and *Inter* variable type scales paired with *Material Symbols Rounded* (`wght: 350`, `FILL: 0/1`, `opsz: 24`), delivering crisp, elegant icons with dynamic fill states for active items.
+  - **Modernized & User-Friendly Login Experience**:
+    - **M3 / Apple Segmented Pill Switcher**: Added seamless `[ 🔐 Sign In | ✍️ Register Player ]` pill control on the login view for intuitive, tabbed navigation between credentials entry and player onboarding.
+    - **Unified Authentication Gateway**: Streamlined single point of entry for Guild Leaders, Super Admins, and Players with automatic cryptographic routing to Command Center or Player Portal.
+    - **Interactive Password Visibility**: Enhanced visibility toggles supporting both Material Symbols and Phosphor glyphs.
+    - **Elevated Frosted Glass Container**: Redesigned login card with `backdrop-filter: blur(28px)`, subtle hairline specular highlights, and cozy warm graphite canvas.
+  - **Architecture & Developer Guidelines Alignment**: Updated `AGENTS.md` with strict Material Design 3 + Apple Cozy Neutral UI standards, guaranteeing 100% English code/docs and zero-regression on DOM selectors and auth flows.
+  - **100% Quality Gate Passed**: Verified complete test battery with **235/235 Vitest tests green**, **7/7 Playwright browser tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Automated GvG Daily Task Reminders & Points Breakdown Notifications (v115.3)**:
   - **Scheduled Notification Engine (11:00 UTC Mon-Sat)**: Implemented automated daily scheduled task breakdowns in `supabase/functions/event-reminders/index.ts` triggering every Monday through Saturday at 11:00 UTC for all active GvG campaigns.
   - **Pg_cron Automation & Security Authentication**: Created migration `20260817114500_update_event_reminders_cron_secret.sql` configuring `pg_cron` with automated minute-by-minute execution and direct `CRON_SECRET` authorization.
