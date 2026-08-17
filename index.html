@@ -798,6 +798,37 @@
                                 <i class="ph ph-plus"></i>
                                 <span data-i18n="btn_add">Add</span>
                             </button>
+                            <div style="width: 100%; margin-top: 0.25rem;">
+                                <button type="button" id="toggle-add-member-military" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size:0.78rem; color:var(--accent); gap:0.3rem; padding:0.2rem 0.5rem;">
+                                    <i class="ph ph-sliders"></i> <span>+ Optional Military Scores (Fleet, Tech, Flagship, Champions, Crew, Glory)</span>
+                                </button>
+                                <div id="add-member-military-fields" style="display: none; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; background: var(--bg-1); padding: 0.65rem; border-radius: var(--radius-md); border: 1px solid var(--border-soft);">
+                                    <div>
+                                        <label for="member-fleet" style="font-size:0.72rem; color:#60a5fa; display:block; margin-bottom:0.15rem;">⚔️ Fleet Rating</label>
+                                        <input type="number" id="member-fleet" class="gm-input" placeholder="e.g. 2000000" style="padding:0.3rem 0.5rem; font-size:0.8rem;">
+                                    </div>
+                                    <div>
+                                        <label for="member-tech" style="font-size:0.72rem; color:#a78bfa; display:block; margin-bottom:0.15rem;">🔬 Tech Power</label>
+                                        <input type="number" id="member-tech" class="gm-input" placeholder="e.g. 15000000" style="padding:0.3rem 0.5rem; font-size:0.8rem;">
+                                    </div>
+                                    <div>
+                                        <label for="member-flagship" style="font-size:0.72rem; color:#fbbf24; display:block; margin-bottom:0.15rem;">🚀 Flagship</label>
+                                        <input type="number" id="member-flagship" class="gm-input" placeholder="e.g. 10000000" style="padding:0.3rem 0.5rem; font-size:0.8rem;">
+                                    </div>
+                                    <div>
+                                        <label for="member-champ" style="font-size:0.72rem; color:#f472b6; display:block; margin-bottom:0.15rem;">👑 Champions</label>
+                                        <input type="number" id="member-champ" class="gm-input" placeholder="e.g. 30000000" style="padding:0.3rem 0.5rem; font-size:0.8rem;">
+                                    </div>
+                                    <div>
+                                        <label for="member-crew" style="font-size:0.72rem; color:#38bdf8; display:block; margin-bottom:0.15rem;">👥 Crew</label>
+                                        <input type="number" id="member-crew" class="gm-input" placeholder="e.g. 5000000" style="padding:0.3rem 0.5rem; font-size:0.8rem;">
+                                    </div>
+                                    <div>
+                                        <label for="member-glory" style="font-size:0.72rem; color:#34d399; display:block; margin-bottom:0.15rem;">🏆 Glory</label>
+                                        <input type="number" id="member-glory" class="gm-input" placeholder="e.g. 50000000" style="padding:0.3rem 0.5rem; font-size:0.8rem;">
+                                    </div>
+                                </div>
+                            </div>
                         </form>
                     </div>
 
@@ -848,11 +879,15 @@
                     </div>
 
                     <div class="gm-section">
-                        <div class="gm-section-head">
+                        <div class="gm-section-head" style="flex-wrap:wrap; gap:0.75rem;">
                             <div class="gm-section-title">
                                 <i class="ph ph-users"></i>
                                 <span data-i18n="card_member_list">Members List</span> <button class="gm-help-btn" data-help-id="help-members-list" aria-label="Help: Member Roster"><i class="ph ph-info"></i></button>
                                 <span class="gm-count" id="guild-member-count">0</span>
+                            </div>
+                            <div class="gm-segmented" id="admin-members-view-mode" style="display:inline-flex; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:2px;">
+                                <button type="button" class="gm-seg-btn active" data-view="cards" style="padding:0.35rem 0.7rem; border-radius:4px; font-size:0.8rem; font-weight:600; cursor:pointer; border:none; background:var(--accent); color:#fff; display:inline-flex; align-items:center; gap:0.3rem;"><i class="ph ph-squares-four"></i> Roster Cards</button>
+                                <button type="button" class="gm-seg-btn" data-view="matrix" style="padding:0.35rem 0.7rem; border-radius:4px; font-size:0.8rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.3rem;"><i class="ph ph-table"></i> Military Matrix</button>
                             </div>
                             <div style="display: flex; gap: 0.5rem; min-width: 220px; max-width: 480px; flex: 1;">
                                 <div class="gm-input-with-icon" style="flex: 2;">

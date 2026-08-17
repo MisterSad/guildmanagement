@@ -2872,13 +2872,69 @@
         }
         try {
             var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
-            var res = await supabase.from('guild_members').insert([{ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal, guild: currentG }]);
+            var fleetInput    = document.getElementById('member-fleet');
+            var techInput     = document.getElementById('member-tech');
+            var flagshipInput = document.getElementById('member-flagship');
+            var champInput    = document.getElementById('member-champ');
+            var crewInput     = document.getElementById('member-crew');
+            var gloryInput    = document.getElementById('member-glory');
+
+            var fleetVal    = fleetInput    ? (parseInt(fleetInput.value) || 0) : 0;
+            var techVal     = techInput     ? (parseInt(techInput.value) || 0) : 0;
+            var flagshipVal = flagshipInput ? (parseInt(flagshipInput.value) || 0) : 0;
+            var champVal    = champInput    ? (parseInt(champInput.value) || 0) : 0;
+            var crewVal     = crewInput     ? (parseInt(crewInput.value) || 0) : 0;
+            var gloryVal    = gloryInput    ? (parseInt(gloryInput.value) || 0) : 0;
+
+            var newMemberRow = {
+                pseudo: pseudo,
+                uid: uidVal,
+                overall_power: powerVal,
+                role: roleVal,
+                guild: currentG,
+                fleet_rating: fleetVal,
+                tech_power: techVal,
+                flagship_power: flagshipVal,
+                champion_power: champVal,
+                crew_power: crewVal,
+                glory_score: gloryVal
+            };
+
+            var res = await supabase.from('guild_members').insert([newMemberRow]);
             if (res.error) throw res.error;
-            guildMembers.push({ pseudo: pseudo, uid: uidVal, overall_power: powerVal, role: roleVal, guild: currentG, created_at: new Date().toISOString() });
+            newMemberRow.created_at = new Date().toISOString();
+            guildMembers.push(newMemberRow);
+
             if (input) input.value = '';
             if (uidInput) uidInput.value = '';
             if (powerInput) powerInput.value = '';
             if (roleInput) roleInput.value = 'R1';
+            if (fleetInput) fleetInput.value = '';
+            if (techInput) techInput.value = '';
+            if (flagshipInput) flagshipInput.value = '';
+            if (champInput) champInput.value = '';
+            if (crewInput) crewInput.value = '';
+            if (gloryInput) gloryInput.value = '';
+
+            // Also snapshot metrics history if any values provided
+            if (fleetVal || techVal || flagshipVal || champVal || crewVal || gloryVal || powerVal) {
+                try {
+                    await supabase.rpc('gm_upsert_player_metrics', {
+                        p_guild: currentG,
+                        p_pseudo: pseudo,
+                        p_total_power: powerVal,
+                        p_tech_power: techVal,
+                        p_champion_power: champVal,
+                        p_crew_power: crewVal,
+                        p_flagship_power: flagshipVal,
+                        p_fleet_rating: fleetVal,
+                        p_glory_score: gloryVal
+                    });
+                } catch (e) {
+                    console.error('Initial player metrics snapshot error:', e);
+                }
+            }
+
             renderGuildMembers();
             showToast(pseudo + ' ' + t('toast_member_added'), 'success');
 
@@ -2913,6 +2969,19 @@
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
+    }
+
+    var toggleMilitaryBtn = document.getElementById('toggle-add-member-military');
+    var militaryFields = document.getElementById('add-member-military-fields');
+    if (toggleMilitaryBtn && militaryFields) {
+        toggleMilitaryBtn.addEventListener('click', function () {
+            var isHidden = militaryFields.style.display === 'none';
+            militaryFields.style.display = isHidden ? 'grid' : 'none';
+            var span = toggleMilitaryBtn.querySelector('span');
+            if (span) {
+                span.textContent = isHidden ? '- Hide Optional Military Scores' : '+ Optional Military Scores (Fleet, Tech, Flagship, Champions, Crew, Glory)';
+            }
+        });
     }
 
     if (addMemberForm)  addMemberForm.addEventListener('submit', function (e)  { e.preventDefault(); handleAddMember('member-pseudo', 'member-uid', 'member-power', 'member-role'); });
@@ -3360,15 +3429,125 @@
             return html;
         }
 
+        function buildMilitaryMatrixHtml(list, sortVal, withActions, portalUids) {
+            var sorted = sortMembers(list, sortVal);
+            if (sorted.length === 0) {
+                return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
+            }
+
+            var totalFleet = 0;
+            var totalTech = 0;
+            var totalFlagship = 0;
+            var totalGlory = 0;
+            var totalPower = 0;
+
+            sorted.forEach(function (m) {
+                totalFleet += (parseInt(m.fleet_rating) || 0);
+                totalTech += (parseInt(m.tech_power) || 0);
+                totalFlagship += (parseInt(m.flagship_power) || 0);
+                totalGlory += (parseInt(m.glory_score) || 0);
+                totalPower += (parseInt(m.overall_power) || 0);
+            });
+
+            var headerSummary =
+                '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding:0.85rem 1rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg);">' +
+                    '<div style="font-weight:700; font-size:0.95rem; color:var(--fg); display:flex; align-items:center; gap:0.4rem;">' +
+                        '<span class="material-symbols-rounded" style="color:var(--accent);">shield</span> Tactical Force Matrix (' + sorted.length + ' players)' +
+                    '</div>' +
+                    '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">' +
+                        '<span class="gm-chip" style="color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); font-size:0.75rem;"><i class="ph ph-swords"></i> Guild Fleet: ' + window.GM.formatPower(totalFleet) + '</span>' +
+                        '<span class="gm-chip" style="color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); font-size:0.75rem;"><i class="ph ph-atom"></i> Guild Tech: ' + window.GM.formatPower(totalTech) + '</span>' +
+                        '<span class="gm-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size:0.75rem;"><i class="ph ph-trophy"></i> Total Glory: ' + window.GM.formatPower(totalGlory) + '</span>' +
+                    '</div>' +
+                '</div>';
+
+            var rowsHtml = sorted.map(function (m) {
+                var initial = window.GM.avatarInit(m.pseudo);
+                var uidVal = m.uid || '-';
+                var roleVal = m.role || 'R1';
+                var powerVal = parseInt(m.overall_power) || 0;
+                var density = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(m) : 0;
+
+                return '<tr style="border-bottom:1px solid var(--border-soft); transition:background 0.15s ease;">' +
+                    '<td style="padding:0.65rem 0.75rem;">' +
+                        '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:28px; height:28px; font-size:0.75rem;">' + esc(initial) + '</div>' +
+                            '<div>' +
+                                '<div style="font-weight:600; font-size:0.88rem; color:var(--fg);">' + esc(m.pseudo) + '</div>' +
+                                '<div style="font-size:0.7rem; color:var(--text-muted);" class="gm-mono">UID ' + esc(uidVal) + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:center;"><span class="gm-role-chip" style="font-size:0.7rem; padding:0.1rem 0.35rem;">' + esc(roleVal) + '</span></td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:right; font-weight:600; font-size:0.85rem;">' + window.GM.formatPower(powerVal) + '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#60a5fa; font-weight:600; font-size:0.85rem;">' + (m.fleet_rating ? window.GM.formatPower(m.fleet_rating) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#a78bfa; font-weight:600; font-size:0.85rem;">' + (m.tech_power ? window.GM.formatPower(m.tech_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#fbbf24; font-weight:600; font-size:0.85rem;">' + (m.flagship_power ? window.GM.formatPower(m.flagship_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6; font-weight:600; font-size:0.85rem;">' + (m.champion_power ? window.GM.formatPower(m.champion_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8; font-weight:600; font-size:0.85rem;">' + (m.crew_power ? window.GM.formatPower(m.crew_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size:0.85rem;">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:center;">' + (density > 0 ? '<span class="gm-chip" style="font-size:0.7rem; color:#818cf8; background:rgba(99,102,241,0.12); padding:0.1rem 0.4rem;">' + density + '%</span>' : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td style="padding:0.65rem 0.75rem; text-align:center;">' +
+                        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="Edit Player Military Metrics" style="padding:0.25rem 0.5rem; font-size:0.75rem; gap:0.25rem;"><i class="ph ph-pencil-simple"></i> Edit</button>' +
+                    '</td>' +
+                '</tr>';
+            }).join('');
+
+            return headerSummary +
+                '<div class="gm-table-wrap" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow-x:auto;">' +
+                    '<table class="gm-table" style="width:100%; border-collapse:collapse; min-width:800px;">' +
+                        '<thead>' +
+                            '<tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">' +
+                                '<th style="padding:0.65rem 0.75rem; text-align:left;">Player</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:center;">Role</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:right;">Power</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:right; color:#60a5fa;">⚔️ Fleet</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:right; color:#a78bfa;">🔬 Tech</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:right; color:#fbbf24;">🚀 Flagship</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6;">👑 Champs</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8;">👥 Crew</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:right; color:#34d399;">🏆 Glory</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:center; color:#818cf8;">🛡️ Density</th>' +
+                                '<th style="padding:0.65rem 0.75rem; text-align:center;">Action</th>' +
+                            '</tr>' +
+                        '</thead>' +
+                        '<tbody>' +
+                            rowsHtml +
+                        '</tbody>' +
+                    '</table>' +
+                '</div>';
+        }
+
         if (guildMemberCount)  guildMemberCount.textContent  = filteredAdmin.length;
         if (guildMemberCountM) guildMemberCountM.textContent = filteredMember.length;
 
+        var viewMode = window.adminMembersViewMode || 'cards';
+
         if (guildMemberList) {
-            guildMemberList.innerHTML = buildGroupedListHtml(filteredAdmin, sortAdmin, true, portalUids);
+            if (viewMode === 'matrix') {
+                guildMemberList.innerHTML = buildMilitaryMatrixHtml(filteredAdmin, sortAdmin, true, portalUids);
+            } else {
+                guildMemberList.innerHTML = buildGroupedListHtml(filteredAdmin, sortAdmin, true, portalUids);
+            }
         }
         if (guildMemberListM) {
             guildMemberListM.innerHTML = buildGroupedListHtml(filteredMember, sortMember, false, portalUids);
         }
+
+        // View mode segmented switcher
+        document.querySelectorAll('#admin-members-view-mode .gm-seg-btn').forEach(function (btn) {
+            btn.onclick = function () {
+                var v = btn.getAttribute('data-view');
+                window.adminMembersViewMode = v;
+                document.querySelectorAll('#admin-members-view-mode .gm-seg-btn').forEach(function (b) {
+                    var isActive = b.getAttribute('data-view') === v;
+                    b.classList.toggle('active', isActive);
+                    b.style.background = isActive ? 'var(--accent)' : 'transparent';
+                    b.style.color = isActive ? '#fff' : 'var(--text-muted)';
+                });
+                renderGuildMembers();
+            };
+        });
 
         // Attach collapse click listeners
         document.querySelectorAll('.gm-role-group-header').forEach(function (header) {
@@ -3456,7 +3635,12 @@
         if (m.glory_score) {
             tacticalChips.push('<span class="gm-chip" style="font-size:0.68rem; color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Glory Score: ' + window.GM.formatNumber(m.glory_score) + '">🏆 ' + window.GM.formatPower(m.glory_score) + '</span>');
         }
-        var tacticalHtml = tacticalChips.length ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;">' + tacticalChips.join('') + '</div>' : '';
+
+        var tacticalHtml = tacticalChips.length
+            ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;">' + tacticalChips.join('') + '</div>'
+            : (withActions
+                ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;"><button type="button" class="guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" style="font-size:0.68rem; color:var(--accent); background:rgba(99,102,241,0.08); border:1px dashed rgba(99,102,241,0.3); border-radius:4px; padding:0.05rem 0.4rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-plus-circle"></i> + Declare Military Stats</button></div>'
+                : '');
 
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
