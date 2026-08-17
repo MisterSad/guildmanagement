@@ -2,6 +2,26 @@
 
 ## New
 
+- **Automated GvG Daily Task Reminders & Points Breakdown Notifications (v115)**:
+  - **Scheduled Notification Engine (10:30 UTC Mon-Sat)**: Implemented automated daily scheduled task breakdowns in `supabase/functions/event-reminders/index.ts` triggering every Monday through Saturday at 10:30 UTC for all active GvG campaigns.
+  - **Comprehensive Daily Points Breakdown**: Created shared configuration modules (`src/core/config/gvg-tasks.ts` and `supabase/functions/_shared/gvg-tasks.ts`) defining exact point scoring values for all 6 days:
+    - ⚡ **Day 1 (Monday)**: Speedups & Trade (+48/min, +1,000 trade), Rallies (Deliverer Ark +18k, Tribute Vessels +18k, Sacred Tribute +6k), Ascendancy Minions (Lvl 1-60 from +3k to +6k), Packs (+4/credit).
+    - 👑 **Day 2 (Tuesday)**: Champions & Power (+6k Leg / +300 Epic frag, +3/power, Training Manual +600, Venturous Memory +2.4k), Weapons (Prism +4k, Energy Core +18, Epic/Leg frags +2.4k/+12k), Commissions (Common to Leg +6k to +9.75k), Commerce Guild (Assist +20, Donation +50).
+    - 🔬 **Day 3 (Wednesday)**: Tech Speedups (+48/min), Tech items (Computational +400, Beacon +800, Echo Module +80, Echoes of Deep Space +16k), Ruins (Leg Excavation +30k, Plunder +50k), Map Search (+360k).
+    - 🛸 **Day 4 (Thursday)**: Flagship upgrades (+3/power, Blueprints +6k, Prismatic Core +2.4k), Commissions (+6k to +9.75k), Packs (+4/credit).
+    - 🌟 **Day 5 (Friday)**: All-Out Preparation: Speedups, Champions, Flagship, Rallies (+18k), Tech items (+400 to +16k), Weapons & Exploration (Map Search +360k, Plunder +50k), Commissions & Packs.
+    - ⚔️ **Day 6 (Saturday)**: Total War: War Prism (+10 per 100 dmg, +1M last hit), Ascendancy Shrine (+60k), War Fortresses (+50k per 2m), Shipbuilding (+48/min), Commerce Glory (+3/glory), and PvP Fleet Combat (Defeating/Losing Craft T1-T7 from +1.5k to +180k).
+  - **Discord Rich Embed Generator**: Standardized Discord embeds featuring day-specific color themes, structured emoji fields, formatted point values, automatic role pings, timestamp, and web push notifications.
+  - **Guild Leader Configuration & Opt-In/Opt-Out**: Added persistent `notify_gvg_daily_tasks` toggle in the Guild Settings modal (`index.html`, `app.js`, `gm-utils.js`), with full translation support in `i18n.js` and `src/core/i18n/i18n.ts`.
+  - **Quality Assurance**: Added unit test battery in `tests/gvg-tasks.test.js` bringing total passing test suite to **235/235 tests green** (`npm test`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
+- **Glory Score Persistence, Ghost NULL Session Prevention & Cross-Tenant Data Harmonization (v114)**:
+  - **Ghost NULL Session Prevention**: Eliminated raw un-sessioned pre-insertions in `glory.js` on view load, resolving the issue where opening the Glory tab generated ghost rows (`session_id IS NULL`) that collided with deterministic SaaS sessions (`GLORY-YYYY-Www`).
+  - **Deduplication & Score Integrity**: Hardened score parsing across `glory.js`, `history.js`, and `overview.js` to strictly prioritize non-null values during deduplication, preventing entered scores from resetting to zero upon navigating between tabs.
+  - **Hardened RPC Security & Auto-Cleanup**: Updated `public.gm_upsert_player_glory` with write access verification, active subscription validation, and automatic deletion of legacy un-sessioned rows upon every score update.
+  - **Cross-Tenant Database Migration**: Created `20260817060000_fix_glory_ghost_null_sessions.sql` to cleanly backfill deterministic session IDs and purge un-sessioned duplicate entries across all guild tenants (`ALPHA`, `OMEGA`, `BABE`, `IMK`, `YARR`, `CLAW`, `DEMO`, `SEN`, `NIGHTWRAITH`, `OBSIDIANSTAR`, `ASTRAL_LIBERION`, `BLACKTHUNDER`, `TWILIGHT`).
+  - **Quality Assurance**: Added dedicated unit test battery in `tests/glory.test.js` maintaining **226/226 unit tests green** (`npm test`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Modernized 2026 Executive Stats Hub & Analytics Engine (v113)**:
   - **3-Domain Streamlined Architecture**: Reorganized the statistics module into a high-visibility, executive experience:
     - 🩺 **Guild Health & Overview**: Comprehensive power macro metrics, active roster ratios, power tier distribution, and 8-week historical trend.

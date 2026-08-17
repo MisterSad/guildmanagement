@@ -78,28 +78,33 @@
             }
             sessions = res.data || [];
 
-            // Manual fetch for Glory since it has no session_id and might not be returned by the RPC
+            // Manual fetch for Glory if not returned by sessions RPC
             var hasGlory = sessions.some(function(s) { return s.event_name === 'Glory'; });
             if (!hasGlory) {
                 var gloryRes = await db.from('event_participants')
-                    .select('week_start, participated, score')
+                    .select('pseudo, week_start, participated, score, session_id')
                     .eq('guild', currentG)
                     .eq('event_name', 'Glory');
                 
                 if (!gloryRes.error && gloryRes.data && gloryRes.data.length > 0) {
                     var gloryMap = {};
+                    var seenPseudo = {};
                     gloryRes.data.forEach(function(row) {
                         var ws = row.week_start;
                         if (!gloryMap[ws]) {
                             gloryMap[ws] = {
                                 event_name: 'Glory',
-                                session_id: null,
+                                session_id: (window.GM && window.GM.buildEventSessionId) ? window.GM.buildEventSessionId('Glory', ws) : ('GLORY-' + ws),
                                 week_start: ws,
                                 participants: 0,
                                 participated_count: 0,
                                 total_score: 0
                             };
+                            seenPseudo[ws] = new Set();
                         }
+                        if (row.pseudo && seenPseudo[ws].has(row.pseudo)) return;
+                        if (row.pseudo) seenPseudo[ws].add(row.pseudo);
+
                         gloryMap[ws].participants++;
                         if (row.participated > 0 || (row.score != null && row.score > 0)) {
                             gloryMap[ws].participated_count++;

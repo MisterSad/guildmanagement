@@ -1,59 +1,37 @@
-📢 **FGF Guild Management Tool Update — CHANG_V2.7**
+📢 **FGF Guild Management Tool Update — CHANG_V2.9**
 
 Hey commanders! 👋
 
-I've just rolled out a major overhaul of the **Statistics & Analytics Hub**, built specifically to give Guild Leaders and Officers an instant, crystal-clear pulse of their guild without cognitive overload!
+I've just rolled out an automated **Daily GvG Task Reminders & Points Breakdown** system for Discord, giving your guild officers and members exact tactical guidance every day of the Guild vs Guild battle week!
 
-Here is what's new and why it changes the way you manage your guild:
-
----
-
-### 📊 The Problem We Solved
-Managing a competitive guild requires tracking roster power, event attendance, score submissions, and inactive members across multiple events. Previously, statistics were scattered across 9 separate tabs, making it hard to see the big picture. 
-
-I've restructured the entire Stats engine into **3 Executive Views**:
+Here is everything new in this release:
 
 ---
 
-### 🩺 1. Guild Cockpit — The Complete Leadership Command Center
-A single, high-visibility dashboard giving you the complete operational health of your guild at a glance:
-- **⚡ Power & Health Macro**: Total guild power, average member power, Top 5 & Top 10 power concentration, and visual tier distribution (Tier S to D).
-- **⚠️ Proactive Inactivity Detection (2w+)**: Automatically flags members who haven't participated in any battle event over the last 2+ weeks, complete with their current power level and last seen date — making roster cleanup decisions faster and fairer.
-- **📈 8-Week Mobilization Trend**: Visual weekly attendance rates tracking overall guild engagement over time.
-- **🛡️ Roster Structure & Pending Operations**: Officer-to-member ratios (R5 down to R1), member tenure, and real-time queues for pending score approvals and incoming guild transfers.
+### ⚔️ Automated Daily GvG Task Reminders (10:30 UTC Mon-Sat)
+Every morning during active GvG campaigns (**Monday through Saturday at 10:30 UTC**), your designated GvG Discord channel will automatically receive a detailed Discord Embed showing the day's priority objectives and point values:
+
+- ⚡ **Day 1 (Monday)**: Speedups & Trade (+48 pts/min), Rallies (Deliverer Ark +18k, Tribute Vessels +18k, Sacred Tribute +6k), Ascendancy Minions (Lvl 1-60 from +3k to +6k), Packs (+4 pts/credit).
+- 👑 **Day 2 (Tuesday)**: Champions & Power (+6k Leg / +300 Epic frag, +3 pts/power, Training Manual +600, Venturous Memory +2.4k), Weapons (Prism +4k, Energy Core +18, Epic/Leg frags +2.4k/+12k), Commissions (Common to Leg +6k to +9.75k), Commerce Guild (Assist +20, Donation +50).
+- 🔬 **Day 3 (Wednesday)**: Tech Speedups (+48 pts/min), Technology items (Computational +400, Beacon +800, Echo Module +80, Echoes of Deep Space +16k), Ruins (Leg Excavation +30k, Plunder +50k), Map Search (+360k).
+- 🛸 **Day 4 (Thursday)**: Flagship upgrades (+3 pts/power, Blueprints +6k, Prismatic Core +2.4k), Commissions (+6k to +9.75k), Packs (+4 pts/credit).
+- 🌟 **Day 5 (Friday)**: All-Out Preparation: Speedups, Champions, Flagship, Rallies (+18k), Tech items (+400 to +16k), Weapons & Exploration (Map Search +360k, Plunder +50k), Commissions & Packs.
+- 🏰 **Day 6 (Saturday)**: Total War: War Prism (+10 per 100 dmg, +1M last hit), Ascendancy Shrine (+60k), War Fortresses (+50k per 2 min), Shipbuilding (+48 pts/min), Commerce Glory (+3 pts/glory), and PvP Fleet Combat (Defeating/Losing Craft T1-T7 from +1.5k to +180k).
 
 ---
 
-### 🏆 2. Player Leaderboard — Reward Your Top Contributors
-A competitive, motivating rankings hub designed for recognition:
-- **🥇 3D Podium Stage**: Dynamically highlights your Top 3 guild MVPs for the selected period.
-- **🔄 Metric Toggle**: Switch seamlessly between **Global Composite Score** (factoring event weight, consistency bonus, and Glory gains) and pure **Attendance Rate (%)**.
-- **📅 Dynamic Timeframes**: Analyze performance over 1 Week, 2 Weeks, 4 Weeks, 8 Weeks, or All-Time.
-- **🔍 Instant Player Search**: Filter the leaderboard in real time to inspect any member's contribution.
-
----
-
-### ⚔️ 3. Event Deep-Dive — Detailed Tactical Analytics
-Dedicated scoreboards for every game mode, accessible through an elegant dropdown selector:
-- **⚔️ SvS Battle**: Detailed Prep phase (Day 1 to 5) and PvP phase (Day 6) scores.
-- **🚩 GvG War**: Total battle scores and attendance tracking.
-- **🌌 Shadowfront**: Per-squad mobilization (Squad 1 & Squad 2) and attendance history.
-- **🚀 Arms Race**: Stage A & Stage B tracking.
-- **🛡️ DTR (Defend Trade Route)**: Escort participation and completion logs.
-
----
-
-### 🌐 Plus: Multi-Guild Server Administration (`server_admin`)
-- Federation leaders can now manage all guilds sharing the same server number from a single account with a dynamic topbar guild switcher!
+### ⚙️ Guild Leader Toggle (Opt-In / Opt-Out)
+- Guild Leaders & Officers can toggle daily GvG task notifications anytime via **Guild Settings → GvG → Daily Tasks breakdown (10:30 UTC)**.
+- Settings are persisted per guild and respect your custom Discord Role ID mentions (or `@everyone`).
 
 ---
 
 ### 🧪 100% Verified Quality Gate
-- **223 Automated Vitest Tests Passing**: Comprehensive test suite green across all calculations, scoring weights, and role boundaries.
-- **Zero TypeScript Errors & Optimized Production Build**: Instant rendering and smooth transitions.
+- **235 Automated Vitest Tests Passing**: Full unit test coverage across all 6 days of points data, embed formatting, and configuration state.
+- **Zero TypeScript Errors & Clean Production Build**: High-speed bundle ready on Vercel.
 
 ---
 
-The update is **live right now** for all guild tenants. Hard-refresh your browser (**`Ctrl + F5`** or **`Cmd + Shift + R`**) to explore the new Stats Cockpit!
+The update is **live right now** for all guild tenants. Hard-refresh your browser (**`Ctrl + F5`** or **`Cmd + Shift + R`**) to check out the new settings!
 
-As always, feel free to share your thoughts, ideas, or feedback on Discord. Good luck in your upcoming SvS & GvG battles! ⚔️🚀
+As always, share your feedback or suggestions on Discord. Good luck in your GvG battles this week! ⚔️🚀

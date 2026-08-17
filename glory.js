@@ -28,22 +28,16 @@
             var members  = (membersRes.data || []).map(function (m) { return m.pseudo; });
             var currMap  = {};
             var prevMap  = {};
-            (currRes.data || []).forEach(function (r) { currMap[r.pseudo] = r.score; });
-            (prevRes.data || []).forEach(function (r) { prevMap[r.pseudo] = r.score; });
-
-            var existing = new Set(Object.keys(currMap));
-            var toInsert = members
-                .filter(function (p) { return !existing.has(p); })
-                .map(function (p) { return { guild: currentG, event_name: 'Glory', week_start: week, pseudo: p, participated: 1, score: null }; });
-
-            if (toInsert.length > 0 && window.GM && window.GM.canWriteGuild && window.GM.canWriteGuild()) {
-                try {
-                    await db.from('event_participants').insert(toInsert);
-                } catch (insertErr) {
-                    console.warn('Glory insert warning', insertErr);
+            (currRes.data || []).forEach(function (r) {
+                if (r.score != null || currMap[r.pseudo] == null) {
+                    currMap[r.pseudo] = r.score;
                 }
-                toInsert.forEach(function (item) { currMap[item.pseudo] = null; });
-            }
+            });
+            (prevRes.data || []).forEach(function (r) {
+                if (r.score != null || prevMap[r.pseudo] == null) {
+                    prevMap[r.pseudo] = r.score;
+                }
+            });
 
             members.sort(function (a, b) {
                 var valA = prevMap[a] != null ? (typeof prevMap[a] === 'number' ? prevMap[a] : parseInt(prevMap[a], 10)) : -1;

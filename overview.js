@@ -91,9 +91,19 @@
             // Glory is cumulative per player: "this week" is the gain, i.e. the
             // sum of (current week score - previous week score) per member.
             var prevByPseudo = {};
-            (gloryPrevRows.data || []).forEach(function (r) { prevByPseudo[r.pseudo] = r.score || 0; });
-            var gloryGained = (gloryRows.data || []).reduce(function (acc, r) {
-                var gain = (r.score || 0) - (prevByPseudo[r.pseudo] || 0);
+            (gloryPrevRows.data || []).forEach(function (r) {
+                if (r.score != null || prevByPseudo[r.pseudo] == null) {
+                    prevByPseudo[r.pseudo] = r.score || 0;
+                }
+            });
+            var currByPseudo = {};
+            (gloryRows.data || []).forEach(function (r) {
+                if (r.score != null || currByPseudo[r.pseudo] == null) {
+                    currByPseudo[r.pseudo] = r.score || 0;
+                }
+            });
+            var gloryGained = Object.keys(currByPseudo).reduce(function (acc, pseudo) {
+                var gain = (currByPseudo[pseudo] || 0) - (prevByPseudo[pseudo] || 0);
                 return acc + Math.max(0, gain);
             }, 0);
 

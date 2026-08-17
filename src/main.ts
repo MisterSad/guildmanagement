@@ -14,6 +14,7 @@ import {
   sessionDateFromId,
   buildEventSessionId
 } from './core/config/events';
+import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from './core/config/gvg-tasks';
 import { normalizeRole, roleFromStorage, isSuperAdmin, isServerAdmin, isGuildAdmin } from './core/auth/roles';
 import { appStore } from './core/store/store';
 import { calculateMatchupData } from './workers/matchup.worker';
@@ -56,6 +57,10 @@ if (typeof window !== 'undefined') {
   (window as any).GM.isSuperAdmin = isSuperAdmin;
   (window as any).GM.isServerAdmin = isServerAdmin;
   (window as any).GM.isGuildAdmin = isGuildAdmin;
+  (window as any).GM.gvgTasks = {
+    GVG_DAILY_TASKS,
+    buildGvgDailyTaskEmbed
+  };
 
   // Store, Worker & Services bridge
   (window as any).GM.store = appStore;

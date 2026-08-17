@@ -705,17 +705,44 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
 AS $$
+DECLARE
+    v_session text;
 BEGIN
+    IF p_guild IS NULL OR p_pseudo IS NULL OR p_week_start IS NULL THEN
+        RETURN QUERY SELECT false, 'missing_parameters';
+        RETURN;
+    END IF;
+
+    IF NOT public.check_user_guild_write_access(p_guild) THEN
+        RETURN QUERY SELECT false, 'permission_denied';
+        RETURN;
+    END IF;
+
+    IF NOT public.is_subscription_active(p_guild) THEN
+        RETURN QUERY SELECT false, 'subscription_expired';
+        RETURN;
+    END IF;
+
+    v_session := 'GLORY-' || EXTRACT(isoyear FROM p_week_start) || '-W' || LPAD(EXTRACT(week FROM p_week_start)::text, 2, '0');
+
     INSERT INTO public.event_participants (
         guild, event_name, session_id, week_start, pseudo, score, participated, created_at
     )
     VALUES (
-        p_guild, 'Glory', 'GLORY-' || EXTRACT(isoyear FROM p_week_start) || '-W' || LPAD(EXTRACT(week FROM p_week_start)::text, 2, '0'),
+        p_guild, 'Glory', v_session,
         p_week_start, p_pseudo, p_glory, 1, now()
     )
     ON CONFLICT (guild, event_name, session_id, pseudo) DO UPDATE SET
         score = EXCLUDED.score,
         participated = 1;
+
+    -- Clean up legacy un-sessioned row if one exists to prevent duplicate conflicts
+    DELETE FROM public.event_participants
+    WHERE guild = p_guild
+      AND event_name = 'Glory'
+      AND week_start = p_week_start
+      AND pseudo = p_pseudo
+      AND session_id IS NULL;
 
     RETURN QUERY SELECT true, NULL::text;
 END;

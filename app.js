@@ -880,6 +880,7 @@
         var notifyShadowfrontCreation = await window.GM.config.get('notify_shadowfront_creation');
 
         var notifyCalamity10 = await window.GM.config.get('notify_calamity_10');
+        var notifyGvgDailyTasks = await window.GM.config.get('notify_gvg_daily_tasks');
         var notifyGvgPvp = await window.GM.config.get('notify_gvg_pvp');
         
         var notifySvsGarrison = await window.GM.config.get('notify_svs_garrison');
@@ -933,6 +934,7 @@
         setCheckedState('notify-shadowfront-start', notifyShadowfrontStart, true);
 
         setCheckedState('notify-calamity-10', notifyCalamity10, true);
+        setCheckedState('notify-gvg-daily-tasks', notifyGvgDailyTasks, true);
         setCheckedState('notify-gvg-pvp', notifyGvgPvp, true);
 
         setCheckedState('notify-svs-garrison', notifySvsGarrison, true);
@@ -991,6 +993,7 @@
                     window.GM.config.set('notify_shadowfront_start', document.getElementById('notify-shadowfront-start').checked ? 'true' : 'false'),
 
                     window.GM.config.set('notify_calamity_10', (showCalamityGvgSvs && document.getElementById('notify-calamity-10').checked) ? 'true' : 'false'),
+                    window.GM.config.set('notify_gvg_daily_tasks', (showCalamityGvgSvs && document.getElementById('notify-gvg-daily-tasks').checked) ? 'true' : 'false'),
                     window.GM.config.set('notify_gvg_pvp', (showCalamityGvgSvs && document.getElementById('notify-gvg-pvp').checked) ? 'true' : 'false'),
 
                     window.GM.config.set('notify_svs_garrison', (showCalamityGvgSvs && document.getElementById('notify-svs-garrison').checked) ? 'true' : 'false'),

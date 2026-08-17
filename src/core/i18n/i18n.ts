@@ -40,6 +40,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     label_coeff_dtr: 'DTR Coeff',
     label_coeff_armsrace: 'Arms Race Coeff',
     label_discord_webhook: 'Discord Webhook URL',
+    notify_gvg_daily_tasks_desc: 'Daily Tasks breakdown (10:30 UTC)',
     btn_save_config: 'Save Configuration',
     toast_config_updated: 'Guild configuration updated successfully!',
     members_title: 'Guild Members',
