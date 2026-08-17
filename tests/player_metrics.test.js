@@ -24,21 +24,21 @@ describe('Tactical Military Metrics & Calculations', () => {
 
     it('calculates weighted combat density according to tactical hierarchy', () => {
         // Flagship: 10M * 4.0 = 40M
-        // Fleet: 2M * 2.5 = 5M
+        // Fleet: 2M * 3.5 = 7M
         // Tech: 15M * 2.25 = 33.75M
         // Crew: 5M * 1.5 = 7.5M
         // Champs: 30M * 0.8 = 24M
         // Glory: 250M * 1.0 = 250M
-        // Sum = 360.25M / 100M = 360.3%
+        // Sum = 362.25M / 100M = 362.3%
         const density = window.GM.calculateCombatDensity(mockMember);
-        expect(density).toBe(360.3);
+        expect(density).toBe(362.3);
     });
 
     it('calculates composite rally score correctly with exact hierarchy Power > Flagship > Fleet > Tech > Crew > Champs > Glory', () => {
-        // 100M (Power) + 360.25M (Weighted Combat) = 460.25M
+        // 100M (Power) + 362.25M (Weighted Combat) = 462.25M
         const rallyScore = window.GM.calculateRallyScore(mockMember);
-        expect(rallyScore).toBe(460250000);
-        expect(window.GM.calculateWarScore(mockMember)).toBe(460250000);
+        expect(rallyScore).toBe(462250000);
+        expect(window.GM.calculateWarScore(mockMember)).toBe(462250000);
     });
 
     it('prioritizes components in exact order (Power > Flagship > Fleet > Tech > Crew > Champs > Glory)', () => {
@@ -49,9 +49,9 @@ describe('Tactical Military Metrics & Calculations', () => {
         const moreFlag = { ...base, flagship_power: base.flagship_power + 1000000 };
         expect(window.GM.calculateRallyScore(moreFlag) - scoreBase).toBe(4000000);
 
-        // +1M to Fleet adds 2.5M
+        // +1M to Fleet adds 3.5M
         const moreFleet = { ...base, fleet_rating: base.fleet_rating + 1000000 };
-        expect(window.GM.calculateRallyScore(moreFleet) - scoreBase).toBe(2500000);
+        expect(window.GM.calculateRallyScore(moreFleet) - scoreBase).toBe(3500000);
 
         // +1M to Tech adds 2.25M
         const moreTech = { ...base, tech_power: base.tech_power + 1000000 };

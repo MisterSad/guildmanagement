@@ -2,6 +2,11 @@
 
 ## New
 
+- **Fleet Power Multiplier Upward Calibration to 3.5x (v120.1)**:
+  - **Calibrated Fleet Multiplier**: Increased Strongest Fleet Rating weight in `calculateCombatDensity` and `calculateRallyScore` to **$\times 3.5$** (was 2.5x), strengthening the tactical importance of 1st march ratings in rally composition.
+  - **Complete Hierarchy**: $\text{Power} (\times 1.0) > \text{Flagship} (\times 4.0) > \text{Fleet} (\times 3.5) > \text{Tech} (\times 2.25) > \text{Crew} (\times 1.5) > \text{Glory} (\times 1.0) > \text{Champs} (\times 0.8)$.
+  - **Quality Gate**: **257/257 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Champion Power Multiplier Fine-Tuning to 0.8x (v120.0)**:
   - **Calibrated Champions Multiplier**: Adjusted Champion Power weight in `calculateCombatDensity` and `calculateRallyScore` to **$\times 0.8$** (was 1.0x) to balance hero collection stats against officer synergies and direct fleet ratings.
   - **Complete Hierarchy**: $\text{Power} (\times 1.0) > \text{Flagship} (\times 4.0) > \text{Fleet} (\times 2.5) > \text{Tech} (\times 2.25) > \text{Crew} (\times 1.5) > \text{Glory} (\times 1.0) > \text{Champs} (\times 0.8)$.
