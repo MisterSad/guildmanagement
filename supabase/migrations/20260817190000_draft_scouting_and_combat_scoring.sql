@@ -66,7 +66,7 @@ BEGIN
                public.gm_event_scoring_key(ep0.event_name, ep0.session_id, ep0.week_start::text) AS skey,
                (ep0.participated > 0 OR ep0.sub_present = true OR ep0.score > 0 OR ep0.score_prep > 0 OR ep0.score_pvp > 0) AS attended,
                COALESCE(ep0.score_prep, 0)::BIGINT AS prep,
-               COALESCE(ep0.score_pvp, 0)::BIGINT AS pvp,
+               COALESCE(NULLIF(ep0.score_pvp, 0), CASE WHEN ep0.event_name IN ('SvS', 'GvG') THEN NULLIF(ep0.score, 0) ELSE NULL END, 0)::BIGINT AS pvp,
                COALESCE(ep0.score, 0)::BIGINT AS general_score,
                (ep0.event_name = 'Glory') AS is_glory
         FROM public.event_participants ep0
@@ -106,12 +106,12 @@ BEGIN
                lower(btrim(e.pseudo)) AS nkey,
                -- SvS
                COUNT(DISTINCT e.skey) FILTER (WHERE e.skey LIKE 'SvS|%' AND e.attended) AS svs_att,
-               ROUND(AVG(e.prep) FILTER (WHERE e.skey LIKE 'SvS|%'))::BIGINT AS svs_avg_prep,
-               ROUND(AVG(e.pvp) FILTER (WHERE e.skey LIKE 'SvS|%'))::BIGINT AS svs_avg_pvp,
+               COALESCE(ROUND(AVG(NULLIF(e.prep, 0)) FILTER (WHERE e.skey LIKE 'SvS|%'))::BIGINT, 0) AS svs_avg_prep,
+               COALESCE(ROUND(AVG(NULLIF(e.pvp, 0)) FILTER (WHERE e.skey LIKE 'SvS|%'))::BIGINT, 0) AS svs_avg_pvp,
                -- GvG
                COUNT(DISTINCT e.skey) FILTER (WHERE e.skey LIKE 'GvG|%' AND e.attended) AS gvg_att,
-               ROUND(AVG(e.prep) FILTER (WHERE e.skey LIKE 'GvG|%'))::BIGINT AS gvg_avg_prep,
-               ROUND(AVG(e.pvp) FILTER (WHERE e.skey LIKE 'GvG|%'))::BIGINT AS gvg_avg_pvp,
+               COALESCE(ROUND(AVG(NULLIF(e.prep, 0)) FILTER (WHERE e.skey LIKE 'GvG|%'))::BIGINT, 0) AS gvg_avg_prep,
+               COALESCE(ROUND(AVG(NULLIF(e.pvp, 0)) FILTER (WHERE e.skey LIKE 'GvG|%'))::BIGINT, 0) AS gvg_avg_pvp,
                -- Shadowfront
                COUNT(DISTINCT e.skey) FILTER (WHERE e.skey LIKE 'Shadowfront|%' AND e.attended) AS sh_att,
                -- DTR
