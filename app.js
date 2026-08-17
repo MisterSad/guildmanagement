@@ -2148,6 +2148,7 @@
     window.GM.closeOcrModal = closeOcrModal;
     window.GM.parseGeminiJson = parseGeminiJson;
     window.GM.getOcrModel = getOcrModel;
+    window.GM.fetchGuildMembers = fetchGuildMembers;
 
     // Document-level event delegation for OCR trigger buttons
     document.addEventListener('click', function (e) {
@@ -2956,14 +2957,37 @@
         initOcrGeminiModule();
         var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
         try {
-            var [res, transfersRes, absencesRes] = await Promise.all([
+            var [res, transfersRes, absencesRes, gloryRes] = await Promise.all([
                 supabase.from('guild_members').select('*').eq('guild', currentG).order('pseudo', { ascending: true }),
                 supabase.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild').eq('status', 'pending').order('created_at', { ascending: true }),
-                supabase.from('player_absences').select('*').eq('guild', currentG)
+                supabase.from('player_absences').select('*').eq('guild', currentG),
+                supabase.from('event_participants').select('pseudo, score, week_start').eq('guild', currentG).eq('event_name', 'Glory').not('score', 'is', null).order('week_start', { ascending: false })
             ]);
             
             if (res.error) throw res.error;
-            guildMembers = res.data || [];
+
+            var latestGloryMap = {};
+            if (gloryRes && !gloryRes.error && Array.isArray(gloryRes.data)) {
+                gloryRes.data.forEach(function (r) {
+                    if (r && r.pseudo && r.score != null) {
+                        var pKey = r.pseudo.trim().toLowerCase();
+                        if (latestGloryMap[pKey] === undefined) {
+                            latestGloryMap[pKey] = parseInt(r.score, 10) || 0;
+                        }
+                    }
+                });
+            }
+
+            guildMembers = (res.data || []).map(function (m) {
+                var pKey = (m.pseudo || '').trim().toLowerCase();
+                var lastGlory = latestGloryMap[pKey];
+                if (lastGlory !== undefined && lastGlory > 0) {
+                    if (!m.glory_score || parseInt(m.glory_score) === 0 || parseInt(m.glory_score) !== lastGlory) {
+                        m.glory_score = lastGlory;
+                    }
+                }
+                return m;
+            });
             
             if (!transfersRes.error) {
                 var currentGTransfers = (transfersRes.data || []).filter(function (t) {
@@ -3812,7 +3836,7 @@
                     '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">' +
                         '<span class="gm-chip" style="color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); font-size:0.75rem;"><i class="ph ph-swords"></i> Guild Fleet: ' + window.GM.formatPower(totalFleet) + '</span>' +
                         '<span class="gm-chip" style="color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); font-size:0.75rem;"><i class="ph ph-atom"></i> Guild Tech: ' + window.GM.formatPower(totalTech) + '</span>' +
-                        '<span class="gm-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size:0.75rem;"><i class="ph ph-trophy"></i> Total Glory: ' + window.GM.formatPower(totalGlory) + '</span>' +
+                        '<span class="gm-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size:0.75rem;" title="Sum of latest recorded Sunday Glory across active roster"><i class="ph ph-trophy"></i> Total Glory: ' + window.GM.formatPower(totalGlory) + '</span>' +
                     '</div>' +
                 '</div>';
 
@@ -3840,7 +3864,7 @@
                     '<td style="padding:0.65rem 0.5rem; text-align:right; color:#fbbf24; font-weight:600; font-size:0.85rem;">' + (m.flagship_power ? window.GM.formatPower(m.flagship_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6; font-weight:600; font-size:0.85rem;">' + (m.champion_power ? window.GM.formatPower(m.champion_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8; font-weight:600; font-size:0.85rem;">' + (m.crew_power ? window.GM.formatPower(m.crew_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size:0.85rem;">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size:0.85rem;" title="Latest Recorded Sunday Glory: ' + (m.glory_score ? window.GM.formatNumber(m.glory_score) : '0') + '">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:center;">' + (density > 0 ? '<span class="gm-chip" style="font-size:0.7rem; color:#818cf8; background:rgba(99,102,241,0.12); padding:0.1rem 0.4rem;">' + density + '%</span>' : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
                     '<td style="padding:0.65rem 0.75rem; text-align:center;">' +
                         '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="Edit Player Military Metrics" style="padding:0.25rem 0.5rem; font-size:0.75rem; gap:0.25rem;"><i class="ph ph-pencil-simple"></i> Edit</button>' +
@@ -3861,7 +3885,7 @@
                                 '<th style="padding:0.65rem 0.5rem; text-align:right; color:#fbbf24;">🚀 Flagship</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6;">👑 Champs</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8;">👥 Crew</th>' +
-                                '<th style="padding:0.65rem 0.5rem; text-align:right; color:#34d399;">🏆 Glory</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:right; color:#34d399;" title="Latest Recorded Sunday Glory Score">🏆 Glory</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:center; color:#818cf8;">🛡️ Density</th>' +
                                 '<th style="padding:0.65rem 0.75rem; text-align:center;">Action</th>' +
                             '</tr>' +

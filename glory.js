@@ -212,6 +212,9 @@
             });
             if (rpcRes && rpcRes.error) throw rpcRes.error;
             if (icon) icon.classList.add('hidden');
+            if (window.GM && typeof window.GM.fetchGuildMembers === 'function') {
+                window.GM.fetchGuildMembers();
+            }
         } catch (err) {
             console.error('saveGlory', err);
             if (icon) icon.classList.add('hidden');

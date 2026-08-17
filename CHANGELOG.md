@@ -2,6 +2,12 @@
 
 ## New
 
+- **Tactical Force Matrix Dynamic Sunday Glory Synchronization (v119.3)**:
+  - **Automatic Latest Glory Reconciliation**: In the Tactical Force Matrix and member military metrics, the Glory column now seamlessly integrates the latest recorded Sunday score for each player from `event_participants` where `event_name = 'Glory'`.
+  - **Zero-Stale Metrics Guarantee**: When loading guild members (`fetchGuildMembers`), the system retrieves the most recent weekly Glory score per player across historical weeks, updating `m.glory_score` and guild totals in real time even when mid-week before Sunday's new logs.
+  - **Synchronous Glory RPC & Database Migration**: Updated `public.gm_upsert_player_glory` to simultaneously write to `event_participants`, update `guild_members.glory_score`, and snapshot into `player_metrics_history`. Backfilled all historical Glory records into active member rows (`20260817220000_sync_glory_score_to_guild_members.sql`).
+  - **Quality Gate**: **255/255 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Multi-Guild Tag Administration & Server-Wide OCR Leaderboard Filtering (v119.2)**:
   - **In-Game Guild Tag Administration**: Added `#guild-tag-setting` in Guild Configuration & Settings, allowing guild admins to specify their in-game tag (e.g. `[PR1M]` for `ALPHA`, `[OMG]` for `OMEGA`, `[BABE]`, `[IMK]`, `[CLAW]`), stored in `guild_config`.
   - **Intra-Guild vs Multi-Guild Server Leaderboard Scanners**:

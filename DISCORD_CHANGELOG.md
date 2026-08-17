@@ -1,31 +1,22 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.4 (Guild Tag Admin & Server-Wide OCR Filtering)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.5 (Tactical Force Matrix Sunday Glory Sync)**
 
 Hey commanders! 👋
 
-Scanning multi-guild server leaderboards is now completely seamless and automated! I have added **In-Game Guild Tag Administration** and smart multi-guild server filtering to our AI OCR engine:
+Your tactical military data just got even more accurate and automated! I have upgraded the **Tactical Force Matrix** in the **"Members"** tab to automatically pull and maintain the **latest recorded Sunday Glory score** for every member:
 
 ---
 
-### 🏷️ 1. In-Game Guild Tag Configuration
-* In **Guild Configuration & Settings**, you can now set your in-game Guild Tag (e.g. `[PR1M]` for ALPHA, `[OMG]` for OMEGA, `[BABE]`, `[IMK]`, `[CLAW]`).
-* The system automatically persists your tag and uses it as the default identifier for all server-wide operations.
+### 🏆 1. Automatic Sunday Glory Synchronization
+* Glory rankings and battle scores are typically logged on Sundays.
+* In the **Tactical Force Matrix**, the **🏆 Glory** column now automatically pulls each player's most recently recorded Glory score from past battle logs.
+* No more blank or zero values during the week between events: your guild's total Glory, combat density, and individual military profiles always display the latest confirmed numbers!
 
 ---
 
-### 🌐 2. Multi-Guild Server Leaderboard Scanners
-The 7 OCR Scanners are now categorized into two intelligent operating modes:
-* **Intra-Guild Leaderboards** (🌐 **Power**, 🔬 **Tech Power**, 🏆 **Glory**): Screenshots contain only your guild's players. All detected members are matched or imported directly.
-* **Server-Wide Multi-Guild Leaderboards** (⚔️ **Strongest Fleet**, 🚀 **Strongest Flagship**, 👑 **Champion Power**, 👥 **Crew Power**):
-  - Automatically activates the **Guild Tag Filter Banner** in the OCR modal (pre-filled with your guild tag, editable on the fly).
-  - Gemini AI identifies players carrying your guild tag and strips prefix brackets cleanly.
+### ⚡ 2. Instant Database & Roster Sync
+* Whenever a Glory score is submitted via the **Glory Log**, **Glory OCR**, or the **Player Portal**, the database RPC instantly updates both the event record and the member's profile score.
+* The summary chips (`Total Glory: XXX.X M`) and individual member cards update in real time.
 
 ---
 
-### 🛡️ 3. Safe Roster Reconciliation (Unchecked by Default for Foreign Guilds)
-* When scanning a server-wide leaderboard (e.g. top 100 players on the server):
-  - Players belonging to your guild are matched, updated, and **checked by default**.
-  - Players from external competitor guilds are clearly labeled **`⚠️ Other Guild`** and **unchecked by default**, ensuring that foreign players are never accidentally added to your guild roster!
-
----
-
-*Scan your server rankings, track your fleet with laser precision, and dominate the galaxy!* 🚀
+*Keep crushing your PvP battles, check your tactical readiness, and lead your fleet to victory!* 🚀

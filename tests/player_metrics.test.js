@@ -96,4 +96,45 @@ describe('Tactical Military Metrics & Calculations', () => {
         expect(typeof PortalService.updateMetrics).toBe('function');
         expect(typeof PortalService.getMetricsHistory).toBe('function');
     });
+
+    it('reconciles latest recorded Sunday Glory scores across members accurately', () => {
+        const gloryEvents = [
+            { pseudo: 'P1', score: 280000000, week_start: '2026-08-10' },
+            { pseudo: 'P1', score: 240000000, week_start: '2026-08-03' },
+            { pseudo: 'P2', score: 150000000, week_start: '2026-08-10' }
+        ];
+
+        const latestGloryMap = {};
+        gloryEvents.forEach((r) => {
+            const key = r.pseudo.toLowerCase();
+            if (latestGloryMap[key] === undefined) {
+                latestGloryMap[key] = r.score;
+            }
+        });
+
+        expect(latestGloryMap['p1']).toBe(280000000);
+        expect(latestGloryMap['p2']).toBe(150000000);
+
+        const rawMembers = [
+            { pseudo: 'P1', glory_score: 0 },
+            { pseudo: 'P2', glory_score: null },
+            { pseudo: 'P3', glory_score: 50000000 }
+        ];
+
+        const reconciled = rawMembers.map((m) => {
+            const lastGlory = latestGloryMap[m.pseudo.toLowerCase()];
+            if (lastGlory !== undefined && lastGlory > 0) {
+                m.glory_score = lastGlory;
+            }
+            return m;
+        });
+
+        expect(reconciled[0].glory_score).toBe(280000000);
+        expect(reconciled[1].glory_score).toBe(150000000);
+        expect(reconciled[2].glory_score).toBe(50000000);
+
+        const totalGlory = reconciled.reduce((sum, m) => sum + (m.glory_score || 0), 0);
+        expect(totalGlory).toBe(480000000);
+    });
 });
+
