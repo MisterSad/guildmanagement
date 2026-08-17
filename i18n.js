@@ -372,7 +372,7 @@
             gm_sub_disabled_hint:  'This guild runs without subscriptions. No payment is required.',
             gm_sub_methods:        'Accepted payments: Cards (Visa, Mastercard, Amex), Cartes Bancaires, Apple Pay, Google Pay, PayPal, Alipay, Amazon Pay, Klarna, iDEAL, Bancontact, EPS, BLIK, MB WAY, Pix, Satispay, Multibanco, MobilePay, WeChat Pay, Revolut Pay, Samsung Pay, Kakao Pay, Naver Pay, PAYCO, Link, and more.',
             gm_sub_security:       'Payments are processed and secured by the payment provider. The site administrator never has access to your bank details.',
-            gm_settings_sub:       'Mercato & Transfer Overview by Participation Rate',
+            gm_settings_sub:       'Inter-Server Migration Scouting & Combat Scoring Engine',
             gm_settings_load_error: 'Could not load the ranking',
             gm_settings_retry:     'Retry',
             gm_settings_denied:    'Super admin only',

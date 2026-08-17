@@ -2,6 +2,16 @@
 
 ## New
 
+- **Inter-Server Migration Scouting & Draft Combat Scoring Engine Overhaul (v118.0)**:
+  - **Combat-Focused Draft Scoring Engine**: Completely redesigned the cross-guild Draft ranking into a high-precision recruitment and scouting engine built specifically for inter-server migration windows.
+  - **Day 6 PvP Combat Score Doubled ($2\times$)**: Prioritizes battlefield warriors by doubling the weight ($2\times$ multiplier) of Day 6 battle scores for both SvS and GvG in the composite draft rating.
+  - **Priority Shadowfront Attendance Pillar**: Elevated 20v20 Shadowfront squad participation to a 35% dominant weight in the draft index, distinguishing reliable battle coordinators.
+  - **Cumulative Glory Aggregation**: Integrated total historical Glory points accumulated across tracked weekly cycles into player profiles and ranking metrics.
+  - **Instant Server Isolation & Migration Scouting**: Added dynamic migration server dropdown selector (e.g. Server `#1058`, `#1064`) allowing Super Admins and Guild Leaders to isolate prospective candidates from specific target servers in seconds.
+  - **Scouting Focus Quick Presets**: Added 1-click filter chips (`All Candidates`, `⚔️ Day 6 PvP`, `👻 Shadowfront (≥50%)`, `🏆 Top Glory`, `👑 Elite (≥75%)`).
+  - **PostgreSQL Canonical Migration (`20260817190000_draft_scouting_and_combat_scoring.sql`)**: Overhauled `public.gm_cross_guild_ranking()` with `SECURITY DEFINER` access controls, returning aggregated prep scores, doubled Day 6 scores, glory totals, and scouting tiers.
+  - **Quality Gate**: Verified with **240/240 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Google Material Design 3 (M3) Extended Color Ecosystem, Material Symbols & Elevated Podium Overhaul (v117.0)**:
   - **Official Google M3 Tonal Palettes**: Completely enriched `tokens.css` with Google Workspace / Android 14+ CAM16/HCT tonal palettes, dedicating a distinct, recognizable Google color for every game event:
     - 🔵 **GvG (Guild vs Guild)** $\rightarrow$ **Google Cobalt Blue** (`#a8c7fa` / `#062e6f`)
