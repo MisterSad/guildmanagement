@@ -2454,6 +2454,122 @@
 }
 .portal-kpi-sub { font-size: 0.72rem; color: var(--md-sys-color-on-surface-dim, #8e918f); font-weight: 600; }
 
+/* ── M3 Military Force Breakdown Grid (7 Tiles Pixel-Perfect Alignment) ─── */
+.portal-military-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.75rem;
+    width: 100%;
+}
+@media (max-width: 1200px) {
+    .portal-military-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 768px) {
+    .portal-military-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+    .portal-military-grid { grid-template-columns: 1fr; }
+}
+
+.portal-military-tile {
+    background: var(--md-sys-color-surface-container-high, #282a2c);
+    border: 1px solid var(--md-sys-color-outline-variant, rgba(255, 255, 255, 0.08));
+    border-radius: var(--md-sys-shape-corner-medium, 12px);
+    padding: 0.85rem 0.95rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 124px;
+    height: 100%;
+    box-shadow: var(--md-sys-elevation-level1, 0 1px 3px rgba(0,0,0,0.2));
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+.portal-military-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--md-sys-elevation-level2, 0 4px 8px rgba(0,0,0,0.3));
+}
+
+.portal-military-tile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.35rem;
+    min-height: 32px;
+    height: 32px;
+}
+
+.portal-military-tile-title {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    line-height: 1.15;
+    flex: 1;
+    min-width: 0;
+}
+.portal-military-tile-icon {
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.portal-military-tile-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--md-sys-color-on-surface-variant, #c4c7c5);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: normal;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.portal-military-tile-delta {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+}
+
+.portal-military-tile-value {
+    font-size: 1.35rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    margin: 0.35rem 0;
+    display: flex;
+    align-items: center;
+    height: 28px;
+}
+
+.portal-military-tile-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    color: var(--md-sys-color-on-surface-dim, #8e918f);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 0.35rem;
+    margin-top: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    height: 20px;
+}
+.portal-military-tile-footer .material-symbols-rounded {
+    font-size: 13px;
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+.portal-military-tile-avg-label {
+    color: var(--md-sys-color-on-surface-dim, #8e918f);
+}
+.portal-military-tile-avg-val {
+    color: var(--md-sys-color-on-surface, #e3e3e3);
+    font-weight: 700;
+}
+
 /* ── M3 Event Participation Grid (Strictly 4 Columns Horizontal) ────────── */
 .portal-participation-grid {
     display: grid;
@@ -2488,39 +2604,55 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.35rem;
+    justify-content: space-between;
     padding: 1.1rem 1rem 1.15rem;
     text-align: center;
+    min-height: 150px;
+    height: 100%;
+    box-sizing: border-box;
 }
 .portal-participation-title {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 700;
     color: var(--md-sys-color-on-surface, #e3e3e3);
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.4rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
+    width: 100%;
+    height: 24px;
 }
 .portal-participation-rate {
     font-size: 1.65rem;
     font-weight: 800;
     color: var(--md-sys-color-on-surface, #e3e3e3);
     font-variant-numeric: tabular-nums;
-    line-height: 1.1;
-    margin-top: 0.15rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    margin: 0.2rem 0;
 }
 .portal-participation-sub {
     font-size: 0.75rem;
     color: var(--md-sys-color-on-surface-variant, #c4c7c5);
     font-weight: 600;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .portal-participation-badges {
     display: flex;
     gap: 0.35rem;
-    margin-top: 0.45rem;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    margin-top: 0.25rem;
 }
 
 /* ── M3 Segmented Period Filter ──────────────────────────────────────────── */

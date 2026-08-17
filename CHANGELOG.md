@@ -2,6 +2,12 @@
 
 ## New
 
+- **Player Portal Pixel-Perfect Military Tile Alignment & Cohesive Grid Hierarchy (v121.2)**:
+  - **Pixel-Perfect Military Tile Layout**: Introduced `.portal-military-grid` (7-column layout on desktop) and structured `.portal-military-tile` with exact fixed heights across Header (`32px`), Combat Power Value (`28px`), and Footer Benchmark (`20px`).
+  - **Identical Vertical Alignment**: All 7 military tiles (Fleet, Tech, Flagship, Champs, Crew, Glory, and Power) now display their titles, delta pills, numbers, and `Guild Avg` rows at the exact same horizontal baselines.
+  - **Cohesive Participation Tiles**: Standardized internal elements of the 4 participation tiles with structured heights for titles, rates, attendance subtexts, and badge chips.
+  - **Quality Gate**: **263/263 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Player Portal Full Material Design 3 Overhaul & Chart Dashed Benchmark Lines (v121.1)**:
   - **Dashed In-Graph Guild Average Lines**: Replaced vertical Y-axis raw numbers with a clean, uncluttered continuous dashed reference line (`#ffe088`, 2.2px line width, `strokeDasharray: [8, 6]`) across the canvas with a floating M3 amber pill badge (`Avg XX.XM`), eliminating axis overlap and visual noise.
   - **Single Horizontal Line for 4 Participation Tiles**: Updated `.portal-participation-grid` to strictly `repeat(4, 1fr)`, ensuring Arms Race A, Arms Race B, Defend Trade Route, and Shadowfront tiles all sit on a single horizontal row on desktop.

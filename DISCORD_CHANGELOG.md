@@ -1,33 +1,31 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.21 (Full Material Design 3 & Clean Progression Curves)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.22 (Pixel-Perfect Tile Alignment & Design Polish)**
 
 Hey commanders! 👋
 
-I've just rolled out a major polish update to the **Player Portal**, bringing a **100% full Material Design 3 (M3)** aesthetic, clean dashed benchmark lines, and seamless desktop layouts! 🚀
+I've just refined the **Player Portal** layout to ensure **pixel-perfect visual alignment and structural consistency** across all breakdown cards! 🚀
 
 ---
 
-### 🎨 1. Full Material Design 3 (M3) Experience
-* **Authentic M3 Surface Hierarchy**: Upgraded surfaces with container elevations, rounded corners (`16px`/`12px`/`full`), and crisp Google typography.
-* **Refined Segmented Controls & Chips**: Sleek filter pills for time periods (`All Time`, `Last 30 Days`, `Last 90 Days`) and glowing tactical status chips.
+### 📐 1. Pixel-Perfect Military Breakdown Alignment
+* **Identical Structural Slots**: All 7 military tiles (Fleet Rating, Tech, Flagship, Champs, Crew, Glory, and Power) now share strictly synchronized slots:
+  - **Header Row**: Titles and percentage delta pills (`+XX%`) align on the exact same top baseline.
+  - **Value Row**: Big bold numbers (`1.7M`, `11.5M`, `23.3M`, etc.) align on the exact same horizontal height across the board.
+  - **Footer Benchmark**: `Guild Avg: X.XM` with icons sits on an identical bottom baseline with a hairline divider.
 
 ---
 
-### 📈 2. Clean Dashed Guild Average Line in Charts
-* **Dashed Reference Curve**: In SvS, GvG, and Glory charts, the **Guild Average** is now drawn as a clean, stylish **dashed amber reference line** directly through the graph with a floating `Avg XX.XM` pill!
-* **Zero Y-Axis Clutter**: Removed raw text numbers overlapping on the left vertical axis, keeping the canvas crisp, readable, and modern.
+### 🎨 2. Full Material Design 3 (M3) Experience
+* **7-Column Desktop Hierarchy**: Seamless horizontal distribution of military stat cards on desktop screens.
+* **4-Column Participation Grid**: Event attendance tiles (Arms Race A, Arms Race B, Defend Trade Route, Shadowfront) aligned on a single row.
 
 ---
 
-### 🎯 3. Single Horizontal Row for All 4 Event Tiles
-* **4-Column Horizontal Layout**: Arms Race A, Arms Race B, Defend Trade Route, and Shadowfront participation tiles now align on a **single clean horizontal row** on desktop!
+### 📈 3. Clean Dashed Guild Average Line in Charts
+* **Dashed Reference Curve**: Clear amber dashed curve in SvS, GvG, and Glory charts with floating `Avg XX.XM` badges and zero Y-axis text clutter!
 
 ---
 
-### ⚔️ 4. Live Military Benchmarks & Delta % Indicators
-* All **7 military cards** (Fleet, Tech, Flagship, Champs, Crew, Glory, and Power) now display live **Guild Average** values and real-time comparative $\pm\Delta\%$ pills.
+*Log into your Player Portal to experience the new ultra-clean aligned interface!* 🎮🛡️
 
----
-
-*Log into your Player Portal to check out the new Material Design 3 look and benchmarks!* 🎮🛡️
 
 

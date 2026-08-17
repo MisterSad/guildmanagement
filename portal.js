@@ -418,20 +418,25 @@
             if (aVal > 0 && pVal > 0) {
                 var diffPct = Math.round(((pVal - aVal) / aVal) * 1000) / 10;
                 if (diffPct >= 0) {
-                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px);">+' + diffPct + '%</span>';
+                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.38rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">+' + diffPct + '%</span>';
                 } else {
-                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px);">' + diffPct + '%</span>';
+                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.38rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">' + diffPct + '%</span>';
                 }
             }
             var avgFormatted = aVal > 0 ? window.GM.formatPower(aVal) : (pVal > 0 ? window.GM.formatPower(pVal) : '0');
-            return '<div class="portal-stat" style="background:var(--md-sys-color-surface-container-high, #282a2c); border:1px solid var(--md-sys-color-outline-variant, rgba(255,255,255,0.08)); padding:0.9rem 1rem; border-radius:var(--md-sys-shape-corner-medium, 12px); display:flex; flex-direction:column; gap:0.35rem; text-align:left; box-shadow:var(--md-sys-elevation-level1, 0 1px 3px rgba(0,0,0,0.2));">' +
-                        '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-                            '<span class="portal-stat-label" style="font-size:0.75rem; font-weight:700; color:var(--md-sys-color-on-surface-variant, #c4c7c5); margin-top:0;">' + icon + ' ' + esc(label) + '</span>' +
-                            deltaHtml +
+            return '<div class="portal-military-tile">' +
+                        '<div class="portal-military-tile-header">' +
+                            '<div class="portal-military-tile-title">' +
+                                '<span class="portal-military-tile-icon">' + icon + '</span>' +
+                                '<span class="portal-military-tile-label">' + esc(label) + '</span>' +
+                            '</div>' +
+                            '<div class="portal-military-tile-delta">' + deltaHtml + '</div>' +
                         '</div>' +
-                        '<div class="portal-stat-value" style="color:' + color + '; font-size:1.3rem; font-weight:800; text-align:left; margin-top:0.15rem;">' + esc(window.GM.formatPower(pVal)) + '</div>' +
-                        '<div style="font-size:0.72rem; color:var(--md-sys-color-on-surface-dim, #8e918f); display:flex; align-items:center; gap:0.35rem; margin-top:0.15rem;">' +
-                            '<span class="material-symbols-rounded" style="font-size:14px; opacity:0.8;">groups</span> Guild Avg: <strong style="color:var(--md-sys-color-on-surface, #e3e3e3);">' + esc(avgFormatted) + '</strong>' +
+                        '<div class="portal-military-tile-value" style="color:' + color + ';">' + esc(window.GM.formatPower(pVal)) + '</div>' +
+                        '<div class="portal-military-tile-footer">' +
+                            '<span class="material-symbols-rounded">groups</span>' +
+                            '<span class="portal-military-tile-avg-label">Guild Avg:</span>' +
+                            '<span class="portal-military-tile-avg-val">' + esc(avgFormatted) + '</span>' +
                         '</div>' +
                     '</div>';
         }
@@ -449,7 +454,7 @@
                         '<span class="gm-chip" style="font-size:0.75rem; font-weight:700; color:#ffe088; background:rgba(255,224,136,0.12); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-barricade"></i> Volatile: ' + esc(window.GM.formatPower(residual)) + '</span>' +
                     '</div>' +
                 '</div>' +
-                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(135px, 1fr)); gap:0.75rem;">' +
+                '<div class="portal-military-grid">' +
                     renderMilitaryTile('⚔️', 'Fleet Rating', player.fleet_rating, guildAvg.fleet_rating, '#a8c7fa') +
                     renderMilitaryTile('🔬', 'Tech Power', player.tech_power, guildAvg.tech_power, '#d0bcff') +
                     renderMilitaryTile('🚀', 'Flagship Power', player.flagship_power, guildAvg.flagship_power, '#ffe088') +
