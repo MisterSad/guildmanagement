@@ -2,6 +2,13 @@
 
 ## New
 
+- **Tactical Rally Readiness Multiplier Calibration (v119.5)**:
+  - **Calibrated Multipliers**: Adjusted tactical combat density and rally scoring multipliers in `gm-utils.js`:
+    - **Tech Power Multiplier**: Calibrated to **$\times 2.0$** (reflecting pivotal research tree impact on fleet defense and attack).
+    - **Fleet Rating Multiplier**: Calibrated to **$\times 2.5$** (proportional 1st march rating contribution).
+    - **Full Hierarchy**: $\text{Power} (\times 1.0) > \text{Flagship} (\times 3.0) > \text{Fleet} (\times 2.5) > \text{Tech} (\times 2.0) > \text{Crew} (\times 1.5) > \text{Champs} (\times 0.4) > \text{Glory} (\times 0.03)$.
+  - **Quality Gate**: **256/256 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Tactical Force Matrix Automatic Density & Rally Leaderboard Sorting (v119.4)**:
   - **Tactical Rally Leadership Hierarchy**: Redesigned combat density and rally readiness algorithms (`calculateCombatDensity`, `calculateRallyScore`, `calculateWarScore`) strictly following the hierarchy: **Power > Flagship > Fleet > Tech > Crew > Champs > Glory**.
   - **Automatic Rally Leader Sorting**: The Tactical Force Matrix now sorts members automatically by Rally Readiness Density (`density_desc`), allowing guild leaders and admins to identify optimal rally captains at a single glance.

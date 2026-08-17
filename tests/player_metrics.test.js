@@ -24,21 +24,21 @@ describe('Tactical Military Metrics & Calculations', () => {
 
     it('calculates weighted combat density according to tactical hierarchy', () => {
         // Flagship: 10M * 3.0 = 30M
-        // Fleet: 2M * 15.0 = 30M
-        // Tech: 15M * 0.9 = 13.5M
+        // Fleet: 2M * 2.5 = 5M
+        // Tech: 15M * 2.0 = 30M
         // Crew: 5M * 1.5 = 7.5M
         // Champs: 30M * 0.4 = 12M
         // Glory: 250M * 0.03 = 7.5M
-        // Sum = 100.5M / 100M = 100.5%
+        // Sum = 92M / 100M = 92.0%
         const density = window.GM.calculateCombatDensity(mockMember);
-        expect(density).toBe(100.5);
+        expect(density).toBe(92);
     });
 
     it('calculates composite rally score correctly with exact hierarchy Power > Flagship > Fleet > Tech > Crew > Champs > Glory', () => {
-        // 100M (Power) + 100.5M (Weighted Combat) = 200.5M
+        // 100M (Power) + 92.0M (Weighted Combat) = 192.0M
         const rallyScore = window.GM.calculateRallyScore(mockMember);
-        expect(rallyScore).toBe(200500000);
-        expect(window.GM.calculateWarScore(mockMember)).toBe(200500000);
+        expect(rallyScore).toBe(192000000);
+        expect(window.GM.calculateWarScore(mockMember)).toBe(192000000);
     });
 
     it('prioritizes components in exact order (Power > Flagship > Fleet > Tech > Crew > Champs > Glory)', () => {
@@ -49,13 +49,13 @@ describe('Tactical Military Metrics & Calculations', () => {
         const moreFlag = { ...base, flagship_power: base.flagship_power + 1000000 };
         expect(window.GM.calculateRallyScore(moreFlag) - scoreBase).toBe(3000000);
 
-        // +1M to Fleet adds 15M
+        // +1M to Fleet adds 2.5M
         const moreFleet = { ...base, fleet_rating: base.fleet_rating + 1000000 };
-        expect(window.GM.calculateRallyScore(moreFleet) - scoreBase).toBe(15000000);
+        expect(window.GM.calculateRallyScore(moreFleet) - scoreBase).toBe(2500000);
 
-        // +1M to Tech adds 0.9M
+        // +1M to Tech adds 2.0M
         const moreTech = { ...base, tech_power: base.tech_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreTech) - scoreBase).toBe(900000);
+        expect(window.GM.calculateRallyScore(moreTech) - scoreBase).toBe(2000000);
 
         // +1M to Crew adds 1.5M
         const moreCrew = { ...base, crew_power: base.crew_power + 1000000 };
