@@ -3111,11 +3111,12 @@
         }
     }
 
-    async function renameGuildMember(oldPseudo, newPseudo, newUid, newPower, newRole) {
+    async function renameGuildMember(oldPseudo, newPseudo, newUid, newPower, newRole, extraMetrics) {
         newPseudo = (newPseudo || '').trim();
         newUid    = (newUid || '').trim();
         var powerVal = parseInt(newPower) || 0;
         var roleVal = newRole || 'R1';
+        extraMetrics = extraMetrics || {};
 
         var pseudoErr = window.GM.validatePseudo(newPseudo);
         if (pseudoErr) { showToast(t(pseudoErr), 'error'); return false; }
@@ -3130,8 +3131,11 @@
         var uidChanged    = member && (member.uid || '') !== newUid;
         var powerChanged  = oldPower !== powerVal;
         var roleChanged   = oldRole !== roleVal;
+        var metricsChanged = extraMetrics.tech_power !== undefined || extraMetrics.champion_power !== undefined ||
+                             extraMetrics.crew_power !== undefined || extraMetrics.flagship_power !== undefined ||
+                             extraMetrics.fleet_rating !== undefined || extraMetrics.glory_score !== undefined;
 
-        if (!pseudoChanged && !uidChanged && !powerChanged && !roleChanged) return true;
+        if (!pseudoChanged && !uidChanged && !powerChanged && !roleChanged && !metricsChanged) return true;
 
         if (pseudoChanged && guildMembers.some(function (m) { return m.pseudo.toLowerCase() === newPseudo.toLowerCase(); })) {
             showToast(t('toast_duplicate_member'), 'error');
@@ -3173,9 +3177,34 @@
             if (uidChanged)    update.uid = newUid || null;
             update.overall_power = powerVal;
             update.role = roleVal;
+            if (extraMetrics.tech_power !== undefined)     update.tech_power = parseInt(extraMetrics.tech_power) || 0;
+            if (extraMetrics.champion_power !== undefined) update.champion_power = parseInt(extraMetrics.champion_power) || 0;
+            if (extraMetrics.crew_power !== undefined)     update.crew_power = parseInt(extraMetrics.crew_power) || 0;
+            if (extraMetrics.flagship_power !== undefined) update.flagship_power = parseInt(extraMetrics.flagship_power) || 0;
+            if (extraMetrics.fleet_rating !== undefined)   update.fleet_rating = parseInt(extraMetrics.fleet_rating) || 0;
+            if (extraMetrics.glory_score !== undefined)    update.glory_score = parseInt(extraMetrics.glory_score) || 0;
+            update.power_updated_at = new Date().toISOString();
+            update.metrics_updated_at = new Date().toISOString();
 
             var res = await supabase.from('guild_members').update(update).eq('pseudo', oldPseudo);
             if (res.error) throw res.error;
+
+            // Also snapshot into player_metrics_history via RPC if available
+            try {
+                await supabase.rpc('gm_upsert_player_metrics', {
+                    p_guild: window.GM.getActiveGuild(),
+                    p_pseudo: newPseudo,
+                    p_total_power: powerVal,
+                    p_tech_power: update.tech_power !== undefined ? update.tech_power : (member ? member.tech_power : 0),
+                    p_champion_power: update.champion_power !== undefined ? update.champion_power : (member ? member.champion_power : 0),
+                    p_crew_power: update.crew_power !== undefined ? update.crew_power : (member ? member.crew_power : 0),
+                    p_flagship_power: update.flagship_power !== undefined ? update.flagship_power : (member ? member.flagship_power : 0),
+                    p_fleet_rating: update.fleet_rating !== undefined ? update.fleet_rating : (member ? member.fleet_rating : 0),
+                    p_glory_score: update.glory_score !== undefined ? update.glory_score : (member ? member.glory_score : 0)
+                });
+            } catch (rpcErr) {
+                console.warn('Metrics snapshot RPC fallback', rpcErr);
+            }
 
             await fetchGuildMembers();
             showToast(t('toast_member_updated'), 'success');
@@ -3249,6 +3278,26 @@
                     var pA = parseInt(a.overall_power) || 0;
                     var pB = parseInt(b.overall_power) || 0;
                     return pA - pB;
+                } else if (sortVal === 'fleet_desc') {
+                    return (parseInt(b.fleet_rating) || 0) - (parseInt(a.fleet_rating) || 0);
+                } else if (sortVal === 'tech_desc') {
+                    return (parseInt(b.tech_power) || 0) - (parseInt(a.tech_power) || 0);
+                } else if (sortVal === 'flagship_desc') {
+                    return (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
+                } else if (sortVal === 'champ_desc') {
+                    return (parseInt(b.champion_power) || 0) - (parseInt(a.champion_power) || 0);
+                } else if (sortVal === 'crew_desc') {
+                    return (parseInt(b.crew_power) || 0) - (parseInt(a.crew_power) || 0);
+                } else if (sortVal === 'glory_desc') {
+                    return (parseInt(b.glory_score) || 0) - (parseInt(a.glory_score) || 0);
+                } else if (sortVal === 'density_desc') {
+                    var dA = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(a) : 0;
+                    var dB = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(b) : 0;
+                    return dB - dA;
+                } else if (sortVal === 'war_desc') {
+                    var wA = window.GM.calculateWarScore ? window.GM.calculateWarScore(a) : 0;
+                    var wB = window.GM.calculateWarScore ? window.GM.calculateWarScore(b) : 0;
+                    return wB - wA;
                 }
                 return 0;
             });
@@ -3394,6 +3443,21 @@
             ? '<span class="gm-portal-chip" title="Player Portal account (validated)" style="color:#34d399; border:1px solid rgba(52,211,153,0.35); background:rgba(52,211,153,0.10); border-radius:999px; padding:0.05rem 0.35rem; font-size:0.68rem; display:inline-flex; align-items:center; gap:0.2rem;"><i class="ph ph-user-check"></i> Portal</span>'
             : '';
 
+        var tacticalChips = [];
+        if (m.fleet_rating) {
+            tacticalChips.push('<span class="gm-chip" style="font-size:0.68rem; color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Fleet Rating: ' + window.GM.formatNumber(m.fleet_rating) + '">⚔️ ' + window.GM.formatPower(m.fleet_rating) + '</span>');
+        }
+        if (m.tech_power) {
+            tacticalChips.push('<span class="gm-chip" style="font-size:0.68rem; color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Tech Power: ' + window.GM.formatNumber(m.tech_power) + '">🔬 ' + window.GM.formatPower(m.tech_power) + '</span>');
+        }
+        if (m.flagship_power) {
+            tacticalChips.push('<span class="gm-chip" style="font-size:0.68rem; color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Flagship Power: ' + window.GM.formatNumber(m.flagship_power) + '">🚀 ' + window.GM.formatPower(m.flagship_power) + '</span>');
+        }
+        if (m.glory_score) {
+            tacticalChips.push('<span class="gm-chip" style="font-size:0.68rem; color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Glory Score: ' + window.GM.formatNumber(m.glory_score) + '">🏆 ' + window.GM.formatPower(m.glory_score) + '</span>');
+        }
+        var tacticalHtml = tacticalChips.length ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;">' + tacticalChips.join('') + '</div>' : '';
+
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
                     '<div class="gm-avatar gm-avatar-squircle">' + esc(initial) + '</div>' +
@@ -3405,9 +3469,12 @@
                             absenceBadge +
                             timezoneChip +
                         '</div>' +
-                        '<div class="gm-member-sub-info">' +
-                            '<span class="gm-mono gm-uid-text">UID ' + esc(uidVal) + '</span>' +
-                            tierBadge +
+                        '<div class="gm-member-sub-info" style="display:flex; flex-direction:column; gap:0.2rem; align-items:flex-start;">' +
+                            '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
+                                '<span class="gm-mono gm-uid-text">UID ' + esc(uidVal) + '</span>' +
+                                tierBadge +
+                            '</div>' +
+                            tacticalHtml +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -3768,6 +3835,35 @@
                             '</select>' +
                         '</div>' +
                     '</div>' +
+                    '<div style="background: var(--bg-dim); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">' +
+                        '<div style="font-size: 0.8rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 0.35rem;"><i class="ph ph-crosshair"></i> Tactical Military Scores</div>' +
+                        '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem;">' +
+                            '<div class="input-group">' +
+                                '<label for="edit-fleet" style="font-size:0.75rem;">⚔️ Fleet Rating</label>' +
+                                '<input type="number" id="edit-fleet" class="gm-input" value="' + esc(member.fleet_rating || '') + '" placeholder="e.g. 2000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                            '</div>' +
+                            '<div class="input-group">' +
+                                '<label for="edit-tech" style="font-size:0.75rem;">🔬 Tech Power</label>' +
+                                '<input type="number" id="edit-tech" class="gm-input" value="' + esc(member.tech_power || '') + '" placeholder="e.g. 15000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                            '</div>' +
+                            '<div class="input-group">' +
+                                '<label for="edit-flagship" style="font-size:0.75rem;">🚀 Flagship Power</label>' +
+                                '<input type="number" id="edit-flagship" class="gm-input" value="' + esc(member.flagship_power || '') + '" placeholder="e.g. 10000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                            '</div>' +
+                            '<div class="input-group">' +
+                                '<label for="edit-champ" style="font-size:0.75rem;">👑 Champions Power</label>' +
+                                '<input type="number" id="edit-champ" class="gm-input" value="' + esc(member.champion_power || '') + '" placeholder="e.g. 30000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                            '</div>' +
+                            '<div class="input-group">' +
+                                '<label for="edit-crew" style="font-size:0.75rem;">👥 Crew Power</label>' +
+                                '<input type="number" id="edit-crew" class="gm-input" value="' + esc(member.crew_power || '') + '" placeholder="e.g. 5000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                            '</div>' +
+                            '<div class="input-group">' +
+                                '<label for="edit-glory" style="font-size:0.75rem;">🏆 Glory Score</label>' +
+                                '<input type="number" id="edit-glory" class="gm-input" value="' + esc(member.glory_score || '') + '" placeholder="e.g. 50000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
                     historyHtml +
                     '<div class="confirm-actions">' +
                         '<button type="button" id="edit-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
@@ -3806,7 +3902,15 @@
             var newUid    = document.getElementById('edit-uid').value;
             var newPower  = document.getElementById('edit-power').value;
             var newRole   = document.getElementById('edit-role').value;
-            var ok = await renameGuildMember(member.pseudo, newPseudo, newUid, newPower, newRole);
+            var extraMetrics = {
+                fleet_rating:   parseInt(document.getElementById('edit-fleet').value) || 0,
+                tech_power:     parseInt(document.getElementById('edit-tech').value) || 0,
+                flagship_power: parseInt(document.getElementById('edit-flagship').value) || 0,
+                champion_power: parseInt(document.getElementById('edit-champ').value) || 0,
+                crew_power:     parseInt(document.getElementById('edit-crew').value) || 0,
+                glory_score:    parseInt(document.getElementById('edit-glory').value) || 0
+            };
+            var ok = await renameGuildMember(member.pseudo, newPseudo, newUid, newPower, newRole, extraMetrics);
             if (ok) close();
         });
     }

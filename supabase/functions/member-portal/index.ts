@@ -56,10 +56,12 @@ async function getIdentity(
   return { uid: acc.uid, pseudo: null, guild: acc.guild ?? null };
 }
 
+const MAX_ALLOWED_POWER = 1_000_000_000;
+
 async function getPlayer(admin: ReturnType<typeof createClient>, uid: string) {
   const { data, error } = await admin
     .from("guild_members")
-    .select("pseudo, guild, overall_power, timezone_offset, power_updated_at")
+    .select("pseudo, guild, overall_power, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, timezone_offset, power_updated_at, metrics_updated_at")
     .eq("uid", uid)
     .order("created_at", { ascending: false })
     .limit(1);
@@ -153,7 +155,22 @@ Deno.serve(async (req: Request) => {
     const glory = gloryRow?.score != null ? gloryRow.score : null;
 
     if (!activeSessions || activeSessions.length === 0) {
-      return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, timezone_offset: member.timezone_offset ?? null, glory, sessions: [] });
+      return json({
+        ok: true,
+        pseudo: member.pseudo,
+        guild: member.guild,
+        overall_power: member.overall_power,
+        tech_power: member.tech_power || 0,
+        champion_power: member.champion_power || 0,
+        crew_power: member.crew_power || 0,
+        flagship_power: member.flagship_power || 0,
+        fleet_rating: member.fleet_rating || 0,
+        glory_score: member.glory_score || 0,
+        metrics_updated_at: member.metrics_updated_at || member.power_updated_at || null,
+        timezone_offset: member.timezone_offset ?? null,
+        glory,
+        sessions: []
+      });
     }
 
     const sessionIds = activeSessions.map(s => s.session_id);
@@ -176,7 +193,22 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-    return json({ ok: true, pseudo: member.pseudo, guild: member.guild, overall_power: member.overall_power, timezone_offset: member.timezone_offset ?? null, glory, sessions });
+    return json({
+      ok: true,
+      pseudo: member.pseudo,
+      guild: member.guild,
+      overall_power: member.overall_power,
+      tech_power: member.tech_power || 0,
+      champion_power: member.champion_power || 0,
+      crew_power: member.crew_power || 0,
+      flagship_power: member.flagship_power || 0,
+      fleet_rating: member.fleet_rating || 0,
+      glory_score: member.glory_score || 0,
+      metrics_updated_at: member.metrics_updated_at || member.power_updated_at || null,
+      timezone_offset: member.timezone_offset ?? null,
+      glory,
+      sessions
+    });
   }
 
   if (action === "submit-scores") {
@@ -271,21 +303,92 @@ Deno.serve(async (req: Request) => {
 
   if (action === "update-power") {
     const rawPower = parseInt(payload?.power) || 0;
-    const MAX_POWER = 100_000_000;
-    const power = Math.min(Math.max(0, rawPower), MAX_POWER);
+    const power = Math.min(Math.max(0, rawPower), MAX_ALLOWED_POWER);
 
-    const { error: uErr } = await admin
-      .from("guild_members")
-      .update({ overall_power: power, power_updated_at: new Date().toISOString() })
-      .eq("uid", uid);
+    const member = await getPlayer(admin, uid);
+    if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
-    if (uErr) {
-      logger.error("Failed to update player power", uErr, { uid, power });
-      return json({ ok: false, error: "update_failed", message: uErr.message }, 200);
+    const { data: rpcRes, error: rpcErr } = await admin.rpc("gm_upsert_player_metrics", {
+      p_guild: member.guild,
+      p_pseudo: member.pseudo,
+      p_total_power: power
+    });
+
+    if (rpcErr) {
+      logger.error("Failed to update player power via rpc", rpcErr, { uid, power });
+      // Fallback direct update
+      const { error: uErr } = await admin
+        .from("guild_members")
+        .update({ overall_power: power, power_updated_at: new Date().toISOString() })
+        .eq("uid", uid);
+      if (uErr) return json({ ok: false, error: "update_failed", message: uErr.message }, 200);
     }
 
     logger.info("Player updated power", { uid, power });
-    return json({ ok: true });
+    return json({ ok: true, power });
+  }
+
+  if (action === "update-metrics") {
+    const member = await getPlayer(admin, uid);
+    if (!member) return json({ ok: false, error: "player_not_found" }, 200);
+
+    function safeVal(val: unknown, fallback: number = 0): number {
+      if (val === null || val === undefined) return fallback;
+      const num = typeof val === "number" ? val : parseInt(String(val).replace(/[^0-9]/g, ""), 10);
+      if (isNaN(num) || num < 0) return fallback;
+      return Math.min(Math.round(num), MAX_ALLOWED_POWER);
+    }
+
+    const totalPower    = payload?.total_power !== undefined ? safeVal(payload.total_power) : (payload?.power !== undefined ? safeVal(payload.power) : member.overall_power);
+    const techPower     = payload?.tech_power !== undefined ? safeVal(payload.tech_power) : (member.tech_power || 0);
+    const championPower = payload?.champion_power !== undefined ? safeVal(payload.champion_power) : (member.champion_power || 0);
+    const crewPower     = payload?.crew_power !== undefined ? safeVal(payload.crew_power) : (member.crew_power || 0);
+    const flagshipPower = payload?.flagship_power !== undefined ? safeVal(payload.flagship_power) : (member.flagship_power || 0);
+    const fleetRating   = payload?.fleet_rating !== undefined ? safeVal(payload.fleet_rating) : (member.fleet_rating || 0);
+    const gloryScore    = payload?.glory_score !== undefined ? safeVal(payload.glory_score) : (member.glory_score || 0);
+
+    const { data: rpcRes, error: rpcErr } = await admin.rpc("gm_upsert_player_metrics", {
+      p_guild: member.guild,
+      p_pseudo: member.pseudo,
+      p_total_power: totalPower,
+      p_tech_power: techPower,
+      p_champion_power: championPower,
+      p_crew_power: crewPower,
+      p_flagship_power: flagshipPower,
+      p_fleet_rating: fleetRating,
+      p_glory_score: gloryScore,
+    });
+
+    if (rpcErr) {
+      logger.error("Failed to update player metrics via rpc", rpcErr, { uid, pseudo: member.pseudo });
+      return json({ ok: false, error: "update_failed", message: rpcErr.message }, 200);
+    }
+
+    logger.info("Player updated military metrics", { uid, pseudo: member.pseudo, totalPower, fleetRating });
+    return json({
+      ok: true,
+      total_power: totalPower,
+      tech_power: techPower,
+      champion_power: championPower,
+      crew_power: crewPower,
+      flagship_power: flagshipPower,
+      fleet_rating: fleetRating,
+      glory_score: gloryScore,
+    });
+  }
+
+  if (action === "get-metrics-history") {
+    const limit = parseInt(payload?.limit, 10) || 12;
+    const { data, error } = await admin.rpc("gm_get_player_metrics_history", {
+      p_uid: uid,
+      p_limit: limit,
+    });
+    if (error) {
+      logger.error("Failed gm_get_player_metrics_history", error, { uid, limit });
+      return json({ ok: false, error: "db_error", message: error.message }, 200);
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; history?: unknown[] } | null;
+    return json(row || { ok: true, history: [] });
   }
 
   if (action === "update-glory") {

@@ -73,6 +73,22 @@ export class PortalService {
     return this.invokeAction('update-power', { power: overallPower });
   }
 
+  public static async updateMetrics(metrics: {
+    total_power?: number;
+    tech_power?: number;
+    champion_power?: number;
+    crew_power?: number;
+    flagship_power?: number;
+    fleet_rating?: number;
+    glory_score?: number;
+  }): Promise<PortalResponse> {
+    return this.invokeAction('update-metrics', metrics);
+  }
+
+  public static async getMetricsHistory(limit: number = 12): Promise<PortalResponse> {
+    return this.invokeAction('get-metrics-history', { limit });
+  }
+
   public static async declareAbsence(
     startDate: string,
     endDate: string,

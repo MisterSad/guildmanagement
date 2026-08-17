@@ -16,9 +16,31 @@ export interface GuildMember {
   pseudo: string;
   guild: string;
   overall_power: number;
+  tech_power?: number;
+  champion_power?: number;
+  crew_power?: number;
+  flagship_power?: number;
+  fleet_rating?: number;
+  glory_score?: number;
+  metrics_updated_at?: string | null;
   timezone_offset?: number | null;
   power_updated_at?: string | null;
   role?: string | null;
+  created_at?: string;
+}
+
+export interface PlayerMetricsHistory {
+  id?: number;
+  guild: string;
+  pseudo: string;
+  week_start: string;
+  total_power: number;
+  tech_power: number;
+  champion_power: number;
+  crew_power: number;
+  flagship_power: number;
+  fleet_rating: number;
+  glory_score: number;
   created_at?: string;
 }
 

@@ -2,6 +2,32 @@
 
 ## New
 
+- **7-Score Tactical Military Metrics, Combat Density & Player Force Breakdown Engine (v119.0)**:
+  - **7 Native Military Metrics Integration**: Extended player schema across all tenants and the Player Portal with the 7 core numeric metrics of *Foundation Galactic Frontier*:
+    - 🌐 **Overall Total Power**: Macro account strength.
+    - ⚔️ **Strongest Fleet Rating**: First march strike rating and rally leader qualification.
+    - 🔬 **Technology Power**: Research advancement and alliance passives.
+    - 🚀 **Flagship Power**: Flagship weapon and hull combat strength.
+    - 👑 **Champions Total Power**: Hero investment and battle leadership.
+    - 👥 **Crew Total Power**: Foundation officers (Salvor Hardin, Raych Seldon, Phara, Poly...).
+    - 🏆 **Glory Score**: Lifetime PvP and battle activity.
+  - **Derived Mathematical KPIs & Instant Ratios**:
+    - **Combat Density Ratio (%)**: Percentage of permanent combat power vs total account power.
+    - **Volatile Troop Power**: Isolates disposable ship power from permanent tech/hero investments.
+    - **Combativity Ratio (x)**: Glory-to-Power aggressiveness and wartime ROI.
+    - **Composite War Score**: Multi-criteria weighted formula for objective battle roster selection.
+  - **Zero-Trust Player Portal Experience**:
+    - **Military Force Breakdown**: 6 real-time stat cards with Density and Combativity pills in "My Progress".
+    - **Multi-Metric Military Editor**: 1-click update in "My Info" with live KPI recalculation on input and defensive bounds up to 1,000,000,000 (1B).
+  - **Admin Command Center Upgrades**:
+    - **Tactical Member Sorting**: Instant sorting by Fleet Rating, Tech Power, Flagship, Champions, Crew, Glory, Density, and War Score.
+    - **Micro Combat Badges**: Color-coded tactical badges on member cards in the guild roster.
+    - **Full Military Modal**: 7-score edit fields in the admin member modal.
+  - **PostgreSQL & Edge Functions**:
+    - Canonical migration `20260817203000_player_scores_and_metrics_tracking.sql` with `player_metrics_history` table, RLS, and `gm_upsert_player_metrics` / `gm_get_player_metrics_history` RPCs.
+    - Updated `member-portal` edge function with `update-metrics` and `get-metrics-history`.
+  - **Quality Gate**: **249/249 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Inter-Server Migration Scouting & Normalized 0–100 Combat Scoring Engine (v118.0)**:
   - **Unified 0–100 Normalized Scoring Hierarchy**: Standardized all ranking metrics on an intuitive 0 to 100% scale for instant evaluation across servers:
     - **Draft Master Score (0–100%)**: Global composite index synthesizing attendance, combat capability, and Glory dedication.

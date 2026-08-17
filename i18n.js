@@ -68,6 +68,22 @@
             toast_password_reset_success: 'Password reset successfully',
             search_placeholder:    'Search by username or UID...',
 
+            /* ── Tactical Military Scores ──────── */
+            sort_fleet_desc:       'Sort: Fleet Rating (High-Low)',
+            sort_tech_desc:        'Sort: Tech Power (High-Low)',
+            sort_flagship_desc:    'Sort: Flagship (High-Low)',
+            sort_glory_desc:       'Sort: Glory (High-Low)',
+            sort_war_desc:         'Sort: War Score (High-Low)',
+            label_tech_power:      'Tech Power',
+            label_champion_power:  'Champion Power',
+            label_crew_power:      'Crew Power',
+            label_flagship_power:  'Flagship Power',
+            label_fleet_rating:    'Fleet Rating',
+            label_glory_score:     'Glory Score',
+            label_density_index:   'Combat Density',
+            label_residual_power:  'Volatile Troop Power',
+            label_combativity:     'Combativity Ratio',
+
             /* ── Member view ───────────────────── */
             member_home_tab:       'Home',
             member_home_title:     'Member Space',

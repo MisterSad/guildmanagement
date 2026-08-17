@@ -105,7 +105,14 @@
         portalState.player = {
             pseudo: profile.pseudo,
             guild: profile.guild,
-            overall_power: profile.overall_power,
+            overall_power: profile.overall_power || 0,
+            tech_power: profile.tech_power || 0,
+            champion_power: profile.champion_power || 0,
+            crew_power: profile.crew_power || 0,
+            flagship_power: profile.flagship_power || 0,
+            fleet_rating: profile.fleet_rating || 0,
+            glory_score: profile.glory_score || (profile.glory != null ? profile.glory : 0),
+            metrics_updated_at: profile.metrics_updated_at || null,
             timezone_offset: profile.timezone_offset != null ? profile.timezone_offset : null,
             glory: profile.glory != null ? profile.glory : null
         };
@@ -392,6 +399,52 @@
                 '</div>';
         }
 
+        var player = portalState.player || {};
+        var density = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(player) : 0;
+        var residual = window.GM.calculateResidualPower ? window.GM.calculateResidualPower(player) : 0;
+        var combativity = window.GM.calculateCombativity ? window.GM.calculateCombativity(player) : 0;
+
+        var tacticalBreakdownHtml =
+            '<div class="portal-card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(20,20,22,0.95) 0%, rgba(30,30,36,0.95) 100%); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); padding: 1.25rem;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">' +
+                    '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                        '<span class="material-symbols-rounded" style="color:var(--accent); font-size:1.5rem;">swords</span>' +
+                        '<span style="font-weight:700; font-size:1.05rem; color:var(--fg);">Military Force Breakdown</span>' +
+                    '</div>' +
+                    '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
+                        '<span class="gm-chip" style="font-size:0.75rem; color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-shield-check"></i> Density: ' + density + '%</span>' +
+                        '<span class="gm-chip" style="font-size:0.75rem; color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3);"><i class="ph ph-crosshair"></i> Combativity: ' + combativity + 'x</span>' +
+                        '<span class="gm-chip" style="font-size:0.75rem; color:#fb923c; background:rgba(251,146,60,0.12); border:1px solid rgba(251,146,60,0.3);"><i class="ph ph-barricade"></i> Volatile: ' + esc(window.GM.formatPower(residual)) + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.75rem;">' +
+                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
+                        '<div class="portal-stat-value" style="color:#60a5fa; font-size:1.15rem;">' + esc(window.GM.formatPower(player.fleet_rating)) + '</div>' +
+                        '<div class="portal-stat-label" style="font-size:0.75rem;">⚔️ Fleet Rating</div>' +
+                    '</div>' +
+                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
+                        '<div class="portal-stat-value" style="color:#a78bfa; font-size:1.15rem;">' + esc(window.GM.formatPower(player.tech_power)) + '</div>' +
+                        '<div class="portal-stat-label" style="font-size:0.75rem;">🔬 Tech Power</div>' +
+                    '</div>' +
+                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
+                        '<div class="portal-stat-value" style="color:#fbbf24; font-size:1.15rem;">' + esc(window.GM.formatPower(player.flagship_power)) + '</div>' +
+                        '<div class="portal-stat-label" style="font-size:0.75rem;">🚀 Flagship Power</div>' +
+                    '</div>' +
+                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
+                        '<div class="portal-stat-value" style="color:#f472b6; font-size:1.15rem;">' + esc(window.GM.formatPower(player.champion_power)) + '</div>' +
+                        '<div class="portal-stat-label" style="font-size:0.75rem;">👑 Champions Power</div>' +
+                    '</div>' +
+                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
+                        '<div class="portal-stat-value" style="color:#38bdf8; font-size:1.15rem;">' + esc(window.GM.formatPower(player.crew_power)) + '</div>' +
+                        '<div class="portal-stat-label" style="font-size:0.75rem;">👥 Crew Power</div>' +
+                    '</div>' +
+                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
+                        '<div class="portal-stat-value" style="color:#34d399; font-size:1.15rem;">' + esc(window.GM.formatPower(player.glory_score || player.glory)) + '</div>' +
+                        '<div class="portal-stat-label" style="font-size:0.75rem;">🏆 Glory Score</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
         panel.innerHTML =
             '<header class="gm-page-header">' +
                 '<div>' +
@@ -402,6 +455,7 @@
             '</header>' +
             kpiHtml +
             tilesHtml +
+            tacticalBreakdownHtml +
             tilesHtml2 +
             '<div class="portal-charts-grid">' + chartsHtml + '</div>';
 
@@ -1006,27 +1060,57 @@
             '<header class="gm-page-header">' +
                 '<div>' +
                     '<h1 class="gm-page-title">My Info</h1>' +
-                    '<p class="gm-page-subtitle">Manage your power, glory, timezone and guild transfer requests</p>' +
+                    '<p class="gm-page-subtitle">Manage your power, military metrics, glory, timezone and guild transfer requests</p>' +
                 '</div>' +
             '</header>' +
             '<div class="portal-settings-grid">' +
 
-                '<div class="portal-card">' +
-                    '<div class="portal-card-title"><i class="ph ph-sword"></i> My Power<button class="gm-help-btn" data-help-id="help-portal-power" aria-label="Help: My Power"><i class="ph ph-info"></i></button></div>' +
-                    '<div class="portal-row">' +
-                        '<input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 80000000" value="' + esc(portalState.player.overall_power || '') + '">' +
-                        '<button type="button" id="portal-update-power-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
+                '<div class="portal-card" style="grid-column: 1 / -1;">' +
+                    '<div class="portal-card-title" style="display:flex; justify-content:space-between; align-items:center;">' +
+                        '<span><i class="ph ph-shield-chevron"></i> My Military Force Metrics</span>' +
+                        '<button class="gm-help-btn" data-help-id="help-portal-power" aria-label="Help: My Military Metrics"><i class="ph ph-info"></i></button>' +
                     '</div>' +
-                '</div>' +
-
-                '<div class="portal-card">' +
-                    '<div class="portal-card-title"><i class="ph ph-trophy"></i> My Glory<button class="gm-help-btn" data-help-id="help-portal-events" aria-label="Help: My Glory"><i class="ph ph-info"></i></button></div>' +
-                    '<div class="portal-row">' +
-                        '<input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000" value="' + esc(portalState.player.glory != null ? portalState.player.glory : '') + '">' +
-                        '<button type="button" id="portal-update-glory-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
+                    '<div class="portal-settings-sub" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">' +
+                        'Keep your combat metrics up to date to help your officers build optimal squads for SvS, GvG, and Shadowfront.' +
                     '</div>' +
-                    '<div class="portal-msg" id="portal-glory-msg"></div>' +
-                    '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Your weekly Glory score, used by officers for tracking and rewards.</div>' +
+                    '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">' +
+                        '<div class="portal-field">' +
+                            '<label for="portal-user-power" style="font-size:0.8rem; font-weight:600; color:var(--fg); margin-bottom:0.25rem; display:block;">Overall Total Power</label>' +
+                            '<input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 100000000" value="' + esc(portalState.player.overall_power || '') + '">' +
+                        '</div>' +
+                        '<div class="portal-field">' +
+                            '<label for="portal-user-fleet" style="font-size:0.8rem; font-weight:600; color:#60a5fa; margin-bottom:0.25rem; display:block;">⚔️ Fleet Rating (March 1)</label>' +
+                            '<input type="text" id="portal-user-fleet" class="gm-input" placeholder="e.g. 2000000" value="' + esc(portalState.player.fleet_rating || '') + '">' +
+                        '</div>' +
+                        '<div class="portal-field">' +
+                            '<label for="portal-user-tech" style="font-size:0.8rem; font-weight:600; color:#a78bfa; margin-bottom:0.25rem; display:block;">🔬 Technology Power</label>' +
+                            '<input type="text" id="portal-user-tech" class="gm-input" placeholder="e.g. 15000000" value="' + esc(portalState.player.tech_power || '') + '">' +
+                        '</div>' +
+                        '<div class="portal-field">' +
+                            '<label for="portal-user-flagship" style="font-size:0.8rem; font-weight:600; color:#fbbf24; margin-bottom:0.25rem; display:block;">🚀 Flagship Power</label>' +
+                            '<input type="text" id="portal-user-flagship" class="gm-input" placeholder="e.g. 10000000" value="' + esc(portalState.player.flagship_power || '') + '">' +
+                        '</div>' +
+                        '<div class="portal-field">' +
+                            '<label for="portal-user-champion" style="font-size:0.8rem; font-weight:600; color:#f472b6; margin-bottom:0.25rem; display:block;">👑 Champions Total Power</label>' +
+                            '<input type="text" id="portal-user-champion" class="gm-input" placeholder="e.g. 30000000" value="' + esc(portalState.player.champion_power || '') + '">' +
+                        '</div>' +
+                        '<div class="portal-field">' +
+                            '<label for="portal-user-crew" style="font-size:0.8rem; font-weight:600; color:#38bdf8; margin-bottom:0.25rem; display:block;">👥 Crew Total Power</label>' +
+                            '<input type="text" id="portal-user-crew" class="gm-input" placeholder="e.g. 5000000" value="' + esc(portalState.player.crew_power || '') + '">' +
+                        '</div>' +
+                        '<div class="portal-field">' +
+                            '<label for="portal-user-glory" style="font-size:0.8rem; font-weight:600; color:#34d399; margin-bottom:0.25rem; display:block;">🏆 Glory Score</label>' +
+                            '<input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000000" value="' + esc(portalState.player.glory_score || portalState.player.glory || '') + '">' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">' +
+                        '<div id="portal-metrics-summary" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
+                            '<span class="gm-chip" id="portal-density-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size:0.75rem;"><i class="ph ph-shield-check"></i> Density: ' + (window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(portalState.player) : 0) + '%</span>' +
+                            '<span class="gm-chip" id="portal-combativity-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size:0.75rem;"><i class="ph ph-crosshair"></i> Combativity: ' + (window.GM.calculateCombativity ? window.GM.calculateCombativity(portalState.player) : 0) + 'x</span>' +
+                        '</div>' +
+                        '<button type="button" id="portal-update-metrics-btn" class="gm-btn gm-btn-primary"><i class="ph ph-floppy-disk"></i><span>Save Military Metrics</span></button>' +
+                    '</div>' +
+                    '<div class="portal-msg" id="portal-metrics-msg"></div>' +
                 '</div>' +
 
                 '<div class="portal-card">' +
@@ -1064,70 +1148,99 @@
 
             '</div>';
 
-        // Power update
-        var powerInput = document.getElementById('portal-user-power');
-        var powerBtn = document.getElementById('portal-update-power-btn');
-        if (powerInput) window.GM.attachNumberFormatter(powerInput);
+        // Military Metrics inputs auto-formatter
+        var powerInput    = document.getElementById('portal-user-power');
+        var fleetInput    = document.getElementById('portal-user-fleet');
+        var techInput     = document.getElementById('portal-user-tech');
+        var flagshipInput = document.getElementById('portal-user-flagship');
+        var champInput    = document.getElementById('portal-user-champion');
+        var crewInput     = document.getElementById('portal-user-crew');
+        var gloryInput    = document.getElementById('portal-user-glory');
+        var metricsBtn    = document.getElementById('portal-update-metrics-btn');
+        var metricsMsg    = document.getElementById('portal-metrics-msg');
 
-        if (powerBtn) powerBtn.addEventListener('click', async function () {
-            var powerVal = powerInput ? parseInt(String(powerInput.value).replace(/[^0-9]/g, ''), 10) : 0;
-            if (isNaN(powerVal) || powerVal < 0) {
-                window.GM.showToast('Please enter a valid power number.', 'error');
-                return;
-            }
-            powerBtn.disabled = true;
-            var span = powerBtn.querySelector('span');
-            var origText = span ? span.textContent : '';
-            if (span) span.textContent = 'Saving...';
-            try {
-                var res = await invoke('update-power', { power: powerVal });
-                if (!res.ok) throw new Error(res.error || 'update_failed');
-                portalState.player.overall_power = powerVal;
-                var headerPower = document.querySelector('.portal-header-power-value');
-                if (headerPower) headerPower.textContent = window.GM.formatPower(powerVal);
-                window.GM.showToast('Your combat power has been updated!', 'success');
-            } catch (err) {
-                window.GM.showToast('Failed to update combat power: ' + err.message, 'error');
-            } finally {
-                powerBtn.disabled = false;
-                if (span) span.textContent = origText;
+        [powerInput, fleetInput, techInput, flagshipInput, champInput, crewInput, gloryInput].forEach(function (inp) {
+            if (inp) {
+                window.GM.attachNumberFormatter(inp);
+                inp.addEventListener('input', function () {
+                    var curObj = {
+                        overall_power: parseInt(String(powerInput.value).replace(/[^0-9]/g, ''), 10) || 0,
+                        fleet_rating:   parseInt(String(fleetInput.value).replace(/[^0-9]/g, ''), 10) || 0,
+                        tech_power:     parseInt(String(techInput.value).replace(/[^0-9]/g, ''), 10) || 0,
+                        flagship_power: parseInt(String(flagshipInput.value).replace(/[^0-9]/g, ''), 10) || 0,
+                        champion_power: parseInt(String(champInput.value).replace(/[^0-9]/g, ''), 10) || 0,
+                        crew_power:     parseInt(String(crewInput.value).replace(/[^0-9]/g, ''), 10) || 0,
+                        glory_score:    parseInt(String(gloryInput.value).replace(/[^0-9]/g, ''), 10) || 0
+                    };
+                    var d = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(curObj) : 0;
+                    var c = window.GM.calculateCombativity ? window.GM.calculateCombativity(curObj) : 0;
+                    var dChip = document.getElementById('portal-density-chip');
+                    var cChip = document.getElementById('portal-combativity-chip');
+                    if (dChip) dChip.innerHTML = '<i class="ph ph-shield-check"></i> Density: ' + d + '%';
+                    if (cChip) cChip.innerHTML = '<i class="ph ph-crosshair"></i> Combativity: ' + c + 'x';
+                });
             }
         });
 
-        // Glory update
-        var gloryInput = document.getElementById('portal-user-glory');
-        var gloryBtn = document.getElementById('portal-update-glory-btn');
-        var gloryMsg = document.getElementById('portal-glory-msg');
-        if (gloryInput) window.GM.attachNumberFormatter(gloryInput);
+        if (metricsBtn) metricsBtn.addEventListener('click', async function () {
+            var totalVal    = powerInput    ? parseInt(String(powerInput.value).replace(/[^0-9]/g, ''), 10) || 0 : 0;
+            var fleetVal    = fleetInput    ? parseInt(String(fleetInput.value).replace(/[^0-9]/g, ''), 10) || 0 : 0;
+            var techVal     = techInput     ? parseInt(String(techInput.value).replace(/[^0-9]/g, ''), 10) || 0 : 0;
+            var flagshipVal = flagshipInput ? parseInt(String(flagshipInput.value).replace(/[^0-9]/g, ''), 10) || 0 : 0;
+            var champVal    = champInput    ? parseInt(String(champInput.value).replace(/[^0-9]/g, ''), 10) || 0 : 0;
+            var crewVal     = crewInput     ? parseInt(String(crewInput.value).replace(/[^0-9]/g, ''), 10) || 0 : 0;
+            var gloryVal    = gloryInput    ? parseInt(String(gloryInput.value).replace(/[^0-9]/g, ''), 10) || 0 : 0;
 
-        if (gloryBtn) gloryBtn.addEventListener('click', async function () {
-            var gloryVal = gloryInput ? parseInt(String(gloryInput.value).replace(/[^0-9]/g, ''), 10) : 0;
-            if (isNaN(gloryVal) || gloryVal < 0) {
-                window.GM.showToast('Please enter a valid Glory number.', 'error');
+            if (totalVal < 0) {
+                window.GM.showToast('Please enter a valid power number.', 'error');
                 return;
             }
-            gloryBtn.disabled = true;
-            var span = gloryBtn.querySelector('span');
+
+            metricsBtn.disabled = true;
+            var span = metricsBtn.querySelector('span');
             var origText = span ? span.textContent : '';
             if (span) span.textContent = 'Saving...';
+
             try {
-                var res = await invoke('update-glory', { glory: gloryVal });
+                var res = await invoke('update-metrics', {
+                    total_power: totalVal,
+                    fleet_rating: fleetVal,
+                    tech_power: techVal,
+                    flagship_power: flagshipVal,
+                    champion_power: champVal,
+                    crew_power: crewVal,
+                    glory_score: gloryVal
+                });
+
                 if (!res.ok) throw new Error(res.error || 'update_failed');
-                portalState.player.glory = gloryVal;
-                if (gloryMsg) {
-                    gloryMsg.textContent = 'Glory saved. Your officers can now see your score.';
-                    gloryMsg.style.color = 'var(--success)';
-                    gloryMsg.style.display = 'block';
+
+                portalState.player.overall_power  = totalVal;
+                portalState.player.fleet_rating   = fleetVal;
+                portalState.player.tech_power     = techVal;
+                portalState.player.flagship_power = flagshipVal;
+                portalState.player.champion_power = champVal;
+                portalState.player.crew_power     = crewVal;
+                portalState.player.glory_score    = gloryVal;
+                portalState.player.glory          = gloryVal;
+
+                var headerPower = document.querySelector('.portal-header-power-value');
+                if (headerPower) headerPower.textContent = window.GM.formatPower(totalVal);
+
+                if (metricsMsg) {
+                    metricsMsg.textContent = 'Military force metrics saved successfully!';
+                    metricsMsg.style.color = 'var(--success)';
+                    metricsMsg.style.display = 'block';
                 }
-                window.GM.showToast('Your Glory has been updated!', 'success');
+                window.GM.showToast('Your military force metrics have been updated!', 'success');
             } catch (err) {
-                if (gloryMsg) {
-                    gloryMsg.textContent = 'Failed to save: ' + err.message;
-                    gloryMsg.style.color = 'var(--danger)';
-                    gloryMsg.style.display = 'block';
+                if (metricsMsg) {
+                    metricsMsg.textContent = 'Failed to save: ' + err.message;
+                    metricsMsg.style.color = 'var(--danger)';
+                    metricsMsg.style.display = 'block';
                 }
+                window.GM.showToast('Failed to update metrics: ' + err.message, 'error');
             } finally {
-                gloryBtn.disabled = false;
+                metricsBtn.disabled = false;
                 if (span) span.textContent = origText;
             }
         });
