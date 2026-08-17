@@ -171,5 +171,61 @@ describe('Tactical Military Metrics & Calculations', () => {
         const totalGlory = reconciled.reduce((sum, m) => sum + (m.glory_score || 0), 0);
         expect(totalGlory).toBe(480000000);
     });
+
+    it('assigns top 16 players as Rally Leaders and remaining as Rally Joiners accurately', () => {
+        expect(window.GM.getRallyRoleMeta(1, 100000000)).toEqual({
+            isLeader: true,
+            rank: 1,
+            label: 'Rally Leader #1',
+            type: 'leader'
+        });
+
+        expect(window.GM.getRallyRoleMeta(16, 50000000)).toEqual({
+            isLeader: true,
+            rank: 16,
+            label: 'Rally Leader #16',
+            type: 'leader'
+        });
+
+        expect(window.GM.getRallyRoleMeta(17, 45000000)).toEqual({
+            isLeader: false,
+            rank: 17,
+            label: 'Rally Joiner',
+            type: 'joiner'
+        });
+
+        expect(window.GM.getRallyRoleMeta(1, 0)).toEqual({
+            isLeader: false,
+            rank: 1,
+            label: 'Rally Joiner',
+            type: 'joiner'
+        });
+
+        // 20 dummy members
+        const roster = Array.from({ length: 20 }, (_, i) => ({
+            pseudo: `Player_${i + 1}`,
+            overall_power: (20 - i) * 10000000,
+            flagship_power: (20 - i) * 1000000
+        }));
+
+        const rallyRankedList = roster.slice().sort((a, b) => {
+            return window.GM.calculateRallyScore(b) - window.GM.calculateRallyScore(a);
+        });
+
+        const rallyRankMap = {};
+        rallyRankedList.forEach((m, idx) => {
+            rallyRankMap[m.pseudo] = window.GM.getRallyRoleMeta(idx + 1, window.GM.calculateRallyScore(m));
+        });
+
+        expect(rallyRankMap['Player_1'].isLeader).toBe(true);
+        expect(rallyRankMap['Player_1'].rank).toBe(1);
+        expect(rallyRankMap['Player_16'].isLeader).toBe(true);
+        expect(rallyRankMap['Player_16'].rank).toBe(16);
+        expect(rallyRankMap['Player_17'].isLeader).toBe(false);
+        expect(rallyRankMap['Player_17'].label).toBe('Rally Joiner');
+        expect(rallyRankMap['Player_20'].isLeader).toBe(false);
+        expect(rallyRankMap['Player_20'].label).toBe('Rally Joiner');
+    });
 });
+
 

@@ -3816,6 +3816,37 @@
                 return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
             }
 
+            // Determine Rally Role assignments based on Rally Readiness across the guild roster
+            var rallyRankedList = list.slice().sort(function (a, b) {
+                var rA = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(a) : 0;
+                var rB = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(b) : 0;
+                if (rB !== rA) return rB - rA;
+                var pB = (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
+                if (pB !== 0) return pB;
+                return (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
+            });
+
+            var rallyRankMap = {};
+            var leaderCount = 0;
+            rallyRankedList.forEach(function (m, idx) {
+                var pKey = (m.pseudo || '').toLowerCase();
+                var rScore = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(m) : 0;
+                if (idx < 16 && rScore > 0) {
+                    leaderCount++;
+                    rallyRankMap[pKey] = {
+                        isLeader: true,
+                        rank: idx + 1,
+                        label: 'Leader #' + (idx + 1)
+                    };
+                } else {
+                    rallyRankMap[pKey] = {
+                        isLeader: false,
+                        rank: idx + 1,
+                        label: 'Rally Joiner'
+                    };
+                }
+            });
+
             var totalFleet = 0;
             var totalTech = 0;
             var totalFlagship = 0;
@@ -3832,9 +3863,10 @@
 
             var headerSummary =
                 '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding:0.85rem 1rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg);">' +
-                    '<div style="font-weight:700; font-size:0.95rem; color:var(--fg); display:flex; align-items:center; gap:0.4rem;">' +
+                    '<div style="font-weight:700; font-size:0.95rem; color:var(--fg); display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
                         '<span class="material-symbols-rounded" style="color:var(--accent);">shield</span> Tactical Force Matrix (' + sorted.length + ' players)' +
-                        '<span class="gm-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size:0.72rem; margin-left:0.35rem;" title="Weighted: Power > Flagship > Fleet > Tech > Crew > Champs > Glory"><i class="ph ph-lightning"></i> Sorted by Rally Readiness</span>' +
+                        '<span class="gm-chip" style="color:#facc15; background:rgba(234,179,8,0.12); border:1px solid rgba(234,179,8,0.3); font-size:0.72rem; margin-left:0.35rem;" title="16 Top Rally Leaders automatically assigned"><i class="ph ph-crown-simple"></i> ' + leaderCount + ' Rally Leaders</span>' +
+                        '<span class="gm-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size:0.72rem;"><i class="ph ph-lightning"></i> Sorted by Density</span>' +
                     '</div>' +
                     '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">' +
                         '<span class="gm-chip" style="color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); font-size:0.75rem;"><i class="ph ph-swords"></i> Guild Fleet: ' + window.GM.formatPower(totalFleet) + '</span>' +
@@ -3843,7 +3875,7 @@
                     '</div>' +
                 '</div>';
 
-            var rowsHtml = sorted.map(function (m, idx) {
+            var rowsHtml = sorted.map(function (m) {
                 var initial = window.GM.avatarInit(m.pseudo);
                 var uidVal = m.uid || '-';
                 var roleVal = m.role || 'R1';
@@ -3851,15 +3883,19 @@
                 var density = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(m) : 0;
                 var rallyScore = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(m) : 0;
 
-                var rallyBadge = '';
-                if (sortVal === 'density_desc' && rallyScore > 0) {
-                    if (idx === 0) {
-                        rallyBadge = '<span class="gm-chip" style="background:rgba(234,179,8,0.18); color:#facc15; font-size:0.68rem; font-weight:700; border:1px solid rgba(234,179,8,0.35); padding:0.05rem 0.35rem; margin-left:0.35rem;" title="Primary Rally Leader"><i class="ph ph-crown-simple"></i> Rally 1</span>';
-                    } else if (idx === 1) {
-                        rallyBadge = '<span class="gm-chip" style="background:rgba(148,163,184,0.18); color:#cbd5e1; font-size:0.68rem; font-weight:700; border:1px solid rgba(148,163,184,0.35); padding:0.05rem 0.35rem; margin-left:0.35rem;" title="Secondary Rally Leader">Rally 2</span>';
-                    } else if (idx === 2) {
-                        rallyBadge = '<span class="gm-chip" style="background:rgba(217,119,6,0.18); color:#fb923c; font-size:0.68rem; font-weight:700; border:1px solid rgba(217,119,6,0.35); padding:0.05rem 0.35rem; margin-left:0.35rem;" title="Tertiary Rally Leader">Rally 3</span>';
+                var rallyInfo = rallyRankMap[(m.pseudo || '').toLowerCase()] || { isLeader: false, rank: 999, label: 'Rally Joiner' };
+                var rallyRoleChip = '';
+
+                if (rallyInfo.isLeader) {
+                    if (rallyInfo.rank <= 4) {
+                        rallyRoleChip = '<span class="gm-chip" style="background:rgba(234,179,8,0.18); color:#facc15; font-size:0.72rem; font-weight:700; border:1px solid rgba(234,179,8,0.35); padding:0.12rem 0.5rem; gap:0.25rem;" title="Top Tier Rally Leader #' + rallyInfo.rank + '"><i class="ph ph-crown-simple"></i> Leader #' + rallyInfo.rank + '</span>';
+                    } else if (rallyInfo.rank <= 8) {
+                        rallyRoleChip = '<span class="gm-chip" style="background:rgba(168,85,247,0.18); color:#c084fc; font-size:0.72rem; font-weight:700; border:1px solid rgba(168,85,247,0.35); padding:0.12rem 0.5rem; gap:0.25rem;" title="Elite Rally Leader #' + rallyInfo.rank + '"><i class="ph ph-shield-star"></i> Leader #' + rallyInfo.rank + '</span>';
+                    } else {
+                        rallyRoleChip = '<span class="gm-chip" style="background:rgba(59,130,246,0.18); color:#60a5fa; font-size:0.72rem; font-weight:700; border:1px solid rgba(59,130,246,0.35); padding:0.12rem 0.5rem; gap:0.25rem;" title="Rally Leader #' + rallyInfo.rank + '"><i class="ph ph-target"></i> Leader #' + rallyInfo.rank + '</span>';
                     }
+                } else {
+                    rallyRoleChip = '<span class="gm-chip" style="background:rgba(148,163,184,0.12); color:var(--text-muted); font-size:0.7rem; border:1px solid var(--border-soft); padding:0.1rem 0.45rem; gap:0.25rem;" title="Rally Reinforcement / Joiner"><i class="ph ph-users"></i> Rally Joiner</span>';
                 }
 
                 return '<tr style="border-bottom:1px solid var(--border-soft); transition:background 0.15s ease;">' +
@@ -3867,13 +3903,12 @@
                         '<div style="display:flex; align-items:center; gap:0.5rem;">' +
                             '<div class="gm-avatar gm-avatar-squircle" style="width:28px; height:28px; font-size:0.75rem;">' + esc(initial) + '</div>' +
                             '<div>' +
-                                '<div style="font-weight:600; font-size:0.88rem; color:var(--fg); display:flex; align-items:center; flex-wrap:wrap;">' +
-                                    esc(m.pseudo) + rallyBadge +
-                                '</div>' +
+                                '<div style="font-weight:600; font-size:0.88rem; color:var(--fg);">' + esc(m.pseudo) + '</div>' +
                                 '<div style="font-size:0.7rem; color:var(--text-muted);" class="gm-mono">UID ' + esc(uidVal) + '</div>' +
                             '</div>' +
                         '</div>' +
                     '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:center;">' + rallyRoleChip + '</td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:center;"><span class="gm-role-chip" style="font-size:0.7rem; padding:0.1rem 0.35rem;">' + esc(roleVal) + '</span></td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:right; font-weight:600; font-size:0.85rem;">' + window.GM.formatPower(powerVal) + '</td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:right; color:#60a5fa; font-weight:600; font-size:0.85rem;">' + (m.fleet_rating ? window.GM.formatPower(m.fleet_rating) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
@@ -3891,10 +3926,11 @@
 
             return headerSummary +
                 '<div class="gm-table-wrap" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow-x:auto;">' +
-                    '<table class="gm-table" style="width:100%; border-collapse:collapse; min-width:800px;">' +
+                    '<table class="gm-table" style="width:100%; border-collapse:collapse; min-width:850px;">' +
                         '<thead>' +
                             '<tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">' +
                                 '<th style="padding:0.65rem 0.75rem; text-align:left;">Player</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:center; color:#facc15;" title="Top 16 Rally Leaders vs Rally Joiners">🎯 Rally</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:center;">Role</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:right;">Power</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:right; color:#60a5fa;">⚔️ Fleet</th>' +

@@ -1434,6 +1434,13 @@
         return calculateRallyScore(m);
     }
 
+    function getRallyRoleMeta(rank, score) {
+        if (!score || score <= 0 || rank > 16) {
+            return { isLeader: false, rank: rank || 999, label: 'Rally Joiner', type: 'joiner' };
+        }
+        return { isLeader: true, rank: rank, label: 'Rally Leader #' + rank, type: 'leader' };
+    }
+
     function getEventIcon(name) {
         if (!name) return 'ph-calendar-dot';
         var lower = String(name).toLowerCase();
@@ -1563,6 +1570,7 @@
         calculateResidualPower: calculateResidualPower,
         calculateCombativity: calculateCombativity,
         calculateWarScore: calculateWarScore,
+        getRallyRoleMeta: getRallyRoleMeta,
         getEventIcon: getEventIcon,
         getEventTheme: getEventTheme,
         getGuildTag: getGuildTag,

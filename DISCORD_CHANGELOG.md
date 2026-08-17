@@ -1,27 +1,24 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.7 (Rally Multiplier Calibration: Tech x2 & Fleet x2.5)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.8 (Dedicated Rally Column & 16 Rally Leaders)**
 
 Hey commanders! 👋
 
-I have fine-tuned our **Rally Readiness & Combat Density** algorithm with precise multiplier calibrations:
+Managing your PvP and SvS battle squads just got super visual and straightforward! I have added a **dedicated Rally column** to the **Tactical Force Matrix** that automatically assigns your **Top 16 Rally Leaders** and all **Rally Joiners**:
 
 ---
 
-### ⚙️ Calibrated Tactical Multipliers
-The rally calculation formula has been tuned to ensure perfect balance across fleet and technology milestones:
-* 🔬 **Technology Power**: Now weighted at **$\times 2.0$** (was 0.9x) to properly reward alliance research and combat passives.
-* ⚔️ **Strongest Fleet Rating**: Now weighted at **$\times 2.5$** to match exact first march scaling.
-* 🚀 **Flagship Power**: Preserved at **$\times 3.0$** as the primary fleet multiplier.
-* 👥 **Crew Power**: Weighted at **$\times 1.5$**.
-* 👑 **Champion Power**: Weighted at **$\times 0.4$**.
-* 🏆 **Glory Score**: Weighted at **$\times 0.03$**.
+### 🎯 1. Dedicated Rally Column (Right After Player Name)
+* A new **🎯 Rally** column is now placed directly next to each player's name in the Tactical Force Matrix.
+* You can see each member's exact combat role immediately without searching or scrolling!
 
 ---
 
-### 🎯 Full Hierarchy:
-$$\text{Power} (\times 1.0) > \text{Flagship} (\times 3.0) > \text{Fleet} (\times 2.5) > \text{Tech} (\times 2.0) > \text{Crew} (\times 1.5) > \text{Champs} (\times 0.4) > \text{Glory} (\times 0.03)$$
-
-Your **Tactical Force Matrix** automatically recalibrates and re-ranks your roster in real time!
+### 👑 2. 16 Top Rally Leaders vs Rally Joiners
+* **Top 16 Commanders** are automatically appointed as **Rally Leaders**:
+  - 🥇 **Ranks 1 to 4**: Gold Crown badges (`👑 Leader #1` to `#4`) for your primary capital captains.
+  - 🥈 **Ranks 5 to 8**: Purple Star badges (`Leader #5` to `#8`) for your elite secondary rally captains.
+  - 🥉 **Ranks 9 to 16**: Blue Target badges (`Leader #9` to `#16`) for your tactical rally captains.
+* **Ranks 17+**: All remaining guild members are designated as **`Rally Joiner`** (`👥 Rally Joiner`), clearly indicating their role to reinforce and fill active rallies!
 
 ---
 
-*Lead your fleet to victory!* 🚀
+*Set up your battle lines, coordinate your rallies in seconds, and conquer the frontier!* 🚀

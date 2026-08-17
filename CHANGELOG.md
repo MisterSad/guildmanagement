@@ -2,6 +2,15 @@
 
 ## New
 
+- **Tactical Force Matrix Dedicated Rally Column & Top 16 Leaders Assignment (v119.6)**:
+  - **Dedicated Rally Role Column**: Added a prominent `🎯 Rally` column immediately after the `Player` column in the Tactical Force Matrix table.
+  - **16 Rally Leaders vs Rally Joiners Assignment**:
+    - **Top 16 Tactical Commanders**: Automatically assigned as **`Rally Leader #1`** through **`Rally Leader #16`** based on their comprehensive Rally Readiness Score.
+    - **Tiered Leader Badging**: Top 4 leaders receive Gold Crown badges (`👑 Leader #1-#4`), ranks 5–8 receive Purple Star badges (`Leader #5-#8`), and ranks 9–16 receive Blue Target badges (`Leader #9-#16`).
+    - **Rally Joiners**: All remaining guild roster members are labeled as **`Rally Joiner`** with a clean tactical chip (`<i class="ph ph-users"></i> Rally Joiner`).
+  - **Rally Role Meta Helper**: Added `window.GM.getRallyRoleMeta(rank, score)` in `gm-utils.js`.
+  - **Quality Gate**: **257/257 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Tactical Rally Readiness Multiplier Calibration (v119.5)**:
   - **Calibrated Multipliers**: Adjusted tactical combat density and rally scoring multipliers in `gm-utils.js`:
     - **Tech Power Multiplier**: Calibrated to **$\times 2.0$** (reflecting pivotal research tree impact on fleet defense and attack).
