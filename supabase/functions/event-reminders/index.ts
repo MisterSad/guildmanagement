@@ -196,6 +196,8 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const reqUrl = new URL(req.url);
+  const forceGvg = reqUrl.searchParams.get('force') === 'gvg' || reqUrl.searchParams.get('force') === 'all';
 
   try {
     // 0. Fetch all active guilds dynamically
@@ -478,47 +480,82 @@ serve(async (req) => {
       }
 
       // 3. GvG Daily Tasks & Saturday notifications
-      const gvgEvent = events.find(e => e.event_name === 'GvG');
-      let isGvgActive = false;
-      if (gvgEvent) {
-        const sessionMs = new Date(gvgEvent.start_at || gvgEvent.session_id).getTime();
-        const ageDays = (now - sessionMs) / (24 * 3600 * 1000);
-        isGvgActive = ageDays >= 0 && ageDays <= 7.5;
-      }
-      if (isGvgActive && config['gvg_svs_calamity_enabled'] !== 'false') {
-        const eventSpecificRoleId = config['discord_role_id_gvg'];
-        const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
-          ? eventSpecificRoleId
-          : config['discord_role_id'];
-        const guildTag = (discordRoleId && discordRoleId.trim() !== '')
-          ? `<@&${discordRoleId.trim()}>`
-          : '@everyone';
+      const eventSpecificRoleId = config['discord_role_id_gvg'];
+      const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
+        ? eventSpecificRoleId
+        : config['discord_role_id'];
+      const guildTag = (discordRoleId && discordRoleId.trim() !== '')
+        ? `<@&${discordRoleId.trim()}>`
+        : '@everyone';
 
-        // 3.1. GvG Daily Task Reminders (Monday to Saturday at 10:30 UTC)
-        const isGvgDailyTasksEnabled = config['notify_gvg_daily_tasks'] === undefined || config['notify_gvg_daily_tasks'] === 'true';
-        if (isGvgDailyTasksEnabled) {
-          const dateUtc = new Date(now);
-          const curDay = dateUtc.getUTCDay(); // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
-          const curHour = dateUtc.getUTCHours();
-          const curMin = dateUtc.getUTCMinutes();
+      // 3.1. GvG Daily Task Reminders (Monday to Saturday at 10:30 UTC)
+      const isGvgDailyTasksEnabled = config['notify_gvg_daily_tasks'] === undefined || config['notify_gvg_daily_tasks'] === 'true';
+      const webhookUrlGvg = (config['webhook_gvg'] || config['discord_webhook_url'] || '').trim();
 
-          // Monday (1) to Saturday (6)
-          if (curDay >= 1 && curDay <= 6) {
-            const diff = getMinutesDiff(curDay, curHour, curMin, curDay, 10, 30);
-            if (diff >= 0 && diff <= 10) {
-              const slotDate = dateUtc.toISOString().split('T')[0];
-              const lockKey = `sent_gvg_daily_tasks_day_${curDay}_${slotDate}`;
+      if (isGvgDailyTasksEnabled && webhookUrlGvg !== '') {
+        const dateUtc = new Date(now);
+        const curDay = dateUtc.getUTCDay(); // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+        const curHour = dateUtc.getUTCHours();
+        const curMin = dateUtc.getUTCMinutes();
 
-              let shouldProceed = true;
-              if (config[lockKey] === 'sent') {
+        // Monday (1) to Saturday (6)
+        if (curDay >= 1 && curDay <= 6) {
+          const diff = getMinutesDiff(curDay, curHour, curMin, curDay, 10, 30);
+          const shouldRunSlot = (diff >= 0 && diff <= 10) || forceGvg;
+
+          if (shouldRunSlot) {
+            const slotDate = dateUtc.toISOString().split('T')[0];
+            const lockKey = `sent_gvg_daily_tasks_day_${curDay}_${slotDate}`;
+
+            let shouldProceed = true;
+            if (!forceGvg && config[lockKey] === 'sent') {
+              shouldProceed = false;
+            } else if (!forceGvg && config[lockKey] === 'sending') {
+              const updatedStr = lockTimes[guild]?.[lockKey];
+              const lockAgeMins = updatedStr ? (now - new Date(updatedStr).getTime()) / 60000 : 999;
+              if (lockAgeMins < 5) {
                 shouldProceed = false;
-              } else if (config[lockKey] === 'sending') {
-                const updatedStr = lockTimes[guild]?.[lockKey];
-                const lockAgeMins = updatedStr ? (now - new Date(updatedStr).getTime()) / 60000 : 999;
-                if (lockAgeMins < 5) {
-                  shouldProceed = false;
-                } else {
-                  console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Retrying.`);
+              } else {
+                console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Retrying.`);
+                await supabase
+                  .from('guild_config')
+                  .delete()
+                  .eq('guild', guild)
+                  .eq('key', lockKey);
+              }
+            }
+
+            if (shouldProceed) {
+              const { error: lockErr } = await supabase
+                .from('guild_config')
+                .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+
+              if (!lockErr) {
+                try {
+                  const roleMention = formatDiscordRoleMention(discordRoleId);
+                  const body = buildGvgDailyTaskEmbed(curDay, roleMention);
+                  const sentSuccess = await sendDiscordWebhookWithRetry(webhookUrlGvg, body);
+
+                  if (sentSuccess) {
+                    const taskDay = GVG_DAILY_TASKS[curDay];
+                    await sendWebPush(supabase, `⚔️ GvG Day ${curDay} Tasks: ${taskDay?.theme || 'Daily Breakdown'}`, `Daily GvG tasks are active for Day ${curDay} (${taskDay?.dayName}).`, guild);
+                    await supabase
+                      .from('guild_config')
+                      .update({ value: 'sent', updated_at: new Date().toISOString() })
+                      .eq('guild', guild)
+                      .eq('key', lockKey);
+
+                    results.push({ guild, event: `GvG Daily Tasks - Day ${curDay} (${taskDay?.dayName})`, type: 'gvg_daily_tasks', status: 'sent' });
+                  } else {
+                    await supabase
+                      .from('guild_config')
+                      .delete()
+                      .eq('guild', guild)
+                      .eq('key', lockKey);
+                    console.error(`[${guild}] Failed to send GvG Daily Tasks webhook. Lock released.`);
+                  }
+                } catch (e) {
+                  console.error(`[${guild}] Error sending Discord GvG Daily Tasks webhook:`, e);
                   await supabase
                     .from('guild_config')
                     .delete()
@@ -526,59 +563,14 @@ serve(async (req) => {
                     .eq('key', lockKey);
                 }
               }
-
-              if (shouldProceed) {
-                const { error: lockErr } = await supabase
-                  .from('guild_config')
-                  .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
-
-                if (!lockErr) {
-                  try {
-                    const roleMention = formatDiscordRoleMention(discordRoleId);
-                    const body = buildGvgDailyTaskEmbed(curDay, roleMention);
-                    const webhookUrl = config['webhook_gvg'];
-                    let sentSuccess = false;
-                    if (webhookUrl && webhookUrl.trim() !== '') {
-                      sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
-                    } else {
-                      sentSuccess = true;
-                    }
-
-                    if (sentSuccess) {
-                      const taskDay = GVG_DAILY_TASKS[curDay];
-                      await sendWebPush(supabase, `⚔️ GvG Day ${curDay} Tasks: ${taskDay?.theme || 'Daily Breakdown'}`, `Daily GvG tasks are active for Day ${curDay} (${taskDay?.dayName}).`, guild);
-                      await supabase
-                        .from('guild_config')
-                        .update({ value: 'sent', updated_at: new Date().toISOString() })
-                        .eq('guild', guild)
-                        .eq('key', lockKey);
-
-                      results.push({ guild, event: `GvG Daily Tasks - Day ${curDay} (${taskDay?.dayName})`, type: 'gvg_daily_tasks', status: 'sent' });
-                    } else {
-                      await supabase
-                        .from('guild_config')
-                        .delete()
-                        .eq('guild', guild)
-                        .eq('key', lockKey);
-                      console.error(`[${guild}] Failed to send GvG Daily Tasks webhook. Lock released.`);
-                    }
-                  } catch (e) {
-                    console.error(`[${guild}] Error sending Discord GvG Daily Tasks webhook:`, e);
-                    await supabase
-                      .from('guild_config')
-                      .delete()
-                      .eq('guild', guild)
-                      .eq('key', lockKey);
-                  }
-                }
-              }
             }
           }
         }
+      }
 
-        // 3.2. GvG Saturday War Prism and Fortress Reminders
-        const isGvgPvpEnabled = config['notify_gvg_pvp'] === undefined || config['notify_gvg_pvp'] === 'true';
-        if (isGvgPvpEnabled) {
+      // 3.2. GvG Saturday War Prism and Fortress Reminders
+      const isGvgPvpEnabled = config['notify_gvg_pvp'] === undefined || config['notify_gvg_pvp'] === 'true';
+      if (isGvgPvpEnabled && webhookUrlGvg !== '') {
           const dateUtc = new Date(now);
           const curDay = dateUtc.getUTCDay();
           const curHour = dateUtc.getUTCHours();
@@ -753,7 +745,6 @@ serve(async (req) => {
             }
           }
         }
-      }
 
       // 4. SvS notifications and reminders
       const svsEvent = events.find(e => e.event_name === 'SvS');
