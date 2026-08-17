@@ -411,21 +411,21 @@
             '</div>';
 
         var tableHtml =
-            '<div class="gm-card glass-card" style="padding:1.25rem;">' +
-                '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
-                    '<table class="gm-table" style="width:100%; border-collapse:collapse;">' +
+            '<div class="gm-card glass-card" style="padding:1rem 0.75rem;">' +
+                '<div class="gm-table-wrapper gm-table-scroll" style="overflow-x:auto; width:100%; -webkit-overflow-scrolling:touch; border-radius:var(--radius-md);">' +
+                    '<table class="gm-table gm-draft-table" style="width:100%; border-collapse:collapse; min-width:820px;">' +
                         '<thead><tr>' +
-                            '<th class="gm-center" style="width:50px;">#</th>' +
+                            '<th class="gm-center" style="width:40px;">#</th>' +
                             headerCell('pseudo', t('col_member') || 'Candidate') +
                             headerCell('server', 'Server', 'text-align:center;') +
                             headerCell('guild', 'Guild', 'text-align:center;') +
                             headerCell('power', 'Power', 'text-align:right;') +
                             headerCell('draft_score', '<i class="ph ph-chart-polar"></i> Draft Score', 'text-align:center;', 'Composite recruitment index (Shadowfront 35%, SvS/GvG 50%, Glory 5%)') +
-                            headerCell('day6', '<i class="ph ph-sword"></i> Day 6 PvP (x2)', 'text-align:right;', 'SvS & GvG Day 6 battle combat points with 2x doubled factor') +
+                            headerCell('day6', '<i class="ph ph-sword"></i> Day 6 (x2)', 'text-align:right;', 'SvS & GvG Day 6 battle combat points with 2x doubled factor') +
                             headerCell('shadow', '<i class="ph ph-ghost"></i> Shadowfront', 'text-align:center;', 'Priority 20v20 Shadowfront attendance') +
                             headerCell('glory', '<i class="ph ph-trophy"></i> Glory', 'text-align:right;', 'Cumulative Glory points accumulated') +
-                            headerCell('svs', '<i class="ph ph-sword"></i> SvS (x5)', 'text-align:center;') +
-                            headerCell('gvg', '<i class="ph ph-flag-banner"></i> GvG (x5)', 'text-align:center;') +
+                            headerCell('svs', '<i class="ph ph-sword"></i> SvS', 'text-align:center;') +
+                            headerCell('gvg', '<i class="ph ph-flag-banner"></i> GvG', 'text-align:center;') +
                         '</tr></thead><tbody>' + rowsHtml(rows) + '</tbody>' +
                     '</table>' +
                 '</div>' +

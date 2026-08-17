@@ -663,6 +663,36 @@
 .gm-table th.gm-center, .gm-table td.gm-center { text-align: center; }
 .gm-table th.gm-right,  .gm-table td.gm-right  { text-align: right; }
 
+/* ─── Compact Draft & Matchup Tables ─── */
+.gm-draft-table,
+.gm-compact-table {
+    font-size: 0.82rem;
+}
+.gm-draft-table thead th,
+.gm-compact-table thead th {
+    padding: 0.55rem 0.45rem;
+    font-size: 0.70rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+.gm-draft-table tbody td,
+.gm-compact-table tbody td {
+    padding: 0.45rem 0.45rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+.gm-draft-table tbody td .gm-member-id,
+.gm-compact-table tbody td .gm-member-id {
+    gap: 0.45rem;
+}
+.gm-draft-table tbody td .gm-avatar,
+.gm-compact-table tbody td .gm-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+}
+
 /* ─── Member rows (Members page) ─── */
 .gm-member-list {
     display: flex; flex-direction: column;

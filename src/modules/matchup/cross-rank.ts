@@ -323,21 +323,22 @@ export class CrossRankView {
         </div>
       </div>
 
-      <div class="gm-card glass-card" style="padding:1.25rem; overflow-x:auto;">
-        <table class="gm-table" style="width:100%; border-collapse:collapse;">
-          <thead>
-            <tr style="border-bottom: 2px solid var(--border-color); text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted);">
-              <th style="padding:0.5rem 0.75rem; width:50px;">#</th>
-              <th style="padding:0.5rem 0.75rem;">Player</th>
-              <th style="padding:0.5rem 0.75rem; text-align:center;">Server</th>
-              <th style="padding:0.5rem 0.75rem; text-align:center;">Guild</th>
-              <th style="padding:0.5rem 0.75rem; text-align:right; cursor:pointer;" data-sort="draft_score">Draft Score</th>
-              <th style="padding:0.5rem 0.75rem; text-align:right; cursor:pointer;" data-sort="day6_pvp_score" title="SvS & GvG Day 6 battle score with 2x doubled weight">⚔️ Day 6 PvP (x2)</th>
-              <th style="padding:0.5rem 0.75rem; text-align:center; cursor:pointer;" data-sort="shadow_rate" title="Priority 20v20 Shadowfront attendance">👻 Shadowfront</th>
-              <th style="padding:0.5rem 0.75rem; text-align:right; cursor:pointer;" data-sort="glory_total" title="Cumulative Glory points accumulated">🏆 Glory</th>
-              <th style="padding:0.5rem 0.75rem; text-align:right; cursor:pointer;" data-sort="power">Power</th>
-            </tr>
-          </thead>
+      <div class="gm-card glass-card" style="padding:1rem 0.75rem;">
+        <div class="gm-table-wrapper gm-table-scroll" style="overflow-x:auto; width:100%; -webkit-overflow-scrolling:touch; border-radius:var(--radius-md);">
+          <table class="gm-table gm-draft-table" style="width:100%; border-collapse:collapse; min-width:820px;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--border-color); text-align:left; font-size:0.72rem; text-transform:uppercase; color:var(--text-muted);">
+                <th style="padding:0.5rem 0.45rem; width:40px;">#</th>
+                <th style="padding:0.5rem 0.45rem;">Player</th>
+                <th style="padding:0.5rem 0.45rem; text-align:center;">Server</th>
+                <th style="padding:0.5rem 0.45rem; text-align:center;">Guild</th>
+                <th style="padding:0.5rem 0.45rem; text-align:right; cursor:pointer;" data-sort="draft_score">Draft Score</th>
+                <th style="padding:0.5rem 0.45rem; text-align:right; cursor:pointer;" data-sort="day6_pvp_score" title="SvS & GvG Day 6 battle score with 2x doubled weight">⚔️ Day 6 (x2)</th>
+                <th style="padding:0.5rem 0.45rem; text-align:center; cursor:pointer;" data-sort="shadow_rate" title="Priority 20v20 Shadowfront attendance">👻 Shadowfront</th>
+                <th style="padding:0.5rem 0.45rem; text-align:right; cursor:pointer;" data-sort="glory_total" title="Cumulative Glory points accumulated">🏆 Glory</th>
+                <th style="padding:0.5rem 0.45rem; text-align:right; cursor:pointer;" data-sort="power">Power</th>
+              </tr>
+            </thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       </div>`;

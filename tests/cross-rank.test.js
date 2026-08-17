@@ -119,7 +119,7 @@ describe('GM_SETTINGS cross-guild Draft Mercato & Inter-Server Scouting Engine',
     it('renders the Day 6 PvP column with 2x doubled factor', async () => {
         await SETTINGS.load();
         const headers = Array.from(container().querySelectorAll('th')).map(th => th.textContent.trim());
-        expect(headers.some(h => h.includes('Day 6 PvP'))).toBe(true);
+        expect(headers.some(h => h.includes('Day 6'))).toBe(true);
     });
 
     it('renders the Shadowfront column as a priority attendance pillar', async () => {
