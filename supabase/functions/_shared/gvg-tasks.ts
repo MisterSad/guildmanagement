@@ -304,7 +304,7 @@ export function buildGvgDailyTaskEmbed(dayNumber: number, roleMention = "@everyo
     };
   });
 
-  const content = `📢 **GvG Day ${day.dayNumber} Tasks are Live!** (${day.dayName} · 10:30 UTC) ${roleMention}`;
+  const content = `📢 **GvG Day ${day.dayNumber} Tasks are Live!** (${day.dayName} · 11:00 UTC) ${roleMention}`;
 
   const embed = {
     title: `⚔️ GvG Day ${day.dayNumber} Tasks: ${day.theme}`,
@@ -313,7 +313,7 @@ export function buildGvgDailyTaskEmbed(dayNumber: number, roleMention = "@everyo
     fields,
     timestamp: new Date().toISOString(),
     footer: {
-      text: "FGF Guild Management Tool • GvG Daily Reminders (10:30 UTC)",
+      text: "FGF Guild Management Tool • GvG Daily Reminders (11:00 UTC)",
     },
   };
 

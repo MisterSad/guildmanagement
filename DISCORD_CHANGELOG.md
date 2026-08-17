@@ -8,8 +8,8 @@ Here is everything new in this release:
 
 ---
 
-### ⚔️ Automated Daily GvG Task Reminders (10:30 UTC Mon-Sat)
-Every morning during active GvG campaigns (**Monday through Saturday at 10:30 UTC**), your designated GvG Discord channel will automatically receive a detailed Discord Embed showing the day's priority objectives and point values:
+### ⚔️ Automated Daily GvG Task Reminders (11:00 UTC Mon-Sat)
+Every morning during active GvG campaigns (**Monday through Saturday at 11:00 UTC**), your designated GvG Discord channel will automatically receive a detailed Discord Embed showing the day's priority objectives and point values:
 
 - ⚡ **Day 1 (Monday)**: Speedups & Trade (+48 pts/min), Rallies (Deliverer Ark +18k, Tribute Vessels +18k, Sacred Tribute +6k), Ascendancy Minions (Lvl 1-60 from +3k to +6k), Packs (+4 pts/credit).
 - 👑 **Day 2 (Tuesday)**: Champions & Power (+6k Leg / +300 Epic frag, +3 pts/power, Training Manual +600, Venturous Memory +2.4k), Weapons (Prism +4k, Energy Core +18, Epic/Leg frags +2.4k/+12k), Commissions (Common to Leg +6k to +9.75k), Commerce Guild (Assist +20, Donation +50).
@@ -21,7 +21,7 @@ Every morning during active GvG campaigns (**Monday through Saturday at 10:30 UT
 ---
 
 ### ⚙️ Guild Leader Toggle (Opt-In / Opt-Out)
-- Guild Leaders & Officers can toggle daily GvG task notifications anytime via **Guild Settings → GvG → Daily Tasks breakdown (10:30 UTC)**.
+- Guild Leaders & Officers can toggle daily GvG task notifications anytime via **Guild Settings → GvG → Daily Tasks breakdown (11:00 UTC)**.
 - Settings are persisted per guild and respect your custom Discord Role ID mentions (or `@everyone`).
 
 ---
