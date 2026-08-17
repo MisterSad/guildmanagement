@@ -2,6 +2,11 @@
 
 ## New
 
+- **Player Portal Streamlined Chart Interface & Redundancy Removal (v121.4)**:
+  - **Removed Redundant Bottom List**: Removed the duplicate session breakdown list (`.portal-chart-list`) below progression charts in `portal.js`, concentrating all visual intelligence inside the canvas graph.
+  - **Uncluttered Presentation**: The charts cleanly present individual player scores (`33.4M`, `71.1M`), in-graph dashed guild benchmark curves (`Avg 35.1M`), and standardized `DD/MM/YY` timeline dates with zero visual clutter.
+  - **Quality Gate**: **263/263 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Player Portal Clean DD/MM/YY (JJ/MM/AA) Date Formatting on Horizontal Chart Axes (v121.3)**:
   - **Standardized Date Formatting**: Implemented `formatPortalDateDDMMAA` in `portal.js` converting ISO date strings, compact session identifiers (`ARA-20260815`), and ISO week codes (`SVS-2026-W33`) into clean `DD/MM/YY` format (e.g. `15/08/26`, `10/08/26`).
   - **Horizontal Chart Axis Alignment**: Applied `DD/MM/YY` labels cleanly on the canvas X-axis of SvS, GvG, and Glory charts, eliminating ISO week codes and truncated strings.

@@ -562,37 +562,6 @@
     function renderChartCard(eventKey, ev, idx) {
         var icon = window.GM.getEventIcon(eventKey);
         var accent = eventAccent(eventKey);
-        var anyScore = (ev.history || []).some(function (h) { return (h.score || 0) > 0 || (h.guild_avg_score || 0) > 0; });
-
-        // History list: score per session with Guild Average comparison
-        var historyHtml = '';
-        (ev.history || []).slice(0, 8).forEach(function (h) {
-            var label = formatPortalDateDDMMAA(h) || '?';
-            var scoreVal = Number(h.score) || 0;
-            var avgVal = Number(h.guild_avg_score) || 0;
-            var scoreText = anyScore ? (scoreVal > 0 ? window.GM.formatNumber(scoreVal) : '-') : '-';
-            var avgText = avgVal > 0 ? window.GM.formatNumber(avgVal) : '-';
-
-            var deltaPill = '';
-            if (scoreVal > 0 && avgVal > 0) {
-                var diffPct = Math.round(((scoreVal - avgVal) / avgVal) * 1000) / 10;
-                if (diffPct >= 0) {
-                    deltaPill = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full);">+' + diffPct + '% vs Avg</span>';
-                } else {
-                    deltaPill = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);">' + diffPct + '% vs Avg</span>';
-                }
-            }
-
-            historyHtml +=
-                '<div class="portal-chart-row">' +
-                    '<span class="portal-chart-row-label">' + esc(label) + '</span>' +
-                    '<div style="display:flex; align-items:center; gap:0.65rem;">' +
-                        '<span class="portal-chart-row-score" style="color:#6dd58c; font-weight:800;" title="Your Score">' + esc(scoreText) + '</span>' +
-                        '<span style="color:#ffe088; font-size:0.75rem; font-weight:700; opacity:0.95;" title="Guild Average">Avg ' + esc(avgText) + '</span>' +
-                        deltaPill +
-                    '</div>' +
-                '</div>';
-        });
 
         return '<div class="portal-chart-card">' +
                     '<div class="portal-chart-accent" style="background:' + accent + ';"></div>' +
@@ -604,7 +573,6 @@
                         '</div>' +
                     '</div>' +
                     '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="200"></canvas>' +
-                    '<div class="portal-chart-list">' + historyHtml + '</div>' +
                 '</div>';
     }
 
