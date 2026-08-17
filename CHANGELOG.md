@@ -2,6 +2,13 @@
 
 ## New
 
+- **Player Portal Full Material Design 3 Overhaul & Chart Dashed Benchmark Lines (v121.1)**:
+  - **Dashed In-Graph Guild Average Lines**: Replaced vertical Y-axis raw numbers with a clean, uncluttered continuous dashed reference line (`#ffe088`, 2.2px line width, `strokeDasharray: [8, 6]`) across the canvas with a floating M3 amber pill badge (`Avg XX.XM`), eliminating axis overlap and visual noise.
+  - **Single Horizontal Line for 4 Participation Tiles**: Updated `.portal-participation-grid` to strictly `repeat(4, 1fr)`, ensuring Arms Race A, Arms Race B, Defend Trade Route, and Shadowfront tiles all sit on a single horizontal row on desktop.
+  - **Live Guild Benchmarks in Breakdown Cards**: Deployed and integrated `member-portal` backend with robust fallback merging across all dashboard actions so that every military breakdown card displays its exact formatted Guild Average (`Guild Avg: 1.8M`).
+  - **Full Material Design 3 Design System**: Standardized all surfaces, container tiers, rounded corners (`16px`, `12px`, `full`), elevation tokens, segmented buttons, and typography on official Google M3 tokens (`tokens.css` + `components.css`).
+  - **Quality Gate**: **263/263 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Player Portal Guild Average Progression Curves & Complete UX/UI Overhaul (v121.0)**:
   - **Dual-Series Progression Charts**: Added a secondary **Guild Average Benchmark curve** (rendered as a warm amber dashed line with average score indicators) alongside the player's primary solid emerald score curve across SvS, GvG, and Glory event charts in `portal.js`.
   - **Live Performance Delta Badges**: Every session breakdown below the progression charts displays the player's score, guild average score, and a relative performance badge (e.g. `+26.3% vs Avg` in emerald or `-8.2% vs Avg` in amber).

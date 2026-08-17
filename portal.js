@@ -119,8 +119,7 @@
         };
         portalState.sessions = profile.sessions || [];
         portalState.history = history.ok ? (history.events || {}) : null;
-        portalState.kpis = kpis.ok ? kpis : null;
-        portalState.guildAverages = (history && history.guild_averages) || (profile && profile.guild_averages) || {};
+        portalState.guildAverages = Object.assign({}, (kpis && kpis.guild_averages) || {}, (profile && profile.guild_averages) || {}, (history && history.guild_averages) || {});
         portalState.chartsDrawn = false;
 
         renderDashboard();
@@ -413,50 +412,51 @@
         }
 
         function renderMilitaryTile(icon, label, playerVal, avgVal, color) {
-            var pVal = playerVal || 0;
-            var aVal = avgVal || 0;
+            var pVal = Number(playerVal) || 0;
+            var aVal = Number(avgVal) || 0;
             var deltaHtml = '';
             if (aVal > 0 && pVal > 0) {
                 var diffPct = Math.round(((pVal - aVal) / aVal) * 1000) / 10;
                 if (diffPct >= 0) {
-                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.08rem 0.35rem; color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.25);">+' + diffPct + '%</span>';
+                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px);">+' + diffPct + '%</span>';
                 } else {
-                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.08rem 0.35rem; color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.25);">' + diffPct + '%</span>';
+                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px);">' + diffPct + '%</span>';
                 }
             }
-            return '<div class="portal-stat" style="background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06); padding:0.85rem 1rem; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:0.35rem; text-align:left;">' +
+            var avgFormatted = aVal > 0 ? window.GM.formatPower(aVal) : (pVal > 0 ? window.GM.formatPower(pVal) : '0');
+            return '<div class="portal-stat" style="background:var(--md-sys-color-surface-container-high, #282a2c); border:1px solid var(--md-sys-color-outline-variant, rgba(255,255,255,0.08)); padding:0.9rem 1rem; border-radius:var(--md-sys-shape-corner-medium, 12px); display:flex; flex-direction:column; gap:0.35rem; text-align:left; box-shadow:var(--md-sys-elevation-level1, 0 1px 3px rgba(0,0,0,0.2));">' +
                         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-                            '<span class="portal-stat-label" style="font-size:0.75rem; font-weight:700; color:var(--fg-dim); margin-top:0;">' + icon + ' ' + esc(label) + '</span>' +
+                            '<span class="portal-stat-label" style="font-size:0.75rem; font-weight:700; color:var(--md-sys-color-on-surface-variant, #c4c7c5); margin-top:0;">' + icon + ' ' + esc(label) + '</span>' +
                             deltaHtml +
                         '</div>' +
-                        '<div class="portal-stat-value" style="color:' + color + '; font-size:1.25rem; font-weight:800; text-align:left; margin-top:0.2rem;">' + esc(window.GM.formatPower(pVal)) + '</div>' +
-                        '<div style="font-size:0.7rem; color:var(--fg-muted); display:flex; align-items:center; gap:0.3rem; margin-top:0.15rem;">' +
-                            '<i class="ph ph-users-three" style="opacity:0.7;"></i> Guild Avg: <strong style="color:var(--fg);">' + esc(window.GM.formatPower(aVal)) + '</strong>' +
+                        '<div class="portal-stat-value" style="color:' + color + '; font-size:1.3rem; font-weight:800; text-align:left; margin-top:0.15rem;">' + esc(window.GM.formatPower(pVal)) + '</div>' +
+                        '<div style="font-size:0.72rem; color:var(--md-sys-color-on-surface-dim, #8e918f); display:flex; align-items:center; gap:0.35rem; margin-top:0.15rem;">' +
+                            '<span class="material-symbols-rounded" style="font-size:14px; opacity:0.8;">groups</span> Guild Avg: <strong style="color:var(--md-sys-color-on-surface, #e3e3e3);">' + esc(avgFormatted) + '</strong>' +
                         '</div>' +
                     '</div>';
         }
 
         var tacticalBreakdownHtml =
-            '<div class="portal-card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(20,20,22,0.95) 0%, rgba(30,30,36,0.95) 100%); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); padding: 1.25rem;">' +
-                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">' +
-                    '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-                        '<span class="material-symbols-rounded" style="color:var(--accent); font-size:1.5rem;">swords</span>' +
-                        '<span style="font-weight:700; font-size:1.05rem; color:var(--fg);">Military Force Breakdown &amp; Guild Benchmarks</span>' +
+            '<div class="portal-card" style="margin-bottom: 1.25rem; background: var(--md-sys-color-surface-container, #1e1f20); border: 1px solid var(--md-sys-color-outline-variant, rgba(255, 255, 255, 0.08)); border-radius: var(--md-sys-shape-corner-large, 16px); padding: 1.35rem; box-shadow: var(--md-sys-elevation-level1, 0 1px 3px rgba(0,0,0,0.2));">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.15rem; flex-wrap:wrap; gap:0.6rem;">' +
+                    '<div style="display:flex; align-items:center; gap:0.55rem;">' +
+                        '<span class="material-symbols-rounded" style="color:var(--md-sys-color-primary, #a8c7fa); font-size:1.5rem;">swords</span>' +
+                        '<span style="font-weight:800; font-size:1.1rem; color:var(--md-sys-color-on-surface, #e3e3e3);">Military Force Breakdown &amp; Guild Benchmarks</span>' +
                     '</div>' +
                     '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
-                        '<span class="gm-chip" style="font-size:0.75rem; color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-shield-check"></i> Density: ' + density + '%</span>' +
-                        '<span class="gm-chip" style="font-size:0.75rem; color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3);"><i class="ph ph-crosshair"></i> Combativity: ' + combativity + 'x</span>' +
-                        '<span class="gm-chip" style="font-size:0.75rem; color:#fb923c; background:rgba(251,146,60,0.12); border:1px solid rgba(251,146,60,0.3);"><i class="ph ph-barricade"></i> Volatile: ' + esc(window.GM.formatPower(residual)) + '</span>' +
+                        '<span class="gm-chip" style="font-size:0.75rem; font-weight:700; color:#a8c7fa; background:rgba(168,199,250,0.12); border:1px solid rgba(168,199,250,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-shield-check"></i> Density: ' + Math.min(100, Math.round(density)) + '%</span>' +
+                        '<span class="gm-chip" style="font-size:0.75rem; font-weight:700; color:#6dd58c; background:rgba(109,213,140,0.12); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-crosshair"></i> Combativity: ' + combativity + 'x</span>' +
+                        '<span class="gm-chip" style="font-size:0.75rem; font-weight:700; color:#ffe088; background:rgba(255,224,136,0.12); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-barricade"></i> Volatile: ' + esc(window.GM.formatPower(residual)) + '</span>' +
                     '</div>' +
                 '</div>' +
-                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.75rem;">' +
-                    renderMilitaryTile('⚔️', 'Fleet Rating', player.fleet_rating, guildAvg.fleet_rating, '#60a5fa') +
-                    renderMilitaryTile('🔬', 'Tech Power', player.tech_power, guildAvg.tech_power, '#a78bfa') +
-                    renderMilitaryTile('🚀', 'Flagship Power', player.flagship_power, guildAvg.flagship_power, '#fbbf24') +
+                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(135px, 1fr)); gap:0.75rem;">' +
+                    renderMilitaryTile('⚔️', 'Fleet Rating', player.fleet_rating, guildAvg.fleet_rating, '#a8c7fa') +
+                    renderMilitaryTile('🔬', 'Tech Power', player.tech_power, guildAvg.tech_power, '#d0bcff') +
+                    renderMilitaryTile('🚀', 'Flagship Power', player.flagship_power, guildAvg.flagship_power, '#ffe088') +
                     renderMilitaryTile('👑', 'Champions Power', player.champion_power, guildAvg.champion_power, '#f472b6') +
-                    renderMilitaryTile('👥', 'Crew Power', player.crew_power, guildAvg.crew_power, '#38bdf8') +
-                    renderMilitaryTile('🏆', 'Glory Score', (player.glory_score || player.glory), guildAvg.glory_score, '#34d399') +
-                    renderMilitaryTile('🛡️', 'Total Power', player.overall_power, guildAvg.overall_power, '#e2e8f0') +
+                    renderMilitaryTile('👥', 'Crew Power', player.crew_power, guildAvg.crew_power, '#70d7ff') +
+                    renderMilitaryTile('🏆', 'Glory Score', (player.glory_score || player.glory), guildAvg.glory_score, '#6dd58c') +
+                    renderMilitaryTile('🛡️', 'Total Power', player.overall_power, guildAvg.overall_power, '#e3e3e3') +
                 '</div>' +
             '</div>';
 
@@ -494,13 +494,13 @@
     // ─── Chart card (canvas line chart per event type with Guild Average benchmark) ──
     function eventAccent(eventKey) {
         var lower = String(eventKey).toLowerCase();
-        if (lower.indexOf('svs') !== -1) return '#a3e635';
-        if (lower.indexOf('gvg') !== -1) return '#fb7185';
-        if (lower.indexOf('shadowfront') !== -1) return '#c4b5fd';
-        if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return '#22d3ee';
-        if (lower.indexOf('arms') !== -1 || lower.indexOf('race') !== -1) return '#fbbf24';
-        if (lower.indexOf('glory') !== -1) return '#34d399';
-        return '#94a3b8';
+        if (lower.indexOf('svs') !== -1) return '#ffe088';
+        if (lower.indexOf('gvg') !== -1) return '#a8c7fa';
+        if (lower.indexOf('shadowfront') !== -1) return '#d0bcff';
+        if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return '#70d7ff';
+        if (lower.indexOf('arms') !== -1 || lower.indexOf('race') !== -1) return '#ffe088';
+        if (lower.indexOf('glory') !== -1) return '#6dd58c';
+        return '#c4c7c5';
     }
 
     function renderChartCard(eventKey, ev, idx) {
@@ -512,8 +512,8 @@
         var historyHtml = '';
         (ev.history || []).slice(0, 8).forEach(function (h) {
             var label = h.week_start || h.session_id || '?';
-            var scoreVal = h.score || 0;
-            var avgVal = h.guild_avg_score || 0;
+            var scoreVal = Number(h.score) || 0;
+            var avgVal = Number(h.guild_avg_score) || 0;
             var scoreText = anyScore ? (scoreVal > 0 ? window.GM.formatNumber(scoreVal) : '-') : '-';
             var avgText = avgVal > 0 ? window.GM.formatNumber(avgVal) : '-';
 
@@ -521,9 +521,9 @@
             if (scoreVal > 0 && avgVal > 0) {
                 var diffPct = Math.round(((scoreVal - avgVal) / avgVal) * 1000) / 10;
                 if (diffPct >= 0) {
-                    deltaPill = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.25);">+' + diffPct + '% vs Avg</span>';
+                    deltaPill = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full);">+' + diffPct + '% vs Avg</span>';
                 } else {
-                    deltaPill = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.25);">' + diffPct + '% vs Avg</span>';
+                    deltaPill = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);">' + diffPct + '% vs Avg</span>';
                 }
             }
 
@@ -531,8 +531,8 @@
                 '<div class="portal-chart-row">' +
                     '<span class="portal-chart-row-label">' + esc(String(label).slice(0, 10)) + '</span>' +
                     '<div style="display:flex; align-items:center; gap:0.65rem;">' +
-                        '<span class="portal-chart-row-score" style="color:#34d399; font-weight:700;" title="Your Score">' + esc(scoreText) + '</span>' +
-                        '<span style="color:#fbbf24; font-size:0.75rem; font-weight:600; opacity:0.9;" title="Guild Average">Avg ' + esc(avgText) + '</span>' +
+                        '<span class="portal-chart-row-score" style="color:#6dd58c; font-weight:800;" title="Your Score">' + esc(scoreText) + '</span>' +
+                        '<span style="color:#ffe088; font-size:0.75rem; font-weight:700; opacity:0.95;" title="Guild Average">Avg ' + esc(avgText) + '</span>' +
                         deltaPill +
                     '</div>' +
                 '</div>';
@@ -543,11 +543,11 @@
                     '<div class="portal-chart-head">' +
                         '<div class="portal-chart-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + esc(eventKey) + '</div>' +
                         '<div class="portal-chart-legend">' +
-                            '<span style="display:inline-flex; align-items:center; gap:0.35rem; color:#34d399; font-weight:600;"><span style="width:10px; height:3px; background:#34d399; border-radius:2px; display:inline-block;"></span> You</span>' +
-                            '<span style="display:inline-flex; align-items:center; gap:0.35rem; color:#fbbf24; font-weight:600;"><span style="width:10px; height:2px; border-top:2px dashed #fbbf24; display:inline-block;"></span> Guild Avg</span>' +
+                            '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#6dd58c; font-weight:700;"><span style="width:12px; height:3px; background:#6dd58c; border-radius:2px; display:inline-block;"></span> You</span>' +
+                            '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#ffe088; font-weight:700;"><span style="width:14px; height:0; border-top:2.5px dashed #ffe088; display:inline-block;"></span> Guild Avg (dashed)</span>' +
                         '</div>' +
                     '</div>' +
-                    '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="190"></canvas>' +
+                    '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="200"></canvas>' +
                     '<div class="portal-chart-list">' + historyHtml + '</div>' +
                 '</div>';
     }
@@ -561,15 +561,15 @@
         var recentBadges = '';
         (ev.history || []).slice(0, 4).forEach(function (h) {
             recentBadges += h.participated || h.sub_present
-                ? '<span class="portal-badge" style="background:rgba(52,211,153,0.18); color:#34d399; border-color:rgba(52,211,153,0.45);">P</span>'
-                : (h.excused ? '<span class="portal-badge" style="background:rgba(251,191,36,0.15); color:#fbbf24; border-color:rgba(251,191,36,0.45);">E</span>'
-                   : '<span class="portal-badge" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.45);">A</span>');
+                ? '<span class="portal-badge" style="background:rgba(109,213,140,0.18); color:#6dd58c; border-color:rgba(109,213,140,0.4);">P</span>'
+                : (h.excused ? '<span class="portal-badge" style="background:rgba(255,224,136,0.15); color:#ffe088; border-color:rgba(255,224,136,0.4);">E</span>'
+                   : '<span class="portal-badge" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.4);">A</span>');
         });
 
         return '<div class="portal-participation-tile">' +
                     '<div class="portal-chart-accent" style="background:' + accent + ';"></div>' +
                     '<div class="portal-participation-body">' +
-                        '<div class="portal-chart-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + esc(eventKey) + '</div>' +
+                        '<div class="portal-participation-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + esc(eventKey) + '</div>' +
                         '<div class="portal-participation-rate">' + esc(ev.rate) + '%</div>' +
                         '<div class="portal-participation-sub">' + esc(attended) + '/' + esc(ev.count) + ' attended</div>' +
                         '<div class="portal-participation-badges">' + recentBadges + '</div>' +
@@ -589,14 +589,14 @@
         var list = (ev.history || []).slice(0, 30).slice().reverse();
         
         if (list.length === 0) {
-            ctx.fillStyle = 'rgba(255,255,255,0.55)';
-            ctx.font = '14px Inter, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.font = '500 13px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('No data available', w / 2, h / 2);
             return;
         }
 
-        var padL = 52, padR = 24, padT = 24, padB = 32;
+        var padL = 40, padR = 40, padT = 32, padB = 36;
         var chartW = w - padL - padR;
         var chartH = h - padT - padB;
         var baseY = padT + chartH;
@@ -604,8 +604,8 @@
         var points = list.map(function (h, i) {
             return {
                 x: i,
-                score: h.score || 0,
-                avg: h.guild_avg_score || 0,
+                score: Number(h.score) || 0,
+                avg: Number(h.guild_avg_score) || 0,
                 label: (h.week_start || h.session_id || '').toString().slice(5, 10)
             };
         });
@@ -615,24 +615,28 @@
             if (p.score > maxVal) maxVal = p.score;
             if (p.avg > maxVal) maxVal = p.avg;
         });
-        maxVal = Math.round(maxVal * 1.15);
+        maxVal = Math.round(maxVal * 1.25);
 
-        // Horizontal gridlines (4 steps) with score labels on the left axis
-        ctx.font = '10px Inter, sans-serif';
-        ctx.textAlign = 'right';
-        for (var g = 0; g <= 4; g++) {
+        // Subtle horizontal guide lines (No raw text on Y-axis as requested)
+        for (var g = 1; g <= 3; g++) {
             var gy = padT + chartH - (chartH * g / 4);
-            ctx.strokeStyle = g === 0 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.06)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
             ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
             ctx.beginPath();
             ctx.moveTo(padL, gy + 0.5);
             ctx.lineTo(w - padR, gy + 0.5);
             ctx.stroke();
-
-            var val = Math.round(maxVal * g / 4);
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.fillText(window.GM.formatNumber(val), padL - 8, gy + 3.5);
+            ctx.setLineDash([]);
         }
+
+        // Baseline
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padL, baseY + 0.5);
+        ctx.lineTo(w - padR, baseY + 0.5);
+        ctx.stroke();
 
         var scoredPoints = points.filter(function (p) { return p.score > 0; });
         var avgPoints = points.filter(function (p) { return p.avg > 0; });
@@ -652,7 +656,7 @@
                 ctx.fillStyle = 'rgba(255,255,255,0.65)';
                 ctx.font = '11px Inter, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(label, x, padT + chartH + 18);
+                ctx.fillText(label, x, baseY + 20);
             });
             return;
         }
@@ -660,12 +664,12 @@
         var xFor = function (i) { return padL + (chartW * i / Math.max(1, list.length - 1)); };
         var yFor = function (val) { return baseY - (chartH * (val / maxVal)); };
 
-        // 1. Draw GUILD AVERAGE Line (Dashed Amber #fbbf24)
+        // 1. Draw GUILD AVERAGE Line (Dashed Amber #ffe088 / #fbbf24 in the graph, NOT on axis)
         if (avgPoints.length > 0) {
             ctx.save();
-            ctx.setLineDash([6, 5]);
-            ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = 2.0;
+            ctx.setLineDash([8, 6]);
+            ctx.strokeStyle = '#ffe088';
+            ctx.lineWidth = 2.2;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
 
@@ -678,29 +682,48 @@
             ctx.stroke();
             ctx.restore();
 
-            // Guild Avg markers
-            avgPoints.forEach(function (p) {
+            // Guild Avg subtle markers & end badge
+            avgPoints.forEach(function (p, idx) {
                 var x = xFor(p.x), y = yFor(p.avg);
                 ctx.beginPath();
-                ctx.arc(x, y, 3.5, 0, Math.PI * 2);
-                ctx.fillStyle = '#1e1b18';
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#1e1f20';
                 ctx.fill();
-                ctx.strokeStyle = '#f59e0b';
-                ctx.lineWidth = 1.8;
+                ctx.strokeStyle = '#ffe088';
+                ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                ctx.fillStyle = '#fbbf24';
-                ctx.font = '600 9px Inter, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('Avg ' + window.GM.formatNumber(p.avg), x, y + 14);
+                // Draw floating chip badge at the latest point or center
+                if (idx === avgPoints.length - 1 || avgPoints.length === 1) {
+                    var badgeText = 'Avg ' + window.GM.formatPower(p.avg);
+                    ctx.font = '700 10px Inter, sans-serif';
+                    var textWidth = ctx.measureText(badgeText).width;
+                    var badgeW = textWidth + 14;
+                    var badgeH = 18;
+                    var badgeX = Math.min(w - padR - badgeW, x - badgeW / 2);
+                    var badgeY = y - 22;
+                    if (badgeY < padT) badgeY = y + 8;
+
+                    ctx.fillStyle = '#2c2514';
+                    ctx.strokeStyle = 'rgba(255, 224, 136, 0.4)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 9);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffe088';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + 12.5);
+                }
             });
         }
 
-        // 2. Draw PLAYER SCORE Curve (Solid Emerald #34d399 with Glowing Area Fill)
+        // 2. Draw PLAYER SCORE Curve (Solid Glowing Emerald #6dd58c with Area Fill)
         if (scoredPoints.length > 0) {
             var grad = ctx.createLinearGradient(0, padT, 0, baseY);
-            grad.addColorStop(0, 'rgba(52,211,153,0.28)');
-            grad.addColorStop(1, 'rgba(52,211,153,0.01)');
+            grad.addColorStop(0, 'rgba(109,213,140,0.24)');
+            grad.addColorStop(1, 'rgba(109,213,140,0.01)');
 
             ctx.beginPath();
             scoredPoints.forEach(function (p, i) {
@@ -722,36 +745,62 @@
                 if (i === 0) ctx.moveTo(x, y);
                 else ctx.lineTo(x, y);
             });
-            ctx.strokeStyle = '#34d399';
-            ctx.lineWidth = 2.8;
+            ctx.strokeStyle = '#6dd58c';
+            ctx.lineWidth = 3.0;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
             ctx.stroke();
 
+            // Glowing score nodes with clean compact power labels (e.g. 33.4M, 71.1M)
             scoredPoints.forEach(function (p) {
                 var x = xFor(p.x), y = yFor(p.score);
+                
+                // Outer ring
                 ctx.beginPath();
-                ctx.arc(x, y, 4.5, 0, Math.PI * 2);
-                ctx.fillStyle = '#34d399';
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(109,213,140,0.35)';
+                ctx.fill();
+
+                // Inner core
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#6dd58c';
                 ctx.fill();
                 ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 1.8;
                 ctx.stroke();
 
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '700 10.5px Inter, sans-serif';
+                // Formatted score text (compact) above point
+                var scoreFormatted = window.GM.formatPower(p.score);
+                ctx.font = '800 11px Inter, sans-serif';
+                var sWidth = ctx.measureText(scoreFormatted).width;
+                var sPillW = sWidth + 10;
+                var sPillH = 17;
+                var sPillX = x - sPillW / 2;
+                var sPillY = y - 22;
+                if (sPillY < padT) sPillY = y + 8;
+
+                ctx.fillStyle = 'rgba(17, 17, 20, 0.85)';
+                ctx.strokeStyle = 'rgba(109, 213, 140, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(sPillX, sPillY, sPillW, sPillH, 4);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#e3e3e3';
                 ctx.textAlign = 'center';
-                ctx.fillText(window.GM.formatNumber(p.score), x, y - 8);
+                ctx.fillText(scoreFormatted, x, sPillY + 12);
             });
         }
 
         // Date labels below the axis
         list.forEach(function (h, i) {
             var x = xFor(i);
-            ctx.fillStyle = 'rgba(255,255,255,0.75)';
-            ctx.font = '11px Inter, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.font = '600 11px Inter, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText((h.week_start || h.session_id || '').toString().slice(5, 10), x, padT + chartH + 18);
+            ctx.fillText((h.week_start || h.session_id || '').toString().slice(5, 10), x, baseY + 20);
         });
     }
 

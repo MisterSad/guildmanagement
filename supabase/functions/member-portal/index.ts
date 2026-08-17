@@ -768,11 +768,14 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "get-personal-kpis") {
-    const { data, error } = await admin.rpc("gm_personal_kpis", { p_uid: uid });
-    if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
-    const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean } | null;
+    const [rpcRes, guildAverages] = await Promise.all([
+      admin.rpc("gm_personal_kpis", { p_uid: uid }),
+      getGuildAverages(admin, member.guild)
+    ]);
+    if (rpcRes.error) return json({ ok: false, error: "db_error", message: rpcRes.error.message }, 200);
+    const row = (Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data) as Record<string, any> | null;
     if (!row || !row.ok) return json({ ok: false, error: "kpis_failed" }, 200);
-    return json(row);
+    return json({ ...row, guild_averages: guildAverages });
   }
 
   if (action === "update-timezone") {
