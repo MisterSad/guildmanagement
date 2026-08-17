@@ -1422,6 +1422,15 @@
         return Math.round(tot + (fleet * 80.0) + (flag * 18.0) + (crew * 8.0) + (tech * 4.0) + (champ * 0.8) + (glory * 0.05));
     }
 
+    function calculateRallyGrade(m, maxScore) {
+        if (!m) return 0;
+        var score = calculateRallyScore(m);
+        if (score <= 0) return 0;
+        if (!maxScore || maxScore <= 0) return 100;
+        var grade = Math.round((score / maxScore) * 100);
+        return Math.min(100, Math.max(0, grade));
+    }
+
     function calculateResidualPower(m) {
         if (!m) return 0;
         var tot = parseSafeMetric(m.overall_power || m.total_power);
@@ -1576,6 +1585,7 @@
         getPowerTierMeta: getPowerTierMeta,
         calculateCombatDensity: calculateCombatDensity,
         calculateRallyScore: calculateRallyScore,
+        calculateRallyGrade: calculateRallyGrade,
         calculateResidualPower: calculateResidualPower,
         calculateCombativity: calculateCombativity,
         calculateWarScore: calculateWarScore,

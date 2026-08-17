@@ -316,6 +316,19 @@ describe('Tactical Military Metrics & Calculations', () => {
         const odinIndex = sorted.findIndex(m => m.pseudo === 'ODIN');
         expect(hawkIndex).toBeLessThan(odinIndex); // HawkEye is ranked higher than ODIN
     });
+
+    it('calculates Rally Grade out of 100 relative to guild maximum accurately', () => {
+        const topPlayer = { overall_power: 100000000, fleet_rating: 2000000, flagship_power: 10000000 };
+        const halfPlayer = { overall_power: 50000000, fleet_rating: 1000000, flagship_power: 5000000 };
+        const zeroPlayer = { overall_power: 0 };
+
+        const topScore = window.GM.calculateRallyScore(topPlayer);
+
+        expect(window.GM.calculateRallyGrade(topPlayer, topScore)).toBe(100);
+        expect(window.GM.calculateRallyGrade(halfPlayer, topScore)).toBe(50);
+        expect(window.GM.calculateRallyGrade(zeroPlayer, topScore)).toBe(0);
+        expect(window.GM.calculateRallyGrade(null, topScore)).toBe(0);
+    });
 });
 
 

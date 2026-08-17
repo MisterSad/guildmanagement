@@ -3826,11 +3826,13 @@
                 return (parseInt(b.fleet_rating) || 0) - (parseInt(a.fleet_rating) || 0);
             });
 
+            var maxRallyScore = 0;
             var rallyRankMap = {};
             var leaderCount = 0;
             rallyRankedList.forEach(function (m, idx) {
                 var pKey = (m.pseudo || '').toLowerCase();
                 var rScore = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(m) : 0;
+                if (rScore > maxRallyScore) maxRallyScore = rScore;
                 if (idx < 16 && rScore > 0) {
                     leaderCount++;
                     rallyRankMap[pKey] = {
@@ -3882,6 +3884,7 @@
                 var powerVal = parseInt(m.overall_power) || 0;
                 var density = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(m) : 0;
                 var rallyScore = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(m) : 0;
+                var rallyGrade = window.GM.calculateRallyGrade ? window.GM.calculateRallyGrade(m, maxRallyScore) : (maxRallyScore > 0 ? Math.round((rallyScore / maxRallyScore) * 100) : 0);
 
                 var rallyInfo = rallyRankMap[(m.pseudo || '').toLowerCase()] || { isLeader: false, rank: 999, label: 'Rally Joiner' };
                 var rallyRoleChip = '';
@@ -3919,9 +3922,9 @@
                     '<td style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size:0.85rem;" title="Latest Recorded Sunday Glory: ' + (m.glory_score ? window.GM.formatNumber(m.glory_score) : '0') + '">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:center;">' +
                         (rallyScore > 0
-                            ? '<div style="display:inline-flex; flex-direction:column; align-items:center; gap:0.12rem;">' +
-                                  '<span class="gm-mono" style="font-weight:700; font-size:0.84rem; color:#818cf8;" title="Rally Combat Score: ' + window.GM.formatNumber(rallyScore) + '">' + window.GM.formatPower(rallyScore) + '</span>' +
-                                  '<span style="font-size:0.68rem; color:var(--text-muted); opacity:0.85;" title="Combat Density: ' + density + '%">(' + density + '%)</span>' +
+                            ? '<div style="display:inline-flex; flex-direction:column; align-items:center; gap:0.15rem;">' +
+                                  '<span class="gm-chip" style="font-weight:700; font-size:0.8rem; color:#818cf8; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.32); padding:0.12rem 0.45rem; gap:0.25rem;" title="Rally Grade: ' + rallyGrade + '/100 (' + window.GM.formatNumber(rallyScore) + ' pts)"><i class="ph ph-lightning"></i> ' + rallyGrade + '/100</span>' +
+                                  '<span style="font-size:0.68rem; color:var(--text-muted); opacity:0.85;" title="Absolute Combat Power: ' + window.GM.formatPower(rallyScore) + '">' + window.GM.formatPower(rallyScore) + '</span>' +
                               '</div>'
                             : '<span style="color:var(--text-muted); opacity:0.4;">—</span>'
                         ) +

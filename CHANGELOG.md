@@ -2,6 +2,11 @@
 
 ## New
 
+- **Rally Grade out of 100 System & Visual Chip Display (v120.5)**:
+  - **Relative /100 Tactical Grade Rating**: Added `calculateRallyGrade(member, maxScore)` in `gm-utils.js` normalizing the guild's leading strike force to `100/100` and rating all other guild members proportionally (e.g. `98/100`, `94/100`, `87/100`).
+  - **Tactical Chip Display**: Rendered a dedicated `⚡ XX/100` tactical grade chip in the `⚡ Rally Score` column of the matrix table with secondary absolute combat power displayed directly beneath.
+  - **Quality Gate**: **261/261 Vitest unit tests green** (added test suite for `calculateRallyGrade`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Magnitude-Normalized Tactical Combat Scale Calibration (v120.4)**:
   - **Magnitude Realism Calibration**: Calibrated the multipliers in `calculateCombatDensity` and `calculateRallyScore` in `gm-utils.js` to account for differing natural orders of magnitude across military metrics:
     - **Strongest Fleet Rating ($\times 80.0$)**: Normalized 1.5M–2.5M march ratings to deliver spearhead combat contribution (~160M–184M).
