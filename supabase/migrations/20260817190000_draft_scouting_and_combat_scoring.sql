@@ -1,10 +1,10 @@
 -- 20260817190000_draft_scouting_and_combat_scoring.sql
 -- Overhauls public.gm_cross_guild_ranking() into an Inter-Server Migration Scouting & Combat Scoring Engine.
 -- All scoring metrics normalized on a clean 0 to 100 scale:
--- 1. Day 6 Score (0-100): Combines SvS/GvG Day 6 battle combat points (2x doubled factor) and battle presence.
--- 2. Glory Score (0-100): Combines Glory accumulated points and weekly consistency.
--- 3. Shadowfront (0-100): Priority 20v20 guild coordination attendance rate.
--- 4. Draft Score (0-100): Master composite index synthesized from all component scores (30% Shadowfront, 25% Day 6 PvP, 15% SvS, 15% GvG, 10% Glory, 5% Other).
+-- 1. Day 6 Score (0-100%): Combines SvS/GvG Day 6 battle combat points (2x doubled factor) and battle presence.
+-- 2. Glory Score (0-100%): Combines Glory accumulated points and weekly consistency.
+-- 3. Shadowfront (0-100%): Priority 20v20 guild coordination attendance rate.
+-- 4. Draft Score (0-100%): Master composite index synthesized from all component scores (30% Shadowfront, 25% Day 6 PvP, 15% SvS, 15% GvG, 10% Glory, 5% Other).
 -- 5. Target Server Isolation for Inter-Server Migration scouting.
 
 DROP FUNCTION IF EXISTS public.gm_cross_guild_ranking();
@@ -132,17 +132,15 @@ BEGIN
     ),
     benchmarks AS (
         SELECT 
-            -- 95th percentile benchmark for PvP combat scores (or max, minimum 1 to avoid / 0)
             COALESCE(
-                NULLIF(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY (2 * ps.svs_avg_pvp + 2 * ps.gvg_avg_pvp)), 0),
-                NULLIF(MAX(2 * ps.svs_avg_pvp + 2 * ps.gvg_avg_pvp), 0),
-                1
+                NULLIF(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY (2 * ps.svs_avg_pvp + 2 * ps.gvg_avg_pvp)), 0)::NUMERIC,
+                NULLIF(MAX(2 * ps.svs_avg_pvp + 2 * ps.gvg_avg_pvp), 0)::NUMERIC,
+                1::NUMERIC
             ) AS pvp_benchmark,
-            -- 95th percentile benchmark for Glory points (minimum 1)
             COALESCE(
-                NULLIF(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ps.gl_total), 0),
-                NULLIF(MAX(ps.gl_total), 0),
-                1
+                NULLIF(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ps.gl_total), 0)::NUMERIC,
+                NULLIF(MAX(ps.gl_total), 0)::NUMERIC,
+                1::NUMERIC
             ) AS glory_benchmark
         FROM player_stats ps
     ),
@@ -165,13 +163,13 @@ BEGIN
                -- SvS
                COALESCE(ps.svs_att, 0)::INTEGER AS svs_attended,
                COALESCE(st.svs_tot, 0)::INTEGER AS svs_total,
-               CASE WHEN COALESCE(st.svs_tot, 0) > 0 THEN ROUND(100.0 * COALESCE(ps.svs_att, 0) / st.svs_tot, 1) END AS svs_rate,
+               CASE WHEN COALESCE(st.svs_tot, 0) > 0 THEN ROUND((100.0 * COALESCE(ps.svs_att, 0) / st.svs_tot)::NUMERIC, 1) END AS svs_rate,
                COALESCE(ps.svs_avg_prep, 0)::BIGINT AS svs_avg_prep,
                COALESCE(ps.svs_avg_pvp, 0)::BIGINT AS svs_avg_pvp,
                -- GvG
                COALESCE(ps.gvg_att, 0)::INTEGER AS gvg_attended,
                COALESCE(st.gvg_tot, 0)::INTEGER AS gvg_total,
-               CASE WHEN COALESCE(st.gvg_tot, 0) > 0 THEN ROUND(100.0 * COALESCE(ps.gvg_att, 0) / st.gvg_tot, 1) END AS gvg_rate,
+               CASE WHEN COALESCE(st.gvg_tot, 0) > 0 THEN ROUND((100.0 * COALESCE(ps.gvg_att, 0) / st.gvg_tot)::NUMERIC, 1) END AS gvg_rate,
                COALESCE(ps.gvg_avg_prep, 0)::BIGINT AS gvg_avg_prep,
                COALESCE(ps.gvg_avg_pvp, 0)::BIGINT AS gvg_avg_pvp,
                -- Raw Day 6 PvP combat points
@@ -179,25 +177,25 @@ BEGIN
                  (2 * COALESCE(ps.svs_avg_pvp, 0)) + 
                  (2 * COALESCE(ps.gvg_avg_pvp, 0))
                )::BIGINT AS day6_pvp_score,
-               -- Day 6 Score (0 to 100 scale): Combines battle points vs server benchmark and SvS/GvG battle presence
+               -- Day 6 Score (0 to 100 scale)
                CASE
                  WHEN (COALESCE(st.svs_tot, 0) + COALESCE(st.gvg_tot, 0)) > 0 THEN
                    ROUND(
-                     LEAST(
-                       100.0,
-                       (
-                         -- 50% from battle presence in SvS/GvG
-                         (0.50 * (
-                           (COALESCE(ps.svs_att, 0)::NUMERIC + COALESCE(ps.gvg_att, 0)::NUMERIC) / 
-                           NULLIF(COALESCE(st.svs_tot, 0)::NUMERIC + COALESCE(st.gvg_tot, 0)::NUMERIC, 0)
-                         ) * 100.0) +
-                         -- 50% from normalized Day 6 combat score
-                         (0.50 * (
-                           ((2 * COALESCE(ps.svs_avg_pvp, 0)::NUMERIC) + (2 * COALESCE(ps.gvg_avg_pvp, 0)::NUMERIC)) / 
-                           NULLIF((SELECT bm.pvp_benchmark FROM benchmarks bm), 0)
-                         ) * 100.0)
+                     (
+                       LEAST(
+                         100.0::NUMERIC,
+                         (
+                           (0.50::NUMERIC * (
+                             (COALESCE(ps.svs_att, 0)::NUMERIC + COALESCE(ps.gvg_att, 0)::NUMERIC) / 
+                             NULLIF(COALESCE(st.svs_tot, 0)::NUMERIC + COALESCE(st.gvg_tot, 0)::NUMERIC, 0::NUMERIC)
+                           ) * 100.0::NUMERIC) +
+                           (0.50::NUMERIC * (
+                             ((2 * COALESCE(ps.svs_avg_pvp, 0)::NUMERIC) + (2 * COALESCE(ps.gvg_avg_pvp, 0)::NUMERIC)) / 
+                             NULLIF((SELECT bm.pvp_benchmark FROM benchmarks bm), 0::NUMERIC)
+                           ) * 100.0::NUMERIC)
+                         )
                        )
-                     ),
+                     )::NUMERIC,
                      1
                    )
                  ELSE NULL
@@ -205,32 +203,33 @@ BEGIN
                -- Shadowfront
                COALESCE(ps.sh_att, 0)::INTEGER AS shadow_attended,
                COALESCE(st.sh_tot, 0)::INTEGER AS shadow_total,
-               CASE WHEN COALESCE(st.sh_tot, 0) > 0 THEN ROUND(100.0 * COALESCE(ps.sh_att, 0) / st.sh_tot, 1) END AS shadow_rate,
+               CASE WHEN COALESCE(st.sh_tot, 0) > 0 THEN ROUND((100.0 * COALESCE(ps.sh_att, 0) / st.sh_tot)::NUMERIC, 1) END AS shadow_rate,
                -- DTR
                COALESCE(ps.dtr_att, 0)::INTEGER AS dtr_attended,
                COALESCE(st.dtr_tot, 0)::INTEGER AS dtr_total,
-               CASE WHEN COALESCE(st.dtr_tot, 0) > 0 THEN ROUND(100.0 * COALESCE(ps.dtr_att, 0) / st.dtr_tot, 1) END AS dtr_rate,
+               CASE WHEN COALESCE(st.dtr_tot, 0) > 0 THEN ROUND((100.0 * COALESCE(ps.dtr_att, 0) / st.dtr_tot)::NUMERIC, 1) END AS dtr_rate,
                -- Arms Race
                COALESCE(ps.ar_att, 0)::INTEGER AS arms_attended,
                COALESCE(st.ar_tot, 0)::INTEGER AS arms_total,
-               CASE WHEN COALESCE(st.ar_tot, 0) > 0 THEN ROUND(100.0 * COALESCE(ps.ar_att, 0) / st.ar_tot, 1) END AS arms_rate,
+               CASE WHEN COALESCE(st.ar_tot, 0) > 0 THEN ROUND((100.0 * COALESCE(ps.ar_att, 0) / st.ar_tot)::NUMERIC, 1) END AS arms_rate,
                -- Glory totals & Glory Score (0 to 100 scale)
                COALESCE(ps.gl_total, 0)::BIGINT AS glory_total,
                COALESCE(ps.gl_att, 0)::INTEGER AS glory_attended,
                COALESCE(st.gl_tot, 0)::INTEGER AS glory_total_weeks,
-               CASE WHEN COALESCE(st.gl_tot, 0) > 0 THEN ROUND(100.0 * COALESCE(ps.gl_att, 0) / st.gl_tot, 1) END AS glory_rate,
+               CASE WHEN COALESCE(st.gl_tot, 0) > 0 THEN ROUND((100.0 * COALESCE(ps.gl_att, 0) / st.gl_tot)::NUMERIC, 1) END AS glory_rate,
+               -- Glory Score (0 to 100 scale)
                CASE
                  WHEN COALESCE(st.gl_tot, 0) > 0 THEN
                    ROUND(
-                     LEAST(
-                       100.0,
-                       (
-                         -- 50% from weekly attendance rate
-                         (0.50 * (COALESCE(ps.gl_att, 0)::NUMERIC / NULLIF(st.gl_tot::NUMERIC, 0)) * 100.0) +
-                         -- 50% from Glory points volume relative to benchmark
-                         (0.50 * (COALESCE(ps.gl_total, 0)::NUMERIC / NULLIF((SELECT bm.glory_benchmark FROM benchmarks bm), 0)) * 100.0)
+                     (
+                       LEAST(
+                         100.0::NUMERIC,
+                         (
+                           (0.50::NUMERIC * (COALESCE(ps.gl_att, 0)::NUMERIC / NULLIF(st.gl_tot::NUMERIC, 0::NUMERIC)) * 100.0::NUMERIC) +
+                           (0.50::NUMERIC * (COALESCE(ps.gl_total, 0)::NUMERIC / NULLIF((SELECT bm.glory_benchmark FROM benchmarks bm), 0::NUMERIC)) * 100.0::NUMERIC)
+                         )
                        )
-                     ),
+                     )::NUMERIC,
                      1
                    )
                  ELSE NULL
@@ -249,18 +248,20 @@ BEGIN
                  ) > 0 THEN
                    ROUND(
                      (
-                       (CASE WHEN COALESCE(st.svs_tot, 0) > 0 THEN 5.0 * COALESCE(ps.svs_att, 0) / st.svs_tot ELSE 0 END) +
-                       (CASE WHEN COALESCE(st.gvg_tot, 0) > 0 THEN 5.0 * COALESCE(ps.gvg_att, 0) / st.gvg_tot ELSE 0 END) +
-                       (CASE WHEN COALESCE(st.sh_tot, 0)  > 0 THEN 4.0 * COALESCE(ps.sh_att, 0)  / st.sh_tot  ELSE 0 END) +
-                       (CASE WHEN COALESCE(st.dtr_tot, 0) > 0 THEN 2.0 * COALESCE(ps.dtr_att, 0) / st.dtr_tot ELSE 0 END) +
-                       (CASE WHEN COALESCE(st.ar_tot, 0)  > 0 THEN 2.0 * COALESCE(ps.ar_att, 0)  / st.ar_tot  ELSE 0 END)
-                     ) * 100.0 / (
-                       (CASE WHEN COALESCE(st.svs_tot, 0) > 0 THEN 5.0 ELSE 0 END) +
-                       (CASE WHEN COALESCE(st.gvg_tot, 0) > 0 THEN 5.0 ELSE 0 END) +
-                       (CASE WHEN COALESCE(st.sh_tot, 0)  > 0 THEN 4.0 ELSE 0 END) +
-                       (CASE WHEN COALESCE(st.dtr_tot, 0) > 0 THEN 2.0 ELSE 0 END) +
-                       (CASE WHEN COALESCE(st.ar_tot, 0)  > 0 THEN 2.0 ELSE 0 END)
-                     ),
+                       (
+                         (CASE WHEN COALESCE(st.svs_tot, 0) > 0 THEN 5.0::NUMERIC * COALESCE(ps.svs_att, 0)::NUMERIC / st.svs_tot::NUMERIC ELSE 0::NUMERIC END) +
+                         (CASE WHEN COALESCE(st.gvg_tot, 0) > 0 THEN 5.0::NUMERIC * COALESCE(ps.gvg_att, 0)::NUMERIC / st.gvg_tot::NUMERIC ELSE 0::NUMERIC END) +
+                         (CASE WHEN COALESCE(st.sh_tot, 0)  > 0 THEN 4.0::NUMERIC * COALESCE(ps.sh_att, 0)::NUMERIC  / st.sh_tot::NUMERIC  ELSE 0::NUMERIC END) +
+                         (CASE WHEN COALESCE(st.dtr_tot, 0) > 0 THEN 2.0::NUMERIC * COALESCE(ps.dtr_att, 0)::NUMERIC / st.dtr_tot::NUMERIC ELSE 0::NUMERIC END) +
+                         (CASE WHEN COALESCE(st.ar_tot, 0)  > 0 THEN 2.0::NUMERIC * COALESCE(ps.ar_att, 0)::NUMERIC  / st.ar_tot::NUMERIC  ELSE 0::NUMERIC END)
+                       ) * 100.0::NUMERIC / (
+                         (CASE WHEN COALESCE(st.svs_tot, 0) > 0 THEN 5.0::NUMERIC ELSE 0::NUMERIC END) +
+                         (CASE WHEN COALESCE(st.gvg_tot, 0) > 0 THEN 5.0::NUMERIC ELSE 0::NUMERIC END) +
+                         (CASE WHEN COALESCE(st.sh_tot, 0)  > 0 THEN 4.0::NUMERIC ELSE 0::NUMERIC END) +
+                         (CASE WHEN COALESCE(st.dtr_tot, 0) > 0 THEN 2.0::NUMERIC ELSE 0::NUMERIC END) +
+                         (CASE WHEN COALESCE(st.ar_tot, 0)  > 0 THEN 2.0::NUMERIC ELSE 0::NUMERIC END)
+                       )
+                     )::NUMERIC,
                      1
                    )
                  ELSE NULL
@@ -282,13 +283,13 @@ BEGIN
                  WHEN c.global_total > 0 OR c.shadow_total > 0 OR c.svs_total > 0 OR c.gvg_total > 0 THEN
                    ROUND(
                      (
-                       COALESCE(c.shadow_rate, 0) * 0.30 +
-                       COALESCE(c.day6_score, 0)  * 0.25 +
-                       COALESCE(c.svs_rate, 0)    * 0.15 +
-                       COALESCE(c.gvg_rate, 0)    * 0.15 +
-                       COALESCE(c.glory_score, 0) * 0.10 +
-                       COALESCE(c.global_rate, 0) * 0.05
-                     ),
+                       COALESCE(c.shadow_rate, 0::NUMERIC) * 0.30::NUMERIC +
+                       COALESCE(c.day6_score, 0::NUMERIC)  * 0.25::NUMERIC +
+                       COALESCE(c.svs_rate, 0::NUMERIC)    * 0.15::NUMERIC +
+                       COALESCE(c.gvg_rate, 0::NUMERIC)    * 0.15::NUMERIC +
+                       COALESCE(c.glory_score, 0::NUMERIC) * 0.10::NUMERIC +
+                       COALESCE(c.global_rate, 0::NUMERIC) * 0.05::NUMERIC
+                     )::NUMERIC,
                      1
                    )
                  ELSE NULL
