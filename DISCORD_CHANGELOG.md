@@ -1,21 +1,33 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.19 (Enhanced Tech Power Multiplier)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.20 (Player Portal Overhaul & Guild Averages)**
 
 Hey commanders! 👋
 
-I have boosted the **Technology Research multiplier** in the Tactical Force Matrix calculation engine:
+I'm super excited to bring you a massive overhaul of the **Player Portal**! 🚀
+You can now clearly see how your scores compare to the rest of the guild with real-time benchmarks across all events and combat stats.
 
 ---
 
-### 🔬 Boosted Tech Multiplier ($\times 6.0$)
-* **Technology Research** now has an increased coefficient of **$\times 6.0$** (up from 4.0x)!
-* High-tech commanders receive a stronger, well-deserved boost to their Rally Score, acknowledging the massive investment and permanent buffs granted by deep research trees.
-* *Kelisco* (highest guild tech at 18.7M) climbs to **`99/100`** (`629.5M`), closing in right behind *USAFE* (`100/100`)!
+### 📈 Guild Average Progression Curves on Charts
+* **Dual-Line Progression Charts**: In your **My Progress** dashboard, SvS, GvG, and Glory charts now feature two distinct curves:
+  - 🟢 **Your Score**: Solid glowing emerald line tracking your individual session scores.
+  - 🟡 **Guild Average**: Dashed warm amber line tracking the average score achieved by guild participants.
+* **Instant Comparison Badges**: Below each chart, the session history now highlights your score alongside the guild average, including a comparative pill (e.g. `+28.4% vs Avg` or `-5.2% vs Avg`).
 
 ---
 
-### 🎯 Full Calibrated Hierarchy:
-$$\text{Rally Score} = \text{Power} + (\text{Fleet} \times 80) + (\text{Flagship} \times 18) + (\text{Crew} \times 8) + (\text{Tech} \times 6) + (\text{Champs} \times 0.8) + (\text{Glory} \times 0.05)$$
+### ⚔️ Military Force Breakdown & Guild Benchmarks
+* In your tactical metrics dashboard, all **7 military components** (Fleet Rating, Technology Power, Flagship Power, Champions Power, Crew Power, Glory Score, and Total Power) now display:
+  - Your current recorded score.
+  - The **Guild Average** benchmark across all guild mates.
+  - A real-time comparative badge showing whether you're above or below the guild average.
 
 ---
 
-*Keep upgrading your combat research trees!* 🚀
+### ✨ Sleek UI/UX Redesign
+* **Cozy Neutral & Frosted Glass Aesthetics**: Upgraded surfaces, high-contrast typography, interactive status badges, and refined tactical grade chips (`⚡ 98/100`).
+* **Ultra-Responsive Mobile Experience**: Clean bottom navigation bar and fluid card layouts on phones and tablets.
+
+---
+
+*Log into your Player Portal to explore your new progression charts and benchmarks!* 🎮🛡️
+

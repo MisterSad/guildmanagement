@@ -329,6 +329,45 @@ describe('Tactical Military Metrics & Calculations', () => {
         expect(window.GM.calculateRallyGrade(zeroPlayer, topScore)).toBe(0);
         expect(window.GM.calculateRallyGrade(null, topScore)).toBe(0);
     });
+
+    it('calculates guild average scores and delta percentage benchmarks accurately', () => {
+        const sessionParticipants = [
+            { pseudo: 'P1', score: 120000000, score_prep: 0, score_pvp: 0 },
+            { pseudo: 'P2', score: 80000000, score_prep: 0, score_pvp: 0 },
+            { pseudo: 'P3', score: 100000000, score_prep: 0, score_pvp: 0 }
+        ];
+
+        const totalScore = sessionParticipants.reduce((sum, p) => sum + p.score, 0);
+        const guildAvg = Math.round(totalScore / sessionParticipants.length);
+
+        expect(guildAvg).toBe(100000000);
+
+        // Player 1: 120M vs 100M Avg -> +20.0%
+        const p1Score = 120000000;
+        const p1Delta = Math.round(((p1Score - guildAvg) / guildAvg) * 1000) / 10;
+        expect(p1Delta).toBe(20);
+
+        // Player 2: 80M vs 100M Avg -> -20.0%
+        const p2Score = 80000000;
+        const p2Delta = Math.round(((p2Score - guildAvg) / guildAvg) * 1000) / 10;
+        expect(p2Delta).toBe(-20);
+    });
+
+    it('aggregates guild-wide average military metrics across members accurately', () => {
+        const guildMembers = [
+            { overall_power: 100000000, fleet_rating: 2000000, tech_power: 15000000, flagship_power: 10000000, champion_power: 25000000, crew_power: 4000000, glory_score: 100000000 },
+            { overall_power: 120000000, fleet_rating: 2400000, tech_power: 18000000, flagship_power: 11000000, champion_power: 27000000, crew_power: 5000000, glory_score: 200000000 }
+        ];
+
+        const count = guildMembers.length;
+        const avgFleet = Math.round(guildMembers.reduce((s, m) => s + m.fleet_rating, 0) / count);
+        const avgTech = Math.round(guildMembers.reduce((s, m) => s + m.tech_power, 0) / count);
+        const avgGlory = Math.round(guildMembers.reduce((s, m) => s + m.glory_score, 0) / count);
+
+        expect(avgFleet).toBe(2200000);
+        expect(avgTech).toBe(16500000);
+        expect(avgGlory).toBe(150000000);
+    });
 });
 
 

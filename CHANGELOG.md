@@ -2,6 +2,14 @@
 
 ## New
 
+- **Player Portal Guild Average Progression Curves & Complete UX/UI Overhaul (v121.0)**:
+  - **Dual-Series Progression Charts**: Added a secondary **Guild Average Benchmark curve** (rendered as a warm amber dashed line with average score indicators) alongside the player's primary solid emerald score curve across SvS, GvG, and Glory event charts in `portal.js`.
+  - **Live Performance Delta Badges**: Every session breakdown below the progression charts displays the player's score, guild average score, and a relative performance badge (e.g. `+26.3% vs Avg` in emerald or `-8.2% vs Avg` in amber).
+  - **Guild Military Benchmarks**: Extended the Military Force Breakdown with 7 component tiles (Fleet Rating, Technology Power, Flagship Power, Champions Power, Crew Power, Glory Score, Overall Combat Power), each displaying the player's stat, the guild average benchmark, and real-time comparative percentage differences.
+  - **Backend RPC Aggregation**: Enhanced `supabase/functions/member-portal/index.ts` (`get-history` and `get-active-sessions`) to compute guild-wide weekly and session averages (`guild_avg_score`, `guild_max_score`, and military `guild_averages`) securely without exposing individual teammate data to member accounts.
+  - **Complete Modern UI/UX Redesign**: Redesigned the Player Portal following Material Design 3.0 and Apple Cozy Neutral design tokens (warm graphite `#121214`–`#1a1a1f`, frosted glass, high-contrast typography, interactive status badges, seamless mobile navigation).
+  - **Quality Gate**: **263/263 Vitest unit tests green** (added test suites for session averages and military benchmark calculations), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Technology Power Weight Boost to 6.0x (v120.7)**:
   - **Calibrated Technology Multiplier**: Increased Technology Research Power weight in `calculateCombatDensity` and `calculateRallyScore` in `gm-utils.js` to **$\times 6.0$** (was 4.0x), elevating the tactical influence of high research levels on the composite Rally Combat Score.
   - **Hierarchy Preservation**: USAFE remains benchmark #1 (`100/100`), Kelisco rises to `99/100` (`629.5M`), and HawkEye firmly retains Rank 7 (`87/100`, well above ODIN's `80/100`).

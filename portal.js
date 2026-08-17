@@ -15,6 +15,7 @@
         sessions: [],       // active event sessions
         history: null,      // per-event history from get-history
         kpis: null,         // personal KPIs + guild positioning
+        guildAverages: {},  // guild average military and event metrics
         activeTab: 'dashboard',
         period: 'all',      // 'all' | '8w' | '4w' | '1w'
         chartsDrawn: false,
@@ -119,6 +120,7 @@
         portalState.sessions = profile.sessions || [];
         portalState.history = history.ok ? (history.events || {}) : null;
         portalState.kpis = kpis.ok ? kpis : null;
+        portalState.guildAverages = (history && history.guild_averages) || (profile && profile.guild_averages) || {};
         portalState.chartsDrawn = false;
 
         renderDashboard();
@@ -288,6 +290,17 @@
 
         // ── Advanced personal KPIs (from gm_personal_kpis) ─────────────────
         var kpis = portalState.kpis;
+        var player = portalState.player || {};
+        var guildAvg = portalState.guildAverages || {};
+        var density = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(player) : 0;
+        var residual = window.GM.calculateResidualPower ? window.GM.calculateResidualPower(player) : 0;
+        var combativity = window.GM.calculateCombativity ? window.GM.calculateCombativity(player) : 0;
+
+        var maxGuildPower = (kpis && kpis.power && kpis.power.guild_max) || (player.overall_power * 1.25) || 100000000;
+        var playerRallyScore = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(player) : 0;
+        var estimatedMaxRally = Math.max(playerRallyScore, Math.round(maxGuildPower * 5.2));
+        var rallyGrade = window.GM.calculateRallyGrade ? window.GM.calculateRallyGrade(player, estimatedMaxRally) : 100;
+
         var kpiHtml = '';
         if (kpis && kpis.power) {
             var pw = kpis.power;
@@ -317,7 +330,7 @@
                         '<div class="portal-kpi-label">Combat Power</div>' +
                         '<div class="portal-kpi-rank">#' + esc(pw.rank || '-') + ' of ' + esc(pw.members || '-') + ' members</div>' +
                         '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + esc(powerDelta) + '%;"></div></div>' +
-                        '<div class="portal-kpi-sub">Top ' + esc(pw.percentile != null ? pw.percentile : 0) + '% &middot; ' + esc(powerDelta) + '% of guild max</div>' +
+                        '<div class="portal-kpi-sub">Top ' + esc(pw.percentile != null ? pw.percentile : 0) + '% &middot; vs Avg: ' + esc(window.GM.formatPower(guildAvg.overall_power || pw.guild_avg || 0)) + '</div>' +
                     '</div>' +
                     '<div class="portal-kpi-card portal-kpi-glory">' +
                         '<div class="portal-kpi-icon"><i class="ph ph-trophy"></i></div>' +
@@ -325,7 +338,7 @@
                         '<div class="portal-kpi-label">Glory this week</div>' +
                         '<div class="portal-kpi-rank">' + esc(gloryRankTxt) + '</div>' +
                         '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + esc(gloryPct) + '%;"></div></div>' +
-                        '<div class="portal-kpi-sub">Best ever: ' + esc(gl.best_ever != null ? window.GM.formatNumber(gl.best_ever) : '-') + '</div>' +
+                        '<div class="portal-kpi-sub">Best: ' + esc(gl.best_ever != null ? window.GM.formatNumber(gl.best_ever) : '-') + ' &middot; Avg: ' + esc(window.GM.formatNumber(guildAvg.glory_score || gl.guild_avg_week || 0)) + '</div>' +
                     '</div>' +
                     '<div class="portal-kpi-card portal-kpi-part">' +
                         '<div class="portal-kpi-icon"><i class="ph ph-calendar-check"></i></div>' +
@@ -336,11 +349,12 @@
                         '<div class="portal-kpi-sub">' + esc(partVsTxt) + '</div>' +
                     '</div>' +
                     '<div class="portal-kpi-card portal-kpi-tenure">' +
-                        '<div class="portal-kpi-icon"><i class="ph ph-hourglass"></i></div>' +
-                        '<div class="portal-kpi-value">' + esc(kpis.days_in_guild != null ? kpis.days_in_guild : 0) + '</div>' +
-                        '<div class="portal-kpi-label">Days in guild</div>' +
-                        '<div class="portal-kpi-rank">' + esc(kpis.role || 'R1') + ' rank</div>' +
-                        '<div class="portal-kpi-sub">&nbsp;</div>' +
+                        '<div class="portal-kpi-icon"><i class="ph ph-lightning"></i></div>' +
+                        '<div class="portal-kpi-value" style="color:#fbbf24;">⚡ ' + esc(rallyGrade) + '/100</div>' +
+                        '<div class="portal-kpi-label">Rally Grade</div>' +
+                        '<div class="portal-kpi-rank">Combat Density: ' + density + '%</div>' +
+                        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + esc(rallyGrade) + '%; background:#fbbf24;"></div></div>' +
+                        '<div class="portal-kpi-sub">Combativity: ' + combativity + 'x &middot; ' + esc(kpis.role || 'R1') + '</div>' +
                     '</div>' +
                 '</div>';
         }
@@ -350,7 +364,7 @@
                 '<div class="portal-stat"><div class="portal-stat-value">' + esc(totalCount) + '</div><div class="portal-stat-label">Events tracked</div></div>' +
                 '<div class="portal-stat"><div class="portal-stat-value">' + esc(totalAttended) + '</div><div class="portal-stat-label">Participated</div></div>' +
                 '<div class="portal-stat"><div class="portal-stat-value">' + esc(overallRate) + '%</div><div class="portal-stat-label">Attendance rate</div></div>' +
-                '<div class="portal-stat"><div class="portal-stat-value">' + esc(window.GM.formatPower(portalState.player.overall_power)) + '</div><div class="portal-stat-label">Current power</div></div>' +
+                '<div class="portal-stat"><div class="portal-stat-value">' + esc(window.GM.formatPower(player.overall_power)) + '</div><div class="portal-stat-label">Current power</div></div>' +
             '</div>';
 
         var periodHtml =
@@ -376,7 +390,6 @@
         }
 
         // Events without scores get a compact participation-rate tile instead.
-        // Fixed display order: Arms Race A, Arms Race B, then DTR, then the rest.
         var tilesHtml2 = '';
         var tileKeys = keys.filter(function (k) { return !hist[k].has_score; });
         var tileOrder = ['ARMS RACE STAGE A', 'ARMS RACE STAGE B', 'DEFEND TRADE ROUTE'];
@@ -399,17 +412,36 @@
                 '</div>';
         }
 
-        var player = portalState.player || {};
-        var density = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(player) : 0;
-        var residual = window.GM.calculateResidualPower ? window.GM.calculateResidualPower(player) : 0;
-        var combativity = window.GM.calculateCombativity ? window.GM.calculateCombativity(player) : 0;
+        function renderMilitaryTile(icon, label, playerVal, avgVal, color) {
+            var pVal = playerVal || 0;
+            var aVal = avgVal || 0;
+            var deltaHtml = '';
+            if (aVal > 0 && pVal > 0) {
+                var diffPct = Math.round(((pVal - aVal) / aVal) * 1000) / 10;
+                if (diffPct >= 0) {
+                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.08rem 0.35rem; color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.25);">+' + diffPct + '%</span>';
+                } else {
+                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.08rem 0.35rem; color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.25);">' + diffPct + '%</span>';
+                }
+            }
+            return '<div class="portal-stat" style="background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06); padding:0.85rem 1rem; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:0.35rem; text-align:left;">' +
+                        '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+                            '<span class="portal-stat-label" style="font-size:0.75rem; font-weight:700; color:var(--fg-dim); margin-top:0;">' + icon + ' ' + esc(label) + '</span>' +
+                            deltaHtml +
+                        '</div>' +
+                        '<div class="portal-stat-value" style="color:' + color + '; font-size:1.25rem; font-weight:800; text-align:left; margin-top:0.2rem;">' + esc(window.GM.formatPower(pVal)) + '</div>' +
+                        '<div style="font-size:0.7rem; color:var(--fg-muted); display:flex; align-items:center; gap:0.3rem; margin-top:0.15rem;">' +
+                            '<i class="ph ph-users-three" style="opacity:0.7;"></i> Guild Avg: <strong style="color:var(--fg);">' + esc(window.GM.formatPower(aVal)) + '</strong>' +
+                        '</div>' +
+                    '</div>';
+        }
 
         var tacticalBreakdownHtml =
             '<div class="portal-card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(20,20,22,0.95) 0%, rgba(30,30,36,0.95) 100%); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); padding: 1.25rem;">' +
                 '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">' +
                     '<div style="display:flex; align-items:center; gap:0.5rem;">' +
                         '<span class="material-symbols-rounded" style="color:var(--accent); font-size:1.5rem;">swords</span>' +
-                        '<span style="font-weight:700; font-size:1.05rem; color:var(--fg);">Military Force Breakdown</span>' +
+                        '<span style="font-weight:700; font-size:1.05rem; color:var(--fg);">Military Force Breakdown &amp; Guild Benchmarks</span>' +
                     '</div>' +
                     '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
                         '<span class="gm-chip" style="font-size:0.75rem; color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-shield-check"></i> Density: ' + density + '%</span>' +
@@ -417,31 +449,14 @@
                         '<span class="gm-chip" style="font-size:0.75rem; color:#fb923c; background:rgba(251,146,60,0.12); border:1px solid rgba(251,146,60,0.3);"><i class="ph ph-barricade"></i> Volatile: ' + esc(window.GM.formatPower(residual)) + '</span>' +
                     '</div>' +
                 '</div>' +
-                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.75rem;">' +
-                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
-                        '<div class="portal-stat-value" style="color:#60a5fa; font-size:1.15rem;">' + esc(window.GM.formatPower(player.fleet_rating)) + '</div>' +
-                        '<div class="portal-stat-label" style="font-size:0.75rem;">⚔️ Fleet Rating</div>' +
-                    '</div>' +
-                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
-                        '<div class="portal-stat-value" style="color:#a78bfa; font-size:1.15rem;">' + esc(window.GM.formatPower(player.tech_power)) + '</div>' +
-                        '<div class="portal-stat-label" style="font-size:0.75rem;">🔬 Tech Power</div>' +
-                    '</div>' +
-                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
-                        '<div class="portal-stat-value" style="color:#fbbf24; font-size:1.15rem;">' + esc(window.GM.formatPower(player.flagship_power)) + '</div>' +
-                        '<div class="portal-stat-label" style="font-size:0.75rem;">🚀 Flagship Power</div>' +
-                    '</div>' +
-                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
-                        '<div class="portal-stat-value" style="color:#f472b6; font-size:1.15rem;">' + esc(window.GM.formatPower(player.champion_power)) + '</div>' +
-                        '<div class="portal-stat-label" style="font-size:0.75rem;">👑 Champions Power</div>' +
-                    '</div>' +
-                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
-                        '<div class="portal-stat-value" style="color:#38bdf8; font-size:1.15rem;">' + esc(window.GM.formatPower(player.crew_power)) + '</div>' +
-                        '<div class="portal-stat-label" style="font-size:0.75rem;">👥 Crew Power</div>' +
-                    '</div>' +
-                    '<div class="portal-stat" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:0.75rem; border-radius:var(--radius-md);">' +
-                        '<div class="portal-stat-value" style="color:#34d399; font-size:1.15rem;">' + esc(window.GM.formatPower(player.glory_score || player.glory)) + '</div>' +
-                        '<div class="portal-stat-label" style="font-size:0.75rem;">🏆 Glory Score</div>' +
-                    '</div>' +
+                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.75rem;">' +
+                    renderMilitaryTile('⚔️', 'Fleet Rating', player.fleet_rating, guildAvg.fleet_rating, '#60a5fa') +
+                    renderMilitaryTile('🔬', 'Tech Power', player.tech_power, guildAvg.tech_power, '#a78bfa') +
+                    renderMilitaryTile('🚀', 'Flagship Power', player.flagship_power, guildAvg.flagship_power, '#fbbf24') +
+                    renderMilitaryTile('👑', 'Champions Power', player.champion_power, guildAvg.champion_power, '#f472b6') +
+                    renderMilitaryTile('👥', 'Crew Power', player.crew_power, guildAvg.crew_power, '#38bdf8') +
+                    renderMilitaryTile('🏆', 'Glory Score', (player.glory_score || player.glory), guildAvg.glory_score, '#34d399') +
+                    renderMilitaryTile('🛡️', 'Total Power', player.overall_power, guildAvg.overall_power, '#e2e8f0') +
                 '</div>' +
             '</div>';
 
@@ -449,7 +464,7 @@
             '<header class="gm-page-header">' +
                 '<div>' +
                     '<h1 class="gm-page-title">My Progress</h1>' +
-                    '<p class="gm-page-subtitle">Your participation across every guild event type</p>' +
+                    '<p class="gm-page-subtitle">Your score progression, event performance, and guild benchmark comparison</p>' +
                 '</div>' +
                 periodHtml +
             '</header>' +
@@ -476,9 +491,7 @@
         });
     }
 
-    // ─── Chart card (canvas bar chart per event type) ──────────────────────
-    // Event color is used only as a decorative accent strip; the card itself
-    // keeps the dark neutral surface so the canvas and text stay high-contrast.
+    // ─── Chart card (canvas line chart per event type with Guild Average benchmark) ──
     function eventAccent(eventKey) {
         var lower = String(eventKey).toLowerCase();
         if (lower.indexOf('svs') !== -1) return '#a3e635';
@@ -493,17 +506,35 @@
     function renderChartCard(eventKey, ev, idx) {
         var icon = window.GM.getEventIcon(eventKey);
         var accent = eventAccent(eventKey);
-        var anyScore = (ev.history || []).some(function (h) { return (h.score || 0) > 0; });
+        var anyScore = (ev.history || []).some(function (h) { return (h.score || 0) > 0 || (h.guild_avg_score || 0) > 0; });
 
-        // History list: score per session, nothing about attendance.
+        // History list: score per session with Guild Average comparison
         var historyHtml = '';
         (ev.history || []).slice(0, 8).forEach(function (h) {
             var label = h.week_start || h.session_id || '?';
-            var scoreText = anyScore ? window.GM.formatNumber(h.score || 0) : '-';
+            var scoreVal = h.score || 0;
+            var avgVal = h.guild_avg_score || 0;
+            var scoreText = anyScore ? (scoreVal > 0 ? window.GM.formatNumber(scoreVal) : '-') : '-';
+            var avgText = avgVal > 0 ? window.GM.formatNumber(avgVal) : '-';
+
+            var deltaPill = '';
+            if (scoreVal > 0 && avgVal > 0) {
+                var diffPct = Math.round(((scoreVal - avgVal) / avgVal) * 1000) / 10;
+                if (diffPct >= 0) {
+                    deltaPill = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.25);">+' + diffPct + '% vs Avg</span>';
+                } else {
+                    deltaPill = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.4rem; color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.25);">' + diffPct + '% vs Avg</span>';
+                }
+            }
+
             historyHtml +=
                 '<div class="portal-chart-row">' +
                     '<span class="portal-chart-row-label">' + esc(String(label).slice(0, 10)) + '</span>' +
-                    '<span class="portal-chart-row-score">' + esc(scoreText) + '</span>' +
+                    '<div style="display:flex; align-items:center; gap:0.65rem;">' +
+                        '<span class="portal-chart-row-score" style="color:#34d399; font-weight:700;" title="Your Score">' + esc(scoreText) + '</span>' +
+                        '<span style="color:#fbbf24; font-size:0.75rem; font-weight:600; opacity:0.9;" title="Guild Average">Avg ' + esc(avgText) + '</span>' +
+                        deltaPill +
+                    '</div>' +
                 '</div>';
         });
 
@@ -511,9 +542,12 @@
                     '<div class="portal-chart-accent" style="background:' + accent + ';"></div>' +
                     '<div class="portal-chart-head">' +
                         '<div class="portal-chart-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + esc(eventKey) + '</div>' +
-                        '<div class="portal-chart-meta"><i class="ph ph-chart-line-up"></i> Score evolution</div>' +
+                        '<div class="portal-chart-legend">' +
+                            '<span style="display:inline-flex; align-items:center; gap:0.35rem; color:#34d399; font-weight:600;"><span style="width:10px; height:3px; background:#34d399; border-radius:2px; display:inline-block;"></span> You</span>' +
+                            '<span style="display:inline-flex; align-items:center; gap:0.35rem; color:#fbbf24; font-weight:600;"><span style="width:10px; height:2px; border-top:2px dashed #fbbf24; display:inline-block;"></span> Guild Avg</span>' +
+                        '</div>' +
                     '</div>' +
-                    '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="180"></canvas>' +
+                    '<canvas class="portal-chart-canvas" data-chart-key="' + esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="190"></canvas>' +
                     '<div class="portal-chart-list">' + historyHtml + '</div>' +
                 '</div>';
     }
@@ -543,8 +577,7 @@
                 '</div>';
     }
 
-    // ─── Native canvas line chart: score evolution over time ──────────────
-    // The curve follows the player's score per session; no attendance colors.
+    // ─── Native canvas line chart: dual-series (player score + guild average) ─
     function drawChart(eventKey, ev, idx) {
         var canvas = document.querySelector('.portal-chart-canvas[data-chart-idx="' + idx + '"]');
         if (!canvas) return;
@@ -554,125 +587,171 @@
 
         // Chronological order (oldest first) for the curve.
         var list = (ev.history || []).slice(0, 30).slice().reverse();
-        var points = list
-            .map(function (h, i) { return { x: i, y: h.score || 0, label: (h.week_start || h.session_id || '').toString().slice(5, 10) }; })
-            .filter(function (p) { return p.y > 0; }); // only scored sessions shape the curve
-
+        
         if (list.length === 0) {
             ctx.fillStyle = 'rgba(255,255,255,0.55)';
             ctx.font = '14px Inter, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('No data', w / 2, h / 2);
+            ctx.fillText('No data available', w / 2, h / 2);
             return;
         }
 
-        var padL = 46, padR = 14, padT = 20, padB = 28;
+        var padL = 52, padR = 24, padT = 24, padB = 32;
         var chartW = w - padL - padR;
         var chartH = h - padT - padB;
         var baseY = padT + chartH;
 
-        var maxScore = 1;
-        points.forEach(function (p) { if (p.y > maxScore) maxScore = p.y; });
+        var points = list.map(function (h, i) {
+            return {
+                x: i,
+                score: h.score || 0,
+                avg: h.guild_avg_score || 0,
+                label: (h.week_start || h.session_id || '').toString().slice(5, 10)
+            };
+        });
+
+        var maxVal = 1;
+        points.forEach(function (p) {
+            if (p.score > maxVal) maxVal = p.score;
+            if (p.avg > maxVal) maxVal = p.avg;
+        });
+        maxVal = Math.round(maxVal * 1.15);
 
         // Horizontal gridlines (4 steps) with score labels on the left axis
         ctx.font = '10px Inter, sans-serif';
         ctx.textAlign = 'right';
         for (var g = 0; g <= 4; g++) {
             var gy = padT + chartH - (chartH * g / 4);
-            ctx.strokeStyle = g === 0 ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.08)';
+            ctx.strokeStyle = g === 0 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.06)';
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(padL, gy + 0.5);
             ctx.lineTo(w - padR, gy + 0.5);
             ctx.stroke();
 
-            var val = Math.round(maxScore * g / 4);
-            ctx.fillStyle = 'rgba(255,255,255,0.55)';
-            ctx.fillText(window.GM.formatNumber(val), padL - 6, gy + 3);
+            var val = Math.round(maxVal * g / 4);
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillText(window.GM.formatNumber(val), padL - 8, gy + 3.5);
         }
 
-        if (points.length === 0) {
-            // No scores in this period: flat empty chart with a clear message.
+        var scoredPoints = points.filter(function (p) { return p.score > 0; });
+        var avgPoints = points.filter(function (p) { return p.avg > 0; });
+
+        if (scoredPoints.length === 0 && avgPoints.length === 0) {
             ctx.fillStyle = 'rgba(255,255,255,0.6)';
             ctx.font = '700 13px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('No scores recorded in this period', w / 2, padT + chartH / 2 - 6);
             ctx.fillStyle = 'rgba(255,255,255,0.4)';
             ctx.font = '11px Inter, sans-serif';
-            ctx.fillText('Scores appear once they are submitted', w / 2, padT + chartH / 2 + 14);
+            ctx.fillText('Scores will appear once submitted and validated', w / 2, padT + chartH / 2 + 14);
 
             list.forEach(function (h, i) {
                 var x = padL + (chartW * i / Math.max(1, list.length - 1));
                 var label = (h.week_start || h.session_id || '').toString().slice(5, 10);
-                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fillStyle = 'rgba(255,255,255,0.65)';
                 ctx.font = '11px Inter, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(label, x, padT + chartH + 17);
+                ctx.fillText(label, x, padT + chartH + 18);
             });
             return;
         }
 
-        // X positions map every session (including unscored ones) so the
-        // curve stays aligned with the timeline.
         var xFor = function (i) { return padL + (chartW * i / Math.max(1, list.length - 1)); };
-        var yFor = function (val) { return baseY - (chartH * (val / maxScore)); };
+        var yFor = function (val) { return baseY - (chartH * (val / maxVal)); };
 
-        // Area fill under the curve
-        var grad = ctx.createLinearGradient(0, padT, 0, baseY);
-        grad.addColorStop(0, 'rgba(52,211,153,0.28)');
-        grad.addColorStop(1, 'rgba(52,211,153,0.02)');
+        // 1. Draw GUILD AVERAGE Line (Dashed Amber #fbbf24)
+        if (avgPoints.length > 0) {
+            ctx.save();
+            ctx.setLineDash([6, 5]);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2.0;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
 
-        ctx.beginPath();
-        points.forEach(function (p, i) {
-            var x = xFor(p.x), y = yFor(p.y);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        });
-        if (points.length > 1) {
-            ctx.lineTo(xFor(points[points.length - 1].x), baseY);
-            ctx.lineTo(xFor(points[0].x), baseY);
-            ctx.closePath();
-            ctx.fillStyle = grad;
-            ctx.fill();
+            ctx.beginPath();
+            avgPoints.forEach(function (p, i) {
+                var x = xFor(p.x), y = yFor(p.avg);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            ctx.restore();
+
+            // Guild Avg markers
+            avgPoints.forEach(function (p) {
+                var x = xFor(p.x), y = yFor(p.avg);
+                ctx.beginPath();
+                ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#1e1b18';
+                ctx.fill();
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+
+                ctx.fillStyle = '#fbbf24';
+                ctx.font = '600 9px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Avg ' + window.GM.formatNumber(p.avg), x, y + 14);
+            });
         }
 
-        // The score line itself
-        ctx.beginPath();
-        points.forEach(function (p, i) {
-            var x = xFor(p.x), y = yFor(p.y);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        });
-        ctx.strokeStyle = '#34d399';
-        ctx.lineWidth = 2.5;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.stroke();
+        // 2. Draw PLAYER SCORE Curve (Solid Emerald #34d399 with Glowing Area Fill)
+        if (scoredPoints.length > 0) {
+            var grad = ctx.createLinearGradient(0, padT, 0, baseY);
+            grad.addColorStop(0, 'rgba(52,211,153,0.28)');
+            grad.addColorStop(1, 'rgba(52,211,153,0.01)');
 
-        // Point markers with score values above them
-        points.forEach(function (p) {
-            var x = xFor(p.x), y = yFor(p.y);
             ctx.beginPath();
-            ctx.arc(x, y, 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#34d399';
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-            ctx.lineWidth = 1.5;
+            scoredPoints.forEach(function (p, i) {
+                var x = xFor(p.x), y = yFor(p.score);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            if (scoredPoints.length > 1) {
+                ctx.lineTo(xFor(scoredPoints[scoredPoints.length - 1].x), baseY);
+                ctx.lineTo(xFor(scoredPoints[0].x), baseY);
+                ctx.closePath();
+                ctx.fillStyle = grad;
+                ctx.fill();
+            }
+
+            ctx.beginPath();
+            scoredPoints.forEach(function (p, i) {
+                var x = xFor(p.x), y = yFor(p.score);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 2.8;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
             ctx.stroke();
 
-            ctx.fillStyle = 'rgba(255,255,255,0.92)';
-            ctx.font = '700 10px Inter, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(window.GM.formatNumber(p.y), x, y - 8);
-        });
+            scoredPoints.forEach(function (p) {
+                var x = xFor(p.x), y = yFor(p.score);
+                ctx.beginPath();
+                ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#34d399';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 10.5px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(window.GM.formatNumber(p.score), x, y - 8);
+            });
+        }
 
         // Date labels below the axis
         list.forEach(function (h, i) {
             var x = xFor(i);
-            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.fillStyle = 'rgba(255,255,255,0.75)';
             ctx.font = '11px Inter, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText((h.week_start || h.session_id || '').toString().slice(5, 10), x, padT + chartH + 17);
+            ctx.fillText((h.week_start || h.session_id || '').toString().slice(5, 10), x, padT + chartH + 18);
         });
     }
 

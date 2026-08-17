@@ -69,6 +69,49 @@ async function getPlayer(admin: ReturnType<typeof createClient>, uid: string) {
   return data[0];
 }
 
+async function getGuildAverages(admin: ReturnType<typeof createClient>, guild: string) {
+  const { data: members, error } = await admin
+    .from("guild_members")
+    .select("overall_power, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score")
+    .eq("guild", guild);
+
+  if (error || !members || members.length === 0) {
+    return {
+      overall_power: 0,
+      tech_power: 0,
+      champion_power: 0,
+      crew_power: 0,
+      flagship_power: 0,
+      fleet_rating: 0,
+      glory_score: 0,
+      members_count: 0
+    };
+  }
+
+  const mCount = members.length;
+  let sumPower = 0, sumTech = 0, sumChamps = 0, sumCrew = 0, sumFlag = 0, sumFleet = 0, sumGlory = 0;
+  members.forEach((m: any) => {
+    sumPower += (Number(m.overall_power) || 0);
+    sumTech += (Number(m.tech_power) || 0);
+    sumChamps += (Number(m.champion_power) || 0);
+    sumCrew += (Number(m.crew_power) || 0);
+    sumFlag += (Number(m.flagship_power) || 0);
+    sumFleet += (Number(m.fleet_rating) || 0);
+    sumGlory += (Number(m.glory_score) || 0);
+  });
+
+  return {
+    overall_power: Math.round(sumPower / mCount),
+    tech_power: Math.round(sumTech / mCount),
+    champion_power: Math.round(sumChamps / mCount),
+    crew_power: Math.round(sumCrew / mCount),
+    flagship_power: Math.round(sumFlag / mCount),
+    fleet_rating: Math.round(sumFleet / mCount),
+    glory_score: Math.round(sumGlory / mCount),
+    members_count: mCount
+  };
+}
+
 function getWeekStartIso(date: Date): string {
   const d = new Date(date);
   const day = d.getUTCDay();
@@ -130,28 +173,30 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "player_not_found" }, 200);
     }
 
-    const { data: activeSessions, error: sErr } = await admin
-      .from("event_status")
-      .select("event_name, session_id, start_at")
-      .eq("guild", member.guild)
-      .eq("is_active", true);
+    const [activeSessionsRes, gloryRowsRes, guildAverages] = await Promise.all([
+      admin
+        .from("event_status")
+        .select("event_name, session_id, start_at")
+        .eq("guild", member.guild)
+        .eq("is_active", true),
+      admin
+        .from("event_participants")
+        .select("score")
+        .eq("guild", member.guild)
+        .eq("event_name", "Glory")
+        .eq("week_start", getWeekStartIso(new Date()))
+        .eq("pseudo", member.pseudo)
+        .limit(1),
+      getGuildAverages(admin, member.guild)
+    ]);
 
-    if (sErr) {
-      logger.error("DB error fetching active sessions", sErr, { guild: member.guild });
-      return json({ ok: false, error: "db_error", message: sErr.message }, 200);
+    if (activeSessionsRes.error) {
+      logger.error("DB error fetching active sessions", activeSessionsRes.error, { guild: member.guild });
+      return json({ ok: false, error: "db_error", message: activeSessionsRes.error.message }, 200);
     }
 
-    const week = getWeekStartIso(new Date());
-    const { data: gloryRows, error: gErr } = await admin
-      .from("event_participants")
-      .select("score")
-      .eq("guild", member.guild)
-      .eq("event_name", "Glory")
-      .eq("week_start", week)
-      .eq("pseudo", member.pseudo)
-      .limit(1);
-    if (gErr) return json({ ok: false, error: "db_error", message: gErr.message }, 200);
-    const gloryRow = gloryRows?.[0] ?? null;
+    const activeSessions = activeSessionsRes.data;
+    const gloryRow = gloryRowsRes.data?.[0] ?? null;
     const glory = gloryRow?.score != null ? gloryRow.score : null;
 
     if (!activeSessions || activeSessions.length === 0) {
@@ -169,6 +214,7 @@ Deno.serve(async (req: Request) => {
         metrics_updated_at: member.metrics_updated_at || member.power_updated_at || null,
         timezone_offset: member.timezone_offset ?? null,
         glory,
+        guild_averages: guildAverages,
         sessions: []
       });
     }
@@ -207,6 +253,7 @@ Deno.serve(async (req: Request) => {
       metrics_updated_at: member.metrics_updated_at || member.power_updated_at || null,
       timezone_offset: member.timezone_offset ?? null,
       glory,
+      guild_averages: guildAverages,
       sessions
     });
   }
@@ -469,14 +516,43 @@ Deno.serve(async (req: Request) => {
     const member = await getPlayer(admin, uid);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
-    const { data: rows, error: hErr } = await admin
-      .from("event_participants")
-      .select("event_name, session_id, week_start, participated, score, score_prep, score_pvp, late, excused, sub_present, appointed")
-      .eq("guild", member.guild)
-      .eq("pseudo", member.pseudo)
-      .order("week_start", { ascending: false });
+    const [memberRowsRes, guildParticipantsRes, guildAverages] = await Promise.all([
+      admin
+        .from("event_participants")
+        .select("event_name, session_id, week_start, participated, score, score_prep, score_pvp, late, excused, sub_present, appointed")
+        .eq("guild", member.guild)
+        .eq("pseudo", member.pseudo)
+        .order("week_start", { ascending: false }),
+      admin
+        .from("event_participants")
+        .select("event_name, session_id, week_start, score, score_prep, score_pvp, participated, sub_present")
+        .eq("guild", member.guild),
+      getGuildAverages(admin, member.guild)
+    ]);
 
-    if (hErr) return json({ ok: false, error: "db_error", message: hErr.message }, 200);
+    if (memberRowsRes.error) {
+      return json({ ok: false, error: "db_error", message: memberRowsRes.error.message }, 200);
+    }
+
+    const rows = memberRowsRes.data || [];
+    const allGuildParticipants = guildParticipantsRes.data || [];
+
+    const guildSessionStats: Record<string, { totalScore: number; count: number; maxScore: number }> = {};
+    allGuildParticipants.forEach((p: any) => {
+      const evKey = (p.event_name || "").toUpperCase();
+      const sKey = `${evKey}|${p.session_id || p.week_start || ""}`;
+      const total = (Number(p.score) || 0) + (Number(p.score_prep) || 0) + (Number(p.score_pvp) || 0);
+      if (!guildSessionStats[sKey]) {
+        guildSessionStats[sKey] = { totalScore: 0, count: 0, maxScore: 0 };
+      }
+      if (total > 0 || p.participated > 0 || p.sub_present) {
+        guildSessionStats[sKey].totalScore += total;
+        guildSessionStats[sKey].count += 1;
+        if (total > guildSessionStats[sKey].maxScore) {
+          guildSessionStats[sKey].maxScore = total;
+        }
+      }
+    });
 
     const byEvent: Record<string, any[]> = {};
     const hasScoreEvent = (name: string): boolean => {
@@ -485,14 +561,22 @@ Deno.serve(async (req: Request) => {
       if (n.indexOf("GLORY") !== -1) return true;
       return false;
     };
-    (rows || []).forEach((r: any) => {
+
+    rows.forEach((r: any) => {
       const key = (r.event_name || "Other").toUpperCase();
       if (!byEvent[key]) byEvent[key] = [];
+      const sKey = `${key}|${r.session_id || r.week_start || ""}`;
+      const sStats = guildSessionStats[sKey] || { totalScore: 0, count: 0, maxScore: 0 };
+      const avgScore = sStats.count > 0 ? Math.round(sStats.totalScore / sStats.count) : 0;
+      const playerScore = (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0);
+
       byEvent[key].push({
         session_id: r.session_id,
         week_start: r.week_start,
         participated: r.participated > 0,
-        score: (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0),
+        score: playerScore,
+        guild_avg_score: avgScore,
+        guild_max_score: sStats.maxScore,
         late: !!r.late,
         excused: !!r.excused,
         sub_present: !!r.sub_present,
@@ -514,7 +598,7 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-    return json({ ok: true, events: summary, overall: (rows || []).length });
+    return json({ ok: true, events: summary, guild_averages: guildAverages, overall: rows.length });
   }
 
   if (action === "get-absences") {
