@@ -3738,19 +3738,15 @@
                     return (parseInt(b.crew_power) || 0) - (parseInt(a.crew_power) || 0);
                 } else if (sortVal === 'glory_desc') {
                     return (parseInt(b.glory_score) || 0) - (parseInt(a.glory_score) || 0);
-                } else if (sortVal === 'density_desc') {
-                    var dA = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(a) : 0;
-                    var dB = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(b) : 0;
-                    if (dB !== dA) return dB - dA;
+                } else if (sortVal === 'density_desc' || sortVal === 'rally_desc' || sortVal === 'war_desc') {
+                    var rA = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(a) : 0;
+                    var rB = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(b) : 0;
+                    if (rB !== rA) return rB - rA;
                     var pB = (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
                     if (pB !== 0) return pB;
                     var fB = (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
                     if (fB !== 0) return fB;
                     return (parseInt(b.fleet_rating) || 0) - (parseInt(a.fleet_rating) || 0);
-                } else if (sortVal === 'war_desc') {
-                    var wA = window.GM.calculateWarScore ? window.GM.calculateWarScore(a) : 0;
-                    var wB = window.GM.calculateWarScore ? window.GM.calculateWarScore(b) : 0;
-                    return wB - wA;
                 }
                 return 0;
             });
@@ -3812,17 +3808,17 @@
         }
 
         function buildMilitaryMatrixHtml(list, sortVal, withActions, portalUids) {
-            sortVal = sortVal || 'density_desc';
+            sortVal = sortVal || 'rally_desc';
             var sorted = sortMembers(list, sortVal);
             if (sorted.length === 0) {
                 return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
             }
 
-            // Determine Rally Role assignments based on Density ranking across the guild roster
+            // Determine Rally Role assignments based on Absolute Rally Combat Score across the guild roster
             var rallyRankedList = list.slice().sort(function (a, b) {
-                var dA = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(a) : 0;
-                var dB = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(b) : 0;
-                if (dB !== dA) return dB - dA;
+                var rA = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(a) : 0;
+                var rB = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(b) : 0;
+                if (rB !== rA) return rB - rA;
                 var pB = (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
                 if (pB !== 0) return pB;
                 var fB = (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
@@ -3834,8 +3830,8 @@
             var leaderCount = 0;
             rallyRankedList.forEach(function (m, idx) {
                 var pKey = (m.pseudo || '').toLowerCase();
-                var dScore = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(m) : 0;
-                if (idx < 16 && dScore > 0) {
+                var rScore = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(m) : 0;
+                if (idx < 16 && rScore > 0) {
                     leaderCount++;
                     rallyRankMap[pKey] = {
                         isLeader: true,
@@ -3870,7 +3866,7 @@
                     '<div style="font-weight:700; font-size:0.95rem; color:var(--fg); display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
                         '<span class="material-symbols-rounded" style="color:var(--accent);">shield</span> Tactical Force Matrix (' + sorted.length + ' players)' +
                         '<span class="gm-chip" style="color:#facc15; background:rgba(234,179,8,0.12); border:1px solid rgba(234,179,8,0.3); font-size:0.72rem; margin-left:0.35rem;" title="16 Top Rally Leaders automatically assigned"><i class="ph ph-crown-simple"></i> ' + leaderCount + ' Rally Leaders</span>' +
-                        '<span class="gm-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size:0.72rem;"><i class="ph ph-lightning"></i> Sorted by Density</span>' +
+                        '<span class="gm-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size:0.72rem;"><i class="ph ph-lightning"></i> Sorted by Rally Power</span>' +
                     '</div>' +
                     '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">' +
                         '<span class="gm-chip" style="color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); font-size:0.75rem;"><i class="ph ph-swords"></i> Guild Fleet: ' + window.GM.formatPower(totalFleet) + '</span>' +
@@ -3921,7 +3917,15 @@
                     '<td style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6; font-weight:600; font-size:0.85rem;">' + (m.champion_power ? window.GM.formatPower(m.champion_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8; font-weight:600; font-size:0.85rem;">' + (m.crew_power ? window.GM.formatPower(m.crew_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size:0.85rem;" title="Latest Recorded Sunday Glory: ' + (m.glory_score ? window.GM.formatNumber(m.glory_score) : '0') + '">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:center;">' + (rallyScore > 0 ? '<span class="gm-chip" style="font-size:0.72rem; color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.25); padding:0.12rem 0.45rem; font-weight:700;" title="Rally Combat Score: ' + window.GM.formatNumber(rallyScore) + ' (Weighted Density: ' + density + '%)"><i class="ph ph-shield-check"></i> ' + density + '%</span>' : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td style="padding:0.65rem 0.5rem; text-align:center;">' +
+                        (rallyScore > 0
+                            ? '<div style="display:inline-flex; flex-direction:column; align-items:center; gap:0.12rem;">' +
+                                  '<span class="gm-mono" style="font-weight:700; font-size:0.84rem; color:#818cf8;" title="Rally Combat Score: ' + window.GM.formatNumber(rallyScore) + '">' + window.GM.formatPower(rallyScore) + '</span>' +
+                                  '<span style="font-size:0.68rem; color:var(--text-muted); opacity:0.85;" title="Combat Density: ' + density + '%">(' + density + '%)</span>' +
+                              '</div>'
+                            : '<span style="color:var(--text-muted); opacity:0.4;">—</span>'
+                        ) +
+                    '</td>' +
                     '<td style="padding:0.65rem 0.75rem; text-align:center;">' +
                         '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="Edit Player Military Metrics" style="padding:0.25rem 0.5rem; font-size:0.75rem; gap:0.25rem;"><i class="ph ph-pencil-simple"></i> Edit</button>' +
                     '</td>' +
@@ -3943,7 +3947,7 @@
                                 '<th style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6;">👑 Champs</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8;">👥 Crew</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:right; color:#34d399;" title="Latest Recorded Sunday Glory Score">🏆 Glory</th>' +
-                                '<th style="padding:0.65rem 0.5rem; text-align:center; color:#818cf8;" title="Weighted Rally Combat Readiness (Power > Flagship > Fleet > Tech > Crew > Champs > Glory)">🛡️ Density</th>' +
+                                '<th style="padding:0.65rem 0.5rem; text-align:center; color:#818cf8;" title="Absolute Rally Combat Power & Density Indicator">⚡ Rally Score</th>' +
                                 '<th style="padding:0.65rem 0.75rem; text-align:center;">Action</th>' +
                             '</tr>' +
                         '</thead>' +
@@ -3961,7 +3965,7 @@
 
         if (guildMemberList) {
             if (viewMode === 'matrix') {
-                var currentMatrixSort = (sortAdminSelect && sortAdminSelect.value !== 'power_desc') ? sortAdmin : 'density_desc';
+                var currentMatrixSort = (sortAdminSelect && sortAdminSelect.value !== 'power_desc') ? sortAdmin : 'rally_desc';
                 guildMemberList.innerHTML = buildMilitaryMatrixHtml(filteredAdmin, currentMatrixSort, true, portalUids);
             } else {
                 guildMemberList.innerHTML = buildGroupedListHtml(filteredAdmin, sortAdmin, true, portalUids);

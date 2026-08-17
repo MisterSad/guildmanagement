@@ -2,6 +2,12 @@
 
 ## New
 
+- **Absolute Rally Combat Power Ranking & Dual Display (v120.3)**:
+  - **Absolute Strike Force Ranking**: Transitioned Tactical Force Matrix default sorting and Top 16 Rally Leader appointments to **Absolute Rally Combat Power** (`calculateRallyScore`), preventing percentage density ratios from inverting raw military strength.
+  - **Whale & Combat Powerhouse Realism**: Players with massive Flagships, high-tier 1st marches, and deep military tech trees are decisively ranked at the top of the command roster (`Leader #1-#16`).
+  - **Dual Tactical Metric Display**: The `⚡ Rally Score` column prominently renders the player's formatted absolute combat score (e.g. `485.2M`) with secondary inline density purity indicator `(94.2%)`.
+  - **Quality Gate**: **259/259 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Defensive 0-Defaulting for Missing Tactical Metrics (v120.2)**:
   - **Safe Score Metric Parsing**: Implemented `parseSafeMetric` helper in `gm-utils.js` to ensure any missing, unrecorded, null, empty string, or undefined military score defaults strictly to `0`.
   - **Graceful Partial Scoring**: Players with partially submitted or unrecorded metrics are scored safely and accurately across `calculateCombatDensity`, `calculateRallyScore`, `calculateResidualPower`, and `calculateCombativity` without runtime exceptions or calculation distortion.

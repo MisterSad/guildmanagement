@@ -25,20 +25,20 @@ describe('Tactical Military Metrics & Calculations', () => {
     it('calculates weighted combat density according to tactical hierarchy', () => {
         // Flagship: 10M * 4.0 = 40M
         // Fleet: 2M * 3.5 = 7M
-        // Tech: 15M * 2.25 = 33.75M
+        // Tech: 15M * 2.5 = 37.5M
         // Crew: 5M * 1.5 = 7.5M
         // Champs: 30M * 0.8 = 24M
         // Glory: 250M * 1.0 = 250M
-        // Sum = 362.25M / 100M = 362.3%
+        // Sum = 366.0M / 100M = 366.0%
         const density = window.GM.calculateCombatDensity(mockMember);
-        expect(density).toBe(362.3);
+        expect(density).toBe(366);
     });
 
     it('calculates composite rally score correctly with exact hierarchy Power > Flagship > Fleet > Tech > Crew > Champs > Glory', () => {
-        // 100M (Power) + 362.25M (Weighted Combat) = 462.25M
+        // 100M (Power) + 366.0M (Weighted Combat) = 466.0M
         const rallyScore = window.GM.calculateRallyScore(mockMember);
-        expect(rallyScore).toBe(462250000);
-        expect(window.GM.calculateWarScore(mockMember)).toBe(462250000);
+        expect(rallyScore).toBe(466000000);
+        expect(window.GM.calculateWarScore(mockMember)).toBe(466000000);
     });
 
     it('prioritizes components in exact order (Power > Flagship > Fleet > Tech > Crew > Champs > Glory)', () => {
@@ -53,9 +53,9 @@ describe('Tactical Military Metrics & Calculations', () => {
         const moreFleet = { ...base, fleet_rating: base.fleet_rating + 1000000 };
         expect(window.GM.calculateRallyScore(moreFleet) - scoreBase).toBe(3500000);
 
-        // +1M to Tech adds 2.25M
+        // +1M to Tech adds 2.5M
         const moreTech = { ...base, tech_power: base.tech_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreTech) - scoreBase).toBe(2250000);
+        expect(window.GM.calculateRallyScore(moreTech) - scoreBase).toBe(2500000);
 
         // +1M to Crew adds 1.5M
         const moreCrew = { ...base, crew_power: base.crew_power + 1000000 };
@@ -230,15 +230,15 @@ describe('Tactical Military Metrics & Calculations', () => {
         }));
 
         const rallyRankedList = roster.slice().sort((a, b) => {
-            const dA = window.GM.calculateCombatDensity(a);
-            const dB = window.GM.calculateCombatDensity(b);
-            if (dB !== dA) return dB - dA;
+            const rA = window.GM.calculateRallyScore(a);
+            const rB = window.GM.calculateRallyScore(b);
+            if (rB !== rA) return rB - rA;
             return (b.overall_power || 0) - (a.overall_power || 0);
         });
 
         const rallyRankMap = {};
         rallyRankedList.forEach((m, idx) => {
-            rallyRankMap[m.pseudo] = window.GM.getRallyRoleMeta(idx + 1, window.GM.calculateCombatDensity(m));
+            rallyRankMap[m.pseudo] = window.GM.getRallyRoleMeta(idx + 1, window.GM.calculateRallyScore(m));
         });
 
         expect(rallyRankMap['Player_1'].isLeader).toBe(true);
@@ -249,6 +249,47 @@ describe('Tactical Military Metrics & Calculations', () => {
         expect(rallyRankMap['Player_17'].label).toBe('Rally Joiner');
         expect(rallyRankMap['Player_20'].isLeader).toBe(false);
         expect(rallyRankMap['Player_20'].label).toBe('Rally Joiner');
+    });
+
+    it('ranks powerhouse players with massive absolute stats above low-power accounts with high density ratio', () => {
+        const whale = {
+            pseudo: 'GiganticWhale',
+            overall_power: 500000000,   // 500M
+            flagship_power: 30000000,   // 30M * 4.0 = 120M
+            fleet_rating: 6000000,      // 6M * 3.5 = 21M
+            tech_power: 40000000,       // 40M * 2.5 = 100M
+            crew_power: 10000000,       // 10M * 1.5 = 15M
+            champion_power: 40000000,   // 40M * 0.8 = 32M
+            glory_score: 300000000      // 300M * 1.0 = 300M
+            // Weighted combat = 588M. Rally score = 500M + 588M = 1.088 Billion!
+            // Density ratio = 588M / 500M = 117.6%
+        };
+
+        const smallPlayer = {
+            pseudo: 'SmallSpecialist',
+            overall_power: 30000000,    // 30M
+            flagship_power: 5000000,    // 5M * 4.0 = 20M
+            fleet_rating: 1500000,      // 1.5M * 3.5 = 5.25M
+            tech_power: 10000000,       // 10M * 2.5 = 25M
+            crew_power: 2000000,        // 2M * 1.5 = 3M
+            champion_power: 5000000,    // 5M * 0.8 = 4M
+            glory_score: 50000000       // 50M * 1.0 = 50M
+            // Weighted combat = 107.25M. Rally score = 30M + 107.25M = 137.25M
+            // Density ratio = 107.25M / 30M = 357.5% (very high percentage ratio)
+        };
+
+        // Small specialist has higher percentage density (357.5% > 117.6%)
+        expect(window.GM.calculateCombatDensity(smallPlayer)).toBeGreaterThan(window.GM.calculateCombatDensity(whale));
+
+        // BUT the Whale has vastly superior absolute Rally Score (1.088B > 137.25M)
+        expect(window.GM.calculateRallyScore(whale)).toBeGreaterThan(window.GM.calculateRallyScore(smallPlayer));
+
+        // When sorting by Rally Score, Whale is decisively #1!
+        const sorted = [smallPlayer, whale].sort((a, b) => {
+            return window.GM.calculateRallyScore(b) - window.GM.calculateRallyScore(a);
+        });
+        expect(sorted[0].pseudo).toBe('GiganticWhale');
+        expect(sorted[1].pseudo).toBe('SmallSpecialist');
     });
 });
 
