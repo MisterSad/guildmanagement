@@ -1,22 +1,26 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.9 (Strict Descending Density Ordering)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.10 (Rally Multipliers: Flagship x4, Champs x1, Glory x1)**
 
 Hey commanders! 👋
 
-I have streamlined the ordering in the **Tactical Force Matrix** so that every single player is displayed in **strict descending order of Density**:
+I have fine-tuned our **Rally Readiness & Combat Density** multipliers to give even greater weight to Flagship capital power, Champions, and historical Glory:
 
 ---
 
-### 📊 1. Strict Descending Density Sort
-* The roster is now strictly ranked from the **highest Density % to the lowest Density %**.
-* If two players have the same Density %, the system applies instant tie-breakers based on **Total Power**, **Flagship Power**, and **First March Fleet Rating**.
+### 🚀 Calibrated Tactical Multipliers
+* 🚀 **Flagship Power**: Now weighted at **$\times 4.0$** (was 3.0x) for maximum rally aura impact.
+* ⚔️ **Strongest Fleet Rating**: Weighted at **$\times 2.5$**.
+* 🔬 **Technology Power**: Weighted at **$\times 2.0$**.
+* 👥 **Crew Power**: Weighted at **$\times 1.5$**.
+* 👑 **Champion Power**: Now weighted at **$\times 1.0$** (was 0.4x).
+* 🏆 **Glory Score**: Now weighted at **$\times 1.0$** (was 0.03x).
 
 ---
 
-### 👑 2. 100% Aligned Rally Leadership
-* The top 16 positions in the Density descending order correspond directly to **`Rally Leader #1` through `#16`**.
-* All remaining players are assigned as **`Rally Joiner`**.
-* The visual layout is completely crystal clear: rank 1 has the highest Density % at the very top of the table!
+### 🎯 Full Hierarchy:
+$$\text{Power} (\times 1.0) > \text{Flagship} (\times 4.0) > \text{Fleet} (\times 2.5) > \text{Tech} (\times 2.0) > \text{Crew} (\times 1.5) > \text{Champs} (\times 1.0) > \text{Glory} (\times 1.0)$$
+
+Your **Tactical Force Matrix** automatically recalibrates and re-ranks your roster in real time in strict descending order of Density!
 
 ---
 
-*Lead your fleet to victory with laser-sharp tactical clarity!* 🚀
+*Lead your fleet to victory!* 🚀

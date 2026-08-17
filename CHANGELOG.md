@@ -2,6 +2,14 @@
 
 ## New
 
+- **Tactical Rally Multiplier Calibration: Flagship x4, Champs x1, Glory x1 (v119.8)**:
+  - **Calibrated Tactical Multipliers**: Updated `calculateCombatDensity` and `calculateRallyScore` in `gm-utils.js`:
+    - **Flagship Power**: Multiplier updated to **$\times 4.0$** (reflecting pivotal flagship capital stats and rally auras).
+    - **Champion Power**: Multiplier updated to **$\times 1.0$** (full 1:1 hero contribution).
+    - **Glory Score**: Multiplier updated to **$\times 1.0$** (full 1:1 Sunday PvP battle activity contribution).
+    - **Complete Hierarchy**: $\text{Power} (\times 1.0) > \text{Flagship} (\times 4.0) > \text{Fleet} (\times 2.5) > \text{Tech} (\times 2.0) > \text{Crew} (\times 1.5) > \text{Champs} (\times 1.0) > \text{Glory} (\times 1.0)$.
+  - **Quality Gate**: **257/257 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Tactical Force Matrix Strict Descending Combat Density Ordering (v119.7)**:
   - **Strict Descending Density Sort**: Configured `sortMembers` and matrix rendering to strictly order players by descending Combat Density score (`calculateCombatDensity`), with deterministic multi-level tie breakers on Power, Flagship, and Fleet.
   - **Synchronized Density Hierarchy**: Ranks 1 to 16 in the Density descending leaderboard are assigned as Rally Leaders #1 through #16, ensuring 100% visual consistency between Density values and row ordering.

@@ -1394,8 +1394,8 @@
         var glory = parseInt(m.glory_score || m.glory) || 0;
 
         // Weighted combat density according to tactical rally hierarchy:
-        // Power > Flagship (3.0x) > Fleet (2.5x) > Tech (2.0x) > Crew (1.5x) > Champs (0.4x) > Glory (0.03x)
-        var weightedCombat = (flag * 3.0) + (fleet * 2.5) + (tech * 2.0) + (crew * 1.5) + (champ * 0.4) + (glory * 0.03);
+        // Power > Flagship (4.0x) > Fleet (2.5x) > Tech (2.0x) > Crew (1.5x) > Champs (1.0x) > Glory (1.0x)
+        var weightedCombat = (flag * 4.0) + (fleet * 2.5) + (tech * 2.0) + (crew * 1.5) + (champ * 1.0) + (glory * 1.0);
         return Math.round((weightedCombat / tot) * 1000) / 10;
     }
 
@@ -1410,7 +1410,7 @@
         var glory = parseInt(m.glory_score || m.glory) || 0;
 
         // Composite rally combat readiness score
-        return Math.round(tot + (flag * 3.0) + (fleet * 2.5) + (tech * 2.0) + (crew * 1.5) + (champ * 0.4) + (glory * 0.03));
+        return Math.round(tot + (flag * 4.0) + (fleet * 2.5) + (tech * 2.0) + (crew * 1.5) + (champ * 1.0) + (glory * 1.0));
     }
 
     function calculateResidualPower(m) {
