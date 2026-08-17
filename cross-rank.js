@@ -1,11 +1,12 @@
 /**
  * cross-rank.js — Cross-Guild Draft Ranking & Mercato ("Draft" tab, superadmin).
  * Inter-Server Migration Scouting & Combat Scoring Engine.
- * Consolidated view of all players across all guilds and servers:
- * - Draft Score: Composite recruitment index prioritizing Shadowfront attendance, SvS/GvG commitment, and Glory.
- * - Day 6 PvP: Battle score with 2x doubled factor for SvS & GvG warriors.
- * - Shadowfront: Priority 20v20 guild attendance rate.
- * - Glory: Total cumulative Glory points accumulated.
+ * All scoring metrics normalized on a clean 0 to 100 scale:
+ * - Draft Score (0-100%): Master composite index synthesized from all component scores.
+ * - Day 6 PvP (0-100%): Combat battle rating based on SvS/GvG Day 6 battle points (2x doubled factor) and battle presence.
+ * - Shadowfront (0-100%): Priority 20v20 guild coordination attendance rate.
+ * - Glory (0-100%): Glory score based on accumulated points and weekly consistency.
+ * - SvS & GvG (0-100%): Attendance rates across active campaigns.
  * - Server Filtering: Fast target-server isolation for migration events.
  * Source: RPC gm_cross_guild_ranking() (SECURITY DEFINER, superadmin only).
  * Loaded on demand by app.js via window.GM_SETTINGS.load().
@@ -52,43 +53,65 @@
         return r.overall_power != null ? r.power || r.overall_power : (r.power || 0);
     }
 
+    function getDay6Score(r) {
+        if (r.day6_score !== null && r.day6_score !== undefined) {
+            return r.day6_score;
+        }
+        var svsRate = r.svs_rate != null ? r.svs_rate : 0;
+        var gvgRate = r.gvg_rate != null ? r.gvg_rate : 0;
+        var attRate = (svsRate + gvgRate) / 2;
+        var rawPvp = (r.day6_pvp_score != null) ? r.day6_pvp_score : ((r.svs_avg_pvp || 0) * 2 + (r.gvg_avg_pvp || 0) * 2);
+        if (rawPvp > 0) {
+            // Benchmark curve: 20M raw pvp gives full points on combat portion
+            var pvpPct = Math.min(100, (rawPvp / 20000000) * 100);
+            return Math.round((attRate * 0.4 + pvpPct * 0.6) * 10) / 10;
+        }
+        if (attRate > 0) {
+            return Math.round((attRate * 0.5) * 10) / 10;
+        }
+        return (r.svs_total || r.gvg_total) ? 0 : null;
+    }
+
+    function getGloryScore(r) {
+        if (r.glory_score !== null && r.glory_score !== undefined) {
+            return r.glory_score;
+        }
+        var glRate = r.glory_rate != null ? r.glory_rate : 0;
+        var rawGl = r.glory_total != null ? r.glory_total : 0;
+        if (rawGl > 0) {
+            var glPct = Math.min(100, (rawGl / 500000) * 100);
+            return Math.round((glRate * 0.5 + glPct * 0.5) * 10) / 10;
+        }
+        if (glRate > 0) {
+            return Math.round((glRate * 0.5) * 10) / 10;
+        }
+        return (r.glory_total_weeks || r.glory_total) ? 0 : null;
+    }
+
     function getDraftScore(r) {
         if (r.draft_score !== null && r.draft_score !== undefined) {
             return r.draft_score;
         }
         var sf = r.shadow_rate != null ? r.shadow_rate : null;
+        var d6 = getDay6Score(r);
         var svs = r.svs_rate != null ? r.svs_rate : null;
         var gvg = r.gvg_rate != null ? r.gvg_rate : null;
+        var gl = getGloryScore(r);
         var glob = r.global_rate != null ? r.global_rate : null;
-        var glory = r.glory_rate != null ? r.glory_rate : null;
 
-        var hasAny = (sf != null || svs != null || gvg != null || glob != null || glory != null || (r.global_total && r.global_total > 0));
+        var hasAny = (sf != null || d6 != null || svs != null || gvg != null || gl != null || glob != null || (r.global_total && r.global_total > 0));
         if (!hasAny) return null;
 
         var sfVal = sf || 0;
+        var d6Val = d6 || 0;
         var svsVal = svs || 0;
         var gvgVal = gvg || 0;
+        var glVal = gl || 0;
         var globVal = glob || 0;
-        var gloryVal = glory || 0;
 
-        // Composite Draft Score: 35% Shadowfront, 25% SvS, 25% GvG, 10% Other, 5% Glory
-        var score = (sfVal * 0.35) + (svsVal * 0.25) + (gvgVal * 0.25) + (globVal * 0.10) + (gloryVal * 0.05);
+        // Master Composite Draft Score: 30% Shadowfront, 25% Day 6 PvP, 15% SvS, 15% GvG, 10% Glory, 5% Global
+        var score = (sfVal * 0.30) + (d6Val * 0.25) + (svsVal * 0.15) + (gvgVal * 0.15) + (glVal * 0.10) + (globVal * 0.05);
         return Math.round(score * 10) / 10;
-    }
-
-    function getDay6PvPScore(r) {
-        if (r.day6_pvp_score !== null && r.day6_pvp_score !== undefined) {
-            return r.day6_pvp_score;
-        }
-        var svsPvp = r.svs_avg_pvp || 0;
-        var gvgPvp = r.gvg_avg_pvp || 0;
-        return (svsPvp * 2) + (gvgPvp * 2);
-    }
-
-    function getGloryDisplayVal(r) {
-        if (r.glory_total != null && r.glory_total > 0) return r.glory_total;
-        if (r.glory_attended != null && r.glory_attended > 0) return r.glory_attended * 1000;
-        return 0;
     }
 
     // ── Load: Superadmin-only RPC ─────────────────────────────────────────────
@@ -155,10 +178,14 @@
             var sVal = r.server_number != null ? String(r.server_number) : '';
             if (state.server !== 'ALL' && sVal !== state.server) return false;
 
-            if (state.preset === 'DAY6' && getDay6PvPScore(r) <= 0) return false;
+            var d6 = getDay6Score(r);
+            var gl = getGloryScore(r);
+            var ds = getDraftScore(r);
+
+            if (state.preset === 'DAY6' && (d6 == null || d6 < 40)) return false;
             if (state.preset === 'SHADOW' && (r.shadow_rate == null || r.shadow_rate < 50)) return false;
-            if (state.preset === 'GLORY' && getGloryDisplayVal(r) <= 0) return false;
-            if (state.preset === 'ELITE' && (getDraftScore(r) == null || getDraftScore(r) < 75)) return false;
+            if (state.preset === 'GLORY' && (gl == null || gl < 40)) return false;
+            if (state.preset === 'ELITE' && (ds == null || ds < 75)) return false;
 
             if (!q) return true;
             var pseudoStr = String(r.pseudo || '').toLowerCase();
@@ -197,19 +224,13 @@
                 bv = getPlayerPower(b);
                 return (av - bv) * dir;
             }
-            if (state.sortKey === 'day6' || state.sortKey === 'day6_pvp_score') {
-                av = getDay6PvPScore(a);
-                bv = getDay6PvPScore(b);
-                if (av !== bv) return (av - bv) * dir;
-                return (getPlayerPower(b) - getPlayerPower(a));
-            }
-            if (state.sortKey === 'glory' || state.sortKey === 'glory_total') {
-                av = getGloryDisplayVal(a);
-                bv = getGloryDisplayVal(b);
-                if (av !== bv) return (av - bv) * dir;
-                return (getPlayerPower(b) - getPlayerPower(a));
-            }
-            if (state.sortKey === 'shadow' || state.sortKey === 'shadow_rate') {
+            if (state.sortKey === 'day6' || state.sortKey === 'day6_score' || state.sortKey === 'day6_pvp_score') {
+                av = getDay6Score(a);
+                bv = getDay6Score(b);
+            } else if (state.sortKey === 'glory' || state.sortKey === 'glory_score' || state.sortKey === 'glory_total') {
+                av = getGloryScore(a);
+                bv = getGloryScore(b);
+            } else if (state.sortKey === 'shadow' || state.sortKey === 'shadow_rate') {
                 av = a.shadow_rate;
                 bv = b.shadow_rate;
             } else if (state.sortKey === 'svs' || state.sortKey === 'svs_rate') {
@@ -235,9 +256,9 @@
 
             if (av !== bv) return (av - bv) * dir;
 
-            // Tie breaker 1: Day 6 Combat
-            var aDay6 = getDay6PvPScore(a);
-            var bDay6 = getDay6PvPScore(b);
+            // Tie breaker 1: Day 6 Score
+            var aDay6 = getDay6Score(a) || 0;
+            var bDay6 = getDay6Score(b) || 0;
             if (aDay6 !== bDay6) return (aDay6 - bDay6) * dir;
 
             // Tie breaker 2: Shadowfront attended
@@ -282,7 +303,7 @@
 
     function rowsHtml(rows) {
         if (rows.length === 0) {
-            return '<tr><td colspan="10" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">' +
+            return '<tr><td colspan="11" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">' +
                 '<i class="ph ph-user-minus" style="font-size:2rem; color:var(--fg-dim); margin-bottom:.5rem; display:block;"></i>' +
                 'No candidate players match your migration server or guild filter.' +
             '</td></tr>';
@@ -295,8 +316,8 @@
 
             var draftScore = getDraftScore(r);
             var draftScoreStr = draftScore != null ? Math.round(draftScore) + '%' : '-';
-            var day6Score = getDay6PvPScore(r);
-            var day6Str = day6Score > 0 ? fmtNumber(day6Score) : '-';
+            var day6Score = getDay6Score(r);
+            var day6Str = day6Score != null ? Math.round(day6Score) + '%' : '-';
 
             var shadowRate = r.shadow_rate;
             var shadowStr = shadowRate != null ? Math.round(shadowRate) + '%' : '-';
@@ -308,8 +329,8 @@
             var gvgRate = r.gvg_rate != null ? Math.round(r.gvg_rate) + '%' : '-';
             var gvgRatio = r.gvg_total ? r.gvg_attended + '/' + r.gvg_total : '';
 
-            var gloryVal = getGloryDisplayVal(r);
-            var gloryStr = gloryVal > 0 ? fmtNumber(gloryVal) : '-';
+            var gloryScore = getGloryScore(r);
+            var gloryStr = gloryScore != null ? Math.round(gloryScore) + '%' : '-';
 
             var powerVal = getPlayerPower(r);
             var powerStr = fmtPower(powerVal);
@@ -327,8 +348,8 @@
                 '<tr style="border-bottom:1px solid var(--border-soft);">' +
                     '<td class="gm-center" style="font-weight:700;">' + rank + '</td>' +
                     '<td>' +
-                        '<div class="gm-member-id" style="display:flex; align-items:center; gap:.75rem;">' +
-                            '<div class="gm-avatar gm-avatar-squircle" style="width:34px; height:34px; font-size:.9rem; font-weight:700;">' + esc(initial) + '</div>' +
+                        '<div class="gm-member-id" style="display:flex; align-items:center; gap:.5rem;">' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:28px; height:28px; font-size:.8rem; font-weight:700;">' + esc(initial) + '</div>' +
                             '<div style="display:flex; align-items:center;">' +
                                 '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(r.pseudo) + '</strong>' +
                                 tierBadge +
@@ -336,32 +357,32 @@
                         '</div>' +
                     '</td>' +
                     '<td class="gm-center" data-sort="server">' +
-                        '<span style="background:rgba(59, 130, 246, 0.12); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.25); border-radius:6px; padding:2px 8px; font-weight:700; font-size:.75rem; font-variant-numeric:tabular-nums;">' + esc(serverDisplay) + '</span>' +
+                        '<span style="background:rgba(59, 130, 246, 0.12); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.25); border-radius:6px; padding:2px 7px; font-weight:700; font-size:.75rem; font-variant-numeric:tabular-nums;">' + esc(serverDisplay) + '</span>' +
                     '</td>' +
                     '<td class="gm-center" data-sort="guild">' +
-                        '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:2px 8px; font-weight:700; font-size:.72rem; letter-spacing:.03em;">' + esc(r.guild) + '</span>' +
+                        '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:2px 7px; font-weight:700; font-size:.72rem; letter-spacing:.03em;">' + esc(r.guild) + '</span>' +
                     '</td>' +
                     '<td data-sort="power" class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums;">' + powerStr + '</td>' +
                     '<td class="gm-center" data-sort="draft_score">' +
-                        '<div style="font-weight:800; font-size:0.95rem; color:' + rateColor(draftScore) + '; font-variant-numeric:tabular-nums;">' + draftScoreStr + '</div>' +
+                        '<div style="font-weight:800; font-size:0.92rem; color:' + rateColor(draftScore) + '; font-variant-numeric:tabular-nums;">' + draftScoreStr + '</div>' +
                     '</td>' +
-                    '<td class="gm-right" data-sort="day6">' +
-                        '<div style="font-weight:700; color:#f87171; font-variant-numeric:tabular-nums;">' + day6Str + (day6Score > 0 ? ' <span style="font-size:0.68rem; color:var(--fg-dim);">(x2)</span>' : '') + '</div>' +
+                    '<td class="gm-center" data-sort="day6">' +
+                        '<div style="font-weight:700; color:' + rateColor(day6Score) + '; font-variant-numeric:tabular-nums;">' + day6Str + '</div>' +
                     '</td>' +
                     '<td class="gm-center" data-sort="shadow">' +
                         '<div style="font-weight:700; color:' + rateColor(shadowRate) + '; font-variant-numeric:tabular-nums;">' + shadowStr + '</div>' +
-                        (shadowRatio ? '<div class="gm-dim" style="font-size:.7rem; font-variant-numeric:tabular-nums;">' + shadowRatio + '</div>' : '') +
+                        (shadowRatio ? '<div class="gm-dim" style="font-size:.68rem; font-variant-numeric:tabular-nums;">' + shadowRatio + '</div>' : '') +
                     '</td>' +
-                    '<td class="gm-right" data-sort="glory">' +
-                        '<div style="font-weight:700; color:#fbbf24; font-variant-numeric:tabular-nums;">' + gloryStr + '</div>' +
+                    '<td class="gm-center" data-sort="glory">' +
+                        '<div style="font-weight:700; color:' + rateColor(gloryScore) + '; font-variant-numeric:tabular-nums;">' + gloryStr + '</div>' +
                     '</td>' +
                     '<td class="gm-center" data-sort="svs">' +
                         '<div style="font-weight:600; color:' + rateColor(r.svs_rate) + '; font-variant-numeric:tabular-nums;">' + svsRate + '</div>' +
-                        (svsRatio ? '<div class="gm-dim" style="font-size:.7rem; font-variant-numeric:tabular-nums;">' + svsRatio + '</div>' : '') +
+                        (svsRatio ? '<div class="gm-dim" style="font-size:.68rem; font-variant-numeric:tabular-nums;">' + svsRatio + '</div>' : '') +
                     '</td>' +
                     '<td class="gm-center" data-sort="gvg">' +
                         '<div style="font-weight:600; color:' + rateColor(r.gvg_rate) + '; font-variant-numeric:tabular-nums;">' + gvgRate + '</div>' +
-                        (gvgRatio ? '<div class="gm-dim" style="font-size:.7rem; font-variant-numeric:tabular-nums;">' + gvgRatio + '</div>' : '') +
+                        (gvgRatio ? '<div class="gm-dim" style="font-size:.68rem; font-variant-numeric:tabular-nums;">' + gvgRatio + '</div>' : '') +
                     '</td>' +
                 '</tr>';
         });
@@ -403,9 +424,9 @@
                 '<div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">' +
                     '<span class="gm-dim" style="font-size:0.75rem; font-weight:700; text-transform:uppercase; margin-right:4px;">Scouting Presets:</span>' +
                     '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'ALL' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="ALL">All</button>' +
-                    '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'DAY6' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="DAY6">⚔️ Day 6 PvP</button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'DAY6' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="DAY6">⚔️ Day 6 PvP (≥40%)</button>' +
                     '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'SHADOW' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="SHADOW">👻 Shadowfront (≥50%)</button>' +
-                    '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'GLORY' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="GLORY">🏆 Top Glory</button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'GLORY' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="GLORY">🏆 Glory (≥40%)</button>' +
                     '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'ELITE' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="ELITE">👑 Elite (≥75%)</button>' +
                 '</div>' +
             '</div>';
@@ -420,10 +441,10 @@
                             headerCell('server', 'Server', 'text-align:center;') +
                             headerCell('guild', 'Guild', 'text-align:center;') +
                             headerCell('power', 'Power', 'text-align:right;') +
-                            headerCell('draft_score', '<i class="ph ph-chart-polar"></i> Draft Score', 'text-align:center;', 'Composite recruitment index (Shadowfront 35%, SvS/GvG 50%, Glory 5%)') +
-                            headerCell('day6', '<i class="ph ph-sword"></i> Day 6 (x2)', 'text-align:right;', 'SvS & GvG Day 6 battle combat points with 2x doubled factor') +
-                            headerCell('shadow', '<i class="ph ph-ghost"></i> Shadowfront', 'text-align:center;', 'Priority 20v20 Shadowfront attendance') +
-                            headerCell('glory', '<i class="ph ph-trophy"></i> Glory', 'text-align:right;', 'Cumulative Glory points accumulated') +
+                            headerCell('draft_score', '<i class="ph ph-chart-polar"></i> Draft Score', 'text-align:center;', 'Global composite score (30% Shadowfront, 25% Day 6 PvP, 15% SvS, 15% GvG, 10% Glory, 5% Other)') +
+                            headerCell('day6', '<i class="ph ph-sword"></i> Day 6 (x2)', 'text-align:center;', 'SvS & GvG Day 6 battle score with 2x doubled factor (0-100%)') +
+                            headerCell('shadow', '<i class="ph ph-ghost"></i> Shadowfront', 'text-align:center;', 'Priority 20v20 Shadowfront attendance (0-100%)') +
+                            headerCell('glory', '<i class="ph ph-trophy"></i> Glory', 'text-align:center;', 'Glory performance & consistency score (0-100%)') +
                             headerCell('svs', '<i class="ph ph-sword"></i> SvS', 'text-align:center;') +
                             headerCell('gvg', '<i class="ph ph-flag-banner"></i> GvG', 'text-align:center;') +
                         '</tr></thead><tbody>' + rowsHtml(rows) + '</tbody>' +

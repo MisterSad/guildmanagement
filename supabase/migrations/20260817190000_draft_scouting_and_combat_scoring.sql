@@ -1,10 +1,11 @@
 -- 20260817190000_draft_scouting_and_combat_scoring.sql
 -- Overhauls public.gm_cross_guild_ranking() into an Inter-Server Migration Scouting & Combat Scoring Engine.
--- Prioritizes:
--- 1. SvS & GvG Day 1-5 presence + Day 6 PvP battle scores doubled (2x weight).
--- 2. Shadowfront attendance rate priority for 20v20 guild coordination.
--- 3. Total cumulative Glory points accumulated.
--- 4. Server-scoped filtering & grouping for migration scouting.
+-- All scoring metrics normalized on a clean 0 to 100 scale:
+-- 1. Day 6 Score (0-100): Combines SvS/GvG Day 6 battle combat points (2x doubled factor) and battle presence.
+-- 2. Glory Score (0-100): Combines Glory accumulated points and weekly consistency.
+-- 3. Shadowfront (0-100): Priority 20v20 guild coordination attendance rate.
+-- 4. Draft Score (0-100): Master composite index synthesized from all component scores (30% Shadowfront, 25% Day 6 PvP, 15% SvS, 15% GvG, 10% Glory, 5% Other).
+-- 5. Target Server Isolation for Inter-Server Migration scouting.
 
 DROP FUNCTION IF EXISTS public.gm_cross_guild_ranking();
 
@@ -15,6 +16,7 @@ RETURNS TABLE(
     server_number TEXT,
     power BIGINT,
     draft_score NUMERIC,
+    day6_score NUMERIC,
     day6_pvp_score BIGINT,
     svs_attended INTEGER,
     svs_total INTEGER,
@@ -35,6 +37,7 @@ RETURNS TABLE(
     arms_attended INTEGER,
     arms_total INTEGER,
     arms_rate NUMERIC,
+    glory_score NUMERIC,
     glory_total BIGINT,
     glory_attended INTEGER,
     glory_total_weeks INTEGER,
@@ -127,6 +130,22 @@ BEGIN
         FROM ep e
         GROUP BY e.guild_id, lower(btrim(e.pseudo))
     ),
+    benchmarks AS (
+        SELECT 
+            -- 95th percentile benchmark for PvP combat scores (or max, minimum 1 to avoid / 0)
+            COALESCE(
+                NULLIF(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY (2 * ps.svs_avg_pvp + 2 * ps.gvg_avg_pvp)), 0),
+                NULLIF(MAX(2 * ps.svs_avg_pvp + 2 * ps.gvg_avg_pvp), 0),
+                1
+            ) AS pvp_benchmark,
+            -- 95th percentile benchmark for Glory points (minimum 1)
+            COALESCE(
+                NULLIF(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ps.gl_total), 0),
+                NULLIF(MAX(ps.gl_total), 0),
+                1
+            ) AS glory_benchmark
+        FROM player_stats ps
+    ),
     roster AS (
         SELECT DISTINCT ON (m.guild, lower(btrim(m.pseudo)))
                m.guild AS guild_id,
@@ -155,11 +174,34 @@ BEGIN
                CASE WHEN COALESCE(st.gvg_tot, 0) > 0 THEN ROUND(100.0 * COALESCE(ps.gvg_att, 0) / st.gvg_tot, 1) END AS gvg_rate,
                COALESCE(ps.gvg_avg_prep, 0)::BIGINT AS gvg_avg_prep,
                COALESCE(ps.gvg_avg_pvp, 0)::BIGINT AS gvg_avg_pvp,
-               -- Combined Day 6 PvP combat score (Doubled: 2x factor)
+               -- Raw Day 6 PvP combat points
                (
                  (2 * COALESCE(ps.svs_avg_pvp, 0)) + 
                  (2 * COALESCE(ps.gvg_avg_pvp, 0))
                )::BIGINT AS day6_pvp_score,
+               -- Day 6 Score (0 to 100 scale): Combines battle points vs server benchmark and SvS/GvG battle presence
+               CASE
+                 WHEN (COALESCE(st.svs_tot, 0) + COALESCE(st.gvg_tot, 0)) > 0 THEN
+                   ROUND(
+                     LEAST(
+                       100.0,
+                       (
+                         -- 50% from battle presence in SvS/GvG
+                         (0.50 * (
+                           (COALESCE(ps.svs_att, 0)::NUMERIC + COALESCE(ps.gvg_att, 0)::NUMERIC) / 
+                           NULLIF(COALESCE(st.svs_tot, 0)::NUMERIC + COALESCE(st.gvg_tot, 0)::NUMERIC, 0)
+                         ) * 100.0) +
+                         -- 50% from normalized Day 6 combat score
+                         (0.50 * (
+                           ((2 * COALESCE(ps.svs_avg_pvp, 0)::NUMERIC) + (2 * COALESCE(ps.gvg_avg_pvp, 0)::NUMERIC)) / 
+                           NULLIF((SELECT bm.pvp_benchmark FROM benchmarks bm), 0)
+                         ) * 100.0)
+                       )
+                     ),
+                     1
+                   )
+                 ELSE NULL
+               END AS day6_score,
                -- Shadowfront
                COALESCE(ps.sh_att, 0)::INTEGER AS shadow_attended,
                COALESCE(st.sh_tot, 0)::INTEGER AS shadow_total,
@@ -172,11 +214,27 @@ BEGIN
                COALESCE(ps.ar_att, 0)::INTEGER AS arms_attended,
                COALESCE(st.ar_tot, 0)::INTEGER AS arms_total,
                CASE WHEN COALESCE(st.ar_tot, 0) > 0 THEN ROUND(100.0 * COALESCE(ps.ar_att, 0) / st.ar_tot, 1) END AS arms_rate,
-               -- Glory
+               -- Glory totals & Glory Score (0 to 100 scale)
                COALESCE(ps.gl_total, 0)::BIGINT AS glory_total,
                COALESCE(ps.gl_att, 0)::INTEGER AS glory_attended,
                COALESCE(st.gl_tot, 0)::INTEGER AS glory_total_weeks,
                CASE WHEN COALESCE(st.gl_tot, 0) > 0 THEN ROUND(100.0 * COALESCE(ps.gl_att, 0) / st.gl_tot, 1) END AS glory_rate,
+               CASE
+                 WHEN COALESCE(st.gl_tot, 0) > 0 THEN
+                   ROUND(
+                     LEAST(
+                       100.0,
+                       (
+                         -- 50% from weekly attendance rate
+                         (0.50 * (COALESCE(ps.gl_att, 0)::NUMERIC / NULLIF(st.gl_tot::NUMERIC, 0)) * 100.0) +
+                         -- 50% from Glory points volume relative to benchmark
+                         (0.50 * (COALESCE(ps.gl_total, 0)::NUMERIC / NULLIF((SELECT bm.glory_benchmark FROM benchmarks bm), 0)) * 100.0)
+                       )
+                     ),
+                     1
+                   )
+                 ELSE NULL
+               END AS glory_score,
                -- Global attendance totals
                COALESCE(ps.g_att, 0)::INTEGER AS global_attended,
                COALESCE(st.g_tot, 0)::INTEGER AS global_total,
@@ -213,21 +271,23 @@ BEGIN
     ),
     scored AS (
         SELECT c.*,
-               -- Draft Composite Score (0-100 scale):
-               -- 35% Shadowfront attendance (Priority pillar)
-               -- 25% SvS attendance & combat
-               -- 25% GvG attendance & combat
-               -- 10% Other attendance (DTR/Arms)
-               -- 5% Glory participation
+               -- Draft Composite Master Score (0-100 scale):
+               -- 30% Shadowfront attendance (Priority 20v20 pillar)
+               -- 25% Day 6 PvP combat rating (2x doubled battle weight)
+               -- 15% SvS attendance (Days 1-5)
+               -- 15% GvG attendance (Days 1-5)
+               -- 10% Glory score (Accumulated points & presence)
+               -- 5% Other events (DTR & Arms Race)
                CASE 
                  WHEN c.global_total > 0 OR c.shadow_total > 0 OR c.svs_total > 0 OR c.gvg_total > 0 THEN
                    ROUND(
                      (
-                       COALESCE(c.shadow_rate, 0) * 0.35 +
-                       COALESCE(c.svs_rate, 0)    * 0.25 +
-                       COALESCE(c.gvg_rate, 0)    * 0.25 +
-                       COALESCE(c.global_rate, 0) * 0.10 +
-                       COALESCE(c.glory_rate, 0)  * 0.05
+                       COALESCE(c.shadow_rate, 0) * 0.30 +
+                       COALESCE(c.day6_score, 0)  * 0.25 +
+                       COALESCE(c.svs_rate, 0)    * 0.15 +
+                       COALESCE(c.gvg_rate, 0)    * 0.15 +
+                       COALESCE(c.glory_score, 0) * 0.10 +
+                       COALESCE(c.global_rate, 0) * 0.05
                      ),
                      1
                    )
@@ -240,6 +300,7 @@ BEGIN
            s.server_number,
            s.power,
            s.draft_score,
+           s.day6_score,
            s.day6_pvp_score,
            s.svs_attended,
            s.svs_total,
@@ -260,6 +321,7 @@ BEGIN
            s.arms_attended,
            s.arms_total,
            s.arms_rate,
+           s.glory_score,
            s.glory_total,
            s.glory_attended,
            s.glory_total_weeks,
@@ -274,7 +336,7 @@ BEGIN
              ELSE 'RECRUIT'
            END AS scouting_tier
     FROM scored s
-    ORDER BY s.draft_score DESC NULLS LAST, s.day6_pvp_score DESC, s.power DESC;
+    ORDER BY s.draft_score DESC NULLS LAST, s.day6_score DESC NULLS LAST, s.power DESC;
 END;
 $fn$;
 

@@ -11,49 +11,49 @@ const FIXTURE = [
         pseudo: 'AlphaKing', guild: 'ALPHA', server_number: '1058', power: 4500000000,
         svs_attended: 2, svs_total: 2, svs_rate: 100, svs_avg_prep: 2500000, svs_avg_pvp: 6000000,
         gvg_attended: 1, gvg_total: 2, gvg_rate: 50, gvg_avg_prep: 1800000, gvg_avg_pvp: 4000000,
-        day6_pvp_score: 20000000, // (2 * 6M) + (2 * 4M)
+        day6_pvp_score: 20000000, day6_score: 90.0,
         shadow_attended: 5, shadow_total: 10, shadow_rate: 50,
-        glory_attended: 3, glory_total: 350000, glory_rate: 100,
+        glory_attended: 3, glory_total: 350000, glory_total_weeks: 3, glory_rate: 100, glory_score: 85.0,
         global_attended: 8, global_total: 16, global_rate: 50,
-        draft_score: 65.0, scouting_tier: 'WARRIOR'
+        draft_score: 72.5, scouting_tier: 'WARRIOR'
     },
     {
         pseudo: 'OmegaStar', guild: 'OMEGA', server_number: '1058', power: 1200000,
         svs_attended: 0, svs_total: 2, svs_rate: 0, svs_avg_prep: 0, svs_avg_pvp: 0,
         gvg_attended: 0, gvg_total: 2, gvg_rate: 0, gvg_avg_prep: 0, gvg_avg_pvp: 0,
-        day6_pvp_score: 0,
+        day6_pvp_score: 0, day6_score: 0.0,
         shadow_attended: 2, shadow_total: 10, shadow_rate: 20,
-        glory_attended: 3, glory_total: 120000, glory_rate: 100,
+        glory_attended: 3, glory_total: 120000, glory_total_weeks: 3, glory_rate: 100, glory_score: 62.0,
         global_attended: 5, global_total: 16, global_rate: 31.3,
-        draft_score: 15.1, scouting_tier: 'RECRUIT'
+        draft_score: 13.8, scouting_tier: 'RECRUIT'
     },
     {
         pseudo: 'BetaKnight', guild: 'ALPHA', server_number: '1064', power: 0,
         svs_attended: 1, svs_total: 2, svs_rate: 50, svs_avg_prep: 1200000, svs_avg_pvp: 3000000,
         gvg_attended: 2, gvg_total: 2, gvg_rate: 100, gvg_avg_prep: 1500000, gvg_avg_pvp: 3500000,
-        day6_pvp_score: 13000000, // (2 * 3M) + (2 * 3.5M)
+        day6_pvp_score: 13000000, day6_score: 69.0,
         shadow_attended: 0, shadow_total: 10, shadow_rate: 0,
-        glory_attended: 0, glory_total: 0, glory_rate: null,
+        glory_attended: 0, glory_total: 0, glory_total_weeks: 0, glory_rate: null, glory_score: null,
         global_attended: 6, global_total: 16, global_rate: 37.5,
-        draft_score: 41.3, scouting_tier: 'PILLAR'
+        draft_score: 41.6, scouting_tier: 'PILLAR'
     },
     {
         pseudo: 'GammaGhost', guild: 'IMK', server_number: '0000', power: 8900,
         svs_attended: 0, svs_total: 0, svs_rate: null,
         gvg_attended: 0, gvg_total: 0, gvg_rate: null,
         shadow_attended: 0, shadow_total: 0, shadow_rate: null,
-        glory_attended: 0, glory_total: 0, glory_rate: null,
+        glory_attended: 0, glory_total: 0, glory_total_weeks: 0, glory_rate: null, glory_score: null,
         global_attended: 0, global_total: 0, global_rate: null,
-        draft_score: null, scouting_tier: 'RECRUIT'
+        draft_score: null, day6_score: null, scouting_tier: 'RECRUIT'
     },
     {
         pseudo: '<b>Hax</b>', guild: 'BABE', server_number: '1064', power: 1000,
         svs_attended: 0, svs_total: 0, svs_rate: null,
         gvg_attended: 0, gvg_total: 0, gvg_rate: null,
         shadow_attended: 0, shadow_total: 0, shadow_rate: null,
-        glory_attended: 0, glory_total: 0, glory_rate: null,
+        glory_attended: 0, glory_total: 0, glory_total_weeks: 0, glory_rate: null, glory_score: null,
         global_attended: 0, global_total: 0, global_rate: null,
-        draft_score: null, scouting_tier: 'RECRUIT'
+        draft_score: null, day6_score: null, scouting_tier: 'RECRUIT'
     },
 ];
 
@@ -95,28 +95,28 @@ describe('GM_SETTINGS cross-guild Draft Mercato & Inter-Server Scouting Engine',
         expect(rowPseudos()).toEqual(['AlphaKing', 'BetaKnight', 'OmegaStar', 'GammaGhost', '<b>Hax</b>']);
     });
 
-    it('displays server, guild, rates, counts, Day 6 doubled score, Glory, and power', async () => {
+    it('displays server, guild, rates, counts, Day 6 (0-100%), Glory (0-100%), and power', async () => {
         await SETTINGS.load();
         const text = container().textContent;
         expect(text).toContain('#1058');
         expect(text).toContain('#1064');
         expect(text).toContain('#0000');
-        expect(text).toContain('65%');
+        expect(text).toContain('73%'); // Draft score rounded
+        expect(text).toContain('90%'); // Day 6 score (0-100%)
+        expect(text).toContain('85%'); // Glory score (0-100%)
         expect(text).toContain('5/10');
         expect(text).toContain('4.5B');
         expect(text).toContain('1.2M');
         expect(text).toContain('8.9K');
-        expect(text).toContain(GM.formatNumber(350000)); // Glory
-        expect(text).toContain(GM.formatNumber(20000000)); // Day 6 PvP
     });
 
-    it('renders the Glory column with cumulative glory points', async () => {
+    it('renders the Glory column with 0-100% normalized performance rating', async () => {
         await SETTINGS.load();
         const headers = Array.from(container().querySelectorAll('th')).map(th => th.textContent.trim());
         expect(headers.some(h => h.includes('Glory'))).toBe(true);
     });
 
-    it('renders the Day 6 PvP column with 2x doubled factor', async () => {
+    it('renders the Day 6 PvP column with 0-100% combat battle rating', async () => {
         await SETTINGS.load();
         const headers = Array.from(container().querySelectorAll('th')).map(th => th.textContent.trim());
         expect(headers.some(h => h.includes('Day 6'))).toBe(true);
@@ -156,17 +156,17 @@ describe('GM_SETTINGS cross-guild Draft Mercato & Inter-Server Scouting Engine',
         expect(rowPseudos()).toEqual(['AlphaKing', 'OmegaStar', 'GammaGhost', '<b>Hax</b>', 'BetaKnight']);
     });
 
-    it('sorts by Day 6 PvP battle score when day 6 header is clicked', async () => {
+    it('sorts by Day 6 battle score when day 6 header is clicked', async () => {
         await SETTINGS.load();
         container().querySelector('th[data-sort="day6"]').click();
-        // Day 6 descending: AlphaKing (20M), BetaKnight (13M), OmegaStar (0, power 1.2M), GammaGhost (0, power 8.9K), Hax (0, power 1K)
+        // Day 6 descending: AlphaKing (90%), BetaKnight (69%), OmegaStar (0%), GammaGhost (null), Hax (null)
         expect(rowPseudos()).toEqual(['AlphaKing', 'BetaKnight', 'OmegaStar', 'GammaGhost', '<b>Hax</b>']);
     });
 
-    it('sorts by Glory when glory header is clicked', async () => {
+    it('sorts by Glory score when glory header is clicked', async () => {
         await SETTINGS.load();
         container().querySelector('th[data-sort="glory"]').click();
-        // Glory descending: AlphaKing (350K), OmegaStar (120K), BetaKnight (0), GammaGhost (0), Hax (0)
+        // Glory descending: AlphaKing (85%), OmegaStar (62%), BetaKnight (null), GammaGhost (null), Hax (null)
         expect(rowPseudos()).toEqual(['AlphaKing', 'OmegaStar', 'GammaGhost', '<b>Hax</b>', 'BetaKnight']);
     });
 
