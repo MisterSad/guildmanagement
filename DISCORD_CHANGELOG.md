@@ -1,22 +1,30 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.5 (Tactical Force Matrix Sunday Glory Sync)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.6 (Tactical Rally Leaders & Density Sorting)**
 
 Hey commanders! 👋
 
-Your tactical military data just got even more accurate and automated! I have upgraded the **Tactical Force Matrix** in the **"Members"** tab to automatically pull and maintain the **latest recorded Sunday Glory score** for every member:
+Planning your battle rallies just became infinitely faster and clearer! I have updated the **Tactical Force Matrix** to automatically sort your roster by **Rally Readiness Density** and overhauled our military calculation engine to highlight your optimal Rally Leaders:
 
 ---
 
-### 🏆 1. Automatic Sunday Glory Synchronization
-* Glory rankings and battle scores are typically logged on Sundays.
-* In the **Tactical Force Matrix**, the **🏆 Glory** column now automatically pulls each player's most recently recorded Glory score from past battle logs.
-* No more blank or zero values during the week between events: your guild's total Glory, combat density, and individual military profiles always display the latest confirmed numbers!
+### 🛡️ 1. Automatic Rally Leaderboard Sorting
+* The **Tactical Force Matrix** in the **"Members"** tab is now sorted automatically by **Density / Rally Readiness** (from highest to lowest).
+* At a single glance, you can immediately identify who to place at the head of your rallies!
+* The top 3 tactical commanders automatically receive distinctive badges (`👑 Rally 1`, `Rally 2`, `Rally 3`) in the matrix.
 
 ---
 
-### ⚡ 2. Instant Database & Roster Sync
-* Whenever a Glory score is submitted via the **Glory Log**, **Glory OCR**, or the **Player Portal**, the database RPC instantly updates both the event record and the member's profile score.
-* The summary chips (`Total Glory: XXX.X M`) and individual member cards update in real time.
+### ⚔️ 2. New Weighted Rally Readiness Algorithm
+I have re-engineered the scoring formula so that every military metric is weighted according to its true tactical combat hierarchy:
+$$\text{Power} > \text{Flagship} > \text{Fleet} > \text{Tech} > \text{Crew} > \text{Champs} > \text{Glory}$$
+
+* **Power**: Base macro strength and fleet ceiling.
+* **Flagship (3.0x)**: Capital ship strike multiplier and rally aura buffs.
+* **Fleet Rating (15.0x)**: First march raw combat power and unit leadership.
+* **Tech Power (0.9x)**: Combat research and alliance passives.
+* **Crew Power (1.5x)**: Officer combat synergies and specialized bonuses.
+* **Champion Power (0.4x)**: Hero collection strength.
+* **Glory Score (0.03x)**: Historical PvP combat proof (Sunday records).
 
 ---
 
-*Keep crushing your PvP battles, check your tactical readiness, and lead your fleet to victory!* 🚀
+*Organize your rallies, pick your captains in seconds, and dominate the galaxy!* 🚀

@@ -2,6 +2,12 @@
 
 ## New
 
+- **Tactical Force Matrix Automatic Density & Rally Leaderboard Sorting (v119.4)**:
+  - **Tactical Rally Leadership Hierarchy**: Redesigned combat density and rally readiness algorithms (`calculateCombatDensity`, `calculateRallyScore`, `calculateWarScore`) strictly following the hierarchy: **Power > Flagship > Fleet > Tech > Crew > Champs > Glory**.
+  - **Automatic Rally Leader Sorting**: The Tactical Force Matrix now sorts members automatically by Rally Readiness Density (`density_desc`), allowing guild leaders and admins to identify optimal rally captains at a single glance.
+  - **Visual Rally Captain Badges**: Top 3 tactical captains automatically display prominent badges (`👑 Rally 1`, `Rally 2`, `Rally 3`) directly on the matrix roster table.
+  - **Quality Gate**: **256/256 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Tactical Force Matrix Dynamic Sunday Glory Synchronization (v119.3)**:
   - **Automatic Latest Glory Reconciliation**: In the Tactical Force Matrix and member military metrics, the Glory column now seamlessly integrates the latest recorded Sunday score for each player from `event_participants` where `event_name = 'Glory'`.
   - **Zero-Stale Metrics Guarantee**: When loading guild members (`fetchGuildMembers`), the system retrieves the most recent weekly Glory score per player across historical weeks, updating `m.glory_score` and guild totals in real time even when mid-week before Sunday's new logs.

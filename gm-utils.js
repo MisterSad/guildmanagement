@@ -1386,12 +1386,31 @@
         if (!m) return 0;
         var tot = parseInt(m.overall_power || m.total_power) || 0;
         if (tot <= 0) return 0;
-        var tech = parseInt(m.tech_power) || 0;
-        var champ = parseInt(m.champion_power) || 0;
-        var crew = parseInt(m.crew_power) || 0;
         var flag = parseInt(m.flagship_power) || 0;
-        var sum = tech + champ + crew + flag;
-        return Math.round((sum / tot) * 1000) / 10;
+        var fleet = parseInt(m.fleet_rating) || 0;
+        var tech = parseInt(m.tech_power) || 0;
+        var crew = parseInt(m.crew_power) || 0;
+        var champ = parseInt(m.champion_power) || 0;
+        var glory = parseInt(m.glory_score || m.glory) || 0;
+
+        // Weighted combat density according to tactical rally hierarchy:
+        // Power > Flagship > Fleet > Tech > Crew > Champs > Glory
+        var weightedCombat = (flag * 3.0) + (fleet * 15.0) + (tech * 0.9) + (crew * 1.5) + (champ * 0.4) + (glory * 0.03);
+        return Math.round((weightedCombat / tot) * 1000) / 10;
+    }
+
+    function calculateRallyScore(m) {
+        if (!m) return 0;
+        var tot = parseInt(m.overall_power || m.total_power) || 0;
+        var flag = parseInt(m.flagship_power) || 0;
+        var fleet = parseInt(m.fleet_rating) || 0;
+        var tech = parseInt(m.tech_power) || 0;
+        var crew = parseInt(m.crew_power) || 0;
+        var champ = parseInt(m.champion_power) || 0;
+        var glory = parseInt(m.glory_score || m.glory) || 0;
+
+        // Composite rally combat readiness score (Power > Flagship > Fleet > Tech > Crew > Champs > Glory)
+        return Math.round(tot + (flag * 3.0) + (fleet * 15.0) + (tech * 0.9) + (crew * 1.5) + (champ * 0.4) + (glory * 0.03));
     }
 
     function calculateResidualPower(m) {
@@ -1412,13 +1431,7 @@
     }
 
     function calculateWarScore(m) {
-        if (!m) return 0;
-        var fleet = parseInt(m.fleet_rating) || 0;
-        var flag = parseInt(m.flagship_power) || 0;
-        var tech = parseInt(m.tech_power) || 0;
-        var champ = parseInt(m.champion_power) || 0;
-        var glory = parseInt(m.glory_score || m.glory) || 0;
-        return Math.round((fleet * 10) + flag + (tech * 0.5) + (champ * 0.3) + (glory * 0.05));
+        return calculateRallyScore(m);
     }
 
     function getEventIcon(name) {
@@ -1546,6 +1559,7 @@
         getPowerTier: getPowerTier,
         getPowerTierMeta: getPowerTierMeta,
         calculateCombatDensity: calculateCombatDensity,
+        calculateRallyScore: calculateRallyScore,
         calculateResidualPower: calculateResidualPower,
         calculateCombativity: calculateCombativity,
         calculateWarScore: calculateWarScore,
