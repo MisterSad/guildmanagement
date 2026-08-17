@@ -496,6 +496,57 @@
         });
     }
 
+    // ─── Format date to DD/MM/YY (JJ/MM/AA) format ─────────────────────────
+    function formatPortalDateDDMMAA(h) {
+        if (!h) return '';
+        var raw = typeof h === 'string' ? h : (h.week_start || h.battle_date || h.start_at || h.date || h.session_id || '');
+        if (!raw) return '';
+
+        // 1. Direct YYYY-MM-DD pattern (e.g. 2026-08-10 or 2026-08-10T...)
+        var ymdMatch = String(raw).match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (ymdMatch) {
+            var y = ymdMatch[1].slice(-2);
+            var m = ymdMatch[2];
+            var d = ymdMatch[3];
+            return d + '/' + m + '/' + y;
+        }
+
+        // 2. YYYYMMDD compact pattern (e.g. ARA-20260815, SF-20260815, DTR-20260815)
+        var compactMatch = String(raw).match(/(\d{4})(\d{2})(\d{2})/);
+        if (compactMatch) {
+            var cy = compactMatch[1].slice(-2);
+            var cm = compactMatch[2];
+            var cd = compactMatch[3];
+            return cd + '/' + cm + '/' + cy;
+        }
+
+        // 3. ISO Week pattern (e.g. SVS-2026-W33, GVG-2026-W33, 2026-W33)
+        var weekMatch = String(raw).match(/(\d{4})-W(\d{2})/i);
+        if (weekMatch) {
+            var yr = parseInt(weekMatch[1], 10);
+            var wk = parseInt(weekMatch[2], 10);
+            var simple = new Date(Date.UTC(yr, 0, 1 + (wk - 1) * 7));
+            var dayOfWeek = simple.getUTCDay();
+            var isoMonday = new Date(simple);
+            if (dayOfWeek <= 4) {
+                isoMonday.setUTCDate(simple.getUTCDate() - simple.getUTCDay() + 1);
+            } else {
+                isoMonday.setUTCDate(simple.getUTCDate() + 8 - simple.getUTCDay());
+            }
+            var padW = function (n) { return n < 10 ? '0' + n : String(n); };
+            return padW(isoMonday.getUTCDate()) + '/' + padW(isoMonday.getUTCMonth() + 1) + '/' + String(isoMonday.getUTCFullYear()).slice(-2);
+        }
+
+        // 4. Fallback: try JS Date parsing
+        var dt = new Date(raw);
+        if (!isNaN(dt.getTime())) {
+            var padD = function (n) { return n < 10 ? '0' + n : String(n); };
+            return padD(dt.getUTCDate()) + '/' + padD(dt.getUTCMonth() + 1) + '/' + String(dt.getUTCFullYear()).slice(-2);
+        }
+
+        return String(raw);
+    }
+
     // ─── Chart card (canvas line chart per event type with Guild Average benchmark) ──
     function eventAccent(eventKey) {
         var lower = String(eventKey).toLowerCase();
@@ -516,7 +567,7 @@
         // History list: score per session with Guild Average comparison
         var historyHtml = '';
         (ev.history || []).slice(0, 8).forEach(function (h) {
-            var label = h.week_start || h.session_id || '?';
+            var label = formatPortalDateDDMMAA(h) || '?';
             var scoreVal = Number(h.score) || 0;
             var avgVal = Number(h.guild_avg_score) || 0;
             var scoreText = anyScore ? (scoreVal > 0 ? window.GM.formatNumber(scoreVal) : '-') : '-';
@@ -534,7 +585,7 @@
 
             historyHtml +=
                 '<div class="portal-chart-row">' +
-                    '<span class="portal-chart-row-label">' + esc(String(label).slice(0, 10)) + '</span>' +
+                    '<span class="portal-chart-row-label">' + esc(label) + '</span>' +
                     '<div style="display:flex; align-items:center; gap:0.65rem;">' +
                         '<span class="portal-chart-row-score" style="color:#6dd58c; font-weight:800;" title="Your Score">' + esc(scoreText) + '</span>' +
                         '<span style="color:#ffe088; font-size:0.75rem; font-weight:700; opacity:0.95;" title="Guild Average">Avg ' + esc(avgText) + '</span>' +
@@ -611,7 +662,7 @@
                 x: i,
                 score: Number(h.score) || 0,
                 avg: Number(h.guild_avg_score) || 0,
-                label: (h.week_start || h.session_id || '').toString().slice(5, 10)
+                label: formatPortalDateDDMMAA(h)
             };
         });
 
@@ -657,7 +708,7 @@
 
             list.forEach(function (h, i) {
                 var x = padL + (chartW * i / Math.max(1, list.length - 1));
-                var label = (h.week_start || h.session_id || '').toString().slice(5, 10);
+                var label = formatPortalDateDDMMAA(h);
                 ctx.fillStyle = 'rgba(255,255,255,0.65)';
                 ctx.font = '11px Inter, sans-serif';
                 ctx.textAlign = 'center';
@@ -799,13 +850,13 @@
             });
         }
 
-        // Date labels below the axis
+        // Date labels below the axis (JJ/MM/AA format)
         list.forEach(function (h, i) {
             var x = xFor(i);
             ctx.fillStyle = 'rgba(255,255,255,0.7)';
             ctx.font = '600 11px Inter, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText((h.week_start || h.session_id || '').toString().slice(5, 10), x, baseY + 20);
+            ctx.fillText(formatPortalDateDDMMAA(h), x, baseY + 20);
         });
     }
 

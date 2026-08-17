@@ -1,31 +1,29 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.22 (Pixel-Perfect Tile Alignment & Design Polish)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.23 (Clean DD/MM/YY Chart Dates & Polish)**
 
 Hey commanders! 👋
 
-I've just refined the **Player Portal** layout to ensure **pixel-perfect visual alignment and structural consistency** across all breakdown cards! 🚀
+I've just added a requested polish to the **Player Portal** progression charts and event breakdowns! 🚀
 
 ---
 
-### 📐 1. Pixel-Perfect Military Breakdown Alignment
-* **Identical Structural Slots**: All 7 military tiles (Fleet Rating, Tech, Flagship, Champs, Crew, Glory, and Power) now share strictly synchronized slots:
-  - **Header Row**: Titles and percentage delta pills (`+XX%`) align on the exact same top baseline.
-  - **Value Row**: Big bold numbers (`1.7M`, `11.5M`, `23.3M`, etc.) align on the exact same horizontal height across the board.
-  - **Footer Benchmark**: `Guild Avg: X.XM` with icons sits on an identical bottom baseline with a hairline divider.
+### 📅 1. Standardized DD/MM/YY (JJ/MM/AA) Date Formatting
+* **Clean Chart Horizontal Axes**: All dates on the X-axis of SvS, GvG, and Glory charts now display strictly in **`DD/MM/YY`** format (e.g. `10/08/26`, `17/08/26`), completely replacing ISO week labels and truncated timestamps.
+* **Synchronized Session History**: The session score rows beneath each graph also use the clean `DD/MM/YY` format for maximum clarity.
 
 ---
 
-### 🎨 2. Full Material Design 3 (M3) Experience
-* **7-Column Desktop Hierarchy**: Seamless horizontal distribution of military stat cards on desktop screens.
-* **4-Column Participation Grid**: Event attendance tiles (Arms Race A, Arms Race B, Defend Trade Route, Shadowfront) aligned on a single row.
+### 📐 2. Pixel-Perfect Military Breakdown & Event Tiles
+* **Strict Alignment**: All 7 military tiles and 4 event participation tiles share synchronized structural slots (header, big bold values, footer averages) with seamless desktop layouts.
 
 ---
 
 ### 📈 3. Clean Dashed Guild Average Line in Charts
-* **Dashed Reference Curve**: Clear amber dashed curve in SvS, GvG, and Glory charts with floating `Avg XX.XM` badges and zero Y-axis text clutter!
+* **In-Graph Benchmark**: Elegant amber dashed trend line (`Avg XX.XM`) with zero vertical axis clutter!
 
 ---
 
-*Log into your Player Portal to experience the new ultra-clean aligned interface!* 🎮🛡️
+*Log into your Player Portal to view your updated progression timelines!* 🎮🛡️
+
 
 
 

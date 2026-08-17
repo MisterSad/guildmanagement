@@ -2,6 +2,12 @@
 
 ## New
 
+- **Player Portal Clean DD/MM/YY (JJ/MM/AA) Date Formatting on Horizontal Chart Axes (v121.3)**:
+  - **Standardized Date Formatting**: Implemented `formatPortalDateDDMMAA` in `portal.js` converting ISO date strings, compact session identifiers (`ARA-20260815`), and ISO week codes (`SVS-2026-W33`) into clean `DD/MM/YY` format (e.g. `15/08/26`, `10/08/26`).
+  - **Horizontal Chart Axis Alignment**: Applied `DD/MM/YY` labels cleanly on the canvas X-axis of SvS, GvG, and Glory charts, eliminating ISO week codes and truncated strings.
+  - **History Breakdown Synchronization**: Rendered the same compact `DD/MM/YY` date format in the session score breakdown rows beneath each progression chart.
+  - **Quality Gate**: **263/263 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Player Portal Pixel-Perfect Military Tile Alignment & Cohesive Grid Hierarchy (v121.2)**:
   - **Pixel-Perfect Military Tile Layout**: Introduced `.portal-military-grid` (7-column layout on desktop) and structured `.portal-military-tile` with exact fixed heights across Header (`32px`), Combat Power Value (`28px`), and Footer Benchmark (`20px`).
   - **Identical Vertical Alignment**: All 7 military tiles (Fleet, Tech, Flagship, Champs, Crew, Glory, and Power) now display their titles, delta pills, numbers, and `Guild Avg` rows at the exact same horizontal baselines.
