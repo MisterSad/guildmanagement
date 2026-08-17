@@ -2,6 +2,11 @@
 
 ## New
 
+- **Champion Power Multiplier Fine-Tuning to 0.8x (v120.0)**:
+  - **Calibrated Champions Multiplier**: Adjusted Champion Power weight in `calculateCombatDensity` and `calculateRallyScore` to **$\times 0.8$** (was 1.0x) to balance hero collection stats against officer synergies and direct fleet ratings.
+  - **Complete Hierarchy**: $\text{Power} (\times 1.0) > \text{Flagship} (\times 4.0) > \text{Fleet} (\times 2.5) > \text{Tech} (\times 2.25) > \text{Crew} (\times 1.5) > \text{Glory} (\times 1.0) > \text{Champs} (\times 0.8)$.
+  - **Quality Gate**: **257/257 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Technology Research Multiplier Boost to 2.25x (v119.9)**:
   - **Calibrated Tech Multiplier**: Adjusted Technology Power weight in `calculateCombatDensity` and `calculateRallyScore` to **$\times 2.25$** (was 2.0x), providing enhanced weighting for research and tech tree advances.
   - **Complete Hierarchy**: $\text{Power} (\times 1.0) > \text{Flagship} (\times 4.0) > \text{Fleet} (\times 2.5) > \text{Tech} (\times 2.25) > \text{Crew} (\times 1.5) > \text{Champs} (\times 1.0) > \text{Glory} (\times 1.0)$.
