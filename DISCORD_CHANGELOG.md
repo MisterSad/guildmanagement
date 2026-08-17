@@ -1,24 +1,22 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.8 (Dedicated Rally Column & 16 Rally Leaders)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.9 (Strict Descending Density Ordering)**
 
 Hey commanders! 👋
 
-Managing your PvP and SvS battle squads just got super visual and straightforward! I have added a **dedicated Rally column** to the **Tactical Force Matrix** that automatically assigns your **Top 16 Rally Leaders** and all **Rally Joiners**:
+I have streamlined the ordering in the **Tactical Force Matrix** so that every single player is displayed in **strict descending order of Density**:
 
 ---
 
-### 🎯 1. Dedicated Rally Column (Right After Player Name)
-* A new **🎯 Rally** column is now placed directly next to each player's name in the Tactical Force Matrix.
-* You can see each member's exact combat role immediately without searching or scrolling!
+### 📊 1. Strict Descending Density Sort
+* The roster is now strictly ranked from the **highest Density % to the lowest Density %**.
+* If two players have the same Density %, the system applies instant tie-breakers based on **Total Power**, **Flagship Power**, and **First March Fleet Rating**.
 
 ---
 
-### 👑 2. 16 Top Rally Leaders vs Rally Joiners
-* **Top 16 Commanders** are automatically appointed as **Rally Leaders**:
-  - 🥇 **Ranks 1 to 4**: Gold Crown badges (`👑 Leader #1` to `#4`) for your primary capital captains.
-  - 🥈 **Ranks 5 to 8**: Purple Star badges (`Leader #5` to `#8`) for your elite secondary rally captains.
-  - 🥉 **Ranks 9 to 16**: Blue Target badges (`Leader #9` to `#16`) for your tactical rally captains.
-* **Ranks 17+**: All remaining guild members are designated as **`Rally Joiner`** (`👥 Rally Joiner`), clearly indicating their role to reinforce and fill active rallies!
+### 👑 2. 100% Aligned Rally Leadership
+* The top 16 positions in the Density descending order correspond directly to **`Rally Leader #1` through `#16`**.
+* All remaining players are assigned as **`Rally Joiner`**.
+* The visual layout is completely crystal clear: rank 1 has the highest Density % at the very top of the table!
 
 ---
 
-*Set up your battle lines, coordinate your rallies in seconds, and conquer the frontier!* 🚀
+*Lead your fleet to victory with laser-sharp tactical clarity!* 🚀

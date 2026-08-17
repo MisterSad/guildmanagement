@@ -209,12 +209,15 @@ describe('Tactical Military Metrics & Calculations', () => {
         }));
 
         const rallyRankedList = roster.slice().sort((a, b) => {
-            return window.GM.calculateRallyScore(b) - window.GM.calculateRallyScore(a);
+            const dA = window.GM.calculateCombatDensity(a);
+            const dB = window.GM.calculateCombatDensity(b);
+            if (dB !== dA) return dB - dA;
+            return (b.overall_power || 0) - (a.overall_power || 0);
         });
 
         const rallyRankMap = {};
         rallyRankedList.forEach((m, idx) => {
-            rallyRankMap[m.pseudo] = window.GM.getRallyRoleMeta(idx + 1, window.GM.calculateRallyScore(m));
+            rallyRankMap[m.pseudo] = window.GM.getRallyRoleMeta(idx + 1, window.GM.calculateCombatDensity(m));
         });
 
         expect(rallyRankMap['Player_1'].isLeader).toBe(true);

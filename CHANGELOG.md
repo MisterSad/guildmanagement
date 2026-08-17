@@ -2,6 +2,11 @@
 
 ## New
 
+- **Tactical Force Matrix Strict Descending Combat Density Ordering (v119.7)**:
+  - **Strict Descending Density Sort**: Configured `sortMembers` and matrix rendering to strictly order players by descending Combat Density score (`calculateCombatDensity`), with deterministic multi-level tie breakers on Power, Flagship, and Fleet.
+  - **Synchronized Density Hierarchy**: Ranks 1 to 16 in the Density descending leaderboard are assigned as Rally Leaders #1 through #16, ensuring 100% visual consistency between Density values and row ordering.
+  - **Quality Gate**: **257/257 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Tactical Force Matrix Dedicated Rally Column & Top 16 Leaders Assignment (v119.6)**:
   - **Dedicated Rally Role Column**: Added a prominent `🎯 Rally` column immediately after the `Player` column in the Tactical Force Matrix table.
   - **16 Rally Leaders vs Rally Joiners Assignment**:

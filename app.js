@@ -3739,12 +3739,14 @@
                 } else if (sortVal === 'glory_desc') {
                     return (parseInt(b.glory_score) || 0) - (parseInt(a.glory_score) || 0);
                 } else if (sortVal === 'density_desc') {
-                    var rA = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(a) : 0;
-                    var rB = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(b) : 0;
-                    if (rB !== rA) return rB - rA;
+                    var dA = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(a) : 0;
+                    var dB = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(b) : 0;
+                    if (dB !== dA) return dB - dA;
                     var pB = (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
                     if (pB !== 0) return pB;
-                    return (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
+                    var fB = (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
+                    if (fB !== 0) return fB;
+                    return (parseInt(b.fleet_rating) || 0) - (parseInt(a.fleet_rating) || 0);
                 } else if (sortVal === 'war_desc') {
                     var wA = window.GM.calculateWarScore ? window.GM.calculateWarScore(a) : 0;
                     var wB = window.GM.calculateWarScore ? window.GM.calculateWarScore(b) : 0;
@@ -3816,22 +3818,24 @@
                 return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
             }
 
-            // Determine Rally Role assignments based on Rally Readiness across the guild roster
+            // Determine Rally Role assignments based on Density ranking across the guild roster
             var rallyRankedList = list.slice().sort(function (a, b) {
-                var rA = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(a) : 0;
-                var rB = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(b) : 0;
-                if (rB !== rA) return rB - rA;
+                var dA = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(a) : 0;
+                var dB = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(b) : 0;
+                if (dB !== dA) return dB - dA;
                 var pB = (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
                 if (pB !== 0) return pB;
-                return (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
+                var fB = (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
+                if (fB !== 0) return fB;
+                return (parseInt(b.fleet_rating) || 0) - (parseInt(a.fleet_rating) || 0);
             });
 
             var rallyRankMap = {};
             var leaderCount = 0;
             rallyRankedList.forEach(function (m, idx) {
                 var pKey = (m.pseudo || '').toLowerCase();
-                var rScore = window.GM.calculateRallyScore ? window.GM.calculateRallyScore(m) : 0;
-                if (idx < 16 && rScore > 0) {
+                var dScore = window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(m) : 0;
+                if (idx < 16 && dScore > 0) {
                     leaderCount++;
                     rallyRankMap[pKey] = {
                         isLeader: true,
