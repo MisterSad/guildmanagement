@@ -2,6 +2,11 @@
 
 ## New
 
+- **Clean Minimalist Rally Grade /100 Column (v120.6)**:
+  - **Streamlined Display**: Refactored the `⚡ Rally Score` table cell in `app.js` to render exclusively the sleek tactical grade chip (`⚡ XX/100`), removing secondary power numbers for a cleaner, high-contrast layout.
+  - **Tooltip Retention**: The exact absolute combat score remains fully accessible via the chip's hover tooltip (e.g. `Rally Grade: 98/100 (592.1M)`).
+  - **Quality Gate**: **261/261 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Rally Grade out of 100 System & Visual Chip Display (v120.5)**:
   - **Relative /100 Tactical Grade Rating**: Added `calculateRallyGrade(member, maxScore)` in `gm-utils.js` normalizing the guild's leading strike force to `100/100` and rating all other guild members proportionally (e.g. `98/100`, `94/100`, `87/100`).
   - **Tactical Chip Display**: Rendered a dedicated `⚡ XX/100` tactical grade chip in the `⚡ Rally Score` column of the matrix table with secondary absolute combat power displayed directly beneath.

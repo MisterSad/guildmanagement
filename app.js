@@ -3922,10 +3922,7 @@
                     '<td style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size:0.85rem;" title="Latest Recorded Sunday Glory: ' + (m.glory_score ? window.GM.formatNumber(m.glory_score) : '0') + '">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
                     '<td style="padding:0.65rem 0.5rem; text-align:center;">' +
                         (rallyScore > 0
-                            ? '<div style="display:inline-flex; flex-direction:column; align-items:center; gap:0.15rem;">' +
-                                  '<span class="gm-chip" style="font-weight:700; font-size:0.8rem; color:#818cf8; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.32); padding:0.12rem 0.45rem; gap:0.25rem;" title="Rally Grade: ' + rallyGrade + '/100 (' + window.GM.formatNumber(rallyScore) + ' pts)"><i class="ph ph-lightning"></i> ' + rallyGrade + '/100</span>' +
-                                  '<span style="font-size:0.68rem; color:var(--text-muted); opacity:0.85;" title="Absolute Combat Power: ' + window.GM.formatPower(rallyScore) + '">' + window.GM.formatPower(rallyScore) + '</span>' +
-                              '</div>'
+                            ? '<span class="gm-chip" style="font-weight:700; font-size:0.8rem; color:#818cf8; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.32); padding:0.15rem 0.5rem; gap:0.25rem;" title="Rally Grade: ' + rallyGrade + '/100 (' + window.GM.formatPower(rallyScore) + ')"><i class="ph ph-lightning"></i> ' + rallyGrade + '/100</span>'
                             : '<span style="color:var(--text-muted); opacity:0.4;">—</span>'
                         ) +
                     '</td>' +
