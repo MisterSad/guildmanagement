@@ -762,8 +762,8 @@
                                 <span data-i18n="card_add_member">Add a member</span>
                             </div>
                         </div>
-                        <div class="gm-ocr-toolbar" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem; padding:0.6rem 0.8rem; background:rgba(99,102,241,0.04); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
-                            <span style="font-size:0.78rem; font-weight:700; color:var(--accent); display:inline-flex; align-items:center; gap:0.25rem; margin-right:0.25rem; width:100%;"><i class="ph ph-scan"></i> AI OCR Metric Scanners:</span>
+                        <div class="gm-ocr-toolbar" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:0.4rem; margin-bottom:1rem; padding:0.6rem 0.8rem; background:rgba(99,102,241,0.04); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
+                            <span style="font-size:0.78rem; font-weight:700; color:var(--accent); display:inline-flex; justify-content:center; align-items:center; gap:0.25rem; margin-bottom:0.25rem; width:100%; text-align:center;"><i class="ph ph-scan"></i> AI OCR Metric Scanners:</span>
                             <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="power" style="gap:0.3rem; background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-sword"></i> 1. Power OCR</button>
                             <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="fleet" style="gap:0.3rem; background:rgba(96,165,250,0.15); color:#60a5fa; border:1px solid rgba(96,165,250,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-swords"></i> 2. Fleet OCR</button>
                             <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="tech" style="gap:0.3rem; background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-atom"></i> 3. Tech OCR</button>
@@ -1431,8 +1431,8 @@
                                 <h3 data-i18n="card_add_member">Add a member</h3>
                             </div>
                         </div>
-                        <div class="gm-ocr-toolbar" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem; padding:0.6rem 0.8rem; background:rgba(99,102,241,0.04); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
-                            <span style="font-size:0.78rem; font-weight:700; color:var(--accent); display:inline-flex; align-items:center; gap:0.25rem; margin-right:0.25rem; width:100%;"><i class="ph ph-scan"></i> AI OCR Metric Scanners:</span>
+                        <div class="gm-ocr-toolbar" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:0.4rem; margin-bottom:1rem; padding:0.6rem 0.8rem; background:rgba(99,102,241,0.04); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
+                            <span style="font-size:0.78rem; font-weight:700; color:var(--accent); display:inline-flex; justify-content:center; align-items:center; gap:0.25rem; margin-bottom:0.25rem; width:100%; text-align:center;"><i class="ph ph-scan"></i> AI OCR Metric Scanners:</span>
                             <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="power" style="gap:0.3rem; background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-sword"></i> 1. Power OCR</button>
                             <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="fleet" style="gap:0.3rem; background:rgba(96,165,250,0.15); color:#60a5fa; border:1px solid rgba(96,165,250,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-swords"></i> 2. Fleet OCR</button>
                             <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="tech" style="gap:0.3rem; background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.3); font-size:0.78rem; font-weight:600; cursor:pointer;"><i class="ph ph-atom"></i> 3. Tech OCR</button>
@@ -1529,7 +1529,6 @@
     </div><!-- #app -->
 
     <!-- OCR Gemini Modal Overlay -->
-    <!-- OCR Gemini Modal Overlay -->
     <div id="ocr-modal-overlay" class="confirm-overlay" style="display: none; position: fixed; inset: 0; z-index: 999999; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); align-items: center; justify-content: center;">
         <div class="gm-modal-card" style="max-width: 820px; width: 94%; max-height: 90vh; display: flex; flex-direction: column; text-align: left; overflow: hidden;">
             <div class="gm-modal-header" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border-soft);">
@@ -1549,7 +1548,7 @@
 
             <div class="gm-modal-body" style="padding: 1rem 0; overflow-y: auto; flex: 1;">
                 <!-- Metric Selector Tabs -->
-                <div id="ocr-metric-tabs" class="gm-segmented" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:1rem; padding:0.35rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
+                <div id="ocr-metric-tabs" class="gm-segmented" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:0.35rem; margin-bottom:1rem; padding:0.35rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
                     <button type="button" class="gm-seg-btn active" data-metric="power" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:var(--accent); color:#fff; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-sword"></i> 1. Power</button>
                     <button type="button" class="gm-seg-btn" data-metric="fleet" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-swords"></i> 2. Fleet</button>
                     <button type="button" class="gm-seg-btn" data-metric="tech" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-atom"></i> 3. Tech</button>
