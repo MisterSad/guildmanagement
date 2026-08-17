@@ -4117,27 +4117,33 @@
     var portalLookupError = document.getElementById('portal-lookup-error');
     var portalLookupBtn  = document.getElementById('portal-lookup-btn');
 
-    document.getElementById('go-to-portal-btn').addEventListener('click', function () {
-        loginView.classList.add('hidden');
-        playerPortalView.classList.remove('hidden');
-        playerPortalView.classList.remove('portal-connected');
-        portalStepLookup.classList.remove('hidden');
-        portalStepForm.classList.add('hidden');
-        portalLookupError.classList.add('hidden');
-        portalIdInput.value = '';
-        portalPasswordInput.value = '';
-        var portalContainer = document.querySelector('.gm-portal-container');
-        if (portalContainer) portalContainer.classList.remove('portal-wide');
-    });
+    var goToPortalBtn = document.getElementById('go-to-portal-btn');
+    if (goToPortalBtn) {
+        goToPortalBtn.addEventListener('click', function () {
+            loginView.classList.add('hidden');
+            playerPortalView.classList.remove('hidden');
+            playerPortalView.classList.remove('portal-connected');
+            portalStepLookup.classList.remove('hidden');
+            portalStepForm.classList.add('hidden');
+            portalLookupError.classList.add('hidden');
+            portalIdInput.value = '';
+            portalPasswordInput.value = '';
+            var portalContainer = document.querySelector('.gm-portal-container');
+            if (portalContainer) portalContainer.classList.remove('portal-wide');
+        });
+    }
 
-    document.getElementById('portal-go-register-btn').addEventListener('click', function () {
-        playerPortalView.classList.add('hidden');
-        playerPortalView.classList.remove('portal-connected');
-        loginView.classList.remove('hidden');
-        showRegisterForm(true);
-        var portalContainer = document.querySelector('.gm-portal-container');
-        if (portalContainer) portalContainer.classList.remove('portal-wide');
-    });
+    var portalGoRegisterBtn = document.getElementById('portal-go-register-btn');
+    if (portalGoRegisterBtn) {
+        portalGoRegisterBtn.addEventListener('click', function () {
+            playerPortalView.classList.add('hidden');
+            playerPortalView.classList.remove('portal-connected');
+            loginView.classList.remove('hidden');
+            showRegisterForm(true);
+            var portalContainer = document.querySelector('.gm-portal-container');
+            if (portalContainer) portalContainer.classList.remove('portal-wide');
+        });
+    }
 
     document.querySelectorAll('.portal-back-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
