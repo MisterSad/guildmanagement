@@ -2,6 +2,19 @@
 
 ## New
 
+- **Multi-Guild Tag Administration & Server-Wide OCR Leaderboard Filtering (v119.2)**:
+  - **In-Game Guild Tag Administration**: Added `#guild-tag-setting` in Guild Configuration & Settings, allowing guild admins to specify their in-game tag (e.g. `[PR1M]` for `ALPHA`, `[OMG]` for `OMEGA`, `[BABE]`, `[IMK]`, `[CLAW]`), stored in `guild_config`.
+  - **Intra-Guild vs Multi-Guild Server Leaderboard Scanners**:
+    - **Intra-Guild Scanners** (`Power`, `Tech Power`, `Glory`): Screenshots contain exclusively guild members; all detected players are recognized as members or new recruits.
+    - **Multi-Guild Server Leaderboard Scanners** (`Strongest Fleet`, `Strongest Flagship`, `Champion Power`, `Crew Power`): Screenshots contain multi-guild players from across the entire server.
+  - **Dynamic OCR Modal Guild Tag Filter**: Prominently displays the active Guild Tag filter banner in the OCR modal with real-time editing and pre-fill from guild settings.
+  - **AI OCR Tag Stripping & Smart Checkbox Protection**:
+    - Gemini vision system automatically recognizes guild tag prefixes, returning clean usernames.
+    - `cleanPlayerPseudo` strips bracketed tags (`[PR1M]`, `[ALPHA]`, etc.) before roster matching.
+    - Players matching guild members are checked by default with `Update` or `Reconciled` status.
+    - Non-guild server players are flagged as `<span class="gm-chip">⚠️ Other Guild</span>` and **unchecked by default**, preventing unintentional member creations while scanning 100-player server rankings.
+  - **Quality Gate**: **254/254 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **7-Metric AI OCR Scanners Engine & Dynamic Metric Synchronization (v119.1)**:
   - **7 Dedicated Metric OCR Scanners**: Replaced single power OCR with 7 specialized AI OCR tools for *Foundation Galactic Frontier*:
     1. 🌐 **1. Power OCR**: Overall Total Power (`overall_power`).

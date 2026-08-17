@@ -420,6 +420,10 @@
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="guild-server-number-setting">Server # (4 digits)</label>
                                     <input type="text" id="guild-server-number-setting" class="gm-input" maxlength="4" pattern="\d{4}" placeholder="e.g. 1058">
                                 </div>
+                                <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem;" for="guild-tag-setting">In-Game Guild Tag</label>
+                                    <input type="text" id="guild-tag-setting" class="gm-input" placeholder="e.g. [PR1M] or PR1M" style="font-weight: 700; text-transform: uppercase;">
+                                </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-svs" data-i18n="label_coeff_svs">SvS Coeff</label>
                                     <input type="number" id="coeff-svs" class="gm-input" min="0" max="20" required>
@@ -1556,6 +1560,18 @@
                     <button type="button" class="gm-seg-btn" data-metric="champs" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-crown"></i> 5. Champs</button>
                     <button type="button" class="gm-seg-btn" data-metric="crew" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-users-three"></i> 6. Crew</button>
                     <button type="button" class="gm-seg-btn" data-metric="glory" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-trophy"></i> 7. Glory</button>
+                </div>
+
+                <!-- Guild Tag Filter Banner (Server-Wide Multi-Guild vs Intra-Guild) -->
+                <div id="ocr-guild-tag-banner" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; padding:0.6rem 0.85rem; margin-bottom:1rem; background:rgba(99, 102, 241, 0.06); border:1px solid rgba(99, 102, 241, 0.25); border-radius:var(--radius-md);">
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <span id="ocr-scope-badge" class="gm-chip" style="background:rgba(99,102,241,0.18); color:var(--accent); font-weight:700; font-size:0.75rem;"><i class="ph ph-shield-check"></i> Intra-Guild Scan</span>
+                        <span id="ocr-scope-desc" style="font-size:0.78rem; color:var(--text-muted);">Screenshots contain exclusively your guild members</span>
+                    </div>
+                    <div id="ocr-tag-input-group" style="display:none; align-items:center; gap:0.4rem;">
+                        <label for="ocr-guild-tag-input" style="font-size:0.78rem; font-weight:600; color:var(--text-normal);">Guild Tag Filter:</label>
+                        <input type="text" id="ocr-guild-tag-input" class="gm-input" placeholder="e.g. [PR1M]" style="padding:0.25rem 0.5rem; font-size:0.8rem; font-weight:700; width:95px; text-transform:uppercase; color:var(--accent); text-align:center;">
+                    </div>
                 </div>
 
                 <!-- Step 1: Upload Dropzone -->

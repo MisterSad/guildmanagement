@@ -892,6 +892,18 @@
         var notifySvsPvp = await window.GM.config.get('notify_svs_pvp');
         var notifySvsWonPrep = await window.GM.config.get('notify_svs_won_prep');
 
+        // Server & Guild Tag Configuration
+        var tagSettingEl = document.getElementById('guild-tag-setting');
+        if (tagSettingEl) {
+            var currentTag = await window.GM.getGuildTag();
+            tagSettingEl.value = currentTag || '';
+        }
+        var serverNumSettingEl = document.getElementById('guild-server-number-setting');
+        if (serverNumSettingEl) {
+            var sNum = await window.GM.config.get('server_number');
+            serverNumSettingEl.value = sNum || '';
+        }
+
         document.getElementById('coeff-svs').value = coeffSvs;
         document.getElementById('coeff-gvg').value = coeffGvg;
         document.getElementById('coeff-shadowfront').value = coeffShadowfront;
@@ -960,7 +972,25 @@
 
             try {
                 var showCalamityGvgSvs = (await window.GM.config.get('gvg_svs_calamity_enabled')) !== 'false';
+                
+                var tagSettingEl = document.getElementById('guild-tag-setting');
+                var tagVal = '';
+                if (tagSettingEl) {
+                    var rawTag = tagSettingEl.value.trim().toUpperCase();
+                    if (rawTag) {
+                        if (!rawTag.startsWith('[') && !rawTag.endsWith(']')) {
+                            tagVal = '[' + rawTag + ']';
+                        } else {
+                            tagVal = rawTag;
+                        }
+                    }
+                }
+                var serverNumSettingEl = document.getElementById('guild-server-number-setting');
+                var serverNumVal = serverNumSettingEl ? serverNumSettingEl.value.trim() : '';
+
                 await Promise.all([
+                    window.GM.config.set('guild_tag', tagVal),
+                    window.GM.config.set('server_number', serverNumVal),
                     window.GM.config.set('coeff_svs', document.getElementById('coeff-svs').value),
                     window.GM.config.set('coeff_gvg', document.getElementById('coeff-gvg').value),
                     window.GM.config.set('coeff_shadowfront', document.getElementById('coeff-shadowfront').value),
@@ -1937,77 +1967,84 @@
             title: '1. Power OCR — Overall Total Power',
             subtitle: 'Upload guild roster screenshots to import new members and update overall power levels',
             dropTitle: 'Drop Overall Power screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Up to 25 screenshots per batch / 200+ players)',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: extracts all visible members)',
             header: 'Extracted Power',
             field: 'overall_power',
             color: '#818cf8',
-            icon: 'ph-sword'
+            icon: 'ph-sword',
+            isMultiGuild: false
         },
         fleet: {
-            title: '2. Fleet OCR — Strongest Fleet Rating',
+            title: '2. Fleet OCR — Strongest Fleet Rating (Server Leaderboard)',
             subtitle: 'Upload Strongest Fleet / March 1 leaderboards to update strike ratings and rally capabilities',
             dropTitle: 'Drop Strongest Fleet leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts First March rating & rally power)',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
             header: 'Extracted Fleet Rating',
             field: 'fleet_rating',
             color: '#60a5fa',
-            icon: 'ph-swords'
+            icon: 'ph-swords',
+            isMultiGuild: true
         },
         tech: {
             title: '3. Tech OCR — Technology Power',
             subtitle: 'Upload Technology Power leaderboards to track research advancement across members',
             dropTitle: 'Drop Technology Power leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Alliance/Individual Tech values)',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: extracts Alliance/Individual Tech values)',
             header: 'Extracted Tech Power',
             field: 'tech_power',
             color: '#a78bfa',
-            icon: 'ph-atom'
+            icon: 'ph-atom',
+            isMultiGuild: false
         },
         flagship: {
-            title: '4. Flagship OCR — Flagship Power',
+            title: '4. Flagship OCR — Flagship Power (Server Leaderboard)',
             subtitle: 'Upload Flagship power leaderboards to track capital ship strength and hulls',
             dropTitle: 'Drop Flagship Power leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Flagship combat values)',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
             header: 'Extracted Flagship Power',
             field: 'flagship_power',
             color: '#fbbf24',
-            icon: 'ph-rocket'
+            icon: 'ph-rocket',
+            isMultiGuild: true
         },
         champs: {
-            title: '5. Champs OCR — Champions Total Power',
+            title: '5. Champs OCR — Champions Total Power (Server Leaderboard)',
             subtitle: 'Upload Champion Total Power leaderboards to track hero collections and ranks',
             dropTitle: 'Drop Champions Total Power leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Hero/Champion total ratings)',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
             header: 'Extracted Champions Power',
             field: 'champion_power',
             color: '#f472b6',
-            icon: 'ph-crown'
+            icon: 'ph-crown',
+            isMultiGuild: true
         },
         crew: {
-            title: '6. Crew OCR — Crew Total Power',
+            title: '6. Crew OCR — Crew Total Power (Server Leaderboard)',
             subtitle: 'Upload Crew Total Power leaderboards to evaluate Foundation officer development',
             dropTitle: 'Drop Crew Total Power leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Crew/Officer total power)',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
             header: 'Extracted Crew Power',
             field: 'crew_power',
             color: '#38bdf8',
-            icon: 'ph-users-three'
+            icon: 'ph-users-three',
+            isMultiGuild: true
         },
         glory: {
             title: '7. Glory OCR — Weekly Glory Score',
             subtitle: 'Upload Glory rankings to track weekly battle points and PvP contribution',
             dropTitle: 'Drop Glory Ranking leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Extracts Glory score points)',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: extracts Glory score points)',
             header: 'Extracted Glory Score',
             field: 'glory_score',
             color: '#34d399',
-            icon: 'ph-trophy'
+            icon: 'ph-trophy',
+            isMultiGuild: false
         }
     };
 
     var currentOcrMetric = 'power';
 
-    function setOcrMetric(metric) {
+    async function setOcrMetric(metric) {
         if (!OCR_METRICS_META[metric]) metric = 'power';
         currentOcrMetric = metric;
         var meta = OCR_METRICS_META[metric];
@@ -2033,11 +2070,46 @@
         if (dropTitle) dropTitle.textContent = meta.dropTitle;
         if (dropDesc) dropDesc.textContent = meta.dropDesc;
         if (metricHeader) metricHeader.textContent = meta.header;
+
+        // Update Guild Tag Banner
+        var scopeBadge = document.getElementById('ocr-scope-badge');
+        var scopeDesc = document.getElementById('ocr-scope-desc');
+        var tagInputGroup = document.getElementById('ocr-tag-input-group');
+        var tagInput = document.getElementById('ocr-guild-tag-input');
+
+        var configuredTag = (window.GM && window.GM.getGuildTag) ? (await window.GM.getGuildTag()) : '';
+        if (tagInput && (!tagInput.value || tagInput.dataset.autoFilled === 'true')) {
+            tagInput.value = configuredTag || '';
+            tagInput.dataset.autoFilled = 'true';
+        }
+
+        if (meta.isMultiGuild) {
+            if (scopeBadge) {
+                scopeBadge.innerHTML = '<i class="ph ph-globe"></i> Server Leaderboard (Multi-Guild)';
+                scopeBadge.style.background = 'rgba(234,179,8,0.18)';
+                scopeBadge.style.color = '#facc15';
+            }
+            if (scopeDesc) {
+                var displayTag = (tagInput && tagInput.value) ? tagInput.value : configuredTag;
+                scopeDesc.textContent = 'Screenshots contain multi-guild players. Targeting members with tag ' + displayTag + '.';
+            }
+            if (tagInputGroup) tagInputGroup.style.display = 'flex';
+        } else {
+            if (scopeBadge) {
+                scopeBadge.innerHTML = '<i class="ph ph-shield-check"></i> Intra-Guild Scan';
+                scopeBadge.style.background = 'rgba(99,102,241,0.18)';
+                scopeBadge.style.color = 'var(--accent)';
+            }
+            if (scopeDesc) {
+                scopeDesc.textContent = 'Screenshots contain exclusively your guild members (full roster scan).';
+            }
+            if (tagInputGroup) tagInputGroup.style.display = 'none';
+        }
     }
 
-    function openOcrModal(metric) {
+    async function openOcrModal(metric) {
         initOcrGeminiModule();
-        setOcrMetric(metric || 'power');
+        await setOcrMetric(metric || 'power');
         var modal = document.getElementById('ocr-modal-overlay');
         if (modal) {
             modal.style.display = 'flex';
@@ -2088,37 +2160,62 @@
         }
     });
 
+    var ocrModuleInitialized = false;
     function initOcrGeminiModule() {
-        var modal = document.getElementById('ocr-modal-overlay');
-        var btnClose = document.getElementById('ocr-modal-close');
-        var btnCancel = document.getElementById('ocr-modal-cancel');
-        var dropzone = document.getElementById('ocr-dropzone');
+        if (ocrModuleInitialized) return;
+        ocrModuleInitialized = true;
+
+        var closeBtn = document.getElementById('ocr-modal-close');
         var fileInput = document.getElementById('ocr-file-input');
+        var dropzone = document.getElementById('ocr-dropzone');
         var btnReset = document.getElementById('ocr-reset-btn');
         var btnSelectAll = document.getElementById('ocr-select-all-btn');
         var cbToggleAll = document.getElementById('ocr-toggle-all-cb');
         var btnCommit = document.getElementById('ocr-commit-btn');
 
-        if (!modal) return;
-        if (ocrInitialized) return;
-        ocrInitialized = true;
+        // Metric tabs switcher
+        var metricTabs = document.getElementById('ocr-metric-tabs');
+        if (metricTabs) {
+            metricTabs.querySelectorAll('.gm-seg-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var m = btn.getAttribute('data-metric');
+                    if (m) setOcrMetric(m);
+                });
+            });
+        }
 
-        if (btnClose) btnClose.onclick = closeOcrModal;
-        if (btnCancel) btnCancel.onclick = closeOcrModal;
-        modal.onclick = function (e) {
-            if (e.target === modal) closeOcrModal();
-        };
-
-        // Wire metric switcher tabs inside modal
-        document.querySelectorAll('#ocr-metric-tabs .gm-seg-btn').forEach(function (tabBtn) {
-            tabBtn.onclick = function () {
-                var m = tabBtn.getAttribute('data-metric');
-                setOcrMetric(m);
-                if (ocrExtractedPlayers && ocrExtractedPlayers.length > 0) {
-                    renderOcrResults(ocrExtractedPlayers);
+        // Guild Tag Filter input change
+        var tagInput = document.getElementById('ocr-guild-tag-input');
+        if (tagInput) {
+            tagInput.addEventListener('input', function () {
+                tagInput.dataset.autoFilled = 'false';
+                var meta = OCR_METRICS_META[currentOcrMetric];
+                var scopeDesc = document.getElementById('ocr-scope-desc');
+                if (meta && meta.isMultiGuild && scopeDesc) {
+                    scopeDesc.textContent = 'Screenshots contain multi-guild players. Targeting members with tag ' + (tagInput.value || '[TAG]') + '.';
                 }
-            };
+            });
+        }
+
+        // Roster Toolbar buttons
+        document.querySelectorAll('.btn-ocr-trigger').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var m = btn.getAttribute('data-metric') || 'power';
+                openOcrModal(m);
+            });
         });
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeOcrModal);
+        }
+
+        var overlay = document.getElementById('ocr-modal-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', function (e) {
+                if (e.target === overlay) closeOcrModal();
+            });
+        }
 
         if (dropzone && fileInput) {
             dropzone.addEventListener('click', function () {
@@ -2127,12 +2224,11 @@
 
             dropzone.addEventListener('dragover', function (e) {
                 e.preventDefault();
-                dropzone.style.borderColor = 'var(--accent)';
+                dropzone.style.borderColor = '#818cf8';
                 dropzone.style.background = 'rgba(99, 102, 241, 0.08)';
             });
 
-            dropzone.addEventListener('dragleave', function (e) {
-                e.preventDefault();
+            dropzone.addEventListener('dragleave', function () {
                 dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)';
                 dropzone.style.background = 'rgba(99, 102, 241, 0.03)';
             });
@@ -2141,12 +2237,50 @@
                 e.preventDefault();
                 dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)';
                 dropzone.style.background = 'rgba(99, 102, 241, 0.03)';
-                var files = Array.from(e.dataTransfer.files);
-                handleOcrFiles(files);
+                var files = Array.from(e.dataTransfer.files || []);
+                if (files.length > 0) {
+                    handleOcrFiles(files);
+                }
             });
 
-            fileInput.addEventListener('change', function (e) {
-                var files = Array.from(e.target.files);
+            fileInput.addEventListener('change', function () {
+                var files = Array.from(fileInput.files || []);
+                if (files.length > 0) {
+                    handleOcrFiles(files);
+                }
+            });
+        }
+
+        var keyInput = document.getElementById('ocr-custom-key-input');
+        var keySaveBtn = document.getElementById('ocr-save-key-btn');
+        if (keySaveBtn && keyInput) {
+            keySaveBtn.addEventListener('click', function () {
+                var val = keyInput.value.trim();
+                if (val) {
+                    saveOcrApiKey(val);
+                    showToast('Gemini API Key saved successfully!', 'success');
+                    var prompt = document.getElementById('ocr-key-prompt');
+                    if (prompt) prompt.style.display = 'none';
+                }
+            });
+        }
+
+        var keyInputSettings = document.getElementById('gemini-api-key-input');
+        var keySaveBtnSettings = document.getElementById('save-gemini-key-btn');
+        if (keySaveBtnSettings && keyInputSettings) {
+            keySaveBtnSettings.addEventListener('click', function () {
+                var val = keyInputSettings.value.trim();
+                if (val) {
+                    saveOcrApiKey(val);
+                    showToast('Gemini API Key saved successfully!', 'success');
+                }
+            });
+        }
+
+        var sampleBtn = document.getElementById('ocr-sample-demo-btn');
+        if (sampleBtn) {
+            sampleBtn.addEventListener('click', async function () {
+                var files = await loadSampleOcrImages();
                 handleOcrFiles(files);
             });
         }
@@ -2198,6 +2332,9 @@
         if (resultsContainer) resultsContainer.style.display = 'none';
 
         var meta = OCR_METRICS_META[currentOcrMetric] || OCR_METRICS_META.power;
+        var tagInput = document.getElementById('ocr-guild-tag-input');
+        var activeGuildTag = (tagInput && tagInput.value.trim()) ? tagInput.value.trim() : ((window.GM && window.GM.getGuildTag) ? (await window.GM.getGuildTag()) : '');
+
         if (loadingH4) loadingH4.textContent = 'Analyzing screenshots with AI OCR (' + meta.header + ')...';
 
         var allPlayers = [];
@@ -2221,7 +2358,7 @@
                     loadingP.textContent = 'Processing screenshots batch ' + (b + 1) + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
                 }
 
-                var extracted = await callGeminiOcrBatchApi(currentChunk, currentOcrMetric, function (statusMsg) {
+                var extracted = await callGeminiOcrBatchApi(currentChunk, currentOcrMetric, activeGuildTag, function (statusMsg) {
                     if (loadingP) loadingP.textContent = statusMsg;
                 });
 
@@ -2235,12 +2372,14 @@
             var uniqueMap = {};
             allPlayers.forEach(function (p) {
                 if (!p || !p.pseudo) return;
-                var cleanPseudo = p.pseudo.trim();
+                var cleanPseudo = (window.GM && window.GM.cleanPlayerPseudo) ? window.GM.cleanPlayerPseudo(p.pseudo, activeGuildTag) : p.pseudo.trim();
                 var key = cleanPseudo.toLowerCase();
                 var pScore = p.score != null ? p.score : (p.overall_power || 0);
                 if (!uniqueMap[key] || (pScore && pScore > (uniqueMap[key].score || 0))) {
                     uniqueMap[key] = {
                         pseudo: cleanPseudo,
+                        raw_pseudo: p.pseudo,
+                        guild_tag: p.guild_tag || null,
                         score: pScore,
                         overall_power: pScore,
                         uid: p.uid || null
@@ -2267,18 +2406,23 @@
         });
     }
 
-    async function callGeminiOcrBatchApi(batchImageItems, metricType, updateStatusCallback) {
+    async function callGeminiOcrBatchApi(batchImageItems, metricType, guildTag, updateStatusCallback) {
+        if (typeof guildTag === 'function') {
+            updateStatusCallback = guildTag;
+            guildTag = '';
+        }
         metricType = metricType || 'power';
+        guildTag = guildTag || '';
         var db = (window.GM && window.GM.db) ? window.GM.db : null;
         var token = localStorage.getItem('gm_token') || '';
 
         // 1. Try Supabase Edge Function 'ocr-guild-members' (Zero-Trust Serverless)
         if (db && db.functions) {
             try {
-                if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR Edge Function (' + metricType.toUpperCase() + ')...');
+                if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR Edge Function (' + metricType.toUpperCase() + (guildTag ? ' ' + guildTag : '') + ')...');
                 var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
                 var res = await db.functions.invoke('ocr-guild-members', {
-                    body: { images: batchImageItems, metricType: metricType },
+                    body: { images: batchImageItems, metricType: metricType, guildTag: guildTag },
                     headers: headers
                 });
                 if (res.data && res.data.ok && Array.isArray(res.data.players)) {
@@ -2301,7 +2445,9 @@
         }
 
         var meta = OCR_METRICS_META[metricType] || OCR_METRICS_META.power;
-        var systemPrompt = 'Extract all visible player usernames (pseudos) and ' + meta.header + ' values from these FGF gaming screenshots. Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "' + metricType + '", "players": [{"pseudo": "string", "score": number, "uid": "string or null"}]}';
+        var isMulti = !!meta.isMultiGuild;
+        var multiGuildClause = isMulti ? ('\nNOTE: Server-wide multi-guild leaderboard.' + (guildTag ? ' Target guild tag is "' + guildTag + '". Clean leading tags from player pseudo.' : '')) : '';
+        var systemPrompt = 'Extract all visible player usernames (pseudos) and ' + meta.header + ' values from these FGF gaming screenshots.' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "' + metricType + '", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
 
         var parts = [{ text: systemPrompt }];
         batchImageItems.forEach(function (item) {
@@ -2416,6 +2562,7 @@
                         var numScore = typeof scoreVal === 'number' ? Math.round(scoreVal) : (parseInt(String(scoreVal).replace(/[^0-9]/g, ''), 10) || 0);
                         return {
                             pseudo: String(p.pseudo || p.name || p.username || '').trim(),
+                            guild_tag: p.guild_tag ? String(p.guild_tag).trim() : null,
                             score: numScore,
                             overall_power: numScore,
                             uid: p.uid ? String(p.uid).trim() : null
@@ -2483,7 +2630,7 @@
         return matrix[b.length][a.length];
     }
 
-    function findBestMatchingMember(ocrPseudo, members) {
+    function findBestMatchingMember(ocrPseudo, members, guildTag) {
         if (!ocrPseudo || !members || !Array.isArray(members) || members.length === 0) return null;
         var target = String(ocrPseudo).trim().toLowerCase();
 
@@ -2492,7 +2639,15 @@
         });
         if (exact) return { member: exact, matchType: 'exact', score: 1.0 };
 
-        var targetClean = target.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+        var cleanTarget = (window.GM && window.GM.cleanPlayerPseudo) ? window.GM.cleanPlayerPseudo(ocrPseudo, guildTag).toLowerCase().trim() : target;
+        if (cleanTarget && cleanTarget !== target) {
+            var exactClean = members.find(function (m) {
+                return m.pseudo && m.pseudo.trim().toLowerCase() === cleanTarget;
+            });
+            if (exactClean) return { member: exactClean, matchType: 'clean_tag', score: 0.98 };
+        }
+
+        var targetClean = (cleanTarget || target).replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
         if (targetClean.length >= 3) {
             var normMatch = members.find(function (m) {
                 var mClean = (m.pseudo || '').trim().toLowerCase().replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
@@ -2506,7 +2661,7 @@
 
         members.forEach(function (m) {
             if (!m || !m.pseudo) return;
-            var score = calculateStringSimilarity(ocrPseudo, m.pseudo);
+            var score = calculateStringSimilarity(cleanTarget || ocrPseudo, m.pseudo);
             if (score > bestScore) {
                 bestScore = score;
                 bestMember = m;
@@ -2537,6 +2692,9 @@
 
         var meta = OCR_METRICS_META[currentOcrMetric] || OCR_METRICS_META.power;
         var targetField = meta.field;
+        var isMultiGuild = !!meta.isMultiGuild;
+        var tagInput = document.getElementById('ocr-guild-tag-input');
+        var activeGuildTag = (tagInput && tagInput.value.trim()) ? tagInput.value.trim() : '';
 
         if (loading) loading.style.display = 'none';
         if (resultsContainer) resultsContainer.style.display = 'block';
@@ -2559,15 +2717,17 @@
         var updateCount = 0;
         var unchangedCount = 0;
         var reconciledCount = 0;
+        var otherGuildCount = 0;
 
         var html = '';
         players.forEach(function (p, idx) {
-            var matchRes = findBestMatchingMember(p.pseudo, guildMembers);
+            var matchRes = findBestMatchingMember(p.pseudo, guildMembers, activeGuildTag);
             var existing = matchRes ? matchRes.member : null;
             var matchType = matchRes ? matchRes.matchType : null;
 
-            var effectivePseudo = p.pseudo;
-            if (existing && (matchType === 'normalized' || matchType === 'fuzzy') && p.pseudo !== existing.pseudo) {
+            var cleanPseudo = (window.GM && window.GM.cleanPlayerPseudo) ? window.GM.cleanPlayerPseudo(p.pseudo, activeGuildTag) : p.pseudo.trim();
+            var effectivePseudo = existing ? existing.pseudo : cleanPseudo;
+            if (existing && (matchType === 'normalized' || matchType === 'fuzzy' || matchType === 'clean_tag') && p.pseudo !== existing.pseudo) {
                 effectivePseudo = existing.pseudo;
                 p.pseudo = existing.pseudo;
                 reconciledCount++;
@@ -2577,10 +2737,18 @@
             var pScore = p.score != null ? p.score : (p.overall_power || 0);
 
             var badgeHtml = '';
+            var isChecked = true;
+
             if (!existing) {
-                newCount++;
-                badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
-            } else if (matchType === 'fuzzy' || matchType === 'normalized') {
+                if (isMultiGuild) {
+                    otherGuildCount++;
+                    isChecked = false;
+                    badgeHtml = '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild / Non-Member</span>';
+                } else {
+                    newCount++;
+                    badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
+                }
+            } else if (matchType === 'fuzzy' || matchType === 'normalized' || matchType === 'clean_tag') {
                 updateCount++;
                 badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + esc(existing.pseudo) + '") &rarr; ' + fmtNum(pScore) + '</span>';
             } else if (currentVal !== pScore) {
@@ -2592,7 +2760,7 @@
             }
 
             html += '<tr>' +
-                '<td style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" checked></td>' +
+                '<td style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" ' + (isChecked ? 'checked' : '') + '></td>' +
                 '<td><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
                 '<td><input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;"></td>' +
                 '<td>' + badgeHtml + '</td>' +
@@ -2601,9 +2769,10 @@
 
         if (summaryBadges) {
             summaryBadges.innerHTML = 
-                '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>' +
+                (newCount > 0 ? '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>' : '') +
                 '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Updates</span>' +
                 (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
+                (otherGuildCount > 0 ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' + otherGuildCount + ' Other Guild (Unchecked)</span>' : '') +
                 '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' + unchangedCount + ' Unchanged</span>';
         }
 

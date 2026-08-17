@@ -923,6 +923,45 @@
         return true;
     }
 
+    async function getGuildTag(guild) {
+        var g = guild || getActiveGuild();
+        try {
+            var customTag = await getGuildConfig('guild_tag');
+            if (customTag && typeof customTag === 'string' && customTag.trim()) {
+                var t = customTag.trim();
+                if (!t.startsWith('[') && !t.endsWith(']')) {
+                    return '[' + t + ']';
+                }
+                return t;
+            }
+        } catch (_) {}
+        var defaultTags = {
+            'ALPHA': '[PR1M]',
+            'OMEGA': '[OMG]',
+            'BABE': '[BABE]',
+            'IMK': '[IMK]',
+            'YARR': '[YARR]',
+            'CLAW': '[CLAW]',
+            'DEMO': '[DEMO]'
+        };
+        return defaultTags[g] || ('[' + (g || 'ALPHA') + ']');
+    }
+
+    function cleanPlayerPseudo(rawPseudo, guildTag) {
+        if (!rawPseudo || typeof rawPseudo !== 'string') return '';
+        var clean = rawPseudo.trim();
+        if (guildTag) {
+            var tagClean = guildTag.replace(/[\[\]]/g, '').trim();
+            if (tagClean) {
+                var escapedTag = tagClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var tagRegex = new RegExp('^\\s*\\[?' + escapedTag + '\\]?\\s*[-_:]?\\s*', 'i');
+                clean = clean.replace(tagRegex, '').trim();
+            }
+        }
+        clean = clean.replace(/^\[[^\]]+\]\s*/, '').trim();
+        return clean || rawPseudo.trim();
+    }
+
     function getCurrentPseudo() {
         try {
             return localStorage.getItem('gm_user') || localStorage.getItem('gm_pseudo') || null;
@@ -1512,6 +1551,8 @@
         calculateWarScore: calculateWarScore,
         getEventIcon: getEventIcon,
         getEventTheme: getEventTheme,
+        getGuildTag: getGuildTag,
+        cleanPlayerPseudo: cleanPlayerPseudo,
         config: {
             get: getGuildConfig,
             set: setGuildConfig

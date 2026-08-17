@@ -1,34 +1,31 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.3 (7-Metric AI OCR Leaderboard Scanners)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.4 (Guild Tag Admin & Server-Wide OCR Filtering)**
 
 Hey commanders! 👋
 
-Managing and tracking military stats across 80+ guild members just got 10x faster! I have completely overhauled the **AI OCR engine** in the **"Members"** tab to introduce **7 specialized OCR Scanners** powered by Google Gemini AI vision:
+Scanning multi-guild server leaderboards is now completely seamless and automated! I have added **In-Game Guild Tag Administration** and smart multi-guild server filtering to our AI OCR engine:
 
 ---
 
-### 🤖 1. The 7 Dedicated AI OCR Scanners
-You can now scan and import screenshots for any leaderboard or profile metric with dedicated 1-click scanners:
-* 🌐 **1. Power OCR**: Full guild power leaderboards & total strength.
-* ⚔️ **2. Fleet OCR**: Strongest Fleet (March 1) leaderboards to pinpoint Rally Leaders in seconds!
-* 🔬 **3. Tech OCR**: Technology Power leaderboards to evaluate research advancement.
-* 🚀 **4. Flagship OCR**: Flagship weapon and hull combat ratings.
-* 👑 **5. Champs OCR**: Champion / Hero total power rankings.
-* 👥 **6. Crew OCR**: Foundation officer power and development.
-* 🏆 **7. Glory OCR**: Weekly PvP Glory points rankings.
+### 🏷️ 1. In-Game Guild Tag Configuration
+* In **Guild Configuration & Settings**, you can now set your in-game Guild Tag (e.g. `[PR1M]` for ALPHA, `[OMG]` for OMEGA, `[BABE]`, `[IMK]`, `[CLAW]`).
+* The system automatically persists your tag and uses it as the default identifier for all server-wide operations.
 
 ---
 
-### ⚡ 2. Instant Tab Switcher & Multi-Screenshot Batches
-* **Interactive Modal Tabs**: Switch between Power, Fleet, Tech, Flagship, Champs, Crew, and Glory directly inside the OCR modal with one click!
-* **Multi-Image Batch Scanning**: Drop up to 25 screenshots at once (scanning 200+ players in seconds).
-* **Smart Reconciliation & Matching**: Automatically matches OCR names with existing guild rosters using intelligent fuzzy matching and name cleanup.
+### 🌐 2. Multi-Guild Server Leaderboard Scanners
+The 7 OCR Scanners are now categorized into two intelligent operating modes:
+* **Intra-Guild Leaderboards** (🌐 **Power**, 🔬 **Tech Power**, 🏆 **Glory**): Screenshots contain only your guild's players. All detected members are matched or imported directly.
+* **Server-Wide Multi-Guild Leaderboards** (⚔️ **Strongest Fleet**, 🚀 **Strongest Flagship**, 👑 **Champion Power**, 👥 **Crew Power**):
+  - Automatically activates the **Guild Tag Filter Banner** in the OCR modal (pre-filled with your guild tag, editable on the fly).
+  - Gemini AI identifies players carrying your guild tag and strips prefix brackets cleanly.
 
 ---
 
-### 🛡️ 3. Automatic Metric History Snapshots
-* When you validate your OCR scan, the app updates the specific metric for every detected player in `guild_members`.
-* A progression snapshot is automatically saved to each player's history so they can track their growth on the **Player Portal**!
+### 🛡️ 3. Safe Roster Reconciliation (Unchecked by Default for Foreign Guilds)
+* When scanning a server-wide leaderboard (e.g. top 100 players on the server):
+  - Players belonging to your guild are matched, updated, and **checked by default**.
+  - Players from external competitor guilds are clearly labeled **`⚠️ Other Guild`** and **unchecked by default**, ensuring that foreign players are never accidentally added to your guild roster!
 
 ---
 
-*Scan your leaderboards, optimize your fleet, and lead your guild to victory!* 🚀
+*Scan your server rankings, track your fleet with laser precision, and dominate the galaxy!* 🚀

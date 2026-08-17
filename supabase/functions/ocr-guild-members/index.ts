@@ -46,11 +46,15 @@ Deno.serve(async (req: Request) => {
   let mimeType = "image/png";
   let imagesArray: Array<{ base64Data: string; mimeType: string }> = [];
   let metricType = "power";
+  let guildTag = "";
 
   try {
     const body = await req.json();
     if (body?.metricType && typeof body.metricType === "string") {
       metricType = body.metricType.toLowerCase().trim();
+    }
+    if (body?.guildTag && typeof body.guildTag === "string") {
+      guildTag = body.guildTag.trim();
     }
     if (Array.isArray(body?.images) && body.images.length > 0) {
       imagesArray = body.images;
@@ -67,32 +71,45 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "missing_image" }, 400);
   }
 
+  const isMultiGuild = ["fleet", "flagship", "champs", "crew"].includes(metricType);
+
   const metricInstructions: Record<string, string> = {
     power: `Overall Total Power / Puissance Totale. Extract player pseudo and total numerical power. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
-    fleet: `Strongest Fleet Rating / Plus Forte Flotte (March 1 / Première Marche). Extract player pseudo and fleet rating numerical power. Convert strings like "2.16M" -> 2160000, "1,850,000" -> 1850000, "2.26M" -> 2260000.`,
+    fleet: `Strongest Fleet Rating / Plus Forte Flotte (March 1 / Première Marche). Multi-guild server ranking. Extract player pseudo and fleet rating numerical power. Convert strings like "2.16M" -> 2160000, "1,850,000" -> 1850000, "2.26M" -> 2260000.`,
     tech: `Technology Power / Puissance Technologique (Alliance / Research Tech). Extract player pseudo and technology power integer. Convert strings like "15.4M" -> 15400000, "18,200,000" -> 18200000.`,
-    flagship: `Strongest Flagship Power / Puissance Vaisseau Amiral. Extract player pseudo and flagship power integer. Convert strings like "10.3M" -> 10300000, "9.8M" -> 9800000.`,
-    champs: `Champion Total Power / Puissance Totale des Champions (Heroes / Héros). Extract player pseudo and champion total power integer. Convert strings like "32.5M" -> 32500000, "28.4M" -> 28400000.`,
-    crew: `Crew Total Power / Puissance Totale de l'Équipage (Foundation Officers). Extract player pseudo and crew total power integer. Convert strings like "5.1M" -> 5100000, "4.8M" -> 4800000.`,
+    flagship: `Strongest Flagship Power / Puissance Vaisseau Amiral. Multi-guild server ranking. Extract player pseudo and flagship power integer. Convert strings like "10.3M" -> 10300000, "9.8M" -> 9800000.`,
+    champs: `Champion Total Power / Puissance Totale des Champions (Heroes / Héros). Multi-guild server ranking. Extract player pseudo and champion total power integer. Convert strings like "32.5M" -> 32500000, "28.4M" -> 28400000.`,
+    crew: `Crew Total Power / Puissance Totale de l'Équipage (Foundation Officers). Multi-guild server ranking. Extract player pseudo and crew total power integer. Convert strings like "5.1M" -> 5100000, "4.8M" -> 4800000.`,
     glory: `Glory Score / Points de Gloire (PvP & Weekly Glory ranking). Extract player pseudo and cumulative Glory points integer. Convert strings like "240M" -> 240000000, "496,000,000" -> 496000000, "50K" -> 50000.`
   };
 
   const targetMetricDesc = metricInstructions[metricType] || metricInstructions.power;
 
+  let multiGuildNote = "";
+  if (isMultiGuild) {
+    multiGuildNote = `\nNOTE: This is a SERVER-WIDE multi-guild leaderboard containing players from various guilds across the server.`;
+    if (guildTag) {
+      multiGuildNote += ` Target guild tag is "${guildTag}". Clean any leading guild tag brackets from the extracted pseudo so "pseudo" contains the pure player name, and optionally output "guild_tag" if visible.`;
+    }
+  }
+
   const systemInstruction = `You are an OCR expert specializing in gaming leaderboards and guild roster screenshots for Foundation Galactic Frontier (FGF).
-Your task is to analyze the image(s) and extract all players visible in the roster or leaderboard table for the metric: ${metricType.toUpperCase()} (${targetMetricDesc}).
+Your task is to analyze the image(s) and extract all players visible in the roster or leaderboard table for the metric: ${metricType.toUpperCase()} (${targetMetricDesc}).${multiGuildNote}
 
 For each player detected, extract:
-1. "pseudo": The player's exact in-game username/name (preserve case, special characters, tags, and numbers).
-2. "score": The numerical value of ${metricType.toUpperCase()} converted into a pure integer (e.g. "145.2M" -> 145200000, "2.16M" -> 2160000, "12,400,000" -> 12400000, "500K" -> 500000).
-3. "uid": Player UID if visible on screen (string of digits), otherwise null.
+1. "pseudo": The player's clean in-game username/name (remove any leading guild tag prefix like "${guildTag || '[TAG]'}" or brackets).
+2. "guild_tag": Guild tag if visible (e.g. "${guildTag || 'PR1M'}" or null).
+3. "score": The numerical value of ${metricType.toUpperCase()} converted into a pure integer (e.g. "145.2M" -> 145200000, "2.16M" -> 2160000, "12,400,000" -> 12400000, "500K" -> 500000).
+4. "uid": Player UID if visible on screen (string of digits), otherwise null.
 
 Return ONLY a JSON object matching this schema:
 {
   "metric": "${metricType}",
+  "guild_tag": "${guildTag || ''}",
   "players": [
     {
       "pseudo": "string",
+      "guild_tag": "string or null",
       "score": number,
       "uid": "string or null"
     }

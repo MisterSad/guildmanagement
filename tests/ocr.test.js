@@ -53,3 +53,29 @@ describe('parseGeminiJson', () => {
         expect(resGlory.players[0].score).toBe(240000000);
     });
 });
+
+describe('cleanPlayerPseudo and getGuildTag', () => {
+    it('strips configured guild tag brackets and prefixes cleanly', () => {
+        expect(GM.cleanPlayerPseudo('[PR1M] StarWarrior99', '[PR1M]')).toBe('StarWarrior99');
+        expect(GM.cleanPlayerPseudo('PR1M StarWarrior99', 'PR1M')).toBe('StarWarrior99');
+        expect(GM.cleanPlayerPseudo('[PR1M] - StarWarrior99', '[PR1M]')).toBe('StarWarrior99');
+        expect(GM.cleanPlayerPseudo('[PR1M]_StarWarrior99', 'PR1M')).toBe('StarWarrior99');
+        expect(GM.cleanPlayerPseudo('[ALPHA] HawkEye', '[ALPHA]')).toBe('HawkEye');
+    });
+
+    it('strips generic bracketed tags from foreign guild members', () => {
+        expect(GM.cleanPlayerPseudo('[BABE] OtherPlayer', '[PR1M]')).toBe('OtherPlayer');
+        expect(GM.cleanPlayerPseudo('[CLAW] RandomUser', '')).toBe('RandomUser');
+    });
+
+    it('preserves clean player names without tags', () => {
+        expect(GM.cleanPlayerPseudo('HawkEye', '[PR1M]')).toBe('HawkEye');
+        expect(GM.cleanPlayerPseudo('Admiral_99', '[ALPHA]')).toBe('Admiral_99');
+    });
+
+    it('returns valid default guild tags for standard tenants', async () => {
+        expect(await GM.getGuildTag('ALPHA')).toBe('[PR1M]');
+        expect(await GM.getGuildTag('OMEGA')).toBe('[OMG]');
+        expect(await GM.getGuildTag('BABE')).toBe('[BABE]');
+    });
+});
