@@ -164,4 +164,35 @@ describe('9 Dedicated AI Event OCR Schemas & Evaluation Logic', () => {
         expect(resSb.metric).toBe('armsrace_sb');
         expect(resSb.players[0].pseudo).toBe('RunnerC');
     });
+
+    it('accurately parses multiple players with identical prefixes (e.g. Trader99104, Trader99205)', () => {
+        const traderRaw = '{"metric":"power","players":[{"pseudo":"Trader99104","overall_power":36409500},{"pseudo":"Trader99205","overall_power":13671300},{"pseudo":"Trader99306","overall_power":8922840}]}';
+        const res = GM.parseGeminiJson(traderRaw);
+        expect(res.players).toHaveLength(3);
+        expect(res.players[0].pseudo).toBe('Trader99104');
+        expect(res.players[1].pseudo).toBe('Trader99205');
+        expect(res.players[2].pseudo).toBe('Trader99306');
+    });
+
+    it('filters OCR rows correctly when using search query', () => {
+        const players = [
+            { pseudo: 'Trader99104', score: 36409500 },
+            { pseudo: 'Trader99205', score: 13671300 },
+            { pseudo: 'Maeve', score: 19631990 },
+            { pseudo: 'Антропов', score: 17264130 }
+        ];
+
+        function filterPlayers(list, query) {
+            const q = (query || '').trim().toLowerCase();
+            if (!q) return list;
+            return list.filter(p => p.pseudo.toLowerCase().includes(q));
+        }
+
+        expect(filterPlayers(players, 'trader')).toHaveLength(2);
+        expect(filterPlayers(players, 'maeve')).toHaveLength(1);
+        expect(filterPlayers(players, 'антро')).toHaveLength(1);
+        expect(filterPlayers(players, '99205')).toHaveLength(1);
+        expect(filterPlayers(players, '')).toHaveLength(4);
+    });
 });
+

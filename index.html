@@ -1637,7 +1637,7 @@
 
                 <!-- Step 2: Results Table & Review -->
                 <div id="ocr-results-container" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.5rem;">
                         <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
                             <div style="font-size: 0.85rem; font-weight: 600;">
                                 Extracted: <span id="ocr-detected-count" style="color: var(--accent);">0</span>
@@ -1650,14 +1650,22 @@
                         </div>
                     </div>
 
-                    <div class="gm-table-wrap" style="max-height: 340px; overflow-y: auto; border: 1px solid var(--border-soft); border-radius: 8px;">
-                        <table class="gm-table" style="width: 100%; font-size: 0.85rem;">
-                            <thead>
+                    <!-- Instant Player Search / Filter Bar -->
+                    <div class="ocr-filter-bar" style="margin-bottom: 0.65rem;">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; left: 0.75rem; color: var(--text-muted); font-size: 0.95rem; pointer-events: none;"></i>
+                            <input type="search" id="ocr-filter-search" class="gm-input" placeholder="Quick search player name (e.g. Trader)..." style="width: 100%; padding: 0.4rem 0.75rem 0.4rem 2.2rem; font-size: 0.82rem; border-radius: var(--radius-md);">
+                        </div>
+                    </div>
+
+                    <div class="gm-table-wrap ocr-table-wrap" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-soft); border-radius: 8px;">
+                        <table class="gm-table ocr-table" style="width: 100%; font-size: 0.85rem;">
+                            <thead class="ocr-thead">
                                 <tr>
-                                    <th style="width: 38px; text-align: center;"><input type="checkbox" id="ocr-toggle-all-cb" checked></th>
-                                    <th>Player Username</th>
-                                    <th id="ocr-metric-header">Extracted Score</th>
-                                    <th>Roster Status</th>
+                                    <th class="ocr-col-cb" style="width: 38px; text-align: center;"><input type="checkbox" id="ocr-toggle-all-cb" checked></th>
+                                    <th class="ocr-col-pseudo">Player Username</th>
+                                    <th class="ocr-col-metric" id="ocr-metric-header">Extracted Score</th>
+                                    <th class="ocr-col-status">Roster Status</th>
                                 </tr>
                             </thead>
                             <tbody id="ocr-results-tbody">

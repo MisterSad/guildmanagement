@@ -2,6 +2,16 @@
 
 ## New
 
+- **Mobile OCR UI/UX Redesign & Instant Search Filter across all 12 Scanners (v123.2)**:
+  - **Responsive Mobile Card Layout**: Transformed the dense desktop 4-column data table into responsive, touch-friendly 2-level cards on mobile screens (`< 640px`):
+    - **Header Row**: Large, full-width player username input (100% width, bold, unclipped) with checkbox and status badge.
+    - **Detail Row**: Metric icon and label with high-visibility score input and previous value comparison.
+    - **Zero Truncation**: Completely eliminated name truncation for long usernames, Cyrillic names, and repeated prefixes (e.g. `Trader99104` vs `Trader99205`).
+  - **Instant Live Search Filter**: Added a real-time search filter input (`#ocr-filter-search`) above the extracted roster table, allowing guild officers to quickly find, audit, and verify specific players or prefixes in seconds across large batches (150+ members).
+  - **Full-Screen Mobile Optimization**: Expanded the OCR modal dialog to full viewport height/width on mobile screens with safe-area spacing and sticky action buttons for seamless thumb navigation.
+  - **Universal OCR Engine Support**: Automatically active across all 12 OCR scanner modes (Power, Fleet, Tech, Flagship, Champs, Crew, Glory, SvS Prep/PvP, GvG Prep/PvP, Shadowfront, DTR, Arms Race).
+  - **Quality Gate**: **277/277 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Demo Accounts Credential Initialization & Player Portal Access Fix (v123.1)**:
   - **Encrypted Password Provisioning**: Configured `gm_reset_demo_tenant_data()` in database migrations and Python generator to initialize both `DemoAdmin` and `DemoPlayer` with deterministic encrypted credentials (`demo1234`) using `pgp_sym_encrypt` and the vault encryption key `gm_accounts_key`.
   - **Demo Player Member Linking**: Linked `DemoPlayer` account to a valid fictional DEMO guild member roster UID (`90000002` - Valkyrie), allowing seamless authentication and instant access to the Player Portal (`portal.js` and `member-portal` Edge Function).

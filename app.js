@@ -2269,12 +2269,14 @@
         var resultsContainer = document.getElementById('ocr-results-container');
         var btnCommit = document.getElementById('ocr-commit-btn');
         var fileInput = document.getElementById('ocr-file-input');
+        var filterInput = document.getElementById('ocr-filter-search');
 
         if (dropzone) dropzone.style.display = 'block';
         if (loading) loading.style.display = 'none';
         if (resultsContainer) resultsContainer.style.display = 'none';
         if (btnCommit) btnCommit.style.display = 'none';
         if (fileInput) fileInput.value = '';
+        if (filterInput) filterInput.value = '';
     }
 
     window.openOcrModal = openOcrModal;
@@ -2959,11 +2961,15 @@
                 }
             }
 
-            html += '<tr>' +
-                '<td style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" ' + (isChecked ? 'checked' : '') + '></td>' +
-                '<td><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
-                '<td><input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;"></td>' +
-                '<td>' + badgeHtml + '</td>' +
+            var metricLabel = meta.header || 'Score';
+            html += '<tr class="ocr-row" data-pseudo="' + esc(effectivePseudo.toLowerCase()) + '">' +
+                '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" ' + (isChecked ? 'checked' : '') + '></td>' +
+                '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                '<td class="ocr-cell-metric">' +
+                    '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
+                    '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
+                '</td>' +
+                '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
             '</tr>';
         });
 
@@ -2998,6 +3004,10 @@
                     if (ocrExtractedPlayers[idx]) {
                         ocrExtractedPlayers[idx].pseudo = input.value.trim();
                     }
+                    var row = input.closest('tr');
+                    if (row) {
+                        row.setAttribute('data-pseudo', input.value.trim().toLowerCase());
+                    }
                 });
             });
 
@@ -3012,13 +3022,34 @@
                 });
             });
         }
+
+        var filterSearch = document.getElementById('ocr-filter-search');
+        if (filterSearch) {
+            filterSearch.value = '';
+            filterSearch.oninput = function () {
+                var query = filterSearch.value.trim().toLowerCase();
+                var rows = tbody ? tbody.querySelectorAll('.ocr-row') : [];
+                rows.forEach(function (row) {
+                    var pseudoInput = row.querySelector('.ocr-edit-pseudo');
+                    var pseudo = pseudoInput ? pseudoInput.value.toLowerCase() : (row.getAttribute('data-pseudo') || '');
+                    if (!query || pseudo.indexOf(query) !== -1) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            };
+        }
     }
 
     function toggleAllCheckboxes(checked) {
         var tbody = document.getElementById('ocr-results-tbody');
         if (!tbody) return;
         tbody.querySelectorAll('.ocr-row-cb').forEach(function (cb) {
-            cb.checked = checked;
+            var row = cb.closest('tr');
+            if (!row || row.style.display !== 'none') {
+                cb.checked = checked;
+            }
         });
         updateCommitButtonCount();
     }
