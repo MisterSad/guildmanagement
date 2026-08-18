@@ -161,10 +161,14 @@ lines.append(
 
 # Accounts
 lines.append(
-    f"insert into public.accounts (id, role, guild, server_number, status, created_at) values "
-    f"('DemoAdmin', 'guild_admin', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', now()), "
-    f"('DemoPlayer', 'member', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', now()) "
-    f"on conflict (id) do update set role = excluded.role, guild = excluded.guild, status = 'active';"
+    f"insert into public.accounts (id, role, guild, server_number, status, uid, password_enc, created_at) values "
+    f"('DemoAdmin', 'guild_admin', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', null, "
+    f"extensions.pgp_sym_encrypt('demo1234', (select s.decrypted_secret from vault.decrypted_secrets s where s.name = 'gm_accounts_key')), now()), "
+    f"('DemoPlayer', 'member', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', '90000002', "
+    f"extensions.pgp_sym_encrypt('demo1234', (select s.decrypted_secret from vault.decrypted_secrets s where s.name = 'gm_accounts_key')), now()) "
+    f"on conflict (id) do update set "
+    f"role = excluded.role, guild = excluded.guild, server_number = excluded.server_number, "
+    f"status = 'active', uid = excluded.uid, password_enc = excluded.password_enc;"
 )
 
 # Guild config

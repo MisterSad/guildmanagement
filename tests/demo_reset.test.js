@@ -71,4 +71,18 @@ describe('DEMO Tenant Dynamic Data & Daily Reset Automation', () => {
         const GM = window.GM;
         expect(GM.isPaymentsDisabled('DEMO')).toBe(true);
     });
+
+    it('verifies DemoAdmin and DemoPlayer accounts are initialized with demo1234 encrypted passwords and DemoPlayer has UID', () => {
+        const migrationContent = fs.readFileSync(migrationPath, 'utf-8');
+        expect(migrationContent).toContain("'DemoAdmin'");
+        expect(migrationContent).toContain("'DemoPlayer'");
+        expect(migrationContent).toContain("extensions.pgp_sym_encrypt('demo1234'");
+        expect(migrationContent).toContain("'90000002'");
+
+        const pyContent = fs.readFileSync(pythonScriptPath, 'utf-8');
+        expect(pyContent).toContain("'DemoAdmin'");
+        expect(pyContent).toContain("'DemoPlayer'");
+        expect(pyContent).toContain("extensions.pgp_sym_encrypt('demo1234'");
+        expect(pyContent).toContain("'90000002'");
+    });
 });

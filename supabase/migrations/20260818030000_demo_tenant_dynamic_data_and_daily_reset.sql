@@ -73,16 +73,36 @@ BEGIN
         subscription_type = EXCLUDED.subscription_type,
         payments_disabled = true;
 
-    -- Step 3: Ensure demo accounts are active and properly scoped
-    INSERT INTO public.accounts (id, role, guild, server_number, status, created_at)
+    -- Step 3: Ensure demo accounts are active, properly scoped, and initialized with demo passwords
+    INSERT INTO public.accounts (id, role, guild, server_number, status, uid, password_enc, created_at)
     VALUES 
-        ('DemoAdmin', 'guild_admin', 'DEMO', '0000', 'active', now()),
-        ('DemoPlayer', 'member', 'DEMO', '0000', 'active', now())
+        (
+            'DemoAdmin',
+            'guild_admin',
+            'DEMO',
+            '0000',
+            'active',
+            NULL,
+            extensions.pgp_sym_encrypt('demo1234', (SELECT s.decrypted_secret FROM vault.decrypted_secrets s WHERE s.name = 'gm_accounts_key')),
+            now()
+        ),
+        (
+            'DemoPlayer',
+            'member',
+            'DEMO',
+            '0000',
+            'active',
+            '90000002',
+            extensions.pgp_sym_encrypt('demo1234', (SELECT s.decrypted_secret FROM vault.decrypted_secrets s WHERE s.name = 'gm_accounts_key')),
+            now()
+        )
     ON CONFLICT (id) DO UPDATE SET
         role = EXCLUDED.role,
         guild = EXCLUDED.guild,
         server_number = EXCLUDED.server_number,
-        status = 'active';
+        status = 'active',
+        uid = EXCLUDED.uid,
+        password_enc = EXCLUDED.password_enc;
 
     -- Step 4: Guild configuration (join code & coefficients)
     INSERT INTO public.guild_config (guild, key, value, updated_at) VALUES

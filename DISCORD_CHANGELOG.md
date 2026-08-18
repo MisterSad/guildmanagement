@@ -1,28 +1,26 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.27**
+📢 **FGF Guild Management Tool Update — CHANG_V3.28**
 
 Hey commanders! 👋
 
-I have rolled out a major enhancement for the **DEMO tenant**, introducing a rich, fully populated dynamic dataset with an automated daily reset! 🚀🛡️
+I have just deployed an update and fix for the **DEMO tenant** and its accounts! 🚀🔒
 
 ---
 
-### 🎮 1. Dynamic, Up-to-Date Fictional DEMO Dataset
-For anyone exploring or showcasing the FGF Guild Management platform with demo credentials:
-* **Full 7 Military Metrics**: 60 fictional commanders with realistic ratings across Overall Power, Tech Power, Champions, Crew, Flagship, Fleet Rating, and Glory Score.
-* **Live Dynamic History & Progression Charts**: 5 consecutive weeks of historical data computed dynamically relative to the current date, so graphs and performance benchmarks are always active, fresh, and visually engaging.
-* **All Combat & Battle Events**: Full participation and score histories for SvS (Prep + PvP), GvG, Glory, Defend Trade Route, Arms Race A/B, and Shadowfront squads.
-* **Roster Management Showcase**: Includes realistic disciplinary sanctions, player absences, Shadowfront signups, and name change histories.
+### 🔑 1. DemoPlayer Account Authentication & Portal Access
+* **Demo Credentials Synchronized**: Both `DemoAdmin` and `DemoPlayer` accounts now have their demo password `demo1234` properly encrypted and provisioned into the database.
+* **Instant Player Portal Access**: `DemoPlayer` is now linked directly to member commander **Valkyrie** (UID `90000002`), enabling immediate access to the **Player Portal** (`/portal` or Player login) to view personal military metrics, attendance records, Glory scores, and submit battle performances.
+* **Automated Daily Reset Preserved**: The daily database cron job restores both `DemoAdmin` and `DemoPlayer` credentials and member linkages every night at 03:00 UTC.
 
 ---
 
-### 🔄 2. Automated Daily Database Reset
-* **Zero Disruption for Testers**: Feel free to test any action in the DEMO tenant — kick members, change permissions, modify scores, create sanctions, or adjust join codes!
-* **Automated Nightly Restore**: A scheduled database cron job (`daily-demo-tenant-reset`) runs every night at 03:00 UTC to automatically restore the DEMO tenant back to its pristine state.
+### 🛡️ 2. Database RPC & Security Hardening
+* Master migration definitions for `gm_check_login`, `gm_admin_upsert`, and `gm_reset_account_password` have been fully aligned with production cryptographic standards.
 
 ---
 
 ### 🧪 3. Quality & Verification
-* **274/274 Automated Unit Tests Passing** 🟢
-* Strict Zero-Trust access control and multi-tenant isolation preserved.
+* **275/275 Automated Unit Tests Passing** 🟢
+* Static TypeScript verification clean (`tsc --noEmit`) ⚡
+* Production build validated.
 
-*Give the demo a spin anytime to explore the full power of the FGF Guild Management Command Center and Player Portal!* ⚔️✨
+*You can now test the platform freely as both a Guild Officer (`DemoAdmin` / `demo1234`) and a Guild Member (`DemoPlayer` / `demo1234`)!* ⚔️✨

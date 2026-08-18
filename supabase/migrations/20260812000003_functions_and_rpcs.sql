@@ -431,26 +431,22 @@ $$;
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION public.gm_check_login(p_id text, p_password text)
-RETURNS TABLE(valid boolean, role text, guild text, uid text)
-LANGUAGE plpgsql
-STABLE
+RETURNS TABLE(canonical_id text, role text, status text)
+LANGUAGE sql
 SECURITY DEFINER
 SET search_path TO ''
 AS $$
-DECLARE
-    v_account record;
-BEGIN
-    SELECT a.role, a.guild, a.uid, a.status, a.password_enc INTO v_account
-    FROM public.accounts a
-    WHERE a.id = TRIM(p_id) AND a.status = 'active';
-
-    IF v_account IS NULL THEN
-        RETURN QUERY SELECT false, NULL::text, NULL::text, NULL::text;
-        RETURN;
-    END IF;
-
-    RETURN QUERY SELECT true, v_account.role, v_account.guild, v_account.uid;
-END;
+  SELECT a.id,
+         COALESCE(a.role, 'member'),
+         COALESCE(a.status, 'active')
+  FROM public.accounts a
+  WHERE LOWER(a.id) = LOWER(p_id)
+    AND a.password_enc IS NOT NULL
+    AND extensions.pgp_sym_decrypt(
+          a.password_enc,
+          (SELECT s.decrypted_secret FROM vault.decrypted_secrets s WHERE s.name = 'gm_accounts_key')
+        ) = p_password
+  LIMIT 1;
 $$;
 
 CREATE OR REPLACE FUNCTION public.gm_admin_upsert(
@@ -469,10 +465,18 @@ BEGIN
         RAISE EXCEPTION 'Access denied';
     END IF;
 
-    INSERT INTO public.accounts (id, role, guild, status, created_at)
-    VALUES (TRIM(p_id), COALESCE(p_role, 'R4'), p_guild, 'active', now())
+    INSERT INTO public.accounts (id, role, password_enc, guild, status, created_at)
+    VALUES (
+        TRIM(p_id),
+        COALESCE(p_role, 'guild_admin'),
+        extensions.pgp_sym_encrypt(p_password, (SELECT s.decrypted_secret FROM vault.decrypted_secrets s WHERE s.name = 'gm_accounts_key')),
+        p_guild,
+        'active',
+        now()
+    )
     ON CONFLICT (id) DO UPDATE SET
         role = EXCLUDED.role,
+        password_enc = EXCLUDED.password_enc,
         guild = EXCLUDED.guild,
         status = 'active';
 END;
@@ -580,29 +584,30 @@ CREATE OR REPLACE FUNCTION public.gm_reset_account_password(
     p_id text,
     p_password text
 )
-RETURNS TABLE(ok boolean, auth_user_id uuid, error text)
+RETURNS TABLE(ok boolean, error text)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
 AS $$
-DECLARE
-    v_acc record;
 BEGIN
-    SELECT a.id, a.guild, a.auth_user_id INTO v_acc
-    FROM public.accounts a
-    WHERE a.id = TRIM(p_id);
-
-    IF v_acc.id IS NULL THEN
-        RETURN QUERY SELECT false, NULL::uuid, 'account_not_found'::text;
+    IF p_id IS NULL OR p_password IS NULL OR length(p_password) < 6 THEN
+        RETURN QUERY SELECT false, 'invalid_password'::text;
         RETURN;
     END IF;
 
-    IF NOT public.is_super_admin() AND NOT public.check_user_guild_write_access(v_acc.guild) THEN
-        RETURN QUERY SELECT false, NULL::uuid, 'permission_denied'::text;
+    UPDATE public.accounts
+    SET password_enc = extensions.pgp_sym_encrypt(
+          p_password,
+          (SELECT s.decrypted_secret FROM vault.decrypted_secrets s WHERE s.name = 'gm_accounts_key')
+        )
+    WHERE LOWER(id) = LOWER(p_id);
+
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT false, 'account_not_found'::text;
         RETURN;
     END IF;
 
-    RETURN QUERY SELECT true, v_acc.auth_user_id, NULL::text;
+    RETURN QUERY SELECT true, NULL::text;
 END;
 $$;
 

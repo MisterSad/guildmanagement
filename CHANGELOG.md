@@ -2,6 +2,12 @@
 
 ## New
 
+- **Demo Accounts Credential Initialization & Player Portal Access Fix (v123.1)**:
+  - **Encrypted Password Provisioning**: Configured `gm_reset_demo_tenant_data()` in database migrations and Python generator to initialize both `DemoAdmin` and `DemoPlayer` with deterministic encrypted credentials (`demo1234`) using `pgp_sym_encrypt` and the vault encryption key `gm_accounts_key`.
+  - **Demo Player Member Linking**: Linked `DemoPlayer` account to a valid fictional DEMO guild member roster UID (`90000002` - Valkyrie), allowing seamless authentication and instant access to the Player Portal (`portal.js` and `member-portal` Edge Function).
+  - **Master RPC Migration Hardening**: Synchronized `gm_check_login`, `gm_admin_upsert`, and `gm_reset_account_password` in `20260812000003_functions_and_rpcs.sql` with the cryptographic password verification schema.
+  - **Quality Gate**: **275/275 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Dynamic DEMO Tenant Reset & Daily Automated pg_cron Schedule (v123.0)**:
   - **Dynamic Fictional Dataset Generator (`public.gm_reset_demo_tenant_data`)**: Created an idempotent PostgreSQL stored procedure that dynamically generates 5 weeks of realistic, up-to-date fictional data relative to `CURRENT_DATE`:
     - **Complete Military Metrics**: Populated 60 fictional members (R1 to R5) with full 7 tactical metrics (Overall Combat Power, Technology Power, Champions Power, Crew Power, Flagship Power, Fleet Rating, and Glory Score).
