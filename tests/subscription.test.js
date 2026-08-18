@@ -83,10 +83,10 @@ describe('GM_SUBSCRIPTION self-service subscriptions', () => {
         await SUB.load();
         const texts = container().textContent;
         expect(planKeys()).toEqual(['1m', '3m', '6m', '12m']);
-        expect(texts).toContain('€7.99');
-        expect(texts).toContain('€19.99');
-        expect(texts).toContain('€34.99');
-        expect(texts).toContain('€59.99');
+        expect(texts).toContain('€9.99');
+        expect(texts).toContain('€24.99');
+        expect(texts).toContain('€44.99');
+        expect(texts).toContain('€74.99');
     });
 
     it('shows the active status for a Premium subscription with a future end', async () => {

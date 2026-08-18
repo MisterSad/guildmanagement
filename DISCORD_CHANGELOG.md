@@ -1,43 +1,34 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.25 (9 Dedicated Event AI OCR Scanners)**
+📢 **FGF Guild Management Tool Update — CHANG_V3.26**
 
 Hey commanders! 👋
 
-I'm excited to roll out a major automation upgrade to the **Events Command Center**: **9 dedicated AI OCR scanners** powered by Gemini Vision! 🚀⚡
-
-You can now upload in-game event screenshots directly from each event's dedicated sub-tab, automatically extract scores, and let the system handle participation and role toggles for you! 📸🤖
+Following the rollout of our **9 dedicated AI OCR scanners** powered by Gemini Vision, I have updated and calibrated the self-service subscription plans to reflect the full automation capabilities of the platform! 🚀⚡
 
 ---
 
-### ⚔️ 1. SvS & GvG OCR Scanners (Day 1 to 5 & Day 6)
-* **SvS Day 1 to 5 OCR & GvG Day 1 to 5 OCR**: Analyzes multi-guild server leaderboards, strictly targets players matching your guild tag, imports their **Preparation Stage scores**, and automatically validates the **`Participated`** toggle!
-* **SvS Day 6 OCR & GvG Day 6 OCR**: Extracts **PvP battle scores** for your guild members from battle leaderboards and validates the **`Participated`** toggle.
+### 💳 1. Updated Self-Service Subscription Plans
+The subscription plans now feature generous volume discounts:
+
+* **1 Month** &rarr; **€9.99** *(€9.99/mo — standard monthly tier with unlimited AI OCR & roster tools)*
+* **3 Months** &rarr; **€24.99** *(€8.33/mo — **Save ~17%**)*
+* **6 Months** &rarr; **€44.99** *(€7.50/mo — **Save ~25%** / 1.5 months free)*
+* **12 Months** &rarr; **€74.99** *(€6.25/mo — **Save ~37%** / 4.5 months free — Best Value!)*
 
 ---
 
-### 🛡️ 2. Shadowfront Squad 1 & Squad 2 OCR
-* **Shadowfront S1 OCR & Shadowfront S2 OCR**: Scans squad battle results and compares detected player usernames with your squad assignments:
-  * **Main Squad Members** &rarr; Automatically sets **`PARTICIPATED`** (`✓`).
-  * **Substitute (Reserve) Members** &rarr; Automatically sets **`SUB PRESENT`** (`✓`) **AND** **`PARTICIPATED`** (`✓`).
+### ⚔️ 2. Reminder: 9 Dedicated Event OCR Scanners Live in Command Center
+* **SvS & GvG (Days 1–5 & Day 6)**: Extracts preparation and PvP battle scores directly from screenshots with automatic guild tag filtering and participation tracking!
+* **Shadowfront Squad 1 & 2**: Evaluates main squad vs substitutes (`SUB PRESENT` + `PARTICIPATED`).
+* **Defend Trade Route (DTR)**: Auto-validates attendance and scores.
+* **Arms Race (Stages A & B)**: Auto-validates stage participants in one click.
 
 ---
 
-### 🚛 3. Defend Trade Route (DTR) OCR
-* **DTR OCR**: Scans convoy defense leaderboards and scores:
-  * **Score > 0** &rarr; Validates **`PARTICIPATED`** (`✓`).
-  * **Score == 0** (registered without points) &rarr; Automatically validates both **`APPOINTED`** (`✓`) and **`PARTICIPATED`** (`✓`).
+### 🔒 3. Seamless & Secure
+* Payments are securely processed via Stripe with 20+ payment methods supported (Credit Cards, Apple Pay, Google Pay, PayPal, and more).
+* Guild renewals stack automatically onto remaining active days!
 
----
-
-### ⚡ 4. Arms Race Stage A & Stage B OCR
-* **Arms Race SA OCR & Arms Race SB OCR**: Extracts all participating members from stage battle screenshots and validates their **`PARTICIPATED`** status in one click.
-
----
-
-### 🔒 5. Zero-Trust Security & Seamless Live Sync
-* Built with the exact same Gemini API key and zero-trust Edge Function pipeline.
-* Instant live refresh of participant tables, chips, and stats as soon as you commit.
-
-*Head over to the Events tab in your Command Center and try out the new AI OCR buttons on your next battle session!* 🎮🛡️
+*Head over to the Subscription tab in your Command Center to view your active status or manage your guild's plan!* 🎮🛡️
 
 
 

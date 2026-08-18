@@ -16,10 +16,10 @@
 //   STRIPE_ENV                   — 'test' | 'prod' (default: prod)
 
 export const PLANS: Record<string, { label: string; days: number | null; cents: number }> = {
-  "1m": { label: "1 Month", days: 30, cents: 799 },
-  "3m": { label: "3 Months", days: 90, cents: 1999 },
-  "6m": { label: "6 Months", days: 180, cents: 3499 },
-  "12m": { label: "12 Months", days: 365, cents: 5999 },
+  "1m": { label: "1 Month", days: 30, cents: 999 },
+  "3m": { label: "3 Months", days: 90, cents: 2499 },
+  "6m": { label: "6 Months", days: 180, cents: 4499 },
+  "12m": { label: "12 Months", days: 365, cents: 7499 },
 };
 
 export function stripeMode(): "test" | "prod" {

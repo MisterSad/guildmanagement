@@ -2,6 +2,15 @@
 
 ## New
 
+- **Self-Service Subscription Pricing & Plan Calibration for Gemini AI OCR (v122.1)**:
+  - **Calibrated SaaS Plan Pricing**: Updated self-service Stripe subscription tiers in `subscription.js` to reflect full Gemini AI Vision OCR capabilities and maintain optimal SaaS margins:
+    - **1 Month**: `€9.99` (one-time payment, €9.99/mo).
+    - **3 Months**: `€24.99` (one-time payment, save ~17%, €8.33/mo).
+    - **6 Months**: `€44.99` (one-time payment, save ~25%, €7.50/mo).
+    - **12 Months**: `€74.99` (one-time payment, save ~37% - best value, €6.25/mo).
+  - **Full-Stack Stripe Synchronization**: Synchronized client plan definitions in `subscription.js`, backend checkout session amounts in `supabase/functions/_shared/stripe.ts` (999, 2499, 4499, and 7499 cents), and bumped asset versioning in `index.html`.
+  - **Quality Gate**: **268/268 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **9 Dedicated AI OCR Event Scanners for Command Center Events (v122.0)**:
   - **Dedicated Event OCR Toolbars**: Integrated 9 dedicated OCR scanner triggers directly into their respective event sub-tabs within the Events Command Center:
     - **SvS Tab**: *SvS Day 1 to 5 OCR* (Preparation score) & *SvS Day 6 OCR* (PvP Battle score).
