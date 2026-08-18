@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 """
-generate_demo_data.py — Seed the fictional DEMO tenant for public screenshots.
+generate_demo_data.py — Seed the fictional DEMO tenant for public previews & screenshots.
 
 Creates:
-  - guilds row  (id = DEMO, server_number = #0000, subscription = Unlimited)
-  - guild_config (join code + coeffs, mirroring ALPHA defaults)
-  - 200 fictional guild_members (pseudo, uid, power, role R1..R5, tz)
-  - 4 weeks of Glory + events (DTR, ARMS A/B, SvS, GvG, Shadowfront) with
-    fictional scores and participation in event_participants / event_status.
+  - guilds row (id = DEMO, server_number = 0000, subscription = Unlimited, payments_disabled = true)
+  - accounts (DemoAdmin: guild_admin, DemoPlayer: member)
+  - guild_config (join code + coeffs)
+  - 60 fictional guild_members with full 7 military metrics (tech, champion, crew, flagship, fleet, glory, power)
+  - 5 weeks of Glory + events (DTR, ARMS A/B, SvS, GvG, Shadowfront) with prep/pvp scores
+  - player_metrics_history snapshots across all weeks
+  - weekly_scores calculations
+  - shadowfront squads & signups
+  - sample sanctions, absences, and name history
 
-Everything is 100% fictitious. Run:  python3 scripts/generate_demo_data.py | supabase db query --linked
+Usage:
+  python3 scripts/generate_demo_data.py | supabase db query --linked
 """
 
 import hashlib
 import random
 import sys
-import uuid
+from datetime import date, timedelta
 
 random.seed(20260808)
 
@@ -23,278 +28,272 @@ GUILD = "DEMO"
 SERVER = "0000"
 JOIN_CODE = "FGF-DEMO-0000"
 
-# Weeks covered (Monday starts). 4 consecutive weeks ending 2026-08-03.
-WEEKS = ["2026-07-13", "2026-07-20", "2026-07-27", "2026-08-03"]
+# Dynamic 5 consecutive weeks ending with current week
+today = date.today()
+monday = today - timedelta(days=today.weekday())
+WEEKS = [(monday - timedelta(weeks=i)).strftime("%Y-%m-%d") for i in range(4, -1, -1)]
 
 # ── Fictional player pseudos ────────────────────────────────────────────────
-# Hand-picked sci-fi / galaxy-flavored names, all fictitious.
 BASE_NAMES = [
-    "Nova", "Orion", "Vega", "Atlas", "Rhea", "Zephyr", "Lyra", "Cyrus",
-    "Nyx", "Draco", "Andra", "Mira", "Kael", "Sable", "Talon", "Echo",
-    "Bex", "Iris", "Juno", "Kira", "Lobo", "Mako", "Nemo", "Onyx",
-    "Pike", "Quill", "Rex", "Stella", "Tycho", "Umbra", "Vex", "Wren",
-    "Xena", "Yuki", "Zeno", "Aria", "Blaze", "Cinder", "Dune", "Ember",
-    "Frost", "Ghost", "Havoc", "Iron", "Jett", "Koda", "Lux", "Nash",
-    "Odin", "Piper", "Rogue", "Slate", "Titan", "Ulan", "Viper", "Wolf",
-    "Aster", "Bolt", "Comet", "Dagger", "Edge", "Flare", "Grim", "Halo",
-    "Icarus", "Jagger", "Krux", "Lumen", "Moss", "Neon", "Ora", "Pulse",
-    "Quasar", "Raid", "Solar", "Thor", "Ullr", "Volt", "Wisp", "Yara",
-    "Zeal", "Axel", "Bane", "Chase", "Drift", "Emberlyn", "Fable", "Gale",
-    "Hawk", "Ion", "Jinx", "Kestrel", "Lyric", "Maz", "Nix", "Obsidian",
-    "Pry", "Rook", "Sable", "Trix", "Uno", "Vale", "Wraith", "Xylo",
+    "Nova", "Valkyrie", "Orion", "Vega", "Atlas", "Rhea", "Zephyr", "Lyra", "Cyrus",
+    "Nyx", "Draco", "Andra", "Mira", "Kael", "Sable", "Talon", "Echo", "Bex",
+    "Iris", "Juno", "Kira", "Lobo", "Mako", "Nemo", "Onyx", "Pike", "Quill",
+    "Rex", "Stella", "Tycho", "Umbra", "Vex", "Wren", "Xena", "Yuki", "Zeno",
+    "Aria", "Blaze", "Cinder", "Dune", "Ember", "Frost", "Ghost", "Havoc", "Iron",
+    "Jett", "Koda", "Lux", "Nash", "Odin", "Piper", "Rogue", "Slate", "Titan",
+    "Ulan", "Viper", "Wolf", "Aster", "Bolt", "Comet"
 ]
 
-def build_pseudos(n):
-    """Build n unique fictional pseudos (mix of names, suffixes, decorations)."""
-    out = []
-    suffixes = ["", "", "", "X", "IX", "II", "VII", "88", "77", "99", "_o", "o_", "KOR", "solo"]
-    deco = ["", "", "", "°", "°", "xX_", "_Xx"]
-    i = 0
-    while len(out) < n:
-        base = BASE_NAMES[i % len(BASE_NAMES)]
-        i += 1
-        suf = random.choice(suffixes)
-        d1 = random.choice(deco)
-        d2 = "" if d1 else ""
-        cand = d1 + base + suf + d2
-        if cand and cand not in out:
-            out.append(cand)
-    return out
-
-PSEUDOS = build_pseudos(200)
-
 def pseudo_rng(pseudo):
-    """Deterministic per-pseudo RNG so each player keeps stable stats across weeks."""
     return random.Random(hashlib.md5(pseudo.encode()).hexdigest())
 
 def uid_for(pseudo, idx):
-    # Dedicated high range (90_000_000+) so DEMO UIDs never collide with the
-    # real tenants (max ~88M) and satisfy the prevent_duplicate_member_uid
-    # trigger. Deterministic per pseudo.
-    r = pseudo_rng(pseudo)
-    return str(90000000 + r.randint(0, 9999999) + idx)
+    return str(90000001 + idx)
 
-def power_for(pseudo):
-    r = pseudo_rng(pseudo)
-    # 8% elite whales (80–180M), 30% strong (40–80M), rest 12–40M
-    p = r.random()
-    if p < 0.08:
-        return r.randint(80000000, 180000000)
-    if p < 0.38:
-        return r.randint(40000000, 80000000)
-    return r.randint(12000000, 40000000)
+def power_metrics_for(pseudo, idx):
+    if idx == 0:
+        power = 168000000
+        role = "R5"
+        tz = 1
+    elif idx < 5:
+        power = 120000000 - (idx * 6000000)
+        role = "R4"
+        tz = [2, -5, 0, 1][idx - 1]
+    elif idx < 18:
+        power = 78000000 - ((idx - 5) * 2500000)
+        role = "R3"
+        tz = (idx % 8) - 5
+    elif idx < 42:
+        power = 42000000 - ((idx - 18) * 900000)
+        role = "R2"
+        tz = (idx % 9) - 6
+    else:
+        power = 20000000 - ((idx - 42) * 500000)
+        role = "R1"
+        tz = (idx % 6) - 3
 
-def role_for(power):
-    # Mirror ALPHA's shape: most R1/R2, few R3+, elite R4/R5.
-    if power >= 120000000:
-        return "R5"
-    if power >= 90000000:
-        return "R4"
-    if power >= 65000000:
-        return "R3"
-    if power >= 35000000:
-        return "R2"
-    return "R1"
+    tech = int(power * (0.35 if idx < 5 else (0.33 if idx < 18 else (0.31 if idx < 42 else 0.28))))
+    champ = int(power * (0.25 if idx < 5 else (0.24 if idx < 18 else (0.22 if idx < 42 else 0.20))))
+    crew = int(power * (0.22 if idx < 5 else (0.23 if idx < 18 else (0.24 if idx < 42 else 0.26))))
+    flag = int(power * (0.14 if idx < 5 else (0.12 if idx < 18 else (0.10 if idx < 42 else 0.08))))
+    fleet = int(power * (0.85 if idx < 5 else (0.80 if idx < 18 else (0.75 if idx < 42 else 0.70))))
+    glory = int(power * (2.2 if idx < 5 else (1.8 if idx < 18 else (1.5 if idx < 42 else 1.2))))
 
-def tz_for(pseudo):
-    r = pseudo_rng(pseudo)
-    # Fictional guild mostly EU/NA: -8..+3, few outliers.
-    return random.choice([-8, -7, -6, -5, -6, -5, -4, -3, -2, -1, 0, 0, 1, 1, 2, 3])
-
-# ── Build members ───────────────────────────────────────────────────────────
-members = []
-for idx, pseudo in enumerate(PSEUDOS):
-    power = power_for(pseudo)
-    members.append({
+    return {
         "pseudo": pseudo,
         "uid": uid_for(pseudo, idx),
-        "power": power,
-        "role": role_for(power),
-        "tz": tz_for(pseudo),
-    })
+        "overall_power": power,
+        "tech_power": tech,
+        "champion_power": champ,
+        "crew_power": crew,
+        "flagship_power": flag,
+        "fleet_rating": fleet,
+        "glory_score": glory,
+        "role": role,
+        "tz": tz
+    }
 
-# ── SQL assembly ────────────────────────────────────────────────────────────
+members = [power_metrics_for(name, i) for i, name in enumerate(BASE_NAMES)]
+
 def sql_q(v):
+    if v is None:
+        return "NULL"
     return "'" + str(v).replace("'", "''") + "'"
 
-lines = []
-lines.append("-- DEMO tenant seed (100% fictional)")
-lines.append("begin;")
-
-# Idempotent: drop existing DEMO data first (FK cascade removes participants).
-# guild_config has no FK to guilds, so it is cleared explicitly.
-lines.append(f"delete from public.event_status where guild = {sql_q(GUILD)};")
-lines.append(f"delete from public.guild_config where guild = {sql_q(GUILD)};")
-lines.append(f"delete from public.guild_members where guild = {sql_q(GUILD)};")
-
-# 1. guilds
-lines.append(
-    "insert into public.guilds (id, created_at, subscription_type, subscription_end, server_number) "
-    f"values ({sql_q(GUILD)}, now(), 'Unlimited', null, {sql_q(SERVER)}) "
-    "on conflict (id) do update set server_number = excluded.server_number;"
-)
-
-# 2. guild_config: join code + coefficients
-code_hash = hashlib.sha256(JOIN_CODE.upper().encode()).hexdigest()
-lines.append(
-    "insert into public.guild_config (guild, key, value, updated_at) values "
-    f"({sql_q(GUILD)}, 'join_code_plain', {sql_q(JOIN_CODE)}, now()),"
-    f"({sql_q(GUILD)}, 'join_code_hash', {sql_q(code_hash)}, now()),"
-    f"({sql_q(GUILD)}, 'coeff_armsrace', '1', now()),"
-    f"({sql_q(GUILD)}, 'coeff_dtr', '2', now()),"
-    f"({sql_q(GUILD)}, 'coeff_gvg', '5', now()),"
-    f"({sql_q(GUILD)}, 'coeff_shadowfront', '3', now()),"
-    f"({sql_q(GUILD)}, 'coeff_svs', '5', now()),"
-    f"({sql_q(GUILD)}, 'reserve_credit_pct', '50', now()) "
-    "on conflict (guild, key) do update set value = excluded.value, updated_at = now();"
-)
-
-# 3. guild_members
-mrows = []
-for m in members:
-    mrows.append(
-        f"({sql_q(m['pseudo'])}, now(), {sql_q(m['uid'])}, {sql_q(GUILD)}, {m['power']}, "
-        f"{sql_q(m['role'])}, {m['tz']})"
-    )
-lines.append(
-    "insert into public.guild_members (pseudo, created_at, uid, guild, overall_power, role, timezone_offset) values\n"
-    + ",\n".join(mrows)
-    + f" on conflict (guild, pseudo) do update set uid = excluded.uid, overall_power = excluded.overall_power, role = excluded.role, timezone_offset = excluded.timezone_offset;"
-)
-
-# 4. events: for each week, build event_status (sessions) + event_participants.
-#    Session ids follow the SaaS scheme (gm_event_session_id): SvS/GvG/Glory
-#    use the ISO week, dated events use YYYYMMDD.
-
-def iso_week_key(week):
-    from datetime import date
-    y, m, d = map(int, week.split("-"))
+def iso_week_key(week_str):
+    y, m, d = map(int, week_str.split("-"))
     iso = date(y, m, d).isocalendar()
     return f"{iso[0]}-W{iso[1]:02d}"
 
-def date_key(week):
-    return week.replace("-", "")
+def date_key(d_obj):
+    return d_obj.strftime("%Y%m%d")
 
-def event_session_id(event_name, week):
+def event_session_id(event_name, week_str, day_offset=0):
+    y, m, d = map(int, week_str.split("-"))
+    event_date = date(y, m, d) + timedelta(days=day_offset)
     up = event_name.upper()
     if up == "SVS":
-        return "SVS-" + iso_week_key(week)
+        return "SVS-" + iso_week_key(week_str)
     if up == "GVG":
-        return "GVG-" + iso_week_key(week)
+        return "GVG-" + iso_week_key(week_str)
     if up == "GLORY":
-        return "GLORY-" + iso_week_key(week)
+        return "GLORY-" + iso_week_key(week_str)
     if up == "ARMS RACE STAGE A":
-        return "ARA-" + date_key(week)
+        return "ARA-" + date_key(event_date)
     if up == "ARMS RACE STAGE B":
-        return "ARB-" + date_key(week)
+        return "ARB-" + date_key(event_date)
     if up == "DEFEND TRADE ROUTE":
-        return "DTR-" + date_key(week)
+        return "DTR-" + date_key(event_date)
     if up == "SHADOWFRONT SQUAD 1":
-        return "SF1-" + date_key(week)
+        return "SF1-" + date_key(event_date)
     if up == "SHADOWFRONT SQUAD 2":
-        return "SF2-" + date_key(week)
-    return "EV-" + date_key(week)
+        return "SF2-" + date_key(event_date)
+    return "EV-" + date_key(event_date)
 
-def glory_score(pseudo, week):
-    # Deterministic per (pseudo, week) so each week trends differently.
-    key = pseudo + "|" + week
-    r = random.Random(hashlib.md5(key.encode()).hexdigest())
-    week_idx = WEEKS.index(week)
-    # Slow upward drift week over week + per-player noise.
-    drift = 1 + 0.18 * week_idx
-    p = r.random()
-    if p < 0.05:
-        base = r.randint(90000000, 400000000)
-    elif p < 0.30:
-        base = r.randint(20000000, 90000000)
-    else:
-        base = r.randint(800000, 20000000)
-    return int(base * drift * (0.82 + 0.36 * r.random()))
+lines = []
+lines.append("-- DEMO tenant seed (100% fictional & dynamic)")
+lines.append("begin;")
 
-def event_participation(pseudo, week, base_rate):
-    """Return (participated, score) — participation varies slightly per week."""
-    key = pseudo + "|" + week
-    r = random.Random(hashlib.md5(key.encode()).hexdigest())
-    roll = r.random()
-    if roll < base_rate:
-        return (1, None)
-    if roll < base_rate + 0.08:
-        return (0, None)  # marked absent
-    return (0, None)  # not present
+# Clean existing DEMO data
+lines.append(f"delete from public.player_metrics_history where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.shadowfront_signups where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.shadowfront_squads where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.weekly_scores where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.sanctions where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.banned_players where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.player_absences where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.player_name_history where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.player_push_prefs where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.push_subscriptions where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.event_reminders_sent where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.discord_notifications_sent where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.event_participants where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.event_status where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.guild_members where guild = {sql_q(GUILD)};")
+lines.append(f"delete from public.guild_config where guild = {sql_q(GUILD)};")
 
-# Glory: every week, all 200 players declare a Glory score under a GLORY-Wxx
-# session id (matches gm_upsert_player_glory).
-for week in WEEKS:
-    gid = event_session_id("Glory", week)
-    for m in members:
-        lines.append(
-            "insert into public.event_participants "
-            "(event_name, week_start, pseudo, participated, score, session_id, guild, late, excused, appointed, sub_present) values "
-            f"('Glory', {sql_q(week)}, {sql_q(m['pseudo'])}, 1, {glory_score(m['pseudo'], week)}, {sql_q(gid)}, {sql_q(GUILD)}, false, false, false, false) "
-            f"on conflict (guild, event_name, session_id, pseudo) where session_id is not null do update set score = excluded.score, participated = 1;"
-        )
+# Guilds
+lines.append(
+    f"insert into public.guilds (id, server_number, subscription_type, subscription_end, payments_disabled, created_at) "
+    f"values ({sql_q(GUILD)}, {sql_q(SERVER)}, 'Unlimited', null, true, now()) "
+    f"on conflict (id) do update set server_number = excluded.server_number, payments_disabled = true;"
+)
 
-# Weekly events with a session per week.
-# event_status: one row per (guild, event_name) — keep the LAST week's session.
-session_by_event = {}
-for week in WEEKS:
-    for ev, label, hour, rate, score_mode in [
-        ("Defend Trade Route", "Defend Trade Route", 19, 0.78, "dtr"),
-        ("ARMS RACE STAGE A", "ARMS RACE STAGE A", 17, 0.80, "arms"),
-        ("ARMS RACE STAGE B", "ARMS RACE STAGE B", 17, 0.80, "arms"),
-        ("SvS", "SvS", 14, 0.72, "svs"),
-        ("GvG", "GvG", 10, 0.68, "gvg"),
-    ]:
-        sid = event_session_id(ev, week)
-        session_by_event[ev] = sid
-        for m in members:
-            participated, _ = event_participation(m["pseudo"], week, rate)
-            # GvG/SvS use participated only; DTR/ARMS may carry a score.
-            score = None
-            if score_mode == "dtr" and participated:
-                score = 1  # DTR attendance only in ALPHA
-            lines.append(
-                "insert into public.event_participants "
-                "(event_name, week_start, pseudo, participated, score, session_id, guild, late, excused, appointed, sub_present) values "
-                f"({sql_q(ev)}, {sql_q(week)}, {sql_q(m['pseudo'])}, {participated}, {score if score is not None else 'null'}, "
-                f"{sql_q(sid)}, {sql_q(GUILD)}, {random.choice(['false','false','true']) if not participated else 'false'}, "
-                f"{random.choice(['false','false','false','true']) if not participated else 'false'}, false, false) "
-                f"on conflict (guild, event_name, session_id, pseudo) where session_id is not null do update set participated = excluded.participated;"
-            )
+# Accounts
+lines.append(
+    f"insert into public.accounts (id, role, guild, server_number, status, created_at) values "
+    f"('DemoAdmin', 'guild_admin', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', now()), "
+    f"('DemoPlayer', 'member', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', now()) "
+    f"on conflict (id) do update set role = excluded.role, guild = excluded.guild, status = 'active';"
+)
 
-# Shadowfront: 2 squads on 2 of the 4 weeks (squad1 week2, squad2 week3).
-shadow_sessions = {
-    "Shadowfront Squad 1": ("2026-07-20", 18, 0),
-    "Shadowfront Squad 2": ("2026-07-27", 23, 0),
-}
-for ev, (week, hour, minute) in shadow_sessions.items():
-    sid = event_session_id(ev, week)
-    session_by_event[ev] = sid
-    # 30 assigned per squad
-    squad_members = members[:30]
-    for m in squad_members:
-        participated, _ = event_participation(m["pseudo"], week, 0.85)
-        lines.append(
-            "insert into public.event_participants "
-            "(event_name, week_start, pseudo, participated, score, session_id, guild, late, excused, appointed, sub_present) values "
-            f"('Shadowfront', {sql_q(week)}, {sql_q(m['pseudo'])}, {participated}, null, {sql_q(sid)}, {sql_q(GUILD)}, "
-            f"{'false' if participated else random.choice(['false','true'])}, "
-            f"{'false' if participated else random.choice(['false','false','true'])}, false, false) "
-            f"on conflict (guild, event_name, session_id, pseudo) where session_id is not null do update set participated = excluded.participated;"
-        )
+# Guild config
+code_hash = hashlib.sha256(JOIN_CODE.encode()).hexdigest()
+lines.append(
+    f"insert into public.guild_config (guild, key, value, updated_at) values "
+    f"({sql_q(GUILD)}, 'join_code_plain', {sql_q(JOIN_CODE)}, now()), "
+    f"({sql_q(GUILD)}, 'join_code_hash', {sql_q(code_hash)}, now()), "
+    f"({sql_q(GUILD)}, 'coeff_armsrace', '1', now()), "
+    f"({sql_q(GUILD)}, 'coeff_dtr', '2', now()), "
+    f"({sql_q(GUILD)}, 'coeff_gvg', '5', now()), "
+    f"({sql_q(GUILD)}, 'coeff_shadowfront', '3', now()), "
+    f"({sql_q(GUILD)}, 'coeff_svs', '5', now()), "
+    f"({sql_q(GUILD)}, 'reserve_credit_pct', '50', now()) "
+    f"on conflict (guild, key) do update set value = excluded.value, updated_at = now();"
+)
 
-# event_status: mark each event with its latest session (inactive) so history shows dates.
-for ev, label in [("Defend Trade Route", "Defend Trade Route"), ("ARMS RACE STAGE A", "ARMS RACE STAGE A"), ("ARMS RACE STAGE B", "ARMS RACE STAGE B"), ("SvS", "SvS"), ("GvG", "GvG"), ("Shadowfront Squad 1", "Shadowfront Squad 1"), ("Shadowfront Squad 2", "Shadowfront Squad 2")]:
-    if ev not in session_by_event:
-        continue
-    sid = session_by_event[ev]
-    lines.append(
-        "insert into public.event_status (guild, event_name, is_active, updated_at, session_id, stage, start_at) values "
-        f"({sql_q(GUILD)}, {sql_q(ev)}, false, now(), {sql_q(sid)}, "
-        f"{sql_q('A') if 'STAGE A' in ev else (sql_q('B') if 'STAGE B' in ev else 'null')}, "
-        f"null) "
-        f"on conflict (guild, event_name) do update set session_id = excluded.session_id, start_at = excluded.start_at;"
+# Guild members
+mrows = []
+for m in members:
+    mrows.append(
+        f"({sql_q(m['uid'])}, {sql_q(m['pseudo'])}, {sql_q(GUILD)}, {m['overall_power']}, "
+        f"{m['tech_power']}, {m['champion_power']}, {m['crew_power']}, {m['flagship_power']}, "
+        f"{m['fleet_rating']}, {m['glory_score']}, {sql_q(m['role'])}, {m['tz']}, now(), now(), now() - interval '60 days')"
     )
+lines.append(
+    "insert into public.guild_members (uid, pseudo, guild, overall_power, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset, power_updated_at, metrics_updated_at, created_at) values\n"
+    + ",\n".join(mrows)
+    + f" on conflict (guild, pseudo) do update set overall_power = excluded.overall_power, tech_power = excluded.tech_power, champion_power = excluded.champion_power, crew_power = excluded.crew_power, flagship_power = excluded.flagship_power, fleet_rating = excluded.fleet_rating, glory_score = excluded.glory_score;"
+)
+
+# History & Event Participants across 5 weeks
+for w_idx, week in enumerate(WEEKS):
+    drift = 0.82 + (0.045 * (w_idx + 1))
+    
+    # 1. player_metrics_history
+    hrows = []
+    for m in members:
+        hrows.append(
+            f"({sql_q(GUILD)}, {sql_q(m['pseudo'])}, {sql_q(week)}, {int(m['overall_power'] * drift)}, "
+            f"{int(m['tech_power'] * drift)}, {int(m['champion_power'] * drift)}, {int(m['crew_power'] * drift)}, "
+            f"{int(m['flagship_power'] * drift)}, {int(m['fleet_rating'] * drift)}, {int(m['glory_score'] * drift)}, {sql_q(week)}::timestamp + time '12:00:00')"
+        )
+    lines.append(
+        "insert into public.player_metrics_history (guild, pseudo, week_start, total_power, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, created_at) values\n"
+        + ",\n".join(hrows)
+        + " on conflict (guild, pseudo, week_start) do update set total_power = excluded.total_power, tech_power = excluded.tech_power;"
+    )
+
+    # 2. Glory
+    glory_sid = event_session_id("Glory", week)
+    grows = []
+    for m in members:
+        grows.append(
+            f"('Glory', {sql_q(GUILD)}, {sql_q(m['pseudo'])}, {sql_q(glory_sid)}, {sql_q(week)}, 1, {int(m['glory_score'] * drift)}, false, false, false, false)"
+        )
+    lines.append(
+        "insert into public.event_participants (event_name, guild, pseudo, session_id, week_start, participated, score, late, excused, appointed, sub_present) values\n"
+        + ",\n".join(grows)
+        + " on conflict (guild, event_name, session_id, pseudo) do update set score = excluded.score, participated = 1;"
+    )
+
+    # 3. SvS & GvG
+    svs_sid = event_session_id("SvS", week)
+    gvg_sid = event_session_id("GvG", week)
+    srows = []
+    gvrows = []
+    for idx, m in enumerate(members):
+        part = 0 if (idx % 7 == 0 and idx > 10) else 1
+        prep = int((m['overall_power'] / 350) * (0.8 + (idx % 5) * 0.1)) if part == 1 else 0
+        pvp = int((m['overall_power'] / 180) * (0.7 + (idx % 6) * 0.1)) if part == 1 else 0
+        srows.append(
+            f"('SvS', {sql_q(GUILD)}, {sql_q(m['pseudo'])}, {sql_q(svs_sid)}, {sql_q(week)}, {part}, {prep + pvp}, {prep}, {pvp}, "
+            f"{'true' if (part == 1 and idx % 9 == 0) else 'false'}, {'true' if (part == 0 and idx % 14 == 0) else 'false'}, false, false)"
+        )
+
+        gvg_part = 0 if (idx % 8 == 0 and idx > 12) else 1
+        gvg_prep = int((m['overall_power'] / 400) * (0.8 + (idx % 4) * 0.1)) if gvg_part == 1 else 0
+        gvg_pvp = int((m['overall_power'] / 220) * (0.7 + (idx % 5) * 0.1)) if gvg_part == 1 else 0
+        gvrows.append(
+            f"('GvG', {sql_q(GUILD)}, {sql_q(m['pseudo'])}, {sql_q(gvg_sid)}, {sql_q(week)}, {gvg_part}, {gvg_prep + gvg_pvp}, {gvg_prep}, {gvg_pvp}, "
+            f"{'true' if (gvg_part == 1 and idx % 11 == 0) else 'false'}, {'true' if (gvg_part == 0 and idx % 16 == 0) else 'false'}, false, false)"
+        )
+    lines.append(
+        "insert into public.event_participants (event_name, guild, pseudo, session_id, week_start, participated, score, score_prep, score_pvp, late, excused, appointed, sub_present) values\n"
+        + ",\n".join(srows)
+        + " on conflict (guild, event_name, session_id, pseudo) do update set participated = excluded.participated, score = excluded.score;"
+    )
+    lines.append(
+        "insert into public.event_participants (event_name, guild, pseudo, session_id, week_start, participated, score, score_prep, score_pvp, late, excused, appointed, sub_present) values\n"
+        + ",\n".join(gvrows)
+        + " on conflict (guild, event_name, session_id, pseudo) do update set participated = excluded.participated, score = excluded.score;"
+    )
+
+    # 4. Weekly Scores
+    wsrows = []
+    for idx, m in enumerate(members):
+        score_20 = round(min(20.0, 15.0 + ((idx % 5) * 1.0) + (0.5 * (w_idx + 1))), 1)
+        wsrows.append(
+            f"({sql_q(GUILD)}, {sql_q(week)}, {sql_q(m['pseudo'])}, {score_20}, {6 - (idx % 2)}, 6, {int(m['glory_score'] * drift)}, {sql_q(week)}::timestamp + time '23:59:00')"
+        )
+    lines.append(
+        "insert into public.weekly_scores (guild, week_start, pseudo, score_20, events_done, events_total, glory_score, computed_at) values\n"
+        + ",\n".join(wsrows)
+        + " on conflict (guild, week_start, pseudo) do update set score_20 = excluded.score_20, events_done = excluded.events_done, glory_score = excluded.glory_score;"
+    )
+
+# Current week event status
+cur_week = WEEKS[-1]
+lines.append(
+    f"insert into public.event_status (guild, event_name, is_active, stage, session_id, start_at, updated_at) values "
+    f"({sql_q(GUILD)}, 'Glory', true, null, {sql_q(event_session_id('Glory', cur_week))}, {sql_q(cur_week)}::timestamp, now()), "
+    f"({sql_q(GUILD)}, 'SvS', false, null, {sql_q(event_session_id('SvS', cur_week))}, {sql_q(cur_week)}::timestamp + interval '5 days 14 hours', now()), "
+    f"({sql_q(GUILD)}, 'GvG', false, null, {sql_q(event_session_id('GvG', cur_week))}, {sql_q(cur_week)}::timestamp + interval '4 days 10 hours', now()), "
+    f"({sql_q(GUILD)}, 'Defend Trade Route', false, null, {sql_q(event_session_id('Defend Trade Route', cur_week, 2))}, {sql_q(cur_week)}::timestamp + interval '2 days 19 hours', now()), "
+    f"({sql_q(GUILD)}, 'ARMS RACE STAGE A', false, 'A', {sql_q(event_session_id('ARMS RACE STAGE A', cur_week, 3))}, {sql_q(cur_week)}::timestamp + interval '3 days 17 hours', now()), "
+    f"({sql_q(GUILD)}, 'ARMS RACE STAGE B', false, 'B', {sql_q(event_session_id('ARMS RACE STAGE B', cur_week, 4))}, {sql_q(cur_week)}::timestamp + interval '4 days 17 hours', now()), "
+    f"({sql_q(GUILD)}, 'Shadowfront Squad 1', false, null, {sql_q(event_session_id('Shadowfront Squad 1', cur_week, 5))}, {sql_q(cur_week)}::timestamp + interval '5 days 18 hours', now()), "
+    f"({sql_q(GUILD)}, 'Shadowfront Squad 2', false, null, {sql_q(event_session_id('Shadowfront Squad 2', cur_week, 5))}, {sql_q(cur_week)}::timestamp + interval '5 days 23 hours', now()) "
+    f"on conflict (guild, event_name, session_id) do update set is_active = excluded.is_active, updated_at = now();"
+)
+
+# Sanctions & Absences
+lines.append(
+    f"insert into public.sanctions (guild, pseudo, comment, created_by, created_at) values "
+    f"({sql_q(GUILD)}, 'Koda', 'Warning: Missed SvS battle without prior notice.', 'DemoAdmin', now() - interval '6 days'), "
+    f"({sql_q(GUILD)}, 'Piper', 'Warning: Arrived 25 minutes late for GvG coordinate strike.', 'DemoAdmin', now() - interval '12 days'), "
+    f"({sql_q(GUILD)}, 'Viper', 'Demotion: Inactivity during scheduled Shadowfront deployment.', 'DemoAdmin', now() - interval '18 days');"
+)
 
 lines.append("commit;")
 sys.stdout.write("\n".join(lines) + "\n")

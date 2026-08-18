@@ -2,6 +2,17 @@
 
 ## New
 
+- **Dynamic DEMO Tenant Reset & Daily Automated pg_cron Schedule (v123.0)**:
+  - **Dynamic Fictional Dataset Generator (`public.gm_reset_demo_tenant_data`)**: Created an idempotent PostgreSQL stored procedure that dynamically generates 5 weeks of realistic, up-to-date fictional data relative to `CURRENT_DATE`:
+    - **Complete Military Metrics**: Populated 60 fictional members (R1 to R5) with full 7 tactical metrics (Overall Combat Power, Technology Power, Champions Power, Crew Power, Flagship Power, Fleet Rating, and Glory Score).
+    - **Dynamic Historical Metrics**: Multi-week historical snapshots in `player_metrics_history` and `weekly_scores` ensuring player progression curves and guild average benchmarks are always rich, realistic, and up-to-date.
+    - **Deterministic Event Sessions**: Generated SvS, GvG (with dual Prep and PvP scoring), Glory, Defend Trade Route, Arms Race (Stages A & B), and Shadowfront sessions with attendance, excuses, and late strike flags.
+    - **Operational Features**: Seeded sample disciplinary sanctions, player absences, Shadowfront squad compositions and player signups, and name change history.
+  - **Automated Daily Reset Cron**: Scheduled a daily `pg_cron` job (`daily-demo-tenant-reset`) at 03:00 UTC to automatically sanitize and restore the DEMO tenant, eliminating any test modifications or altered roster data from public demo users.
+  - **Synchronized Dev Seeds & Python Generator**: Updated `supabase/seeds/dev_seed.sql` and `scripts/generate_demo_data.py` to match the enhanced 7-score schema and dynamic weekly generation.
+  - **Quality Gate**: **274/274 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
+
 - **Self-Service Subscription Pricing & Plan Calibration for Gemini AI OCR (v122.1)**:
   - **Calibrated SaaS Plan Pricing**: Updated self-service Stripe subscription tiers in `subscription.js` to reflect full Gemini AI Vision OCR capabilities and maintain optimal SaaS margins:
     - **1 Month**: `€9.99` (one-time payment, €9.99/mo).
