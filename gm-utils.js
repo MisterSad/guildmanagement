@@ -186,8 +186,6 @@
                 'weekly_scores',
                 'guild_config',
                 'push_subscriptions',
-                'event_reminders_sent',
-                'discord_notifications_sent',
                 'shadowfront_signups',
                 'shadowfront_squads',
                 'player_name_history'
@@ -693,7 +691,7 @@
             var am = claims.app_metadata || {};
             return { role: normalizeRole(am.app_role || 'guild_admin'), accountId: am.account_id || null };
         } catch (e) {
-            return { role: 'guild_admin', accountId: null };
+            return null;
         }
     }
 

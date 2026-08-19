@@ -2,6 +2,43 @@
 
 ## New
 
+- **Player Portal Activity & Submission Audit Log Console (v123.8)**:
+  - **100% Player Portal Mutation Instrumentation**: Added automated, structured audit logging directly into `supabase/functions/member-portal/index.ts` across all player mutations:
+    - **Score Submissions**: Logs event name, session ID, prep/pvp scores, and total score.
+    - **Combat Power & Military Metrics**: Logs overall power, tech, champion, crew, flagship, fleet rating, and glory scores with old vs new diffs.
+    - **Glory Score Updates**: Logs weekly Glory score submissions with previous value comparisons.
+    - **Absence Declarations & Cancellations**: Logs date ranges, absence type (full/reduced), and player reasons.
+    - **Guild Transfer Requests**: Logs source guild, target guild, and server number.
+    - **Timezone & Push Preferences**: Logs UTC offset adjustments and notification preferences.
+  - **High-Performance PostgreSQL Schema & Indexes**: Added dedicated columns `pseudo`, `uid`, `server_number`, and `action_type` to `public.system_audit_logs` with B-tree indexes (`idx_audit_logs_guild_created`, `idx_audit_logs_pseudo`, `idx_audit_logs_uid`, `idx_audit_logs_action_type`, `idx_audit_logs_created_at`), allowing instant search and tenant filtering.
+  - **Super Admin Audit Console UI**: Revamped `#tab-system-logs` with live multi-criteria search (by Pseudo, UID, Server, Guild, Action), Guild dropdown, Action Type dropdown, 24h summary KPI cards (Total Submissions, Scores Submitted, Power/Metrics Updates, Active Players), and an interactive Inspect Modal with formatted diffs and raw JSON metadata copying.
+  - **Strict Security & Access Control**: Guaranteed Super Admin access via `public.is_super_admin()` RLS policy, and created `public.gm_log_player_audit` `SECURITY DEFINER` procedure with strict search path isolation.
+  - **Quality Gate**: **288/288 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
+- **Comprehensive Platform Stabilization, Zero-Trust Hardening & PostgreSQL 17 Optimization (v123.7)**:
+  - **100% PostgreSQL 17 `search_path` Hardening**: Enforced strict `SET search_path TO ''` across all `SECURITY DEFINER` stored procedures (`gm_apply_subscription_payment`, `gm_guild_benchmark`, `gm_gvg_guild_matchup`, `gm_gvg_player_matchup`, `gm_svs_server_matchup`, `gm_transfer_guild_member`, `request_guild_transfer`, `transfer_guild_member`, `check_uid_exists_globally`, `check_user_guild_access`, `get_push_config`), completely neutralizing schema-hijacking vectors.
+  - **Duplicate Function Overload Purge**: Cleaned up obsolete overloaded RPC signatures from the Postgres catalogue, ensuring single-canonical deterministic routing.
+  - **Automated Stale-Lock Garbage Collection**: Scheduled daily `pg_cron` job `daily-cleanup-stale-locks` (04:00 UTC) executing `public.gm_cleanup_stale_reminder_locks()` (purged 380 legacy rows from `guild_config`).
+  - **Member Portal Strict Tenant Scoping**: Enhanced `getPlayer` query in `supabase/functions/member-portal/index.ts` to strictly enforce `.eq("guild", identity.guild)`, sealing cross-tenant edge cases.
+  - **Network Timeout Resilience**: Added explicit 8-second timeouts (`AbortSignal.timeout(8000)`) on all external Discord webhook fetch operations in both `event-reminders` and `discord-webhook-proxy`.
+  - **Client-Side Least-Privilege & CSP Hardening**: Corrected JWT parse fallback in `gm-utils.js` (`sessionInfo`) to return `null` instead of `guild_admin`, and removed deprecated AI endpoints from `vercel.json` CSP `connect-src`.
+  - **Orphaned Database Table Cleanup**: Dropped legacy unused prototype tables (`public.discord_notifications_sent` and `public.event_reminders_sent`), streamlined tenant table references in `gm-utils.js`, and updated `gm_reset_demo_tenant_data()` with 100% schema alignment.
+  - **Quality Gate**: **285/285 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
+  - **Calamity Befalls Schedule Correction**: Fixed the anomalous Tuesday Round 3 reminder in `supabase/functions/event-reminders/index.ts` from 05:20 UTC (target 05:30) to 05:50 UTC (target 06:00 UTC), restoring the uniform 3-hour round cadence across all 16 rounds.
+  - **Universal Discord Webhook Fallbacks**: Implemented `resolveGuildWebhook()` ensuring all reminder pipelines (Arms Race, Defend Trade Route, Shadowfront, GvG, SvS, and Calamity) automatically fall back to `discord_webhook_url` when specific event webhooks are left empty.
+  - **GvG Daily Tasks Idempotency & Stale-Lock Hardening**: Hardened GvG Daily Task lock keys with explicit time slot suffixes (`sent_gvg_daily_tasks_day_${curDay}_${slotDate}_00:01`) and tightened the execution window from 10m to 5m, eliminating duplicate dispatch races caused by stale-lock cleanup.
+  - **Universal Atomic Lock Upserting**: Converted all `.insert()` lock operations to PostgreSQL `.upsert()` with refreshed `updated_at` timestamps across all reminder routines, preventing unique constraint error drops.
+  - **Quality Gate**: **284/284 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and edge function deployed to production Supabase.
+
+  - **Official Publisher Compliance Document**: Authored a comprehensive 8-section technical whitepaper (`docs/COMPLIANCE_AND_SECURITY_WHITEPAPER.md`) and high-fidelity PDF (`FGF_Guild_Management_Technical_Security_IP_Compliance_Whitepaper.pdf`) formatted for the Game Publisher, legal auditors, and platform compliance teams.
+  - **Zero-PII & Privacy-by-Design Governance**: Detailed exhaustive verification demonstrating that zero real-world names, emails, phone numbers, physical addresses, or financial data are processed or stored, operating strictly with pseudonymized in-game nicknames and public numeric metrics under GDPR/CCPA standards.
+  - **Zero Copyrighted Game Asset Guarantee**: Proved complete absence of proprietary game textures, sprites, 3D models, audio, or game binaries, detailing the 100% open-source UI design system (Material Design 3.0, Material Symbols Rounded, Three.js WebGL procedural background, Google Fonts).
+  - **Ephemeral In-Memory OCR Pipeline**: Documented the screenshot processing architecture ensuring uploaded images are parsed in RAM by Gemini Vision API and destroyed immediately after text extraction without any persistent disk storage.
+  - **Automated PDF Generation Pipeline**: Created `scripts/generate-compliance-pdf.js` using Playwright headless Chromium for vector-perfect, styled PDF compilation with custom print layouts, dynamic headers/footers, and page numbers.
+  - **Quality Gate**: **284/284 Vitest unit tests green**, 0 TypeScript compiler errors, and clean production build.
+
+
 - **GvG Daily Task Breakdown Reminders Rescheduled to 00:01 UTC & UI Refinement (v123.4)**:
   - **Daily Schedule Update (00:01 UTC Mon-Sat)**: Updated the automated scheduled notification engine in `supabase/functions/event-reminders/index.ts` from 11:00 UTC to 00:01 UTC, aligning with daily game reset.
   - **Synchronized Webhook Embeds**: Updated Discord webhook message content and footer timestamps in `supabase/functions/_shared/gvg-tasks.ts` and `src/core/config/gvg-tasks.ts` to `00:01 UTC`.

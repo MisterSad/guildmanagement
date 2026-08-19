@@ -17,7 +17,7 @@ import {
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from './core/config/gvg-tasks';
 import { normalizeRole, roleFromStorage, isSuperAdmin, isServerAdmin, isGuildAdmin } from './core/auth/roles';
 import { appStore } from './core/store/store';
-import { calculateMatchupData } from './workers/matchup.worker';
+import { calculateMatchupData, calculateMatchupAsync } from './workers/matchup.worker';
 import { EventsService } from './modules/events/events.service';
 import { ShadowfrontService } from './modules/shadowfront/shadowfront.service';
 import { StatsService } from './modules/stats/stats.service';
@@ -66,6 +66,7 @@ if (typeof window !== 'undefined') {
   (window as any).GM.store = appStore;
   (window as any).GM.logger = logger;
   (window as any).GM.calculateMatchupData = calculateMatchupData;
+  (window as any).GM.calculateMatchupAsync = calculateMatchupAsync;
   (window as any).GM.services = {
     events: EventsService,
     shadowfront: ShadowfrontService,

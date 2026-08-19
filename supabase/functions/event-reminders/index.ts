@@ -118,7 +118,8 @@ async function sendDiscordWebhookWithRetry(url: string, body: any): Promise<bool
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(8000)
       });
 
       if (res.ok) {
@@ -288,7 +289,12 @@ serve(async (req) => {
       return str;
     }
 
-
+    function resolveGuildWebhook(configMap: Record<string, string> | undefined, prefix: string): string {
+      if (!configMap) return '';
+      const specific = prefix ? (configMap[`webhook_${prefix}`] || '').trim() : '';
+      if (specific) return specific;
+      return (configMap['discord_webhook_url'] || '').trim();
+    }
 
     // Loop through each guild tenant
     for (const guild of GUILDS) {
@@ -361,7 +367,7 @@ serve(async (req) => {
               continue;
             }
 
-            const webhookUrl = config[`webhook_${eventPrefix}`];
+            const webhookUrl = resolveGuildWebhook(config, eventPrefix);
             const lockKey = `sent_event_${event.event_name.replace(/\s+/g, '_')}_${event.session_id}_${reminderType}`;
 
             // Fast-path memory check with stale lock handling
@@ -386,7 +392,7 @@ serve(async (req) => {
             // Acquire lock
             const { error: lockErr } = await supabase
               .from('guild_config')
-              .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+              .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
             if (lockErr) {
               console.log(`[${guild}] Lock already exists for standard event ${event.event_name} (${reminderType}), skipping`);
@@ -513,7 +519,7 @@ serve(async (req) => {
 
       // 3.1. GvG Daily Task Reminders (Monday to Saturday at 00:01 UTC)
       const isGvgDailyTasksEnabled = config['notify_gvg_daily_tasks'] === undefined || config['notify_gvg_daily_tasks'] === 'true';
-      const webhookUrlGvg = (config['webhook_gvg'] || config['discord_webhook_url'] || '').trim();
+      const webhookUrlGvg = resolveGuildWebhook(config, 'gvg');
 
       if (isGvgDailyTasksEnabled && webhookUrlGvg !== '') {
         const dateUtc = new Date(now);
@@ -524,11 +530,11 @@ serve(async (req) => {
         // Monday (1) to Saturday (6)
         if (curDay >= 1 && curDay <= 6) {
           const diff = getMinutesDiff(curDay, curHour, curMin, curDay, 0, 1);
-          const shouldRunSlot = (diff >= 0 && diff <= 10) || forceGvg;
+          const shouldRunSlot = (diff >= 0 && diff <= 5) || forceGvg;
 
           if (shouldRunSlot) {
             const slotDate = dateUtc.toISOString().split('T')[0];
-            const lockKey = `sent_gvg_daily_tasks_day_${curDay}_${slotDate}`;
+            const lockKey = `sent_gvg_daily_tasks_day_${curDay}_${slotDate}_00:01`;
 
             let shouldProceed = true;
             if (!forceGvg && config[lockKey] === 'sent') {
@@ -593,7 +599,8 @@ serve(async (req) => {
 
       // 3.2. GvG Saturday War Prism and Fortress Reminders
       const isGvgPvpEnabled = config['notify_gvg_pvp'] === undefined || config['notify_gvg_pvp'] === 'true';
-      if (isGvgPvpEnabled && webhookUrlGvg !== '') {
+      const webhookUrlGvgSat = resolveGuildWebhook(config, 'gvg');
+      if (isGvgPvpEnabled && webhookUrlGvgSat !== '') {
           const dateUtc = new Date(now);
           const curDay = dateUtc.getUTCDay();
           const curHour = dateUtc.getUTCHours();
@@ -646,7 +653,7 @@ serve(async (req) => {
             // Acquire lock
             const { error: lockErr } = await supabase
               .from('guild_config')
-              .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+              .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
             if (lockErr) {
               console.log(`[${guild}] Lock already exists for GvG ${slot.label} (${slot.type}), skipping`);
@@ -733,7 +740,7 @@ serve(async (req) => {
                 }]
               };
 
-              const webhookUrl = config['webhook_gvg'];
+              const webhookUrl = webhookUrlGvgSat;
               let sentSuccess = false;
               if (webhookUrl && webhookUrl.trim() !== '') {
                 sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
@@ -864,7 +871,7 @@ serve(async (req) => {
           // Acquire lock
           const { error: lockErr } = await supabase
             .from('guild_config')
-            .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+            .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
           if (lockErr) {
             console.log(`[${guild}] Lock already exists for SvS ${slot.label} (${slot.type}), skipping`);
@@ -1004,7 +1011,7 @@ serve(async (req) => {
               }]
             };
 
-            const webhookUrl = config['webhook_svs'];
+            const webhookUrl = resolveGuildWebhook(config, 'svs');
             let sentSuccess = false;
             if (webhookUrl && webhookUrl.trim() !== '') {
               sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
@@ -1058,7 +1065,7 @@ serve(async (req) => {
         const CALAMITY_SCHEDULE = [
           { day: 1, hour: 23, minute: 50, round: 1, targetHour: 0, targetMinute: 0, targetDay: 'Tuesday' },
           { day: 2, hour: 2, minute: 50, round: 2, targetHour: 3, targetMinute: 0, targetDay: 'Tuesday' },
-          { day: 2, hour: 5, minute: 20, round: 3, targetHour: 5, targetMinute: 30, targetDay: 'Tuesday' },
+          { day: 2, hour: 5, minute: 50, round: 3, targetHour: 6, targetMinute: 0, targetDay: 'Tuesday' },
           { day: 2, hour: 8, minute: 50, round: 4, targetHour: 9, targetMinute: 0, targetDay: 'Tuesday' },
           { day: 2, hour: 11, minute: 50, round: 5, targetHour: 12, targetMinute: 0, targetDay: 'Tuesday' },
           { day: 2, hour: 14, minute: 50, round: 6, targetHour: 15, targetMinute: 0, targetDay: 'Tuesday' },
@@ -1112,7 +1119,7 @@ serve(async (req) => {
           // Acquire lock
           const { error: lockErr } = await supabase
             .from('guild_config')
-            .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+            .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
           if (lockErr) {
             console.log(`[${guild}] Lock already exists for Calamity Round ${slot.round}, skipping`);
@@ -1172,7 +1179,7 @@ serve(async (req) => {
               }]
             };
 
-            const webhookUrl = config['webhook_calamity'];
+            const webhookUrl = resolveGuildWebhook(config, 'calamity');
             let sentSuccess = false;
             if (webhookUrl && webhookUrl.trim() !== '') {
               sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);

@@ -86,6 +86,10 @@ export interface SystemAuditLog {
   created_at?: string;
   level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
   service: string;
+  action_type?: string | null;
+  pseudo?: string | null;
+  uid?: string | null;
+  server_number?: string | null;
   correlation_id?: string | null;
   guild?: string | null;
   user_identifier?: string | null;

@@ -58,13 +58,20 @@ async function getIdentity(
 
 const MAX_ALLOWED_POWER = 1_000_000_000;
 
-async function getPlayer(admin: ReturnType<typeof createClient>, uid: string) {
-  const { data, error } = await admin
+async function getPlayer(admin: ReturnType<typeof createClient>, uid: string, guild?: string | null) {
+  let query = admin
     .from("guild_members")
     .select("pseudo, guild, overall_power, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, timezone_offset, power_updated_at, metrics_updated_at")
-    .eq("uid", uid)
+    .eq("uid", uid);
+
+  if (guild) {
+    query = query.eq("guild", guild);
+  }
+
+  const { data, error } = await query
     .order("created_at", { ascending: false })
     .limit(1);
+
   if (error || !data || data.length === 0) return null;
   return data[0];
 }
@@ -110,6 +117,50 @@ async function getGuildAverages(admin: ReturnType<typeof createClient>, guild: s
     glory_score: Math.round(sumGlory / mCount),
     members_count: mCount
   };
+}
+
+interface PlayerAuditEntry {
+  action_type: string;
+  pseudo: string;
+  uid: string;
+  guild: string;
+  server_number?: string | null;
+  message: string;
+  metadata?: Record<string, unknown>;
+  level?: string;
+}
+
+async function logPlayerAction(
+  admin: ReturnType<typeof createClient>,
+  entry: PlayerAuditEntry
+): Promise<void> {
+  try {
+    let serverNumber = entry.server_number;
+    if (!serverNumber && entry.guild) {
+      const { data: g } = await admin
+        .from("guilds")
+        .select("server_number")
+        .eq("id", entry.guild)
+        .limit(1);
+      serverNumber = g?.[0]?.server_number ?? null;
+    }
+
+    await admin.from("system_audit_logs").insert({
+      level: entry.level || "INFO",
+      service: "member-portal",
+      action_type: entry.action_type,
+      pseudo: entry.pseudo,
+      uid: entry.uid,
+      server_number: serverNumber,
+      guild: entry.guild,
+      user_identifier: `${entry.pseudo} (${entry.uid})`,
+      message: entry.message,
+      metadata: entry.metadata || {},
+      created_at: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("Failed to write player audit log:", err);
+  }
 }
 
 function getWeekStartIso(date: Date): string {
@@ -168,7 +219,7 @@ Deno.serve(async (req: Request) => {
   logger.setContext({ tenantId: identity.guild, userId: uid });
 
   if (action === "get-active-sessions") {
-    const member = await getPlayer(admin, uid);
+    const member = await getPlayer(admin, uid, identity.guild);
     if (!member) {
       return json({ ok: false, error: "player_not_found" }, 200);
     }
@@ -266,7 +317,7 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "missing_parameters" }, 400);
     }
 
-    const member = await getPlayer(admin, uid);
+    const member = await getPlayer(admin, uid, identity.guild);
     if (!member) {
       return json({ ok: false, error: "player_not_found" }, 400);
     }
@@ -344,6 +395,28 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "update_failed", message: uErr.message }, 200);
     }
 
+    const scoreParts: string[] = [];
+    if (update.score_prep !== undefined) scoreParts.push(`Prep: ${Number(update.score_prep).toLocaleString()}`);
+    if (update.score_pvp !== undefined) scoreParts.push(`PvP: ${Number(update.score_pvp).toLocaleString()}`);
+    if (update.score !== undefined) scoreParts.push(`Score: ${Number(update.score).toLocaleString()}`);
+    if (update.late) scoreParts.push("Late");
+    if (update.excused) scoreParts.push("Excused");
+    const scoreSummary = scoreParts.length > 0 ? scoreParts.join(", ") : "Marked as participated";
+
+    await logPlayerAction(admin, {
+      action_type: "score_submission",
+      pseudo: member.pseudo,
+      uid,
+      guild: member.guild,
+      message: `Submitted scores for ${eventName} [${sessionId}]: ${scoreSummary}`,
+      metadata: {
+        event_name: eventName,
+        session_id: sessionId,
+        submitted_values: update,
+        previous_is_pending: existing?.is_pending
+      }
+    });
+
     logger.info("Player submitted event scores", { pseudo: member.pseudo, eventName, sessionId });
     return json({ ok: true });
   }
@@ -352,7 +425,7 @@ Deno.serve(async (req: Request) => {
     const rawPower = parseInt(payload?.power) || 0;
     const power = Math.min(Math.max(0, rawPower), MAX_ALLOWED_POWER);
 
-    const member = await getPlayer(admin, uid);
+    const member = await getPlayer(admin, uid, identity.guild);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
     const { data: rpcRes, error: rpcErr } = await admin.rpc("gm_upsert_player_metrics", {
@@ -371,12 +444,25 @@ Deno.serve(async (req: Request) => {
       if (uErr) return json({ ok: false, error: "update_failed", message: uErr.message }, 200);
     }
 
+    await logPlayerAction(admin, {
+      action_type: "power_update",
+      pseudo: member.pseudo,
+      uid,
+      guild: member.guild,
+      message: `Updated overall power: ${Number(member.overall_power || 0).toLocaleString()} -> ${Number(power).toLocaleString()}`,
+      metadata: {
+        old_power: member.overall_power,
+        new_power: power,
+        diff: power - (Number(member.overall_power) || 0)
+      }
+    });
+
     logger.info("Player updated power", { uid, power });
     return json({ ok: true, power });
   }
 
   if (action === "update-metrics") {
-    const member = await getPlayer(admin, uid);
+    const member = await getPlayer(admin, uid, identity.guild);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
     function safeVal(val: unknown, fallback: number = 0): number {
@@ -411,6 +497,34 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "update_failed", message: rpcErr.message }, 200);
     }
 
+    await logPlayerAction(admin, {
+      action_type: "metrics_update",
+      pseudo: member.pseudo,
+      uid,
+      guild: member.guild,
+      message: `Updated military metrics: Power ${Number(totalPower).toLocaleString()}, Tech ${Number(techPower).toLocaleString()}, Champ ${Number(championPower).toLocaleString()}, Fleet ${Number(fleetRating).toLocaleString()}, Glory ${Number(gloryScore).toLocaleString()}`,
+      metadata: {
+        previous: {
+          overall_power: member.overall_power,
+          tech_power: member.tech_power,
+          champion_power: member.champion_power,
+          crew_power: member.crew_power,
+          flagship_power: member.flagship_power,
+          fleet_rating: member.fleet_rating,
+          glory_score: member.glory_score
+        },
+        updated: {
+          overall_power: totalPower,
+          tech_power: techPower,
+          champion_power: championPower,
+          crew_power: crewPower,
+          flagship_power: flagshipPower,
+          fleet_rating: fleetRating,
+          glory_score: gloryScore
+        }
+      }
+    });
+
     logger.info("Player updated military metrics", { uid, pseudo: member.pseudo, totalPower, fleetRating });
     return json({
       ok: true,
@@ -444,7 +558,7 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "invalid_glory" }, 400);
     }
 
-    const member = await getPlayer(admin, uid);
+    const member = await getPlayer(admin, uid, identity.guild);
     if (!member) return json({ ok: false, error: "player_not_found" }, 400);
 
     const week = getWeekStartIso(new Date());
@@ -461,12 +575,25 @@ Deno.serve(async (req: Request) => {
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "save_failed" }, 200);
 
+    await logPlayerAction(admin, {
+      action_type: "glory_update",
+      pseudo: member.pseudo,
+      uid,
+      guild: member.guild,
+      message: `Submitted Glory weekly score for week ${week}: ${Number(rawGlory).toLocaleString()}`,
+      metadata: {
+        week_start: week,
+        glory_score: rawGlory,
+        previous_glory: member.glory_score
+      }
+    });
+
     logger.info("Player updated weekly glory", { pseudo: member.pseudo, week, glory: rawGlory });
     return json({ ok: true, week, glory: rawGlory });
   }
 
   if (action === "get-transfer-guilds") {
-    const member = await getPlayer(admin, uid);
+    const member = await getPlayer(admin, uid, identity.guild);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
     const { data: sourceGuilds, error: gErr } = await admin
@@ -498,6 +625,8 @@ Deno.serve(async (req: Request) => {
     const targetGuild = (payload?.targetGuild ?? "").toString().trim();
     if (!targetGuild) return json({ ok: false, error: "missing_target_guild" }, 400);
 
+    const member = await getPlayer(admin, uid, identity.guild);
+
     const { data, error } = await admin.rpc("request_guild_transfer", {
       p_uid: uid,
       p_target_guild: targetGuild
@@ -508,12 +637,25 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "rpc_failed: " + error.message, message: error.message }, 200);
     }
 
+    await logPlayerAction(admin, {
+      action_type: "transfer_request",
+      pseudo: member?.pseudo || uid,
+      uid,
+      guild: member?.guild || identity.guild || "UNKNOWN",
+      message: `Requested guild transfer from ${member?.guild || identity.guild} to ${targetGuild}`,
+      metadata: {
+        source_guild: member?.guild || identity.guild,
+        target_guild: targetGuild,
+        result: data
+      }
+    });
+
     logger.info("Player submitted guild transfer request", { uid, targetGuild });
     return json(data);
   }
 
   if (action === "get-history") {
-    const member = await getPlayer(admin, uid);
+    const member = await getPlayer(admin, uid, identity.guild);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
     const [memberRowsRes, guildParticipantsRes, guildAverages] = await Promise.all([
@@ -617,7 +759,7 @@ Deno.serve(async (req: Request) => {
     if (!startDate || !endDate) return json({ ok: false, error: "missing_dates" }, 400);
     if (kind !== "full" && kind !== "reduced") return json({ ok: false, error: "invalid_kind" }, 400);
 
-    const member = await getPlayer(admin, uid);
+    const member = await getPlayer(admin, uid, identity.guild);
     if (!member) return json({ ok: false, error: "player_not_found" }, 400);
 
     const { data, error } = await admin.rpc("gm_upsert_player_absence", {
@@ -633,12 +775,30 @@ Deno.serve(async (req: Request) => {
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "save_failed" }, 200);
+
+    await logPlayerAction(admin, {
+      action_type: "absence_set",
+      pseudo: member.pseudo,
+      uid,
+      guild: member.guild,
+      message: `Declared ${kind} absence from ${startDate} to ${endDate}${note ? `: "${note}"` : ""}`,
+      metadata: {
+        start_date: startDate,
+        end_date: endDate,
+        kind,
+        note: note || null,
+        absence_id: absenceId
+      }
+    });
+
     return json({ ok: true });
   }
 
   if (action === "delete-absence") {
     const absenceId = (payload?.id ?? "").toString().trim();
     if (!absenceId) return json({ ok: false, error: "missing_id" }, 400);
+
+    const member = await getPlayer(admin, uid, identity.guild);
 
     const { data, error } = await admin.rpc("gm_delete_player_absence", {
       p_id: absenceId,
@@ -647,6 +807,18 @@ Deno.serve(async (req: Request) => {
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "delete_failed" }, 200);
+
+    await logPlayerAction(admin, {
+      action_type: "absence_delete",
+      pseudo: member?.pseudo || uid,
+      uid,
+      guild: member?.guild || identity.guild || "UNKNOWN",
+      message: `Cancelled absence declaration (ID: ${absenceId})`,
+      metadata: {
+        absence_id: absenceId
+      }
+    });
+
     return json({ ok: true });
   }
 
@@ -704,7 +876,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "get-weekly-challenges") {
-    const member = await getPlayer(admin, uid);
+    const member = await getPlayer(admin, uid, identity.guild);
     if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
     const week = getWeekStartIso(new Date());
@@ -784,6 +956,8 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "invalid_offset" }, 400);
     }
 
+    const member = await getPlayer(admin, uid, identity.guild);
+
     const { data, error } = await admin.rpc("gm_update_player_timezone", {
       p_uid: uid,
       p_offset: offset,
@@ -791,6 +965,18 @@ Deno.serve(async (req: Request) => {
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "update_failed" }, 200);
+
+    await logPlayerAction(admin, {
+      action_type: "timezone_update",
+      pseudo: member?.pseudo || uid,
+      uid,
+      guild: member?.guild || identity.guild || "UNKNOWN",
+      message: `Updated timezone offset to UTC${offset >= 0 ? "+" : ""}${offset}`,
+      metadata: {
+        offset
+      }
+    });
+
     return json({ ok: true });
   }
 
@@ -811,6 +997,9 @@ Deno.serve(async (req: Request) => {
     if (types.length === 0) {
       return json({ ok: false, error: "invalid_event_types" }, 400);
     }
+
+    const member = await getPlayer(admin, uid, identity.guild);
+
     const { data, error } = await admin.rpc("gm_set_push_prefs", {
       p_uid: uid,
       p_event_types: types,
@@ -818,6 +1007,18 @@ Deno.serve(async (req: Request) => {
     if (error) return json({ ok: false, error: "db_error", message: error.message }, 200);
     const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "update_failed" }, 200);
+
+    await logPlayerAction(admin, {
+      action_type: "push_prefs",
+      pseudo: member?.pseudo || uid,
+      uid,
+      guild: member?.guild || identity.guild || "UNKNOWN",
+      message: `Updated push notification preferences: [${types.join(", ")}]`,
+      metadata: {
+        event_types: types
+      }
+    });
+
     return json({ ok: true });
   }
 

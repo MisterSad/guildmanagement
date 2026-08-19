@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { logger } from '../src/core/logger/logger';
-import { computeMemberTier, calculateMatchupData } from '../src/workers/matchup.worker';
+import { computeMemberTier, calculateMatchupData, calculateMatchupAsync } from '../src/workers/matchup.worker';
 
 describe('Audit Remediation Verification Suite', () => {
   it('SEV-01: verifies discord-webhook-proxy requires JWT and checks guild_admin/server_admin/super_admin roles', () => {
@@ -91,6 +91,20 @@ describe('Audit Remediation Verification Suite', () => {
     expect(result.averagePower).toBe(60_000_000);
     expect(result.members[0].pseudo).toBe('PlayerA');
     expect(result.members[0].powerPenalty).toBe(0.9);
+    expect(result.members[0].adjustedPower).toBe(90_000_000);
+  });
+
+  it('verifies calculateMatchupAsync computes results asynchronously', async () => {
+    const result = await calculateMatchupAsync([
+      { pseudo: 'PlayerA', overall_power: 100_000_000 },
+      { pseudo: 'PlayerB', overall_power: 20_000_000 }
+    ]);
+
+    expect(result.members.length).toBe(2);
+    expect(result.totalPower).toBe(120_000_000);
+    expect(result.averagePower).toBe(60_000_000);
+    expect(result.dangerosityScore).toBe(120);
+    expect(result.members[0].pseudo).toBe('PlayerA');
     expect(result.members[0].adjustedPower).toBe(90_000_000);
   });
 

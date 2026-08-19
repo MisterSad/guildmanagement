@@ -538,6 +538,7 @@
             window.GM_STATS.load();
         }
         if ((tabId === 'tab-system-logs' || tabId === 'system-logs') && window.GM_AUDIT) {
+            window.GM_AUDIT.init();
             window.GM_AUDIT.loadLogs();
         }
     }

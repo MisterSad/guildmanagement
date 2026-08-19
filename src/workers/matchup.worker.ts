@@ -56,6 +56,40 @@ export function calculateMatchupData(members: MatchupMemberInput[]): MatchupCalc
   };
 }
 
+export async function calculateMatchupAsync(members: MatchupMemberInput[]): Promise<MatchupCalculationResult> {
+  return new Promise((resolve) => {
+    try {
+      if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
+        const workerBlob = new Blob([
+          `(${computeMemberTier.toString()});\n(${calculateMatchupData.toString()});\nself.onmessage = function(e) { if (e.data && e.data.action === 'calculateMatchup') { self.postMessage({ action: 'calculateMatchupResult', result: calculateMatchupData(e.data.payload || []) }); } };`
+        ], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(workerBlob);
+        const worker = new Worker(workerUrl);
+
+        worker.onmessage = (e: MessageEvent) => {
+          if (e.data?.action === 'calculateMatchupResult') {
+            worker.terminate();
+            URL.revokeObjectURL(workerUrl);
+            resolve(e.data.result);
+          }
+        };
+
+        worker.onerror = () => {
+          worker.terminate();
+          URL.revokeObjectURL(workerUrl);
+          resolve(calculateMatchupData(members));
+        };
+
+        worker.postMessage({ action: 'calculateMatchup', payload: members });
+        return;
+      }
+    } catch {
+      // Fallback to synchronous calculation
+    }
+    resolve(calculateMatchupData(members));
+  });
+}
+
 // Handle Web Worker message events if running in worker context
 if (typeof self !== 'undefined' && typeof window === 'undefined') {
   self.addEventListener('message', (e: MessageEvent) => {
@@ -66,3 +100,4 @@ if (typeof self !== 'undefined' && typeof window === 'undefined') {
     }
   });
 }
+
