@@ -111,6 +111,22 @@ describe('GvG Daily Task Reminders & Points Breakdown', () => {
         expect(window.GM_I18N.t('notify_gvg_daily_tasks_desc')).toBe('Daily Tasks breakdown');
     });
 
+    it('verifies window.GM.gvgTasks and window.GM_GVG_TASKS are fully initialized and accessible', () => {
+        expect(window.GM).toBeDefined();
+        expect(window.GM.gvgTasks).toBeDefined();
+        expect(typeof window.GM.gvgTasks.buildGvgDailyTaskEmbed).toBe('function');
+        expect(window.GM_GVG_TASKS).toBeDefined();
+        expect(typeof window.GM_GVG_TASKS.buildGvgDailyTaskEmbed).toBe('function');
+
+        const gmRes = window.GM.gvgTasks.buildGvgDailyTaskEmbed(2, '@everyone');
+        expect(gmRes.content).toContain('GvG Day 2 Tasks are Live!');
+        expect(gmRes.embeds[0].title).toContain('Day 2 Tasks');
+
+        const gvgRes = window.GM_GVG_TASKS.buildGvgDailyTaskEmbed(3, '@everyone');
+        expect(gvgRes.content).toContain('GvG Day 3 Tasks are Live!');
+        expect(gvgRes.embeds[0].title).toContain('Day 3 Tasks');
+    });
+
     it('verifies default fallback for notify_gvg_daily_tasks', () => {
         const fallback = (window.GM && window.GM.config) ? null : null;
         // In localConfigFallback, notify_gvg_daily_tasks is 'true'
