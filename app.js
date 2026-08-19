@@ -1074,7 +1074,7 @@
                 var webhookInput = document.getElementById('webhook-gvg');
                 var webhookUrl = webhookInput ? webhookInput.value.trim() : '';
                 
-                var res = await window.GM.sendDiscordWebhook(webhookUrl, payload, 'gvg');
+                var res = await window.GM.sendDiscordWebhookDetailed('gvg', payload, webhookUrl);
                 if (res && res.ok) {
                     showToast('GvG Day ' + curDay + ' tasks successfully sent to Discord!', 'success');
                 } else {

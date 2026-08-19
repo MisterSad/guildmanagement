@@ -986,7 +986,13 @@
         return str;
     }
 
-    async function resolveDiscordWebhook(eventPrefix) {
+    async function resolveDiscordWebhook(eventPrefix, explicitUrl) {
+        if (explicitUrl && typeof explicitUrl === 'string' && explicitUrl.trim() !== '') {
+            return explicitUrl.trim();
+        }
+        if (eventPrefix && typeof eventPrefix === 'string' && eventPrefix.trim().indexOf('http') === 0) {
+            return eventPrefix.trim();
+        }
         var webhookUrl = eventPrefix ? await getGuildConfig('webhook_' + eventPrefix) : null;
         if (!webhookUrl || webhookUrl.trim() === '') {
             webhookUrl = await getGuildConfig('discord_webhook_url');
@@ -1004,10 +1010,18 @@
         return (webhookUrl && webhookUrl.trim() !== '') ? webhookUrl : null;
     }
 
-    async function sendDiscordWebhookDetailed(eventPrefix, body) {
+    async function sendDiscordWebhookDetailed(eventPrefix, body, explicitUrl) {
         try { await ensureAuthSession(); } catch (_) {}
         var currentG = getActiveGuild();
-        var webhookUrl = await resolveDiscordWebhook(eventPrefix);
+        
+        var targetPrefix = eventPrefix;
+        var directUrl = explicitUrl;
+        if (typeof eventPrefix === 'string' && eventPrefix.indexOf('http') === 0) {
+            directUrl = eventPrefix;
+            targetPrefix = 'custom';
+        }
+
+        var webhookUrl = await resolveDiscordWebhook(targetPrefix, directUrl);
         if (webhookUrl) {
             webhookUrl = webhookUrl.trim().replace(/^[<"'\s]+|[>'"\s]+$/g, '');
             if (webhookUrl.indexOf('http') !== 0) {
@@ -1028,7 +1042,7 @@
         if (client && client.functions && typeof client.functions.invoke === 'function') {
             var payloadToSend = Object.assign({
                 webhookUrl: webhookUrl || '',
-                eventPrefix: eventPrefix,
+                eventPrefix: targetPrefix,
                 guild: currentG,
                 payload: body
             }, body);
@@ -1095,8 +1109,8 @@
         }
     }
 
-    async function sendDiscordWebhook(eventPrefix, body) {
-        var res = await sendDiscordWebhookDetailed(eventPrefix, body);
+    async function sendDiscordWebhook(eventPrefix, body, explicitUrl) {
+        var res = await sendDiscordWebhookDetailed(eventPrefix, body, explicitUrl);
         return res.ok;
     }
 
