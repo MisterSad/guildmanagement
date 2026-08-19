@@ -459,7 +459,7 @@
             notify_start:                    'Event Start',
             notify_creation:                 'Creation & Updates',
             notify_calamity_reminder:        '10 min reminder (Rounds)',
-            notify_gvg_daily_tasks_desc:     'Daily Tasks breakdown (11:00 UTC)',
+            notify_gvg_daily_tasks_desc:     'Daily Tasks breakdown',
             notify_gvg_pvp_desc:             'Enable Day 6',
             btn_send_gvg_tasks_now:          'Send Today\'s GvG Tasks Now',
             notify_svs_pvp_desc:             'Enable Day 6',

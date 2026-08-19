@@ -389,23 +389,59 @@ SECURITY DEFINER
 SET search_path TO ''
 AS $$
 DECLARE
-    v_member record;
+    v_role text;
+    v_player record;
+    v_server integer;
+    v_history jsonb;
 BEGIN
-    SELECT m.uid, m.pseudo, m.guild, m.overall_power INTO v_member
-    FROM public.guild_members m
-    WHERE m.uid = TRIM(p_uid)
-    LIMIT 1;
+    SELECT role INTO v_role
+    FROM public.accounts
+    WHERE auth_user_id = auth.uid()
+       OR id = coalesce(auth.jwt()->>'email', auth.jwt()->>'sub', '');
 
-    IF v_member.uid IS NULL THEN
-        RETURN jsonb_build_object('ok', false, 'error', 'not_found');
+    IF v_role IS NULL OR v_role = 'member' THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'forbidden');
     END IF;
 
-    RETURN jsonb_build_object('ok', true, 'player', jsonb_build_object(
-        'uid', v_member.uid,
-        'pseudo', v_member.pseudo,
-        'guild', v_member.guild,
-        'overall_power', v_member.overall_power
-    ));
+    SELECT pseudo, uid, guild, role, overall_power, created_at INTO v_player
+    FROM public.guild_members
+    WHERE uid = TRIM(p_uid)
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    IF v_player.uid IS NULL THEN
+        RETURN jsonb_build_object('ok', true, 'found', false);
+    END IF;
+
+    SELECT server_number INTO v_server
+    FROM public.guilds
+    WHERE id = v_player.guild;
+
+    SELECT coalesce(jsonb_agg(
+        jsonb_build_object(
+            'old_pseudo', h.old_pseudo,
+            'new_pseudo', h.new_pseudo,
+            'changed_at', h.changed_at,
+            'changed_by', h.changed_by
+        ) ORDER BY h.changed_at DESC
+    ), '[]'::jsonb) INTO v_history
+    FROM public.player_name_history h
+    WHERE h.uid = TRIM(p_uid);
+
+    RETURN jsonb_build_object(
+        'ok', true,
+        'found', true,
+        'player', jsonb_build_object(
+            'pseudo', v_player.pseudo,
+            'uid', v_player.uid,
+            'guild', v_player.guild,
+            'server_number', v_server,
+            'role', v_player.role,
+            'overall_power', v_player.overall_power,
+            'created_at', v_player.created_at
+        ),
+        'name_history', v_history
+    );
 END;
 $$;
 

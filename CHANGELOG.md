@@ -2,6 +2,19 @@
 
 ## New
 
+- **GvG Daily Task Breakdown Reminders Rescheduled to 00:01 UTC & UI Refinement (v123.4)**:
+  - **Daily Schedule Update (00:01 UTC Mon-Sat)**: Updated the automated scheduled notification engine in `supabase/functions/event-reminders/index.ts` from 11:00 UTC to 00:01 UTC, aligning with daily game reset.
+  - **Synchronized Webhook Embeds**: Updated Discord webhook message content and footer timestamps in `supabase/functions/_shared/gvg-tasks.ts` and `src/core/config/gvg-tasks.ts` to `00:01 UTC`.
+  - **Clean UI Option Label**: Updated `notify_gvg_daily_tasks_desc` across `i18n.js`, `src/core/i18n/i18n.ts`, and `index.html` to display a clean `Daily Tasks breakdown` label without displaying the time in the settings tile, while preserving the manual "Send Today's GvG Tasks Now" instant dispatch button.
+  - **Quality Gate**: **283/283 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
+- **Same-Guild Member Rename Detection on Duplicate Player ID Addition (v123.3)**:
+  - **Same-Guild UID Routing**: Detected when an admin attempts to add a member using a Player ID (UID) that already exists in the **same guild** under an older or alternate name.
+  - **Intuitive Rename Prompt**: Replaced the inter-guild transfer request modal with a dedicated "Player Already in Guild" dialog offering a direct "Update Player Name" action displaying both current name, new name, server, rank, power, and name change history.
+  - **Direct Roster Update & History Logging**: Automatically updates the player's in-game pseudo across `guild_members` (with full `ON UPDATE CASCADE` to scores, attendance, sanctions, and absences), records the change into `player_name_history`, and snapshots military metrics.
+  - **Preserved Inter-Guild Transfer Workflow**: Fully preserved the inter-guild transfer request workflow when a Player ID is detected in a different guild.
+  - **Quality Gate**: **282/282 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Mobile OCR UI/UX Redesign & Instant Search Filter across all 12 Scanners (v123.2)**:
   - **Responsive Mobile Card Layout**: Transformed the dense desktop 4-column data table into responsive, touch-friendly 2-level cards on mobile screens (`< 640px`):
     - **Header Row**: Large, full-width player username input (100% width, bold, unclipped) with checkbox and status badge.

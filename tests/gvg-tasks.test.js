@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from '../src/core/config/gvg-tasks';
+import '../i18n.js';
 import '../gm-utils.js';
 
 describe('GvG Daily Task Reminders & Points Breakdown', () => {
@@ -95,6 +96,7 @@ describe('GvG Daily Task Reminders & Points Breakdown', () => {
         const res = buildGvgDailyTaskEmbed(1, '<@&123456789012345678>');
         expect(res.content).toContain('<@&123456789012345678>');
         expect(res.content).toContain('GvG Day 1 Tasks are Live!');
+        expect(res.content).toContain('00:01 UTC');
         expect(res.embeds.length).toBe(1);
 
         const embed = res.embeds[0];
@@ -102,6 +104,11 @@ describe('GvG Daily Task Reminders & Points Breakdown', () => {
         expect(embed.color).toBe(GVG_DAILY_TASKS[1].color);
         expect(embed.fields.length).toBeGreaterThan(0);
         expect(embed.footer.text).toContain('FGF Guild Management Tool');
+        expect(embed.footer.text).toContain('00:01 UTC');
+    });
+
+    it('verifies i18n translation key does not display time in UI tile', () => {
+        expect(window.GM_I18N.t('notify_gvg_daily_tasks_desc')).toBe('Daily Tasks breakdown');
     });
 
     it('verifies default fallback for notify_gvg_daily_tasks', () => {

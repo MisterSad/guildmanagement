@@ -3490,15 +3490,20 @@
         }
     };
 
-    // ── UID already taken: show where the player lives + transfer request ──
+    // ── UID already taken: show where the player lives + transfer request OR update same-guild player ──
     // info comes from gm_find_player_by_uid: { player, name_history }
-    async function showUidTakenDialog(typedPseudo, uid, info) {
+    async function showUidTakenDialog(typedPseudo, uid, info, extraData) {
         var existing = document.getElementById('uid-taken-overlay');
         if (existing) existing.remove();
 
         var p = info.player || {};
         var server = p.server_number ? 'Server #' + p.server_number : 'Server unknown';
-        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        var currentG = window.GM ? window.GM.getActiveGuild() : (window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA');
+
+        var isSameGuild = Boolean(
+            (p.guild && currentG && p.guild.trim().toUpperCase() === currentG.trim().toUpperCase()) ||
+            guildMembers.some(function (m) { return m.uid && String(m.uid).trim() === String(uid).trim(); })
+        );
 
         var historyHtml = '';
         var history = info.name_history || [];
@@ -3521,15 +3526,56 @@
         overlay.id = 'uid-taken-overlay';
         overlay.className = 'confirm-overlay';
 
-        overlay.innerHTML =
-            '<div class="gm-modal-card" style="max-width: 520px; width: 92%; position: relative; text-align:left;">' +
-                '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">' +
-                    '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-                        '<i class="ph ph-user-circle-gear" style="font-size:1.5rem; color:var(--accent);"></i>' +
-                        '<h3 style="margin:0; font-size:1.2rem;">Player ID already exists</h3>' +
-                    '</div>' +
-                    '<button type="button" class="gm-mini-btn gm-close-uid" style="cursor:pointer;"><i class="ph ph-x"></i></button>' +
-                '</div>' +
+        var titleHtml = '';
+        var bodyHtml = '';
+        var noticeHtml = '';
+        var footerHtml = '';
+
+        if (isSameGuild) {
+            var localExisting = guildMembers.find(function (m) { return m.uid && String(m.uid).trim() === String(uid).trim(); });
+            var existingPseudo = p.pseudo || (localExisting ? localExisting.pseudo : 'Existing Player');
+            var displayPower = extraData && !isNaN(extraData.power) ? extraData.power : (p.overall_power || (localExisting ? localExisting.overall_power : 0));
+            var displayRole = (extraData && extraData.role) || p.role || (localExisting ? localExisting.role : 'R1');
+
+            titleHtml =
+                '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                    '<i class="ph ph-user-switch" style="font-size:1.5rem; color:var(--accent);"></i>' +
+                    '<h3 style="margin:0; font-size:1.2rem;">Player Already in Guild</h3>' +
+                '</div>';
+
+            bodyHtml =
+                '<div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:8px; padding:0.9rem; display:flex; flex-direction:column; gap:0.4rem;">' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Current Name</span><strong style="color:var(--fg);">' + esc(existingPseudo) + '</strong></div>' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">New Name</span><strong style="color:var(--accent);">' + esc(typedPseudo) + '</strong></div>' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Player ID</span><span class="gm-uid-badge">' + esc(uid) + '</span></div>' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Guild</span><strong style="color:var(--accent);">' + esc(p.guild || currentG) + '</strong></div>' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Server</span><span>' + esc(server) + '</span></div>' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Rank</span><span>' + esc(displayRole) + '</span></div>' +
+                    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Power</span><span>' + esc(window.GM ? window.GM.formatPower(displayPower) : String(displayPower)) + '</span></div>' +
+                    historyHtml +
+                '</div>';
+
+            noticeHtml =
+                '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; border:1px solid var(--info-soft); font-size:0.8rem; line-height:1.45; margin-top:0.85rem;">' +
+                    '<i class="ph ph-info" style="margin-right:4px;"></i>' +
+                    'This player (<strong>' + esc(existingPseudo) + '</strong>) already belongs to <strong>' + esc(p.guild || currentG) + '</strong>. Would you like to update their name to <strong>' + esc(typedPseudo) + '</strong>?' +
+                '</div>';
+
+            footerHtml =
+                '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
+                    '<button type="button" class="gm-btn gm-btn-ghost gm-close-uid">Cancel</button>' +
+                    '<button type="button" id="uid-rename-btn" class="gm-btn gm-btn-primary">' +
+                        '<i class="ph ph-pencil-simple"></i> <span>Update Player Name</span>' +
+                    '</button>' +
+                '</div>';
+        } else {
+            titleHtml =
+                '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                    '<i class="ph ph-user-circle-gear" style="font-size:1.5rem; color:var(--accent);"></i>' +
+                    '<h3 style="margin:0; font-size:1.2rem;">Player ID already exists</h3>' +
+                '</div>';
+
+            bodyHtml =
                 '<div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:8px; padding:0.9rem; display:flex; flex-direction:column; gap:0.4rem;">' +
                     '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Player</span><strong style="color:var(--fg);">' + esc(p.pseudo || typedPseudo) + '</strong></div>' +
                     '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Player ID</span><span class="gm-uid-badge">' + esc(uid) + '</span></div>' +
@@ -3537,7 +3583,9 @@
                     '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Server</span><span>' + esc(server) + '</span></div>' +
                     (p.role ? '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">Rank</span><span>' + esc(p.role) + '</span></div>' : '') +
                     historyHtml +
-                '</div>' +
+                '</div>';
+
+            noticeHtml =
                 '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; border:1px solid var(--info-soft); font-size:0.8rem; line-height:1.45; margin-top:0.85rem;">' +
                     '<i class="ph ph-info" style="margin-right:4px;"></i>' +
                     'This player already belongs to <strong>' + esc(p.guild || 'another guild') + '</strong>. You cannot add them directly here. You can send a transfer request so an admin approves moving them to <strong>' + esc(currentG) + '</strong>.' +
@@ -3545,13 +3593,26 @@
                 '<label style="display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.85rem; cursor:pointer; font-size:0.82rem; color:var(--text-muted);">' +
                     '<input type="checkbox" id="uid-taken-confirm" style="margin-top:2px; accent-color: var(--accent);">' +
                     '<span>I understand this process cannot be undone without reporting an issue or bug, and that the transfer must be approved by an admin.</span>' +
-                '</label>' +
+                '</label>';
+
+            footerHtml =
                 '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
                     '<button type="button" class="gm-btn gm-btn-ghost gm-close-uid">Cancel</button>' +
                     '<button type="button" id="uid-taken-request-btn" class="gm-btn gm-btn-primary" disabled>' +
                         '<i class="ph ph-arrows-left-right"></i> <span>Request Transfer</span>' +
                     '</button>' +
+                '</div>';
+        }
+
+        overlay.innerHTML =
+            '<div class="gm-modal-card" style="max-width: 520px; width: 92%; position: relative; text-align:left;">' +
+                '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">' +
+                    titleHtml +
+                    '<button type="button" class="gm-mini-btn gm-close-uid" style="cursor:pointer;"><i class="ph ph-x"></i></button>' +
                 '</div>' +
+                bodyHtml +
+                noticeHtml +
+                footerHtml +
             '</div>';
 
         document.body.appendChild(overlay);
@@ -3568,33 +3629,84 @@
             if (ev.target === overlay) closeDialog();
         });
 
-        var confirmCb = document.getElementById('uid-taken-confirm');
-        var requestBtn = document.getElementById('uid-taken-request-btn');
-        if (confirmCb) {
-            confirmCb.addEventListener('change', function () {
-                if (requestBtn) requestBtn.disabled = !confirmCb.checked;
-            });
-        }
+        if (isSameGuild) {
+            var renameBtn = document.getElementById('uid-rename-btn');
+            if (renameBtn) {
+                renameBtn.addEventListener('click', async function () {
+                    renameBtn.disabled = true;
+                    var span = renameBtn.querySelector('span');
+                    if (span) span.textContent = 'Updating...';
 
-        if (requestBtn) {
-            requestBtn.addEventListener('click', async function () {
-                requestBtn.disabled = true;
-                var span = requestBtn.querySelector('span');
-                if (span) span.textContent = 'Requesting...';
-                try {
-                    var res = await supabase.rpc('gm_admin_request_transfer', { p_uid: uid, p_target_guild: currentG });
-                    if (res.error) throw res.error;
-                    var data = res.data || {};
-                    if (!data.ok) throw new Error(data.error || 'request_failed');
-                    closeDialog();
-                    showToast('Transfer request sent to ' + currentG + '. It will appear in the pending list for approval.', 'success');
-                    fetchGuildMembers();
-                } catch (err) {
-                    showToast('Could not request transfer: ' + err.message, 'error');
-                    requestBtn.disabled = false;
-                    if (span) span.textContent = 'Request Transfer';
-                }
-            });
+                    var localExisting = guildMembers.find(function (m) { return m.uid && String(m.uid).trim() === String(uid).trim(); });
+                    var existingPseudo = p.pseudo || (localExisting ? localExisting.pseudo : typedPseudo);
+                    var newPower = extraData && !isNaN(extraData.power) ? extraData.power : (p.overall_power || (localExisting ? localExisting.overall_power : 0));
+                    var newRole = (extraData && extraData.role) || p.role || (localExisting ? localExisting.role : 'R1');
+                    var extraMetrics = extraData ? {
+                        fleet_rating: extraData.fleet_rating,
+                        tech_power: extraData.tech_power,
+                        flagship_power: extraData.flagship_power,
+                        champion_power: extraData.champion_power,
+                        crew_power: extraData.crew_power,
+                        glory_score: extraData.glory_score
+                    } : {};
+
+                    try {
+                        var ok = await renameGuildMember(existingPseudo, typedPseudo, uid, newPower, newRole, extraMetrics);
+                        if (ok) {
+                            if (extraData && extraData.inputs) {
+                                if (extraData.inputs.input) extraData.inputs.input.value = '';
+                                if (extraData.inputs.uidInput) extraData.inputs.uidInput.value = '';
+                                if (extraData.inputs.powerInput) extraData.inputs.powerInput.value = '';
+                                if (extraData.inputs.roleInput) extraData.inputs.roleInput.value = 'R1';
+                                if (extraData.inputs.fleetInput) extraData.inputs.fleetInput.value = '';
+                                if (extraData.inputs.techInput) extraData.inputs.techInput.value = '';
+                                if (extraData.inputs.flagshipInput) extraData.inputs.flagshipInput.value = '';
+                                if (extraData.inputs.champInput) extraData.inputs.champInput.value = '';
+                                if (extraData.inputs.crewInput) extraData.inputs.crewInput.value = '';
+                                if (extraData.inputs.gloryInput) extraData.inputs.gloryInput.value = '';
+                            }
+                            closeDialog();
+                        } else {
+                            renameBtn.disabled = false;
+                            if (span) span.textContent = 'Update Player Name';
+                        }
+                    } catch (err) {
+                        console.error('Rename failed', err);
+                        showToast('Failed to update player name: ' + err.message, 'error');
+                        renameBtn.disabled = false;
+                        if (span) span.textContent = 'Update Player Name';
+                    }
+                });
+            }
+        } else {
+            var confirmCb = document.getElementById('uid-taken-confirm');
+            var requestBtn = document.getElementById('uid-taken-request-btn');
+            if (confirmCb) {
+                confirmCb.addEventListener('change', function () {
+                    if (requestBtn) requestBtn.disabled = !confirmCb.checked;
+                });
+            }
+
+            if (requestBtn) {
+                requestBtn.addEventListener('click', async function () {
+                    requestBtn.disabled = true;
+                    var span = requestBtn.querySelector('span');
+                    if (span) span.textContent = 'Requesting...';
+                    try {
+                        var res = await supabase.rpc('gm_admin_request_transfer', { p_uid: uid, p_target_guild: currentG });
+                        if (res.error) throw res.error;
+                        var data = res.data || {};
+                        if (!data.ok) throw new Error(data.error || 'request_failed');
+                        closeDialog();
+                        showToast('Transfer request sent to ' + currentG + '. It will appear in the pending list for approval.', 'success');
+                        fetchGuildMembers();
+                    } catch (err) {
+                        showToast('Could not request transfer: ' + err.message, 'error');
+                        requestBtn.disabled = false;
+                        if (span) span.textContent = 'Request Transfer';
+                    }
+                });
+            }
         }
     }
 
@@ -3622,18 +3734,55 @@
             return;
         }
 
+        var fleetInput    = document.getElementById('member-fleet');
+        var techInput     = document.getElementById('member-tech');
+        var flagshipInput = document.getElementById('member-flagship');
+        var champInput    = document.getElementById('member-champ');
+        var crewInput     = document.getElementById('member-crew');
+        var gloryInput    = document.getElementById('member-glory');
+
+        var fleetVal    = fleetInput    ? (parseInt(fleetInput.value) || 0) : 0;
+        var techVal     = techInput     ? (parseInt(techInput.value) || 0) : 0;
+        var flagshipVal = flagshipInput ? (parseInt(flagshipInput.value) || 0) : 0;
+        var champVal    = champInput    ? (parseInt(champInput.value) || 0) : 0;
+        var crewVal     = crewInput     ? (parseInt(crewInput.value) || 0) : 0;
+        var gloryVal    = gloryInput    ? (parseInt(gloryInput.value) || 0) : 0;
+
+        var extraData = {
+            power: powerVal,
+            role: roleVal,
+            fleet_rating: fleetVal,
+            tech_power: techVal,
+            flagship_power: flagshipVal,
+            champion_power: champVal,
+            crew_power: crewVal,
+            glory_score: gloryVal,
+            inputs: {
+                input: input,
+                uidInput: uidInput,
+                powerInput: powerInput,
+                roleInput: roleInput,
+                fleetInput: fleetInput,
+                techInput: techInput,
+                flagshipInput: flagshipInput,
+                champInput: champInput,
+                crewInput: crewInput,
+                gloryInput: gloryInput
+            }
+        };
+
         try {
             var uidCheck = await supabase.rpc('check_uid_exists_globally', { p_uid: String(uidVal).trim() });
             if (uidCheck.error) throw uidCheck.error;
             if (uidCheck.data) {
                 // The UID exists somewhere: show where the player currently
-                // lives and offer a transfer request instead of blocking.
+                // lives and offer a transfer request or rename prompt if same guild.
                 var lookup = await supabase.rpc('gm_find_player_by_uid', { p_uid: String(uidVal).trim() });
                 if (lookup.error) throw lookup.error;
                 var info = lookup.data || {};
                 if (!info.ok) throw new Error(info.error || 'lookup_failed');
-                if (info.found) {
-                    showUidTakenDialog(pseudo, uidVal, info);
+                if (info.found || info.player) {
+                    showUidTakenDialog(pseudo, uidVal, info, extraData);
                     return;
                 }
                 // Fallback: global check says it exists but lookup found nothing.
@@ -3643,8 +3792,20 @@
         } catch (err) {
             console.error('Global UID check failed', err);
             // Fallback to local check if RPC fails
-            if (guildMembers.some(function (m) { return m.uid && String(m.uid).trim() === String(uidVal).trim(); })) {
-                showToast(t('toast_duplicate_uid'), 'error');
+            var localExisting = guildMembers.find(function (m) { return m.uid && String(m.uid).trim() === String(uidVal).trim(); });
+            if (localExisting) {
+                showUidTakenDialog(pseudo, uidVal, {
+                    ok: true,
+                    found: true,
+                    player: {
+                        pseudo: localExisting.pseudo,
+                        uid: localExisting.uid,
+                        guild: window.GM ? window.GM.getActiveGuild() : 'ALPHA',
+                        role: localExisting.role,
+                        overall_power: localExisting.overall_power
+                    },
+                    name_history: []
+                }, extraData);
                 return;
             }
         }
@@ -3981,7 +4142,10 @@
         var uidErr = window.GM.validateUid(newUid);
         if (uidErr) { showToast(t(uidErr), 'error'); return false; }
 
-        var member = guildMembers.find(function (m) { return m.pseudo === oldPseudo; });
+        var member = guildMembers.find(function (m) {
+            return (m.pseudo && m.pseudo.toLowerCase() === oldPseudo.toLowerCase()) ||
+                   (m.uid && newUid && String(m.uid).trim() === String(newUid).trim());
+        });
         var oldPower = member ? parseInt(member.overall_power) || 0 : 0;
         var oldRole = member ? member.role || 'R1' : 'R1';
 
@@ -3995,7 +4159,7 @@
 
         if (!pseudoChanged && !uidChanged && !powerChanged && !roleChanged && !metricsChanged) return true;
 
-        if (pseudoChanged && guildMembers.some(function (m) { return m.pseudo.toLowerCase() === newPseudo.toLowerCase(); })) {
+        if (pseudoChanged && guildMembers.some(function (m) { return m.pseudo.toLowerCase() === newPseudo.toLowerCase() && (member ? m.pseudo !== member.pseudo : true); })) {
             showToast(t('toast_duplicate_member'), 'error');
             return false;
         }
@@ -4018,11 +4182,14 @@
         }
 
         try {
+            var activeGuild = window.GM ? window.GM.getActiveGuild() : (window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA');
+            var targetPseudo = member ? member.pseudo : oldPseudo;
+
             // Log pseudo change history
-            if (pseudoChanged && member && member.uid) {
+            if (pseudoChanged && (newUid || (member && member.uid))) {
                 var histIns = await supabase.from('player_name_history').insert({
-                    guild: window.GM.getActiveGuild(),
-                    uid: member.uid,
+                    guild: activeGuild,
+                    uid: newUid || (member ? member.uid : null),
                     old_pseudo: oldPseudo,
                     new_pseudo: newPseudo,
                     changed_by: window.GM.currentAccountId || localStorage.getItem('gm_user') || 'Admin'
@@ -4044,7 +4211,7 @@
             update.power_updated_at = new Date().toISOString();
             update.metrics_updated_at = new Date().toISOString();
 
-            var res = await supabase.from('guild_members').update(update).eq('pseudo', oldPseudo);
+            var res = await supabase.from('guild_members').update(update).eq('guild', activeGuild).eq('pseudo', targetPseudo);
             if (res.error) throw res.error;
 
             // Also snapshot into player_metrics_history via RPC if available

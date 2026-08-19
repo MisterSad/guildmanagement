@@ -511,7 +511,7 @@ serve(async (req) => {
         ? `<@&${discordRoleId.trim()}>`
         : '@everyone';
 
-      // 3.1. GvG Daily Task Reminders (Monday to Saturday at 11:00 UTC)
+      // 3.1. GvG Daily Task Reminders (Monday to Saturday at 00:01 UTC)
       const isGvgDailyTasksEnabled = config['notify_gvg_daily_tasks'] === undefined || config['notify_gvg_daily_tasks'] === 'true';
       const webhookUrlGvg = (config['webhook_gvg'] || config['discord_webhook_url'] || '').trim();
 
@@ -523,7 +523,7 @@ serve(async (req) => {
 
         // Monday (1) to Saturday (6)
         if (curDay >= 1 && curDay <= 6) {
-          const diff = getMinutesDiff(curDay, curHour, curMin, curDay, 11, 0);
+          const diff = getMinutesDiff(curDay, curHour, curMin, curDay, 0, 1);
           const shouldRunSlot = (diff >= 0 && diff <= 10) || forceGvg;
 
           if (shouldRunSlot) {

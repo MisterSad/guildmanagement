@@ -1,37 +1,27 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.29**
+📢 **FGF Guild Management Tool Update — CHANG_V3.30**
 
 Hey commanders! 👋
 
-Following community feedback on mobile usability, I have just released an overhaul of the **AI OCR Scanner** interface on mobile devices! 📱⚡🔍
+Following your suggestions, I have just deployed two great improvements to **GvG Reminders** and **Member Management**! 🚀🛡️✨
 
 ---
 
-### 📱 1. Mobile-First Card Layout (No More Truncated Names!)
-* **Full-Width Player Usernames**: On smartphone screens, the OCR review table now automatically transforms into comfortable, touch-friendly cards. Player names get 100% of the available width, so you can clearly see full usernames and distinguished numbered accounts (e.g. `Trader99104` vs `Trader99205`) without having to tap into each field!
-* **Two-Level Card Hierarchy**:
-  * **Top**: Large username, selection checkbox, and instant roster status badge (New Player, Update, Reconciled).
-  * **Bottom**: Metric score/power input with previous value comparison and dedicated icon.
-* **Full-Screen Mobile Dialog**: The OCR modal now expands edge-to-edge on mobile with safe-area spacing and sticky action buttons for fast thumb navigation.
+### ⏰ 1. GvG Daily Tasks Reminders Now at 00:01 UTC
+* **Reset-Aligned Scheduled Reminders**: The daily Discord reminders for GvG Task Breakdowns are now automatically dispatched right at **00:01 UTC** (Monday through Saturday), matching the daily in-game reset!
+* **Cleaner UI Tile**: The configuration checkbox in Guild Settings now cleanly displays **"Daily Tasks breakdown"** without cluttering the card with time labels.
+* **Instant Dispatch Preserved**: The **"Send Today's GvG Tasks Now"** manual button remains right at your fingertips whenever you want to trigger the tasks alert manually!
 
 ---
 
-### 🔍 2. Instant Player Search Filter
-* **Real-Time Name Search**: Added a quick search filter bar right above the results list. When scanning large batches of 150+ members, simply type a name (e.g. `Trader`) to instantly filter the list and review matching players in seconds.
-* **Smart Multi-Select**: Selecting or deselecting all rows while a search filter is active only affects visible matching players.
+### 🔄 2. Smart Name Update for Existing Guild Members
+* **No More Accidental Self-Transfers**: If a player changed their in-game username and you enter their existing Player ID with their new name, the system now detects that they already belong to your guild.
+* **One-Click Rename**: Instead of asking for a transfer request, a new **"Player Already in Guild"** modal lets you update their username immediately across the entire database with a single click.
 
 ---
 
-### ⚔️ 3. Universal Across All 12 OCR Scanners
-* This mobile improvement is active everywhere:
-  * **Roster & Powers**: Overall Power, Fleet Rating, Tech Power, Flagship Power, Champions Power, Crew Power, Glory Score.
-  * **Guild Wars & Events**: SvS Prep & PvP, GvG Prep & PvP, Shadowfront Squads 1 & 2, Defend Trade Route (DTR), and Arms Race Stages A & B.
-
----
-
-### 🧪 4. Quality & Performance Gate
-* **277/277 Automated Unit Tests Passing** 🟢
+### 🧪 3. Quality & Stability Gate
+* **283/283 Automated Unit Tests Passing** 🟢
 * Strict TypeScript verification clean (`tsc --noEmit`) ⚡
-* Zero desktop regressions (standard 4-column data table preserved on desktop).
+* Fully synchronized across all tenant guilds with zero regressions.
 
-*Feel free to test the new mobile OCR scanning and let me know your thoughts!* 🚀🛡️
-
+*Feel free to test out these updates and let me know your feedback!* 🚀⚔️
