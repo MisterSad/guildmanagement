@@ -278,7 +278,7 @@
                     PLANS.map(planCardHtml).join('') +
                 '</div>' +
                 '<div class="gm-dim gm-sub-methods" style="font-size:.78rem; margin-top:.9rem;">' + (t('gm_sub_methods') || 'Accepted payments: Cards (Visa, Mastercard, Amex), Cartes Bancaires, Apple Pay, Google Pay, PayPal, Alipay, Amazon Pay, Klarna, iDEAL, Bancontact, EPS, BLIK, MB WAY, Pix, Satispay, Multibanco, MobilePay, WeChat Pay, Revolut Pay, Samsung Pay, Kakao Pay, Naver Pay, PAYCO, Link, and more.') + '</div>' +
-                '<div class="gm-dim" style="font-size:.75rem; margin-top:.25rem;"><i class="ph ph-shield-check"></i> ' + (t('gm_sub_security') || 'Payments are processed and secured by the payment provider. The site administrator never has access to your bank details.') + ' • <a href="#terms" class="gm-terms-trigger" style="color:var(--text-muted); text-decoration:underline;">' + (t('footer_terms') || 'Terms & Conditions') + '</a></div>' +
+                '<div class="gm-dim" style="font-size:.75rem; margin-top:.25rem;"><i class="ph ph-shield-check"></i> ' + (t('gm_sub_security') || 'Payments are processed and secured by the payment provider. The site administrator never has access to your bank details.') + ' • <a href="terms.html" style="color:var(--text-muted); text-decoration:underline;">' + (t('footer_terms') || 'Terms & Conditions') + '</a></div>' +
             '</div>' +
             '<div id="subscription-widget" class="gm-sub-widget" style="display:none;"></div>';
 

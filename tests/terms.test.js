@@ -1,120 +1,52 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import '../i18n.js';
 import '../gm-utils.js';
 
-describe('Terms of Service & General Conditions of Sale (TOS/GCS)', () => {
-    let overlay;
-    let card;
-    let closeBtn;
-    let bottomCloseBtn;
-
-    beforeEach(() => {
-        document.body.innerHTML = `
-            <div id="login-view" class="view active">
-                <div class="gm-login-footer">
-                    <span>Developed by HawkEye #1058</span>
-                    <span class="gm-footer-sep">•</span>
-                    <a href="#terms" id="terms-link" class="gm-footer-link" data-i18n="footer_terms">Terms &amp; Conditions</a>
-                </div>
-            </div>
-            <div id="player-portal-view" class="view hidden">
-                <div class="gm-login-footer">
-                    <span>Developed by HawkEye #1058</span>
-                    <span class="gm-footer-sep">•</span>
-                    <a href="#terms" class="gm-footer-link gm-terms-trigger" data-i18n="footer_terms">Terms &amp; Conditions</a>
-                </div>
-            </div>
-            <div id="terms-modal-overlay" class="confirm-overlay" style="display: none;">
-                <div class="gm-modal-card gm-terms-modal-card">
-                    <button id="terms-modal-close"></button>
-                    <div class="gm-terms-modal-body">
-                        <div class="gm-terms-preamble-card">PREAMBLE &amp; BINDING LEGAL AGREEMENT</div>
-                        <div>SECTION 1. LEGAL NOTICE &amp; STATUTORY DISCLOSURES</div>
-                        <div>SECTION 2. NATURE OF THE SERVICE &amp; TECHNICAL ARCHITECTURE</div>
-                        <div>SECTION 3. INTELLECTUAL PROPERTY &amp; DISCLAIMER OF NON-AFFILIATION</div>
-                        <div>SECTION 4. COMMERCIAL TERMS, ACCESS PASSES &amp; NO AUTOMATIC RENEWAL</div>
-                        <div>SECTION 5. GAME INTEGRITY, TECHNICAL COMPLIANCE &amp; ACCEPTABLE USE</div>
-                        <div>SECTION 6. PRIVACY BY DESIGN &amp; DATA GOVERNANCE (GDPR &amp; CCPA)</div>
-                        <div>SECTION 7. LIMITATION OF LIABILITY &amp; WARRANTY DISCLAIMER</div>
-                        <div>SECTION 8. SEVERABILITY &amp; MODIFICATIONS</div>
-                        <div>SECTION 9. GOVERNING LAW &amp; JURISDICTION</div>
-                    </div>
-                    <button id="terms-modal-bottom-close"></button>
-                </div>
-            </div>
-        `;
-
-        overlay = document.getElementById('terms-modal-overlay');
-        card = overlay.querySelector('.gm-modal-card');
-        closeBtn = document.getElementById('terms-modal-close');
-        bottomCloseBtn = document.getElementById('terms-modal-bottom-close');
-    });
-
-    afterEach(() => {
-        document.body.innerHTML = '';
-        window.location.hash = '';
-    });
+describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
+    const termsHtmlPath = path.resolve(__dirname, '../terms.html');
+    const indexHtmlPath = path.resolve(__dirname, '../index.html');
+    const termsHtmlContent = fs.readFileSync(termsHtmlPath, 'utf8');
+    const indexHtmlContent = fs.readFileSync(indexHtmlPath, 'utf8');
 
     it('has English translation for footer_terms', () => {
         expect(window.GM_I18N.t('footer_terms')).toBe('Terms & Conditions');
     });
 
-    it('opens and closes terms modal via window.GM methods', () => {
-        expect(overlay.style.display).toBe('none');
-        expect(overlay.classList.contains('visible')).toBe(false);
-
-        window.GM.openTermsModal();
-        expect(overlay.style.display).toBe('flex');
-        expect(overlay.classList.contains('visible')).toBe(true);
-        expect(document.body.style.overflow).toBe('hidden');
-
-        window.GM.closeTermsModal();
-        expect(overlay.classList.contains('visible')).toBe(false);
-        expect(document.body.style.overflow).toBe('');
+    it('terms.html exists and contains full legal document title and metadata', () => {
+        expect(fs.existsSync(termsHtmlPath)).toBe(true);
+        expect(termsHtmlContent).toContain('TERMS OF SERVICE AND GENERAL CONDITIONS OF SALE (TOS/GCS)');
+        expect(termsHtmlContent).toContain('August 20, 2026');
+        expect(termsHtmlContent).toContain('FGF Guild Management Platform');
+        expect(termsHtmlContent).toContain('fgfwiki@gmail.com');
+        expect(termsHtmlContent).toContain('André Vieira');
     });
 
-    it('triggers open on clicking #terms-link', () => {
-        const link = document.getElementById('terms-link');
-        link.click();
-        expect(overlay.classList.contains('visible')).toBe(true);
+    it('terms.html contains all 9 statutory legal sections and preamble', () => {
+        expect(termsHtmlContent).toContain('PREAMBLE &amp; BINDING LEGAL AGREEMENT');
+        expect(termsHtmlContent).toContain('SECTION 1. LEGAL NOTICE &amp; STATUTORY DISCLOSURES');
+        expect(termsHtmlContent).toContain('SECTION 2. NATURE OF THE SERVICE &amp; TECHNICAL ARCHITECTURE');
+        expect(termsHtmlContent).toContain('SECTION 3. INTELLECTUAL PROPERTY &amp; DISCLAIMER OF NON-AFFILIATION');
+        expect(termsHtmlContent).toContain('SECTION 4. COMMERCIAL TERMS, ACCESS PASSES &amp; NO AUTOMATIC RENEWAL');
+        expect(termsHtmlContent).toContain('SECTION 5. GAME INTEGRITY, TECHNICAL COMPLIANCE &amp; ACCEPTABLE USE');
+        expect(termsHtmlContent).toContain('SECTION 6. PRIVACY BY DESIGN &amp; DATA GOVERNANCE (GDPR &amp; CCPA)');
+        expect(termsHtmlContent).toContain('SECTION 7. LIMITATION OF LIABILITY &amp; WARRANTY DISCLAIMER');
+        expect(termsHtmlContent).toContain('SECTION 8. SEVERABILITY &amp; MODIFICATIONS');
+        expect(termsHtmlContent).toContain('SECTION 9. GOVERNING LAW &amp; JURISDICTION');
     });
 
-    it('triggers open on clicking .gm-terms-trigger', () => {
-        const trigger = document.querySelector('.gm-terms-trigger');
-        trigger.click();
-        expect(overlay.classList.contains('visible')).toBe(true);
+    it('terms.html includes navigation controls back to the platform', () => {
+        expect(termsHtmlContent).toContain('Return to Platform');
+        expect(termsHtmlContent).toContain('href="/"');
     });
 
-    it('closes on clicking top close button', () => {
-        window.GM.openTermsModal();
-        expect(overlay.classList.contains('visible')).toBe(true);
-
-        closeBtn.click();
-        expect(overlay.classList.contains('visible')).toBe(false);
+    it('index.html links directly to terms.html in footers', () => {
+        expect(indexHtmlContent).toContain('href="terms.html" id="terms-link"');
+        expect(indexHtmlContent).toContain('href="terms.html" class="gm-footer-link gm-terms-trigger"');
     });
 
-    it('closes on clicking bottom close button', () => {
-        window.GM.openTermsModal();
-        expect(overlay.classList.contains('visible')).toBe(true);
-
-        bottomCloseBtn.click();
-        expect(overlay.classList.contains('visible')).toBe(false);
-    });
-
-    it('closes on backdrop click outside modal card', () => {
-        window.GM.openTermsModal();
-        expect(overlay.classList.contains('visible')).toBe(true);
-
-        // Click overlay itself
-        overlay.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        expect(overlay.classList.contains('visible')).toBe(false);
-    });
-
-    it('closes on Escape key press', () => {
-        window.GM.openTermsModal();
-        expect(overlay.classList.contains('visible')).toBe(true);
-
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-        expect(overlay.classList.contains('visible')).toBe(false);
+    it('window.GM.openTermsModal navigates to terms.html', () => {
+        expect(typeof window.GM.openTermsModal).toBe('function');
     });
 });

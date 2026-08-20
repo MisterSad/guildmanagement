@@ -412,7 +412,7 @@
             '</nav>' +
             getSubscriptionCardHtml() +
             '<div class="gm-sidebar-legal-footer">' +
-                '<a href="#terms" class="gm-sidebar-legal-link gm-terms-trigger" data-i18n="footer_terms">Terms &amp; Conditions</a>' +
+                '<a href="terms.html" class="gm-sidebar-legal-link" data-i18n="footer_terms">Terms &amp; Conditions</a>' +
             '</div>';
 
         el.innerHTML = html;
@@ -583,7 +583,7 @@
                     '</button>';
         });
         html += '<div class="gm-sidebar-legal-footer" style="grid-column: 1 / -1; margin-top: 0.5rem; border-top: 1px solid var(--border-soft); padding: 0.75rem 0.5rem 0.25rem 0.5rem;">' +
-                    '<a href="#terms" class="gm-sidebar-legal-link gm-terms-trigger" data-i18n="footer_terms">Terms &amp; Conditions</a>' +
+                    '<a href="terms.html" class="gm-sidebar-legal-link" data-i18n="footer_terms">Terms &amp; Conditions</a>' +
                 '</div>';
         html += '</div>';
         drawer.innerHTML = html;

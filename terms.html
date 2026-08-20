@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Terms of Service & General Conditions of Sale — FGF Guild Management</title>
+    <meta name="description" content="Terms of Service, General Conditions of Sale, Legal Notice, and Data Governance for FGF Guild Management Platform.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="styles.css?v=6">
+    <link rel="stylesheet" href="tokens.css?v=5">
+    <link rel="stylesheet" href="components.css?v=24">
+    <link rel="stylesheet" href="shell.css?v=15">
+    <link rel="icon" type="image/png" href="favicon.png?v=2">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#141416">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body {
+            background: var(--bg-0, #0a0a0c);
+            color: var(--text-primary, #f1f5f9);
+            font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.65;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .terms-topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(18, 18, 22, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.1));
+            padding: 0.85rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .terms-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--text-primary, #f1f5f9);
+        }
+
+        .terms-brand-badge {
+            background: linear-gradient(135deg, #6366f1, #3b82f6);
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            padding: 0.35rem 0.6rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
+        }
+
+        .terms-brand-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .terms-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.45rem 0.95rem;
+            font-size: 0.84rem;
+            font-weight: 600;
+            border-radius: 8px;
+            background: var(--bg-1, rgba(255, 255, 255, 0.06));
+            border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.12));
+            color: var(--text-primary, #f1f5f9);
+            text-decoration: none;
+            transition: all 0.18s ease;
+        }
+
+        .terms-back-btn:hover {
+            background: var(--bg-2, rgba(255, 255, 255, 0.12));
+            border-color: var(--border-strong, rgba(255, 255, 255, 0.25));
+            transform: translateX(-2px);
+        }
+
+        .terms-main-wrap {
+            flex: 1;
+            max-width: 920px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem 4rem 1.5rem;
+            box-sizing: border-box;
+        }
+
+        .terms-doc-header {
+            background: var(--bg-1, #121316);
+            border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.12));
+            border-radius: var(--radius-xl, 16px);
+            padding: 2rem 2.25rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .terms-doc-header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #6366f1, #3b82f6, #10b981);
+        }
+
+        .terms-doc-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #fff;
+            margin: 0 0 0.85rem 0;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+        }
+
+        .terms-doc-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .terms-meta-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.1));
+            border-radius: 20px;
+            padding: 0.35rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-secondary, #cbd5e1);
+        }
+
+        .terms-meta-pill strong {
+            color: var(--text-primary, #f1f5f9);
+        }
+
+        .terms-meta-pill a {
+            color: #818cf8;
+            text-decoration: none;
+        }
+
+        .terms-meta-pill a:hover {
+            text-decoration: underline;
+        }
+
+        .terms-content-card {
+            background: var(--bg-1, #121316);
+            border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.1));
+            border-radius: var(--radius-xl, 16px);
+            padding: 2.25rem;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+        }
+
+        .terms-preamble-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(59, 130, 246, 0.04));
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .terms-section {
+            margin-bottom: 2.25rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+        }
+
+        .terms-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .terms-section-h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 0 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            letter-spacing: 0.01em;
+        }
+
+        .terms-section-h2 .ph {
+            color: #818cf8;
+            font-size: 1.3rem;
+        }
+
+        .terms-callout {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid #6366f1;
+            border-radius: 0 10px 10px 0;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+            font-size: 0.92rem;
+        }
+
+        .terms-callout.warning {
+            border-left-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.06);
+        }
+
+        .terms-callout.success {
+            border-left-color: #10b981;
+            background: rgba(16, 185, 129, 0.06);
+        }
+
+        .terms-badge-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 0.85rem 0 0.5rem 0;
+        }
+
+        .terms-badge-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.3rem 0.7rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.12));
+            color: var(--text-secondary, #cbd5e1);
+        }
+
+        .terms-badge-chip .ph {
+            color: #818cf8;
+        }
+
+        .terms-footer {
+            background: #0d0d10;
+            border-top: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+            padding: 2rem 1.5rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted, #94a3b8);
+        }
+
+        .terms-footer-inner {
+            max-width: 920px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        @media (max-width: 640px) {
+            .terms-doc-header { padding: 1.5rem 1.25rem; }
+            .terms-content-card { padding: 1.5rem 1.15rem; }
+            .terms-doc-title { font-size: 1.3rem; }
+            .terms-footer-inner { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Topbar Navigation -->
+    <header class="terms-topbar">
+        <a href="/" class="terms-brand">
+            <span class="terms-brand-badge">FGF</span>
+            <span class="terms-brand-title">GUILD MANAGEMENT PLATFORM</span>
+        </a>
+        <a href="/" class="terms-back-btn">
+            <i class="ph ph-arrow-left"></i>
+            <span>Return to Platform</span>
+        </a>
+    </header>
+
+    <!-- Main Page Content Container (Full Page, Uncropped) -->
+    <main class="terms-main-wrap">
+        
+        <!-- Document Header Card -->
+        <div class="terms-doc-header">
+            <h1 class="terms-doc-title">TERMS OF SERVICE AND GENERAL CONDITIONS OF SALE (TOS/GCS)</h1>
+            <div class="terms-doc-meta">
+                <div class="terms-meta-pill">
+                    <i class="ph ph-calendar-check"></i>
+                    <span><strong>Effective Date:</strong> August 20, 2026</span>
+                </div>
+                <div class="terms-meta-pill">
+                    <i class="ph ph-globe"></i>
+                    <span><strong>Platform Reference:</strong> FGF Guild Management Platform</span>
+                </div>
+                <div class="terms-meta-pill">
+                    <i class="ph ph-envelope-simple"></i>
+                    <span><strong>Operational Contact:</strong> <a href="mailto:fgfwiki@gmail.com">fgfwiki@gmail.com</a></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full Document Body Card -->
+        <article class="terms-content-card">
+
+            <!-- PREAMBLE -->
+            <div class="terms-preamble-box">
+                <h2 class="terms-section-h2" style="color: #a5b4fc; font-size: 1.05rem; margin-bottom: 0.65rem;">
+                    <i class="ph ph-scroll"></i>
+                    <span>PREAMBLE &amp; BINDING LEGAL AGREEMENT</span>
+                </h2>
+                <p style="margin: 0 0 0.85rem 0;">
+                    These Terms of Service and General Conditions of Sale (hereinafter, the <strong>"Agreement"</strong> or <strong>"Terms"</strong>) constitute a legally binding contract between <strong>André Vieira</strong>, registered as a sole proprietor under the French micro-enterprise statutory tax and legal regime (hereinafter, the <strong>"Operator"</strong>, <strong>"We"</strong>, <strong>"Us"</strong>, or <strong>"Our"</strong>), and any natural or legal person accessing, browsing, creating an account on, or purchasing digital access passes via the <strong>FGF Guild Management Platform</strong> (hereinafter, the <strong>"Platform"</strong>, <strong>"Service"</strong>, <strong>"User"</strong>, or <strong>"You"</strong>).
+                </p>
+                <p style="margin: 0;">
+                    By accessing the Platform, authenticating via third-party identity providers, or executing a digital purchase transaction, You expressly acknowledge that You have read, understood, and agreed to be bound by all provisions of this Agreement. If You do not accept these Terms in their entirety, You must immediately cease all access to and use of the Service.
+                </p>
+            </div>
+
+            <!-- SECTION 1 -->
+            <section class="terms-section">
+                <h2 class="terms-section-h2">
+                    <i class="ph ph-buildings"></i>
+                    <span>SECTION 1. LEGAL NOTICE &amp; STATUTORY DISCLOSURES</span>
+                </h2>
+                <p>In accordance with French Law No. 2004-575 of June 21, 2004, on Confidence in the Digital Economy (<em>Loi pour la Confiance dans l'Économie Numérique</em> – LCEN) and consumer protection regulations:</p>
+                <ul style="margin: 0.5rem 0 0.85rem 1.5rem; padding: 0;">
+                    <li><strong>Platform Operator &amp; Publisher:</strong> André Vieira (Operating as a registered <em>Micro-Entrepreneur</em> under the jurisdiction of the French Republic).</li>
+                    <li><strong>Official Contact:</strong> <a href="mailto:fgfwiki@gmail.com" style="color: #818cf8; text-decoration: none;">fgfwiki@gmail.com</a></li>
+                    <li><strong>Taxation &amp; VAT Regime:</strong> Value Added Tax (VAT) is not applicable pursuant to Article 293 B of the French General Tax Code (<em>Article 293 B du Code Général des Impôts</em> – CGI).</li>
+                    <li>
+                        <strong>Technical Infrastructure &amp; Hosting Providers:</strong>
+                        <ul style="margin: 0.4rem 0 0.4rem 1.5rem; padding: 0;">
+                            <li><strong>Application Edge Deployment &amp; Execution:</strong> Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, USA / Deno Land Inc.</li>
+                            <li><strong>Database Engine &amp; Authentication Infrastructure:</strong> Supabase Inc., 77 Geary Street, Suite 400, San Francisco, CA 94108, USA (Hosted on secure European AWS cloud infrastructure).</li>
+                            <li><strong>Merchant of Record &amp; Payment Gateway:</strong> Stripe Technology Europe, Limited (STEL), The One Building, 1 Grand Canal Street Lower, Dublin 2, Ireland (PCI-DSS Level 1 certified).</li>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="terms-badge-grid">
+                    <span class="terms-badge-chip"><i class="ph ph-shield-check"></i> LCEN Statutory Compliance</span>
+                    <span class="terms-badge-chip"><i class="ph ph-receipt"></i> CGI Art. 293 B (VAT Exempt)</span>
+                    <span class="terms-badge-chip"><i class="ph ph-lock"></i> PCI-DSS Level 1 Certified</span>
+                    <span class="terms-badge-chip"><i class="ph ph-cloud"></i> EU Hosted Supabase Infrastructure</span>
+                </div>
+            </section>
+
+            <!-- SECTION 2 -->
+            <section class="terms-section">
+                <h2 class="terms-section-h2">
+                    <i class="ph ph-gear"></i>
+                    <span>SECTION 2. NATURE OF THE SERVICE &amp; TECHNICAL ARCHITECTURE</span>
+                </h2>
+                <p><strong>2.1. Operational Scope:</strong> The Platform is an independent, out-of-game companion software-as-a-service (SaaS) utility engineered exclusively to assist gaming communities, guild officers, and individual players in organizing administrative rosters, scheduling guild coordination events, processing aggregate numerical statistics, and dispatching announcements via Discord webhooks.</p>
+                <p><strong>2.2. External Architecture:</strong> The Platform operates 100% asynchronously and externally via standard HTTPS protocols. The Service functions solely in an analytical and organizational capacity, strictly equivalent to an external collaborative spreadsheet or standalone community coordination bot.</p>
+            </section>
+
+            <!-- SECTION 3 -->
+            <section class="terms-section">
+                <h2 class="terms-section-h2">
+                    <i class="ph ph-trademark"></i>
+                    <span>SECTION 3. INTELLECTUAL PROPERTY &amp; DISCLAIMER OF NON-AFFILIATION</span>
+                </h2>
+                <div class="terms-callout warning">
+                    <strong>3.1. Express Disclaimer of Affiliation:</strong> The Platform is an independent, community-driven development. It is <strong>not</strong> endorsed by, directly affiliated with, sponsored by, authorized by, maintained by, or in any manner officially connected with <strong>FunPlus International AG</strong>, <strong>Skydance Production, LLC</strong>, <strong>Skydance Interactive</strong>, or any of their respective subsidiaries, corporate parents, or affiliates.
+                </div>
+                <p><strong>3.2. Ownership of Trademarks and Game Assets:</strong> <em>Foundation: Galactic Frontier</em> and all associated titles, marks, visual identities, logos, and narrative concepts are registered trademarks and the exclusive intellectual property of their respective legal owners.</p>
+                <p><strong>3.3. Total Absence of Proprietary Video Game Assets:</strong> In strict compliance with intellectual property standards:</p>
+                <ul style="margin: 0.4rem 0 0.5rem 1.5rem; padding: 0;">
+                    <li>The Platform does not host, distribute, render, compile, or mirror any copyrighted game textures, proprietary sprites, 3D meshes, polygon geometries, audio recordings, soundtracks, or compiled binary code.</li>
+                    <li>All graphical user interfaces (UI) and design tokens are constructed exclusively from open-source, permissively licensed libraries (Google Material Design 3.0, Three.js, and SIL Open Font frameworks) or original source code authored by the Operator.</li>
+                </ul>
+            </section>
+
+            <!-- SECTION 4 -->
+            <section class="terms-section">
+                <h2 class="terms-section-h2">
+                    <i class="ph ph-credit-card"></i>
+                    <span>SECTION 4. COMMERCIAL TERMS, ACCESS PASSES &amp; NO AUTOMATIC RENEWAL</span>
+                </h2>
+                <p><strong>4.1. Digital Access Passes:</strong> Premium administrative tiers, extended analytical dashboards, and multi-guild organizational capacities are made available solely as <strong>fixed-term, prepaid digital access passes</strong> (e.g., 30-day, 90-day, or single-season access licenses).</p>
+                <div class="terms-callout success">
+                    <strong>4.2. Strict Prohibition of Automatic Renewal:</strong> <strong>Under no circumstances does any transaction execute an ongoing, recurring, or automatically renewed subscription.</strong> Every purchase is an isolated, upfront, non-recurring commercial transaction. Upon the expiration of the purchased validity period, premium access parameters automatically terminate without notice or liability, and your access reverts to baseline tier standards unless You execute an intentional, manual repurchase.
+                </div>
+                <p><strong>4.3. Payment Execution:</strong> All monetary transactions are processed via Stripe Hosted Checkout over encrypted TLS 1.3 channels. The Operator does not process, inspect, intercept, or store payment card numbers, card verification values (CVV), or bank account identifiers on its servers or database tiers.</p>
+                <div class="terms-callout warning">
+                    <strong>4.4. Express Waiver of the Right of Withdrawal (<em>Droit de Rétractation</em>):</strong>
+                    <p style="margin: 0.5rem 0 0 0;">In accordance with Article L. 221-28 13° of the French Consumer Code (<em>Code de la consommation</em>), the statutory 14-day right of withdrawal does not apply to contracts for the supply of digital content not provided on a tangible medium where performance has begun after the consumer's express prior consent and acknowledgment that they thereby lose their right of withdrawal.</p>
+                    <p style="margin: 0.5rem 0 0 0;">By finalizing a purchase and requesting instantaneous digital access to the Platform’s premium features, <strong>You expressly request immediate execution of this Agreement and formally waive your statutory right of withdrawal</strong>.</p>
+                </div>
+            </section>
+
+            <!-- SECTION 5 -->
+            <section class="terms-section">
+                <h2 class="terms-section-h2">
+                    <i class="ph ph-shield-check"></i>
+                    <span>SECTION 5. GAME INTEGRITY, TECHNICAL COMPLIANCE &amp; ACCEPTABLE USE</span>
+                </h2>
+                <p><strong>5.1. Game Client Integrity &amp; Anti-Cheat Compliance:</strong> To safeguard game ecosystem integrity, the Platform guarantees the following absolute technical invariants:</p>
+                <ul style="margin: 0.4rem 0 0.65rem 1.5rem; padding: 0;">
+                    <li><strong>Zero Client Hooks:</strong> The Platform contains no dynamic-link library (DLL) injections, memory modification hooks, executable tampering engines, or process inspection utilities.</li>
+                    <li><strong>Zero Network Sniffing:</strong> The Platform intercepts no live game network packets, decrypts no TLS streams between the game client and official servers, and executes no unauthorized reverse engineering of closed publisher endpoints.</li>
+                    <li><strong>Zero Automation or Botting:</strong> The Platform contains zero macros, automated input tools, gameplay bots, or in-game automated progression scripts.</li>
+                </ul>
+                <p><strong>5.2. Ephemeral In-Memory Optical Character Recognition (OCR):</strong> Where Users utilize automated screenshot extraction features to transcribe leaderboard or roster statistics:</p>
+                <ul style="margin: 0.4rem 0 0.65rem 1.5rem; padding: 0;">
+                    <li>Processing occurs via an ephemeral in-memory OCR runtime.</li>
+                    <li>Uploaded image bitmaps are parsed in volatile RAM and are <strong>instantly and permanently destroyed upon extraction</strong>.</li>
+                    <li>The Platform maintains <strong>zero disk persistence, zero cloud bucket archiving, and zero long-term retention of User-submitted images</strong>.</li>
+                </ul>
+                <p><strong>5.3. Prohibited System Exploitation:</strong> Users shall not:</p>
+                <ul style="margin: 0.4rem 0 0 1.5rem; padding: 0;">
+                    <li>Attempt to circumvent or breach the PostgreSQL Row-Level Security (RLS) policies or Role-Based Access Control (RBAC) schemas.</li>
+                    <li>Execute automated Server-Side Request Forgery (SSRF), distributed denial-of-service (DDoS) attacks, injection queries, or arbitrary webhook flooding.</li>
+                    <li>Sublicense, lease, reverse-engineer, or commercially redistribute access tokens to the Platform.</li>
+                </ul>
+            </section>
+
+            <!-- SECTION 6 -->
+            <section class="terms-section">
+                <h2 class="terms-section-h2">
+                    <i class="ph ph-user-focus"></i>
+                    <span>SECTION 6. PRIVACY BY DESIGN &amp; DATA GOVERNANCE (GDPR &amp; CCPA)</span>
+                </h2>
+                <p><strong>6.1. Zero Personally Identifiable Information (Zero PII):</strong> The Platform is governed by stringent Data Minimization and Privacy-by-Design mandates in compliance with Regulation (EU) 2016/679 (GDPR):</p>
+                <ul style="margin: 0.4rem 0 0.65rem 1.5rem; padding: 0;">
+                    <li>No real-world legal names, physical postal addresses, personal phone numbers, or hardware geolocation coordinates are collected or stored.</li>
+                    <li>Stored data is limited to publicly visible in-game pseudonyms, UTC timezone offsets, aggregate game statistical values, and isolated synthetic authentication tokens.</li>
+                </ul>
+                <p><strong>6.2. Data Cascade Deletion:</strong> In alignment with the GDPR Right to Erasure, when a guild administrator or user initiates account termination, all corresponding foreign-key records, participation histories, and assigned rosters are permanently purged via automated database cascades (<code>ON DELETE CASCADE</code>).</p>
+            </section>
+
+            <!-- SECTION 7 -->
+            <section class="terms-section">
+                <h2 class="terms-section-h2">
+                    <i class="ph ph-warning-diamond"></i>
+                    <span>SECTION 7. LIMITATION OF LIABILITY &amp; WARRANTY DISCLAIMER</span>
+                </h2>
+                <p><strong>7.1. "As-Is" Provision &amp; Obligation of Means:</strong> The Service is delivered on an <strong>"AS IS"</strong> and <strong>"AS AVAILABLE"</strong> basis. The Operator’s legal commitment is an <strong>obligation of means</strong> (<em>obligation de moyens</em>). The Operator does not warrant that the Platform will be entirely uninterrupted, error-free, immune to localized latency, or perpetually compatible with unannounced third-party game patches.</p>
+                <p><strong>7.2. Independent Publisher Actions:</strong> The Platform operates wholly independently from game publishing entities. The Operator accepts zero liability for any administrative actions, warnings, sanctions, or account terminations enacted by game developers or publishers against User accounts on their proprietary game platforms.</p>
+                <p><strong>7.3. Financial Liability Cap:</strong> To the fullest extent permitted by applicable French law, the aggregate financial liability of the Operator arising out of or related to this Agreement or the use of the Service, whether in contract, tort (including negligence), or otherwise, shall be strictly capped at the total amount actually paid by the User to the Operator for the specific access pass during the <strong>three (3) months</strong> immediately preceding the event giving rise to liability.</p>
+            </section>
+
+            <!-- SECTION 8 -->
+            <section class="terms-section">
+                <h2 class="terms-section-h2">
+                    <i class="ph ph-arrows-clockwise"></i>
+                    <span>SECTION 8. SEVERABILITY &amp; MODIFICATIONS</span>
+                </h2>
+                <p><strong>8.1. Severability:</strong> If any provision of this Agreement is held to be invalid, illegal, or unenforceable by a court of competent jurisdiction, such invalidity shall not affect any other provision, and these Terms shall be construed as if such invalid provision had never been contained herein.</p>
+                <p><strong>8.2. Revisions:</strong> The Operator reserves the right to amend this Agreement to maintain compliance with statutory enactments, judicial rulings, or architectural infrastructure updates. Continued usage of the Platform subsequent to the publication of revised Terms signifies irrevocable acceptance of such modifications.</p>
+            </section>
+
+            <!-- SECTION 9 -->
+            <section class="terms-section">
+                <h2 class="terms-section-h2">
+                    <i class="ph ph-gavel"></i>
+                    <span>SECTION 9. GOVERNING LAW &amp; JURISDICTION</span>
+                </h2>
+                <p><strong>9.1. Applicable Law:</strong> This Agreement, its interpretation, and any non-contractual obligations arising out of or in connection with it shall be governed by and construed in accordance with the <strong>laws of the French Republic</strong>, to the exclusion of conflict-of-law principles.</p>
+                <p><strong>9.2. Consumer Mediation:</strong> Pursuant to Articles L. 612-1 et seq. of the French Consumer Code, individual consumers residing within the European Union are entitled to seek free recourse to a designated consumer ombudsman (<em>Médiateur de la consommation</em>) for the amicable resolution of any unresolved dispute.</p>
+                <p><strong>9.3. Judicial Jurisdiction:</strong> In the absence of an amicable resolution or mediation agreement, all disputes, claims, or litigation arising out of or concerning the validity, interpretation, performance, or termination of this Agreement shall be brought exclusively before the <strong>competent courts within the jurisdiction of the Court of Appeal of Paris, France</strong>, to which the parties hereby assign exclusive territorial competence.</p>
+            </section>
+
+        </article>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="terms-footer">
+        <div class="terms-footer-inner">
+            <div>
+                © 2026 FGF Guild Management Platform • Operator: André Vieira
+            </div>
+            <div>
+                <a href="/" style="color: #818cf8; text-decoration: none; margin-right: 1.5rem;">Return to Platform</a>
+                <a href="mailto:fgfwiki@gmail.com" style="color: var(--text-muted); text-decoration: none;">Contact: fgfwiki@gmail.com</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -41,22 +41,28 @@ test('can switch to the player registration form and back', async ({ page }) => 
     }
 });
 
-test('clicking Terms & Conditions in footer opens legal modal and closes on close button', async ({ page }) => {
+test('clicking Terms & Conditions in footer opens dedicated full page and can return to platform', async ({ page }) => {
     await page.goto('/');
     const termsLink = page.locator('#terms-link');
     await expect(termsLink).toBeVisible();
     await expect(termsLink).toContainText('Terms & Conditions');
 
     await termsLink.click();
-    const modal = page.locator('#terms-modal-overlay');
-    await expect(modal).toBeVisible();
-    await expect(modal).toContainText(/Terms of Service/i);
-    await expect(modal).toContainText('André Vieira');
-    await expect(modal).toContainText('SECTION 1. LEGAL NOTICE & STATUTORY DISCLOSURES');
-    await expect(modal).toContainText('SECTION 4. COMMERCIAL TERMS, ACCESS PASSES & NO AUTOMATIC RENEWAL');
+    await expect(page).toHaveURL(/terms/);
 
-    // Close modal via close button
-    await page.locator('#terms-modal-close').click();
-    await expect(modal).toBeHidden();
+    const title = page.locator('.terms-doc-title');
+    await expect(title).toBeVisible();
+    await expect(title).toContainText('TERMS OF SERVICE AND GENERAL CONDITIONS OF SALE');
+
+    await expect(page.locator('body')).toContainText('André Vieira');
+    await expect(page.locator('body')).toContainText('SECTION 1. LEGAL NOTICE & STATUTORY DISCLOSURES');
+    await expect(page.locator('body')).toContainText('SECTION 4. COMMERCIAL TERMS, ACCESS PASSES & NO AUTOMATIC RENEWAL');
+    await expect(page.locator('body')).toContainText('SECTION 9. GOVERNING LAW & JURISDICTION');
+
+    // Return to platform
+    const returnBtn = page.locator('.terms-back-btn');
+    await expect(returnBtn).toBeVisible();
+    await returnBtn.click();
+    await expect(page.locator('#login-form')).toBeVisible();
 });
 

@@ -2,17 +2,16 @@
 
 ## New
 
-- **Terms of Service and General Conditions of Sale (TOS/GCS) & Legal Notice Integration (v123.9)**:
-  - **Universal Footer Link**: Added an accessible "Terms & Conditions" link in the footers across the Login screen, Player Portal login view, Sidebar navigation, Drawer menu, and Subscription self-service panel.
-  - **Comprehensive Legal Modal**: Integrated a full-screen Material Design 3.0 + Apple Cozy Neutral modal (`#terms-modal-overlay`) with complete legal disclosures:
+- **Terms of Service and General Conditions of Sale (TOS/GCS) Dedicated Full Page (v123.9)**:
+  - **Universal Footer Navigation**: Added accessible "Terms & Conditions" links across all footers (Login view, Player Portal view, Sidebar navigation, Drawer menu, and Subscription self-service panel) pointing directly to the dedicated standalone page `terms.html`.
+  - **Dedicated Full Standalone Page (`terms.html`)**: Built an uncropped, responsive full-page legal document with clean typography (Plus Jakarta Sans, Inter, Phosphor Icons), top navigation bar with a "Return to Platform" button, metadata chips, and complete statutory disclosures:
     - **Platform Operator & Statutory Disclosures**: Registered *Micro-Entrepreneur* sole proprietorship (André Vieira), French LCEN law compliance, Article 293 B CGI VAT exemption notice, and hosting providers (Vercel, Supabase AWS EU, Stripe PCI-DSS Level 1).
     - **100% Asynchronous Companion Architecture**: Out-of-game companion SaaS utility operating strictly externally without game client hooks or network sniffing.
     - **Intellectual Property & Non-Affiliation**: Formal non-affiliation disclaimer with FunPlus International AG and Skydance Interactive, with 100% open-source / proprietary UI tokens.
     - **Commercial Terms & Non-Recurring Access Passes**: Fixed-term prepaid digital access passes with strict prohibition of automatic renewals, and express waiver of the right of withdrawal under French Consumer Code Article L. 221-28 13°.
     - **Privacy by Design & GDPR Governance**: Zero PII guarantee, pseudonymized in-game metrics, ephemeral in-memory OCR with 0 persistence, and automated cascade data deletion (`ON DELETE CASCADE`).
     - **Jurisdiction & Consumer Mediation**: EU consumer ombudsman mediation and exclusive jurisdiction of the Court of Appeal of Paris, France.
-  - **Deep Linking & Keyboard Accessibility**: Supports `/#terms` hash routing, `Escape` key dismissal, backdrop click dismissal, and `window.GM.openTermsModal()` / `window.GM.closeTermsModal()` programmatic controls.
-  - **Quality Gate**: **296/296 Vitest unit tests green**, **8/8 Playwright E2E tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+  - **Quality Gate**: **294/294 Vitest unit tests green**, **8/8 Playwright E2E tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
 
 - **Player Portal Activity & Submission Audit Log Console (v123.8)**:
   - **100% Player Portal Mutation Instrumentation**: Added automated, structured audit logging directly into `supabase/functions/member-portal/index.ts` across all player mutations:
