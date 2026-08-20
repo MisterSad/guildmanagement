@@ -22,7 +22,7 @@ Every modification must strictly comply with the architectural rules, security b
 - **Canonical Schema**: Database migrations consolidated into 4 master DDL files under `supabase/migrations/`. Sample and dev seed data isolated in `supabase/seeds/dev_seed.sql`. Legacy migration history safely archived in `supabase/migrations_archive/`.
 - **Distributed Observability & Structured Logging**: Standardized JSON logging on both Edge Functions (`supabase/functions/_shared/logger.ts`) and browser client (`src/core/logger/logger.ts`) with correlation IDs, execution latency tracking, automatic credential sanitization, and persistent audit logs in `public.system_audit_logs`.
 - **CI/CD Pipeline**: GitHub Actions (`.github/workflows/ci.yml`) running static type verification, unit test battery, and production build on every push to `main`.
-- **Quality Gate**: Vitest + jsdom test battery (**219/219 tests green**).
+- **Quality Gate**: Vitest + jsdom test battery (**294/294 tests green**).
 - **Production Hosting**: Vercel automated deployment from branch `main` with hardened Content Security Policy (CSP).
 
 ---
@@ -102,7 +102,20 @@ Always use the centralized `SECURITY DEFINER`, `STABLE` access helpers with expl
 
 ---
 
-## 5. Changelog & Documentation Invariants (MANDATORY)
+## 5. 2026 Vibecoding & Code Integrity Standards
+
+1. **State Store & Memory Leak Prevention**:
+   - Every component subscribing to `src/core/store/store.ts` or attaching DOM listeners must register its disposer callback.
+   - When components are detached or unmounted, all disposers must run in `BaseComponent.disconnectedCallback()` / `dispose()`.
+2. **Main Thread Fluidity & Parallel Web Workers**:
+   - Never run CPU-heavy combinatorial calculations (GvG/SvS simulation matrix, matchmaking permutations) synchronously on the UI thread. Always offload them to `src/workers/matchup.worker.ts`.
+3. **Deterministic Testing**:
+   - Vitest unit test suite must cover any newly added calculation, scoring rule, or RLS helper.
+   - Mock all network and database operations with clear, deterministic fixtures.
+
+---
+
+## 6. Changelog & Documentation Invariants (MANDATORY)
 
 Every modification to the codebase must update the changelogs according to these exact rules:
 
@@ -126,7 +139,7 @@ Every modification to the codebase must update the changelogs according to these
 
 ---
 
-## 6. Development Workflow & Quality Gate
+## 7. Development Workflow & Quality Gate
 
 Before committing any code change, executing a pull request, or closing a task, the complete verification sequence must pass:
 
@@ -134,7 +147,7 @@ Before committing any code change, executing a pull request, or closing a task, 
 # 1. Static TypeScript Verification (0 errors required)
 npm run type-check
 
-# 2. Automated Vitest Unit Suite (219/219 tests green required)
+# 2. Automated Vitest Unit Suite (294/294 tests green required)
 npm test
 
 # 3. Production Bundle Compilation (Clean build into dist/ required)
@@ -143,5 +156,6 @@ npm run build
 
 ### Git & Repository Hygiene:
 - Only branch `main` exists; never create long-lived branches.
+- Direct push to `origin/main` must be performed systematically after every verified change.
 - Never commit `.DS_Store`, `node_modules/`, build outputs (`dist/`), or test artifacts (`test-results/`).
 - Commit messages must follow conventional commits format (e.g., `feat(module): description (vXXX)`).

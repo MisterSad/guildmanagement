@@ -1,8 +1,7 @@
 # 🏗️ Architecture Specification & System Design — FGF Guild Management Tool
 
 > **Status**: Authoritative Reference • **Standard**: August 2026 Production Specification  
-> **Platform**: Multi-Tenant Serverless SaaS • **Single Source of Truth (SSOT)**  
-> *Note: This is a synchronized mirror of the root [`ARCHITECTURE.md`](../ARCHITECTURE.md).*
+> **Platform**: Multi-Tenant Serverless SaaS • **Single Source of Truth (SSOT)**
 
 ---
 

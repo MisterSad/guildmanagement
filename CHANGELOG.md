@@ -2,6 +2,12 @@
 
 ## New
 
+- **Repository Structure Cleanup, Master Architecture & Authoritative 2026 Agent Guidelines (v124.0)**:
+  - **Repository Tree Cleanup & Hardening**: Consolidated documentation and technical audit reports into `docs/` (`docs/audit_report_2026-08-14.md`), decluttering root and reinforcing `.gitignore` against test artifacts and transient caches.
+  - **Master Architecture Blueprint (`ARCHITECTURE.md` & `docs/ARCHITECTURE.md`)**: Codified the authoritative 2026 system architecture covering multi-tenant serverless topology (Vercel + Supabase Postgres 17 + Deno TypeScript Edge Functions), reactive Pub/Sub Store, Web Worker background parallelism, BaseComponent lifecycle model, Material Design 3.0 + Apple Cozy Neutral tokens, zero-trust 4-role access model, and full directory tree index.
+  - **Authoritative Engineering Guidelines (`AGENTS.md`)**: Elevated root `AGENTS.md` to be the strict single source of truth for all AI agents and human developers, setting mandatory rules for 100% English, memory leak prevention, tripartite deterministic session ID sync, RLS security definer protocols, quality gates, and git release standards.
+  - **Quality Gate**: **294/294 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Terms of Service and General Conditions of Sale (TOS/GCS) Dedicated Full Page (v123.9)**:
   - **Universal Footer Navigation**: Added accessible "Terms & Conditions" links across all footers (Login view, Player Portal view, Sidebar navigation, Drawer menu, and Subscription self-service panel) pointing directly to the dedicated standalone page `terms.html`.
   - **Dedicated Full Standalone Page (`terms.html`)**: Built an uncropped, responsive full-page legal document with clean typography (Plus Jakarta Sans, Inter, Phosphor Icons), top navigation bar with a "Return to Platform" button, metadata chips, and complete statutory disclosures:
