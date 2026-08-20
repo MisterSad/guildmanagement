@@ -969,12 +969,156 @@ html, body {
     box-shadow: var(--md-sys-elevation-level2);
 }
 
-.gm-login-footer {
+.gm-login-footer,
+.gm-portal-footer {
     margin-top: 0.75rem;
     text-align: center;
     font-size: 0.82rem;
     color: var(--md-sys-color-on-surface-dim);
     letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+}
+
+.gm-footer-link {
+    color: var(--md-sys-color-on-surface-variant, #94a3b8);
+    text-decoration: none;
+    transition: color 0.18s ease, text-decoration-color 0.18s ease;
+    cursor: pointer;
+    font-size: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+}
+
+.gm-footer-link:hover,
+.gm-footer-link:focus-visible {
+    color: var(--md-sys-color-primary, #a8c7fa);
+    text-decoration: underline;
+    outline: none;
+}
+
+.gm-footer-sep {
+    margin: 0 0.45rem;
+    opacity: 0.45;
+    user-select: none;
+}
+
+.gm-sidebar-legal-footer {
+    padding: 0.75rem 1rem 0.65rem 1rem;
+    text-align: center;
+    font-size: 0.75rem;
+    border-top: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+    margin-top: auto;
+}
+
+.gm-sidebar-legal-link {
+    color: var(--text-muted, #94a3b8);
+    text-decoration: none;
+    transition: color 0.18s ease;
+}
+
+.gm-sidebar-legal-link:hover,
+.gm-sidebar-legal-link:focus-visible {
+    color: var(--accent, #6366f1);
+    text-decoration: underline;
+    outline: none;
+}
+
+/* ─── Terms & Conditions Modal Styling (Material Design 3 + Apple Cozy) ─── */
+.gm-terms-modal-card {
+    background: var(--bg-1, #121316);
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.12));
+    border-radius: var(--radius-xl, 16px);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75);
+}
+
+.gm-terms-modal-body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-soft, rgba(255, 255, 255, 0.2)) transparent;
+}
+
+.gm-terms-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.gm-terms-modal-body::-webkit-scrollbar-thumb {
+    background: var(--border-soft, rgba(255, 255, 255, 0.2));
+    border-radius: 4px;
+}
+
+.gm-terms-preamble-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(59, 130, 246, 0.04));
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    border-radius: var(--radius-lg, 12px);
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.25rem;
+}
+
+.gm-terms-section {
+    margin-bottom: 1.35rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+}
+
+.gm-terms-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.gm-terms-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary, #f1f5f9);
+    margin: 0 0 0.65rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    letter-spacing: 0.01em;
+}
+
+.gm-terms-callout {
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid var(--accent, #6366f1);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    margin: 0.65rem 0;
+    font-size: 0.84rem;
+}
+
+.gm-terms-callout.warning {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.gm-terms-callout.success {
+    border-left-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.gm-terms-badge-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.5rem 0 0.75rem 0;
+}
+
+.gm-terms-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    background: var(--bg-2, rgba(255, 255, 255, 0.06));
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.1));
+    color: var(--text-secondary, #cbd5e1);
 }
 
 /* ─── Responsive Adjustments ─── */

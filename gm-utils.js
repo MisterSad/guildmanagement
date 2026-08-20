@@ -1855,6 +1855,92 @@
         };
     }
 
+    function openTermsModal() {
+        var overlay = document.getElementById('terms-modal-overlay');
+        if (!overlay) return;
+        overlay.style.display = 'flex';
+        void overlay.offsetWidth;
+        overlay.classList.add('visible');
+        document.body.style.overflow = 'hidden';
+
+        var closeBtn = document.getElementById('terms-modal-close');
+        if (closeBtn) closeBtn.focus();
+    }
+
+    function closeTermsModal() {
+        var overlay = document.getElementById('terms-modal-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('visible');
+        document.body.style.overflow = '';
+        setTimeout(function () {
+            if (!overlay.classList.contains('visible')) {
+                overlay.style.display = 'none';
+            }
+        }, 200);
+
+        if (window.location.hash === '#terms') {
+            if (window.history && window.history.replaceState) {
+                var cleanUrl = window.location.pathname + window.location.search;
+                window.history.replaceState(null, '', cleanUrl);
+            }
+        }
+    }
+
+    function initTermsModal() {
+        document.addEventListener('click', function (e) {
+            var target = e.target;
+            if (!target) return;
+
+            // Close button click
+            if (target.closest('#terms-modal-close, #terms-modal-bottom-close, [data-gm-close-terms]')) {
+                e.preventDefault();
+                closeTermsModal();
+                return;
+            }
+
+            // Overlay backdrop click (clicked directly on the overlay)
+            if (target.id === 'terms-modal-overlay') {
+                e.preventDefault();
+                closeTermsModal();
+                return;
+            }
+
+            // Open terms link / button click
+            var link = target.closest('a[href="#terms"], .gm-terms-trigger, [data-gm-open-terms], #terms-link, #gm-terms-btn');
+            if (link) {
+                e.preventDefault();
+                openTermsModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                var overlay = document.getElementById('terms-modal-overlay');
+                if (overlay && overlay.classList.contains('visible')) {
+                    closeTermsModal();
+                }
+            }
+        });
+
+        if (window.location.hash === '#terms') {
+            setTimeout(openTermsModal, 100);
+        }
+
+        window.addEventListener('hashchange', function () {
+            if (window.location.hash === '#terms') {
+                openTermsModal();
+            }
+        });
+    }
+
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTermsModal);
+        } else {
+            initTermsModal();
+        }
+    }
+
     var gmExports = {
         db: db,
         t: t,
@@ -1889,6 +1975,8 @@
         formatDateTimeUTC: formatDateTimeUTC,
         pickEventStart: pickEventStart,
         showToast: showToast,
+        openTermsModal: openTermsModal,
+        closeTermsModal: closeTermsModal,
         validatePseudo: validatePseudo,
         validateUid: validateUid,
         formatNumber: formatNumber,

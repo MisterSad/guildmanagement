@@ -20,6 +20,9 @@
             login_btn:             'Access',
             login_btn_loading:     'Logging in...',
             login_discord:         'Want a guild space for your guild? Join our Discord',
+            footer_terms:          'Terms & Conditions',
+            terms_modal_title:     'Terms of Service & General Conditions of Sale (TOS/GCS)',
+            terms_close:           'Close',
 
             /* ── Admin topbar ──────────────────── */
             nav_dashboard:         'Command Center',

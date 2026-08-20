@@ -40,3 +40,23 @@ test('can switch to the player registration form and back', async ({ page }) => 
         await expect(page.locator('#login-form')).toBeVisible();
     }
 });
+
+test('clicking Terms & Conditions in footer opens legal modal and closes on close button', async ({ page }) => {
+    await page.goto('/');
+    const termsLink = page.locator('#terms-link');
+    await expect(termsLink).toBeVisible();
+    await expect(termsLink).toContainText('Terms & Conditions');
+
+    await termsLink.click();
+    const modal = page.locator('#terms-modal-overlay');
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText(/Terms of Service/i);
+    await expect(modal).toContainText('André Vieira');
+    await expect(modal).toContainText('SECTION 1. LEGAL NOTICE & STATUTORY DISCLOSURES');
+    await expect(modal).toContainText('SECTION 4. COMMERCIAL TERMS, ACCESS PASSES & NO AUTOMATIC RENEWAL');
+
+    // Close modal via close button
+    await page.locator('#terms-modal-close').click();
+    await expect(modal).toBeHidden();
+});
+
