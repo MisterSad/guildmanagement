@@ -2939,7 +2939,7 @@
                     var power = item.currentPower || 0;
 
                     removedHtml += '<tr class="ocr-row ocr-row--removed" data-pseudo="' + esc(pseudo.toLowerCase()) + '" data-removal-pseudo="' + esc(pseudo) + '">' +
-                        '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' + esc(pseudo)" data-section="removed" checked></td>' +
+                        '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' + esc(pseudo) + '" data-section="removed" checked></td>' +
                         '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' + esc(pseudo) + '</span> <span class="gm-role-badge" style="font-size:0.7rem; padding:0.1rem 0.3rem;">' + esc(role) + '</span></td>' +
                         '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' + esc(uid || '—') + '</span></td>' +
                         '<td class="ocr-cell-metric"><span style="color:var(--text-muted); font-size:0.85rem;"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + fmtNum(power) + '</span></td>' +

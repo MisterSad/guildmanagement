@@ -22,7 +22,7 @@ Every modification must strictly comply with the architectural rules, security b
 - **Canonical Schema**: Database migrations consolidated into 4 master DDL files under `supabase/migrations/`. Sample and dev seed data isolated in `supabase/seeds/dev_seed.sql`. Legacy migration history safely archived in `supabase/migrations_archive/`.
 - **Distributed Observability & Structured Logging**: Standardized JSON logging on both Edge Functions (`supabase/functions/_shared/logger.ts`) and browser client (`src/core/logger/logger.ts`) with correlation IDs, execution latency tracking, automatic credential sanitization, and persistent audit logs in `public.system_audit_logs`.
 - **CI/CD Pipeline**: GitHub Actions (`.github/workflows/ci.yml`) running static type verification, unit test battery, and production build on every push to `main`.
-- **Quality Gate**: Vitest + jsdom test battery (**361/361 tests green**).
+- **Quality Gate**: Vitest + jsdom test battery (**385/385 tests green**).
 - **Production Hosting**: Vercel automated deployment from branch `main` with hardened Content Security Policy (CSP).
 
 ---
@@ -147,7 +147,7 @@ Before committing any code change, executing a pull request, or closing a task, 
 # 1. Static TypeScript Verification (0 errors required)
 npm run type-check
 
-# 2. Automated Vitest Unit Suite (333/333 tests green required)
+# 2. Automated Vitest Unit Suite (385/385 tests green required)
 npm test
 
 # 3. Production Bundle Compilation (Clean build into dist/ required)

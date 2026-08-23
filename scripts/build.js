@@ -23,9 +23,20 @@ files.forEach(file => {
     const destPath = path.join(distDir, file);
     try {
       if (fs.statSync(srcPath).isFile()) {
+        if (ext === '.js') {
+          try {
+            execSync(`node --check "${srcPath}"`, { stdio: 'pipe' });
+          } catch (syntaxErr) {
+            console.error(`\n❌ BUILD FAILED: SyntaxError in ${file}`);
+            throw new Error(`Syntax check failed for ${file}: ${syntaxErr.message}`);
+          }
+        }
         fs.copyFileSync(srcPath, destPath);
       }
     } catch (e) {
+      if (e.message && e.message.startsWith('Syntax check failed')) {
+        throw e;
+      }
       console.warn(`Could not copy ${file}:`, e.message);
     }
   }

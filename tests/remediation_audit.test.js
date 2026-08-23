@@ -271,7 +271,7 @@ describe('Audit Remediation Verification Suite', () => {
     expect(fs.existsSync(corsPath)).toBe(true);
     const corsContent = fs.readFileSync(corsPath, 'utf-8');
     expect(corsContent).toContain('export function getCorsHeaders');
-    expect(corsContent).toContain('https://fgf-guild-management.vercel.app');
+    expect(corsContent).toContain('https://guildmanagement.vercel.app');
 
     const buildScript = fs.readFileSync(path.resolve(__dirname, '../scripts/build.js'), 'utf-8');
     expect(buildScript).toContain('package.json');

@@ -5,7 +5,7 @@ export const ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:3000",
-  "https://fgf-guild-management.vercel.app",
+  "https://guildmanagement.vercel.app",
 ];
 
 // OWNER DECISION: any https://*.vercel.app origin is accepted (Vercel preview deployments).

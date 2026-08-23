@@ -1,5 +1,15 @@
 # Changelog
 
+## Fixed
+
+- **Login Outage Hotfix, Root Script Syntax Guards & CORS Production Origin Correction (v125.1)**:
+  - **Login Script SyntaxError Fix**: Resolved JavaScript syntax error at `app.js:2942` caused by an unconcatenated quote in the removed-members checkbox template from v125.0, restoring script execution and login form submit handler.
+  - **Automated Root-Script Syntax Test Suite**: Added `tests/root_syntax.test.js` running `node --check` against all root JavaScript files in the repository to guarantee unparseable classic scripts fail automated test runs.
+  - **CI & Build Pipeline Syntax Guards**: Injected explicit `node --check` validation loop into GitHub Actions (`.github/workflows/ci.yml`) and build script (`scripts/build.js`) before assets are packaged to `dist/`.
+  - **CORS Production Origin Correction**: Replaced stale `fgf-guild-management.vercel.app` origin with canonical `https://guildmanagement.vercel.app` in `supabase/functions/_shared/cors.ts`.
+  - **Cache Buster Bump**: Incremented `app.js?v=72` → `app.js?v=73` in `index.html` to guarantee instant cache invalidation for users.
+  - **Quality Gate**: **385/385 Vitest unit tests green** (+24 new syntax guard tests in `tests/root_syntax.test.js`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 ## New
 
 - **OCR Three-Section Roster Review & Cold-Start CTA (v125.0)**:
