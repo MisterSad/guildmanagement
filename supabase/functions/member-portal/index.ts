@@ -50,7 +50,7 @@ async function getIdentity(
 
   const { data: acc } = await admin
     .from("accounts")
-    .select("id, role, guild, status")
+    .select("id, role, guild, status, uid")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -64,7 +64,7 @@ async function getIdentity(
     .rpc("gm_get_shadow", { p_id: accountId });
 
   const row = Array.isArray(shadow) ? shadow[0] : shadow;
-  const playerUid = (row?.player_uid || accountId) as string;
+  const playerUid = (row?.player_uid || acc.uid || accountId) as string;
 
   return {
     accountId,

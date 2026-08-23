@@ -412,8 +412,32 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
+[functions.auth-login]
+verify_jwt = false
+
+[functions.player-register]
+verify_jwt = false
+
 [functions.event-reminders]
 verify_jwt = false
 
 [functions.gm-stripe-webhook]
 verify_jwt = false
+
+[functions.member-portal]
+verify_jwt = true
+
+[functions.admin-accounts]
+verify_jwt = true
+
+[functions.gm-create-order]
+verify_jwt = true
+
+[functions.gm-order-status]
+verify_jwt = true
+
+[functions.discord-webhook-proxy]
+verify_jwt = true
+
+[functions.ocr-guild-members]
+verify_jwt = true

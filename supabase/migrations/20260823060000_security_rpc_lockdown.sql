@@ -390,7 +390,7 @@ BEGIN
         'champion_power', v_member.champion_power,
         'crew_power', v_member.crew_power,
         'flagship_power', v_member.flagship_power,
-        'fleet_rating', v_fleet_rating,
+        'fleet_rating', v_member.fleet_rating,
         'glory_score', v_member.glory_score,
         'metrics_updated_at', v_member.metrics_updated_at,
         'density_index', v_density_index,
