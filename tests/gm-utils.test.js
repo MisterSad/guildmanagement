@@ -11,7 +11,7 @@ function clearStorage() {
     localStorage.clear();
 }
 
-describe('isGuildSubscriptionExpired (subscription gating)', () => {
+describe('isGuildSubscriptionExpired (subscription gating neutralized in v127.0)', () => {
     beforeEach(() => {
         clearStorage();
         window.currentGuildRestriction = null;
@@ -24,58 +24,19 @@ describe('isGuildSubscriptionExpired (subscription gating)', () => {
         };
     });
 
-    it('is never expired for super_admin', () => {
+    it('always returns false for all guilds and roles (app is free since v127.0)', () => {
         setStorage({ gm_role: 'super_admin' });
         expect(GM.isGuildSubscriptionExpired('IMK')).toBe(false);
-    });
 
-    it('is never expired when unrestricted', () => {
-        setStorage({ gm_role: 'member' });
+        setStorage({ gm_role: 'guild_admin' });
+        window.currentGuildRestriction = 'IMK';
         expect(GM.isGuildSubscriptionExpired('IMK')).toBe(false);
-    });
-
-    it('returns false without a guild id', () => {
-        setStorage({ gm_role: 'member' });
-        window.currentGuildRestriction = 'IMK';
-        expect(GM.isGuildSubscriptionExpired()).toBe(false);
-    });
-
-    it('returns false for unknown guilds and missing data', () => {
-        setStorage({ gm_role: 'member' });
-        window.currentGuildRestriction = 'IMK';
-        expect(GM.isGuildSubscriptionExpired('NOPE')).toBe(false);
-        delete window.guildsData.ALPHA;
+        expect(GM.isGuildSubscriptionExpired('BABE')).toBe(false);
         expect(GM.isGuildSubscriptionExpired('ALPHA')).toBe(false);
-    });
-
-    it('Unlimited subscriptions never expire', () => {
-        setStorage({ gm_role: 'member' });
-        window.currentGuildRestriction = 'IMK';
-        expect(GM.isGuildSubscriptionExpired('ALPHA')).toBe(false);
-    });
-
-    it('Premium with a future end date is active', () => {
-        setStorage({ gm_role: 'member' });
-        window.currentGuildRestriction = 'IMK';
         expect(GM.isGuildSubscriptionExpired('OMEGA')).toBe(false);
-    });
-
-    it('Premium with a past end date is expired', () => {
-        setStorage({ gm_role: 'member' });
-        window.currentGuildRestriction = 'IMK';
-        expect(GM.isGuildSubscriptionExpired('IMK')).toBe(true);
-    });
-
-    it('Premium without an end date is treated as expired', () => {
-        setStorage({ gm_role: 'member' });
-        window.currentGuildRestriction = 'IMK';
-        expect(GM.isGuildSubscriptionExpired('BABE')).toBe(true);
-    });
-
-    it('Standard subscriptions do not expire', () => {
-        setStorage({ gm_role: 'member' });
-        window.currentGuildRestriction = 'IMK';
         expect(GM.isGuildSubscriptionExpired('SOLO')).toBe(false);
+        expect(GM.isGuildSubscriptionExpired('NOPE')).toBe(false);
+        expect(GM.isGuildSubscriptionExpired()).toBe(false);
     });
 });
 
@@ -290,10 +251,10 @@ describe('canWriteGuild (role-based write access)', () => {
         expect(GM.canWriteGuild('ALPHA')).toBe(false);
     });
 
-    it('guild_admin cannot write when the subscription is expired', () => {
+    it('guild_admin can write to their assigned guild (subscription expiry no longer blocks writes since v127.0)', () => {
         setStorage({ gm_role: 'guild_admin' });
         window.currentGuildRestriction = 'BABE';
-        expect(GM.canWriteGuild('BABE')).toBe(false);
+        expect(GM.canWriteGuild('BABE')).toBe(true);
     });
 
     it('guild_admin cannot write when the restriction is missing (no fallback)', () => {

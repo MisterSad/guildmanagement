@@ -168,11 +168,11 @@ describe('canWriteGuild (server-agnostic client rules)', () => {
         expect(GM.canWriteGuild('OMEGA')).toBe(true);
         expect(GM.canWriteGuild('ALPHA')).toBe(false);
     });
-    it('guild admin is blocked when the subscription expired', () => {
+    it('guild admin can write to assigned guild (subscription expiry no longer blocks writes since v127.0)', () => {
         localStorage.setItem('gm_role', 'guild_admin');
         window.currentGuildRestriction = 'OMEGA';
         window.guildsData = { OMEGA: { type: 'Premium', end: '2020-01-01T00:00:00Z' } };
-        expect(GM.canWriteGuild('OMEGA')).toBe(false);
+        expect(GM.canWriteGuild('OMEGA')).toBe(true);
         window.guildsData = { OMEGA: { type: 'Unlimited' } };
         expect(GM.canWriteGuild('OMEGA')).toBe(true);
     });

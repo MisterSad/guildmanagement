@@ -6,9 +6,8 @@ import '../subscription.js';
 const GM = window.GM;
 const SUB = window.GM_SUBSCRIPTION;
 
-const FUTURE_END = '2026-12-31T00:00:00.000Z';
 const GUILDS = [
-    { id: 'ALPHA', subscription_type: 'Premium', subscription_end: FUTURE_END, server_number: '1089' },
+    { id: 'ALPHA', subscription_type: 'Unlimited', subscription_end: null, server_number: '1089' },
     { id: 'OMEGA', subscription_type: 'Unlimited', subscription_end: null, server_number: null },
 ];
 
@@ -28,12 +27,11 @@ function invokeMock(name, opts) {
         if (body.action === 'config') {
             return Promise.resolve({ data: { ok: true, mode: 'test', configured: true } });
         }
-        if (body.action === 'create') {
-            return Promise.resolve({ data: { ok: true, url: 'https://checkout.stripe.test/cs_test_x', sessionId: 'cs_test_x', mode: 'test' } });
-        }
     }
-    if (name === 'gm-order-status') {
-        return Promise.resolve({ data: { ok: true, state: 'completed', applied: true, lifetime: false, newEnd: FUTURE_END, planKey: '1m' } });
+    if (name === 'member-portal') {
+        if (body.action === 'create-donation') {
+            return Promise.resolve({ data: { ok: true, url: 'https://checkout.stripe.test/cs_donation_x', sessionId: 'cs_donation_x' } });
+        }
     }
     return Promise.resolve({ data: { ok: false, error: 'unexpected_invoke' } });
 }
@@ -61,7 +59,7 @@ beforeEach(() => {
     localStorage.setItem('gm_role', 'guild_admin');
     window.currentGuildRestriction = 'ALPHA';
     window.guildsData = {
-        ALPHA: { type: 'Premium', end: FUTURE_END, server_number: '1089' }
+        ALPHA: { type: 'Unlimited', end: null, server_number: '1089' }
     };
     invokeCalls = [];
     assignedUrl = null;
@@ -78,41 +76,35 @@ afterEach(() => {
     window.history.replaceState({}, '', '/');
 });
 
-describe('GM_SUBSCRIPTION self-service subscriptions', () => {
-    it('renders the four plans with their prices', async () => {
+describe('GM_SUBSCRIPTION voluntary donations ("Buy Me a Coffee")', () => {
+    it('renders the three donation tiers with their prices (€2, €5, €10)', async () => {
         await SUB.load();
         const texts = container().textContent;
-        expect(planKeys()).toEqual(['1m', '3m', '6m', '12m']);
-        expect(texts).toContain('€9.99');
-        expect(texts).toContain('€24.99');
-        expect(texts).toContain('€44.99');
-        expect(texts).toContain('€74.99');
+        expect(planKeys()).toEqual(['donation_2', 'donation_5', 'donation_10']);
+        expect(texts).toContain('€2');
+        expect(texts).toContain('€5');
+        expect(texts).toContain('€10');
+        expect(texts).toContain('100% FREE');
     });
 
-    it('shows the active status for a Premium subscription with a future end', async () => {
+    it('renders the custom donation amount card and input elements', async () => {
         await SUB.load();
-        expect(container().textContent).toContain('ALPHA - Active');
-        expect(container().textContent).toContain('Active until 2026-12-31');
+        const customInput = container().querySelector('#donation-custom-input');
+        const customBtn = container().querySelector('#donation-custom-btn');
+        expect(customInput).not.toBeNull();
+        expect(customBtn).not.toBeNull();
+        expect(container().textContent).toContain('Custom amount');
+        expect(container().textContent).toContain('between €2 and €100');
     });
 
-    it('shows the Lifetime status', async () => {
-        window.guildsData.ALPHA = { type: 'Lifetime', end: null, server_number: '' };
+    it('renders the transparency section explaining real infrastructure and AI OCR costs', async () => {
         await SUB.load();
-        expect(container().textContent).toContain('ALPHA - Lifetime');
-        expect(container().textContent).toContain('never expires');
-    });
-
-    it('shows the Unlimited status', async () => {
-        window.guildsData.ALPHA = { type: 'Unlimited', end: null, server_number: '' };
-        await SUB.load();
-        expect(container().textContent).toContain('ALPHA - Unlimited');
-    });
-
-    it('shows the expired state for a Premium subscription with a past end', async () => {
-        window.guildsData.ALPHA = { type: 'Premium', end: '2020-01-01T00:00:00.000Z', server_number: '' };
-        await SUB.load();
-        expect(container().textContent).toContain('ALPHA - Expired');
-        expect(container().textContent).toContain('Renew below');
+        const texts = container().textContent;
+        expect(texts).toContain('Why your support matters');
+        expect(texts).toContain('This app is free, and it stays free. But it is not free to run:');
+        expect(texts).toContain('Hosting & infrastructure (Vercel + Supabase): roughly EUR 45-100 every month');
+        expect(texts).toContain('AI OCR scans: every screenshot you analyze calls a paid AI API');
+        expect(texts).toContain('Every coffee genuinely helps. Thank you!');
     });
 
     it('mentions the accepted payment methods and provider security', async () => {
@@ -125,108 +117,120 @@ describe('GM_SUBSCRIPTION self-service subscriptions', () => {
         expect(texts).toContain('never has access to your bank details');
     });
 
-    it('shows a denied state for non-admin roles', async () => {
+    it('shows a denied state for non-admin roles in Command Center', async () => {
         localStorage.setItem('gm_role', 'member');
         delete window.currentGuildRestriction;
         await SUB.load();
         expect(container().textContent).toContain('Admins only');
     });
 
-    it('shows a payments-disabled state instead of plans when the guild flag is set', async () => {
+    it('shows a donations-disabled state when the guild flag is set', async () => {
         window.guildsData.ALPHA = { type: 'Unlimited', end: null, server_number: '1089', paymentsDisabled: true };
         await SUB.load();
-        expect(container().textContent).toContain('Payments are disabled');
-        expect(container().textContent).toContain('No payment is required');
+        expect(container().textContent).toContain('Donations are disabled');
+        expect(container().textContent).toContain('Donations are disabled on the demonstration server.');
         expect(planKeys()).toEqual([]);
-        expect(invokeCalls.filter((c) => c[0] === 'gm-create-order')).toHaveLength(0);
-    });
-
-    it('renders plans again for a guild with payments enabled', async () => {
-        window.guildsData.ALPHA = { type: 'Premium', end: FUTURE_END, server_number: '1089', paymentsDisabled: false };
-        await SUB.load();
-        expect(planKeys()).toEqual(['1m', '3m', '6m', '12m']);
+        expect(invokeCalls.filter((c) => c[0] === 'member-portal')).toHaveLength(0);
     });
 
     it('does not start checkout when payments are not configured', async () => {
         setupDb({
             invoke: async (name, opts) => {
-                if ((opts.body || {}).action === 'config') {
+                if (name === 'gm-create-order' && (opts.body || {}).action === 'config') {
                     return { data: { ok: true, mode: 'prod', configured: false } };
                 }
                 return { data: { ok: false, error: 'not_configured' } };
             }
         });
         await SUB.load();
-        container().querySelector('[data-gm-sub-plan="1m"]').click();
+        container().querySelector('[data-gm-sub-plan="donation_2"]').click();
         expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('not configured'), 'error');
-        expect(invokeCalls.filter((c) => c[0] === 'gm-create-order' && c[1].action === 'create')).toHaveLength(0);
+        expect(invokeCalls.filter((c) => c[0] === 'member-portal')).toHaveLength(0);
     });
 
-    it('creates a Checkout Session and redirects the browser to the hosted page', async () => {
+    it('creates a Donation Checkout Session via member-portal and redirects the browser', async () => {
         SUB._redirectTo = (url) => { assignedUrl = String(url); };
         await SUB.load();
-        container().querySelector('[data-gm-sub-plan="6m"]').click();
+        container().querySelector('[data-gm-sub-plan="donation_5"]').click();
         await new Promise((r) => setTimeout(r, 0));
-        const createCalls = invokeCalls.filter((c) => c[0] === 'gm-create-order' && c[1].action === 'create');
-        expect(createCalls).toHaveLength(1);
-        expect(createCalls[0][1].guildId).toBe('ALPHA');
-        expect(createCalls[0][1].plan).toBe('6m');
-        expect(assignedUrl).toBe('https://checkout.stripe.test/cs_test_x');
+        const donateCalls = invokeCalls.filter((c) => c[0] === 'member-portal' && c[1].action === 'create-donation');
+        expect(donateCalls).toHaveLength(1);
+        expect(donateCalls[0][1].payload.guildId).toBe('ALPHA');
+        expect(donateCalls[0][1].payload.plan).toBe('donation_5');
+        expect(assignedUrl).toBe('https://checkout.stripe.test/cs_donation_x');
     });
 
-    it('shows a failure toast when creating the session fails', async () => {
+    it('creates a custom Donation Checkout Session when valid custom amount is entered', async () => {
+        SUB._redirectTo = (url) => { assignedUrl = String(url); };
+        await SUB.load();
+        const customInput = container().querySelector('#donation-custom-input');
+        const customBtn = container().querySelector('#donation-custom-btn');
+        customInput.value = '25';
+        customBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        const donateCalls = invokeCalls.filter((c) => c[0] === 'member-portal' && c[1].action === 'create-donation');
+        expect(donateCalls).toHaveLength(1);
+        expect(donateCalls[0][1].payload.plan).toBe('donation_custom');
+        expect(donateCalls[0][1].payload.amountCents).toBe(2500);
+        expect(assignedUrl).toBe('https://checkout.stripe.test/cs_donation_x');
+    });
+
+    it('blocks client-side submission of invalid custom amounts (<2 or >100 EUR)', async () => {
+        await SUB.load();
+        const customInput = container().querySelector('#donation-custom-input');
+        const customBtn = container().querySelector('#donation-custom-btn');
+        const customErr = container().querySelector('#donation-custom-error');
+
+        // Test < 2
+        customInput.value = '1';
+        customBtn.click();
+        expect(customErr.style.display).toBe('block');
+        expect(invokeCalls.filter((c) => c[0] === 'member-portal')).toHaveLength(0);
+
+        // Test > 100
+        customInput.value = '150';
+        customBtn.click();
+        expect(customErr.style.display).toBe('block');
+        expect(invokeCalls.filter((c) => c[0] === 'member-portal')).toHaveLength(0);
+    });
+
+    it('shows a failure toast when creating the donation session fails', async () => {
         setupDb({
             invoke: async (name, opts) => {
                 const body = (opts && opts.body) || {};
-                if (body.action === 'config') return { data: { ok: true, mode: 'prod', configured: true } };
-                if (body.action === 'create') return { data: { ok: false, error: 'checkout_failed' } };
+                if (name === 'gm-create-order' && body.action === 'config') return { data: { ok: true, mode: 'prod', configured: true } };
+                if (name === 'member-portal' && body.action === 'create-donation') return { data: { ok: false, error: 'checkout_failed' } };
                 return { data: { ok: false, error: 'unexpected' } };
             }
         });
         await SUB.load();
-        container().querySelector('[data-gm-sub-plan="1m"]').click();
+        container().querySelector('[data-gm-sub-plan="donation_2"]').click();
         await new Promise((r) => setTimeout(r, 0));
-        expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('Could not start the payment'), 'error');
+        expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('Could not start the donation checkout'), 'error');
     });
 
-    it('confirms a successful return by polling gm-order-status and refreshing guildsData', async () => {
+    it('shows a warm thank-you state on successful return (?checkout=success) without polling', async () => {
         await SUB.load();
-        // Simulate the return URL: the app would call handleReturn with the session id.
-        await SUB.handleReturn(container(), "?checkout=success&session_id=cs_test_9");
+        await SUB.handleReturn(container(), "?checkout=success&session_id=cs_test_donation");
         await new Promise((r) => setTimeout(r, 0));
+        expect(container().textContent).toContain('Thank you for your support!');
+        expect(container().textContent).toContain('Your donation helps keep the servers running');
+        expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('Thank you for your support!'), 'success');
+        // Verify NO gm-order-status polling is executed for voluntary donations
         const statusCalls = invokeCalls.filter((c) => c[0] === 'gm-order-status');
-        expect(statusCalls.length).toBeGreaterThan(0);
-        expect(statusCalls[0][1].sessionId).toBe('cs_test_9');
-        expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('activated'), 'success');
+        expect(statusCalls).toHaveLength(0);
     });
 
-    it('shows a waiting toast when the payment is not applied yet', async () => {
-        vi.useFakeTimers();
-        setupDb({
-            invoke: async (name, opts) => {
-                const body = (opts && opts.body) || {};
-                if (name === 'gm-create-order' && body.action === 'config') {
-                    return { data: { ok: true, mode: 'test', configured: true } };
-                }
-                if (name === 'gm-order-status') {
-                    return { data: { ok: true, state: 'open', applied: false } };
-                }
-                return { data: { ok: false, error: 'unexpected_invoke' } };
-            },
-            from: fromMock
-        });
+    it('handles cancelled return (?checkout=cancel) with an info toast', async () => {
         await SUB.load();
-        const pending = SUB.handleReturn(container(), "?checkout=success&session_id=cs_test_9");
-        await vi.advanceTimersByTimeAsync(2000 * 16);
-        await pending;
-        expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('activation in progress'), 'info');
-        vi.useRealTimers();
+        await SUB.handleReturn(container(), "?checkout=cancel");
+        expect(GM.showToast).toHaveBeenCalledWith(expect.stringContaining('Donation cancelled.'), 'info');
     });
 
     it('shows the load error state with a retry button when config fails', async () => {
         setupDb({ invoke: async () => ({ data: { ok: false, error: 'server_error' } }) });
         await SUB.load();
-        expect(container().textContent).toContain('Could not load the subscription page');
+        expect(container().textContent).toContain('Could not load the donation page');
         expect(document.getElementById('subscription-retry')).not.toBeNull();
     });
 });
