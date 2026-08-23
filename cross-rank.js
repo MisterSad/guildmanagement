@@ -356,31 +356,31 @@
                             '</div>' +
                         '</div>' +
                     '</td>' +
-                    '<td class="gm-center" data-sort="server">' +
+                    '<td class="gm-center" data-label="Server" data-sort="server">' +
                         '<span style="background:rgba(59, 130, 246, 0.12); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.25); border-radius:6px; padding:2px 7px; font-weight:700; font-size:.75rem; font-variant-numeric:tabular-nums;">' + esc(serverDisplay) + '</span>' +
                     '</td>' +
-                    '<td class="gm-center" data-sort="guild">' +
+                    '<td class="gm-center" data-label="Guild" data-sort="guild">' +
                         '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:2px 7px; font-weight:700; font-size:.72rem; letter-spacing:.03em;">' + esc(r.guild) + '</span>' +
                     '</td>' +
-                    '<td data-sort="power" class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums;">' + powerStr + '</td>' +
-                    '<td class="gm-center" data-sort="draft_score">' +
+                    '<td data-label="Power" data-sort="power" class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums;">' + powerStr + '</td>' +
+                    '<td class="gm-center" data-label="Draft" data-sort="draft_score">' +
                         '<div style="font-weight:800; font-size:0.92rem; color:' + rateColor(draftScore) + '; font-variant-numeric:tabular-nums;">' + draftScoreStr + '</div>' +
                     '</td>' +
-                    '<td class="gm-center" data-sort="day6">' +
+                    '<td class="gm-center" data-label="Day 6" data-sort="day6">' +
                         '<div style="font-weight:700; color:' + rateColor(day6Score) + '; font-variant-numeric:tabular-nums;">' + day6Str + '</div>' +
                     '</td>' +
-                    '<td class="gm-center" data-sort="shadow">' +
+                    '<td class="gm-center" data-label="Shadowfront" data-sort="shadow">' +
                         '<div style="font-weight:700; color:' + rateColor(shadowRate) + '; font-variant-numeric:tabular-nums;">' + shadowStr + '</div>' +
                         (shadowRatio ? '<div class="gm-dim" style="font-size:.68rem; font-variant-numeric:tabular-nums;">' + shadowRatio + '</div>' : '') +
                     '</td>' +
-                    '<td class="gm-center" data-sort="glory">' +
+                    '<td class="gm-center" data-label="Glory" data-sort="glory">' +
                         '<div style="font-weight:700; color:' + rateColor(gloryScore) + '; font-variant-numeric:tabular-nums;">' + gloryStr + '</div>' +
                     '</td>' +
-                    '<td class="gm-center" data-sort="svs">' +
+                    '<td class="gm-center" data-label="SvS" data-sort="svs">' +
                         '<div style="font-weight:600; color:' + rateColor(r.svs_rate) + '; font-variant-numeric:tabular-nums;">' + svsRate + '</div>' +
                         (svsRatio ? '<div class="gm-dim" style="font-size:.68rem; font-variant-numeric:tabular-nums;">' + svsRatio + '</div>' : '') +
                     '</td>' +
-                    '<td class="gm-center" data-sort="gvg">' +
+                    '<td class="gm-center" data-label="GvG" data-sort="gvg">' +
                         '<div style="font-weight:600; color:' + rateColor(r.gvg_rate) + '; font-variant-numeric:tabular-nums;">' + gvgRate + '</div>' +
                         (gvgRatio ? '<div class="gm-dim" style="font-size:.68rem; font-variant-numeric:tabular-nums;">' + gvgRatio + '</div>' : '') +
                     '</td>' +
@@ -434,7 +434,7 @@
         var tableHtml =
             '<div class="gm-card glass-card" style="padding:1rem 0.75rem;">' +
                 '<div class="gm-table-wrapper gm-table-scroll" style="overflow-x:auto; width:100%; -webkit-overflow-scrolling:touch; border-radius:var(--radius-md);">' +
-                    '<table class="gm-table gm-draft-table" style="width:100%; border-collapse:collapse; min-width:820px;">' +
+                    '<table class="gm-table gm-draft-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:820px;">' +
                         '<thead><tr>' +
                             '<th class="gm-center" style="width:40px;">#</th>' +
                             headerCell('pseudo', t('col_member') || 'Candidate') +

@@ -4836,22 +4836,22 @@
                             '</div>' +
                         '</div>' +
                     '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:center;">' + rallyRoleChip + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:center;"><span class="gm-role-chip" style="font-size:0.7rem; padding:0.1rem 0.35rem;">' + esc(roleVal) + '</span></td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:right; font-weight:600; font-size:0.85rem;">' + window.GM.formatPower(powerVal) + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#60a5fa; font-weight:600; font-size:0.85rem;">' + (m.fleet_rating ? window.GM.formatPower(m.fleet_rating) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#a78bfa; font-weight:600; font-size:0.85rem;">' + (m.tech_power ? window.GM.formatPower(m.tech_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#fbbf24; font-weight:600; font-size:0.85rem;">' + (m.flagship_power ? window.GM.formatPower(m.flagship_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6; font-weight:600; font-size:0.85rem;">' + (m.champion_power ? window.GM.formatPower(m.champion_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8; font-weight:600; font-size:0.85rem;">' + (m.crew_power ? window.GM.formatPower(m.crew_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size:0.85rem;" title="Latest Recorded Sunday Glory: ' + (m.glory_score ? window.GM.formatNumber(m.glory_score) : '0') + '">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td style="padding:0.65rem 0.5rem; text-align:center;">' +
+                    '<td data-label="Rally" style="padding:0.65rem 0.5rem; text-align:center;">' + rallyRoleChip + '</td>' +
+                    '<td data-label="Role" style="padding:0.65rem 0.5rem; text-align:center;"><span class="gm-role-chip" style="font-size:0.7rem; padding:0.1rem 0.35rem;">' + esc(roleVal) + '</span></td>' +
+                    '<td data-label="Power" style="padding:0.65rem 0.5rem; text-align:right; font-weight:600; font-size:0.85rem;">' + window.GM.formatPower(powerVal) + '</td>' +
+                    '<td data-label="Fleet" style="padding:0.65rem 0.5rem; text-align:right; color:#60a5fa; font-weight:600; font-size:0.85rem;">' + (m.fleet_rating ? window.GM.formatPower(m.fleet_rating) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Tech" style="padding:0.65rem 0.5rem; text-align:right; color:#a78bfa; font-weight:600; font-size:0.85rem;">' + (m.tech_power ? window.GM.formatPower(m.tech_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Flagship" style="padding:0.65rem 0.5rem; text-align:right; color:#fbbf24; font-weight:600; font-size:0.85rem;">' + (m.flagship_power ? window.GM.formatPower(m.flagship_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Champs" style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6; font-weight:600; font-size:0.85rem;">' + (m.champion_power ? window.GM.formatPower(m.champion_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Crew" style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8; font-weight:600; font-size:0.85rem;">' + (m.crew_power ? window.GM.formatPower(m.crew_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Glory" style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size:0.85rem;" title="Latest Recorded Sunday Glory: ' + (m.glory_score ? window.GM.formatNumber(m.glory_score) : '0') + '">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Rally Score" style="padding:0.65rem 0.5rem; text-align:center;">' +
                         (rallyScore > 0
                             ? '<span class="gm-chip" style="font-weight:700; font-size:0.8rem; color:#818cf8; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.32); padding:0.15rem 0.5rem; gap:0.25rem;" title="Rally Grade: ' + rallyGrade + '/100 (' + window.GM.formatPower(rallyScore) + ')"><i class="ph ph-lightning"></i> ' + rallyGrade + '/100</span>'
                             : '<span style="color:var(--text-muted); opacity:0.4;">—</span>'
                         ) +
                     '</td>' +
-                    '<td style="padding:0.65rem 0.75rem; text-align:center;">' +
+                    '<td data-label="Action" style="padding:0.65rem 0.75rem; text-align:center;">' +
                         '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="Edit Player Military Metrics" style="padding:0.25rem 0.5rem; font-size:0.75rem; gap:0.25rem;"><i class="ph ph-pencil-simple"></i> Edit</button>' +
                     '</td>' +
                 '</tr>';
@@ -4859,7 +4859,7 @@
 
             return headerSummary +
                 '<div class="gm-table-wrap" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow-x:auto;">' +
-                    '<table class="gm-table" style="width:100%; border-collapse:collapse; min-width:850px;">' +
+                    '<table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:850px;">' +
                         '<thead>' +
                             '<tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">' +
                                 '<th style="padding:0.65rem 0.75rem; text-align:left;">Player</th>' +

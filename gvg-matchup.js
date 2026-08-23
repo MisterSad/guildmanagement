@@ -271,7 +271,7 @@
                 '</div>' +
 
                 '<!-- Matchup Guild Selectors: Grille minmax(0, 1fr) minmax(0, 1fr) alignée -->' +
-                '<div style="position:relative; display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap:1.25rem; align-items:center;">' +
+                '<div class="gm-matchup-2col" style="position:relative; align-items:center;">' +
                     '<!-- Guild A Selection -->' +
                     '<div style="background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:12px; padding:.75rem 1rem;">' +
                         '<div style="font-weight:800; color:#60a5fa; font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.4rem; display:flex; align-items:center; gap:.4rem;">' +
@@ -348,7 +348,7 @@
         var sA = getGuildServer(state.guildA);
         var sB = getGuildServer(state.guildB);
 
-        return '<div style="display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap:1.25rem; margin-bottom:1.25rem;">' +
+        return '<div class="gm-matchup-2col" style="margin-bottom:1.25rem;">' +
             '<!-- Guild A Summary -->' +
             '<div class="gm-card glass-card" style="padding:1.1rem; border-left:4px solid #3b82f6;">' +
                 '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.85rem;">' +
@@ -409,7 +409,7 @@
 
     // ── Vue Side-by-Side (Deux Tableaux Côte à Côte sans Débordement) ────────
     function renderSideBySideView(rowsA, rowsB) {
-        return '<div style="display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap:1.25rem;">' +
+        return '<div class="gm-matchup-2col">' +
             '<!-- Guild A Roster Table -->' +
             '<div class="gm-card glass-card" style="padding:.85rem; overflow:hidden;">' +
                 '<div style="font-weight:800; font-size:0.9rem; color:#60a5fa; margin-bottom:.65rem; display:flex; align-items:center; justify-content:space-between;">' +

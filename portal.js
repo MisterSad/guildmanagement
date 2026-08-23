@@ -141,6 +141,9 @@
             { id: 'badges', icon: 'ph-trophy', label: 'Badges' },
             { id: 'donation', icon: 'ph-coffee', label: 'Buy Me a Coffee' }
         ];
+        // Mobile bottom nav: 4 primary tabs + a More sheet (mirrors the admin shell pattern)
+        var primaryNavIds = ['settings', 'dashboard', 'challenges', 'events'];
+        var drawerNavIds = ['absence', 'badges', 'donation'];
 
         var navHtml = navItems.map(function (item) {
             var isActive = portalState.activeTab === item.id;
@@ -205,18 +208,41 @@
                     '</div>' +
                 '</div>' +
 
-                // Bottom navigation (mobile)
+                // Bottom navigation (mobile): 4 primary + More
                 '<nav class="gm-bottom-nav">' +
                     '<div class="gm-bottom-nav-inner">' +
-                        navItems.map(function (item) {
+                        primaryNavIds.map(function (id) {
+                            var item = navItems.find(function (n) { return n.id === id; });
+                            if (!item) return '';
                             var isActive = portalState.activeTab === item.id;
                             return '<button class="gm-bottom-nav-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
                                         '<i class="ph ' + item.icon + ' gm-icon"></i>' +
                                         '<span>' + esc(item.label) + '</span>' +
                                     '</button>';
                         }).join('') +
+                        '<button class="gm-bottom-nav-item' + (drawerNavIds.indexOf(portalState.activeTab) !== -1 ? ' gm-active' : '') + '" data-portal-more>' +
+                            '<i class="ph ph-dots-three gm-icon"></i>' +
+                            '<span>More</span>' +
+                        '</button>' +
                     '</div>' +
                 '</nav>' +
+
+                // More sheet (mobile)
+                '<div class="gm-drawer-backdrop" data-portal-drawer-backdrop></div>' +
+                '<div class="gm-drawer" data-portal-drawer>' +
+                    '<div class="gm-drawer-handle"></div>' +
+                    '<div class="gm-drawer-grid">' +
+                        drawerNavIds.map(function (id) {
+                            var item = navItems.find(function (n) { return n.id === id; });
+                            if (!item) return '';
+                            var isActive = portalState.activeTab === item.id;
+                            return '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
+                                        '<i class="ph ' + item.icon + ' gm-icon"></i>' +
+                                        '<span>' + esc(item.label) + '</span>' +
+                                    '</button>';
+                        }).join('') +
+                    '</div>' +
+                '</div>' +
             '</div>';
 
         root.innerHTML = html;
@@ -226,6 +252,8 @@
             root.querySelectorAll('[data-portal-nav]').forEach(function (b) {
                 b.classList.toggle('gm-active', b.getAttribute('data-portal-nav') === tabId);
             });
+            var moreBtn = root.querySelector('[data-portal-more]');
+            if (moreBtn) moreBtn.classList.toggle('gm-active', drawerNavIds.indexOf(tabId) !== -1);
             ['dashboard', 'challenges', 'badges', 'events', 'absence', 'settings', 'donation'].forEach(function (name) {
                 var panel = document.getElementById('portal-panel-' + name);
                 if (panel) panel.classList.toggle('hidden', name !== portalState.activeTab);
@@ -250,8 +278,28 @@
         root.querySelectorAll('[data-portal-nav]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 gotoTab(btn.getAttribute('data-portal-nav'));
+                closePortalDrawer();
             });
         });
+
+        function closePortalDrawer() {
+            var drawer = root.querySelector('[data-portal-drawer]');
+            var backdrop = root.querySelector('[data-portal-drawer-backdrop]');
+            if (drawer) drawer.classList.remove('gm-open');
+            if (backdrop) backdrop.classList.remove('gm-open');
+        }
+
+        var moreBtn = root.querySelector('[data-portal-more]');
+        if (moreBtn) {
+            moreBtn.addEventListener('click', function () {
+                var drawer = root.querySelector('[data-portal-drawer]');
+                var backdrop = root.querySelector('[data-portal-drawer-backdrop]');
+                if (drawer) drawer.classList.toggle('gm-open');
+                if (backdrop) backdrop.classList.toggle('gm-open', drawer && drawer.classList.contains('gm-open'));
+            });
+        }
+        var drawerBackdrop = root.querySelector('[data-portal-drawer-backdrop]');
+        if (drawerBackdrop) drawerBackdrop.addEventListener('click', closePortalDrawer);
 
         root.querySelectorAll('[data-portal-exit]').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -492,14 +540,30 @@
             });
         });
 
-        // Draw charts after insertion
+        // Draw charts after insertion; keep a registry so a debounced resize
+        // listener can redraw them (rotation / window resize / drawer toggle).
         portalState.chartsDrawn = true;
+        portalState.chartRegistry = chartKeys.map(function (key, idx) {
+            return { key: key, ev: hist[key], idx: idx };
+        });
         window.requestAnimationFrame(function () {
             chartKeys.forEach(function (key, idx) {
                 drawChart(key, hist[key], idx);
             });
         });
     }
+
+    // Debounced chart redraw on window resize (DPR-aware canvases)
+    var portalResizeTimer = null;
+    window.addEventListener('resize', function () {
+        if (portalResizeTimer) clearTimeout(portalResizeTimer);
+        portalResizeTimer = setTimeout(function () {
+            var registry = portalState.chartRegistry || [];
+            registry.forEach(function (entry) {
+                drawChart(entry.key, entry.ev, entry.idx);
+            });
+        }, 200);
+    });
 
     // ─── Format date to DD/MM/YY (JJ/MM/AA) format ─────────────────────────
     function formatPortalDateDDMMAA(h) {
@@ -610,8 +674,20 @@
     function drawChart(eventKey, ev, idx) {
         var canvas = document.querySelector('.portal-chart-canvas[data-chart-idx="' + idx + '"]');
         if (!canvas) return;
+
+        // DPR-aware sizing: bitmap = CSS box * devicePixelRatio so lines stay
+        // sharp on retina and the chart keeps a readable aspect on phones
+        // (mobile audit 2026-08-23: fixed 1200x200 bitmap rendered ~55px tall).
+        var cssW = Math.max(280, (canvas.getBoundingClientRect().width || canvas.width || 1200));
+        var dpr = Math.max(1, window.devicePixelRatio || 1);
+        var cssH = Math.max(190, Math.min(300, Math.round(cssW * 0.30)));
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        canvas.style.height = cssH + 'px';
+
         var ctx = canvas.getContext('2d');
-        var w = canvas.width, h = canvas.height;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var w = cssW, h = cssH;
         ctx.clearRect(0, 0, w, h);
 
         // Chronological order (oldest first) for the curve.

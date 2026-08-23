@@ -1,5 +1,17 @@
 # Changelog
 
+## New
+
+- **Complete Mobile Experience Remediation (v128.0)**:
+  - **Player Portal Bottom Navigation Rebuilt**: The mobile bottom nav previously rendered all 7 tabs in a 4-column grid under a fixed 70px bar, pushing Active Events, Badges, and Buy Me a Coffee below the screen edge (unreachable on phones). It now mirrors the admin shell pattern: 4 primary tabs (My Info, My Progress, Challenges, Active Events) plus a More button opening a slide-up sheet, with `min-height` instead of a fixed height.
+  - **Scrollable Modal Overlays (the impossible scrolls)**: `.confirm-overlay` and `.gm-modal-overlay` previously centered cards with no scroll container, clipping tall dialogs (edit-member with 6 military inputs, history session modal) equally top and bottom on phones and in landscape. Both overlays now scroll (`overflow-y: auto`) with `margin: auto` cards that center when short and scroll when tall.
+  - **Portal Content Clears the Bottom Nav**: `.portal-shell .gm-content` mobile padding now accounts for the nav height and the notch safe area (its higher specificity previously defeated the shell rule, hiding the last card of every tab under the nav).
+  - **SvS/GvG Matchup Grids Collapse on Phones**: the inline `minmax(0,1fr) x2` grids (immune to media queries, rendering ~160px panels on a 360px screen) are replaced by a `.gm-matchup-2col` class that collapses to one column below 640px.
+  - **Wide Admin Tables Become Cards on Mobile**: the 12-column Tactical Force Matrix (`min-width: 850px`), the Cross-Guild Draft Ranking (`820px`), and the Stats leaderboards (all modes) now degrade to labeled cards below 900px via the existing `gm-resp-table` pattern (`data-label` on every cell, forced min-widths neutralized).
+  - **DPR-Aware Portal Charts**: the fixed 1200x200 canvas bitmap (55px tall and unreadable on phones, soft on retina) is now sized from its CSS box times `devicePixelRatio`, with a readable mobile aspect and debounced redraw on window resize/rotation.
+  - **Mobile Polish Batch**: iOS tap-highlight removed, safe-area insets on the OCR mobile sheet and help sheet, drawer uses `dvh`, OCR row checkboxes enlarged to 22px, help button touch target 28px, metric tabs 44px min-height, notification grid collapses on narrow phones, toasts clear the bottom nav + safe area, stale Three.js script comment removed.
+  - **Quality Gate**: **416/416 Vitest unit tests green** (+6 mobile regression guards in `tests/mobile_ux.test.js`), 0 TypeScript errors, clean build, portal e2e green.
+
 ## Fixed
 
 - **Player Portal Military Metrics & Guild Benchmarks (v127.1)**:

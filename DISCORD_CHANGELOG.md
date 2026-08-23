@@ -1,29 +1,21 @@
-📢 **FGF Guild Management Tool Update — CHANG_V127.0**
+📢 **FGF Guild Management Tool Update — CHANG_V128.0**
 
-Hey everyone! Today marks a massive milestone for the FGF Guild Management Tool: **the platform is now 100% free for everyone, with zero feature paywalls.**
+Hey everyone! I heard you loud and clear: the app on phones needed love. Today I shipped a full mobile overhaul — every screen was audited on a phone-sized display and rebuilt where it failed. Here is what changed:
 
-Whether you are a guild leader running battle operations or a player tracking your combat stats, every single tool is fully unlocked for all guilds. Here is everything you need to know about this change:
+📱 **The Player Portal Finally Fits Your Phone**
+- **Every tab is now reachable**: the bottom menu previously pushed Active Events, Badges, and Buy Me a Coffee below the edge of the screen. It now shows your four main tabs plus a **More** sheet for the rest.
+- **The last card of every page is visible again**: content no longer hides behind the bottom menu, including on notched phones.
+- **Readable progress charts**: graphs now render sharp on high-resolution screens, adopt a proper height on phones, and redraw when you rotate your device.
 
-🎉 **100% Free Platform — No More Subscriptions**
-- **All Features Unlocked**: Military matrix analytics, roster OCR scanners, tactical battle tracking, Discord event webhooks, and the Player Portal are now completely free for all guild tenants and players.
-- **No Expiration Dates or Lockouts**: You will never have to worry about subscription renewals, grace periods, or feature gating again.
+🛠️ **No More Impossible Scrolls**
+- **Tall dialogs are fully scrollable**: editing a member's military metrics or opening an event history popup previously clipped its buttons off-screen on phones. Every popup now scrolls cleanly to the top and the bottom.
+- **Works in landscape too**: popups that overflow short phone heights (sideways gaming sessions, I see you) are no longer trapped.
 
-☕ **"Buy Me a Coffee" Voluntary Donations**
-- **Support Development Directly**: If the app helps your guild stay organized and win battles, you can now support its ongoing development with a voluntary one-time donation.
-- **Flexible Donation Amounts**: Quick preset options (€2 / €5 / €10) or enter any custom amount between €2 and €100.
-- **Available to Everyone**: The new "Buy Me a Coffee" tab is available directly in the Command Center for guild officers (right below Banned Players) and as a dedicated tab inside the Player Portal for members.
-- **Zero Paywalls**: Donations are 100% voluntary gratuities. They confer no exclusive privileges or competitive advantages — everyone gets the exact same full feature set.
+📊 **Big Tables, Small Screens**
+- **The Tactical Force Matrix, cross-server draft rankings, and leaderboard tables now transform into clean labeled cards** on your phone instead of demanding endless sideways scrolling.
+- **SvS and GvG matchup views stack vertically** on phones instead of squeezing two panels into unreadable halves.
 
-📊 **Cost Transparency**
-- **Why Your Support Matters**: Inside the donation tab, I've shared the real monthly operating expenses required to keep this project online:
-  - **Hosting & Infrastructure**: Roughly €45–€100 every single month for cloud servers and database infrastructure.
-  - **AI OCR Scans**: Every roster or power screenshot analyzed calls a paid AI vision model API, scaling directly with community usage.
-  - **Development**: Hundreds of hours spent building, updating, and fine-tuning features during evenings and weekends.
-- Every coffee genuinely helps keep the servers running and the AI scans flowing for all guilds!
+✨ **Polish**
+- Faster, cleaner taps (no more grey flash on iOS), bigger checkboxes and touch targets, and proper spacing around the iPhone home indicator everywhere.
 
-🔒 **Secure Payments via Stripe**
-- **Safe Payments**: All donations are securely processed and managed by Stripe. The app never has access to your bank details.
-- **Terms & Conditions**: Full legal and contribution terms are clearly detailed in our Terms and Conditions.
-
----
-*Thank you all for being part of this community, sharing your feedback, and helping make this tool better every week. See you on the battlefield!* 🚀⚔️
+*Everything is live. If you still find a screen that misbehaves on your device, tell me your phone model and what you see — I will hunt it down. Fly safe!* ⚔️

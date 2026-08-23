@@ -742,6 +742,9 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     transform: scale(1.1);
 }
 
+/* iOS: kill the grey tap flash on the dark theme (mobile audit 2026-08-23) */
+:root { -webkit-tap-highlight-color: transparent; }
+
 /* Confirm dialog overlay */
 .confirm-overlay {
     position: fixed;
@@ -750,11 +753,14 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     display: flex;
-    align-items: center;
-    justify-content: center;
+    /* No align-items: center: margin:auto on .confirm-card centers short dialogs
+       AND keeps tall dialogs scrollable when they exceed the viewport. */
     z-index: 200;
     opacity: 0;
     transition: opacity 0.25s ease;
+    overflow-y: auto;
+    padding: 1.5rem 1rem;
+    -webkit-overflow-scrolling: touch;
 }
 
 .confirm-overlay.visible {
@@ -762,6 +768,7 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 }
 
 .confirm-card {
+    margin: auto;
     padding: 2rem;
     max-width: 400px;
     width: 90%;

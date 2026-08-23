@@ -1166,7 +1166,7 @@
             var tableHtml =
                 '<div class="gm-card glass-card" style="padding:1.25rem;">' +
                     '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
-                        '<table class="gm-table" style="width:100%; border-collapse:collapse;">' +
+                        '<table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse;">' +
                             '<thead><tr>' + theadCols + '</tr></thead><tbody>';
 
             state.leaderboardData.forEach(function (m, idx) {
@@ -1177,7 +1177,7 @@
                 var scoreDisplay = (m.score > 0) ? (fmt(m.score) + ' pts') : (m.events_done > 0 ? (m.events_done + ' pts') : '0 pts');
 
                 var rowCells = '<td class="gm-center" style="font-weight:700;">' + rankBadge + '</td>' +
-                    '<td>' +
+                    '<td data-label="Player">' +
                         '<div class="gm-member-id" style="display:flex; align-items:center; gap:.75rem;">' +
                             '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size:1rem; font-weight:700;">' + esc(initial) + '</div>' +
                             '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(m.pseudo) + '</strong>' +
@@ -1189,28 +1189,28 @@
                     var rateBadge = ratePct >= 80 ? '<span style="color:#34d399; font-weight:700;">' + ratePct + '%</span>' : (ratePct >= 50 ? '<span style="color:#fbbf24; font-weight:700;">' + ratePct + '%</span>' : '<span style="color:var(--fg-dim);">' + ratePct + '%</span>');
 
                     rowCells +=
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.assigned_count > 0 ? (m.assigned_count + ' squads') : '-') + '</td>' +
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.events_done > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.events_done + '</span>') : '<span style="color:var(--fg-dim);">0</span>') + '</td>' +
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.sub_count > 0 ? ('<span style="color:#fbbf24; font-weight:700;">🔁 ' + m.sub_count + '</span>') : '-') + '</td>' +
-                        '<td class="gm-center" style="font-family:var(--font-display);">' + rateBadge + '</td>' +
-                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                        '<td data-label="Squads" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.assigned_count > 0 ? (m.assigned_count + ' squads') : '-') + '</td>' +
+                        '<td data-label="Done" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.events_done > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.events_done + '</span>') : '<span style="color:var(--fg-dim);">0</span>') + '</td>' +
+                        '<td data-label="Subs" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.sub_count > 0 ? ('<span style="color:#fbbf24; font-weight:700;">🔁 ' + m.sub_count + '</span>') : '-') + '</td>' +
+                        '<td data-label="Rate" class="gm-center" style="font-family:var(--font-display);">' + rateBadge + '</td>' +
+                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else if (isArmsRaceMode) {
                     rowCells +=
-                        '<td class="gm-center">' + (m.ara_count > 0 ? '✅' : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
-                        '<td class="gm-center">' + (m.arb_count > 0 ? '✅' : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
-                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                        '<td data-label="Stage A" class="gm-center">' + (m.ara_count > 0 ? '✅' : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
+                        '<td data-label="Stage B" class="gm-center">' + (m.arb_count > 0 ? '✅' : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
+                        '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
+                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else if (isBattleEventMode) {
                     rowCells +=
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' +
-                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                        '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
+                        '<td data-label="Day 1-5" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
+                        '<td data-label="Day 6" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' +
+                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else {
                     rowCells +=
-                        '<td class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
-                        (showGloryCol ? '<td class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '-') + '</td>' : '') +
-                        '<td class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                        '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
+                        (showGloryCol ? '<td data-label="Glory Δ" class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '-') + '</td>' : '') +
+                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 }
 
                 tableHtml += '<tr style="border-bottom:1px solid var(--border-soft);">' + rowCells + '</tr>';
