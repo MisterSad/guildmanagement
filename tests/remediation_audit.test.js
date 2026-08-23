@@ -223,4 +223,20 @@ describe('Audit Remediation Verification Suite', () => {
     expect(mig3).toContain("NOTIFY pgrst, 'reload schema';");
     expect(mig4).toContain("NOTIFY pgrst, 'reload schema';");
   });
+
+  it('W9: verifies CSP hardening, security headers, and CDN script attributes', () => {
+    const vercelConfig = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf-8'));
+    const headers = vercelConfig.headers[0].headers;
+    const csp = headers.find(h => h.key === 'Content-Security-Policy')?.value;
+
+    expect(csp).toBeDefined();
+    expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("base-uri 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("worker-src 'self' blob:");
+    expect(csp).toContain("connect-src 'self' https://vgweufzwmfwplusskmuf.supabase.co wss://vgweufzwmfwplusskmuf.supabase.co");
+
+    const htmlContent = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
+    expect(htmlContent).toContain('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>');
+  });
 });
