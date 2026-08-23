@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
   // Correlate with our pending payment row.
   const { data: pay } = await admin
     .from("gm_payments")
-    .select("order_id")
+    .select("order_id, kind, plan_key")
     .eq("order_id", sessionId)
     .maybeSingle();
   if (!pay || !pay.order_id) {
@@ -77,11 +77,14 @@ Deno.serve(async (req: Request) => {
     return new Response("unknown_session", { status: 500 }); // force Stripe to retry
   }
 
-  const { error } = await admin.rpc("gm_apply_subscription_payment", {
+  const isDonation = (pay.plan_key && pay.plan_key.startsWith("donation")) || pay.kind === "donation";
+  const rpcName = isDonation ? "gm_apply_donation" : "gm_apply_subscription_payment";
+
+  const { error } = await admin.rpc(rpcName, {
     p_order_id: pay.order_id,
   });
   if (error) {
-    logger.error("Apply subscription payment failed", error);
+    logger.error(`Apply ${isDonation ? "donation" : "subscription"} payment failed`, error);
     return new Response("apply_failed", { status: 500 });
   }
   return new Response("ok");

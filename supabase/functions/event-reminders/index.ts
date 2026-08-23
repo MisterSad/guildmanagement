@@ -265,22 +265,12 @@ serve(async (req) => {
   }
 
   try {
-    // 0. Fetch all active guilds dynamically
+    // 0. Fetch all active guilds dynamically (all guilds are Unlimited / free)
     const { data: guildRows, error: guildError } = await supabase
       .from('guilds')
-      .select('id, subscription_type, subscription_end');
+      .select('id');
     if (guildError) throw guildError;
-    const rawGuilds = (guildRows || [])
-      .filter((r: any) => {
-        const type = r.subscription_type ?? 'Unlimited';
-        if (type === 'Unlimited') return true;
-        if (type === 'Premium') {
-          if (!r.subscription_end) return false;
-          return new Date(r.subscription_end).getTime() >= Date.now();
-        }
-        return false;
-      })
-      .map((r: any) => r.id);
+    const rawGuilds = (guildRows || []).map((r: any) => r.id);
 
     const GUILDS = targetGuildParam
       ? rawGuilds.filter((g: string) => g.toUpperCase() === targetGuildParam.toUpperCase())

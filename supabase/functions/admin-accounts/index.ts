@@ -106,22 +106,6 @@ function randomSecret(): string {
   return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-async function isSubscriptionActive(admin: ReturnType<typeof createClient>, guildId: string | null): Promise<boolean> {
-  if (!guildId) return true; // Super admin level / no guild restriction
-  const { data } = await admin
-    .from("guilds")
-    .select("subscription_type, subscription_end")
-    .eq("id", guildId)
-    .maybeSingle();
-  if (!data) return false;
-  if (data.subscription_type === "Unlimited") return true;
-  if (data.subscription_type === "Premium") {
-    if (!data.subscription_end) return false;
-    return new Date(data.subscription_end).getTime() >= Date.now();
-  }
-  return false;
-}
-
 Deno.serve(async (req: Request) => {
   const json = makeJson(req);
   const logger = new EdgeLogger("admin-accounts", req);
@@ -154,15 +138,6 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "bad_request" }, 400);
   }
   const action = (body?.action ?? "").toString();
-
-  // Verify subscription status for guild_admin callers on mutations
-  if (info.role === "guild_admin" && action !== "list" && action !== "reset-password") {
-    const active = await isSubscriptionActive(admin, callerGuild);
-    if (!active) {
-      logger.warn("Operation rejected: subscription expired", { guild: callerGuild, action });
-      return json({ ok: false, error: "subscription_expired" }, 200);
-    }
-  }
 
   if (action === "list") {
     const { data, error } = await admin.rpc("gm_admin_list");

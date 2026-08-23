@@ -78,6 +78,48 @@ export async function createCheckoutSession(params: {
   return jsonBody;
 }
 
+// ── Create a Donation Checkout Session (one-time voluntary payment, EUR) ──
+export async function createDonationCheckoutSession(params: {
+  amountCents: number;
+  currency?: string;
+  productName?: string;
+  successUrl: string;
+  cancelUrl: string;
+  metadata: Record<string, string>;
+}) {
+  const {
+    amountCents,
+    currency = "eur",
+    productName = "FGF Guild Management — Donation",
+    successUrl,
+    cancelUrl,
+    metadata,
+  } = params;
+  const body = new URLSearchParams();
+  body.set("mode", "payment");
+  body.set("line_items[0][quantity]", "1");
+  body.set("line_items[0][price_data][currency]", currency.toLowerCase());
+  body.set("line_items[0][price_data][unit_amount]", String(amountCents));
+  body.set("line_items[0][price_data][product_data][name]", productName);
+  body.set("success_url", successUrl);
+  body.set("cancel_url", cancelUrl);
+  for (const [key, value] of Object.entries(metadata)) {
+    body.set(`metadata[${key}]`, value);
+  }
+
+  const res = await fetch(`${stripeBaseUrl()}/v1/checkout/sessions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Bearer ${stripeSecretKey()}`,
+    },
+    body,
+  });
+  const jsonBody = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(`stripe_checkout_failed:${res.status}`);
+  return jsonBody;
+}
+
 // ── Fetch a Checkout Session by its id ─────────────────────────────────────
 export async function fetchCheckoutSession(sessionId: string) {
   const res = await fetch(
