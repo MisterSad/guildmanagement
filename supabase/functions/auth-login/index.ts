@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { findUserByEmail } from "../_shared/pagination.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -39,11 +40,19 @@ Deno.serve(async (req: Request) => {
     password = (body?.password ?? "").toString();
   } catch (err) {
     logger.error("Failed to parse JSON body", err);
-    return json({ ok: false, error: "bad_request" }, 400);
+    return json({ ok: false, error: "bad_request" }, 400, req);
   }
-  if (!id || !password) return json({ ok: false, error: "missing_credentials" }, 400);
+  if (!id || !password) return json({ ok: false, error: "missing_credentials" }, 400, req);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+  // IP sliding window throttle: 30 attempts per 5 minutes
+  const clientIp = extractClientIp(req.headers);
+  const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 30, windowMs: 300_000 });
+  if (!throttle.allowed) {
+    logger.warn("IP rate limit exceeded on login", { ip: clientIp, id });
+    return json({ ok: false, error: "too_many_attempts" }, 429, req);
+  }
 
   const { data: loginRes, error: cErr } = await admin.rpc("gm_check_login", { p_id: id, p_password: password });
   if (cErr) {

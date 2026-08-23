@@ -3,6 +3,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { findUserByEmail } from "../_shared/pagination.ts";
 import { canManageAccount, maxAssignableRole, isGuildInScope, Role } from "../_shared/admin-authz.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -127,6 +128,13 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+  const clientIp = extractClientIp(req.headers);
+  const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 60, windowMs: 300_000 });
+  if (!throttle.allowed) {
+    logger.warn("IP rate limit exceeded on admin-accounts", { ip: clientIp });
+    return json({ ok: false, error: "too_many_attempts" }, 429, req);
+  }
 
   const info = await getCallerInfo(req, admin);
 

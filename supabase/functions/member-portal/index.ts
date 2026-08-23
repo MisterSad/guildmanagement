@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY     = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -209,6 +210,13 @@ Deno.serve(async (req: Request) => {
     if (!action) return json({ ok: false, error: "missing_action" }, 400);
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+    const clientIp = extractClientIp(req.headers);
+    const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 60, windowMs: 300_000 });
+    if (!throttle.allowed) {
+      logger.warn("IP rate limit exceeded on member-portal", { ip: clientIp, action });
+      return json({ ok: false, error: "too_many_attempts" }, 429, req);
+    }
 
     const identity = await getIdentity(req, admin);
     if (!identity || !identity.uid) {
