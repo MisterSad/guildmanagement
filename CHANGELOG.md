@@ -2,6 +2,17 @@
 
 ## New
 
+- **Security & Architecture Remediation Round 2 — Zero-Gap Closure (v124.2)**:
+  - **Canonical Database Reconciliation (GAP 1)**: Ported all 13 archive-only `SECURITY DEFINER` RPCs (`gm_register_player`, `gm_set_join_code`, `gm_get_join_code`, `gm_approve_player_account`, `gm_reject_player_account`, `gm_get_shadow`, `gm_attach_shadow`, `gm_get_player_absences`, `gm_upsert_player_absence`, `gm_delete_player_absence`, `gm_update_player_timezone`, `gm_get_push_prefs`, `gm_set_push_prefs`) into canonical migration chain with `SET search_path TO ''`, strict schema-qualified references, and least-privilege `service_role` grants.
+  - **Tenant-Isolated Partial Unique Indexes (GAP 1)**: Added partial unique indexes `idx_ep_tenant_session_unique` (`WHERE session_id IS NOT NULL`) and `idx_ep_tenant_no_session_unique` (`WHERE session_id IS NULL`) on `event_participants`, plus `idx_accounts_lower_id` on `accounts(LOWER(id))`.
+  - **CORS Origin Validation Hardening (GAP 4)**: Anchored origin matching regexes in `_shared/cors.ts` to strictly validate `https://*.vercel.app` and `https://*.guildmgmt.app` domains, eliminating substring bypass vectors and adding `Vary: Origin` response headers.
+  - **Edge Function Payload & Image Caps (GAP 4)**: Enforced maximum 5 images (`too_many_images`) and 8 MB payload limits (`payload_too_large`) in `ocr-guild-members`, and added `redirect: "error"` on outbound Discord webhook dispatches.
+  - **Cross-Isolate IP Rate Limiting & Anti-DoS Lockout (GAP 3)**: Created table `public.login_throttle` for distributed sliding-window IP rate limiting (30 attempts / 5 min on login, 60 / 5 min on admin and portal entrypoints), and rebalanced account lockout with exponential backoff (15/30/45/60 min).
+  - **Subresource Integrity (SRI) & CSP Eval Removal (GAP 2)**: Removed `'unsafe-eval'` from production Content Security Policy in `vercel.json`, and pinned exact versioned URLs with SHA-384 cryptographic integrity hashes for CDN scripts in `index.html`.
+  - **Authentication Session Cleanup (GAP 5)**: Removed dead `gm_token` read in `app.js` and ensured `gm_server_restriction` is thoroughly cleared on `doLogout()`.
+  - **Standardized Observability (GAP 5)**: Replaced residual `console.*` logging across payment paths (`gm-create-order`, `gm-order-status`, `gm-stripe-webhook`) with centralized `EdgeLogger`.
+  - **Quality Gate**: **333/333 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Zero-Regression Full-Spectrum Security & Architecture Remediation (v124.1)**:
   - **Admin Accounts Zero-Trust Authorization Matrix (W1)**: Created pure TypeScript authorization matrix (`supabase/functions/_shared/admin-authz.ts`) enforcing strict hierarchical role assignment (`maxAssignableRole`) and tenant boundary validation (`isGuildInScope`), purged client-forgeable `user_metadata` fallback vectors from `admin-accounts`, and enforced server-side cryptographically secure password generation on resets.
   - **Elimination of `user_metadata` Role Fallback Vulnerability (W2)**: Replaced SQL access helpers (`is_super_admin`, `is_server_admin`, `gm_can_read_guilds`) to authenticate purely against `public.accounts` keyed on `auth.uid()` (`status = 'active'`), and hardened client `sessionInfo()` in `gm-utils.js` to reject JWTs missing cryptographically signed `app_metadata.app_role`.
