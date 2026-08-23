@@ -1,35 +1,30 @@
-📢 **FGF Guild Management Tool Update — CHANG_V125.1**
+📢 **FGF Guild Management Tool Update — CHANG_V125.2**
 
-Hey commanders! 👋
+Hey everyone! Today has been a massive milestone for the platform. I've rolled out our biggest roster management overhaul yet, resolved a morning login hiccup, and deployed comprehensive security hardening to keep your guild accounts and data safe. Here is everything new for you and your guild:
 
-I found and fixed the sign-in issue some of you hit earlier today — a single stray character in our template engine broke the script execution and login handler; my sincere apologies for the inconvenience. 🛠️⚡
+📸 **OCR Roster Overhaul (Three-Section Review)**
+- **Clear Roster Breakdown**: When updating your roster via screenshot, the review screen is now neatly divided into three sections: **Existing Members**, **New Members**, and **Removed Members**.
+- **Real UID Input for Recruits**: You can now enter the actual in-game UID for new recruits right inside the review modal — no more auto-generated temporary IDs!
+- **Smart Removal Detection & Overrides**: Members who left or weren't detected in your full roster screenshot are proposed for removal by default, with an instant one-click toggle to keep them if needed.
+- **Live Roster Counters**: A real-time counter chip (`Roster: 60 → 63`) shows your exact before-and-after headcounts as you review.
+- **Safety First**: Before any member is removed, a confirmation screen clearly lists every affected name so accidental removals are impossible.
 
-To ensure this can never happen again, I have also implemented three layers of automated syntax guards across our test battery, build pipeline, and CI workflow. 🔒🛡️
+🚀 **One-Click Roster Import for New Guilds**
+- Setting up a fresh guild? The Members tab now features a prominent **"Roster OCR"** button so you can import your entire 60-member lineup from screenshots in seconds.
+
+🛠️ **Sign-In Incident Resolved**
+- A small typo in this morning's update briefly prevented some members from signing in on the web app. I caught and patched this within the hour and added triple-layer automated checks to ensure it cannot happen again. Thank you for your patience!
+
+🔒 **Stronger Account Protection**
+- **Modern Password Hashing**: All accounts now use industry-standard one-way cryptographic hashing (your password automatically upgrades seamlessly on your next sign-in).
+- **Anti-Brute-Force & Account Lockout**: Repeated incorrect password attempts now trigger an automatic temporary lockout to protect your account against guessing attacks.
+- **Rate-Limiting Shields**: Strengthened protection against automated spam and unauthorized sign-in attempts.
+
+📊 **Player Portal KPI Fix**
+- Fixed an issue where individual player KPIs (attendance rate, overall power, and activity metrics) were occasionally failing to load on the Member Portal. Everything is fast and accurate once again!
+
+💳 **Subscription Stability**
+- Hardened the billing and subscription state handlers so paying guilds maintain uninterrupted access to all premium tactical tools and member capacities.
 
 ---
-
-### 🛠️ 1. Sign-In Form Handler Repaired
-* **Login Syntax Fix**: Repaired the broken template concatenation in `app.js` that blocked form event attachment on production.
-* **Instant Cache Invalidation**: Bumped script cache buster (`app.js?v=73`) so your browser immediately picks up the fix without stale script caching.
-
----
-
-### 🔒 2. Triple-Layer Automated Syntax Guards
-* **Dedicated Root Syntax Test Suite**: Added automated tests parsing all root scripts (`node --check`) within Vitest (`385/385` tests green).
-* **Build-Time Parser Verification**: `npm run build` now actively validates every JavaScript file before copying it into production distribution bundles.
-* **CI Syntax Check Step**: GitHub Actions pipeline now runs a strict syntax verification loop before type checking and testing.
-
----
-
-### 🌐 3. Production CORS Allowlist Alignment
-* **Canonical Domain**: Synchronized edge function origin allowlist with our canonical production domain (`guildmanagement.vercel.app`).
-
----
-
-### 🧪 4. Quality Gate & Reliability
-* **385/385 Vitest Unit Tests Passing** 🟢 (30 test suites fully green)
-* **0 TypeScript Compilation Errors (`tsc --noEmit`)** 🔒
-* **Clean Production Bundle Built & Verified** 🚀
-
-*Everything is live and verified in production. Thank you so much for your patience and vigilance, and fly safe!* 🌌⚔️
-
+*Thank you all for the fantastic feedback and support! As always, if you spot anything or have suggestions, reach out directly. Fly safe out there!* ⚔️

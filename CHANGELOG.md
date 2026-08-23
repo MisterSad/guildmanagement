@@ -2,6 +2,23 @@
 
 ## Fixed
 
+- **Production Deployment Corrections & Live Bug Fixes (v125.2)**:
+  - **Edge-Function JWT Verification Matrix (`67bdf74`)**: Codified explicit `verify_jwt` configurations for all 10 Edge Functions in `supabase/config.toml` (4 public: `auth-login`, `player-register`, `event-reminders`, `gm-stripe-webhook`; 6 JWT-gated: `member-portal`, `admin-accounts`, `gm-create-order`, `gm-order-status`, `discord-webhook-proxy`, `ocr-guild-members`).
+  - **Member Portal UID Fallback Fix (`67bdf74`)**: Enhanced `getIdentity` in `supabase/functions/member-portal/index.ts` to query `accounts.uid` and resolve `playerUid` via `row?.player_uid || acc.uid || accountId`, preventing member lookup failures when shadow records lack explicit player UIDs.
+  - **`gm_personal_kpis` Column Reference Repair (`67bdf74`)**: Corrected SQL typo in migration `20260823060000_security_rpc_lockdown.sql` where undeclared variable `v_fleet_rating` caused runtime execution failures during personal KPI queries; replaced with record accessor `v_member.fleet_rating`.
+  - **Client IP Resolution Behind Cloudflare Proxy (`834ad98`)**: Prioritized `cf-connecting-ip` in `supabase/functions/_shared/rate-limit.ts` to ensure consistent IP throttling and prevent proxy egress IP rotation on cloud edge networks.
+  - **Post-Deploy Quality Gate**: **385/385 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
+## Documentation
+
+- **Authoritative Engineering Guidelines & Architecture Overhaul (v125.2)**:
+  - **AGENTS.md Overhaul**: Established AI Agent Role Charter (Lead Solution Architect, SecOps Engineer, QA Gatekeeper, Deployment Operator), synchronized 9 live guild tenants (`ALPHA`, `BABE`, `CLAW`, `DEMO`, `FED`, `IMK`, `OMEGA`, `SEN`, `YARR`), and codified security regression blacklist.
+  - **Root ARCHITECTURE.md Rewrite**: Clearly separated Part 1 (Current Live Production Architecture) from Part 2 (Modernization Target `/src`), and converted `docs/ARCHITECTURE.md` to a redirect stub.
+  - **New Architecture Decision Records (ADRs)**: Added `ADR-007` (Accounts-Only Role Resolution), `ADR-008` (Database Migration Protocol v2), and `ADR-009` (Secrets Vault-Only Policy); updated `ADR-001` (marked superseded by `ADR-006`) and `ADR-002` (sequence-suffixed session IDs).
+  - **Production Deployment Runbook**: Created `docs/DEPLOY_RUNBOOK.md` documenting repeatable pre-flight inventory queries, migration execution order, Vault secret rotation, and S1-S6/F1-F6 verification matrices.
+
+## Fixed
+
 - **Login Outage Hotfix, Root Script Syntax Guards & CORS Production Origin Correction (v125.1)**:
   - **Login Script SyntaxError Fix**: Resolved JavaScript syntax error at `app.js:2942` caused by an unconcatenated quote in the removed-members checkbox template from v125.0, restoring script execution and login form submit handler.
   - **Automated Root-Script Syntax Test Suite**: Added `tests/root_syntax.test.js` running `node --check` against all root JavaScript files in the repository to guarantee unparseable classic scripts fail automated test runs.
