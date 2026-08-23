@@ -131,4 +131,27 @@ describe('Audit Remediation Verification Suite', () => {
     expect(content).toContain('REVOKE ALL ON FUNCTION public.gm_apply_subscription_payment(text, text, text, text) FROM public, anon, authenticated;');
     expect(content).toContain('GRANT EXECUTE ON FUNCTION public.gm_apply_subscription_payment(text, text, text, text) TO service_role;');
   });
+
+  it('W5: verifies member-portal security, scope and resilience hardening', () => {
+    const portalPath = path.resolve(__dirname, '../supabase/functions/member-portal/index.ts');
+    const content = fs.readFileSync(portalPath, 'utf-8');
+
+    // 1. get-personal-kpis resolves member before getGuildAverages
+    expect(content).toContain('const member = await getPlayer(admin, uid, identity.guild);');
+    expect(content).toContain('const targetGuild = member?.guild || identity.guild;');
+    expect(content).toContain('targetGuild ? getGuildAverages(admin, targetGuild) : Promise.resolve(null)');
+
+    // 2. submit-scores strips excused/appointed from client payload
+    expect(content).not.toContain('update.excused = !!payload.excused');
+    expect(content).not.toContain('update.appointed = !!payload.appointed');
+
+    // 3. update-power validates numeric input and scopes fallback by guild
+    expect(content).not.toContain('parseInt(payload?.power) || 0');
+    expect(content).toContain('error: "invalid_power"');
+    expect(content).toContain('.eq("guild", member.guild)');
+
+    // 4. Top-level try-catch wraps dispatch
+    expect(content).toContain('catch (unhandledErr)');
+    expect(content).toContain('error: "internal_error"');
+  });
 });
