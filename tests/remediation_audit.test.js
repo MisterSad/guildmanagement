@@ -224,12 +224,13 @@ describe('Audit Remediation Verification Suite', () => {
     expect(mig4).toContain("NOTIFY pgrst, 'reload schema';");
   });
 
-  it('W9: verifies CSP hardening, security headers, and CDN script attributes', () => {
+  it('W9/GAP 2: verifies CSP hardening without unsafe-eval, and pinned SRI attributes', () => {
     const vercelConfig = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf-8'));
     const headers = vercelConfig.headers[0].headers;
     const csp = headers.find(h => h.key === 'Content-Security-Policy')?.value;
 
     expect(csp).toBeDefined();
+    expect(csp).not.toContain("'unsafe-eval'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("base-uri 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
@@ -237,7 +238,16 @@ describe('Audit Remediation Verification Suite', () => {
     expect(csp).toContain("connect-src 'self' https://vgweufzwmfwplusskmuf.supabase.co wss://vgweufzwmfwplusskmuf.supabase.co");
 
     const htmlContent = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-    expect(htmlContent).toContain('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>');
+    expect(htmlContent).toMatch(/<script\s+src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@\d+\.\d+\.\d+[^"]*"\s+integrity="sha384-[^"]+"\s+crossorigin="anonymous"><\/script>/);
+    expect(htmlContent).toMatch(/<script\s+src="https:\/\/unpkg\.com\/@phosphor-icons\/web@\d+\.\d+\.\d+[^"]*"\s+integrity="sha384-[^"]+"\s+crossorigin="anonymous"><\/script>/);
+
+    // Verify all CDN scripts have integrity attributes
+    const scriptTags = htmlContent.match(/<script[^>]*src="https:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com)[^"]*"[^>]*>/g) || [];
+    expect(scriptTags.length).toBeGreaterThan(0);
+    for (const tag of scriptTags) {
+      expect(tag).toContain('integrity="sha384-');
+      expect(tag).toContain('crossorigin="anonymous"');
+    }
   });
 
   it('W10: verifies auth hardening, bcrypt dual-read migration, and lockout defense', () => {
