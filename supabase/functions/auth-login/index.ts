@@ -57,6 +57,10 @@ Deno.serve(async (req: Request) => {
   }
   
   const loginRow = Array.isArray(loginRes) ? loginRes[0] : loginRes;
+  if (loginRow?.is_locked || loginRow?.error === "account_locked") {
+    logger.warn("Locked account attempted sign-in", { id });
+    return json({ ok: false, error: "account_locked" }, 200);
+  }
   if (!loginRow || !loginRow.role) {
     logger.warn("Invalid credentials attempt", { id });
     return json({ ok: false, error: "invalid_credentials" }, 200);

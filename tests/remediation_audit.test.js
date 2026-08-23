@@ -239,4 +239,20 @@ describe('Audit Remediation Verification Suite', () => {
     const htmlContent = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
     expect(htmlContent).toContain('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>');
   });
+
+  it('W10: verifies auth hardening, bcrypt dual-read migration, and lockout defense', () => {
+    const authMigPath = path.resolve(__dirname, '../supabase/migrations/20260823070000_auth_hardening.sql');
+    expect(fs.existsSync(authMigPath)).toBe(true);
+    const authContent = fs.readFileSync(authMigPath, 'utf-8');
+
+    expect(authContent).toContain('ADD COLUMN IF NOT EXISTS password_hash TEXT');
+    expect(authContent).toContain('ADD COLUMN IF NOT EXISTS failed_login_count INTEGER');
+    expect(authContent).toContain('ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ');
+    expect(authContent).toContain('extensions.crypt(p_password, v_acc.password_hash)');
+    expect(authContent).toContain("extensions.gen_salt('bf', 10)");
+    expect(authContent).toContain('account_locked');
+
+    const authLoginContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/auth-login/index.ts'), 'utf-8');
+    expect(authLoginContent).toContain('error: "account_locked"');
+  });
 });
