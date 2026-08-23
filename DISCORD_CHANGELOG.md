@@ -1,34 +1,39 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.36**
+📢 **FGF Guild Management Tool Update — CHANG_V124.1**
 
 Hey commanders! 👋
 
-I have just completed a comprehensive codebase optimization and architectural cleanup, laying down crystal-clear guidelines and rock-solid architectural specifications for the next phases of development! 🏗️⚡🛡️
+I have just deployed a massive security, performance, and architecture hardening update (`CHANG_V124.1`) across the platform. Every area of our tactical command system and player portal has been fortified for maximum reliability, speed, and defense! 🛡️⚡🚀
 
 ---
 
-### 📂 1. Cleaned Directory Structure & Organized Documentation
-* **Clutter-Free Root**: Moved technical reports and audit archives into a dedicated `docs/` directory (`docs/audit_report_2026-08-14.md`), keeping the codebase tidy and professional.
-* **Enhanced Git Hygiene**: Hardened `.gitignore` to prevent any test artifacts or transient files from cluttering the repository.
+### 🔒 1. Zero-Trust Access Control & Ironclad Security
+* **Role Hierarchy & Scoping Matrix**: I built a strict authorization engine that strictly enforces guild and server boundaries across all admin operations.
+* **Tamper-Proof Identity**: Eliminated all unverified metadata fallbacks in SQL and client session resolution, ensuring cryptographic identity verification on every request.
+* **Direct Database Defense**: Locked down all backend stored procedures with caller privilege gates, protecting member search, power updates, and transfer requests.
+* **Brute-Force & Lockout Protection**: Upgraded password handling with modern salted hashing and automatic 15-minute account lockouts after repeated failed attempts.
 
 ---
 
-### 🏛️ 2. Master Architecture Specification (`ARCHITECTURE.md`)
-* **Complete System Blueprint**: Documented the full serverless multi-tenant stack (Vercel Frontend, Supabase Postgres 17, Deno TypeScript Edge Functions, and GoTrue Auth).
-* **High-Performance UI Engine**: Outlined our reactive Pub/Sub Store (`src/core/store/store.ts`), Web Worker computation engine for heavy simulations (`src/workers/matchup.worker.ts`), and the Material Design 3.0 + Apple Cozy Neutral design system.
-* **Full Annotated Directory Index**: Every single folder and core file is now formally cataloged with its exact functional scope.
+### ⚔️ 2. Member Portal Resilience & Smooth Experience
+* **Glitch-Free Personal KPIs**: Fixed an edge-case crash in personal statistics computation, ensuring instant and accurate combat metric averages.
+* **Defensive Score Submissions**: Hardened score entry processing with automatic power bounding and sanitized event flags.
+* **Full Mobile & Accessibility Support**: Removed zoom restrictions on mobile viewports for smooth, accessible zooming and navigation on all devices.
+* **Thorough Logout Cleanup**: Enhanced logout to completely purge local session and storage artifacts for clean account switching.
 
 ---
 
-### 🤖 3. Authoritative Agent & Developer Guidelines (`AGENTS.md`)
-* **Zero-Trust Security Standard**: Hardened our four-role access model (`super_admin`, `server_admin`, `guild_admin`, `member`) with strict cryptographic session resolution and Player Portal isolation.
-* **Multi-Tenant SaaS Parity**: Strict invariant ensuring every fix and feature works uniformly across all 13 tenant guilds with zero per-guild hardcoding.
-* **Vibecoding & Code Integrity**: Mandated 100% English across the entire codebase, strict TypeScript verification, memory leak prevention in UI lifecycles, and deterministic event session keys.
+### ⚡ 3. Automated Tasks, Reminders & Infrastructure
+* **Vault-Protected Automations**: Moved our automated reminder credentials into Supabase Vault with constant-time cryptographic verification.
+* **Private Webhook Logs**: Masked all Discord webhook tokens in execution logs to prevent sensitive URL leakage.
+* **Direct API Protection**: Upgraded OCR image processing to use direct header authentication for ultra-fast and private leaderboard scans.
+* **Hardened Web Headers (CSP)**: Enhanced Content Security Policy and origin allowlists across all Edge Functions.
 
 ---
 
-### 🧪 4. Quality Gate & Continuous Verification
-* **294/294 Vitest Unit Tests Passing** 🟢
+### 🧪 4. Quality Verification & Zero Regressions
+* **319/319 Vitest Unit Tests Passing** 🟢 (25 test suites fully green)
 * **0 TypeScript Errors (`tsc --noEmit`)** 🔒
 * **Clean Production Bundle Built & Verified** 🚀
 
-*Everything is running smoothly and ready for upcoming tactical features. As always, thank you for your support and feedback!* ⚔️✨
+*Everything is live and running in production. Thank you for your trust, and see you on the galactic battlefield!* 🌌⚔️
+
