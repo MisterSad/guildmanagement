@@ -211,6 +211,10 @@
                 p_glory: scoreVal
             });
             if (rpcRes && rpcRes.error) throw rpcRes.error;
+            // The RPC reports logical failures (permission_denied, etc.) in its
+            // result row rather than as a transport error: surface them.
+            var row = rpcRes && rpcRes.data ? (Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data) : null;
+            if (!row || !row.ok) throw new Error((row && row.error) || 'save_failed');
             if (icon) icon.classList.add('hidden');
             if (window.GM && typeof window.GM.fetchGuildMembers === 'function') {
                 window.GM.fetchGuildMembers();
@@ -218,7 +222,7 @@
         } catch (err) {
             console.error('saveGlory', err);
             if (icon) icon.classList.add('hidden');
-            window.GM.showToast(t('toast_err_generic') + ' Glory', 'error');
+            window.GM.showToast(t('toast_err_generic') + ' Glory' + (err && err.message ? ' (' + err.message + ')' : ''), 'error');
         }
     }
 
