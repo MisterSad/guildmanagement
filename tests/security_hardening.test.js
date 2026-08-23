@@ -12,11 +12,15 @@ describe('Security Hardening & Module Audits', () => {
         expect(content).toContain('action === "update-role"');
     });
 
-    it('verifies event-reminders index.ts contains isValidDiscordWebhook SSRF check', () => {
+    it('verifies event-reminders index.ts contains isValidDiscordWebhook SSRF check and zero raw console calls', () => {
         const filePath = path.resolve(__dirname, '../supabase/functions/event-reminders/index.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('function isValidDiscordWebhook');
         expect(content).toContain('SECURITY: Invalid or untrusted Discord Webhook URL blocked');
+        expect(content).toContain('new EdgeLogger');
+        expect(content).not.toContain('console.log(');
+        expect(content).not.toContain('console.warn(');
+        expect(content).not.toContain('console.error(');
     });
 
     it('verifies player-register index.ts extracts client IP safely', () => {

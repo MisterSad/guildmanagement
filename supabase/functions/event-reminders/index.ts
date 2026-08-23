@@ -2,6 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from "../_shared/gvg-tasks.ts"
 import { validateCallerAuth } from "../_shared/auth.ts"
+import { EdgeLogger } from "../_shared/logger.ts"
+
+let logger = new EdgeLogger("event-reminders");
 
 async function sendWebPush(supabase: any, title: string, body: string, guild: string, eventType = "events") {
   try {
@@ -18,7 +21,7 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
       const wp = await import("npm:web-push-neo");
       sendNotification = wp.sendNotification || wp.default?.sendNotification;
     } catch (eWp) {
-      console.warn("web-push module not available:", eWp);
+      logger.warn("web-push module not available", { error: String(eWp) });
       return;
     }
     if (!sendNotification) return;
@@ -44,7 +47,7 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
     };
 
     if (!vapidDetails.publicKey || !vapidDetails.privateKey) {
-      console.warn('VAPID keys not configured in Supabase secrets, skipping Web Push');
+      logger.warn('VAPID keys not configured in Supabase secrets, skipping Web Push');
       return;
     }
 
@@ -74,11 +77,11 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
           payload: JSON.stringify(payload),
           vapidDetails
         });
-        console.log(`Web Push sent successfully to sub ID: ${sub.id} (Guild: ${guild})`);
+        logger.info(`Web Push sent successfully to sub ID: ${sub.id} (Guild: ${guild})`);
       } catch (err: any) {
-        console.error(`Failed to send Web Push to sub ID ${sub.id}:`, err);
+        logger.error(`Failed to send Web Push to sub ID ${sub.id}`, err);
         if (err.statusCode === 410 || err.statusCode === 404 || err.message?.includes('410') || err.message?.includes('404')) {
-          console.log(`Cleaning up expired subscription ID: ${sub.id}`);
+          logger.info(`Cleaning up expired subscription ID: ${sub.id}`);
           await supabase
             .from('push_subscriptions')
             .delete()
@@ -87,7 +90,7 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
       }
     }
   } catch (e) {
-    console.error('Error in sendWebPush:', e);
+    logger.error('Error in sendWebPush', e);
   }
 }
 
@@ -118,7 +121,7 @@ function maskWebhookUrl(url: string | null | undefined): string {
 
 async function sendDiscordWebhookWithRetry(url: string, body: any): Promise<boolean> {
   if (!isValidDiscordWebhook(url)) {
-    console.error(`SECURITY: Invalid or untrusted Discord Webhook URL blocked: ${maskWebhookUrl(url)}`);
+    logger.error(`SECURITY: Invalid or untrusted Discord Webhook URL blocked: ${maskWebhookUrl(url)}`);
     return false;
   }
   let attempts = 0;
@@ -128,7 +131,7 @@ async function sendDiscordWebhookWithRetry(url: string, body: any): Promise<bool
   while (attempts < maxAttempts) {
     attempts++;
     try {
-      console.log(`Sending Discord webhook attempt ${attempts} to: ${maskWebhookUrl(url)}`);
+      logger.info(`Sending Discord webhook attempt ${attempts} to: ${maskWebhookUrl(url)}`);
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,23 +152,23 @@ async function sendDiscordWebhookWithRetry(url: string, body: any): Promise<bool
             waitMs = parsed < 120 ? parsed * 1000 : parsed;
           }
         }
-        console.warn(`Discord Rate Limit (429) hit. Waiting ${waitMs}ms before retry...`);
+        logger.warn(`Discord Rate Limit (429) hit. Waiting ${waitMs}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, waitMs));
         continue;
       }
 
       if (res.status >= 500) {
-        console.warn(`Discord server error (${res.status}). Retrying in ${delay}ms...`);
+        logger.warn(`Discord server error (${res.status}). Retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         delay *= 2; // exponential backoff
         continue;
       }
 
-      console.error(`Discord webhook failed with non-retriable status: ${res.status}`);
+      logger.error(`Discord webhook failed with non-retriable status: ${res.status}`);
       return false;
 
     } catch (err: any) {
-      console.error(`Network error sending Discord webhook: ${err.message}. Retrying in ${delay}ms...`);
+      logger.error(`Network error sending Discord webhook: ${err.message}. Retrying in ${delay}ms...`, err);
       await new Promise(resolve => setTimeout(resolve, delay));
       delay *= 2;
     }
@@ -207,6 +210,7 @@ function getWeekStart(date: Date | string | number): string {
 }
 
 serve(async (req) => {
+  logger = new EdgeLogger("event-reminders", req);
   const authHeader = req.headers.get('Authorization') || '';
   const xCronSecret = req.headers.get('x-cron-secret') || '';
   const cronSecret = Deno.env.get('CRON_SECRET');
@@ -243,7 +247,7 @@ serve(async (req) => {
   }
 
   if (!isAuthorized) {
-    console.warn('Unauthorized invocation of event-reminders', { hasAuth: !!authHeader, hasXCron: !!xCronSecret });
+    logger.warn('Unauthorized invocation of event-reminders', { hasAuth: !authHeader, hasXCron: !xCronSecret });
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
@@ -389,7 +393,7 @@ serve(async (req) => {
             const configKey = `notify_${eventPrefix}_${reminderType}`;
             const isNotificationEnabled = config[configKey] === undefined || config[configKey] === 'true';
             if (!isNotificationEnabled) {
-              console.log(`[${guild}] Notification for ${event.event_name} (${reminderType}) is disabled in configuration, skipping.`);
+              logger.info(`[${guild}] Notification for ${event.event_name} (${reminderType}) is disabled in configuration, skipping.`);
               continue;
             }
 
@@ -407,7 +411,7 @@ serve(async (req) => {
                 // Not stale yet, skip
                 continue;
               }
-              console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
+              logger.info(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
               await supabase
                 .from('guild_config')
                 .delete()
@@ -421,7 +425,7 @@ serve(async (req) => {
               .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
             if (lockErr) {
-              console.log(`[${guild}] Lock already exists for standard event ${event.event_name} (${reminderType}), skipping`);
+              logger.info(`[${guild}] Lock already exists for standard event ${event.event_name} (${reminderType}), skipping`);
               continue;
             }
 
@@ -515,7 +519,7 @@ serve(async (req) => {
                   .eq('guild', guild)
                   .eq('key', lockKey);
               } catch (dbErr) {
-                console.error(`[${guild}] Error updating standard event lock ${lockKey}:`, dbErr);
+                logger.error(`[${guild}] Error updating standard event lock ${lockKey}`, dbErr);
               }
               results.push({ guild, event: event.event_name, type: reminderType, status: 'sent' });
             } else {
@@ -526,9 +530,9 @@ serve(async (req) => {
                   .eq('guild', guild)
                   .eq('key', lockKey);
               } catch (dbErr) {
-                console.error(`[${guild}] Error releasing standard event lock ${lockKey}:`, dbErr);
+                logger.error(`[${guild}] Error releasing standard event lock ${lockKey}`, dbErr);
               }
-              console.error(`[${guild}] Failed to send standard event ${event.event_name} reminder. Lock released.`);
+              logger.error(`[${guild}] Failed to send standard event ${event.event_name} reminder. Lock released.`);
             }
           }
         }
@@ -571,7 +575,7 @@ serve(async (req) => {
               if (lockAgeMins < 5) {
                 shouldProceed = false;
               } else {
-                console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Retrying.`);
+                logger.info(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Retrying.`);
                 await supabase
                   .from('guild_config')
                   .delete()
@@ -607,10 +611,10 @@ serve(async (req) => {
                       .delete()
                       .eq('guild', guild)
                       .eq('key', lockKey);
-                    console.error(`[${guild}] Failed to send GvG Daily Tasks webhook. Lock released.`);
+                    logger.error(`[${guild}] Failed to send GvG Daily Tasks webhook. Lock released.`);
                   }
                 } catch (e) {
-                  console.error(`[${guild}] Error sending Discord GvG Daily Tasks webhook:`, e);
+                  logger.error(`[${guild}] Error sending Discord GvG Daily Tasks webhook`, e);
                   await supabase
                     .from('guild_config')
                     .delete()
@@ -668,7 +672,7 @@ serve(async (req) => {
                 // Not stale yet, skip
                 continue;
               }
-              console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
+              logger.info(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
               await supabase
                 .from('guild_config')
                 .delete()
@@ -682,7 +686,7 @@ serve(async (req) => {
               .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
             if (lockErr) {
-              console.log(`[${guild}] Lock already exists for GvG ${slot.label} (${slot.type}), skipping`);
+              logger.info(`[${guild}] Lock already exists for GvG ${slot.label} (${slot.type}), skipping`);
               continue;
             }
 
@@ -789,10 +793,10 @@ serve(async (req) => {
                   .delete()
                   .eq('guild', guild)
                   .eq('key', lockKey);
-                console.error(`[${guild}] Failed to send GvG Saturday reminder. Lock released.`);
+                logger.error(`[${guild}] Failed to send GvG Saturday reminder. Lock released.`);
               }
             } catch (e) {
-              console.error(`[${guild}] Error sending Discord GvG Saturday webhook:`, e);
+              logger.error(`[${guild}] Error sending Discord GvG Saturday webhook`, e);
               await supabase
                 .from('guild_config')
                 .delete()
@@ -855,19 +859,19 @@ serve(async (req) => {
           if (slot.type === 'portal_5' || slot.type === 'portal_open') {
             const isSvsPvpEnabled = config['notify_svs_pvp'] === undefined || config['notify_svs_pvp'] === 'true';
             if (!isSvsPvpEnabled || !wonPrep) {
-              console.log(`[${guild}] SvS Portal notification (${slot.type}) skipped (PvP disabled or prep phase not won).`);
+              logger.info(`[${guild}] SvS Portal notification (${slot.type}) skipped (PvP disabled or prep phase not won).`);
               continue;
             }
           } else if (slot.type === 'garrison') {
             const isGarrisonEnabled = config['notify_svs_garrison'] === undefined || config['notify_svs_garrison'] === 'true';
             if (!isGarrisonEnabled) {
-              console.log(`[${guild}] SvS Garrison Reminder is disabled in configuration, skipping.`);
+              logger.info(`[${guild}] SvS Garrison Reminder is disabled in configuration, skipping.`);
               continue;
             }
           } else {
             const isSvsPvpEnabled = config['notify_svs_pvp'] === undefined || config['notify_svs_pvp'] === 'true';
             if (!isSvsPvpEnabled) {
-              console.log(`[${guild}] SvS PvP Day notification (${slot.type}) is disabled in configuration, skipping.`);
+              logger.info(`[${guild}] SvS PvP Day notification (${slot.type}) is disabled in configuration, skipping.`);
               continue;
             }
           }
@@ -886,7 +890,7 @@ serve(async (req) => {
               // Not stale yet, skip
               continue;
             }
-            console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
+            logger.info(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
             await supabase
               .from('guild_config')
               .delete()
@@ -900,7 +904,7 @@ serve(async (req) => {
             .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
           if (lockErr) {
-            console.log(`[${guild}] Lock already exists for SvS ${slot.label} (${slot.type}), skipping`);
+            logger.info(`[${guild}] Lock already exists for SvS ${slot.label} (${slot.type}), skipping`);
             continue;
           }
 
@@ -1060,10 +1064,10 @@ serve(async (req) => {
                 .delete()
                 .eq('guild', guild)
                 .eq('key', lockKey);
-              console.error(`[${guild}] Failed to send SvS reminder. Lock released.`);
+              logger.error(`[${guild}] Failed to send SvS reminder. Lock released.`);
             }
           } catch (e) {
-            console.error(`[${guild}] Error sending Discord SvS webhook:`, e);
+            logger.error(`[${guild}] Error sending Discord SvS webhook`, e);
             await supabase
               .from('guild_config')
               .delete()
@@ -1116,7 +1120,7 @@ serve(async (req) => {
           // Check configuration toggle
           const isCalamityEnabled = config['notify_calamity_10'] === undefined || config['notify_calamity_10'] === 'true';
           if (!isCalamityEnabled) {
-            console.log(`[${guild}] Calamity Befalls Round reminders are disabled in configuration, skipping.`);
+            logger.info(`[${guild}] Calamity Befalls Round reminders are disabled in configuration, skipping.`);
             continue;
           }
 
@@ -1134,7 +1138,7 @@ serve(async (req) => {
               // Not stale yet, skip
               continue;
             }
-            console.log(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
+            logger.info(`[${guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
             await supabase
               .from('guild_config')
               .delete()
@@ -1148,7 +1152,7 @@ serve(async (req) => {
             .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
           if (lockErr) {
-            console.log(`[${guild}] Lock already exists for Calamity Round ${slot.round}, skipping`);
+            logger.info(`[${guild}] Lock already exists for Calamity Round ${slot.round}, skipping`);
             continue;
           }
 
@@ -1228,10 +1232,10 @@ serve(async (req) => {
                 .delete()
                 .eq('guild', guild)
                 .eq('key', lockKey);
-              console.error(`[${guild}] Failed to send Calamity Befalls reminder. Lock released.`);
+              logger.error(`[${guild}] Failed to send Calamity Befalls reminder. Lock released.`);
             }
           } catch (e) {
-            console.error(`[${guild}] Error sending Discord Calamity Befalls webhook:`, e);
+            logger.error(`[${guild}] Error sending Discord Calamity Befalls webhook`, e);
             await supabase
               .from('guild_config')
               .delete()
@@ -1247,6 +1251,7 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
+    logger.error('Event reminders execution error', err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
