@@ -205,4 +205,22 @@ describe('Audit Remediation Verification Suite', () => {
     expect(ocrContent).toContain('"x-goog-api-key": GEMINI_API_KEY');
     expect(ocrContent).not.toContain('?key=${GEMINI_API_KEY}');
   });
+
+  it('W8: verifies canonical migration reconciliation, idempotence and reload notifications', () => {
+    const mig1 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260812000001_schema_tables_and_indexes.sql'), 'utf-8');
+    const mig2 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260812000002_security_rls_policies.sql'), 'utf-8');
+    const mig3 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260812000003_functions_and_rpcs.sql'), 'utf-8');
+    const mig4 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260812000004_triggers_and_crons.sql'), 'utf-8');
+
+    expect(mig1).toContain('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+    expect(mig1).toContain('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
+    expect(mig1).toContain('plan_key TEXT,');
+    expect(mig1).toContain("NOTIFY pgrst, 'reload schema';");
+
+    expect(mig2).toContain('DROP POLICY IF EXISTS');
+    expect(mig2).toContain("NOTIFY pgrst, 'reload schema';");
+
+    expect(mig3).toContain("NOTIFY pgrst, 'reload schema';");
+    expect(mig4).toContain("NOTIFY pgrst, 'reload schema';");
+  });
 });

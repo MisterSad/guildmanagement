@@ -908,3 +908,5 @@ BEGIN
     RETURN QUERY SELECT true, v_payment.guild_id, v_payment.plan_key, v_payment.days_added, NULL::text;
 END;
 $$;
+
+NOTIFY pgrst, 'reload schema';

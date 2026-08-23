@@ -4,6 +4,9 @@
 -- Description: Consolidated tables, primary keys, foreign keys, and indexes.
 -- ============================================================================
 
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1. GUILDS
 CREATE TABLE IF NOT EXISTS public.guilds (
     id TEXT PRIMARY KEY,
@@ -11,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.guilds (
     server_number TEXT,
     subscription_type TEXT NOT NULL DEFAULT 'Unlimited',
     subscription_end TIMESTAMPTZ,
+    plan_key TEXT,
     payments_disabled BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -292,3 +296,5 @@ CREATE INDEX IF NOT EXISTS idx_player_absences_guild_uid ON public.player_absenc
 CREATE INDEX IF NOT EXISTS idx_system_audit_logs_guild_created ON public.system_audit_logs(guild, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_system_audit_logs_level_created ON public.system_audit_logs(level, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_system_audit_logs_correlation ON public.system_audit_logs(correlation_id);
+
+NOTIFY pgrst, 'reload schema';

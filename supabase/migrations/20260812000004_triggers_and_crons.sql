@@ -97,3 +97,5 @@ CREATE TRIGGER trg_prevent_duplicate_member_uid
     BEFORE INSERT OR UPDATE ON public.guild_members
     FOR EACH ROW
     EXECUTE FUNCTION public.prevent_duplicate_member_uid();
+
+NOTIFY pgrst, 'reload schema';
