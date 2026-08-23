@@ -171,14 +171,34 @@
         reloadActiveView();
 
         // Handle a Stripe checkout redirect (back from the hosted payment
-        // page): switch to the Subscription tab so GM_SUBSCRIPTION.load()
-        // can poll gm-order-status and confirm the payment. The URL is
-        // cleaned right away so a later page refresh does not force this tab
-        // again (the checkout params would otherwise stay in the address bar).
+        // page): switch to the Donation tab in Player Portal or Command Center.
         var urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('checkout') === 'success' || urlParams.get('checkout') === 'cancel') {
-            if (window.GM_SUBSCRIPTION && window.GM_SHELL && window.GM_SHELL.gotoItem) {
-                window.GM_SHELL.gotoItem('subscription');
+        var checkoutMode = urlParams.get('checkout');
+        if (checkoutMode === 'success' || checkoutMode === 'cancel') {
+            var isPortalSession = role === 'member' || localStorage.getItem('gm_portal_session') === '1';
+            if (isPortalSession) {
+                setTimeout(function () {
+                    var donationNav = document.querySelector('[data-portal-nav="donation"]');
+                    if (donationNav) donationNav.click();
+                    if (checkoutMode === 'success') {
+                        var panel = document.getElementById('portal-panel-donation');
+                        if (panel) {
+                            panel.innerHTML =
+                                '<div class="portal-card" style="text-align:center; padding:3rem 1.5rem; max-width:540px; margin:2rem auto;">' +
+                                    '<div style="width:64px; height:64px; border-radius:50%; background:var(--accent-soft, rgba(99,102,241,0.15)); color:var(--accent, #6366f1); display:flex; align-items:center; justify-content:center; font-size:2rem; margin:0 auto 1.25rem auto;">' +
+                                        '<i class="ph-fill ph-coffee"></i>' +
+                                    '</div>' +
+                                    '<h2 style="font-size:1.4rem; font-weight:800; color:var(--fg); margin:0 0 0.5rem 0;">Thank you for your support!</h2>' +
+                                    '<p class="gm-dim" style="font-size:.92rem; line-height:1.6; margin:0 0 1.5rem 0;">Your donation helps keep the servers running and the AI scans available for everyone.</p>' +
+                                    '<button class="gm-btn gm-btn-primary" onclick="if(window.GM_PORTAL&&window.GM_PORTAL.renderDashboard){var nav=document.querySelector(\'[data-portal-nav=\\\"donation\\\"]\');if(nav)nav.click();}"><i class="ph ph-arrow-left"></i> Back to Donations</button>' +
+                                '</div>';
+                        }
+                    }
+                }, 300);
+            } else {
+                if (window.GM_SUBSCRIPTION && window.GM_SHELL && window.GM_SHELL.gotoItem) {
+                    window.GM_SHELL.gotoItem('subscription');
+                }
             }
             try {
                 window.history.replaceState({}, '', window.location.pathname + window.location.hash);
@@ -1704,6 +1724,7 @@
                     var serverNum = g.server_number || (window.guildsData && window.guildsData[guildId] ? window.guildsData[guildId].server_number : '') || localStorage.getItem('gm_server_number_' + guildId) || '';
                     var dateVal = end ? end.split('T')[0] : '';
 
+                    // Note: Super admin subscription editor remains functional but is cosmetic since is_subscription_active() always returns true in v127.0+
                     // Calculate countdown html
                     var countdownHtml = '';
                     if (type === 'Unlimited') {

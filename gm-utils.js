@@ -94,18 +94,8 @@
     }
 
     function isGuildSubscriptionExpired(guildId) {
-        var role = roleFromStorage();
-        if (role === 'super_admin' || (window.currentGuildRestriction === null && !localStorage.getItem('gm_server_restriction'))) {
-            return false; // Super admin (or unrestricted officer) is never restricted
-        }
-        if (!guildId) return false;
-        if (!window.guildsData || !window.guildsData[guildId]) return false;
-        var sub = window.guildsData[guildId];
-        if (!sub || sub.type === 'Unlimited' || sub.type === 'Lifetime') return false;
-        if (sub.type === 'Premium') {
-            if (!sub.end) return true; // Premium without end date is expired
-            return new Date(sub.end).getTime() < Date.now();
-        }
+        // The platform is completely free since v127.0: subscription expiry is neutralized.
+        // Voluntary donations never gate feature access.
         return false;
     }
 

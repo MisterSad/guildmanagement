@@ -138,7 +138,8 @@
             { id: 'challenges', icon: 'ph-target', label: 'Challenges' },
             { id: 'absence', icon: 'ph-user-minus', label: 'Absence' },
             { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
-            { id: 'badges', icon: 'ph-trophy', label: 'Badges' }
+            { id: 'badges', icon: 'ph-trophy', label: 'Badges' },
+            { id: 'donation', icon: 'ph-coffee', label: 'Buy Me a Coffee' }
         ];
 
         var navHtml = navItems.map(function (item) {
@@ -199,6 +200,7 @@
                             '<div id="portal-panel-events" class="gm-page portal-panel hidden"></div>' +
                             '<div id="portal-panel-absence" class="gm-page portal-panel hidden"></div>' +
                             '<div id="portal-panel-settings" class="gm-page portal-panel hidden"></div>' +
+                            '<div id="portal-panel-donation" class="gm-page portal-panel hidden"></div>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -224,7 +226,7 @@
             root.querySelectorAll('[data-portal-nav]').forEach(function (b) {
                 b.classList.toggle('gm-active', b.getAttribute('data-portal-nav') === tabId);
             });
-            ['dashboard', 'challenges', 'badges', 'events', 'absence', 'settings'].forEach(function (name) {
+            ['dashboard', 'challenges', 'badges', 'events', 'absence', 'settings', 'donation'].forEach(function (name) {
                 var panel = document.getElementById('portal-panel-' + name);
                 if (panel) panel.classList.toggle('hidden', name !== portalState.activeTab);
             });
@@ -239,6 +241,9 @@
             }
             if (portalState.activeTab === 'absence') {
                 renderAbsencePanel();
+            }
+            if (portalState.activeTab === 'donation') {
+                renderDonationPanel();
             }
         }
 
@@ -1707,6 +1712,161 @@
                 }
             });
         });
+    }
+
+    // ─── Panel: Buy Me a Coffee (Donations) ────────────────────────────────
+    var PORTAL_DONATION_TIERS = [
+        { key: 'donation_2', label: 'Buy a Coffee', price: '2', cents: 200, tag: null, icon: 'ph-coffee' },
+        { key: 'donation_5', label: 'Buy 2 Coffees', price: '5', cents: 500, tag: 'Popular', icon: 'ph-coffee' },
+        { key: 'donation_10', label: 'Buy a Lunch', price: '10', cents: 1000, tag: null, icon: 'ph-heart' }
+    ];
+
+    function renderDonationPanel() {
+        var panel = document.getElementById('portal-panel-donation');
+        if (!panel) return;
+
+        var html =
+            '<header class="gm-page-header">' +
+                '<div>' +
+                    '<h1 class="gm-page-title">Buy Me a Coffee</h1>' +
+                    '<p class="gm-page-subtitle">The app is free. If it makes your guild stronger, you can support its development with a voluntary donation.</p>' +
+                '</div>' +
+            '</header>' +
+            '<div id="portal-donation-body" style="display:flex; flex-direction:column; gap:1.25rem;">' +
+                // 1. Tiers grid
+                '<div class="portal-card">' +
+                    '<div class="gm-dim" style="font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:.75rem;">Support the Project</div>' +
+                    '<div class="gm-sub-plans-grid">' +
+                        PORTAL_DONATION_TIERS.map(function (tier) {
+                            var featured = tier.tag ? ' gm-sub-plan-featured' : '';
+                            return '<div class="gm-sub-plan-card' + featured + '">' +
+                                (tier.tag ? '<span class="gm-sub-plan-tag">' + esc(tier.tag) + '</span>' : '') +
+                                '<div class="gm-sub-plan-label">' + esc(tier.label) + '</div>' +
+                                '<div class="gm-sub-plan-price">€' + esc(tier.price) + '</div>' +
+                                '<div class="gm-sub-plan-period">voluntary one-time donation</div>' +
+                                '<button class="gm-btn gm-btn-primary gm-sub-buy" data-portal-donate-plan="' + tier.key + '">' +
+                                    '<i class="ph ' + tier.icon + '"></i> Donate €' + esc(tier.price) +
+                                '</button>' +
+                            '</div>';
+                        }).join('') +
+                    '</div>' +
+                '</div>' +
+
+                // 2. Custom amount card
+                '<div class="portal-card">' +
+                    '<div style="font-size:.95rem; font-weight:700; color:var(--fg); margin-bottom:.5rem;">Custom amount</div>' +
+                    '<div class="gm-dim" style="font-size:.82rem; margin-bottom:.75rem;">Enter any voluntary donation amount between €2 and €100.</div>' +
+                    '<div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; max-width:460px;">' +
+                        '<div style="position:relative; flex:1; min-width:140px;">' +
+                            '<span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); font-weight:700; color:var(--fg-dim);">€</span>' +
+                            '<input type="number" id="portal-donation-custom-input" class="gm-input" min="2" max="100" step="1" placeholder="25" style="padding-left:1.75rem; width:100%; box-sizing:border-box;">' +
+                        '</div>' +
+                        '<button class="gm-btn gm-btn-primary" id="portal-donation-custom-btn" style="white-space:nowrap;">' +
+                            '<i class="ph ph-coffee"></i> Donate' +
+                        '</button>' +
+                    '</div>' +
+                    '<div id="portal-donation-custom-error" class="gm-dim" style="color:#ef4444; font-size:.8rem; margin-top:.5rem; display:none;">Please enter a valid amount between 2 and 100 EUR.</div>' +
+                '</div>' +
+
+                // 3. Transparency card
+                '<div class="portal-card">' +
+                    '<div style="font-size:1rem; font-weight:700; color:var(--fg); margin-bottom:.75rem; display:flex; align-items:center; gap:0.5rem;">' +
+                        '<i class="ph ph-heart" style="color:var(--accent);"></i>' +
+                        '<span>Why your support matters</span>' +
+                    '</div>' +
+                    '<div style="font-size:.875rem; line-height:1.6; color:var(--fg-dim);">' +
+                        '<p style="margin:0 0 .75rem 0;">This app is free, and it stays free. But it is not free to run:</p>' +
+                        '<ul style="margin:0 0 .75rem 1.25rem; padding:0; display:flex; flex-direction:column; gap:0.4rem;">' +
+                            '<li><strong>Hosting &amp; infrastructure (Vercel + Supabase):</strong> roughly EUR 45-100 every month, rain or shine.</li>' +
+                            '<li><strong>AI OCR scans:</strong> every screenshot you analyze calls a paid AI API. Costs scale directly with how much the community uses it.</li>' +
+                            '<li><strong>Development:</strong> hundreds of hours of design, coding, bug fixes, and feature requests handled one by one — evenings and weekends, on top of a day job.</li>' +
+                        '</ul>' +
+                        '<p style="margin:0;">Your donation covers the servers, keeps the AI scans flowing, and tells me the time I put into this tool is worth it. Every coffee genuinely helps. Thank you!</p>' +
+                    '</div>' +
+                '</div>' +
+
+                // 4. Accepted payments
+                '<div class="portal-card">' +
+                    '<div class="gm-dim" style="font-size:.78rem;">' +
+                        'Accepted payments: Cards (Visa, Mastercard, Amex), Cartes Bancaires, Apple Pay, Google Pay, PayPal, Alipay, Amazon Pay, Klarna, iDEAL, Bancontact, EPS, BLIK, MB WAY, Pix, Satispay, Multibanco, MobilePay, WeChat Pay, Revolut Pay, Samsung Pay, Kakao Pay, Naver Pay, PAYCO, Link, and more.' +
+                    '</div>' +
+                    '<div class="gm-dim" style="font-size:.75rem; margin-top:.35rem;">' +
+                        '<i class="ph ph-shield-check"></i> Payments are processed and secured by the payment provider. The site administrator never has access to your bank details. • <a href="terms.html" style="color:var(--text-muted); text-decoration:underline;">Terms &amp; Conditions</a>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        panel.innerHTML = html;
+
+        async function startPortalCheckout(planKey, amountCents, triggerBtn) {
+            var origHtml = '';
+            if (triggerBtn) {
+                origHtml = triggerBtn.innerHTML;
+                triggerBtn.disabled = true;
+                triggerBtn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i> <span>Redirecting...</span>';
+            }
+
+            var returnUrl = window.location.href.split('?')[0];
+            var payload = { plan: planKey, returnUrl: returnUrl };
+            if (planKey === 'donation_custom') {
+                payload.amountCents = amountCents;
+            }
+
+            try {
+                var res = await invoke('create-donation', payload);
+                if (!res.ok) throw new Error(res.error || 'checkout_failed');
+                if (res.url) {
+                    window.location.assign(res.url);
+                } else {
+                    throw new Error('missing_url');
+                }
+            } catch (err) {
+                if (triggerBtn) {
+                    triggerBtn.disabled = false;
+                    triggerBtn.innerHTML = origHtml;
+                }
+                var errCode = (err && err.message) || '';
+                if (errCode === 'donations_disabled') {
+                    panel.innerHTML =
+                        '<header class="gm-page-header"><div><h1 class="gm-page-title">Buy Me a Coffee</h1></div></header>' +
+                        '<div class="gm-empty" style="padding:3rem 1.5rem; text-align:center; max-width:480px; margin:2rem auto; background:var(--bg-1); border-radius:var(--radius-xl); border:1px solid var(--border-soft);">' +
+                            '<i class="ph-duotone ph-coffee gm-icon" style="font-size:3rem; color:var(--accent); margin-bottom:1rem; display:block;"></i>' +
+                            '<div class="gm-empty-title" style="font-size:1.25rem; font-weight:700; color:var(--fg); margin-bottom:0.5rem;">Donations are disabled</div>' +
+                            '<div class="gm-empty-sub" style="color:var(--fg-dim); font-size:0.95rem;">Donations are disabled on the demonstration server.</div>' +
+                        '</div>';
+                } else if (errCode === 'invalid_amount') {
+                    window.GM.showToast('Please enter a valid amount between 2 and 100 EUR.', 'error');
+                } else {
+                    window.GM.showToast('Could not start donation checkout: ' + errCode, 'error');
+                }
+            }
+        }
+
+        panel.querySelectorAll('[data-portal-donate-plan]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var planKey = btn.getAttribute('data-portal-donate-plan');
+                startPortalCheckout(planKey, null, btn);
+            });
+        });
+
+        var customBtn = document.getElementById('portal-donation-custom-btn');
+        var customInput = document.getElementById('portal-donation-custom-input');
+        var customErr = document.getElementById('portal-donation-custom-error');
+        if (customBtn && customInput) {
+            customBtn.addEventListener('click', function () {
+                var val = parseFloat(customInput.value);
+                if (isNaN(val) || val < 2 || val > 100 || !Number.isInteger(Math.round(val * 100) / 100)) {
+                    if (customErr) customErr.style.display = 'block';
+                    return;
+                }
+                if (customErr) customErr.style.display = 'none';
+                var cents = Math.round(val * 100);
+                startPortalCheckout('donation_custom', cents, customBtn);
+            });
+            customInput.addEventListener('input', function () {
+                if (customErr) customErr.style.display = 'none';
+            });
+        }
     }
 
     // ─── Public API ────────────────────────────────────────────────────────

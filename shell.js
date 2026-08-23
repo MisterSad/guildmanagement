@@ -29,10 +29,10 @@
         { id: 'stats',     tabId: 'stats-admin', m3Icon: 'leaderboard', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
 
         { id: 'accounts',  tabId: 'admin-home',  m3Icon: 'manage_accounts', icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
-        { id: 'subscription', tabId: 'tab-subscription', m3Icon: 'credit_card', icon: 'ph-credit-card', labelKey: 'gm_nav_subscription', section: 'admin', adminOnly: true, panels: ['tab-subscription'] },
         { id: 'discord',   tabId: 'admin-discord', m3Icon: 'notifications', icon: 'ph-bell-ringing',   labelKey: 'gm_nav_discord',   section: 'admin', panels: ['admin-discord'] },
         { id: 'sanctions', tabId: 'tab-sanctions', m3Icon: 'gavel', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
         { id: 'banned',    tabId: 'admin-banned', m3Icon: 'block', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] },
+        { id: 'subscription', tabId: 'tab-subscription', m3Icon: 'local_cafe', icon: 'ph-coffee', labelKey: 'gm_nav_donate', section: 'admin', adminOnly: true, panels: ['tab-subscription'] },
 
         { id: 'superadmin-accounts', tabId: 'admin-superadmin', m3Icon: 'admin_panel_settings', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
         { id: 'settings', tabId: 'tab-settings', m3Icon: 'tune', icon: 'ph-note-pencil', labelKey: 'gm_nav_settings', section: 'superadmin', r5Only: true, panels: ['tab-settings'] },
@@ -241,42 +241,14 @@
     }
 
     function checkSubscriptionStatus() {
-        var isSuperAdmin = (window.GM.isSuperAdmin() || window.currentGuildRestriction === null);
-        var isExpired = false;
-        var activeGuild = window.currentGuild || 'ALPHA';
-        if (window.guildsData && window.guildsData[activeGuild]) {
-            var sub = window.guildsData[activeGuild];
-            if (sub.type === 'Premium') {
-                if (sub.end) {
-                    var diff = new Date(sub.end).getTime() - Date.now();
-                    if (diff <= 0) isExpired = true;
-                } else {
-                    isExpired = true;
-                }
-            }
-        }
-
-        var isSuperAdmin = (window.GM.isSuperAdmin() || window.currentGuildRestriction === null);
-        var canWrite = (window.GM && window.GM.canWriteGuild) ? window.GM.canWriteGuild(activeGuild) : true;
-        // Never show read-only banner when navigating as Super Admin
-        var readOnlyActive = !canWrite && !isSuperAdmin;
+        // Platform is free since v127.0: read-only restrictions and subscription banners are neutralized.
+        document.body.classList.remove('guild-read-only');
         var banner = document.getElementById('guild-warning-banner');
-
-        if (readOnlyActive) {
-            document.body.classList.add('guild-read-only');
-            if (banner) {
-                var messageHtml = '<span><i class="ph-fill ph-warning-octagon" style="font-size: 1.2rem; margin-right: 0.5rem;"></i><strong>Read Only Mode:</strong> This guild\'s subscription has expired. Renew it to restore write access.</span>';
-                banner.innerHTML = messageHtml;
-                banner.style.display = 'flex';
-            }
-        } else {
-            document.body.classList.remove('guild-read-only');
-            if (banner) {
-                banner.style.display = 'none';
-                banner.innerHTML = '';
-            }
+        if (banner) {
+            banner.style.display = 'none';
+            banner.innerHTML = '';
         }
-        return isExpired;
+        return false;
     }
 
     function renderGuildSelectorHtml() {

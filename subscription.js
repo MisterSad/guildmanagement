@@ -1,22 +1,19 @@
 /**
- * subscription.js — Abonnement en self-service (onglet « Subscription »).
- * Visible pour les guild_admin et le super_admin (sur n'importe quel tenant).
- * Paiement via une Checkout Session hébergée (redirection Stripe) : CB,
- * Apple Pay, Google Pay, PayPal. La source de vérité reste le webhook
- * (gm-stripe-webhook) ; gm-order-status permet de rafraîchir l'UI dès que
- * Stripe confirme le paiement côté serveur.
- * Chargé à la demande par app.js via window.GM_SUBSCRIPTION.load().
+ * subscription.js — Voluntary donations ("Buy Me a Coffee").
+ * The app is 100% free for all guilds since v127.0.
+ * Donations help cover infrastructure (Vercel + Supabase) and paid AI OCR scan costs.
+ * Accessible to guild admins and super admins in the Command Center.
+ * Loaded on demand by app.js via window.GM_SUBSCRIPTION.load().
  */
 (function () {
 
     var esc = (window.GM && window.GM.escapeHTML) || function (s) { return s; };
     var t = function (k) { return window.GM_I18N ? window.GM_I18N.t(k) : k; };
 
-    var PLANS = [
-        { key: '1m', label: '1 Month',  price: '9.99',  period: 'one-time', tag: null },
-        { key: '3m', label: '3 Months', price: '24.99', period: 'one-time', tag: 'Save ~17%' },
-        { key: '6m', label: '6 Months', price: '44.99', period: 'one-time', tag: 'Save ~25%' },
-        { key: '12m', label: '12 Months', price: '74.99', period: 'one-time', tag: 'Save ~37% - best value' }
+    var DONATION_TIERS = [
+        { key: 'donation_2',  label: 'Buy a Coffee',  price: '2',  cents: 200,  tag: null, icon: 'ph-coffee' },
+        { key: 'donation_5',  label: 'Buy 2 Coffees', price: '5',  cents: 500,  tag: 'Popular', icon: 'ph-coffee' },
+        { key: 'donation_10', label: 'Buy a Lunch',   price: '10', cents: 1000, tag: null, icon: 'ph-heart' }
     ];
 
     var state = {
@@ -37,15 +34,24 @@
         return role === 'super_admin' || role === 'guild_admin';
     }
 
-    function sleep(ms) {
-        return new Promise(function (resolve) { setTimeout(resolve, ms); });
-    }
-
     function showToast(msg, type) {
         if (window.GM && window.GM.showToast) window.GM.showToast(msg, type);
     }
 
-    // ── Chargement ───────────────────────────────────────────────────────────
+    // ── Redirect helper (stubbable for tests) ─────────────────────────────────
+    function redirectTo(url) {
+        window.location.assign(url);
+    }
+
+    function startCheckoutRedirect(url) {
+        if (window.GM_SUBSCRIPTION && window.GM_SUBSCRIPTION._redirectTo) {
+            window.GM_SUBSCRIPTION._redirectTo(url);
+        } else {
+            redirectTo(url);
+        }
+    }
+
+    // ── Load & Bootstrap ──────────────────────────────────────────────────────
     async function load() {
         var container = document.getElementById('subscription-container');
         if (!container) return;
@@ -55,17 +61,14 @@
             return;
         }
 
-        // Guilds with payments disabled (e.g. the public DEMO preview tenant)
-        // get a read-only notice instead of the purchase plans.
         var guildId = getGuildId();
         if (!window.guildsData || !window.guildsData[guildId]) {
-            // guildsData not loaded yet (deep link): refresh it first so the
-            // payments_disabled flag is authoritative before rendering plans.
             try {
                 await refreshGuildsData();
-            } catch (err) { /* fall through to plans; server gates at create */ }
+            } catch (err) { /* ignore */ }
         }
-        if (window.GM.isPaymentsDisabled(guildId)) {
+
+        if (window.GM && window.GM.isPaymentsDisabled && window.GM.isPaymentsDisabled(guildId)) {
             container.innerHTML = paymentsDisabledHtml();
             return;
         }
@@ -93,98 +96,94 @@
         if (btn) btn.addEventListener('click', load);
     }
 
-    // ── Statut actuel de la guilde courante ─────────────────────────────────
-    function statusCardHtml(guildId) {
-        var sub = (window.guildsData && window.guildsData[guildId]) || { type: 'Unlimited', end: null };
-        var icon = 'ph-infinity';
-        var label = '';
-        var desc = '';
-
-        if (sub.type === 'Lifetime') {
-            icon = 'ph-infinity';
-            label = 'Lifetime';
-            desc = 'Lifetime access - never expires.';
-        } else if (sub.type === 'Unlimited') {
-            icon = 'ph-infinity';
-            label = 'Unlimited';
-            desc = 'Unlimited access.';
-        } else if (sub.type === 'Premium' && sub.end) {
-            var endMs = new Date(sub.end).getTime();
-            if (endMs > Date.now()) {
-                var days = Math.floor((endMs - Date.now()) / (1000 * 60 * 60 * 24));
-                var hours = Math.floor(((endMs - Date.now()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                icon = 'ph-sparkle';
-                label = 'Active';
-                desc = 'Active until ' + esc(sub.end.split('T')[0]) + ' - ' + days + 'd ' + hours + 'h remaining.';
-            } else {
-                icon = 'ph-lock-keyhole';
-                label = 'Expired';
-                desc = 'Your subscription has expired. Renew below to restore write access.';
-            }
-        } else {
-            icon = 'ph-lock-keyhole';
-            label = 'Expired';
-            desc = 'No active subscription. Renew below to restore write access.';
-        }
-
-        return '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">' +
-            '<div style="width:48px; height:48px; border-radius:12px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex-shrink:0;">' +
-                '<i class="ph-fill ' + icon + '"></i>' +
+    // ── Free App Status Banner ───────────────────────────────────────────────
+    function freeAppStatusCardHtml() {
+        return '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1.25rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">' +
+            '<div style="width:48px; height:48px; border-radius:12px; background:var(--accent-soft, rgba(99,102,241,0.15)); color:var(--accent, #6366f1); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex-shrink:0;">' +
+                '<i class="ph-fill ph-coffee"></i>' +
             '</div>' +
             '<div style="flex:1; min-width:200px;">' +
-                '<div class="gm-member-pseudo" style="font-weight:700; font-size:1.05rem;">' + esc(guildId) + ' - ' + label + '</div>' +
-                '<div class="gm-dim" style="font-size:.85rem;">' + desc + '</div>' +
+                '<div style="font-weight:700; font-size:1.05rem; color:var(--fg);">' + (t('gm_nav_donate') || 'Buy Me a Coffee') + '</div>' +
+                '<div class="gm-dim" style="font-size:.85rem; margin-top:0.2rem;">' + (t('gm_donate_subtitle') || 'The app is free. If it makes your guild stronger, you can support its development with a voluntary donation.') + '</div>' +
             '</div>' +
             '<div style="display:flex; gap:.5rem; align-items:center;">' +
-                '<span class="gm-chip" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:.72rem; letter-spacing:.03em;">' + esc(guildId) + '</span>' +
+                '<span class="gm-chip" style="background:var(--accent-soft, rgba(99,102,241,0.15)); color:var(--accent, #6366f1); font-weight:700; font-size:.75rem; letter-spacing:.03em;">100% FREE</span>' +
             '</div>' +
         '</div>';
     }
 
-    // ── Cartes de plans ──────────────────────────────────────────────────────
-    function planCardHtml(plan) {
-        var featured = plan.tag ? ' gm-sub-plan-featured' : '';
+    // ── Tier Cards ────────────────────────────────────────────────────────────
+    function tierCardHtml(tier) {
+        var featured = tier.tag ? ' gm-sub-plan-featured' : '';
         return '<div class="gm-sub-plan-card' + featured + '">' +
-            (plan.tag ? '<span class="gm-sub-plan-tag">' + esc(plan.tag) + '</span>' : '') +
-            '<div class="gm-sub-plan-label">' + esc(plan.label) + '</div>' +
-            '<div class="gm-sub-plan-price">€' + esc(plan.price) + '</div>' +
-            '<div class="gm-sub-plan-period">' + (plan.period === 'one-time' ? (t('gm_sub_one_time') || 'one-time payment') : esc(plan.period)) + '</div>' +
-            '<button class="gm-btn gm-btn-primary gm-sub-buy" data-gm-sub-plan="' + plan.key + '">' +
-                '<i class="ph ph-credit-card"></i> ' + (t('gm_sub_subscribe') || 'Subscribe') +
+            (tier.tag ? '<span class="gm-sub-plan-tag">' + esc(tier.tag) + '</span>' : '') +
+            '<div class="gm-sub-plan-label">' + esc(tier.label) + '</div>' +
+            '<div class="gm-sub-plan-price">€' + esc(tier.price) + '</div>' +
+            '<div class="gm-sub-plan-period">' + (t('gm_sub_one_time') || 'voluntary one-time donation') + '</div>' +
+            '<button class="gm-btn gm-btn-primary gm-sub-buy" data-gm-sub-plan="' + tier.key + '">' +
+                '<i class="ph ' + tier.icon + '"></i> ' + (t('gm_sub_subscribe') || 'Donate') + ' €' + esc(tier.price) +
             '</button>' +
         '</div>';
     }
 
-    // ── Démarrer un paiement : créer la session puis rediriger ──────────────
-    // Redirect goes through the public API so tests can stub it without
-    // touching the read-only window.location.assign in jsdom.
-    function redirectTo(url) {
-        window.location.assign(url);
+    // ── Transparency Section Card ─────────────────────────────────────────────
+    function transparencyCardHtml() {
+        return '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1.25rem;">' +
+            '<div style="font-size:.95rem; font-weight:700; color:var(--fg); margin-bottom:.75rem; display:flex; align-items:center; gap:0.5rem;">' +
+                '<i class="ph ph-heart" style="color:var(--accent, #6366f1);"></i> ' +
+                '<span>Why your support matters</span>' +
+            '</div>' +
+            '<div style="font-size:.875rem; line-height:1.6; color:var(--fg-dim);">' +
+                '<p style="margin:0 0 .75rem 0;">This app is free, and it stays free. But it is not free to run:</p>' +
+                '<ul style="margin:0 0 .75rem 1.25rem; padding:0; display:flex; flex-direction:column; gap:0.4rem;">' +
+                    '<li><strong>Hosting &amp; infrastructure (Vercel + Supabase):</strong> roughly EUR 45-100 every month, rain or shine.</li>' +
+                    '<li><strong>AI OCR scans:</strong> every screenshot you analyze calls a paid AI API. Costs scale directly with how much the community uses it.</li>' +
+                    '<li><strong>Development:</strong> hundreds of hours of design, coding, bug fixes, and feature requests handled one by one — evenings and weekends, on top of a day job.</li>' +
+                '</ul>' +
+                '<p style="margin:0;">Your donation covers the servers, keeps the AI scans flowing, and tells me the time I put into this tool is worth it. Every coffee genuinely helps. Thank you!</p>' +
+            '</div>' +
+        '</div>';
     }
 
-    function startCheckoutRedirect(url) {
-        if (window.GM_SUBSCRIPTION && window.GM_SUBSCRIPTION._redirectTo) {
-            window.GM_SUBSCRIPTION._redirectTo(url);
-        } else {
-            redirectTo(url);
-        }
+    // ── Custom Amount Card ────────────────────────────────────────────────────
+    function customAmountCardHtml() {
+        return '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1.25rem;">' +
+            '<div style="font-size:.95rem; font-weight:700; color:var(--fg); margin-bottom:.5rem;">' +
+                (t('gm_donate_custom') || 'Custom amount') +
+            '</div>' +
+            '<div class="gm-dim" style="font-size:.82rem; margin-bottom:.75rem;">' +
+                'Enter any voluntary donation amount between €2 and €100.' +
+            '</div>' +
+            '<div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; max-width:460px;">' +
+                '<div style="position:relative; flex:1; min-width:140px;">' +
+                    '<span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); font-weight:700; color:var(--fg-dim);">€</span>' +
+                    '<input type="number" id="donation-custom-input" class="gm-input" min="2" max="100" step="1" placeholder="25" style="padding-left:1.75rem; width:100%; box-sizing:border-box;">' +
+                '</div>' +
+                '<button class="gm-btn gm-btn-primary" id="donation-custom-btn" style="white-space:nowrap;">' +
+                    '<i class="ph ph-coffee"></i> ' + (t('gm_sub_subscribe') || 'Donate') +
+                '</button>' +
+            '</div>' +
+            '<div id="donation-custom-error" class="gm-dim" style="color:#ef4444; font-size:.8rem; margin-top:.5rem; display:none;">' +
+                (t('gm_donate_invalid_amount') || 'Please enter a valid amount between 2 and 100 EUR.') +
+            '</div>' +
+        '</div>';
     }
 
-    async function startCheckout(planKey, container) {
+    // ── Start Checkout Flow via member-portal:create-donation ─────────────────
+    async function startCheckout(planKey, customAmountCents, triggerBtn) {
         var cfg = state.config;
         if (!cfg || !cfg.configured) {
-            showToast(t('gm_sub_not_configured') || 'Payments are not configured yet.', 'error');
+            showToast(t('gm_donate_not_configured') || t('gm_sub_not_configured') || 'Donations are not configured yet.', 'error');
             return;
         }
         if (state.busy) return;
         state.busy = true;
 
-        var btn = container.querySelector('[data-gm-sub-plan="' + planKey + '"]');
-        var origText = '';
-        if (btn) {
-            origText = btn.textContent;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i> <span>Redirecting...</span>';
+        var origHtml = '';
+        if (triggerBtn) {
+            origHtml = triggerBtn.innerHTML;
+            triggerBtn.disabled = true;
+            triggerBtn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i> <span>Redirecting...</span>';
         }
 
         var guildId = getGuildId();
@@ -192,55 +191,40 @@
         var returnUrl = window.location.href.split('?')[0];
 
         try {
-            var res = await db.functions.invoke('gm-create-order', {
-                body: { action: 'create', guildId: guildId, plan: planKey, returnUrl: returnUrl }
+            var bodyPayload = {
+                plan: planKey,
+                guildId: guildId,
+                returnUrl: returnUrl
+            };
+            if (planKey === 'donation_custom') {
+                bodyPayload.amountCents = customAmountCents;
+            }
+
+            var res = await db.functions.invoke('member-portal', {
+                body: { action: 'create-donation', payload: bodyPayload }
             });
             var data = res.data || {};
             if (!data.ok || !data.url) throw new Error(data.error || 'order_failed');
-            // Hosted checkout: hand the browser over to Stripe.
+
             startCheckoutRedirect(data.url);
         } catch (err) {
             state.busy = false;
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = origText;
+            if (triggerBtn) {
+                triggerBtn.disabled = false;
+                triggerBtn.innerHTML = origHtml;
             }
-            showToast(t('gm_sub_widget_error') || 'Could not start the payment.', 'error');
+            var errCode = (err && err.message) || '';
+            if (errCode === 'donations_disabled') {
+                showToast(t('gm_donate_disabled_body') || 'Donations are disabled on this guild.', 'info');
+            } else if (errCode === 'invalid_amount') {
+                showToast(t('gm_donate_invalid_amount') || 'Please enter a valid amount between 2 and 100 EUR.', 'error');
+            } else {
+                showToast(t('gm_sub_widget_error') || 'Could not start the donation checkout.', 'error');
+            }
         }
     }
 
-    // ── Confirmation au retour de Stripe : poll gm-order-status ────────────
-    async function confirmCheckout(sessionId, container) {
-        var db = getDb();
-        var applied = false;
-        var attempts = 0;
-
-        while (attempts < 15) {
-            attempts++;
-            try {
-                var res = await db.functions.invoke('gm-order-status', { body: { sessionId: sessionId } });
-                var data = res.data || {};
-                if (data.ok && (data.applied === true || data.state === 'completed')) {
-                    applied = true;
-                    break;
-                }
-            } catch (err) { /* keep polling */ }
-            await sleep(2000);
-        }
-
-        if (applied) {
-            await refreshGuildsData();
-            showToast(t('gm_sub_success') || 'Subscription activated - thank you!', 'success');
-        } else {
-            // Webhook will apply it shortly; refresh anyway so the user sees the truth.
-            await refreshGuildsData();
-            showToast(t('gm_sub_waiting') || 'Payment received - activation in progress…', 'info');
-        }
-
-        render(container);
-    }
-
-    // ── Refresh du cache local (miroir de fetchGuilds dans app.js) ──────────
+    // ── Refresh local cache ───────────────────────────────────────────────────
     async function refreshGuildsData() {
         var db = getDb();
         if (!db) return;
@@ -267,28 +251,103 @@
         } catch (err) { /* non fatal */ }
     }
 
-    // ── Rendu principal ──────────────────────────────────────────────────────
+    // ── Main Render ───────────────────────────────────────────────────────────
     function render(container) {
-        var guildId = getGuildId();
-        var html = statusCardHtml(guildId);
+        var html = freeAppStatusCardHtml();
+
+        // 1. Tiers grid
+        html +=
+            '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1.25rem;">' +
+                '<div class="gm-dim" style="font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:.75rem;">' +
+                    (t('gm_sub_plans_title') || 'Support the Project') +
+                '</div>' +
+                '<div class="gm-sub-plans-grid">' +
+                    DONATION_TIERS.map(tierCardHtml).join('') +
+                '</div>' +
+            '</div>';
+
+        // 2. Custom amount card
+        html += customAmountCardHtml();
+
+        // 3. Transparency card
+        html += transparencyCardHtml();
+
+        // 4. Accepted methods & security
         html +=
             '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1rem;">' +
-                '<div class="gm-dim" style="font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:.75rem;">' + (t('gm_sub_plans_title') || 'Subscription plans') + '</div>' +
-                '<div class="gm-sub-plans-grid">' +
-                    PLANS.map(planCardHtml).join('') +
+                '<div class="gm-dim gm-sub-methods" style="font-size:.78rem;">' +
+                    (t('gm_sub_methods') || 'Accepted payments: Cards (Visa, Mastercard, Amex), Cartes Bancaires, Apple Pay, Google Pay, PayPal, Alipay, Amazon Pay, Klarna, iDEAL, Bancontact, EPS, BLIK, MB WAY, Pix, Satispay, Multibanco, MobilePay, WeChat Pay, Revolut Pay, Samsung Pay, Kakao Pay, Naver Pay, PAYCO, Link, and more.') +
                 '</div>' +
-                '<div class="gm-dim gm-sub-methods" style="font-size:.78rem; margin-top:.9rem;">' + (t('gm_sub_methods') || 'Accepted payments: Cards (Visa, Mastercard, Amex), Cartes Bancaires, Apple Pay, Google Pay, PayPal, Alipay, Amazon Pay, Klarna, iDEAL, Bancontact, EPS, BLIK, MB WAY, Pix, Satispay, Multibanco, MobilePay, WeChat Pay, Revolut Pay, Samsung Pay, Kakao Pay, Naver Pay, PAYCO, Link, and more.') + '</div>' +
-                '<div class="gm-dim" style="font-size:.75rem; margin-top:.25rem;"><i class="ph ph-shield-check"></i> ' + (t('gm_sub_security') || 'Payments are processed and secured by the payment provider. The site administrator never has access to your bank details.') + ' • <a href="terms.html" style="color:var(--text-muted); text-decoration:underline;">' + (t('footer_terms') || 'Terms & Conditions') + '</a></div>' +
-            '</div>' +
-            '<div id="subscription-widget" class="gm-sub-widget" style="display:none;"></div>';
+                '<div class="gm-dim" style="font-size:.75rem; margin-top:.35rem;">' +
+                    '<i class="ph ph-shield-check"></i> ' + (t('gm_sub_security') || 'Payments are processed and secured by the payment provider. The site administrator never has access to your bank details.') +
+                    ' • <a href="terms.html" style="color:var(--text-muted); text-decoration:underline;">' + (t('footer_terms') || 'Terms & Conditions') + '</a>' +
+                '</div>' +
+            '</div>';
 
         container.innerHTML = html;
 
+        // Wire tier buttons
         container.querySelectorAll('[data-gm-sub-plan]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                startCheckout(btn.getAttribute('data-gm-sub-plan'), container);
+                var planKey = btn.getAttribute('data-gm-sub-plan');
+                startCheckout(planKey, null, btn);
             });
         });
+
+        // Wire custom amount button
+        var customBtn = document.getElementById('donation-custom-btn');
+        var customInput = document.getElementById('donation-custom-input');
+        var customErr = document.getElementById('donation-custom-error');
+        if (customBtn && customInput) {
+            customBtn.addEventListener('click', function () {
+                var val = parseFloat(customInput.value);
+                if (isNaN(val) || val < 2 || val > 100 || !Number.isInteger(Math.round(val * 100) / 100)) {
+                    if (customErr) customErr.style.display = 'block';
+                    return;
+                }
+                if (customErr) customErr.style.display = 'none';
+                var cents = Math.round(val * 100);
+                startCheckout('donation_custom', cents, customBtn);
+            });
+            customInput.addEventListener('input', function () {
+                if (customErr) customErr.style.display = 'none';
+            });
+        }
+    }
+
+    // ── Return Handling (?checkout=success or ?checkout=cancel) ───────────────
+    async function handleReturn(container, search) {
+        var params = new URLSearchParams(search === undefined ? window.location.search : search);
+        var mode = params.get('checkout');
+        var sessionId = params.get('session_id');
+
+        if (search === undefined && (mode === 'success' || mode === 'cancel')) {
+            try {
+                window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+            } catch (e) { /* non fatal */ }
+        }
+
+        if (mode === 'cancel') {
+            showToast(t('gm_sub_cancelled') || 'Donation cancelled.', 'info');
+            return;
+        }
+
+        if (mode === 'success') {
+            showToast(t('gm_donate_thanks_title') || 'Thank you for supporting the app!', 'success');
+            if (container) {
+                container.innerHTML =
+                    '<div class="gm-card gm-card-padded gm-section" style="text-align:center; padding:3rem 1.5rem; max-width:540px; margin:2rem auto;">' +
+                        '<div style="width:64px; height:64px; border-radius:50%; background:var(--accent-soft, rgba(99,102,241,0.15)); color:var(--accent, #6366f1); display:flex; align-items:center; justify-content:center; font-size:2rem; margin:0 auto 1.25rem auto;">' +
+                            '<i class="ph-fill ph-coffee"></i>' +
+                        '</div>' +
+                        '<h2 style="font-size:1.4rem; font-weight:800; color:var(--fg); margin:0 0 0.5rem 0;">' + (t('gm_donate_thanks_title') || 'Thank you for your support!') + '</h2>' +
+                        '<p class="gm-dim" style="font-size:.92rem; line-height:1.6; margin:0 0 1.5rem 0;">' + (t('gm_donate_thanks_body') || 'Your donation helps keep the servers running and the AI scans available for everyone.') + '</p>' +
+                        '<button class="gm-btn gm-btn-primary" id="btn-return-donation"><i class="ph ph-arrow-left"></i> Back to Donations</button>' +
+                    '</div>';
+                var retBtn = document.getElementById('btn-return-donation');
+                if (retBtn) retBtn.addEventListener('click', load);
+            }
+        }
     }
 
     function loadingHtml() {
@@ -298,7 +357,7 @@
     function errorHtml(msg) {
         return '<div class="gm-empty">' +
             '<i class="ph-duotone ph-warning-circle gm-icon"></i>' +
-            '<div class="gm-empty-title">' + (t('gm_sub_load_error') || 'Could not load the subscription page') + '</div>' +
+            '<div class="gm-empty-title">' + (t('gm_sub_load_error') || 'Could not load the donation page') + '</div>' +
             '<div class="gm-empty-hint">' + esc(msg) + '</div>' +
             '<button class="gm-btn gm-btn-primary" id="subscription-retry" style="margin-top:.5rem;"><i class="ph ph-arrow-clockwise"></i> ' + (t('gm_sub_retry') || 'Retry') + '</button>' +
         '</div>';
@@ -313,41 +372,16 @@
 
     function paymentsDisabledHtml() {
         return '<div class="gm-empty">' +
-            '<i class="ph-duotone ph-infinity gm-icon"></i>' +
-            '<div class="gm-empty-title">' + (t('gm_sub_disabled_title') || 'Payments are disabled') + '</div>' +
-            '<div class="gm-empty-hint">' + (t('gm_sub_disabled_hint') || 'This guild runs without subscriptions. No payment is required.') + '</div>' +
+            '<i class="ph-duotone ph-coffee gm-icon"></i>' +
+            '<div class="gm-empty-title">' + (t('gm_donate_disabled_title') || 'Donations are disabled') + '</div>' +
+            '<div class="gm-empty-hint">' + (t('gm_donate_disabled_body') || 'Donations are disabled on the demonstration server.') + '</div>' +
         '</div>';
-    }
-
-    // ── Traitement du retour de Stripe (page rechargée avec ?checkout=) ─────
-    async function handleReturn(container, search) {
-        var params = new URLSearchParams(search === undefined ? window.location.search : search);
-        var mode = params.get('checkout');
-        var sessionId = params.get('session_id');
-
-        // Nettoyer l'URL après lecture : sans ça, le ?checkout= success/cancel
-        // resterait dans la barre d'adresse et chaque rechargement de page
-        // ramènerait l'utilisateur sur l'onglet Subscription.
-        if (search === undefined && (mode === 'success' || mode === 'cancel')) {
-            try {
-                window.history.replaceState({}, '', window.location.pathname + window.location.hash);
-            } catch (e) { /* non fatal */ }
-        }
-
-        if (mode === 'cancel') {
-            showToast(t('gm_sub_cancelled') || 'Payment cancelled.', 'info');
-            return;
-        }
-        if (mode === 'success' && sessionId) {
-            showToast(t('gm_sub_processing') || 'Processing payment…', 'info');
-            await confirmCheckout(sessionId, container);
-        }
     }
 
     window.GM_SUBSCRIPTION = {
         load: load,
         handleReturn: handleReturn,
-        _plans: PLANS,
+        _plans: DONATION_TIERS,
         _state: state,
         _redirectTo: redirectTo
     };
