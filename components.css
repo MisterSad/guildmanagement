@@ -3801,6 +3801,19 @@
     min-width: 140px;
 }
 
+.ocr-cell-uid {
+    min-width: 110px;
+}
+
+.ocr-col-uid {
+    min-width: 110px;
+}
+
+.ocr-table--event .ocr-col-uid,
+.ocr-table--event .ocr-cell-uid {
+    display: none !important;
+}
+
 .ocr-cell-metric {
     min-width: 120px;
 }
@@ -3811,6 +3824,45 @@
 
 .ocr-metric-label {
     display: none;
+}
+
+/* ─── OCR Three-Section Headers & Removed Rows ─── */
+.ocr-section-header td {
+    background: var(--bg-2, #1e293b) !important;
+    padding: 0.5rem 0.75rem !important;
+    font-weight: 700 !important;
+    font-size: 0.8rem !important;
+    border-top: 1px solid var(--border-soft) !important;
+    border-bottom: 1px solid var(--border-soft) !important;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.ocr-section-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--text-normal);
+}
+
+.ocr-row--removed {
+    background: rgba(239, 68, 68, 0.04);
+}
+
+.ocr-row--removed:hover {
+    background: rgba(239, 68, 68, 0.08) !important;
+}
+
+.ocr-edit-uid {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+}
+
+.ocr-readonly-uid {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+    color: var(--text-muted);
 }
 
 /* Mobile-First Layout Transformation (< 640px) */

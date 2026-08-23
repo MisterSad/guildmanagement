@@ -2392,40 +2392,6 @@
             });
         }
 
-        var keyInput = document.getElementById('ocr-custom-key-input');
-        var keySaveBtn = document.getElementById('ocr-save-key-btn');
-        if (keySaveBtn && keyInput) {
-            keySaveBtn.addEventListener('click', function () {
-                var val = keyInput.value.trim();
-                if (val) {
-                    saveOcrApiKey(val);
-                    showToast('Gemini API Key saved successfully!', 'success');
-                    var prompt = document.getElementById('ocr-key-prompt');
-                    if (prompt) prompt.style.display = 'none';
-                }
-            });
-        }
-
-        var keyInputSettings = document.getElementById('gemini-api-key-input');
-        var keySaveBtnSettings = document.getElementById('save-gemini-key-btn');
-        if (keySaveBtnSettings && keyInputSettings) {
-            keySaveBtnSettings.addEventListener('click', function () {
-                var val = keyInputSettings.value.trim();
-                if (val) {
-                    saveOcrApiKey(val);
-                    showToast('Gemini API Key saved successfully!', 'success');
-                }
-            });
-        }
-
-        var sampleBtn = document.getElementById('ocr-sample-demo-btn');
-        if (sampleBtn) {
-            sampleBtn.addEventListener('click', async function () {
-                var files = await loadSampleOcrImages();
-                handleOcrFiles(files);
-            });
-        }
-
         if (btnReset) {
             btnReset.addEventListener('click', function () {
                 resetOcrModalState();
@@ -2741,102 +2707,19 @@
         return [];
     }
 
-    function calculateStringSimilarity(str1, str2) {
-        if (!str1 || !str2) return 0;
-        var s1 = String(str1).toLowerCase().trim();
-        var s2 = String(str2).toLowerCase().trim();
-        if (s1 === s2) return 1.0;
-
-        var clean1 = s1.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
-        var clean2 = s2.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
-        if (clean1 && clean1 === clean2) return 0.95;
-
-        var len1 = s1.length;
-        var len2 = s2.length;
-        var maxLen = Math.max(len1, len2);
-        if (maxLen === 0) return 1.0;
-
-        var dist = levenshteinDistance(s1, s2);
-        var sim = 1.0 - (dist / maxLen);
-
-        var cleanMax = Math.max(clean1.length, clean2.length);
-        if (cleanMax > 0) {
-            var cleanDist = levenshteinDistance(clean1, clean2);
-            var cleanSim = 1.0 - (cleanDist / cleanMax);
-            if (cleanSim > sim) sim = cleanSim;
-        }
-
-        return sim;
-    }
-
-    function levenshteinDistance(a, b) {
-        var matrix = [];
-        for (var i = 0; i <= b.length; i++) { matrix[i] = [i]; }
-        for (var j = 0; j <= a.length; j++) { matrix[0][j] = j; }
-        for (var i = 1; i <= b.length; i++) {
-            for (var j = 1; j <= a.length; j++) {
-                if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                    matrix[i][j] = matrix[i - 1][j - 1];
-                } else {
-                    matrix[i][j] = Math.min(
-                        matrix[i - 1][j - 1] + 1,
-                        Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
-                    );
-                }
-            }
-        }
-        return matrix[b.length][a.length];
-    }
-
-    function findBestMatchingMember(ocrPseudo, members, guildTag) {
-        if (!ocrPseudo || !members || !Array.isArray(members) || members.length === 0) return null;
-        var target = String(ocrPseudo).trim().toLowerCase();
-
-        var exact = members.find(function (m) {
-            return m.pseudo && m.pseudo.trim().toLowerCase() === target;
-        });
-        if (exact) return { member: exact, matchType: 'exact', score: 1.0 };
-
-        var cleanTarget = (window.GM && window.GM.cleanPlayerPseudo) ? window.GM.cleanPlayerPseudo(ocrPseudo, guildTag).toLowerCase().trim() : target;
-        if (cleanTarget && cleanTarget !== target) {
-            var exactClean = members.find(function (m) {
-                return m.pseudo && m.pseudo.trim().toLowerCase() === cleanTarget;
-            });
-            if (exactClean) return { member: exactClean, matchType: 'clean_tag', score: 0.98 };
-        }
-
-        var targetClean = (cleanTarget || target).replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
-        if (targetClean.length >= 3) {
-            var normMatch = members.find(function (m) {
-                var mClean = (m.pseudo || '').trim().toLowerCase().replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
-                return mClean === targetClean;
-            });
-            if (normMatch) return { member: normMatch, matchType: 'normalized', score: 0.95 };
-        }
-
-        var bestMember = null;
-        var bestScore = 0;
-
-        members.forEach(function (m) {
-            if (!m || !m.pseudo) return;
-            var score = calculateStringSimilarity(cleanTarget || ocrPseudo, m.pseudo);
-            if (score > bestScore) {
-                bestScore = score;
-                bestMember = m;
-            }
-        });
-
-        if (bestMember && bestScore >= 0.75) {
-            return { member: bestMember, matchType: 'fuzzy', score: bestScore };
-        }
-
-        return null;
-    }
+    var calculateStringSimilarity = (window.GM && window.GM.calculateStringSimilarity) ? window.GM.calculateStringSimilarity : function () { return 0; };
+    var levenshteinDistance = (window.GM && window.GM.levenshteinDistance) ? window.GM.levenshteinDistance : function () { return 0; };
+    var findBestMatchingMember = (window.GM && window.GM.findBestMatchingMember) ? window.GM.findBestMatchingMember : function () { return null; };
+    var categorizeOcrDiff = (window.GM && window.GM.categorizeOcrDiff) ? window.GM.categorizeOcrDiff : function () { return { existing: [], new: [], removed: [] }; };
+    var computeOcrRosterDelta = (window.GM && window.GM.computeOcrRosterDelta) ? window.GM.computeOcrRosterDelta : function (b, a, r) { return { before: b, after: b + a - r, added: a, removed: r }; };
 
     function renderOcrResults(players) {
         var loading = document.getElementById('ocr-loading');
         var resultsContainer = document.getElementById('ocr-results-container');
+        var table = resultsContainer ? resultsContainer.querySelector('.ocr-table') : null;
         var tbody = document.getElementById('ocr-results-tbody');
+        var tbodyNew = document.getElementById('ocr-results-tbody-new');
+        var tbodyRemoved = document.getElementById('ocr-results-tbody-removed');
         var countSpan = document.getElementById('ocr-detected-count');
         var summaryBadges = document.getElementById('ocr-summary-badges');
         var btnCommit = document.getElementById('ocr-commit-btn');
@@ -2862,8 +2745,11 @@
 
         if (!players || players.length === 0) {
             if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="ph ph-warning-circle" style="font-size:1.5rem; display:block; margin-bottom:0.5rem; color:#facc15;"></i>No player usernames or ' + meta.header + ' values were detected in the uploaded image(s). Please try clearer screenshots.</td></tr>';
+                var cs = meta.isEvent ? 4 : 5;
+                tbody.innerHTML = '<tr><td colspan="' + cs + '" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="ph ph-warning-circle" style="font-size:1.5rem; display:block; margin-bottom:0.5rem; color:#facc15;"></i>No player usernames or ' + meta.header + ' values were detected in the uploaded image(s). Please try clearer screenshots.</td></tr>';
             }
+            if (tbodyNew) tbodyNew.innerHTML = '';
+            if (tbodyRemoved) tbodyRemoved.innerHTML = '';
             if (summaryBadges) {
                 summaryBadges.innerHTML = '<span class="gm-chip" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-x-circle"></i> 0 Detected</span>';
             }
@@ -2871,39 +2757,43 @@
             return;
         }
 
-        var newCount = 0;
-        var updateCount = 0;
-        var unchangedCount = 0;
-        var reconciledCount = 0;
-        var otherGuildCount = 0;
-
         var isEventOcr = !!meta.isEvent;
-        var sfAssignments = [];
-        if (isEventOcr && meta.eventType === 'shadowfront' && window.GM_SHADOWFRONT && window.GM_SHADOWFRONT.getAssignments) {
-            sfAssignments = window.GM_SHADOWFRONT.getAssignments();
-        }
 
-        var html = '';
-        players.forEach(function (p, idx) {
-            var matchRes = findBestMatchingMember(p.pseudo, guildMembers, activeGuildTag);
-            var existing = matchRes ? matchRes.member : null;
-            var matchType = matchRes ? matchRes.matchType : null;
+        if (isEventOcr) {
+            if (table) {
+                table.classList.add('ocr-table--event');
+                table.classList.remove('ocr-table--roster');
+            }
+            if (tbodyNew) tbodyNew.innerHTML = '';
+            if (tbodyRemoved) tbodyRemoved.innerHTML = '';
 
-            var cleanPseudo = (window.GM && window.GM.cleanPlayerPseudo) ? window.GM.cleanPlayerPseudo(p.pseudo, activeGuildTag) : p.pseudo.trim();
-            var effectivePseudo = existing ? existing.pseudo : cleanPseudo;
-            if (existing && (matchType === 'normalized' || matchType === 'fuzzy' || matchType === 'clean_tag') && p.pseudo !== existing.pseudo) {
-                effectivePseudo = existing.pseudo;
-                p.pseudo = existing.pseudo;
-                reconciledCount++;
+            var updateCount = 0;
+            var reconciledCount = 0;
+            var otherGuildCount = 0;
+
+            var sfAssignments = [];
+            if (meta.eventType === 'shadowfront' && window.GM_SHADOWFRONT && window.GM_SHADOWFRONT.getAssignments) {
+                sfAssignments = window.GM_SHADOWFRONT.getAssignments();
             }
 
-            var currentVal = existing ? (parseInt(existing[targetField]) || 0) : 0;
-            var pScore = p.score != null ? p.score : (p.overall_power || 0);
+            var html = '';
+            players.forEach(function (p, idx) {
+                var matchRes = findBestMatchingMember(p.pseudo, guildMembers, activeGuildTag);
+                var existing = matchRes ? matchRes.member : null;
+                var matchType = matchRes ? matchRes.matchType : null;
 
-            var badgeHtml = '';
-            var isChecked = true;
+                var cleanPseudo = (window.GM && window.GM.cleanPlayerPseudo) ? window.GM.cleanPlayerPseudo(p.pseudo, activeGuildTag) : p.pseudo.trim();
+                var effectivePseudo = existing ? existing.pseudo : cleanPseudo;
+                if (existing && (matchType === 'normalized' || matchType === 'fuzzy' || matchType === 'clean_tag') && p.pseudo !== existing.pseudo) {
+                    effectivePseudo = existing.pseudo;
+                    p.pseudo = existing.pseudo;
+                    reconciledCount++;
+                }
 
-            if (isEventOcr) {
+                var pScore = p.score != null ? p.score : (p.overall_power || 0);
+                var badgeHtml = '';
+                var isChecked = true;
+
                 if (!existing) {
                     otherGuildCount++;
                     isChecked = false;
@@ -2938,66 +2828,150 @@
                     updateCount++;
                     badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-check"></i> ' + meta.header + ': ' + fmtNum(pScore) + ' &rarr; [Participated ✓]</span>';
                 }
-            } else {
-                if (!existing) {
-                    if (isMultiGuild) {
-                        otherGuildCount++;
-                        isChecked = false;
-                        badgeHtml = '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild / Non-Member</span>';
-                    } else {
-                        newCount++;
-                        badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
-                    }
-                } else if (matchType === 'fuzzy' || matchType === 'normalized' || matchType === 'clean_tag') {
-                    updateCount++;
-                    badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + esc(existing.pseudo) + '") &rarr; ' + fmtNum(pScore) + '</span>';
-                } else if (currentVal !== pScore) {
-                    updateCount++;
-                    badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:' + meta.color + '; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + fmtNum(currentVal) + ' &rarr; ' + fmtNum(pScore) + ')</span>';
-                } else {
-                    unchangedCount++;
-                    badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
-                }
-            }
 
-            var metricLabel = meta.header || 'Score';
-            html += '<tr class="ocr-row" data-pseudo="' + esc(effectivePseudo.toLowerCase()) + '">' +
-                '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" ' + (isChecked ? 'checked' : '') + '></td>' +
-                '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
-                '<td class="ocr-cell-metric">' +
-                    '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
-                    '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
-                '</td>' +
-                '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
-            '</tr>';
-        });
+                var metricLabel = meta.header || 'Score';
+                html += '<tr class="ocr-row" data-pseudo="' + esc(effectivePseudo.toLowerCase()) + '">' +
+                    '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" ' + (isChecked ? 'checked' : '') + '></td>' +
+                    '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                    '<td class="ocr-cell-metric">' +
+                        '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
+                        '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
+                    '</td>' +
+                    '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
+                '</tr>';
+            });
 
-        if (summaryBadges) {
-            if (isEventOcr) {
+            if (summaryBadges) {
                 summaryBadges.innerHTML = 
                     '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Ready to Apply</span>' +
                     (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
                     (otherGuildCount > 0 ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' + otherGuildCount + ' Ignored / Non-Tenant</span>' : '');
-            } else {
-                summaryBadges.innerHTML = 
-                    (newCount > 0 ? '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>' : '') +
-                    '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Updates</span>' +
-                    (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
-                    (otherGuildCount > 0 ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' + otherGuildCount + ' Other Guild (Unchecked)</span>' : '') +
-                    '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' + unchangedCount + ' Unchanged</span>';
             }
+
+            if (tbody) tbody.innerHTML = html;
+        } else {
+            // ── Roster Mode: Three-Section Review (Existing / New / Removed) ──
+            if (table) {
+                table.classList.add('ocr-table--roster');
+                table.classList.remove('ocr-table--event');
+            }
+
+            var diff = categorizeOcrDiff(players, guildMembers, activeGuildTag, targetField, isMultiGuild);
+            var metricLabel = meta.header || 'Score';
+
+            // 1. Existing Members Section
+            var existingHtml = '';
+            if (diff.existing.length > 0) {
+                existingHtml += '<tr class="ocr-section-header ocr-section-header--existing"><td colspan="5"><div class="ocr-section-title"><i class="ph ph-users"></i> Existing Members <span class="gm-badge">' + diff.existing.length + '</span></div></td></tr>';
+                diff.existing.forEach(function (item) {
+                    var idx = item.index;
+                    var effPseudo = item.effectivePseudo;
+                    var pScore = item.newVal;
+                    var currentVal = item.currentVal;
+                    var uid = item.uid || (item.member ? item.member.uid : '') || '';
+
+                    var badgeHtml = '';
+                    if (item.status === 'reconciled') {
+                        badgeHtml = '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' + esc(item.member.pseudo) + '") &rarr; ' + fmtNum(pScore) + '</span>';
+                    } else if (item.status === 'update') {
+                        badgeHtml = '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:' + meta.color + '; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' + fmtNum(currentVal) + ' &rarr; ' + fmtNum(pScore) + ')</span>';
+                    } else {
+                        badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
+                    }
+
+                    existingHtml += '<tr class="ocr-row ocr-row--existing" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
+                        '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="existing" checked></td>' +
+                        '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                        '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' + esc(uid || '—') + '</span></td>' +
+                        '<td class="ocr-cell-metric">' +
+                            '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
+                            '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
+                        '</td>' +
+                        '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
+                    '</tr>';
+                });
+            }
+            if (tbody) tbody.innerHTML = existingHtml;
+
+            // 2. New Members Section
+            var newHtml = '';
+            if (diff.new.length > 0) {
+                newHtml += '<tr class="ocr-section-header ocr-section-header--new"><td colspan="5"><div class="ocr-section-title"><i class="ph ph-user-plus"></i> New Members <span class="gm-badge">' + diff.new.length + '</span></div></td></tr>';
+                diff.new.forEach(function (item) {
+                    var idx = item.index;
+                    var effPseudo = item.effectivePseudo;
+                    var pScore = item.newVal;
+                    var uid = item.uid || (item.ocrPlayer ? item.ocrPlayer.uid : '') || '';
+                    var isOtherGuild = item.status === 'other_guild';
+                    var isChecked = !isOtherGuild;
+
+                    var badgeHtml = isOtherGuild
+                        ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild (Unchecked)</span>'
+                        : '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
+
+                    newHtml += '<tr class="ocr-row ocr-row--new" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
+                        '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="new" ' + (isChecked ? 'checked' : '') + '></td>' +
+                        '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                        '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' + idx + '" value="' + esc(uid) + '" placeholder="TEMP (auto)" style="padding:0.25rem 0.5rem; font-size:0.8rem; width:100%; max-width:120px;"></td>' +
+                        '<td class="ocr-cell-metric">' +
+                            '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
+                            '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
+                        '</td>' +
+                        '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
+                    '</tr>';
+                });
+            }
+            if (tbodyNew) tbodyNew.innerHTML = newHtml;
+
+            // 3. Removed Members Section
+            var removedHtml = '';
+            if (diff.removed.length > 0) {
+                if (guildMembers.length > 0 && diff.removed.length > guildMembers.length * 0.5) {
+                    removedHtml += '<tr class="ocr-warning-row"><td colspan="5"><div class="ocr-removed-warning" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; padding:0.5rem 0.75rem; border-radius:6px; margin:0.35rem 0; font-size:0.78rem; display:flex; align-items:center; gap:0.4rem;"><i class="ph ph-warning" style="font-size:1.1rem; flex-shrink:0;"></i><span>More than half your roster would be removed. If this screenshot is partial, uncheck the members to keep.</span></div></td></tr>';
+                }
+                removedHtml += '<tr class="ocr-section-header ocr-section-header--removed"><td colspan="5"><div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><div class="ocr-section-title"><i class="ph ph-user-minus"></i> Removed Members <span class="gm-badge gm-badge--danger">' + diff.removed.length + '</span></div><div style="font-size:0.75rem; color:var(--text-muted);"><button type="button" class="gm-btn-text" id="ocr-btn-keep-all" style="font-size:0.75rem; color:var(--accent); cursor:pointer; background:none; border:none; padding:0 0.4rem;">Keep All</button> | <button type="button" class="gm-btn-text" id="ocr-btn-remove-all" style="font-size:0.75rem; color:#f87171; cursor:pointer; background:none; border:none; padding:0 0.4rem;">Remove All</button></div></div></td></tr>';
+
+                diff.removed.forEach(function (item) {
+                    var m = item.member;
+                    var pseudo = item.pseudo;
+                    var uid = item.uid || '';
+                    var role = item.role || 'R1';
+                    var power = item.currentPower || 0;
+
+                    removedHtml += '<tr class="ocr-row ocr-row--removed" data-pseudo="' + esc(pseudo.toLowerCase()) + '" data-removal-pseudo="' + esc(pseudo) + '">' +
+                        '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' + esc(pseudo)" data-section="removed" checked></td>' +
+                        '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' + esc(pseudo) + '</span> <span class="gm-role-badge" style="font-size:0.7rem; padding:0.1rem 0.3rem;">' + esc(role) + '</span></td>' +
+                        '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' + esc(uid || '—') + '</span></td>' +
+                        '<td class="ocr-cell-metric"><span style="color:var(--text-muted); font-size:0.85rem;"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + fmtNum(power) + '</span></td>' +
+                        '<td class="ocr-cell-status"><span class="ocr-removal-status-wrap"><span class="gm-chip ocr-chip-removal" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> To Remove</span></span></td>' +
+                    '</tr>';
+                });
+            }
+            if (tbodyRemoved) tbodyRemoved.innerHTML = removedHtml;
         }
 
-        if (tbody) tbody.innerHTML = html;
-
-        updateCommitButtonCount();
-
-        if (tbody) {
-            tbody.querySelectorAll('.ocr-row-cb').forEach(function (cb) {
+        // Bind interactive event listeners
+        if (resultsContainer) {
+            resultsContainer.querySelectorAll('.ocr-row-cb:not(.ocr-removal-cb)').forEach(function (cb) {
                 cb.addEventListener('change', updateCommitButtonCount);
             });
 
-            tbody.querySelectorAll('.ocr-edit-pseudo').forEach(function (input) {
+            resultsContainer.querySelectorAll('.ocr-removal-cb').forEach(function (cb) {
+                cb.addEventListener('change', function () {
+                    var row = cb.closest('tr');
+                    var wrap = row ? row.querySelector('.ocr-removal-status-wrap') : null;
+                    if (wrap) {
+                        if (cb.checked) {
+                            wrap.innerHTML = '<span class="gm-chip ocr-chip-removal" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> To Remove</span>';
+                        } else {
+                            wrap.innerHTML = '<span class="gm-chip ocr-chip-kept" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-check"></i> Kept</span>';
+                        }
+                    }
+                    updateCommitButtonCount();
+                });
+            });
+
+            resultsContainer.querySelectorAll('.ocr-edit-pseudo').forEach(function (input) {
                 input.addEventListener('input', function () {
                     var idx = parseInt(input.getAttribute('data-index'), 10);
                     if (ocrExtractedPlayers[idx]) {
@@ -3010,7 +2984,7 @@
                 });
             });
 
-            tbody.querySelectorAll('.ocr-edit-power').forEach(function (input) {
+            resultsContainer.querySelectorAll('.ocr-edit-power').forEach(function (input) {
                 input.addEventListener('input', function () {
                     var idx = parseInt(input.getAttribute('data-index'), 10);
                     if (ocrExtractedPlayers[idx]) {
@@ -3020,6 +2994,58 @@
                     }
                 });
             });
+
+            resultsContainer.querySelectorAll('.ocr-edit-uid').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    var idx = parseInt(input.getAttribute('data-index'), 10);
+                    var val = input.value.trim();
+                    if (ocrExtractedPlayers[idx]) {
+                        ocrExtractedPlayers[idx].uid = val;
+                    }
+                    var err = (window.GM && window.GM.validateUid) ? window.GM.validateUid(val) : null;
+                    if (err) {
+                        input.classList.add('gm-input-error');
+                        input.style.borderColor = '#ef4444';
+                    } else {
+                        input.classList.remove('gm-input-error');
+                        input.style.borderColor = '';
+                    }
+                });
+            });
+
+            var btnKeepAll = document.getElementById('ocr-btn-keep-all');
+            if (btnKeepAll) {
+                btnKeepAll.addEventListener('click', function () {
+                    if (tbodyRemoved) {
+                        tbodyRemoved.querySelectorAll('.ocr-removal-cb').forEach(function (cb) {
+                            cb.checked = false;
+                            var row = cb.closest('tr');
+                            var wrap = row ? row.querySelector('.ocr-removal-status-wrap') : null;
+                            if (wrap) {
+                                wrap.innerHTML = '<span class="gm-chip ocr-chip-kept" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-check"></i> Kept</span>';
+                            }
+                        });
+                        updateCommitButtonCount();
+                    }
+                });
+            }
+
+            var btnRemoveAll = document.getElementById('ocr-btn-remove-all');
+            if (btnRemoveAll) {
+                btnRemoveAll.addEventListener('click', function () {
+                    if (tbodyRemoved) {
+                        tbodyRemoved.querySelectorAll('.ocr-removal-cb').forEach(function (cb) {
+                            cb.checked = true;
+                            var row = cb.closest('tr');
+                            var wrap = row ? row.querySelector('.ocr-removal-status-wrap') : null;
+                            if (wrap) {
+                                wrap.innerHTML = '<span class="gm-chip ocr-chip-removal" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> To Remove</span>';
+                            }
+                        });
+                        updateCommitButtonCount();
+                    }
+                });
+            }
         }
 
         var filterSearch = document.getElementById('ocr-filter-search');
@@ -3027,7 +3053,7 @@
             filterSearch.value = '';
             filterSearch.oninput = function () {
                 var query = filterSearch.value.trim().toLowerCase();
-                var rows = tbody ? tbody.querySelectorAll('.ocr-row') : [];
+                var rows = resultsContainer ? resultsContainer.querySelectorAll('.ocr-row') : [];
                 rows.forEach(function (row) {
                     var pseudoInput = row.querySelector('.ocr-edit-pseudo');
                     var pseudo = pseudoInput ? pseudoInput.value.toLowerCase() : (row.getAttribute('data-pseudo') || '');
@@ -3039,16 +3065,21 @@
                 });
             };
         }
+
+        updateCommitButtonCount();
     }
 
     function toggleAllCheckboxes(checked) {
-        var tbody = document.getElementById('ocr-results-tbody');
-        if (!tbody) return;
-        tbody.querySelectorAll('.ocr-row-cb').forEach(function (cb) {
-            var row = cb.closest('tr');
-            if (!row || row.style.display !== 'none') {
-                cb.checked = checked;
-            }
+        var tbodyExisting = document.getElementById('ocr-results-tbody');
+        var tbodyNew = document.getElementById('ocr-results-tbody-new');
+        [tbodyExisting, tbodyNew].forEach(function (tb) {
+            if (!tb) return;
+            tb.querySelectorAll('.ocr-row-cb').forEach(function (cb) {
+                var row = cb.closest('tr');
+                if (!row || row.style.display !== 'none') {
+                    cb.checked = checked;
+                }
+            });
         });
         updateCommitButtonCount();
     }
@@ -3056,45 +3087,90 @@
     function updateCommitButtonCount() {
         var btnCommit = document.getElementById('ocr-commit-btn');
         var tbody = document.getElementById('ocr-results-tbody');
-        if (!btnCommit || !tbody) return;
+        var tbodyNew = document.getElementById('ocr-results-tbody-new');
+        var tbodyRemoved = document.getElementById('ocr-results-tbody-removed');
+        var summaryBadges = document.getElementById('ocr-summary-badges');
+        if (!btnCommit) return;
 
-        var selectedCbs = tbody.querySelectorAll('.ocr-row-cb:checked');
-        var count = selectedCbs.length;
-        var span = btnCommit.querySelector('span');
         var meta = OCR_METRICS_META[currentOcrMetric] || OCR_METRICS_META.power;
-        if (span) span.textContent = 'Validate & Apply ' + meta.header + ' (' + count + ')';
-        btnCommit.disabled = count === 0;
+        var isEventOcr = !!meta.isEvent;
+
+        if (isEventOcr) {
+            var selectedCbs = tbody ? tbody.querySelectorAll('.ocr-row-cb:checked') : [];
+            var count = selectedCbs.length;
+            var span = btnCommit.querySelector('span');
+            if (span) span.textContent = 'Validate & Apply ' + meta.header + ' (' + count + ')';
+            btnCommit.disabled = count === 0;
+        } else {
+            var selectedExisting = tbody ? tbody.querySelectorAll('.ocr-row-cb:checked').length : 0;
+            var selectedNew = tbodyNew ? tbodyNew.querySelectorAll('.ocr-row-cb:checked').length : 0;
+            var checkedRemovals = tbodyRemoved ? tbodyRemoved.querySelectorAll('.ocr-removal-cb:checked').length : 0;
+            var totalCount = selectedExisting + selectedNew + checkedRemovals;
+
+            var span = btnCommit.querySelector('span');
+            if (span) span.textContent = 'Validate & Apply Updates (' + totalCount + ')';
+            btnCommit.disabled = totalCount === 0;
+
+            if (summaryBadges) {
+                var delta = computeOcrRosterDelta(guildMembers.length, selectedNew, checkedRemovals);
+                var activeGuildTag = (document.getElementById('ocr-guild-tag-input') && document.getElementById('ocr-guild-tag-input').value.trim()) ? document.getElementById('ocr-guild-tag-input').value.trim() : '';
+                var diff = categorizeOcrDiff(ocrExtractedPlayers, guildMembers, activeGuildTag, meta.field, meta.isMultiGuild);
+
+                var newCount = diff.new.filter(function (n) { return n.status === 'new'; }).length;
+                var updateCount = diff.existing.filter(function (e) { return e.status === 'update'; }).length;
+                var reconciledCount = diff.existing.filter(function (e) { return e.status === 'reconciled'; }).length;
+                var otherGuildCount = diff.new.filter(function (n) { return n.status === 'other_guild'; }).length;
+                var unchangedCount = diff.existing.filter(function (e) { return e.status === 'unchanged'; }).length;
+                var removalCount = diff.removed.length;
+
+                summaryBadges.innerHTML =
+                    '<span class="gm-chip gm-chip-accent" style="font-weight:700;"><i class="ph ph-users-three"></i> Roster: ' + delta.before + ' &rarr; ' + delta.after + '</span>' +
+                    (newCount > 0 ? '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>' : '') +
+                    (updateCount > 0 ? '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Updates</span>' : '') +
+                    (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
+                    (removalCount > 0 ? '<span class="gm-chip" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> ' + removalCount + ' Removed</span>' : '') +
+                    (otherGuildCount > 0 ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' + otherGuildCount + ' Other Guild (Unchecked)</span>' : '') +
+                    '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' + unchangedCount + ' Unchanged</span>';
+            }
+        }
     }
 
     async function commitOcrUpdates() {
         var tbody = document.getElementById('ocr-results-tbody');
+        var tbodyNew = document.getElementById('ocr-results-tbody-new');
+        var tbodyRemoved = document.getElementById('ocr-results-tbody-removed');
         var btnCommit = document.getElementById('ocr-commit-btn');
-        if (!tbody || !btnCommit) return;
+        if (!btnCommit) return;
 
-        var selectedIndices = [];
-        tbody.querySelectorAll('.ocr-row-cb:checked').forEach(function (cb) {
-            selectedIndices.push(parseInt(cb.getAttribute('data-index'), 10));
-        });
-
-        if (selectedIndices.length === 0) {
-            showToast('No players selected.', 'error');
-            return;
-        }
-
-        var selectedPlayers = selectedIndices.map(function (idx) { return ocrExtractedPlayers[idx]; });
         var meta = OCR_METRICS_META[currentOcrMetric] || OCR_METRICS_META.power;
         var targetField = meta.field;
 
-        btnCommit.disabled = true;
-        var span = btnCommit.querySelector('span');
-        if (span) span.textContent = 'Validating & Saving...';
+        var esc = (window.GM && window.GM.escapeHTML) ? window.GM.escapeHTML : function (s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        };
 
-        try {
-            var db = (window.GM && window.GM.db) ? window.GM.db : supabase;
-            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        if (meta.isEvent) {
+            // ── Event OCR Commit Handling (Branch A - Untouched) ──────
+            if (!tbody) return;
+            var selectedIndices = [];
+            tbody.querySelectorAll('.ocr-row-cb:checked').forEach(function (cb) {
+                selectedIndices.push(parseInt(cb.getAttribute('data-index'), 10));
+            });
 
-            if (meta.isEvent) {
-                // ── Event OCR Commit Handling ─────────────────────────────
+            if (selectedIndices.length === 0) {
+                showToast('No players selected.', 'error');
+                return;
+            }
+
+            var selectedPlayers = selectedIndices.map(function (idx) { return ocrExtractedPlayers[idx]; });
+            btnCommit.disabled = true;
+            var span = btnCommit.querySelector('span');
+            if (span) span.textContent = 'Validating & Saving...';
+
+            try {
+                var db = (window.GM && window.GM.db) ? window.GM.db : supabase;
+                var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+
                 if (meta.eventType === 'shadowfront') {
                     var sqName = meta.squad === 'squad1' ? 'Shadowfront Squad 1' : 'Shadowfront Squad 2';
                     var sqRes = await db.from('event_status')
@@ -3112,7 +3188,6 @@
 
                     var activeSid = sqRes.data.session_id;
 
-                    // Fetch assignments to know reserve vs main
                     var assignRes = await db.from('shadowfront_squads')
                         .select('pseudo, role, squad')
                         .eq('guild', currentG)
@@ -3131,7 +3206,6 @@
                             updatePayload.sub_present = true;
                         }
 
-                        // Try updating first
                         var upRes = await db.from('event_participants')
                             .update(updatePayload)
                             .eq('guild', currentG)
@@ -3139,7 +3213,6 @@
                             .eq('session_id', activeSid)
                             .eq('pseudo', sp.pseudo);
 
-                        // If row didn't exist yet, insert it
                         if (upRes.data && upRes.data.length === 0) {
                             var insertPayload = Object.assign({
                                 guild: currentG,
@@ -3195,7 +3268,6 @@
                         await window.GM_ARMSRACE.load();
                     }
                 } else {
-                    // Standard events: SvS, GvG, Defend Trade Route
                     var evName = meta.eventKey;
                     var evRes = await db.from('event_status')
                         .select('session_id, is_active, start_at')
@@ -3261,66 +3333,201 @@
                     modal.classList.remove('visible');
                     modal.style.display = 'none';
                 }
-                return;
+            } catch (err) {
+                console.error('Commit Event OCR error:', err);
+                showToast('Failed to save event OCR updates: ' + (err.message || err), 'error');
+            } finally {
+                btnCommit.disabled = false;
+                var finalSpan = btnCommit.querySelector('span');
+                if (finalSpan) finalSpan.textContent = 'Validate & Apply Updates';
+            }
+            return;
+        }
+
+        // ── Roster Metrics Commit Handling (Branch B) ─────────────
+        var selectedExistingIndices = [];
+        if (tbody) {
+            tbody.querySelectorAll('.ocr-row-cb:checked').forEach(function (cb) {
+                selectedExistingIndices.push(parseInt(cb.getAttribute('data-index'), 10));
+            });
+        }
+
+        var selectedNewIndices = [];
+        if (tbodyNew) {
+            tbodyNew.querySelectorAll('.ocr-row-cb:checked').forEach(function (cb) {
+                selectedNewIndices.push(parseInt(cb.getAttribute('data-index'), 10));
+            });
+        }
+
+        var checkedRemovalPseudos = [];
+        if (tbodyRemoved) {
+            tbodyRemoved.querySelectorAll('.ocr-removal-cb:checked').forEach(function (cb) {
+                var p = cb.getAttribute('data-removal-pseudo');
+                if (p) checkedRemovalPseudos.push(p);
+            });
+        }
+
+        if (selectedExistingIndices.length === 0 && selectedNewIndices.length === 0 && checkedRemovalPseudos.length === 0) {
+            showToast('No players selected.', 'error');
+            return;
+        }
+
+        var selectedExisting = selectedExistingIndices.map(function (idx) { return ocrExtractedPlayers[idx]; }).filter(Boolean);
+        var selectedNew = selectedNewIndices.map(function (idx) { return ocrExtractedPlayers[idx]; }).filter(Boolean);
+
+        // Pre-flight 1: Validate UIDs and check duplicates within new members batch
+        var invalidUidPseudos = [];
+        var newUidSeen = new Set();
+        var duplicateNewUids = [];
+
+        for (var n = 0; n < selectedNew.length; n++) {
+            var np = selectedNew[n];
+            var uidVal = (np.uid || '').trim();
+            if (uidVal) {
+                var uidErr = (window.GM && window.GM.validateUid) ? window.GM.validateUid(uidVal) : null;
+                if (uidErr) {
+                    invalidUidPseudos.push(np.pseudo + ' (' + uidVal + ')');
+                } else if (newUidSeen.has(uidVal)) {
+                    duplicateNewUids.push(uidVal);
+                } else {
+                    newUidSeen.add(uidVal);
+                }
+            }
+        }
+
+        if (invalidUidPseudos.length > 0) {
+            showToast('Invalid UID for: ' + invalidUidPseudos.join(', '), 'error');
+            return;
+        }
+
+        if (duplicateNewUids.length > 0) {
+            showToast('Duplicate UID in batch: ' + duplicateNewUids.join(', '), 'error');
+            return;
+        }
+
+        // Pre-flight 2: Global UID collision check via check_uid_exists_globally RPC
+        if (newUidSeen.size > 0) {
+            btnCommit.disabled = true;
+            var preSpan = btnCommit.querySelector('span');
+            if (preSpan) preSpan.textContent = 'Checking UIDs...';
+
+            var collidingUids = [];
+            var dbClient = (window.GM && window.GM.db) ? window.GM.db : supabase;
+            var uidArray = Array.from(newUidSeen);
+
+            for (var u = 0; u < uidArray.length; u++) {
+                var targetUid = uidArray[u];
+                try {
+                    var chkRes = await dbClient.rpc('check_uid_exists_globally', { p_uid: targetUid });
+                    if (chkRes && chkRes.data === true) {
+                        collidingUids.push(targetUid);
+                    }
+                } catch (rpcErr) {
+                    console.warn('Global UID check warning for ' + targetUid + ':', rpcErr);
+                }
             }
 
-            // ── Roster Metrics Commit Handling ────────────────────────────
-            for (var i = 0; i < selectedPlayers.length; i++) {
-                var sp = selectedPlayers[i];
-                var scoreVal = sp.score != null ? sp.score : (sp.overall_power || 0);
-                var existing = guildMembers.find(function (m) { return m.pseudo.toLowerCase() === sp.pseudo.toLowerCase(); });
+            if (collidingUids.length > 0) {
+                btnCommit.disabled = false;
+                if (preSpan) preSpan.textContent = 'Validate & Apply Updates';
+                showToast('UID already exists globally: ' + collidingUids.join(', '), 'error');
+                return;
+            }
+        }
 
-                var updatePayload = {};
-                updatePayload[targetField] = scoreVal;
-                updatePayload.metrics_updated_at = new Date().toISOString();
-                if (targetField === 'overall_power') {
-                    updatePayload.power_updated_at = new Date().toISOString();
-                }
+        async function executeRosterCommit() {
+            btnCommit.disabled = true;
+            var span = btnCommit.querySelector('span');
+            if (span) span.textContent = 'Validating & Saving...';
 
-                if (existing) {
-                    await supabase.from('guild_members')
-                        .update(updatePayload)
-                        .eq('guild', currentG)
-                        .eq('pseudo', existing.pseudo);
+            var updatedCount = 0;
+            var addedCount = 0;
+            var removedCount = 0;
+            var failedCount = 0;
 
-                    // Update in-memory member object
-                    existing[targetField] = scoreVal;
-                    existing.metrics_updated_at = updatePayload.metrics_updated_at;
+            try {
+                var db = (window.GM && window.GM.db) ? window.GM.db : supabase;
+                var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
-                    // Snapshot to player_metrics_history
-                    if (window.GM && window.GM.upsertPlayerMetrics) {
-                        try {
-                            await window.GM.upsertPlayerMetrics(currentG, existing.pseudo, existing.uid, {
-                                overall_power: existing.overall_power || 0,
-                                fleet_rating: existing.fleet_rating || 0,
-                                tech_power: existing.tech_power || 0,
-                                flagship_power: existing.flagship_power || 0,
-                                champion_power: existing.champion_power || 0,
-                                crew_power: existing.crew_power || 0,
-                                glory_score: existing.glory_score || 0
-                            });
-                        } catch (histErr) {
-                            console.warn('Failed to snapshot player metrics history:', histErr);
+                // 1. Apply existing member updates
+                for (var i = 0; i < selectedExisting.length; i++) {
+                    var sp = selectedExisting[i];
+                    var scoreVal = sp.score != null ? sp.score : (sp.overall_power || 0);
+                    var existing = guildMembers.find(function (m) { return m.pseudo.toLowerCase() === sp.pseudo.toLowerCase(); });
+
+                    if (existing) {
+                        var updatePayload = {};
+                        updatePayload[targetField] = scoreVal;
+                        updatePayload.metrics_updated_at = new Date().toISOString();
+                        if (targetField === 'overall_power') {
+                            updatePayload.power_updated_at = new Date().toISOString();
+                        }
+
+                        var upRes = await db.from('guild_members')
+                            .update(updatePayload)
+                            .eq('guild', currentG)
+                            .eq('pseudo', existing.pseudo);
+
+                        if (upRes.error) {
+                            failedCount++;
+                            console.error('Failed to update member ' + existing.pseudo + ':', upRes.error);
+                            continue;
+                        }
+
+                        existing[targetField] = scoreVal;
+                        existing.metrics_updated_at = updatePayload.metrics_updated_at;
+                        updatedCount++;
+
+                        // Snapshot to player_metrics_history
+                        if (window.GM && window.GM.upsertPlayerMetrics) {
+                            try {
+                                await window.GM.upsertPlayerMetrics(currentG, existing.pseudo, existing.uid, {
+                                    overall_power: existing.overall_power || 0,
+                                    fleet_rating: existing.fleet_rating || 0,
+                                    tech_power: existing.tech_power || 0,
+                                    flagship_power: existing.flagship_power || 0,
+                                    champion_power: existing.champion_power || 0,
+                                    crew_power: existing.crew_power || 0,
+                                    glory_score: existing.glory_score || 0
+                                });
+                            } catch (histErr) {
+                                console.warn('Failed to snapshot player metrics history:', histErr);
+                            }
                         }
                     }
-                } else {
+                }
+
+                // 2. Apply new member inserts
+                for (var j = 0; j < selectedNew.length; j++) {
+                    var np = selectedNew[j];
+                    var nScore = np.score != null ? np.score : (np.overall_power || 0);
+                    var assignedUid = (np.uid && String(np.uid).trim()) ? String(np.uid).trim() : ('TEMP-' + Math.random().toString(36).substring(2, 10));
+
                     var newMember = {
-                        pseudo: sp.pseudo,
-                        uid: sp.uid || ('TEMP-' + Math.random().toString(36).substring(2, 10)),
-                        overall_power: targetField === 'overall_power' ? scoreVal : 0,
-                        fleet_rating: targetField === 'fleet_rating' ? scoreVal : 0,
-                        tech_power: targetField === 'tech_power' ? scoreVal : 0,
-                        flagship_power: targetField === 'flagship_power' ? scoreVal : 0,
-                        champion_power: targetField === 'champion_power' ? scoreVal : 0,
-                        crew_power: targetField === 'crew_power' ? scoreVal : 0,
-                        glory_score: targetField === 'glory_score' ? scoreVal : 0,
+                        pseudo: np.pseudo,
+                        uid: assignedUid,
+                        overall_power: targetField === 'overall_power' ? nScore : 0,
+                        fleet_rating: targetField === 'fleet_rating' ? nScore : 0,
+                        tech_power: targetField === 'tech_power' ? nScore : 0,
+                        flagship_power: targetField === 'flagship_power' ? nScore : 0,
+                        champion_power: targetField === 'champion_power' ? nScore : 0,
+                        crew_power: targetField === 'crew_power' ? nScore : 0,
+                        glory_score: targetField === 'glory_score' ? nScore : 0,
                         guild: currentG,
                         role: 'R1'
                     };
 
-                    await supabase.from('guild_members').insert([newMember]);
-                    guildMembers.push(newMember);
+                    var insRes = await db.from('guild_members').insert([newMember]);
+                    if (insRes.error) {
+                        failedCount++;
+                        console.error('Failed to insert member ' + newMember.pseudo + ':', insRes.error);
+                        continue;
+                    }
 
+                    guildMembers.push(newMember);
+                    addedCount++;
+
+                    // Snapshot to player_metrics_history
                     if (window.GM && window.GM.upsertPlayerMetrics) {
                         try {
                             await window.GM.upsertPlayerMetrics(currentG, newMember.pseudo, newMember.uid, {
@@ -3337,24 +3544,63 @@
                         }
                     }
                 }
-            }
 
-            showToast(selectedPlayers.length + ' member(s) successfully updated for ' + meta.header + '!', 'success');
-            
-            var modal = document.getElementById('ocr-modal-overlay');
-            if (modal) {
-                modal.classList.remove('visible');
-                modal.style.display = 'none';
-            }
+                // 3. Apply removals (hard delete with cascade)
+                if (checkedRemovalPseudos.length > 0) {
+                    var delRes = await db.from('guild_members')
+                        .delete()
+                        .eq('guild', currentG)
+                        .in('pseudo', checkedRemovalPseudos);
 
-            renderGuildMembers();
-        } catch (err) {
-            console.error('Commit OCR error:', err);
-            showToast('Failed to save OCR updates: ' + (err.message || err), 'error');
-        } finally {
-            btnCommit.disabled = false;
-            var finalSpan = btnCommit.querySelector('span');
-            if (finalSpan) finalSpan.textContent = 'Validate & Apply Updates';
+                    if (delRes.error) {
+                        console.error('Failed to remove members:', delRes.error);
+                        showToast('Error removing members: ' + delRes.error.message, 'error');
+                    } else {
+                        removedCount = checkedRemovalPseudos.length;
+                    }
+                }
+
+                // 4. Refresh full roster in memory & re-render view
+                if (typeof fetchGuildMembers === 'function') {
+                    await fetchGuildMembers();
+                }
+                renderGuildMembers();
+
+                // 5. Close modal
+                var modal = document.getElementById('ocr-modal-overlay');
+                if (modal) {
+                    modal.classList.remove('visible');
+                    modal.style.display = 'none';
+                }
+
+                // 6. Output aggregate toast summary
+                var summaryMsg = 'Updated ' + updatedCount + ' · Added ' + addedCount + ' · Removed ' + removedCount;
+                if (failedCount > 0) summaryMsg += ' · Failed ' + failedCount;
+                showToast(summaryMsg, failedCount > 0 ? 'warning' : 'success');
+            } catch (err) {
+                console.error('Commit OCR error:', err);
+                showToast('Failed to save OCR updates: ' + (err.message || err), 'error');
+            } finally {
+                btnCommit.disabled = false;
+                var finalSpan = btnCommit.querySelector('span');
+                if (finalSpan) finalSpan.textContent = 'Validate & Apply Updates';
+            }
+        }
+
+        // Check if removal confirmation dialog is required
+        if (checkedRemovalPseudos.length > 0) {
+            var listPreview = checkedRemovalPseudos.slice(0, 8).map(function (p) { return esc(p); }).join(', ') + (checkedRemovalPseudos.length > 8 ? ' and ' + (checkedRemovalPseudos.length - 8) + ' more' : '');
+            var confirmMsg = 'Are you sure you want to permanently remove <strong>' + checkedRemovalPseudos.length + ' member(s)</strong> (' + listPreview + ')?<br><br><span style="color:#f87171; font-size:0.85rem;">This permanently deletes the member and their event participations, shadowfront squads, weekly scores and sanctions.</span>';
+
+            if (typeof showConfirm === 'function') {
+                showConfirm('Confirm Roster Removals', confirmMsg, function () {
+                    executeRosterCommit();
+                });
+            } else {
+                executeRosterCommit();
+            }
+        } else {
+            await executeRosterCommit();
         }
     }
 
@@ -4378,6 +4624,14 @@
             });
 
             if (!hasAnyMembers) {
+                if (guildMembers.length === 0) {
+                    return '<div class="gm-empty gm-empty--coldstart" style="padding:3rem 1rem; text-align:center;">' +
+                        '<i class="ph-duotone ph-scan gm-icon" style="font-size:3rem; color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
+                        '<div class="gm-empty-title" style="font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;">' + t('empty_members_roster_title') + '</div>' +
+                        '<div class="gm-empty-desc" style="color:var(--text-muted); font-size:0.88rem; max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' + t('empty_members_roster_desc') + '</div>' +
+                        '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="power"><i class="ph ph-scan"></i> ' + t('empty_members_roster_cta') + '</button>' +
+                    '</div>';
+                }
                 return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
             }
             return html;
@@ -4387,6 +4641,14 @@
             sortVal = sortVal || 'rally_desc';
             var sorted = sortMembers(list, sortVal);
             if (sorted.length === 0) {
+                if (guildMembers.length === 0) {
+                    return '<div class="gm-empty gm-empty--coldstart" style="padding:3rem 1rem; text-align:center;">' +
+                        '<i class="ph-duotone ph-scan gm-icon" style="font-size:3rem; color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
+                        '<div class="gm-empty-title" style="font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;">' + t('empty_members_roster_title') + '</div>' +
+                        '<div class="gm-empty-desc" style="color:var(--text-muted); font-size:0.88rem; max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' + t('empty_members_roster_desc') + '</div>' +
+                        '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="power"><i class="ph ph-scan"></i> ' + t('empty_members_roster_cta') + '</button>' +
+                    '</div>';
+                }
                 return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
             }
 

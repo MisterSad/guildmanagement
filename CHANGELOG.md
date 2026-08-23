@@ -2,6 +2,16 @@
 
 ## New
 
+- **OCR Three-Section Roster Review & Cold-Start CTA (v125.0)**:
+  - **Three-Section Roster Validation UI**: Partitioned OCR review modal into three dedicated sections (Existing Members, New Members, and Removed Members) with sticky headers, live counters, and automatic section filtering.
+  - **New Member UID Entry & Pre-Flight Validation**: Added explicit UID input for new players with instant numeric validation, intra-batch duplicate detection, and `check_uid_exists_globally` RPC collision prevention, eliminating unwanted auto TEMP-UIDs.
+  - **Removed Member Detection with Override**: Automatically detected absent roster members from full-roster screenshots with "Remove" proposed by default, per-row Keep overrides, soft partial-screenshot warning (>50% removals), and cascade confirmation gate.
+  - **Live Before/After Roster Counters**: Added live delta counter chip (`Roster: X → Y`) in summary badge bar reflecting real-time checkbox selections and removals.
+  - **Empty-Roster Cold-Start CTA**: Added prominent "Roster OCR" primary CTA in empty roster view and military matrix, allowing one-click initialization of entire guild rosters from screenshot.
+  - **Player Metrics History Snapshot Bridge**: Implemented `window.GM.upsertPlayerMetrics` to record `player_metrics_history` snapshots on both UPDATE and INSERT roster OCR operations.
+  - **Dead Code Cleanup**: Purged unused OCR API key saving listeners and demo image loaders from client code.
+  - **Quality Gate**: **361/361 Vitest unit tests green** (+28 new unit tests in `tests/ocr_diff.test.js`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Canonical Replay Ordering Fix & Full Observability Migration (v124.3)**:
   - **Relocated Unique Indexes to Master DDL**: Moved 4 unique index definitions (`idx_ep_tenant_session_unique`, `idx_ep_tenant_no_session_unique`, `idx_accounts_lower_id`, `event_status_guild_event_key`) to master DDL `20260812000001_schema_tables_and_indexes.sql` to resolve early-chain `ON CONFLICT` target resolution during demo tenant resets in migrations `20260818030000`, `20260818081500`, and `20260819203500`.
   - **RLS Function Ordering & Signature Fix**: Relocated Access Control Helper functions to `20260812000002_security_rls_policies.sql` before policy definitions, and added `DROP FUNCTION IF EXISTS public.gm_check_login` to `20260823070000_auth_hardening.sql` for clean return table signature upgrades.

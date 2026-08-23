@@ -977,6 +977,239 @@
         return clean || rawPseudo.trim();
     }
 
+    function levenshteinDistance(a, b) {
+        if (!a) return b ? b.length : 0;
+        if (!b) return a ? a.length : 0;
+        var matrix = [];
+        for (var i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+        for (var j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+        for (var i = 1; i <= b.length; i++) {
+            for (var j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+                    );
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+
+    function calculateStringSimilarity(str1, str2) {
+        if (!str1 || !str2) return 0;
+        var s1 = String(str1).toLowerCase().trim();
+        var s2 = String(str2).toLowerCase().trim();
+        if (s1 === s2) return 1.0;
+
+        var clean1 = s1.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+        var clean2 = s2.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+        if (clean1 && clean1 === clean2) return 0.95;
+
+        var len1 = s1.length;
+        var len2 = s2.length;
+        var maxLen = Math.max(len1, len2);
+        if (maxLen === 0) return 1.0;
+
+        var dist = levenshteinDistance(s1, s2);
+        var sim = 1.0 - (dist / maxLen);
+
+        var cleanMax = Math.max(clean1.length, clean2.length);
+        if (cleanMax > 0) {
+            var cleanDist = levenshteinDistance(clean1, clean2);
+            var cleanSim = 1.0 - (cleanDist / cleanMax);
+            if (cleanSim > sim) sim = cleanSim;
+        }
+
+        return sim;
+    }
+
+    function findBestMatchingMember(ocrPseudo, members, guildTag) {
+        if (!ocrPseudo || !members || !Array.isArray(members) || members.length === 0) return null;
+        var target = String(ocrPseudo).trim().toLowerCase();
+
+        var exact = members.find(function (m) {
+            return m.pseudo && m.pseudo.trim().toLowerCase() === target;
+        });
+        if (exact) return { member: exact, matchType: 'exact', score: 1.0 };
+
+        var cleanTarget = cleanPlayerPseudo(ocrPseudo, guildTag).toLowerCase().trim();
+        if (cleanTarget && cleanTarget !== target) {
+            var exactClean = members.find(function (m) {
+                return m.pseudo && m.pseudo.trim().toLowerCase() === cleanTarget;
+            });
+            if (exactClean) return { member: exactClean, matchType: 'clean_tag', score: 0.98 };
+        }
+
+        var targetClean = (cleanTarget || target).replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+        if (targetClean.length >= 3) {
+            var normMatch = members.find(function (m) {
+                var mClean = (m.pseudo || '').trim().toLowerCase().replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+                return mClean === targetClean;
+            });
+            if (normMatch) return { member: normMatch, matchType: 'normalized', score: 0.95 };
+        }
+
+        var bestMember = null;
+        var bestScore = 0;
+
+        members.forEach(function (m) {
+            if (!m || !m.pseudo) return;
+            var score = calculateStringSimilarity(cleanTarget || ocrPseudo, m.pseudo);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMember = m;
+            }
+        });
+
+        if (bestMember && bestScore >= 0.75) {
+            return { member: bestMember, matchType: 'fuzzy', score: bestScore };
+        }
+
+        return null;
+    }
+
+    function categorizeOcrDiff(players, roster, guildTag, targetField, isMultiGuild) {
+        if (!players || !Array.isArray(players) || players.length === 0) {
+            return { existing: [], new: [], removed: [] };
+        }
+
+        var members = Array.isArray(roster) ? roster : [];
+        var field = targetField || 'overall_power';
+        var isMulti = !!isMultiGuild;
+
+        var existingList = [];
+        var newList = [];
+        var removedList = [];
+        var seenMemberPseudos = new Set();
+
+        players.forEach(function (p, idx) {
+            if (!p || !p.pseudo || !String(p.pseudo).trim()) return;
+
+            var matchRes = findBestMatchingMember(p.pseudo, members, guildTag);
+            var member = matchRes ? matchRes.member : null;
+            var matchType = matchRes ? matchRes.matchType : null;
+
+            var cleanPseudo = cleanPlayerPseudo(p.pseudo, guildTag) || String(p.pseudo).trim();
+            var effectivePseudo = member ? member.pseudo : cleanPseudo;
+
+            if (member) {
+                seenMemberPseudos.add(member.pseudo.trim().toLowerCase());
+                var currentVal = parseInt(member[field], 10) || 0;
+                var pScore = p.score != null ? p.score : (p.overall_power || 0);
+
+                var status = 'unchanged';
+                if ((matchType === 'fuzzy' || matchType === 'normalized' || matchType === 'clean_tag') && p.pseudo !== member.pseudo) {
+                    status = 'reconciled';
+                } else if (currentVal !== pScore) {
+                    status = 'update';
+                } else {
+                    status = 'unchanged';
+                }
+
+                existingList.push({
+                    index: idx,
+                    ocrPlayer: p,
+                    member: member,
+                    matchType: matchType,
+                    matchScore: matchRes.score,
+                    status: status,
+                    currentVal: currentVal,
+                    newVal: pScore,
+                    effectivePseudo: member.pseudo,
+                    uid: member.uid || ''
+                });
+            } else {
+                var newStatus = isMulti ? 'other_guild' : 'new';
+                var score = p.score != null ? p.score : (p.overall_power || 0);
+
+                newList.push({
+                    index: idx,
+                    ocrPlayer: p,
+                    status: newStatus,
+                    currentVal: 0,
+                    newVal: score,
+                    effectivePseudo: effectivePseudo,
+                    uid: p.uid || ''
+                });
+            }
+        });
+
+        // Compute removed members: roster members matched by NO OCR player
+        if (members.length > 0) {
+            members.forEach(function (m) {
+                if (!m || !m.pseudo) return;
+                var pseudoKey = m.pseudo.trim().toLowerCase();
+                if (!seenMemberPseudos.has(pseudoKey)) {
+                    removedList.push({
+                        member: m,
+                        pseudo: m.pseudo,
+                        uid: m.uid || '',
+                        role: m.role || 'R1',
+                        currentPower: parseInt(m.overall_power, 10) || 0,
+                        status: 'to_remove'
+                    });
+                }
+            });
+        }
+
+        return {
+            existing: existingList,
+            new: newList,
+            removed: removedList
+        };
+    }
+
+    function computeOcrRosterDelta(rosterCount, selectedNewCount, selectedRemovalCount) {
+        var before = Math.max(0, parseInt(rosterCount, 10) || 0);
+        var added = Math.max(0, parseInt(selectedNewCount, 10) || 0);
+        var removed = Math.max(0, parseInt(selectedRemovalCount, 10) || 0);
+        var after = Math.max(0, before + added - removed);
+        return {
+            before: before,
+            after: after,
+            added: added,
+            removed: removed
+        };
+    }
+
+    async function upsertPlayerMetrics(arg1, arg2, arg3, arg4) {
+        var guild, pseudo, metrics;
+        if (typeof arg1 === 'object' && arg1 !== null) {
+            var p = arg1;
+            guild = arg2 || p.guild;
+            pseudo = p.pseudo;
+            metrics = p;
+        } else {
+            guild = arg1;
+            pseudo = arg2;
+            metrics = (typeof arg3 === 'object' && arg3 !== null) ? arg3 : (arg4 || {});
+        }
+        if (!guild || !pseudo) return null;
+        var supabase = (window.GM && window.GM.db) || window.supabaseClient;
+        if (!supabase) return null;
+
+        try {
+            var res = await supabase.rpc('gm_upsert_player_metrics', {
+                p_guild: guild,
+                p_pseudo: pseudo,
+                p_total_power: metrics.overall_power != null ? metrics.overall_power : null,
+                p_tech_power: metrics.tech_power != null ? metrics.tech_power : null,
+                p_champion_power: metrics.champion_power != null ? metrics.champion_power : null,
+                p_crew_power: metrics.crew_power != null ? metrics.crew_power : null,
+                p_flagship_power: metrics.flagship_power != null ? metrics.flagship_power : null,
+                p_fleet_rating: metrics.fleet_rating != null ? metrics.fleet_rating : null,
+                p_glory_score: metrics.glory_score != null ? metrics.glory_score : null
+            });
+            return res;
+        } catch (err) {
+            console.warn('gm_upsert_player_metrics rpc error for ' + pseudo + ':', err);
+            return null;
+        }
+    }
+
     function getCurrentPseudo() {
         try {
             return localStorage.getItem('gm_user') || localStorage.getItem('gm_pseudo') || null;
@@ -1966,6 +2199,12 @@
         getEventTheme: getEventTheme,
         getGuildTag: getGuildTag,
         cleanPlayerPseudo: cleanPlayerPseudo,
+        levenshteinDistance: levenshteinDistance,
+        calculateStringSimilarity: calculateStringSimilarity,
+        findBestMatchingMember: findBestMatchingMember,
+        categorizeOcrDiff: categorizeOcrDiff,
+        computeOcrRosterDelta: computeOcrRosterDelta,
+        upsertPlayerMetrics: upsertPlayerMetrics,
         config: {
             get: getGuildConfig,
             set: setGuildConfig
