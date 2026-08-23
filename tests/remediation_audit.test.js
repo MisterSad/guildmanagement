@@ -154,4 +154,21 @@ describe('Audit Remediation Verification Suite', () => {
     expect(content).toContain('catch (unhandledErr)');
     expect(content).toContain('error: "internal_error"');
   });
+
+  it('W6: verifies security definer RPC authorization lockdown migration', () => {
+    const rpcMigPath = path.resolve(__dirname, '../supabase/migrations/20260823060000_security_rpc_lockdown.sql');
+    expect(fs.existsSync(rpcMigPath)).toBe(true);
+    const content = fs.readFileSync(rpcMigPath, 'utf-8');
+
+    expect(content).toContain('public.gm_upsert_player_metrics');
+    expect(content).toContain('public.is_super_admin() OR (public.check_user_guild_write_access(p_guild)');
+    expect(content).toContain('public.gm_reset_account_password');
+    expect(content).toContain('public.gm_admin_upsert');
+    expect(content).toContain('public.gm_transfer_guild_member');
+    expect(content).not.toContain("COALESCE(v_caller_guild, 'ALPHA')");
+    expect(content).toContain('REVOKE ALL ON FUNCTION public.gm_log_player_audit');
+    expect(content).toContain('GRANT EXECUTE ON FUNCTION public.gm_log_player_audit(text, text, text, text, text, text, jsonb, text, text) TO service_role;');
+    expect(content).toContain('CREATE POLICY audit_logs_insert_policy ON public.system_audit_logs');
+    expect(content).toContain('FOR INSERT TO service_role');
+  });
 });
