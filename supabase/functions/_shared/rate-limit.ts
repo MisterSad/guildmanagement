@@ -11,21 +11,36 @@ export function isWindowExpired(windowStart: number, now: number, windowMs: numb
 }
 
 export function extractClientIp(headers: Headers | Record<string, string | null | undefined>): string {
+  let cfIp: string | null = null;
+  let xRealIp: string | null = null;
   let xff: string | null = null;
+
   if (headers instanceof Headers) {
+    cfIp = headers.get("cf-connecting-ip");
+    xRealIp = headers.get("x-real-ip");
     xff = headers.get("x-forwarded-for");
-    if (!xff) xff = headers.get("cf-connecting-ip") || headers.get("x-real-ip");
   } else {
-    xff = headers["x-forwarded-for"] || headers["cf-connecting-ip"] || headers["x-real-ip"] || null;
+    cfIp = headers["cf-connecting-ip"] || null;
+    xRealIp = headers["x-real-ip"] || null;
+    xff = headers["x-forwarded-for"] || null;
   }
 
+  // 1. Cloudflare authoritative connecting IP (cannot be forged through Cloudflare proxy)
+  if (cfIp && typeof cfIp === "string" && cfIp.trim()) {
+    return cfIp.trim();
+  }
+
+  // 2. Nearest proxy hop from X-Forwarded-For
   if (xff && typeof xff === "string") {
     const parts = xff.split(",").map((p) => p.trim()).filter(Boolean);
     if (parts.length > 0) {
-      // Security: Rightmost entry is appended by the nearest trusted reverse proxy (Vercel/Cloudflare).
-      // Leftmost entries can be forged/spoofed by client headers.
       return parts[parts.length - 1];
     }
+  }
+
+  // 3. Fallback to X-Real-IP
+  if (xRealIp && typeof xRealIp === "string" && xRealIp.trim()) {
+    return xRealIp.trim();
   }
 
   return "127.0.0.1";

@@ -10,3 +10,5 @@ supabase/.env*
 deno.lock
 test-results/
 playwright-report/
+deploy_backup_*.json
+deploy_backup_*.sql*
