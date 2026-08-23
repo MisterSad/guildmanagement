@@ -1,6 +1,6 @@
-📢 **FGF Guild Management Tool Update — CHANG_V125.2**
+📢 **FGF Guild Management Tool Update — CHANG_V125.3**
 
-Hey everyone! Today has been a massive milestone for the platform. I've rolled out our biggest roster management overhaul yet, resolved a morning login hiccup, and deployed comprehensive security hardening to keep your guild accounts and data safe. Here is everything new for you and your guild:
+Hey everyone! Today has been a massive milestone for the platform. I've rolled out our biggest roster management overhaul yet, deployed comprehensive security hardening to keep your guild accounts and data safe, and quickly resolved two morning glitches. Here is everything new for you and your guild:
 
 📸 **OCR Roster Overhaul (Three-Section Review)**
 - **Clear Roster Breakdown**: When updating your roster via screenshot, the review screen is now neatly divided into three sections: **Existing Members**, **New Members**, and **Removed Members**.
@@ -12,8 +12,8 @@ Hey everyone! Today has been a massive milestone for the platform. I've rolled o
 🚀 **One-Click Roster Import for New Guilds**
 - Setting up a fresh guild? The Members tab now features a prominent **"Roster OCR"** button so you can import your entire 60-member lineup from screenshots in seconds.
 
-🛠️ **Sign-In Incident Resolved**
-- A small typo in this morning's update briefly prevented some members from signing in on the web app. I caught and patched this within the hour and added triple-layer automated checks to ensure it cannot happen again. Thank you for your patience!
+🛠️ **Morning Glitches Resolved**
+- A configuration oversight in this morning's deployment briefly blocked browser communication for some users (causing loading errors on sign-in and the Player Portal). I identified the root cause and patched it across all platform services within the hour. Everything is now running smoothly. My apologies for the brief inconvenience!
 
 🔒 **Stronger Account Protection**
 - **Modern Password Hashing**: All accounts now use industry-standard one-way cryptographic hashing (your password automatically upgrades seamlessly on your next sign-in).

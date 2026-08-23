@@ -22,7 +22,7 @@ This runbook defines the authoritative, repeatable sequence for deploying databa
 ### 2.1 Baseline Quality Gate
 ```sh
 npm run type-check   # 0 TypeScript errors required
-npm test             # 385/385 Vitest unit tests green required
+npm test             # 397/397 Vitest unit tests green required
 npm run build        # Clean production build + root syntax check
 ```
 
@@ -173,6 +173,9 @@ supabase functions deploy ocr-guild-members
 - **S4**: 31 rapid login attempts from same client IP → 31st attempt returns HTTP 429 `too_many_attempts`.
 - **S5**: Login with legacy PGP encrypted account (`DemoAdmin`) → Login succeeds, password auto-migrates to Bcrypt hash (`$2a$10$...`), `last_login_at` timestamp recorded.
 - **S6**: Old CRON secret returns HTTP 401; new CRON secret returns HTTP 200.
+
+### Response CORS Echo Verification (Mandatory Post-Deploy Check):
+- **CORS Echo Verification**: For every function, curl a function-code path (success AND error) with `Origin: https://guildmanagement.vercel.app`; the response `Access-Control-Allow-Origin` header must echo `https://guildmanagement.vercel.app`. Preflight alone is insufficient (2026-08-23 incident lesson).
 
 ### Functional Matrix (F1–F6):
 - **F1**: Admin login loads Command Center and guild switcher.

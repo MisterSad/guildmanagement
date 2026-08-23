@@ -2,6 +2,15 @@
 
 ## Fixed
 
+- **Production CORS Response Origin Echo Outage & Per-Request Closure Pattern (v125.3)**:
+  - **Per-Request JSON Response Closure (`makeJson`)**: Eliminated silent fallback to `http://localhost:5173` across all 8 CORS-bearing Edge Functions (`admin-accounts`, `member-portal`, `auth-login`, `player-register`, `gm-create-order`, `gm-order-status`, `discord-webhook-proxy`, `ocr-guild-members`) and `event-reminders` by adopting a per-request `makeJson(req)` factory that automatically captures and echoes the incoming request origin on all responses.
+  - **Eliminated 3-Arg Helper Discrepancies**: Cleaned all 3-arg `json(body, status, req)` call sites, ensuring uniform closure usage without global or mutable module state.
+  - **Edge Functions CORS Containment Suite**: Added `tests/cors_response.test.js` validating that every CORS-bearing function defines `makeJson(req)`, invokes `const json = makeJson(req)` inside its serve handler, contains zero 3-arg `json()` calls, and accurately echoes valid production and preview origins while rejecting untrusted domains.
+  - **Runbook Post-Deploy CORS Verification**: Added mandatory function-code response origin echo curl verification step to `docs/DEPLOY_RUNBOOK.md` to prevent preflight-only testing blind spots.
+  - **Quality Gate**: **397/397 Vitest unit tests green** (+12 new unit tests in `tests/cors_response.test.js`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
+## Fixed
+
 - **Production Deployment Corrections & Live Bug Fixes (v125.2)**:
   - **Edge-Function JWT Verification Matrix (`67bdf74`)**: Codified explicit `verify_jwt` configurations for all 10 Edge Functions in `supabase/config.toml` (4 public: `auth-login`, `player-register`, `event-reminders`, `gm-stripe-webhook`; 6 JWT-gated: `member-portal`, `admin-accounts`, `gm-create-order`, `gm-order-status`, `discord-webhook-proxy`, `ocr-guild-members`).
   - **Member Portal UID Fallback Fix (`67bdf74`)**: Enhanced `getIdentity` in `supabase/functions/member-portal/index.ts` to query `accounts.uid` and resolve `playerUid` via `row?.player_uid || acc.uid || accountId`, preventing member lookup failures when shadow records lack explicit player UIDs.
