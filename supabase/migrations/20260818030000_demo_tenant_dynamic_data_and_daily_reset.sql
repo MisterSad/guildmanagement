@@ -507,3 +507,6 @@ $$;
 
 -- 3. Execute immediately to populate initial pristine dynamic dataset
 SELECT public.gm_reset_demo_tenant_data();
+
+-- Force PostgREST schema cache reload
+NOTIFY pgrst, 'reload schema';

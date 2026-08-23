@@ -270,3 +270,6 @@ $$;
 
 REVOKE ALL ON FUNCTION public.gm_update_account_role(text, text, text, text) FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.gm_update_account_role(text, text, text, text) TO authenticated;
+
+-- Force PostgREST schema cache reload
+NOTIFY pgrst, 'reload schema';

@@ -820,3 +820,5 @@ GRANT EXECUTE ON FUNCTION public.check_user_guild_access(text) TO authenticated,
 REVOKE ALL ON FUNCTION public.get_push_config() FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.get_push_config() TO service_role;
 
+-- Force PostgREST schema cache reload
+NOTIFY pgrst, 'reload schema';

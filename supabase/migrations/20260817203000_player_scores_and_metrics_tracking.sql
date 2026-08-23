@@ -320,3 +320,6 @@ $$;
 
 REVOKE ALL ON FUNCTION public.gm_personal_kpis(text) FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.gm_personal_kpis(text) TO authenticated;
+
+-- Force PostgREST schema cache reload
+NOTIFY pgrst, 'reload schema';
