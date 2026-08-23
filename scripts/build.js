@@ -13,9 +13,10 @@ if (!fs.existsSync(distDir)) {
 }
 
 const files = fs.readdirSync(rootDir);
+const EXCLUDED_FILES = ['package.json', 'package-lock.json', 'tsconfig.json', 'vercel.json', 'vitest.config.ts'];
 
 files.forEach(file => {
-  if (file === 'node_modules' || file === 'dist' || file.startsWith('.')) return;
+  if (file === 'node_modules' || file === 'dist' || file.startsWith('.') || EXCLUDED_FILES.includes(file)) return;
   const ext = path.extname(file).toLowerCase();
   if (['.js', '.css', '.webmanifest', '.png', '.json', '.html'].includes(ext)) {
     const srcPath = path.join(rootDir, file);

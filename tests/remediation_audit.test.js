@@ -255,4 +255,16 @@ describe('Audit Remediation Verification Suite', () => {
     const authLoginContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/auth-login/index.ts'), 'utf-8');
     expect(authLoginContent).toContain('error: "account_locked"');
   });
+
+  it('W11: verifies centralized dynamic CORS and build script JSON cleanup', () => {
+    const corsPath = path.resolve(__dirname, '../supabase/functions/_shared/cors.ts');
+    expect(fs.existsSync(corsPath)).toBe(true);
+    const corsContent = fs.readFileSync(corsPath, 'utf-8');
+    expect(corsContent).toContain('export function getCorsHeaders');
+    expect(corsContent).toContain('https://fgf-guild-management.vercel.app');
+
+    const buildScript = fs.readFileSync(path.resolve(__dirname, '../scripts/build.js'), 'utf-8');
+    expect(buildScript).toContain('package.json');
+    expect(buildScript).toContain('EXCLUDED_FILES');
+  });
 });
