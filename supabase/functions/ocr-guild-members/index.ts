@@ -89,6 +89,7 @@ Deno.serve(async (req: Request) => {
   const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp"].includes(metricType);
 
   const metricInstructions: Record<string, string> = {
+    members: `Full Guild Roster / Liste des Membres. Extract player pseudo, player UID if visible, and total overall power converted into pure numerical integer. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
     power: `Overall Total Power / Puissance Totale. Extract player pseudo and total numerical power. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
     fleet: `Strongest Fleet Rating / Plus Forte Flotte (March 1 / Première Marche). Multi-guild server ranking. Extract player pseudo and fleet rating numerical power. Convert strings like "2.16M" -> 2160000, "1,850,000" -> 1850000, "2.26M" -> 2260000.`,
     tech: `Technology Power / Puissance Technologique (Alliance / Research Tech). Extract player pseudo and technology power integer. Convert strings like "15.4M" -> 15400000, "18,200,000" -> 18200000.`,

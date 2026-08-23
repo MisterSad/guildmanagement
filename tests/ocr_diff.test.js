@@ -173,9 +173,9 @@ describe('categorizeOcrDiff (Three-Section Diff Logic)', () => {
     });
 
     it('guards safely on null or empty OCR players', () => {
-        expect(GM.categorizeOcrDiff([], sampleRoster)).toEqual({ existing: [], new: [], removed: [] });
-        expect(GM.categorizeOcrDiff(null, sampleRoster)).toEqual({ existing: [], new: [], removed: [] });
-        expect(GM.categorizeOcrDiff(undefined, sampleRoster)).toEqual({ existing: [], new: [], removed: [] });
+        expect(GM.categorizeOcrDiff([], sampleRoster)).toEqual({ existing: [], new: [], removed: [], unknown: [] });
+        expect(GM.categorizeOcrDiff(null, sampleRoster)).toEqual({ existing: [], new: [], removed: [], unknown: [] });
+        expect(GM.categorizeOcrDiff(undefined, sampleRoster)).toEqual({ existing: [], new: [], removed: [], unknown: [] });
     });
 });
 
@@ -267,7 +267,49 @@ describe('Cold-Start i18n Keys', () => {
         const t = window.GM_I18N.t;
         expect(t('empty_members_roster_title')).toBe('Your roster is empty');
         expect(t('empty_members_roster_desc')).toContain('Import all members in one step');
-        expect(t('empty_members_roster_cta')).toBe('Roster OCR');
+        expect(t('empty_members_roster_cta')).toBe('Members OCR');
         expect(t('empty_members')).toBe('No members registered');
+    });
+});
+
+describe('categorizeOcrDiff Mode Semantics (v126.0 Members OCR vs Metric Scanners)', () => {
+    const sampleRoster = [
+        { pseudo: 'HawkEye', uid: '1001', role: 'R5', overall_power: 150000000 },
+        { pseudo: 'StarWarrior', uid: '1002', role: 'R4', overall_power: 120000000 },
+    ];
+
+    it('members mode (default): categorizes into existing, new, and removed with empty unknown', () => {
+        const ocrPlayers = [
+            { pseudo: 'HawkEye', score: 160000000 },
+            { pseudo: 'NewRecruit', score: 50000000 },
+        ];
+        const diff = GM.categorizeOcrDiff(ocrPlayers, sampleRoster, '', 'overall_power', false, 'members');
+        expect(diff.existing).toHaveLength(1);
+        expect(diff.existing[0].effectivePseudo).toBe('HawkEye');
+        expect(diff.new).toHaveLength(1);
+        expect(diff.new[0].effectivePseudo).toBe('NewRecruit');
+        expect(diff.removed).toHaveLength(1);
+        expect(diff.removed[0].pseudo).toBe('StarWarrior');
+        expect(diff.unknown).toEqual([]);
+    });
+
+    it('metric mode: returns unknown bucket, empty new, and empty removed', () => {
+        const ocrPlayers = [
+            { pseudo: 'HawkEye', score: 160000000 },
+            { pseudo: 'UnregisteredPlayer', score: 75000000 },
+        ];
+        const diff = GM.categorizeOcrDiff(ocrPlayers, sampleRoster, '', 'overall_power', false, 'metric');
+        expect(diff.existing).toHaveLength(1);
+        expect(diff.existing[0].effectivePseudo).toBe('HawkEye');
+        expect(diff.new).toEqual([]);
+        expect(diff.removed).toEqual([]); // Metric screenshots may be partial; never propose removals
+        expect(diff.unknown).toHaveLength(1);
+        expect(diff.unknown[0].status).toBe('not_in_roster');
+        expect(diff.unknown[0].effectivePseudo).toBe('UnregisteredPlayer');
+    });
+
+    it('empty players input returns empty arrays for all 4 buckets', () => {
+        const diff = GM.categorizeOcrDiff([], sampleRoster, '', 'overall_power', false, 'metric');
+        expect(diff).toEqual({ existing: [], new: [], removed: [], unknown: [] });
     });
 });

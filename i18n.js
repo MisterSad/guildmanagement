@@ -68,7 +68,7 @@
             empty_members:         'No members registered',
             empty_members_roster_title: 'Your roster is empty',
             empty_members_roster_desc:  'Import all members in one step: upload a guild roster screenshot and let AI OCR extract every username and power.',
-            empty_members_roster_cta:   'Roster OCR',
+            empty_members_roster_cta:   'Members OCR',
             empty_sanctions:       'No sanctions recorded',
             loading:               'Loading...',
             toast_password_reset_success: 'Password reset successfully',

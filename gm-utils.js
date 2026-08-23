@@ -1071,9 +1071,11 @@
         return null;
     }
 
-    function categorizeOcrDiff(players, roster, guildTag, targetField, isMultiGuild) {
+    function categorizeOcrDiff(players, roster, guildTag, targetField, isMultiGuild, mode) {
+        var opMode = (mode === 'metric') ? 'metric' : 'members';
+
         if (!players || !Array.isArray(players) || players.length === 0) {
-            return { existing: [], new: [], removed: [] };
+            return { existing: [], new: [], removed: [], unknown: [] };
         }
 
         var members = Array.isArray(roster) ? roster : [];
@@ -1083,6 +1085,7 @@
         var existingList = [];
         var newList = [];
         var removedList = [];
+        var unknownList = [];
         var seenMemberPseudos = new Set();
 
         players.forEach(function (p, idx) {
@@ -1122,23 +1125,35 @@
                     uid: member.uid || ''
                 });
             } else {
-                var newStatus = isMulti ? 'other_guild' : 'new';
                 var score = p.score != null ? p.score : (p.overall_power || 0);
 
-                newList.push({
-                    index: idx,
-                    ocrPlayer: p,
-                    status: newStatus,
-                    currentVal: 0,
-                    newVal: score,
-                    effectivePseudo: effectivePseudo,
-                    uid: p.uid || ''
-                });
+                if (opMode === 'metric') {
+                    unknownList.push({
+                        index: idx,
+                        ocrPlayer: p,
+                        status: 'not_in_roster',
+                        currentVal: 0,
+                        newVal: score,
+                        effectivePseudo: effectivePseudo,
+                        uid: p.uid || ''
+                    });
+                } else {
+                    var newStatus = isMulti ? 'other_guild' : 'new';
+                    newList.push({
+                        index: idx,
+                        ocrPlayer: p,
+                        status: newStatus,
+                        currentVal: 0,
+                        newVal: score,
+                        effectivePseudo: effectivePseudo,
+                        uid: p.uid || ''
+                    });
+                }
             }
         });
 
-        // Compute removed members: roster members matched by NO OCR player
-        if (members.length > 0) {
+        // Compute removed members: roster members matched by NO OCR player (only in members mode)
+        if (opMode === 'members' && members.length > 0) {
             members.forEach(function (m) {
                 if (!m || !m.pseudo) return;
                 var pseudoKey = m.pseudo.trim().toLowerCase();
@@ -1158,7 +1173,8 @@
         return {
             existing: existingList,
             new: newList,
-            removed: removedList
+            removed: removedList,
+            unknown: unknownList
         };
     }
 
