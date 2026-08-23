@@ -120,4 +120,15 @@ describe('Audit Remediation Verification Suite', () => {
     expect(indexHtml).toContain('id="tab-system-logs"');
     expect(indexHtml).toContain('id="audit-logs-table-container"');
   });
+
+  it('W3 & W7: verifies payment hardening migration locks rows and normalizes subscription_type', () => {
+    const paymentMigPath = path.resolve(__dirname, '../supabase/migrations/20260823053000_harden_subscription_payment_and_plans.sql');
+    expect(fs.existsSync(paymentMigPath)).toBe(true);
+    const content = fs.readFileSync(paymentMigPath, 'utf-8');
+    expect(content).toContain('FOR UPDATE');
+    expect(content).toContain("subscription_type = 'Premium'");
+    expect(content).toContain('plan_key = v_payment.plan_key');
+    expect(content).toContain('REVOKE ALL ON FUNCTION public.gm_apply_subscription_payment(text, text, text, text) FROM public, anon, authenticated;');
+    expect(content).toContain('GRANT EXECUTE ON FUNCTION public.gm_apply_subscription_payment(text, text, text, text) TO service_role;');
+  });
 });
