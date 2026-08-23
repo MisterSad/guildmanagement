@@ -102,10 +102,10 @@ async function getPlayer(
   admin: ReturnType<typeof createClient>,
   uid: string,
   guildContext: string | null
-): Promise<{ pseudo: string; guild: string; overall_power?: number; power_updated_at?: string; tech_power?: number; champion_power?: number; crew_power?: number; flagship_power?: number; fleet_rating?: number; glory_score?: number; role?: string } | null> {
+): Promise<{ pseudo: string; guild: string; overall_power?: number; power_updated_at?: string; metrics_updated_at?: string; tech_power?: number; champion_power?: number; crew_power?: number; flagship_power?: number; fleet_rating?: number; glory_score?: number; role?: string; timezone_offset?: number | null } | null> {
   let query = admin
     .from("guild_members")
-    .select("pseudo, guild, overall_power, power_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role")
+    .select("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset")
     .eq("uid", uid);
 
   if (guildContext) {
@@ -121,16 +121,31 @@ async function getPlayer(
 async function getGuildAverages(
   admin: ReturnType<typeof createClient>,
   guild: string
-): Promise<{ attendance_rate: number; avg_power: number; member_count: number }> {
+): Promise<{
+  attendance_rate: number;
+  avg_power: number;
+  member_count: number;
+  overall_power?: number;
+  fleet_rating?: number;
+  tech_power?: number;
+  flagship_power?: number;
+  champion_power?: number;
+  crew_power?: number;
+  glory_score?: number;
+}> {
   try {
     const { data: members } = await admin
       .from("guild_members")
-      .select("overall_power")
+      .select("overall_power, fleet_rating, tech_power, flagship_power, champion_power, crew_power, glory_score")
       .eq("guild", guild);
 
     const count = members?.length || 0;
-    const totalPower = members?.reduce((sum: number, m: any) => sum + (Number(m.overall_power) || 0), 0) || 0;
-    const avgPower = count > 0 ? Math.round(totalPower / count) : 0;
+    const avgOf = (field: string): number => {
+      if (count <= 0) return 0;
+      const total = members?.reduce((sum: number, m: any) => sum + (Number(m[field]) || 0), 0) || 0;
+      return Math.round(total / count);
+    };
+    const avgPower = avgOf("overall_power");
 
     const { data: participants } = await admin
       .from("event_participants")
@@ -144,7 +159,14 @@ async function getGuildAverages(
     return {
       attendance_rate: attendanceRate,
       avg_power: avgPower,
-      member_count: count
+      member_count: count,
+      overall_power: avgPower,
+      fleet_rating: avgOf("fleet_rating"),
+      tech_power: avgOf("tech_power"),
+      flagship_power: avgOf("flagship_power"),
+      champion_power: avgOf("champion_power"),
+      crew_power: avgOf("crew_power"),
+      glory_score: avgOf("glory_score")
     };
   } catch (_) {
     return { attendance_rate: 0, avg_power: 0, member_count: 0 };
@@ -327,6 +349,17 @@ Deno.serve(async (req: Request) => {
           week_start: getWeekStartIso(new Date()),
           score: gloryRow?.score ?? 0,
         },
+        overall_power: member.overall_power ?? 0,
+        tech_power: member.tech_power ?? 0,
+        champion_power: member.champion_power ?? 0,
+        crew_power: member.crew_power ?? 0,
+        flagship_power: member.flagship_power ?? 0,
+        fleet_rating: member.fleet_rating ?? 0,
+        glory_score: member.glory_score ?? 0,
+        role: member.role ?? "R1",
+        timezone_offset: member.timezone_offset ?? null,
+        power_updated_at: member.power_updated_at ?? null,
+        metrics_updated_at: member.metrics_updated_at ?? null,
         guild_averages: guildAverages
       });
     }
