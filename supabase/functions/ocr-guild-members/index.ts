@@ -20,6 +20,12 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
 
+  // Check early payload size via content-length header (max 8MB)
+  const contentLength = req.headers.get("content-length");
+  if (contentLength && parseInt(contentLength, 10) > 8 * 1024 * 1024) {
+    return json({ ok: false, error: "payload_too_large" }, 413, req);
+  }
+
   // 1. Mandatory JWT & RBAC Verification (SEV-02 Fix)
   const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
   if (!caller.authenticated || !caller.role || (caller.role !== "guild_admin" && caller.role !== "server_admin" && caller.role !== "super_admin")) {
@@ -52,6 +58,9 @@ Deno.serve(async (req: Request) => {
       guildTag = body.guildTag.trim();
     }
     if (Array.isArray(body?.images) && body.images.length > 0) {
+      if (body.images.length > 5) {
+        return json({ ok: false, error: "too_many_images" }, 400, req);
+      }
       imagesArray = body.images;
     } else {
       imageBase64 = body?.imageBase64 || "";
@@ -59,11 +68,20 @@ Deno.serve(async (req: Request) => {
     }
   } catch (err) {
     logger.error("Failed to parse OCR request body", err);
-    return json({ ok: false, error: "bad_request" }, 400);
+    return json({ ok: false, error: "bad_request" }, 400, req);
+  }
+
+  // Validate parsed payload total size
+  let totalDataLength = imageBase64.length;
+  for (const img of imagesArray) {
+    totalDataLength += (img.base64Data || "").length;
+  }
+  if (totalDataLength > 8 * 1024 * 1024) {
+    return json({ ok: false, error: "payload_too_large" }, 413, req);
   }
 
   if (!imageBase64 && imagesArray.length === 0) {
-    return json({ ok: false, error: "missing_image" }, 400);
+    return json({ ok: false, error: "missing_image" }, 400, req);
   }
 
   const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp"].includes(metricType);
