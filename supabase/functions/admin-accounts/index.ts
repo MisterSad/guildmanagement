@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { findUserByEmail } from "../_shared/pagination.ts";
+import { canManageAccount, maxAssignableRole, isGuildInScope, Role } from "../_shared/admin-authz.ts";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -19,11 +20,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/**
- * Validate the JWT cryptographically using Supabase's auth.getUser(),
- * then fetch the caller's role and guild from the accounts table.
- */
-function normalizeRole(r: string | null | undefined): "super_admin" | "server_admin" | "guild_admin" | "member" {
+function normalizeRole(r: string | null | undefined): Role {
   if (!r) return "member";
   const s = String(r).toLowerCase().trim();
   if (s === "super_admin" || s === "r5" || s === "admin") return "super_admin";
@@ -36,7 +33,7 @@ function normalizeRole(r: string | null | undefined): "super_admin" | "server_ad
 async function getCallerInfo(
   req: Request,
   admin: ReturnType<typeof createClient>
-): Promise<{ role: "super_admin" | "server_admin" | "guild_admin" | "member" | null; accountId: string | null; guild: string | null; serverNumber: string | null }> {
+): Promise<{ role: Role | null; accountId: string | null; guild: string | null; serverNumber: string | null }> {
   const authHeader = req.headers.get("Authorization") || "";
   const match = authHeader.match(/^Bearer (.+)$/i);
   if (!match) return { role: null, accountId: null, guild: null, serverNumber: null };
@@ -46,32 +43,20 @@ async function getCallerInfo(
   const { data: { user }, error } = await anonClient.auth.getUser(jwt);
   if (error || !user) return { role: null, accountId: null, guild: null, serverNumber: null };
 
-  const accountIdFromMeta = user.app_metadata?.account_id || user.user_metadata?.account_id;
-  const roleFromMeta = user.app_metadata?.app_role;
-
-  let acc: any = null;
-  const { data: accByAuth } = await admin
+  const { data: acc } = await admin
     .from("accounts")
-    .select("id, role, guild, server_number")
+    .select("id, role, guild, server_number, status")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
-  acc = accByAuth;
-
-  if (!acc && accountIdFromMeta) {
-    const { data: accById } = await admin
-      .from("accounts")
-      .select("id, role, guild, server_number")
-      .ilike("id", accountIdFromMeta)
-      .maybeSingle();
-    acc = accById;
+  if (!acc || acc.status !== "active") {
+    return { role: null, accountId: null, guild: null, serverNumber: null };
   }
 
-  const rawRole = acc?.role || roleFromMeta;
-  const normalizedRole = normalizeRole(rawRole);
+  const normalizedRole = normalizeRole(acc.role);
 
-  let serverNumber = acc?.server_number ?? null;
-  if (!serverNumber && acc?.guild) {
+  let serverNumber = acc.server_number ?? null;
+  if (!serverNumber && acc.guild) {
     const { data: g } = await admin
       .from("guilds")
       .select("server_number")
@@ -84,9 +69,31 @@ async function getCallerInfo(
 
   return {
     role: normalizedRole,
-    accountId: acc?.id ?? accountIdFromMeta ?? null,
-    guild: acc?.guild ?? null,
+    accountId: acc.id ?? null,
+    guild: acc.guild ?? null,
     serverNumber,
+  };
+}
+
+async function getTargetCtx(
+  admin: ReturnType<typeof createClient>,
+  targetAcc: { role?: string | null; guild?: string | null; server_number?: string | null }
+): Promise<{ role: Role | null; guild: string | null; serverNumber: string | null }> {
+  let sNum = targetAcc.server_number ?? null;
+  if (!sNum && targetAcc.guild) {
+    const { data: g } = await admin
+      .from("guilds")
+      .select("server_number")
+      .eq("id", targetAcc.guild)
+      .maybeSingle();
+    if (g?.server_number) {
+      sNum = g.server_number;
+    }
+  }
+  return {
+    role: normalizeRole(targetAcc.role),
+    guild: targetAcc.guild ?? null,
+    serverNumber: sNum,
   };
 }
 
@@ -143,7 +150,7 @@ Deno.serve(async (req: Request) => {
   }
   const action = (body?.action ?? "").toString();
 
-  // Verify subscription status for non-Super Admin (guild_admin) callers on mutations
+  // Verify subscription status for guild_admin callers on mutations
   if (info.role === "guild_admin" && action !== "list" && action !== "reset-password") {
     const active = await isSubscriptionActive(admin, callerGuild);
     if (!active) {
@@ -168,7 +175,10 @@ Deno.serve(async (req: Request) => {
         .select("id")
         .eq("server_number", info.serverNumber || "");
       const allowedGuildIds = new Set((guildsOnServer || []).map((g: any) => g.id));
-      accountsList = accountsList.filter((acc: any) => acc.guild && allowedGuildIds.has(acc.guild));
+      accountsList = accountsList.filter((acc: any) =>
+        (acc.guild && allowedGuildIds.has(acc.guild)) ||
+        (acc.server_number && String(acc.server_number) === String(info.serverNumber))
+      );
     }
     return json({ ok: true, accounts: accountsList });
   }
@@ -179,20 +189,20 @@ Deno.serve(async (req: Request) => {
 
     const { data: targetAcc } = await admin
       .from("accounts")
-      .select("id, role, guild, auth_user_id")
+      .select("id, role, guild, server_number, auth_user_id")
       .ilike("id", id)
       .maybeSingle();
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
 
-    if (info.role === "guild_admin") {
-      if (targetAcc.role === "super_admin" || targetAcc.guild !== callerGuild) {
-        logger.warn("Guild admin forbidden from resetting target account", { targetId: id, targetGuild: targetAcc.guild });
-        return json({ ok: false, error: "forbidden" }, 403);
-      }
+    const targetCtx = await getTargetCtx(admin, targetAcc);
+    if (!canManageAccount(info, targetCtx)) {
+      logger.warn("Forbidden attempt to reset target account password", { callerRole: info.role, targetId: id, targetRole: targetAcc.role });
+      return json({ ok: false, error: "forbidden" }, 403);
     }
 
     const canonicalId = targetAcc.id;
-    const newPassword = (body?.password ?? randomSecret().slice(0, 16)).toString().trim();
+    // Always generate password server-side; ignore any client-supplied body.password
+    const newPassword = randomSecret().slice(0, 16);
     const { data: rpcData, error: rpcErr } = await admin.rpc("gm_reset_account_password", { p_id: canonicalId, p_password: newPassword });
     if (rpcErr) {
       logger.error("Error executing gm_reset_account_password", rpcErr, { canonicalId });
@@ -218,7 +228,6 @@ Deno.serve(async (req: Request) => {
       });
       let uid = created?.user?.id;
       if (cuErr || !uid) {
-        // FIX (SEV-03): Paginated search instead of unpaginated listUsers()
         const ex = await findUserByEmail(admin, email);
         if (ex) {
           uid = ex.id;
@@ -248,7 +257,26 @@ Deno.serve(async (req: Request) => {
       accRole = "guild_admin";
       if (!callerGuild) return json({ ok: false, error: "forbidden" }, 403);
       accGuild = callerGuild;
+      accServerNum = info.serverNumber;
+    } else if (info.role === "server_admin") {
+      // Clamped strictly to maxAssignableRole (guild_admin / member)
+      const requestedRole = (body?.role ?? "guild_admin").toString();
+      accRole = (requestedRole === "member") ? "member" : "guild_admin";
+      if (requestedRole !== accRole) {
+        logger.warn("Server admin attempted role elevation in account create; clamped to guild_admin", { requestedRole, clampedTo: accRole });
+      }
+      if (!accGuild || accGuild === "ALL") {
+        return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
+      }
+      const { data: g } = await admin.from("guilds").select("server_number").eq("id", accGuild).maybeSingle();
+      const targetServer = g?.server_number ?? null;
+      if (!isGuildInScope(info, accGuild, targetServer)) {
+        logger.warn("Server admin attempted to create account for out-of-scope guild", { callerServer: info.serverNumber, targetGuild: accGuild, targetServer });
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
+      accServerNum = info.serverNumber;
     } else {
+      // Super admin
       accRole = (body?.role ?? "guild_admin").toString();
       accGuild = accGuild === "ALL" ? null : accGuild;
       if (accRole === "guild_admin" && (!accGuild || accGuild === "ALL")) {
@@ -268,7 +296,6 @@ Deno.serve(async (req: Request) => {
     });
     let uid = created?.user?.id;
     if (cuErr || !uid) {
-      // FIX (SEV-03): Paginated search
       const ex = await findUserByEmail(admin, email);
       if (!ex) {
         logger.error("Failed to create shadow user for new admin", cuErr, { email, id });
@@ -305,7 +332,7 @@ Deno.serve(async (req: Request) => {
 
     if (!id || !newRole) return json({ ok: false, error: "missing_fields" }, 400);
 
-    // Only Super Admin can change account roles (e.g. promote guild_admin to server_admin)
+    // Only Super Admin can change account roles
     if (info.role !== "super_admin") {
       return json({ ok: false, error: "forbidden" }, 403);
     }
@@ -347,7 +374,6 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "server_error", message: updErr.message }, 500);
     }
 
-    // Synchronize GoTrue app_metadata.app_role
     if (targetAcc.auth_user_id) {
       try {
         await admin.auth.admin.updateUserById(targetAcc.auth_user_id, {
@@ -366,16 +392,17 @@ Deno.serve(async (req: Request) => {
     const id = (body?.id ?? "").toString().trim();
     if (!id) return json({ ok: false, error: "missing_fields" }, 400);
 
-    if (info.role === "guild_admin") {
-      const { data: targetAcc } = await admin
-        .from("accounts")
-        .select("role, guild")
-        .eq("id", id)
-        .maybeSingle();
-      if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
-      if (targetAcc.role === "super_admin" || targetAcc.guild !== callerGuild) {
-        return json({ ok: false, error: "forbidden" }, 403);
-      }
+    const { data: targetAcc } = await admin
+      .from("accounts")
+      .select("id, role, guild, server_number, auth_user_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+
+    const targetCtx = await getTargetCtx(admin, targetAcc);
+    if (!canManageAccount(info, targetCtx)) {
+      logger.warn("Forbidden attempt to delete account", { callerRole: info.role, targetId: id, targetRole: targetAcc.role });
+      return json({ ok: false, error: "forbidden" }, 403);
     }
 
     const { data: uid, error } = await admin.rpc("gm_admin_delete", { p_id: id });
@@ -400,22 +427,33 @@ Deno.serve(async (req: Request) => {
 
     const { data: targetAcc } = await admin
       .from("accounts")
-      .select("role, guild")
+      .select("id, role, guild, server_number")
       .eq("id", id)
       .maybeSingle();
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
 
-    if (info.role === "guild_admin") {
-      if (!callerGuild || targetAcc.role === "super_admin" || targetAcc.guild !== callerGuild || guild !== callerGuild) {
-        return json({ ok: false, error: "forbidden" }, 403);
-      }
-    } else {
-      if (targetAcc.role === "guild_admin" && (!guild || guild === "ALL")) {
-        return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
-      }
+    const targetCtx = await getTargetCtx(admin, targetAcc);
+    if (!canManageAccount(info, targetCtx)) {
+      return json({ ok: false, error: "forbidden" }, 403);
     }
 
     const targetGuild = guild === "ALL" ? null : guild;
+    if (targetGuild === null) {
+      if (info.role !== "super_admin") {
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
+    } else {
+      const { data: destG } = await admin.from("guilds").select("server_number").eq("id", targetGuild).maybeSingle();
+      if (!destG) return json({ ok: false, error: "not_found" }, 404);
+      if (!isGuildInScope(info, targetGuild, destG.server_number)) {
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
+    }
+
+    if (targetAcc.role === "guild_admin" && !targetGuild) {
+      return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
+    }
+
     const { error } = await admin
       .from("accounts")
       .update({ guild: targetGuild })
@@ -440,6 +478,11 @@ Deno.serve(async (req: Request) => {
       targetGuild = callerGuild;
     } else if (!targetGuild) {
       return json({ ok: false, error: "missing_fields" }, 400);
+    } else if (info.role === "server_admin") {
+      const { data: g } = await admin.from("guilds").select("server_number").eq("id", targetGuild).maybeSingle();
+      if (!isGuildInScope(info, targetGuild, g?.server_number ?? null)) {
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
     }
 
     const { data, error } = await admin.rpc("gm_set_join_code", {
@@ -461,6 +504,11 @@ Deno.serve(async (req: Request) => {
       targetGuild = callerGuild;
     } else if (!targetGuild) {
       return json({ ok: false, error: "missing_fields" }, 400);
+    } else if (info.role === "server_admin") {
+      const { data: g } = await admin.from("guilds").select("server_number").eq("id", targetGuild).maybeSingle();
+      if (!isGuildInScope(info, targetGuild, g?.server_number ?? null)) {
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
     }
 
     const { data, error } = await admin.rpc("gm_get_join_code", {
@@ -479,14 +527,16 @@ Deno.serve(async (req: Request) => {
 
     const { data: targetAcc } = await admin
       .from("accounts")
-      .select("role, guild, status, id")
+      .select("role, guild, server_number, status, id")
       .eq("id", id)
       .maybeSingle();
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
     if (targetAcc.status !== "pending" || targetAcc.role !== "member") {
       return json({ ok: false, error: "not_pending" }, 200);
     }
-    if (info.role === "guild_admin" && targetAcc.guild !== callerGuild) {
+
+    const targetCtx = await getTargetCtx(admin, targetAcc);
+    if (!canManageAccount(info, targetCtx)) {
       return json({ ok: false, error: "forbidden" }, 403);
     }
 
@@ -507,7 +557,6 @@ Deno.serve(async (req: Request) => {
     });
     let uid = created?.user?.id;
     if (cuErr || !uid) {
-      // FIX (SEV-03): Paginated search
       const ex = await findUserByEmail(admin, email);
       if (!ex) {
         logger.error("Failed to provision shadow user on approval", cuErr, { email, id });
@@ -532,14 +581,16 @@ Deno.serve(async (req: Request) => {
 
     const { data: targetAcc } = await admin
       .from("accounts")
-      .select("role, guild, status")
+      .select("role, guild, server_number, status")
       .eq("id", id)
       .maybeSingle();
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
     if (targetAcc.status !== "pending" || targetAcc.role !== "member") {
       return json({ ok: false, error: "not_pending" }, 200);
     }
-    if (info.role === "guild_admin" && targetAcc.guild !== callerGuild) {
+
+    const targetCtx = await getTargetCtx(admin, targetAcc);
+    if (!canManageAccount(info, targetCtx)) {
       return json({ ok: false, error: "forbidden" }, 403);
     }
 

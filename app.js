@@ -1533,10 +1533,9 @@
                 if (icon) icon.className = 'ph ph-circle-notch ph-spin';
 
                 try {
-                    var newPass = generatePassword(12);
-                    var res = await window.GM.adminAccounts('reset-password', { id: accId, password: newPass });
+                    var res = await window.GM.adminAccounts('reset-password', { id: accId });
                     if (!res.ok) throw new Error(res.error || 'reset_failed');
-                    var pass = res.password || newPass;
+                    var pass = res.password;
                     pendingPasswords[accId] = pass;
                     wrap.setAttribute('data-acc-pass-temp', pass);
                     wrap.classList.remove('gm-masked');
