@@ -7,23 +7,25 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-function json(body: unknown, status = 200, req?: Request): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-  });
+function makeJson(req: Request) {
+  return (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    });
 }
 
 Deno.serve(async (req: Request) => {
+  const json = makeJson(req);
   const logger = new EdgeLogger("ocr-guild-members", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
-  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   // Check early payload size via content-length header (max 8MB)
   const contentLength = req.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > 8 * 1024 * 1024) {
-    return json({ ok: false, error: "payload_too_large" }, 413, req);
+    return json({ ok: false, error: "payload_too_large" }, 413);
   }
 
   // 1. Mandatory JWT & RBAC Verification (SEV-02 Fix)
@@ -59,7 +61,7 @@ Deno.serve(async (req: Request) => {
     }
     if (Array.isArray(body?.images) && body.images.length > 0) {
       if (body.images.length > 5) {
-        return json({ ok: false, error: "too_many_images" }, 400, req);
+        return json({ ok: false, error: "too_many_images" }, 400);
       }
       imagesArray = body.images;
     } else {
@@ -68,7 +70,7 @@ Deno.serve(async (req: Request) => {
     }
   } catch (err) {
     logger.error("Failed to parse OCR request body", err);
-    return json({ ok: false, error: "bad_request" }, 400, req);
+    return json({ ok: false, error: "bad_request" }, 400);
   }
 
   // Validate parsed payload total size
@@ -77,11 +79,11 @@ Deno.serve(async (req: Request) => {
     totalDataLength += (img.base64Data || "").length;
   }
   if (totalDataLength > 8 * 1024 * 1024) {
-    return json({ ok: false, error: "payload_too_large" }, 413, req);
+    return json({ ok: false, error: "payload_too_large" }, 413);
   }
 
   if (!imageBase64 && imagesArray.length === 0) {
-    return json({ ok: false, error: "missing_image" }, 400, req);
+    return json({ ok: false, error: "missing_image" }, 400);
   }
 
   const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp"].includes(metricType);

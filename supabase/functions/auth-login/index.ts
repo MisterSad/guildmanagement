@@ -8,11 +8,12 @@ const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY      = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-function json(body: unknown, status = 200, req?: Request): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-  });
+function makeJson(req: Request) {
+  return (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    });
 }
 
 async function emailFor(id: string): Promise<string> {
@@ -28,10 +29,11 @@ function randomSecret(): string {
 }
 
 Deno.serve(async (req: Request) => {
+  const json = makeJson(req);
   const logger = new EdgeLogger("auth-login", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
-  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   let id = "", password = "";
   try {
@@ -40,9 +42,9 @@ Deno.serve(async (req: Request) => {
     password = (body?.password ?? "").toString();
   } catch (err) {
     logger.error("Failed to parse JSON body", err);
-    return json({ ok: false, error: "bad_request" }, 400, req);
+    return json({ ok: false, error: "bad_request" }, 400);
   }
-  if (!id || !password) return json({ ok: false, error: "missing_credentials" }, 400, req);
+  if (!id || !password) return json({ ok: false, error: "missing_credentials" }, 400);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
@@ -51,7 +53,7 @@ Deno.serve(async (req: Request) => {
   const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 30, windowMs: 300_000 });
   if (!throttle.allowed) {
     logger.warn("IP rate limit exceeded on login", { ip: clientIp, id });
-    return json({ ok: false, error: "too_many_attempts" }, 429, req);
+    return json({ ok: false, error: "too_many_attempts" }, 429);
   }
 
   const { data: loginRes, error: cErr } = await admin.rpc("gm_check_login", { p_id: id, p_password: password });

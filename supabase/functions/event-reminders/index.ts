@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from "../_shared/gvg-tasks.ts"
 import { validateCallerAuth } from "../_shared/auth.ts"
 import { EdgeLogger } from "../_shared/logger.ts"
+import { getCorsHeaders } from "../_shared/cors.ts"
 
 let logger = new EdgeLogger("event-reminders");
 
@@ -209,8 +210,20 @@ function getWeekStart(date: Date | string | number): string {
   return monday.getUTCFullYear() + '-' + pad2(monday.getUTCMonth() + 1) + '-' + pad2(monday.getUTCDate());
 }
 
+function makeJson(req: Request) {
+  return (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    });
+}
+
 serve(async (req) => {
+  const json = makeJson(req);
   logger = new EdgeLogger("event-reminders", req);
+
+  if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
+
   const authHeader = req.headers.get('Authorization') || '';
   const xCronSecret = req.headers.get('x-cron-secret') || '';
   const cronSecret = Deno.env.get('CRON_SECRET');
@@ -234,12 +247,12 @@ serve(async (req) => {
       isAuthorized = true;
       if (targetGuildParam) {
         if (caller.role === 'guild_admin' && caller.guild !== targetGuildParam) {
-          return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+          return json({ error: 'Forbidden' }, 403);
         }
         if (caller.role === 'server_admin') {
           const { data: tg } = await supabase.from('guilds').select('server_number').eq('id', targetGuildParam).maybeSingle();
           if (!tg || String(tg.server_number) !== String(caller.serverNumber)) {
-            return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+            return json({ error: 'Forbidden' }, 403);
           }
         }
       }
@@ -248,7 +261,7 @@ serve(async (req) => {
 
   if (!isAuthorized) {
     logger.warn('Unauthorized invocation of event-reminders', { hasAuth: !authHeader, hasXCron: !xCronSecret });
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    return json({ error: 'Unauthorized' }, 401);
   }
 
   try {
@@ -1246,15 +1259,10 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, processed: results }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return json({ ok: true, processed: results }, 200);
 
   } catch (err: any) {
     logger.error('Event reminders execution error', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return json({ error: err.message }, 500);
   }
 })

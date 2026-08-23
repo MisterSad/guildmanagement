@@ -5,11 +5,12 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-function json(body: unknown, status = 200, req?: Request): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-  });
+function makeJson(req: Request) {
+  return (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    });
 }
 
 // In-memory sliding window rate limiter
@@ -31,10 +32,11 @@ function rateLimited(ip: string): boolean {
 }
 
 Deno.serve(async (req: Request) => {
+  const json = makeJson(req);
   const logger = new EdgeLogger("player-register", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
-  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   // FIX (SEV-09): Extract the leftmost IP (the actual client IP) from X-Forwarded-For
   const forwarded = req.headers.get("x-forwarded-for");

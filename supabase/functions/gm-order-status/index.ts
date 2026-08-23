@@ -17,11 +17,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-function json(body: unknown, status = 200, req?: Request): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-  });
+function makeJson(req: Request) {
+  return (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    });
 }
 
 async function getCallerInfo(
@@ -46,34 +47,35 @@ async function getCallerInfo(
 }
 
 Deno.serve(async (req: Request) => {
+  const json = makeJson(req);
   const logger = new EdgeLogger("gm-order-status", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
-  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
   const info = await getCallerInfo(req, admin);
   const isAdmin = info.role === "super_admin" || info.role === "guild_admin";
-  if (!isAdmin) return json({ ok: false, error: "forbidden" }, 200, req);
+  if (!isAdmin) return json({ ok: false, error: "forbidden" }, 200);
 
   let body: Record<string, unknown>;
-  try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 200, req); }
+  try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 200); }
   const sessionId = (body?.sessionId ?? "").toString().trim();
-  if (!sessionId) return json({ ok: false, error: "missing_fields" }, 200, req);
+  if (!sessionId) return json({ ok: false, error: "missing_fields" }, 200);
 
-  if (!stripeSecretKey()) return json({ ok: false, error: "not_configured" }, 200, req);
+  if (!stripeSecretKey()) return json({ ok: false, error: "not_configured" }, 200);
 
   const { data: pay } = await admin
     .from("gm_payments")
     .select("order_id, guild_id")
     .eq("token", sessionId)
     .maybeSingle();
-  if (!pay || !pay.order_id) return json({ ok: false, error: "not_found" }, 200, req);
+  if (!pay || !pay.order_id) return json({ ok: false, error: "not_found" }, 200);
 
   // Guild admins may only poll their own guild's payments.
   if (info.role === "guild_admin" && info.guild !== pay.guild_id) {
-    return json({ ok: false, error: "forbidden" }, 200, req);
+    return json({ ok: false, error: "forbidden" }, 200);
   }
 
   logger.setContext({ tenantId: pay.guild_id });
@@ -83,7 +85,7 @@ Deno.serve(async (req: Request) => {
     session = await fetchCheckoutSession(pay.order_id);
   } catch (err) {
     logger.error("Stripe session fetch failed", err);
-    return json({ ok: false, error: "session_failed" }, 200, req);
+    return json({ ok: false, error: "session_failed" }, 200);
   }
 
   const paymentStatus = (session?.payment_status ?? "").toString().toLowerCase();
@@ -93,7 +95,7 @@ Deno.serve(async (req: Request) => {
     });
     if (error) {
       logger.error("Subscription payment apply failed", error);
-      return json({ ok: false, error: "server_error" }, 200, req);
+      return json({ ok: false, error: "server_error" }, 200);
     }
     const row = (rows ?? [])[0];
     return json({
@@ -103,8 +105,8 @@ Deno.serve(async (req: Request) => {
       lifetime: Boolean(row?.lifetime),
       newEnd: row?.new_end ?? null,
       planKey: row?.plan_key ?? null,
-    }, 200, req);
+    }, 200);
   }
 
-  return json({ ok: true, state: paymentStatus, applied: false, newEnd: null }, 200, req);
+  return json({ ok: true, state: paymentStatus, applied: false, newEnd: null }, 200);
 });

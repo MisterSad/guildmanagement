@@ -8,11 +8,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-function json(body: unknown, status = 200, req?: Request): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-  });
+function makeJson(req: Request) {
+  return (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    });
 }
 
 function isValidDiscordWebhook(url: string): boolean {
@@ -34,6 +35,7 @@ function isValidDiscordWebhook(url: string): boolean {
 }
 
 serve(async (req: Request) => {
+  const json = makeJson(req);
   const logger = new EdgeLogger("discord-webhook-proxy", req);
 
   if (req.method === "OPTIONS") {
@@ -42,7 +44,7 @@ serve(async (req: Request) => {
 
   if (req.method !== "POST") {
     logger.warn("Method not allowed", { method: req.method });
-    return json({ ok: false, error: "method_not_allowed" }, 405, req);
+    return json({ ok: false, error: "method_not_allowed" }, 405);
   }
 
   // 1. Mandatory JWT & RBAC Verification (C1 / SEV-01 Fix)

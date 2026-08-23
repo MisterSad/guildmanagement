@@ -7,11 +7,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY     = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-function json(body: unknown, status = 200, req?: Request): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-  });
+function makeJson(req: Request) {
+  return (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    });
 }
 
 // Bounding constants
@@ -190,10 +191,11 @@ function eventScoringKey(eventName: string, sessionId: string | null, weekStart:
 }
 
 Deno.serve(async (req: Request) => {
+  const json = makeJson(req);
   const logger = new EdgeLogger("member-portal", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
-  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   try {
     let action = "";
@@ -215,7 +217,7 @@ Deno.serve(async (req: Request) => {
     const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 60, windowMs: 300_000 });
     if (!throttle.allowed) {
       logger.warn("IP rate limit exceeded on member-portal", { ip: clientIp, action });
-      return json({ ok: false, error: "too_many_attempts" }, 429, req);
+      return json({ ok: false, error: "too_many_attempts" }, 429);
     }
 
     const identity = await getIdentity(req, admin);
