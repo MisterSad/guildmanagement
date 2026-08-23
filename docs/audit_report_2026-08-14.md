@@ -1,3 +1,5 @@
+> **Historical internal audit report (2026-08-14, French). Superseded by the 2026-08-23 remediation program.**
+
 # RAPPORT GLOBAL D'AUDIT TECHNIQUE, ARCHITECTURAL, SÉCURITÉ ET FONCTIONNEL
 **Projet :** FGF Guild Management Tool  
 **Environnement :** Production (Vercel + Supabase Postgres 17 + GoTrue Auth + Deno Edge Functions)  

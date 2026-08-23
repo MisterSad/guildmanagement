@@ -7,12 +7,15 @@ Whenever major design decisions, patterns, or critical bug resolutions are estab
 
 | ADR ID | Title | Status | Date |
 | :--- | :--- | :--- | :--- |
-| [ADR-001](./ADR-001-three-role-zero-trust-access-model.md) | Three-Role Zero-Trust Access Model & Player Portal Isolation | **Accepted** | 2026-08-12 |
+| [ADR-001](./ADR-001-three-role-zero-trust-access-model.md) | Three-Role Zero-Trust Access Model & Player Portal Isolation | **Superseded by ADR-006** | 2026-08-12 |
 | [ADR-002](./ADR-002-deterministic-event-session-ids.md) | Deterministic Event Session IDs & ISO Week Synchronization | **Accepted** | 2026-08-12 |
 | [ADR-003](./ADR-003-multi-tenant-saas-invariants.md) | Strict Multi-Tenant SaaS Invariants & Cross-Tenant Uniformity | **Accepted** | 2026-08-12 |
 | [ADR-004](./ADR-004-consolidated-database-schema-and-security-definer.md) | Master DDL Consolidation & SECURITY DEFINER Protocol | **Accepted** | 2026-08-12 |
 | [ADR-005](./ADR-005-memory-and-regression-prevention-protocol.md) | Continuous Memory & Anti-Regression Quality Protocol | **Accepted** | 2026-08-15 |
 | [ADR-006](./ADR-006-four-role-access-model-with-server-admin.md) | Four-Role Zero-Trust Access Model with Server Admin Support | **Accepted** | 2026-08-15 |
+| [ADR-007](./ADR-007-accounts-only-role-resolution.md) | Accounts-Only Role Resolution & JWT Metadata Deprecation | **Accepted** | 2026-08-23 |
+| [ADR-008](./ADR-008-migration-protocol-v2.md) | Database Migration Protocol v2 & Clean Replay Guarantees | **Accepted** | 2026-08-23 |
+| [ADR-009](./ADR-009-secrets-vault-only-policy.md) | Secrets Vault-Only Storage & Zero-Commit Rotation Policy | **Accepted** | 2026-08-23 |
 
 ---
 

@@ -16,9 +16,9 @@ Establish deterministic, chronologically sortable `session_id` generation rules 
 - **SvS** -> `SVS-YYYY-Www` (ISO week of battle date)
 - **GvG** -> `GVG-YYYY-Www` (ISO week of battle date)
 - **Glory** -> `GLORY-YYYY-Www` (weekly ISO week from `week_start`)
-- **Arms Race Stage A / B** -> `ARA-YYYYMMDD` / `ARB-YYYYMMDD`
-- **Defend Trade Route (DTR)** -> `DTR-YYYYMMDD`
-- **Shadowfront Squad 1 / 2** -> `SF-YYYYMMDD`
+- **Arms Race Stage A / B** -> `ARA-YYYYMMDD-1` / `ARB-YYYYMMDD-1`
+- **Defend Trade Route (DTR)** -> `DTR-YYYYMMDD-1`
+- **Shadowfront Squad 1 / 2** -> `SF1-YYYYMMDD-1` / `SF2-YYYYMMDD-1`
 
 ## Invariants to Preserve
 - Never cast `session_id` to timestamp (e.g. `session_id::timestamptz` is forbidden).

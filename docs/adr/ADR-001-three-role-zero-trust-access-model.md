@@ -1,7 +1,7 @@
 # ADR-001: Three-Role Zero-Trust Access Model & Player Portal Isolation
 
 ## Status
-**Accepted** (2026-08-12)
+**Superseded by ADR-006** (2026-08-14)
 
 ## Context
 The platform serves multiple guilds and player roles. In earlier iterations, member roles risked querying database tables directly or relying on client-supplied identifiers in `localStorage`. This presented security risks of privilege escalation, cross-tenant data leakage, and unauthorized score tampering.
