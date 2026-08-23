@@ -95,8 +95,16 @@ describe('sessionInfo role normalization', () => {
         const info = await GM.sessionInfo();
         expect(info.role).toBe('guild_admin');
     });
-    it('returns guild_admin fallback without session', async () => {
+    it('returns null without session', async () => {
         mockSession(null);
+        const info = await GM.sessionInfo();
+        expect(info).toBe(null);
+    });
+    it('returns null when app_role is absent from app_metadata', async () => {
+        // JWT without app_role in app_metadata
+        const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+        const payload = btoa(JSON.stringify({ app_metadata: { account_id: 'orphan' } }));
+        mockSession(`${header}.${payload}.signature`);
         const info = await GM.sessionInfo();
         expect(info).toBe(null);
     });

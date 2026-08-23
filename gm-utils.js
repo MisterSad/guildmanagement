@@ -689,7 +689,8 @@
             }).join('');
             var claims = JSON.parse(decodeURIComponent(jsonStr));
             var am = claims.app_metadata || {};
-            return { role: normalizeRole(am.app_role || 'guild_admin'), accountId: am.account_id || null };
+            if (!am.app_role) return null;
+            return { role: normalizeRole(am.app_role), accountId: am.account_id || null };
         } catch (e) {
             return null;
         }
