@@ -102,9 +102,23 @@ function isValidDiscordWebhook(url: string): boolean {
   } catch { return false; }
 }
 
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function maskWebhookUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  return url.replace(/(https:\/\/discord\.com\/api\/webhooks\/\d+\/)[^?#\s]+/, '$1***');
+}
+
 async function sendDiscordWebhookWithRetry(url: string, body: any): Promise<boolean> {
   if (!isValidDiscordWebhook(url)) {
-    console.error(`SECURITY: Invalid or untrusted Discord Webhook URL blocked: ${url}`);
+    console.error(`SECURITY: Invalid or untrusted Discord Webhook URL blocked: ${maskWebhookUrl(url)}`);
     return false;
   }
   let attempts = 0;
@@ -114,7 +128,7 @@ async function sendDiscordWebhookWithRetry(url: string, body: any): Promise<bool
   while (attempts < maxAttempts) {
     attempts++;
     try {
-      console.log(`Sending Discord webhook attempt ${attempts} to: ${url}`);
+      console.log(`Sending Discord webhook attempt ${attempts} to: ${maskWebhookUrl(url)}`);
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -198,16 +212,33 @@ serve(async (req) => {
   const cronSecret = Deno.env.get('CRON_SECRET');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || SUPABASE_SERVICE_ROLE_KEY;
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const reqUrl = new URL(req.url);
+  const forceGvg = reqUrl.searchParams.get('force') === 'gvg' || reqUrl.searchParams.get('force') === 'all';
+  const targetGuildParam = reqUrl.searchParams.get('guild');
 
+  const authBearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
   let isAuthorized = false;
-  if (cronSecret && (authHeader === `Bearer ${cronSecret}` || xCronSecret === cronSecret)) {
+
+  if (cronSecret && (safeEqual(authBearer, cronSecret) || safeEqual(xCronSecret, cronSecret))) {
     isAuthorized = true;
-  } else if (serviceRoleKey && authHeader === `Bearer ${serviceRoleKey}`) {
+  } else if (serviceRoleKey && safeEqual(authBearer, serviceRoleKey)) {
     isAuthorized = true;
-  } else if (anonKey && authHeader.startsWith('Bearer ')) {
+  } else if (anonKey && authBearer) {
     const caller = await validateCallerAuth(req, SUPABASE_URL, anonKey, serviceRoleKey);
     if (caller.authenticated && (caller.role === 'super_admin' || caller.role === 'server_admin' || caller.role === 'guild_admin')) {
       isAuthorized = true;
+      if (targetGuildParam) {
+        if (caller.role === 'guild_admin' && caller.guild !== targetGuildParam) {
+          return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+        }
+        if (caller.role === 'server_admin') {
+          const { data: tg } = await supabase.from('guilds').select('server_number').eq('id', targetGuildParam).maybeSingle();
+          if (!tg || String(tg.server_number) !== String(caller.serverNumber)) {
+            return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+          }
+        }
+      }
     }
   }
 
@@ -215,11 +246,6 @@ serve(async (req) => {
     console.warn('Unauthorized invocation of event-reminders', { hasAuth: !!authHeader, hasXCron: !!xCronSecret });
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const reqUrl = new URL(req.url);
-  const forceGvg = reqUrl.searchParams.get('force') === 'gvg' || reqUrl.searchParams.get('force') === 'all';
-  const targetGuildParam = reqUrl.searchParams.get('guild');
 
   try {
     // 0. Fetch all active guilds dynamically

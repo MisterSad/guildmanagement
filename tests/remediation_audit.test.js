@@ -171,4 +171,38 @@ describe('Audit Remediation Verification Suite', () => {
     expect(content).toContain('CREATE POLICY audit_logs_insert_policy ON public.system_audit_logs');
     expect(content).toContain('FOR INSERT TO service_role');
   });
+
+  it('W4: verifies cron secret vault migration, timing-safe compare, and log hygiene', () => {
+    // 1. Vault cron migration exists and references vault.decrypted_secrets
+    const vaultMigPath = path.resolve(__dirname, '../supabase/migrations/20260823063000_cron_secret_to_vault.sql');
+    expect(fs.existsSync(vaultMigPath)).toBe(true);
+    const vaultContent = fs.readFileSync(vaultMigPath, 'utf-8');
+    expect(vaultContent).toContain('vault.decrypted_secrets');
+    expect(vaultContent).toContain('event_reminders_cron_secret');
+    expect(vaultContent).toContain('public.gm_invoke_event_reminders');
+
+    // 2. Legacy migrations scrubbed
+    const leg1 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260817113000_schedule_event_reminders_cron.sql'), 'utf-8');
+    const leg2 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260817114500_update_event_reminders_cron_secret.sql'), 'utf-8');
+    expect(leg1).not.toContain('fgf-cron-secret-2026-secure-reminders');
+    expect(leg2).not.toContain('fgf-cron-secret-2026-secure-reminders');
+    expect(leg1).toContain('__ROTATED__SEE_VAULT__');
+    expect(leg2).toContain('__ROTATED__SEE_VAULT__');
+
+    // 3. event-reminders has timing-safe compare and masked URLs
+    const remindersContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/event-reminders/index.ts'), 'utf-8');
+    expect(remindersContent).toContain('function safeEqual(a: string, b: string): boolean');
+    expect(remindersContent).toContain('maskWebhookUrl');
+    expect(remindersContent).toContain('safeEqual(authBearer, cronSecret)');
+
+    // 4. discord-webhook-proxy masks blocked webhook URL
+    const discordContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/discord-webhook-proxy/index.ts'), 'utf-8');
+    expect(discordContent).toContain('replace(/(https:\\/\\/discord\\.com\\/api\\/webhooks\\/\\d+\\/)[^?#\\s]+/, \'$1***\')');
+    expect(discordContent).toContain('redirect: "error"');
+
+    // 5. ocr-guild-members uses x-goog-api-key header
+    const ocrContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts'), 'utf-8');
+    expect(ocrContent).toContain('"x-goog-api-key": GEMINI_API_KEY');
+    expect(ocrContent).not.toContain('?key=${GEMINI_API_KEY}');
+  });
 });

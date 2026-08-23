@@ -28,8 +28,8 @@ SELECT cron.schedule(
             url := 'https://vgweufzwmfwplusskmuf.supabase.co/functions/v1/event-reminders',
             headers := jsonb_build_object(
                 'Content-Type', 'application/json',
-                'Authorization', 'Bearer fgf-cron-secret-2026-secure-reminders',
-                'x-cron-secret', 'fgf-cron-secret-2026-secure-reminders'
+                'Authorization', 'Bearer __ROTATED__SEE_VAULT__',
+                'x-cron-secret', '__ROTATED__SEE_VAULT__'
             ),
             body := '{}'::jsonb
         );

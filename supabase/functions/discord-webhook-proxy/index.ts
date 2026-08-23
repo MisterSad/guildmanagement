@@ -151,7 +151,8 @@ serve(async (req: Request) => {
   }
 
   if (!isValidDiscordWebhook(webhookUrl)) {
-    logger.warn("Invalid Discord Webhook URL blocked", { webhookUrl });
+    const masked = webhookUrl.replace(/(https:\/\/discord\.com\/api\/webhooks\/\d+\/)[^?#\s]+/, '$1***');
+    logger.warn("Invalid Discord Webhook URL blocked", { webhookUrl: masked });
     return json({ ok: false, error: "invalid_discord_webhook_url" }, 400);
   }
 
@@ -167,6 +168,7 @@ serve(async (req: Request) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(8000),
+      redirect: "error",
     });
 
     if (discordRes.ok || discordRes.status === 204 || discordRes.status === 200) {
