@@ -1,5 +1,12 @@
 # Changelog
 
+## Fixed
+
+- **Player Portal Military Metrics & Guild Benchmarks (v127.1)**:
+  - **Military Force Breakdown Tiles Were Always Empty**: The `get-active-sessions` action in `member-portal` never returned the member's military metrics (`overall_power`, `tech_power`, `champion_power`, `crew_power`, `flagship_power`, `fleet_rating`, `glory_score`), leaving every "Military Force Breakdown & Guild Benchmarks" tile at zero for all portal users since the portal's inception. The response now carries the full metric set plus `role`, `timezone_offset`, `power_updated_at`, and `metrics_updated_at`.
+  - **Guild Benchmark Averages Now Per-Metric**: `getGuildAverages` previously computed only average power and attendance; it now computes guild averages for all seven benchmark tiles (fleet rating, tech, flagship, champions, crew, glory, total power), powering the "Guild Avg" footers and the density/combativity/volatile chips.
+  - **Regression Guard**: New `tests/portal_metrics.test.js` containment suite pins the response fields and per-metric averages (410/410 tests green).
+
 ## New
 
 - **100% Free Platform & Voluntary Donations ("Buy Me a Coffee") (v127.0)**:
@@ -10,7 +17,7 @@
   - **Edge Function Support**: Added `create-donation` action to `member-portal` and discriminator branching to `gm-stripe-webhook` to execute `gm_apply_donation` without modifying guild expiration dates. Simplified `event-reminders` and `admin-accounts` by removing obsolete subscription checks.
   - **Terms & Conditions Update (`terms.html`)**: Updated Section 4 commercial terms to reflect the 100% free software model and voluntary non-refundable donation terms.
   - **Frozen Surface Integrity**: Maintained 100% byte-identical invariance for `gm-create-order` and `gm-order-status` (`git diff --stat` verified).
-  - **Quality Gate**: **407/407 Vitest unit tests green** (+7 new tests in `tests/donation.test.js` & updated `tests/subscription.test.js`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+  - **Quality Gate**: **410/410 Vitest unit tests green** (+7 new tests in `tests/donation.test.js` & updated `tests/subscription.test.js`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
 
 - **Members OCR Mode & Update-Only Metric Scanners (v126.0)**:
   - **Dedicated Members OCR Scanner**: Introduced "1. Members OCR" as the primary membership management tool in the toolbar and OCR modal. It exclusively manages member recruitment, UID assignments, and departure removals via the full three-section review flow.
