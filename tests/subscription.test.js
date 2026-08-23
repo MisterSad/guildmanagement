@@ -102,19 +102,16 @@ describe('GM_SUBSCRIPTION voluntary donations ("Buy Me a Coffee")', () => {
         const texts = container().textContent;
         expect(texts).toContain('Why your support matters');
         expect(texts).toContain('This app is free, and it stays free. But it is not free to run:');
-        expect(texts).toContain('Hosting & infrastructure (Vercel + Supabase): roughly EUR 45-100 every month');
+        expect(texts).toContain('Hosting & infrastructure: roughly EUR 45-100 every month');
         expect(texts).toContain('AI OCR scans: every screenshot you analyze calls a paid AI API');
         expect(texts).toContain('Every coffee genuinely helps. Thank you!');
     });
 
-    it('mentions the accepted payment methods and provider security', async () => {
+    it('mentions that payments are secured and managed by Stripe with Terms & Conditions link', async () => {
         await SUB.load();
         const texts = container().textContent;
-        expect(texts).toContain('Accepted payments: Cards (Visa, Mastercard, Amex)');
-        expect(texts).toContain('Apple Pay, Google Pay, PayPal');
-        expect(texts).toContain('Alipay, Amazon Pay, Klarna');
-        expect(texts).toContain('processed and secured by the payment provider');
-        expect(texts).toContain('never has access to your bank details');
+        expect(texts).toContain('All payments are securely processed and managed by Stripe.');
+        expect(texts).toContain('Terms & Conditions');
     });
 
     it('shows a denied state for non-admin roles in Command Center', async () => {

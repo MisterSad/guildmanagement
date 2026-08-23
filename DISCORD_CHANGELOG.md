@@ -16,14 +16,14 @@ Whether you are a guild leader running battle operations or a player tracking yo
 
 📊 **Cost Transparency**
 - **Why Your Support Matters**: Inside the donation tab, I've shared the real monthly operating expenses required to keep this project online:
-  - **Hosting & Infrastructure**: Roughly €45–€100 every single month for Vercel and Supabase cloud servers.
+  - **Hosting & Infrastructure**: Roughly €45–€100 every single month for cloud servers and database infrastructure.
   - **AI OCR Scans**: Every roster or power screenshot analyzed calls a paid AI vision model API, scaling directly with community usage.
   - **Development**: Hundreds of hours spent building, updating, and fine-tuning features during evenings and weekends.
 - Every coffee genuinely helps keep the servers running and the AI scans flowing for all guilds!
 
-🔒 **Secure & Multi-Method Checkout**
-- **Safe Payments**: All donations are securely processed via Stripe Hosted Checkout. The app never has access to your payment or bank details.
-- **Global Payment Methods**: Cards, Apple Pay, Google Pay, PayPal, Klarna, iDEAL, Bancontact, and dozens of regional methods are fully supported.
+🔒 **Secure Payments via Stripe**
+- **Safe Payments**: All donations are securely processed and managed by Stripe. The app never has access to your bank details.
+- **Terms & Conditions**: Full legal and contribution terms are clearly detailed in our Terms and Conditions.
 
 ---
 *Thank you all for being part of this community, sharing your feedback, and helping make this tool better every week. See you on the battlefield!* 🚀⚔️

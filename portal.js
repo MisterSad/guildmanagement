@@ -1777,7 +1777,7 @@
                     '<div style="font-size:.875rem; line-height:1.6; color:var(--fg-dim);">' +
                         '<p style="margin:0 0 .75rem 0;">This app is free, and it stays free. But it is not free to run:</p>' +
                         '<ul style="margin:0 0 .75rem 1.25rem; padding:0; display:flex; flex-direction:column; gap:0.4rem;">' +
-                            '<li><strong>Hosting &amp; infrastructure (Vercel + Supabase):</strong> roughly EUR 45-100 every month, rain or shine.</li>' +
+                            '<li><strong>Hosting &amp; infrastructure:</strong> roughly EUR 45-100 every month, rain or shine.</li>' +
                             '<li><strong>AI OCR scans:</strong> every screenshot you analyze calls a paid AI API. Costs scale directly with how much the community uses it.</li>' +
                             '<li><strong>Development:</strong> hundreds of hours of design, coding, bug fixes, and feature requests handled one by one — evenings and weekends, on top of a day job.</li>' +
                         '</ul>' +
@@ -1787,11 +1787,9 @@
 
                 // 4. Accepted payments
                 '<div class="portal-card">' +
-                    '<div class="gm-dim" style="font-size:.78rem;">' +
-                        'Accepted payments: Cards (Visa, Mastercard, Amex), Cartes Bancaires, Apple Pay, Google Pay, PayPal, Alipay, Amazon Pay, Klarna, iDEAL, Bancontact, EPS, BLIK, MB WAY, Pix, Satispay, Multibanco, MobilePay, WeChat Pay, Revolut Pay, Samsung Pay, Kakao Pay, Naver Pay, PAYCO, Link, and more.' +
-                    '</div>' +
-                    '<div class="gm-dim" style="font-size:.75rem; margin-top:.35rem;">' +
-                        '<i class="ph ph-shield-check"></i> Payments are processed and secured by the payment provider. The site administrator never has access to your bank details. • <a href="terms.html" style="color:var(--text-muted); text-decoration:underline;">Terms &amp; Conditions</a>' +
+                    '<div class="gm-dim" style="font-size:.82rem; display:flex; align-items:center; gap:0.4rem;">' +
+                        '<i class="ph ph-shield-check" style="color:var(--accent); font-size:1.1rem;"></i>' +
+                        '<span>All payments are securely processed and managed by Stripe. • <a href="terms.html" style="color:var(--text-muted); text-decoration:underline;">Terms &amp; Conditions</a></span>' +
                     '</div>' +
                 '</div>' +
             '</div>';
