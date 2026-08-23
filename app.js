@@ -1965,11 +1965,23 @@
     }
 
     var OCR_METRICS_META = {
+        members: {
+            title: '1. Members OCR — Full Roster Management',
+            subtitle: 'Upload full guild roster screenshots to add recruits (with real UID validation), update power, and detect removed members',
+            dropTitle: 'Drop full guild roster screenshots here or click to browse',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Full Roster: adds, updates, and detects departures)',
+            header: 'Members',
+            field: 'overall_power',
+            color: '#10b981',
+            icon: 'ph-users',
+            isMultiGuild: false,
+            isEvent: false
+        },
         power: {
-            title: '1. Power OCR — Overall Total Power',
-            subtitle: 'Upload guild roster screenshots to import new members and update overall power levels',
+            title: '2. Power OCR — Overall Total Power',
+            subtitle: 'Upload guild roster screenshots to update overall power levels (update-only for existing members)',
             dropTitle: 'Drop Overall Power screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: extracts all visible members)',
+            dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: updates existing roster members)',
             header: 'Extracted Power',
             field: 'overall_power',
             color: '#818cf8',
@@ -1977,7 +1989,7 @@
             isMultiGuild: false
         },
         fleet: {
-            title: '2. Fleet OCR — Strongest Fleet Rating (Server Leaderboard)',
+            title: '3. Fleet OCR — Strongest Fleet Rating (Server Leaderboard)',
             subtitle: 'Upload Strongest Fleet / March 1 leaderboards to update strike ratings and rally capabilities',
             dropTitle: 'Drop Strongest Fleet leaderboard screenshots here or click to browse',
             dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
@@ -1988,7 +2000,7 @@
             isMultiGuild: true
         },
         tech: {
-            title: '3. Tech OCR — Technology Power',
+            title: '4. Tech OCR — Technology Power',
             subtitle: 'Upload Technology Power leaderboards to track research advancement across members',
             dropTitle: 'Drop Technology Power leaderboard screenshots here or click to browse',
             dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: extracts Alliance/Individual Tech values)',
@@ -1999,7 +2011,7 @@
             isMultiGuild: false
         },
         flagship: {
-            title: '4. Flagship OCR — Flagship Power (Server Leaderboard)',
+            title: '5. Flagship OCR — Flagship Power (Server Leaderboard)',
             subtitle: 'Upload Flagship power leaderboards to track capital ship strength and hulls',
             dropTitle: 'Drop Flagship Power leaderboard screenshots here or click to browse',
             dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
@@ -2010,7 +2022,7 @@
             isMultiGuild: true
         },
         champs: {
-            title: '5. Champs OCR — Champions Total Power (Server Leaderboard)',
+            title: '6. Champs OCR — Champions Total Power (Server Leaderboard)',
             subtitle: 'Upload Champion Total Power leaderboards to track hero collections and ranks',
             dropTitle: 'Drop Champions Total Power leaderboard screenshots here or click to browse',
             dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
@@ -2021,7 +2033,7 @@
             isMultiGuild: true
         },
         crew: {
-            title: '6. Crew OCR — Crew Total Power (Server Leaderboard)',
+            title: '7. Crew OCR — Crew Total Power (Server Leaderboard)',
             subtitle: 'Upload Crew Total Power leaderboards to evaluate Foundation officer development',
             dropTitle: 'Drop Crew Total Power leaderboard screenshots here or click to browse',
             dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
@@ -2032,7 +2044,7 @@
             isMultiGuild: true
         },
         glory: {
-            title: '7. Glory OCR — Weekly Glory Score',
+            title: '8. Glory OCR — Weekly Glory Score',
             subtitle: 'Upload Glory rankings to track weekly battle points and PvP contribution',
             dropTitle: 'Drop Glory Ranking leaderboard screenshots here or click to browse',
             dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: extracts Glory score points)',
@@ -2170,10 +2182,10 @@
         }
     };
 
-    var currentOcrMetric = 'power';
+    var currentOcrMetric = 'members';
 
     async function setOcrMetric(metric) {
-        if (!OCR_METRICS_META[metric]) metric = 'power';
+        if (!OCR_METRICS_META[metric]) metric = 'members';
         currentOcrMetric = metric;
         var meta = OCR_METRICS_META[metric];
 
@@ -2850,13 +2862,14 @@
 
             if (tbody) tbody.innerHTML = html;
         } else {
-            // ── Roster Mode: Three-Section Review (Existing / New / Removed) ──
+            // ── Roster & Metric Scanners Review ──
             if (table) {
                 table.classList.add('ocr-table--roster');
                 table.classList.remove('ocr-table--event');
             }
 
-            var diff = categorizeOcrDiff(players, guildMembers, activeGuildTag, targetField, isMultiGuild);
+            var isMembersMode = (currentOcrMetric === 'members');
+            var diff = categorizeOcrDiff(players, guildMembers, activeGuildTag, targetField, isMultiGuild, isMembersMode ? 'members' : 'metric');
             var metricLabel = meta.header || 'Score';
 
             // 1. Existing Members Section
@@ -2893,39 +2906,61 @@
             }
             if (tbody) tbody.innerHTML = existingHtml;
 
-            // 2. New Members Section
+            // 2. Section 2: New Members (in members mode) OR Not in Roster (in metric mode)
             var newHtml = '';
-            if (diff.new.length > 0) {
-                newHtml += '<tr class="ocr-section-header ocr-section-header--new"><td colspan="5"><div class="ocr-section-title"><i class="ph ph-user-plus"></i> New Members <span class="gm-badge">' + diff.new.length + '</span></div></td></tr>';
-                diff.new.forEach(function (item) {
-                    var idx = item.index;
-                    var effPseudo = item.effectivePseudo;
-                    var pScore = item.newVal;
-                    var uid = item.uid || (item.ocrPlayer ? item.ocrPlayer.uid : '') || '';
-                    var isOtherGuild = item.status === 'other_guild';
-                    var isChecked = !isOtherGuild;
+            if (isMembersMode) {
+                if (diff.new.length > 0) {
+                    newHtml += '<tr class="ocr-section-header ocr-section-header--new"><td colspan="5"><div class="ocr-section-title"><i class="ph ph-user-plus"></i> New Members <span class="gm-badge">' + diff.new.length + '</span></div></td></tr>';
+                    diff.new.forEach(function (item) {
+                        var idx = item.index;
+                        var effPseudo = item.effectivePseudo;
+                        var pScore = item.newVal;
+                        var uid = item.uid || (item.ocrPlayer ? item.ocrPlayer.uid : '') || '';
+                        var isOtherGuild = item.status === 'other_guild';
+                        var isChecked = !isOtherGuild;
 
-                    var badgeHtml = isOtherGuild
-                        ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild (Unchecked)</span>'
-                        : '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
+                        var badgeHtml = isOtherGuild
+                            ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild (Unchecked)</span>'
+                            : '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
 
-                    newHtml += '<tr class="ocr-row ocr-row--new" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
-                        '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="new" ' + (isChecked ? 'checked' : '') + '></td>' +
-                        '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
-                        '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' + idx + '" value="' + esc(uid) + '" placeholder="TEMP (auto)" style="padding:0.25rem 0.5rem; font-size:0.8rem; width:100%; max-width:120px;"></td>' +
-                        '<td class="ocr-cell-metric">' +
-                            '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
-                            '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
-                        '</td>' +
-                        '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
-                    '</tr>';
-                });
+                        newHtml += '<tr class="ocr-row ocr-row--new" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
+                            '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="new" ' + (isChecked ? 'checked' : '') + '></td>' +
+                            '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                            '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' + idx + '" value="' + esc(uid) + '" placeholder="TEMP (auto)" style="padding:0.25rem 0.5rem; font-size:0.8rem; width:100%; max-width:120px;"></td>' +
+                            '<td class="ocr-cell-metric">' +
+                                '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
+                                '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
+                            '</td>' +
+                            '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
+                        '</tr>';
+                    });
+                }
+            } else {
+                // Metric Mode: Unknown / Unmatched players displayed as "Not in Roster" (read-only, unchecked, disabled)
+                if (diff.unknown && diff.unknown.length > 0) {
+                    newHtml += '<tr class="ocr-section-header ocr-section-header--unknown"><td colspan="5"><div class="ocr-section-title" style="color:#fbbf24;"><i class="ph ph-user-focus"></i> Not in Roster <span class="gm-badge" style="background:rgba(245,158,11,0.2); color:#fbbf24;">' + diff.unknown.length + '</span></div></td></tr>';
+                    diff.unknown.forEach(function (item) {
+                        var effPseudo = item.effectivePseudo;
+                        var pScore = item.newVal;
+
+                        newHtml += '<tr class="ocr-row ocr-row--unknown" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
+                            '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" disabled style="opacity:0.4; cursor:not-allowed;"></td>' +
+                            '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' + esc(effPseudo) + '</span></td>' +
+                            '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">—</span></td>' +
+                            '<td class="ocr-cell-metric">' +
+                                '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
+                                '<span style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">' + fmtNum(pScore) + '</span>' +
+                            '</td>' +
+                            '<td class="ocr-cell-status"><span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-warning"></i> Use Members OCR to add</span></td>' +
+                        '</tr>';
+                    });
+                }
             }
             if (tbodyNew) tbodyNew.innerHTML = newHtml;
 
-            // 3. Removed Members Section
+            // 3. Removed Members Section (Members mode only)
             var removedHtml = '';
-            if (diff.removed.length > 0) {
+            if (isMembersMode && diff.removed.length > 0) {
                 if (guildMembers.length > 0 && diff.removed.length > guildMembers.length * 0.5) {
                     removedHtml += '<tr class="ocr-warning-row"><td colspan="5"><div class="ocr-removed-warning" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; padding:0.5rem 0.75rem; border-radius:6px; margin:0.35rem 0; font-size:0.78rem; display:flex; align-items:center; gap:0.4rem;"><i class="ph ph-warning" style="font-size:1.1rem; flex-shrink:0;"></i><span>More than half your roster would be removed. If this screenshot is partial, uncheck the members to keep.</span></div></td></tr>';
                 }
@@ -3101,7 +3136,7 @@
             var span = btnCommit.querySelector('span');
             if (span) span.textContent = 'Validate & Apply ' + meta.header + ' (' + count + ')';
             btnCommit.disabled = count === 0;
-        } else {
+        } else if (currentOcrMetric === 'members') {
             var selectedExisting = tbody ? tbody.querySelectorAll('.ocr-row-cb:checked').length : 0;
             var selectedNew = tbodyNew ? tbodyNew.querySelectorAll('.ocr-row-cb:checked').length : 0;
             var checkedRemovals = tbodyRemoved ? tbodyRemoved.querySelectorAll('.ocr-removal-cb:checked').length : 0;
@@ -3114,7 +3149,7 @@
             if (summaryBadges) {
                 var delta = computeOcrRosterDelta(guildMembers.length, selectedNew, checkedRemovals);
                 var activeGuildTag = (document.getElementById('ocr-guild-tag-input') && document.getElementById('ocr-guild-tag-input').value.trim()) ? document.getElementById('ocr-guild-tag-input').value.trim() : '';
-                var diff = categorizeOcrDiff(ocrExtractedPlayers, guildMembers, activeGuildTag, meta.field, meta.isMultiGuild);
+                var diff = categorizeOcrDiff(ocrExtractedPlayers, guildMembers, activeGuildTag, meta.field, meta.isMultiGuild, 'members');
 
                 var newCount = diff.new.filter(function (n) { return n.status === 'new'; }).length;
                 var updateCount = diff.existing.filter(function (e) { return e.status === 'update'; }).length;
@@ -3130,6 +3165,29 @@
                     (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
                     (removalCount > 0 ? '<span class="gm-chip" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> ' + removalCount + ' Removed</span>' : '') +
                     (otherGuildCount > 0 ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' + otherGuildCount + ' Other Guild (Unchecked)</span>' : '') +
+                    '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' + unchangedCount + ' Unchanged</span>';
+            }
+        } else {
+            // Metric Mode (update-only)
+            var selectedExisting = tbody ? tbody.querySelectorAll('.ocr-row-cb:checked').length : 0;
+            var span = btnCommit.querySelector('span');
+            if (span) span.textContent = 'Validate & Apply ' + meta.header + ' (' + selectedExisting + ')';
+            btnCommit.disabled = selectedExisting === 0;
+
+            if (summaryBadges) {
+                var activeGuildTag = (document.getElementById('ocr-guild-tag-input') && document.getElementById('ocr-guild-tag-input').value.trim()) ? document.getElementById('ocr-guild-tag-input').value.trim() : '';
+                var diff = categorizeOcrDiff(ocrExtractedPlayers, guildMembers, activeGuildTag, meta.field, meta.isMultiGuild, 'metric');
+
+                var updateCount = diff.existing.filter(function (e) { return e.status === 'update'; }).length;
+                var reconciledCount = diff.existing.filter(function (e) { return e.status === 'reconciled'; }).length;
+                var unchangedCount = diff.existing.filter(function (e) { return e.status === 'unchanged'; }).length;
+                var unknownCount = diff.unknown ? diff.unknown.length : 0;
+
+                summaryBadges.innerHTML =
+                    '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted); font-weight:600;"><i class="ph ph-users"></i> Roster: ' + guildMembers.length + ' (unchanged)</span>' +
+                    (updateCount > 0 ? '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Updates</span>' : '') +
+                    (reconciledCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' + reconciledCount + ' Reconciled</span>' : '') +
+                    (unknownCount > 0 ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-warning"></i> ' + unknownCount + ' Not in Roster</span>' : '') +
                     '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' + unchangedCount + ' Unchanged</span>';
             }
         }
@@ -3574,7 +3632,15 @@
                 }
 
                 // 6. Output aggregate toast summary
-                var summaryMsg = 'Updated ' + updatedCount + ' · Added ' + addedCount + ' · Removed ' + removedCount;
+                var summaryMsg = '';
+                if (currentOcrMetric === 'members') {
+                    summaryMsg = 'Updated ' + updatedCount + ' · Added ' + addedCount + ' · Removed ' + removedCount;
+                } else {
+                    var activeTag = (document.getElementById('ocr-guild-tag-input') && document.getElementById('ocr-guild-tag-input').value.trim()) ? document.getElementById('ocr-guild-tag-input').value.trim() : '';
+                    var curDiff = categorizeOcrDiff(ocrExtractedPlayers, guildMembers, activeTag, targetField, meta.isMultiGuild, 'metric');
+                    var skippedCount = (curDiff.unknown && curDiff.unknown.length) ? curDiff.unknown.length : 0;
+                    summaryMsg = 'Updated ' + updatedCount + (skippedCount > 0 ? ' · Skipped ' + skippedCount + ' not in roster (use Members OCR)' : '');
+                }
                 if (failedCount > 0) summaryMsg += ' · Failed ' + failedCount;
                 showToast(summaryMsg, failedCount > 0 ? 'warning' : 'success');
             } catch (err) {
@@ -4629,7 +4695,7 @@
                         '<i class="ph-duotone ph-scan gm-icon" style="font-size:3rem; color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
                         '<div class="gm-empty-title" style="font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;">' + t('empty_members_roster_title') + '</div>' +
                         '<div class="gm-empty-desc" style="color:var(--text-muted); font-size:0.88rem; max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' + t('empty_members_roster_desc') + '</div>' +
-                        '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="power"><i class="ph ph-scan"></i> ' + t('empty_members_roster_cta') + '</button>' +
+                        '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="members"><i class="ph ph-scan"></i> ' + t('empty_members_roster_cta') + '</button>' +
                     '</div>';
                 }
                 return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
@@ -4646,7 +4712,7 @@
                         '<i class="ph-duotone ph-scan gm-icon" style="font-size:3rem; color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
                         '<div class="gm-empty-title" style="font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;">' + t('empty_members_roster_title') + '</div>' +
                         '<div class="gm-empty-desc" style="color:var(--text-muted); font-size:0.88rem; max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' + t('empty_members_roster_desc') + '</div>' +
-                        '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="power"><i class="ph ph-scan"></i> ' + t('empty_members_roster_cta') + '</button>' +
+                        '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="members"><i class="ph ph-scan"></i> ' + t('empty_members_roster_cta') + '</button>' +
                     '</div>';
                 }
                 return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
