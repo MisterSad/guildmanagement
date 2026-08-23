@@ -1,5 +1,15 @@
 # Changelog
 
+## New
+
+- **Members OCR Mode & Update-Only Metric Scanners (v126.0)**:
+  - **Dedicated Members OCR Scanner**: Introduced "1. Members OCR" as the primary membership management tool in the toolbar and OCR modal. It exclusively manages member recruitment, UID assignments, and departure removals via the full three-section review flow.
+  - **Update-Only Tactical Metric Scanners**: Converted the 7 tactical metric scanners (Power, Fleet, Tech, Flagship, Champs, Crew, Glory) to update-only mode. Metric scanners now only update existing roster members and never create new members or propose removals.
+  - **"Not in Roster" Unmatched Member Flagging**: In metric scanner mode, players detected in screenshots who do not match any existing roster member are grouped into a dedicated "Not in Roster" section (unchecked, disabled, badged "Use Members OCR to add").
+  - **Cold-Start Roster Initialization**: Updated the empty roster cold-start CTA across the roster and military matrix views to trigger Members OCR directly (`data-metric="members"`, i18n key `empty_members_roster_cta` updated to `'Members OCR'`).
+  - **Edge Function & Fallback Extraction**: Added `"members"` extraction instructions to `ocr-guild-members` Edge Function and client direct-Gemini fallback path to extract player pseudo, UID, and overall power.
+  - **Quality Gate**: **400/400 Vitest unit tests green** (+3 new unit tests in `tests/ocr_diff.test.js`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 ## Fixed
 
 - **Production CORS Response Origin Echo Outage & Per-Request Closure Pattern (v125.3)**:
