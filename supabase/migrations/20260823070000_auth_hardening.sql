@@ -9,6 +9,7 @@ ALTER TABLE public.accounts
     ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
 
 -- 2. Modernize gm_check_login with dual-read and lockout defense
+DROP FUNCTION IF EXISTS public.gm_check_login(text, text);
 CREATE OR REPLACE FUNCTION public.gm_check_login(p_id text, p_password text)
 RETURNS TABLE(canonical_id text, role text, status text, is_locked boolean, error text)
 LANGUAGE plpgsql

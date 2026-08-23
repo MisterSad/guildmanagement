@@ -1,30 +1,13 @@
 -- 20260823100000_canonical_reconciliation_round2.sql
 -- Workstream GAP 1: Canonical Migration Reconciliation (Round 2)
--- Ports 13 archive-only RPCs to canonical migrations, adds partial unique indexes,
--- adds case-insensitive account ID index, accounts authenticated SELECT grant, and event_status unique constraint.
+-- Ports 13 archive-only RPCs to canonical migrations, adds accounts authenticated SELECT grant.
+-- Note: Unique indexes were relocated to master DDL 20260812000001 for early-chain replay idempotence.
 
 -- ============================================================================
--- 1. INDEXES AND TABLE CONSTRAINTS
+-- 1. TABLE PERMISSIONS & ACCESS
 -- ============================================================================
 
--- 1.a Partial unique indexes on event_participants
-CREATE UNIQUE INDEX IF NOT EXISTS idx_ep_tenant_session_unique
-    ON public.event_participants (guild, event_name, session_id, pseudo)
-    WHERE session_id IS NOT NULL;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_ep_tenant_no_session_unique
-    ON public.event_participants (guild, event_name, week_start, pseudo)
-    WHERE session_id IS NULL;
-
--- 1.b Case-insensitive unique index on accounts.id
-CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_lower_id
-    ON public.accounts (LOWER(id));
-
--- 1.c Unique index on event_status for ON CONFLICT (guild, event_name) support
-CREATE UNIQUE INDEX IF NOT EXISTS event_status_guild_event_key
-    ON public.event_status (guild, event_name);
-
--- 1.d Grant SELECT on accounts to authenticated (required by player_push_prefs RLS subqueries)
+-- 1.a Grant SELECT on accounts to authenticated (required by player_push_prefs RLS subqueries)
 GRANT SELECT ON public.accounts TO authenticated;
 
 -- ============================================================================

@@ -297,4 +297,19 @@ CREATE INDEX IF NOT EXISTS idx_system_audit_logs_guild_created ON public.system_
 CREATE INDEX IF NOT EXISTS idx_system_audit_logs_level_created ON public.system_audit_logs(level, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_system_audit_logs_correlation ON public.system_audit_logs(correlation_id);
 
+-- Unique indexes & constraints for replay idempotence
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ep_tenant_session_unique
+    ON public.event_participants (guild, event_name, session_id, pseudo)
+    WHERE session_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ep_tenant_no_session_unique
+    ON public.event_participants (guild, event_name, week_start, pseudo)
+    WHERE session_id IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_lower_id
+    ON public.accounts (LOWER(id));
+
+CREATE UNIQUE INDEX IF NOT EXISTS event_status_guild_event_key
+    ON public.event_status (guild, event_name);
+
 NOTIFY pgrst, 'reload schema';
