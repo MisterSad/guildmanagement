@@ -2,6 +2,13 @@
 
 ## New
 
+- **Canonical Replay Ordering Fix & Full Observability Migration (v124.3)**:
+  - **Relocated Unique Indexes to Master DDL**: Moved 4 unique index definitions (`idx_ep_tenant_session_unique`, `idx_ep_tenant_no_session_unique`, `idx_accounts_lower_id`, `event_status_guild_event_key`) to master DDL `20260812000001_schema_tables_and_indexes.sql` to resolve early-chain `ON CONFLICT` target resolution during demo tenant resets in migrations `20260818030000`, `20260818081500`, and `20260819203500`.
+  - **RLS Function Ordering & Signature Fix**: Relocated Access Control Helper functions to `20260812000002_security_rls_policies.sql` before policy definitions, and added `DROP FUNCTION IF EXISTS public.gm_check_login` to `20260823070000_auth_hardening.sql` for clean return table signature upgrades.
+  - **Executed 100% Verified Canonical Migration Replay**: Replayed all 25 canonical migration files on disposable PostgreSQL 17 container (`fgf-replay`) with `-v ON_ERROR_STOP=1`, verifying 8 target RPCs, 4 unique indexes, and 60 demo tenant seed members.
+  - **Standardized Edge Function Observability**: Migrated all 38 raw `console.*` calls in `supabase/functions/event-reminders/index.ts` to `EdgeLogger` instance methods (`logger.info`, `logger.warn`, `logger.error`) with PII/secret masking and request correlation IDs.
+  - **Quality Gate**: **333/333 Vitest unit tests green**, 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Security & Architecture Remediation Round 2 — Zero-Gap Closure (v124.2)**:
   - **Canonical Database Reconciliation (GAP 1)**: Ported all 13 archive-only `SECURITY DEFINER` RPCs (`gm_register_player`, `gm_set_join_code`, `gm_get_join_code`, `gm_approve_player_account`, `gm_reject_player_account`, `gm_get_shadow`, `gm_attach_shadow`, `gm_get_player_absences`, `gm_upsert_player_absence`, `gm_delete_player_absence`, `gm_update_player_timezone`, `gm_get_push_prefs`, `gm_set_push_prefs`) into canonical migration chain with `SET search_path TO ''`, strict schema-qualified references, and least-privilege `service_role` grants.
   - **Tenant-Isolated Partial Unique Indexes (GAP 1)**: Added partial unique indexes `idx_ep_tenant_session_unique` (`WHERE session_id IS NOT NULL`) and `idx_ep_tenant_no_session_unique` (`WHERE session_id IS NULL`) on `event_participants`, plus `idx_accounts_lower_id` on `accounts(LOWER(id))`.

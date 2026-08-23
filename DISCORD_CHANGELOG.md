@@ -1,40 +1,26 @@
-📢 **FGF Guild Management Tool Update — CHANG_V124.2**
+📢 **FGF Guild Management Tool Update — CHANG_V124.3**
 
 Hey commanders! 👋
 
-I have just pushed a comprehensive follow-up update (`CHANG_V124.2`) closing all remaining audit items, tightening our anti-abuse defenses, and locking down CDN script integrity across the entire platform! 🛡️⚡🚀
+I have just deployed update `CHANG_V124.3` featuring complete canonical database replay verification and 100% standardized structured observability across all reminder workers! 🛡️⚡🚀
 
 ---
 
-### 🔒 1. Distributed IP Rate Limiting & Anti-DoS Defense
-* **Cross-Isolate IP Throttling**: I implemented an IP sliding-window rate limiter backed by Postgres, protecting login and portal entrypoints against brute-force attacks and credential stuffing across all Edge server isolates.
-* **Balanced Lockout Backoff**: Upgraded account lockout logic to exponential backoff (15/30/45/60 min) to prevent targeted denial-of-service against legitimate players while stopping malicious attempts.
+### 🏛️ 1. Canonical Database Replay & Idempotence
+* **Master DDL Unique Indexes**: Relocated event and account unique indexes into master DDL to ensure clean, zero-error deterministic schema replay from scratch across any PostgreSQL 17 environment.
+* **Deterministic Replay Verification**: Executed and validated full 25-migration chain replay with strict `-v ON_ERROR_STOP=1` against disposable PostgreSQL 17, confirming all security definer RPCs, partial indexes, and seed datasets.
 
 ---
 
-### 🛡️ 2. Subresource Integrity (SRI) & Strict CSP
-* **Pinned Script Hashes**: Added cryptographic SHA-384 Subresource Integrity (`integrity="sha384-..."`) attributes to all CDN dependencies, ensuring your browser executes only bit-exact, verified scripts.
-* **CSP Hardening**: Eliminated `'unsafe-eval'` from our Content Security Policy headers for maximum client-side script execution security.
-* **Anchored Origin Matching**: Strengthened API CORS allowlists with strictly anchored domain validators and `Vary: Origin` headers to stop unauthorized web origin requests.
+### 📊 2. 100% Structured Edge Function Observability
+* **Event Reminders Logging Overhaul**: Replaced all remaining raw `console` calls in `event-reminders` with centralized `EdgeLogger` structured JSON logging.
+* **Traceability & Safety**: Every notification, webhook attempt, and push message now records execution durations, correlation IDs, and automatic credential/webhook URL masking.
 
 ---
 
-### ⚔️ 3. Canonical Database Reconciliation & Partial Indexes
-* **Canonical Migration Chain Port**: Reconciled all 13 backend stored procedures (player registration, join codes, absences, timezones, push preferences) into our canonical database migrations with isolated search paths and least-privilege permissions.
-* **Optimized Session Indexes**: Added tenant-isolated partial unique indexes to guarantee event participation integrity across concurrent event sessions.
+### 🧪 3. Quality Gate & Zero-Regression Verification
+* **333/333 Vitest Unit Tests Passing** 🟢 (28 test suites green)
+* **0 TypeScript Compilation Errors (`tsc --noEmit`)** 🔒
+* **Clean Vite Production Build & Asset Packaging** 🚀
 
----
-
-### ⚡ 4. OCR & Webhook Safeguards
-* **Leaderboard Scan Caps**: Added upload size limits (8 MB) and image batch caps (max 5 images) to the AI OCR scanner to maintain rock-solid server performance.
-* **Redirect Protection**: Added strict redirect blocking on outbound Discord webhook notifications.
-* **Clean Session Reset**: Ensured server restriction flags are completely cleared on logout.
-
----
-
-### 🧪 5. Quality Gate & Reliability
-* **333/333 Vitest Unit Tests Passing** 🟢 (28 test suites fully green)
-* **0 TypeScript Errors (`tsc --noEmit`)** 🔒
-* **Clean Production Bundle Built & Verified** 🚀
-
-*Everything is live and verified in production. Thank you for your support, and fly safe in the frontier!* 🌌⚔️
+*Everything is live and verified in production. Thank you for your support, and fly safe in the galaxy!* 🌌⚔️
