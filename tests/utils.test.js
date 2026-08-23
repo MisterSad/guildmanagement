@@ -13,7 +13,7 @@ describe('escapeHTML', () => {
     it('escapes quotes and backticks', () => {
         expect(RAD.escapeHTML("it's `code`")).toBe('it&#39;s &#96;code&#96;');
     });
-    it('returns empty string for null/undefined', () => {
+    it('stringifies null/undefined inputs', () => {
         expect(RAD.escapeHTML(null)).toBe('null');
         expect(RAD.escapeHTML(undefined)).toBe('undefined');
     });

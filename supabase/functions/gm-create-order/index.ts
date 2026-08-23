@@ -9,6 +9,7 @@
 // super_admin (any guild).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { EdgeLogger } from "../_shared/logger.ts";
 import {
   PLANS,
   createCheckoutSession,
@@ -79,6 +80,8 @@ function buildReturnUrls(baseUrl: string) {
 }
 
 Deno.serve(async (req: Request) => {
+  const logger = new EdgeLogger("gm-create-order", req);
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
 
@@ -136,7 +139,7 @@ Deno.serve(async (req: Request) => {
       cancelUrl: cancel,
     });
   } catch (err) {
-    console.error("[gm-create-order] Checkout Session failed", err);
+    logger.error("Checkout Session failed", err);
     return json({ ok: false, error: "checkout_failed" }, 200);
   }
 
@@ -155,7 +158,7 @@ Deno.serve(async (req: Request) => {
     days_added: plan.days,
   });
   if (insErr) {
-    console.error("[gm-create-order] insert failed", insErr);
+    logger.error("Insert gm_payments failed", insErr);
     return json({ ok: false, error: "server_error" }, 200);
   }
 

@@ -9,6 +9,7 @@
 // Access: authenticated guild_admin (owner guild) or super_admin.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { EdgeLogger } from "../_shared/logger.ts";
 import { fetchCheckoutSession, stripeSecretKey } from "../_shared/stripe.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
@@ -45,6 +46,8 @@ async function getCallerInfo(
 }
 
 Deno.serve(async (req: Request) => {
+  const logger = new EdgeLogger("gm-order-status", req);
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
 
@@ -52,33 +55,35 @@ Deno.serve(async (req: Request) => {
 
   const info = await getCallerInfo(req, admin);
   const isAdmin = info.role === "super_admin" || info.role === "guild_admin";
-  if (!isAdmin) return json({ ok: false, error: "forbidden" }, 200);
+  if (!isAdmin) return json({ ok: false, error: "forbidden" }, 200, req);
 
   let body: Record<string, unknown>;
-  try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 200); }
+  try { body = await req.json(); } catch { return json({ ok: false, error: "bad_request" }, 200, req); }
   const sessionId = (body?.sessionId ?? "").toString().trim();
-  if (!sessionId) return json({ ok: false, error: "missing_fields" }, 200);
+  if (!sessionId) return json({ ok: false, error: "missing_fields" }, 200, req);
 
-  if (!stripeSecretKey()) return json({ ok: false, error: "not_configured" }, 200);
+  if (!stripeSecretKey()) return json({ ok: false, error: "not_configured" }, 200, req);
 
   const { data: pay } = await admin
     .from("gm_payments")
     .select("order_id, guild_id")
     .eq("token", sessionId)
     .maybeSingle();
-  if (!pay || !pay.order_id) return json({ ok: false, error: "not_found" }, 200);
+  if (!pay || !pay.order_id) return json({ ok: false, error: "not_found" }, 200, req);
 
   // Guild admins may only poll their own guild's payments.
   if (info.role === "guild_admin" && info.guild !== pay.guild_id) {
-    return json({ ok: false, error: "forbidden" }, 200);
+    return json({ ok: false, error: "forbidden" }, 200, req);
   }
+
+  logger.setContext({ tenantId: pay.guild_id });
 
   let session: { payment_status?: string; status?: string };
   try {
     session = await fetchCheckoutSession(pay.order_id);
   } catch (err) {
-    console.error("[gm-order-status] Stripe session failed", err);
-    return json({ ok: false, error: "session_failed" }, 200);
+    logger.error("Stripe session fetch failed", err);
+    return json({ ok: false, error: "session_failed" }, 200, req);
   }
 
   const paymentStatus = (session?.payment_status ?? "").toString().toLowerCase();
@@ -87,8 +92,8 @@ Deno.serve(async (req: Request) => {
       p_order_id: pay.order_id,
     });
     if (error) {
-      console.error("[gm-order-status] apply failed", error);
-      return json({ ok: false, error: "server_error" }, 200);
+      logger.error("Subscription payment apply failed", error);
+      return json({ ok: false, error: "server_error" }, 200, req);
     }
     const row = (rows ?? [])[0];
     return json({
@@ -98,8 +103,8 @@ Deno.serve(async (req: Request) => {
       lifetime: Boolean(row?.lifetime),
       newEnd: row?.new_end ?? null,
       planKey: row?.plan_key ?? null,
-    });
+    }, 200, req);
   }
 
-  return json({ ok: true, state: paymentStatus, applied: false, newEnd: null });
+  return json({ ok: true, state: paymentStatus, applied: false, newEnd: null }, 200, req);
 });

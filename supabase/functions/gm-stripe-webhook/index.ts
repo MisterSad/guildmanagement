@@ -9,12 +9,15 @@
 // header). Stripe retries failed deliveries, so unknown sessions return 500.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { EdgeLogger } from "../_shared/logger.ts";
 import { stripeWebhookSecret, verifyWebhookSignature } from "../_shared/stripe.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 Deno.serve(async (req: Request) => {
+  const logger = new EdgeLogger("gm-stripe-webhook", req);
+
   if (req.method === "OPTIONS") return new Response("ok");
   if (req.method !== "POST") return new Response("method_not_allowed", { status: 405 });
 
@@ -22,12 +25,12 @@ Deno.serve(async (req: Request) => {
   const signature = req.headers.get("stripe-signature") ?? "";
 
   if (!stripeWebhookSecret()) {
-    console.error("[gm-stripe-webhook] STRIPE_WEBHOOK_SIGNING_SECRET is not configured");
+    logger.error("STRIPE_WEBHOOK_SIGNING_SECRET is not configured");
     return new Response("not_configured", { status: 500 });
   }
   const valid = await verifyWebhookSignature(rawBody, signature);
   if (!valid) {
-    console.error("[gm-stripe-webhook] invalid signature");
+    logger.error("Invalid signature on stripe webhook");
     return new Response("invalid_signature", { status: 401 });
   }
 
@@ -70,7 +73,7 @@ Deno.serve(async (req: Request) => {
     .eq("order_id", sessionId)
     .maybeSingle();
   if (!pay || !pay.order_id) {
-    console.error("[gm-stripe-webhook] unknown settled session", sessionId);
+    logger.error("Unknown settled session", { sessionId });
     return new Response("unknown_session", { status: 500 }); // force Stripe to retry
   }
 
@@ -78,7 +81,7 @@ Deno.serve(async (req: Request) => {
     p_order_id: pay.order_id,
   });
   if (error) {
-    console.error("[gm-stripe-webhook] apply failed", error);
+    logger.error("Apply subscription payment failed", error);
     return new Response("apply_failed", { status: 500 });
   }
   return new Response("ok");

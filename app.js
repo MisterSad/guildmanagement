@@ -374,8 +374,10 @@
         localStorage.removeItem('gm_user');
         localStorage.removeItem('gm_current_guild');
         localStorage.removeItem('gm_guild_restriction');
+        localStorage.removeItem('gm_server_restriction');
         localStorage.removeItem('gm_portal_session');
         window.currentGuildRestriction = null;
+        window.currentServerRestriction = null;
         showLogin();
         showToast(t('toast_logout'), 'info');
     }
@@ -2553,16 +2555,13 @@
         metricType = metricType || 'power';
         guildTag = guildTag || '';
         var db = (window.GM && window.GM.db) ? window.GM.db : null;
-        var token = localStorage.getItem('gm_token') || '';
 
         // 1. Try Supabase Edge Function 'ocr-guild-members' (Zero-Trust Serverless)
         if (db && db.functions) {
             try {
                 if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR Edge Function (' + metricType.toUpperCase() + (guildTag ? ' ' + guildTag : '') + ')...');
-                var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
                 var res = await db.functions.invoke('ocr-guild-members', {
-                    body: { images: batchImageItems, metricType: metricType, guildTag: guildTag },
-                    headers: headers
+                    body: { images: batchImageItems, metricType: metricType, guildTag: guildTag }
                 });
                 if (res.data && res.data.ok && Array.isArray(res.data.players)) {
                     return res.data.players;
