@@ -2,6 +2,16 @@
 
 ## New
 
+- **100% Free Platform & Voluntary Donations ("Buy Me a Coffee") (v127.0)**:
+  - **100% Free SaaS Platform**: Removed all paid subscription gates and paywalls across the platform. All features (military matrix, roster OCR scanners, tactical war dashboards, Discord webhooks, export/import tools, player portal) are now completely free for all guild tenants, administrators, and members.
+  - **Voluntary One-Time Donations**: Replaced the "Subscription" tab in Command Center and added a matching 7th tab in the Player Portal for "Buy Me a Coffee" voluntary donations. Supports preset tiers (EUR 2 / EUR 5 / EUR 10) and custom bounded amounts (EUR 2 min / EUR 100 max).
+  - **Operational Cost Transparency**: Added a dedicated transparency section in both Command Center and Player Portal detailing actual recurring monthly hosting infrastructure expenses (Vercel + Supabase) and pay-per-use AI OCR vision model API costs.
+  - **Database Migration (`20260824000000_free_app_and_donations.sql`)**: Normalized all guild records to `Unlimited`, redefined `public.is_subscription_active()` to permanently return `true` (neutralizing all 36 RLS policy checks across 12 tables and 3 RPC gates), added `kind` column to `public.gm_payments`, and created `public.gm_apply_donation` RPC with service-role execution security.
+  - **Edge Function Support**: Added `create-donation` action to `member-portal` and discriminator branching to `gm-stripe-webhook` to execute `gm_apply_donation` without modifying guild expiration dates. Simplified `event-reminders` and `admin-accounts` by removing obsolete subscription checks.
+  - **Terms & Conditions Update (`terms.html`)**: Updated Section 4 commercial terms to reflect the 100% free software model and voluntary non-refundable donation terms.
+  - **Frozen Surface Integrity**: Maintained 100% byte-identical invariance for `gm-create-order` and `gm-order-status` (`git diff --stat` verified).
+  - **Quality Gate**: **407/407 Vitest unit tests green** (+7 new tests in `tests/donation.test.js` & updated `tests/subscription.test.js`), 0 TypeScript errors (`tsc --noEmit`), and clean production build.
+
 - **Members OCR Mode & Update-Only Metric Scanners (v126.0)**:
   - **Dedicated Members OCR Scanner**: Introduced "1. Members OCR" as the primary membership management tool in the toolbar and OCR modal. It exclusively manages member recruitment, UID assignments, and departure removals via the full three-section review flow.
   - **Update-Only Tactical Metric Scanners**: Converted the 7 tactical metric scanners (Power, Fleet, Tech, Flagship, Champs, Crew, Glory) to update-only mode. Metric scanners now only update existing roster members and never create new members or propose removals.

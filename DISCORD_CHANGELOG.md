@@ -1,41 +1,29 @@
-📢 **FGF Guild Management Tool Update — CHANG_V126.0**
+📢 **FGF Guild Management Tool Update — CHANG_V127.0**
 
-Hey everyone! Today has been the biggest feature and reliability milestone yet for the FGF Guild Management Tool. I completely rebuilt the roster management workflow from the ground up, upgraded all metric scanners with smart safeguards, added stronger security protection for your accounts, and resolved two brief hiccups from earlier today. Here is everything you need to know:
+Hey everyone! Today marks a massive milestone for the FGF Guild Management Tool: **the platform is now 100% free for everyone, with zero feature paywalls.**
 
-📸 **Members OCR: Dedicated Roster Management**
-- **Rebuilt Roster Workflow**: The new **Members OCR** button (now #1 in your OCR toolbar) is your dedicated scanner for guild membership. Use it to add new recruits, update member power, and track roster departures in one smooth step.
-- **Real In-Game UID Entry**: You can now enter the actual in-game UID for every new recruit right inside the review window. No more auto-generated temporary IDs!
-- **Three-Section Review Screen**: Your scanned roster is now neatly organized into three clear sections before anything is applied: **Existing Members**, **New Members**, and **Removed Members**.
-- **One-Click Keep & Remove Overrides**: Departed members are automatically suggested for removal with an instant toggle to keep anyone who was simply missing from the screenshot.
-- **Live Headcount Counters**: A real-time counter chip (`Roster: 60 → 63`) shows your exact roster numbers as you make changes.
-- **Mistake-Proof Removal Warning**: Before any member is removed, a review modal lists every affected name so unintended departures are impossible.
+Whether you are a guild leader running battle operations or a player tracking your combat stats, every single tool is fully unlocked for all guilds. Here is everything you need to know about this change:
 
-🚀 **One-Click Cold Start for New Guilds**
-- **Fast Guild Onboarding**: Starting a brand-new guild? Empty rosters now display a prominent **Members OCR** button to let you import your entire 60-member lineup from screenshots in seconds.
-- **Instant Setup**: No manual typing required: drop your screenshots, check the player names and UIDs, and populate your entire guild directory at once.
+🎉 **100% Free Platform — No More Subscriptions**
+- **All Features Unlocked**: Military matrix analytics, roster OCR scanners, tactical battle tracking, Discord event webhooks, and the Player Portal are now completely free for all guild tenants and players.
+- **No Expiration Dates or Lockouts**: You will never have to worry about subscription renewals, grace periods, or feature gating again.
 
-📊 **Smarter Update-Only Metric Scanners**
-- **Update-Only Combat Scanners**: The other 7 scanners (Power, Fleet, Tech, Flagship, Champs, Crew, Glory) are now strictly update-only. They only update stats for existing members and will never mistakenly create recruits or remove absent players.
-- **"Not in Roster" Safety Section**: If an unassigned player appears in a metric screenshot, they are highlighted in a disabled **"Not in Roster"** section with a badge reminding you to add them via Members OCR first.
-- **Clear Summary Feedback**: Applying a metric scan gives you an instant summary showing exactly how many members updated and how many unmatched players were skipped.
+☕ **"Buy Me a Coffee" Voluntary Donations**
+- **Support Development Directly**: If the app helps your guild stay organized and win battles, you can now support its ongoing development with a voluntary one-time donation.
+- **Flexible Donation Amounts**: Quick preset options (€2 / €5 / €10) or enter any custom amount between €2 and €100.
+- **Available to Everyone**: The new "Buy Me a Coffee" tab is available directly in the Command Center for guild officers (right below Banned Players) and as a dedicated tab inside the Player Portal for members.
+- **Zero Paywalls**: Donations are 100% voluntary gratuities. They confer no exclusive privileges or competitive advantages — everyone gets the exact same full feature set.
 
-🛠️ **Reliability & Safeguards**
-- **Sign-In Hiccup Patched**: A one-character bug briefly disrupted sign-in for some members early this morning. I diagnosed and resolved it right away.
-- **Browser Loading Error Resolved**: A configuration oversight briefly caused loading errors when opening the application in web browsers around midday. I identified the root cause and deployed a fix across all services within the hour.
-- **Automated Safeguards**: I added automated checks across my release process so neither glitch can ever happen again. Thank you for your patience while I resolved them!
+📊 **Cost Transparency**
+- **Why Your Support Matters**: Inside the donation tab, I've shared the real monthly operating expenses required to keep this project online:
+  - **Hosting & Infrastructure**: Roughly €45–€100 every single month for Vercel and Supabase cloud servers.
+  - **AI OCR Scans**: Every roster or power screenshot analyzed calls a paid AI vision model API, scaling directly with community usage.
+  - **Development**: Hundreds of hours spent building, updating, and fine-tuning features during evenings and weekends.
+- Every coffee genuinely helps keep the servers running and the AI scans flowing for all guilds!
 
-🔒 **Stronger Account Protection**
-- **Modern Password Hashing**: All accounts now use modern cryptographic hashing that upgrades automatically and invisibly on your next sign-in.
-- **Anti-Brute-Force Lockout**: Repeated failed sign-in attempts now trigger an automatic temporary lockout to protect your account against guessing attempts.
-- **Spam & Abuse Shields**: Added robust rate limits to protect all guild accounts and member portals against unauthorized automated traffic.
-
-📊 **Player Portal Fixes**
-- **Reliable Personal KPIs**: Fixed an issue where individual player attendance rates, event turnout scores, and power trends were intermittently failing to load on the Member Portal.
-- **Fast and Accurate**: All personal metrics and historical activity charts now load consistently and instantly.
-
-💳 **Subscription Stability**
-- **Uninterrupted Guild Access**: Hardened the billing and subscription status handlers so premium guilds maintain smooth, uninterrupted access to all guild tools and roster limits after checkout.
+🔒 **Secure & Multi-Method Checkout**
+- **Safe Payments**: All donations are securely processed via Stripe Hosted Checkout. The app never has access to your payment or bank details.
+- **Global Payment Methods**: Cards, Apple Pay, Google Pay, PayPal, Klarna, iDEAL, Bancontact, and dozens of regional methods are fully supported.
 
 ---
-*Thank you all for the fantastic feedback, patience, and support as I continue improving the platform! As always, feel free to reach out with any questions or ideas. Fly safe!* ⚔️
-
+*Thank you all for being part of this community, sharing your feedback, and helping make this tool better every week. See you on the battlefield!* 🚀⚔️
