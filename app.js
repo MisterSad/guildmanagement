@@ -3535,27 +3535,50 @@
                     var existing = guildMembers.find(function (m) { return m.pseudo.toLowerCase() === sp.pseudo.toLowerCase(); });
 
                     if (existing) {
-                        var updatePayload = {};
-                        updatePayload[targetField] = scoreVal;
-                        updatePayload.metrics_updated_at = new Date().toISOString();
-                        if (targetField === 'overall_power') {
-                            updatePayload.power_updated_at = new Date().toISOString();
+                        if (targetField === 'glory_score') {
+                            // Glory is a WEEKLY score: route through gm_upsert_player_glory so the
+                            // event_participants row (the Glory tab's data source, filtered by week_start)
+                            // is written for the current ISO week AND guild_members.glory_score stays in
+                            // sync. The plain guild_members update never populated the weekly view.
+                            var gloryWeek = (window.GM && window.GM.getWeekStart) ? window.GM.getWeekStart() : new Date().toISOString().slice(0, 10);
+                            var glRes = await db.rpc('gm_upsert_player_glory', {
+                                p_guild: currentG,
+                                p_pseudo: existing.pseudo,
+                                p_week_start: gloryWeek,
+                                p_glory: scoreVal
+                            });
+                            var glRow = glRes.error ? null : (Array.isArray(glRes.data) ? glRes.data[0] : glRes.data);
+                            if (glRes.error || !glRow || !glRow.ok) {
+                                failedCount++;
+                                console.error('Failed to update glory for ' + existing.pseudo + ':', glRes.error || (glRow && glRow.error));
+                                continue;
+                            }
+                            existing.glory_score = scoreVal;
+                            existing.metrics_updated_at = new Date().toISOString();
+                            updatedCount++;
+                        } else {
+                            var updatePayload = {};
+                            updatePayload[targetField] = scoreVal;
+                            updatePayload.metrics_updated_at = new Date().toISOString();
+                            if (targetField === 'overall_power') {
+                                updatePayload.power_updated_at = new Date().toISOString();
+                            }
+
+                            var upRes = await db.from('guild_members')
+                                .update(updatePayload)
+                                .eq('guild', currentG)
+                                .eq('pseudo', existing.pseudo);
+
+                            if (upRes.error) {
+                                failedCount++;
+                                console.error('Failed to update member ' + existing.pseudo + ':', upRes.error);
+                                continue;
+                            }
+
+                            existing[targetField] = scoreVal;
+                            existing.metrics_updated_at = updatePayload.metrics_updated_at;
+                            updatedCount++;
                         }
-
-                        var upRes = await db.from('guild_members')
-                            .update(updatePayload)
-                            .eq('guild', currentG)
-                            .eq('pseudo', existing.pseudo);
-
-                        if (upRes.error) {
-                            failedCount++;
-                            console.error('Failed to update member ' + existing.pseudo + ':', upRes.error);
-                            continue;
-                        }
-
-                        existing[targetField] = scoreVal;
-                        existing.metrics_updated_at = updatePayload.metrics_updated_at;
-                        updatedCount++;
 
                         // Snapshot to player_metrics_history
                         if (window.GM && window.GM.upsertPlayerMetrics) {
@@ -3605,6 +3628,26 @@
 
                     guildMembers.push(newMember);
                     addedCount++;
+
+                    // Glory OCR on a new member: also record the weekly event_participants
+                    // row so the Glory tab shows the score for the current week.
+                    if (targetField === 'glory_score' && nScore > 0) {
+                        try {
+                            var gloryWeekNew = (window.GM && window.GM.getWeekStart) ? window.GM.getWeekStart() : new Date().toISOString().slice(0, 10);
+                            var glNewRes = await db.rpc('gm_upsert_player_glory', {
+                                p_guild: currentG,
+                                p_pseudo: newMember.pseudo,
+                                p_week_start: gloryWeekNew,
+                                p_glory: nScore
+                            });
+                            var glNewRow = glNewRes.error ? null : (Array.isArray(glNewRes.data) ? glNewRes.data[0] : glNewRes.data);
+                            if (glNewRes.error || !glNewRow || !glNewRow.ok) {
+                                console.warn('Inserted member ' + newMember.pseudo + ' but weekly glory row failed:', glNewRes.error || (glNewRow && glNewRow.error));
+                            }
+                        } catch (glNewErr) {
+                            console.warn('Failed to record weekly glory for new member ' + newMember.pseudo + ':', glNewErr);
+                        }
+                    }
 
                     // Snapshot to player_metrics_history
                     if (window.GM && window.GM.upsertPlayerMetrics) {

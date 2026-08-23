@@ -1,5 +1,12 @@
 # Changelog
 
+## Fixed
+
+- **Members Tab Accordions & Glory OCR Weekly Scores (v128.1)**:
+  - **Role-Group Accordions Now Collapse**: the R5-R1 group headers on the Members tab toggled an `is-collapsed` class that had no CSS counterpart in any stylesheet (verified across the full git history — the accordion JS shipped without its CSS half and never visually worked). Added the collapse rules (body hidden, caret rotation, border cleanup) with regression guards.
+  - **Glory OCR Now Records Weekly Scores**: the Glory OCR commit only updated `guild_members.glory_score` and never wrote the weekly `event_participants` rows the Glory tab reads (filtered by `week_start`), so validated Glory scans left the weekly view empty. Existing-member glory updates now route through the `gm_upsert_player_glory` RPC (writes the weekly `event_participants` row for the current ISO week AND syncs `guild_members.glory_score` — the same canonical path as player self-submissions), and new-member glory inserts record their weekly row too. The RPC is idempotent (`ON CONFLICT DO UPDATE`), so re-scanning the same screenshots safely populates the current week.
+  - **Quality Gate**: **421/421 Vitest unit tests green** (+5 regression guards in `tests/members_glory_fixes.test.js`), 0 TypeScript errors, clean build.
+
 ## New
 
 - **Complete Mobile Experience Remediation (v128.0)**:

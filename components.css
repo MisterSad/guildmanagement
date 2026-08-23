@@ -767,6 +767,14 @@
     padding: 0.75rem 1rem 1rem;
 }
 
+/* Collapsed role group (accordion). The JS toggles .is-collapsed on the group
+   and re-renders; without these rules the state had no visual effect (the
+   accordion never worked — mobile/members audit 2026-08-23). */
+.gm-role-group.is-collapsed .gm-role-group-body { display: none; }
+.gm-role-group.is-collapsed .gm-role-group-header { border-bottom: none; }
+.gm-role-group.is-collapsed .gm-role-group-caret { transform: rotate(-90deg); }
+.gm-role-group-caret { transition: transform 0.2s ease; }
+
 .gm-member-list {
     display: flex;
     flex-direction: column;
