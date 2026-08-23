@@ -267,4 +267,15 @@ describe('Audit Remediation Verification Suite', () => {
     expect(buildScript).toContain('package.json');
     expect(buildScript).toContain('EXCLUDED_FILES');
   });
+
+  it('W12: verifies WCAG viewport accessibility and logout storage cleanup', () => {
+    const htmlContent = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
+    expect(htmlContent).toContain('<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">');
+    expect(htmlContent).not.toContain('user-scalable=no');
+    expect(htmlContent).not.toContain('maximum-scale=1.0');
+
+    const utilsContent = fs.readFileSync(path.resolve(__dirname, '../gm-utils.js'), 'utf-8');
+    expect(utilsContent).toContain('sessionStorage.clear()');
+    expect(utilsContent).toContain('localStorage.removeItem');
+  });
 });

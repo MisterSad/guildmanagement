@@ -495,8 +495,24 @@
 
     async function logout() {
         var c = getClient();
-        if (!c) return;
-        try { await c.auth.signOut(); } catch (_) {}
+        if (c) {
+            try { await c.auth.signOut(); } catch (_) {}
+        }
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.clear();
+            }
+            if (typeof localStorage !== 'undefined') {
+                var keysToRemove = [];
+                for (var i = 0; i < localStorage.length; i++) {
+                    var k = localStorage.key(i);
+                    if (k && (k.startsWith('sb-') || k.startsWith('supabase.') || k.startsWith('gm_') || k.startsWith('fgf_'))) {
+                        keysToRemove.push(k);
+                    }
+                }
+                keysToRemove.forEach(function (k) { localStorage.removeItem(k); });
+            }
+        } catch (_) {}
     }
 
     async function ensureAuthSession() {
