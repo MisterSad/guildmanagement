@@ -111,7 +111,8 @@
             var cat = CATEGORY[tk.category] ? t(CATEGORY[tk.category]) : (tk.category || '');
             var guildLabel = tk.guild ? esc(tk.guild) : 'Global';
             var dateStr = tk.created_at ? new Date(tk.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-            var desc = esc(tk.description || '');
+            var rawDesc = tk.description || '';
+            var desc = esc(rawDesc).replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--fg); font-weight:700; display:inline-block; margin-top:0.25rem;">$1</strong>');
 
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft); vertical-align:top;">' +
@@ -123,9 +124,9 @@
                     '<td data-label="' + esc(t('tickets_category')) + '" style="padding:0.65rem 0.5rem; font-size:0.82rem;">' + esc(cat) + '</td>' +
                     '<td data-label="' + esc(t('tickets_severity')) + '" style="padding:0.65rem 0.5rem; text-align:center;">' + severityChip(tk.severity) + '</td>' +
                     '<td data-label="Status" style="padding:0.65rem 0.5rem; text-align:center;">' + statusChip(tk.status) + '</td>' +
-                    '<td data-label="Title" style="padding:0.65rem 0.5rem; min-width:220px;">' +
-                        '<div style="font-weight:700; font-size:0.88rem; color:var(--fg);">' + esc(tk.title) + '</div>' +
-                        (desc ? '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.2rem; white-space:pre-wrap;">' + desc + '</div>' : '') +
+                    '<td data-label="Title" style="padding:0.65rem 0.5rem; min-width:260px;">' +
+                        '<div style="font-weight:700; font-size:0.92rem; color:var(--fg);">' + esc(tk.title) + '</div>' +
+                        (desc ? '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem; line-height:1.45; white-space:pre-wrap; background:rgba(0,0,0,0.18); padding:0.5rem 0.65rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">' + desc + '</div>' : '') +
                     '</td>' +
                     '<td data-label="' + esc(t('tickets_date')) + '" style="padding:0.65rem 0.5rem; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">' + esc(dateStr) + '</td>' +
                     '<td data-label="' + esc(t('tickets_set')) + '" style="padding:0.65rem 0.75rem; text-align:center;">' +

@@ -2153,6 +2153,79 @@
         }
     }
 
+    function detectClientEnvironment(ua) {
+        var userAgent = (typeof ua === 'string' && ua) ? ua : (typeof navigator !== 'undefined' && navigator.userAgent ? navigator.userAgent : '');
+        var os = 'Unknown OS';
+        if (/iPhone|iPad|iPod/i.test(userAgent)) {
+            var m = userAgent.match(/OS\s+([\d_]+)/i);
+            os = 'iOS' + (m ? ' ' + m[1].replace(/_/g, '.') : '');
+        } else if (/Macintosh|Mac\s+OS\s+X/i.test(userAgent)) {
+            var m = userAgent.match(/Mac\s+OS\s+X\s+([\d_]+)/i);
+            os = 'macOS' + (m ? ' ' + m[1].replace(/_/g, '.') : '');
+        } else if (/Android/i.test(userAgent)) {
+            var m = userAgent.match(/Android\s+([\d\.]+)/i);
+            os = 'Android' + (m ? ' ' + m[1] : '');
+        } else if (/Windows/i.test(userAgent)) {
+            if (/Windows NT 10.0/i.test(userAgent)) os = 'Windows 10/11';
+            else if (/Windows NT 6.3/i.test(userAgent)) os = 'Windows 8.1';
+            else if (/Windows NT 6.1/i.test(userAgent)) os = 'Windows 7';
+            else os = 'Windows';
+        } else if (/Linux/i.test(userAgent)) {
+            os = 'Linux';
+        }
+
+        var browser = 'Unknown Browser';
+        if (/Edg\/([\d\.]+)/i.test(userAgent)) {
+            var m = userAgent.match(/Edg\/([\d\.]+)/i);
+            browser = 'Edge' + (m ? ' ' + m[1].split('.')[0] : '');
+        } else if (/Chrome\/([\d\.]+)/i.test(userAgent) && !/Chromium|OPR/i.test(userAgent)) {
+            var m = userAgent.match(/Chrome\/([\d\.]+)/i);
+            browser = 'Chrome' + (m ? ' ' + m[1].split('.')[0] : '');
+        } else if (/Safari\/([\d\.]+)/i.test(userAgent) && !/Chrome|Chromium|Android/i.test(userAgent)) {
+            var m = userAgent.match(/Version\/([\d\.]+)/i);
+            browser = 'Safari' + (m ? ' ' + m[1] : '');
+        } else if (/Firefox\/([\d\.]+)/i.test(userAgent)) {
+            var m = userAgent.match(/Firefox\/([\d\.]+)/i);
+            browser = 'Firefox' + (m ? ' ' + m[1].split('.')[0] : '');
+        } else if (/OPR\/([\d\.]+)/i.test(userAgent)) {
+            var m = userAgent.match(/OPR\/([\d\.]+)/i);
+            browser = 'Opera' + (m ? ' ' + m[1].split('.')[0] : '');
+        }
+
+        return {
+            appVersion: APP_VERSION,
+            os: os.trim(),
+            browser: browser.trim()
+        };
+    }
+
+    function formatTicketDescription(sections) {
+        if (!sections || typeof sections !== 'object') return '';
+        var parts = [];
+
+        if (sections.currentBehavior && sections.currentBehavior.trim()) {
+            parts.push('**Current Behavior / Issue**\n' + sections.currentBehavior.trim());
+        }
+        if (sections.expectedBehavior && sections.expectedBehavior.trim()) {
+            parts.push('**Expected Behavior**\n' + sections.expectedBehavior.trim());
+        }
+        if (sections.steps && sections.steps.trim()) {
+            parts.push('**Steps to Reproduce**\n' + sections.steps.trim());
+        }
+        if (sections.additionalContext && sections.additionalContext.trim()) {
+            parts.push('**Additional Context / Information**\n' + sections.additionalContext.trim());
+        }
+
+        var env = sections.env || detectClientEnvironment();
+        var envBlock = '**Environment**\n' +
+            '• FGF Mgmt Tool Version: ' + (env.appVersion || APP_VERSION) + '\n' +
+            '• OS + Version: ' + (env.os || 'Unknown OS') + '\n' +
+            '• Browser + Version: ' + (env.browser || 'Unknown Browser');
+        parts.push(envBlock);
+
+        return parts.join('\n\n');
+    }
+
     var gmExports = {
         db: db,
         t: t,
@@ -2230,7 +2303,9 @@
         gvgTasks: {
             GVG_DAILY_TASKS: GVG_DAILY_TASKS,
             buildGvgDailyTaskEmbed: buildGvgDailyTaskEmbed
-        }
+        },
+        detectClientEnvironment: detectClientEnvironment,
+        formatTicketDescription: formatTicketDescription
     };
 
     window.GM = Object.assign(window.GM || {}, gmExports);

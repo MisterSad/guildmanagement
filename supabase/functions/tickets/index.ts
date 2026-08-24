@@ -115,17 +115,45 @@ serve(async (req: Request) => {
     // Dispatch the Discord embed via the existing webhook proxy (SSRF-safe).
     const ticketNo = Number(row.ticket_number);
     const sev = SEVERITY_META[severity] || SEVERITY_META.medium;
+
+    const currentBehavior = (body?.current_behavior ?? "").toString().trim();
+    const expectedBehavior = (body?.expected_behavior ?? "").toString().trim();
+    const steps = (body?.steps ?? "").toString().trim();
+    const additionalContext = (body?.additional_context ?? "").toString().trim();
+    const envObj = (body?.env && typeof body.env === "object") ? (body.env as Record<string, string>) : null;
+
+    const embedFields: Array<{ name: string; value: string; inline?: boolean }> = [
+      { name: "Category", value: CATEGORY_LABEL[category] || category, inline: true },
+      { name: "Severity", value: sev.label, inline: true },
+      { name: "Reporter", value: `${caller.accountId || "unknown"} (${caller.role})`, inline: true },
+      { name: "Guild", value: guild || "Global", inline: true },
+    ];
+
+    if (envObj) {
+      const envText = `• FGF: ${envObj.appVersion || "Unknown"}\n• OS: ${envObj.os || "Unknown"}\n• Browser: ${envObj.browser || "Unknown"}`;
+      embedFields.push({ name: "Environment", value: envText, inline: true });
+    }
+
+    if (currentBehavior) {
+      embedFields.push({ name: "Current Behavior / Issue", value: currentBehavior.length > 1020 ? currentBehavior.slice(0, 1017) + "…" : currentBehavior, inline: false });
+    }
+    if (expectedBehavior) {
+      embedFields.push({ name: "Expected Behavior", value: expectedBehavior.length > 1020 ? expectedBehavior.slice(0, 1017) + "…" : expectedBehavior, inline: false });
+    }
+    if (steps) {
+      embedFields.push({ name: "Steps to Reproduce", value: steps.length > 1020 ? steps.slice(0, 1017) + "…" : steps, inline: false });
+    }
+    if (additionalContext) {
+      embedFields.push({ name: "Additional Context", value: additionalContext.length > 1020 ? additionalContext.slice(0, 1017) + "…" : additionalContext, inline: false });
+    }
+    if (!currentBehavior && !expectedBehavior) {
+      embedFields.push({ name: "Description", value: description.length > 1020 ? description.slice(0, 1017) + "…" : description, inline: false });
+    }
+
     const embed = {
       title: `#TICKET-${String(ticketNo).padStart(4, "0")} — ${title}`,
       color: sev.color,
-      fields: [
-        { name: "Category", value: CATEGORY_LABEL[category] || category, inline: true },
-        { name: "Severity", value: sev.label, inline: true },
-        { name: "Reporter", value: caller.accountId || "unknown", inline: true },
-        { name: "Role", value: caller.role, inline: true },
-        { name: "Guild", value: guild || "Global", inline: true },
-        { name: "Description", value: description.length > 900 ? description.slice(0, 897) + "…" : description },
-      ],
+      fields: embedFields,
       timestamp: new Date().toISOString(),
       footer: { text: "FGF Guild Management Tool — Bug Report" },
     };

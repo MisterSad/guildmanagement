@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import '../gm-utils.js';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -92,6 +93,42 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     const modal = shell.slice(modalStart, modalStart + 8000);
     expect(modal).toContain('gm-modal-overlay');
     expect(modal).toContain('bug-report-submit');
+    expect(modal).toContain('ticket-current-behavior');
+    expect(modal).toContain('ticket-expected-behavior');
+    expect(modal).toContain('ticket-steps');
+    expect(modal).toContain('ticket-additional-context');
+  });
+
+  it('detectClientEnvironment and formatTicketDescription format the structured schema correctly', () => {
+    const env = window.GM.detectClientEnvironment('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
+    expect(env.os).toContain('macOS 10.15.7');
+    expect(env.browser).toContain('Chrome 128');
+    expect(env.appVersion).toBeDefined();
+
+    const winEnv = window.GM.detectClientEnvironment('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0');
+    expect(winEnv.os).toBe('Windows 10/11');
+    expect(winEnv.browser).toContain('Edge 127');
+
+    const iosEnv = window.GM.detectClientEnvironment('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
+    expect(iosEnv.os).toContain('iOS 17.5.1');
+    expect(iosEnv.browser).toContain('Safari 17.5');
+
+    const desc = window.GM.formatTicketDescription({
+      currentBehavior: 'Something broke',
+      expectedBehavior: 'It should work',
+      steps: '1. Click A\n2. Click B',
+      additionalContext: 'Error 500 in console',
+      env: env
+    });
+
+    expect(desc).toContain('**Current Behavior / Issue**\nSomething broke');
+    expect(desc).toContain('**Expected Behavior**\nIt should work');
+    expect(desc).toContain('**Steps to Reproduce**\n1. Click A\n2. Click B');
+    expect(desc).toContain('**Additional Context / Information**\nError 500 in console');
+    expect(desc).toContain('**Environment**');
+    expect(desc).toContain('• FGF Mgmt Tool Version:');
+    expect(desc).toContain('• OS + Version: macOS 10.15.7');
+    expect(desc).toContain('• Browser + Version: Chrome 128');
   });
 
   it('the super-admin tickets console lists and updates statuses', () => {
@@ -108,5 +145,10 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(i18n).toContain('gm_nav_tickets:');
     expect(i18n).toContain("ticket_report_bug:");
     expect(i18n).toContain('ticket_submit:');
+    expect(i18n).toContain('ticket_current_behavior:');
+    expect(i18n).toContain('ticket_expected_behavior:');
+    expect(i18n).toContain('ticket_steps:');
+    expect(i18n).toContain('ticket_additional_context:');
+    expect(i18n).toContain('ticket_env_title:');
   });
 });
