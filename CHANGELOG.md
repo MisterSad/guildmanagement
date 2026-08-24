@@ -2,28 +2,14 @@
 
 ## New
 
-- **Shadowfront Squad Composition Toolbar Right-Aligned Discord Sharing (V3.5.7)**:
-  - **Feature**: Re-architected `.sf-compose-bar` and added `.sf-compose-controls` ensuring the "Share on Discord" button is strictly right-aligned (`margin-left: auto`) across desktop, tablet, and mobile viewports.
+- **Comprehensive Feature & UX Major Update (V3.6)**:
+  - **1-Click Quick-Clear Search Buttons**: Added circular "X" quick clear buttons across all search bars (Members list, Member Portal, Banned Players, Sanctions, OCR filter, SvS, GvG, Arms Race, Glory, Cross-Rank) with zero-overhead CSS and event delegation.
+  - **Game UID Validity Qualification & Red Alerts**: Universal FGF in-game UID validation (`window.GM.getUidStatus(uid)`) verifying numeric 6-10 digit identifiers, and flagging temporary placeholders (`TEMP-*`, `TMP-*`), missing values, and malformed inputs with red warning badges platform-wide.
+  - **Quick Action Header Counter Badge & Roster Filter**: Added `⚠️ X Temp UID` in the Members list header to filter incomplete UIDs in 1 click, alongside `⚠️ Temp / Missing UID` tier filter and `⚠️ Sort: Temp UID First` option.
+  - **Member Edit Guidance**: Live guidance and border feedback when replacing temporary placeholder UIDs with real game UIDs in the member edit dialog.
+  - **Shadowfront Squad Attendance Ratio Visibility**: Added historical Shadowfront attendance fraction (e.g. `4/4`, `3/4`, `0/4`, `-`) to member rows in **Main Participants** and **Substitutes** (`renderAssignedRow` in `shadowfront.js`), matching the Member Pool.
+  - **Shadowfront Toolbar Responsive Alignment**: Re-architected `.sf-compose-bar` and `.sf-compose-controls` ensuring "Share on Discord" is strictly right-aligned across desktop, tablet, and mobile viewports.
   - **Quality Gate**: **460/460 Vitest unit tests green**, 0 TypeScript errors, clean build.
-
-- **Shadowfront Squad Attendance Ratio Visibility Across All Columns (V3.5.6)**:
-  - **Feature**: Added the historical Shadowfront attendance fraction (e.g. `4/4`, `3/4`, `0/4`, `-`) to member rows in both **Main Participants** and **Substitutes** (`renderAssignedRow` in `shadowfront.js`), matching the existing display in the Member Pool.
-  - **Consistency**: All three columns in the Shadowfront Squad Composition view now share identical attendance fraction badges (`.sf-hist-stat`).
-  - **Quality Gate**: **460/460 Vitest unit tests green** (+regression assertions in `tests/shadowfront.test.js`), 0 TypeScript errors, clean build.
-
-- **Game UID Validity Qualification, Red Warning Alerting & Roster Filtering (V3.5.5)**:
-  - **Feature**: Added universal FGF in-game UID validation (`window.GM.getUidStatus(uid)`) verifying numeric 6-10 digit identifiers, and flagging temporary import placeholders (`TEMP-*`, `TMP-*`), missing values, and malformed inputs.
-  - **Platform-Wide Red Warning Alerts**: Temporary and invalid UIDs are prominently highlighted in red with warning icons (`.gm-uid-invalid`) across Roster Cards (`memberTileHtml`), Tactical Force Matrix (`buildMilitaryMatrixHtml`), and OCR review tables.
-  - **Quick Action Header Counter Badge**: Added `⚠️ X Temp UID` in the Members list header, allowing admins to isolate all incomplete UIDs in 1 click.
-  - **Roster Filter & Sort**: Added `⚠️ Temp / Missing UID` tier filter and `⚠️ Sort: Temp UID First` option for rapid guild roster onboarding and auditing.
-  - **Edit Modal Assistance**: Added live guidance and border feedback when replacing temporary placeholder UIDs with real game UIDs.
-  - **Quality Gate**: **459/459 Vitest unit tests green** (+regression assertions in `tests/uid_validation.test.js`), 0 TypeScript errors, clean build.
-
-- **Quick-Clear Search Buttons Across All Search Inputs (V3.5.4)**:
-  - **Feature**: Added a 1-click circular "X" quick clear button (`<button class="gm-search-clear-btn">`) to the Members List search bar (`#member-search-admin`) and systematically across all search inputs (Member Portal, Banned Players, Sanctions, OCR filter, SvS, GvG, Arms Race, Glory, Cross-Rank).
-  - **Zero-Overhead Display**: Dual CSS `:not(:placeholder-shown)` and real-time JS input event delegation (`shell.js`), auto-displaying the button only when text is entered.
-  - **Material Symbols Rounded**: Standardized on webfont `<span class="material-symbols-rounded">cancel</span>` for resilient, zero-flicker rendering across static and dynamically generated innerHTML.
-  - **Quality Gate**: **450/450 Vitest unit tests green** (+regression assertions in `tests/search_clear.test.js`), 0 TypeScript errors, clean build.
 
 - **Bug-Reporting Ticketing System (V3.5.3)**:
   - **Report a Bug**: any `guild_admin`, `server_admin`, or `super_admin` can report a bug from the top-bar / desktop sidebar button.
