@@ -2308,6 +2308,8 @@
     window.GM.parseGeminiJson = parseGeminiJson;
     window.GM.getOcrModel = getOcrModel;
     window.GM.fetchGuildMembers = fetchGuildMembers;
+    window.GM.renderGuildMembers = renderGuildMembers;
+    window.GM.setGuildMembersForTest = function (list) { guildMembers = list; };
 
     // Document-level event delegation for OCR trigger buttons
     document.addEventListener('click', function (e) {
@@ -2925,6 +2927,10 @@
                         var uid = item.uid || (item.ocrPlayer ? item.ocrPlayer.uid : '') || '';
                         var isOtherGuild = item.status === 'other_guild';
                         var isChecked = !isOtherGuild;
+                        var uidStat = window.GM && window.GM.getUidStatus ? window.GM.getUidStatus(uid) : { valid: true };
+                        var uidInputStyle = !uidStat.valid
+                            ? 'padding:0.25rem 0.5rem; font-size:0.8rem; width:100%; max-width:120px; border-color:rgba(239,68,68,0.7); background:rgba(239,68,68,0.06);'
+                            : 'padding:0.25rem 0.5rem; font-size:0.8rem; width:100%; max-width:120px;';
 
                         var badgeHtml = isOtherGuild
                             ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild (Unchecked)</span>'
@@ -2933,7 +2939,7 @@
                         newHtml += '<tr class="ocr-row ocr-row--new" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
                             '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="new" ' + (isChecked ? 'checked' : '') + '></td>' +
                             '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
-                            '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' + idx + '" value="' + esc(uid) + '" placeholder="TEMP (auto)" style="padding:0.25rem 0.5rem; font-size:0.8rem; width:100%; max-width:120px;"></td>' +
+                            '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' + idx + '" value="' + esc(uid) + '" placeholder="TEMP (auto)" style="' + uidInputStyle + '"></td>' +
                             '<td class="ocr-cell-metric">' +
                                 '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
                                 '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
@@ -4639,7 +4645,14 @@
             var memberG = m.guild || 'ALPHA';
             var matchGuild = (memberG === currentG);
             var matchSearch = (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qAdmin) !== -1;
-            var matchTier = (tAdmin === 'ALL') || (window.GM.getPowerTier(m.overall_power, maxPower) === tAdmin);
+            var matchTier = false;
+            if (tAdmin === 'ALL') {
+                matchTier = true;
+            } else if (tAdmin === 'TEMP_UID') {
+                matchTier = window.GM && window.GM.isInvalidOrTempUid ? window.GM.isInvalidOrTempUid(m.uid) : false;
+            } else {
+                matchTier = (window.GM.getPowerTier(m.overall_power, maxPower) === tAdmin);
+            }
             return matchGuild && matchSearch && matchTier;
         });
         var filteredMember = guildMembers.filter(function (m) {
@@ -4652,7 +4665,15 @@
 
         function sortMembers(list, sortVal) {
             return list.slice().sort(function (a, b) {
-                if (sortVal === 'pseudo_asc') {
+                if (sortVal === 'invalid_uid') {
+                    var aInv = (window.GM && window.GM.isInvalidOrTempUid) ? window.GM.isInvalidOrTempUid(a.uid) : false;
+                    var bInv = (window.GM && window.GM.isInvalidOrTempUid) ? window.GM.isInvalidOrTempUid(b.uid) : false;
+                    if (aInv && !bInv) return -1;
+                    if (!aInv && bInv) return 1;
+                    var pA = parseInt(a.overall_power) || 0;
+                    var pB = parseInt(b.overall_power) || 0;
+                    return pB - pA;
+                } else if (sortVal === 'pseudo_asc') {
                     return a.pseudo.localeCompare(b.pseudo);
                 } else if (sortVal === 'pseudo_desc') {
                     return b.pseudo.localeCompare(a.pseudo);
@@ -4855,13 +4876,18 @@
                     rallyRoleChip = '<span class="gm-chip" style="background:rgba(148,163,184,0.12); color:var(--text-muted); font-size:0.7rem; border:1px solid var(--border-soft); padding:0.1rem 0.45rem; gap:0.25rem;" title="Rally Reinforcement / Joiner"><i class="ph ph-users"></i> Rally Joiner</span>';
                 }
 
+                var mUidStatus = window.GM && window.GM.getUidStatus ? window.GM.getUidStatus(m.uid) : { valid: true };
+                var mUidHtml = !mUidStatus.valid
+                    ? '<div style="font-size:0.7rem; margin-top:2px;" class="gm-mono gm-uid-invalid" title="' + esc(mUidStatus.label + ' — ' + (mUidStatus.reason || 'Click Edit to set real game UID')) + '"><i class="ph-bold ph-warning-circle"></i> UID ' + esc(uidVal) + '</div>'
+                    : '<div style="font-size:0.7rem; color:var(--text-muted);" class="gm-mono">UID ' + esc(uidVal) + '</div>';
+
                 return '<tr style="border-bottom:1px solid var(--border-soft); transition:background 0.15s ease;">' +
                     '<td style="padding:0.65rem 0.75rem;">' +
                         '<div style="display:flex; align-items:center; gap:0.5rem;">' +
                             '<div class="gm-avatar gm-avatar-squircle" style="width:28px; height:28px; font-size:0.75rem;">' + esc(initial) + '</div>' +
                             '<div>' +
                                 '<div style="font-weight:600; font-size:0.88rem; color:var(--fg);">' + esc(m.pseudo) + '</div>' +
-                                '<div style="font-size:0.7rem; color:var(--text-muted);" class="gm-mono">UID ' + esc(uidVal) + '</div>' +
+                                mUidHtml +
                             '</div>' +
                         '</div>' +
                     '</td>' +
@@ -4914,6 +4940,37 @@
 
         if (guildMemberCount)  guildMemberCount.textContent  = filteredAdmin.length;
         if (guildMemberCountM) guildMemberCountM.textContent = filteredMember.length;
+
+        // Count members with temporary or invalid UIDs in current active guild
+        var tempUidCount = 0;
+        guildMembers.forEach(function (m) {
+            var memberG = m.guild || 'ALPHA';
+            if (memberG === currentG && window.GM && window.GM.isInvalidOrTempUid && window.GM.isInvalidOrTempUid(m.uid)) {
+                tempUidCount++;
+            }
+        });
+
+        var tempUidBadge = document.getElementById('guild-member-temp-uid-badge');
+        var tempUidCountSpan = document.getElementById('guild-member-temp-uid-count');
+        if (tempUidBadge && tempUidCountSpan) {
+            if (tempUidCount > 0) {
+                tempUidCountSpan.textContent = tempUidCount;
+                tempUidBadge.style.display = 'inline-flex';
+                tempUidBadge.setAttribute('title', tempUidCount + ' member(s) with temporary or invalid UID. Click to filter.');
+                if (!tempUidBadge.hasAttribute('data-wired')) {
+                    tempUidBadge.setAttribute('data-wired', '1');
+                    tempUidBadge.addEventListener('click', function () {
+                        var tierSelect = document.getElementById('member-tier-filter-admin');
+                        if (tierSelect) {
+                            tierSelect.value = (tierSelect.value === 'TEMP_UID') ? 'ALL' : 'TEMP_UID';
+                            tierSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                }
+            } else {
+                tempUidBadge.style.display = 'none';
+            }
+        }
 
         var viewMode = window.adminMembersViewMode || 'cards';
 
@@ -5037,6 +5094,11 @@
                 ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;"><button type="button" class="guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" style="font-size:0.68rem; color:var(--accent); background:rgba(99,102,241,0.08); border:1px dashed rgba(99,102,241,0.3); border-radius:4px; padding:0.05rem 0.4rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-plus-circle"></i> + Declare Military Stats</button></div>'
                 : '');
 
+        var uidStatus = window.GM && window.GM.getUidStatus ? window.GM.getUidStatus(m.uid) : { valid: true };
+        var uidDisplayHtml = !uidStatus.valid
+            ? '<span class="gm-mono gm-uid-text gm-uid-invalid" title="' + esc(uidStatus.label + ' — ' + (uidStatus.reason || 'Click Edit to set real game UID')) + '"><i class="ph-bold ph-warning-circle"></i> UID ' + esc(uidVal) + '</span>'
+            : '<span class="gm-mono gm-uid-text">UID ' + esc(uidVal) + '</span>';
+
         return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
                     '<div class="gm-avatar gm-avatar-squircle">' + esc(initial) + '</div>' +
@@ -5050,7 +5112,7 @@
                         '</div>' +
                         '<div class="gm-member-sub-info" style="display:flex; flex-direction:column; gap:0.2rem; align-items:flex-start;">' +
                             '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
-                                '<span class="gm-mono gm-uid-text">UID ' + esc(uidVal) + '</span>' +
+                                uidDisplayHtml +
                                 tierBadge +
                             '</div>' +
                             tacticalHtml +
@@ -5375,6 +5437,12 @@
                 '</div></div>';
         }
 
+        var uidStat = window.GM && window.GM.getUidStatus ? window.GM.getUidStatus(member.uid) : { valid: true };
+        var isTempUid = !uidStat.valid;
+        var uidHelperHtml = isTempUid
+            ? '<div id="edit-uid-helper" style="font-size:0.75rem; color:#f87171; margin-top:0.35rem; display:flex; align-items:center; gap:0.25rem;"><i class="ph ph-warning"></i> ' + esc(uidStat.label) + ' (' + esc(uidStat.reason || 'Enter real 6-10 digit game UID') + ')</div>'
+            : '';
+
         overlay.innerHTML =
             '<div class="confirm-card glass-card" style="max-width: 480px; width: 95vw;">' +
                 '<div class="confirm-icon"><i class="ph-fill ph-pencil-simple text-accent"></i></div>' +
@@ -5392,8 +5460,9 @@
                         '<label for="edit-uid">UID</label>' +
                         '<div class="input-wrapper">' +
                             '<i class="ph ph-identification-badge"></i>' +
-                            '<input type="text" id="edit-uid" value="' + esc(member.uid || '') + '">' +
+                            '<input type="text" id="edit-uid" value="' + esc(member.uid || '') + '" placeholder="e.g. 1917131" ' + (isTempUid ? 'style="border-color:rgba(239,68,68,0.7);"' : '') + '>' +
                         '</div>' +
+                        uidHelperHtml +
                     '</div>' +
                     '<div style="display: flex; gap: 1rem;">' +
                         '<div class="input-group" style="flex: 1;">' +
@@ -5461,6 +5530,27 @@
 
         document.getElementById('edit-cancel').addEventListener('click', close);
         overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+
+        var editUidInput = document.getElementById('edit-uid');
+        if (editUidInput) {
+            editUidInput.addEventListener('input', function () {
+                var v = editUidInput.value.trim();
+                var st = window.GM && window.GM.getUidStatus ? window.GM.getUidStatus(v) : { valid: true };
+                var helper = document.getElementById('edit-uid-helper');
+                if (!st.valid) {
+                    editUidInput.style.borderColor = 'rgba(239,68,68,0.7)';
+                    if (helper) {
+                        helper.style.display = 'flex';
+                        helper.innerHTML = '<i class="ph ph-warning"></i> ' + esc(st.label) + ' (' + esc(st.reason || 'Enter real 6-10 digit game UID') + ')';
+                    }
+                } else {
+                    editUidInput.style.borderColor = 'rgba(52,211,153,0.7)';
+                    if (helper) {
+                        helper.style.display = 'none';
+                    }
+                }
+            });
+        }
 
         overlay.querySelectorAll('.delete-history-btn').forEach(function (btn) {
             btn.addEventListener('click', async function () {

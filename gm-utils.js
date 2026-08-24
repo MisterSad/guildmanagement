@@ -24,7 +24,7 @@
     // navigation bar. Bumped on every release alongside the Discord changelog
     // version (see AGENTS.md §6: the version is chosen by the owner and must be
     // reflected here AND in DISCORD_CHANGELOG.md systematically).
-    var APP_VERSION = 'V3.5.4';
+    var APP_VERSION = 'V3.5.5';
 
     var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
     var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
@@ -401,6 +401,33 @@
         if (v.length > 20)   return 'validation_uid_too_long';
         if (!/^[0-9]+$/.test(v)) return 'validation_uid_not_numeric';
         return null;
+    }
+
+    // ── UID Status & Game Validity (6-10 digits FGF game UID) ───────────────
+    // Evaluates whether a player UID is a valid in-game numeric identifier,
+    // a temporary import placeholder (TEMP-*), missing, or malformed.
+    function getUidStatus(uid) {
+        if (uid === null || uid === undefined || uid === '' || uid === '-') {
+            return { valid: false, status: 'missing', label: 'Missing UID', reason: 'UID is not set' };
+        }
+        var clean = String(uid).trim();
+        if (clean.length === 0 || clean === '-') {
+            return { valid: false, status: 'missing', label: 'Missing UID', reason: 'UID is not set' };
+        }
+        if (/^TEMP[-_]/i.test(clean) || /^TMP[-_]/i.test(clean) || clean.toUpperCase() === 'TEMP') {
+            return { valid: false, status: 'temp', label: 'Temporary UID', reason: 'Temporary placeholder UID generated during import' };
+        }
+        if (!/^[0-9]+$/.test(clean)) {
+            return { valid: false, status: 'nan', label: 'Invalid Format', reason: 'UID must contain only digits (no letters or symbols)' };
+        }
+        if (clean.length < 6 || clean.length > 10) {
+            return { valid: false, status: 'length', label: 'Invalid Length', reason: 'FGF game UID must be between 6 and 10 digits' };
+        }
+        return { valid: true, status: 'valid', label: 'Valid Game UID', reason: null };
+    }
+
+    function isInvalidOrTempUid(uid) {
+        return !getUidStatus(uid).valid;
     }
 
     // ── Formatage numérique avec séparateur de milliers ──────────────────────
@@ -2316,6 +2343,8 @@
         closeTermsModal: closeTermsModal,
         validatePseudo: validatePseudo,
         validateUid: validateUid,
+        getUidStatus: getUidStatus,
+        isInvalidOrTempUid: isInvalidOrTempUid,
         formatNumber: formatNumber,
         parseNumber: parseNumber,
         parseGeminiJson: parseGeminiJson,

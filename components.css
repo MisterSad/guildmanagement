@@ -901,6 +901,49 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     color: var(--fg-dim);
 }
 
+.gm-uid-text.gm-uid-invalid,
+.gm-uid-invalid {
+    color: #f87171 !important;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-sm, 4px);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+}
+
+.gm-uid-invalid i,
+.gm-uid-invalid .material-symbols-rounded {
+    font-size: 0.85rem;
+    color: #f87171;
+}
+
+.gm-uid-counter-badge {
+    background: rgba(239, 68, 68, 0.14);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    padding: 0.18rem 0.55rem;
+    border-radius: var(--radius-pill, 999px);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: all 0.18s ease;
+}
+
+.gm-uid-counter-badge:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
 .gm-power-tier-chip {
     font-size: 0.74rem;
     font-weight: 700;

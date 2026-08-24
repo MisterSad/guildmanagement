@@ -2,6 +2,14 @@
 
 ## New
 
+- **Game UID Validity Qualification, Red Warning Alerting & Roster Filtering (V3.5.5)**:
+  - **Feature**: Added universal FGF in-game UID validation (`window.GM.getUidStatus(uid)`) verifying numeric 6-10 digit identifiers, and flagging temporary import placeholders (`TEMP-*`, `TMP-*`), missing values, and malformed inputs.
+  - **Platform-Wide Red Warning Alerts**: Temporary and invalid UIDs are prominently highlighted in red with warning icons (`.gm-uid-invalid`) across Roster Cards (`memberTileHtml`), Tactical Force Matrix (`buildMilitaryMatrixHtml`), and OCR review tables.
+  - **Quick Action Header Counter Badge**: Added `⚠️ X Temp UID` in the Members list header, allowing admins to isolate all incomplete UIDs in 1 click.
+  - **Roster Filter & Sort**: Added `⚠️ Temp / Missing UID` tier filter and `⚠️ Sort: Temp UID First` option for rapid guild roster onboarding and auditing.
+  - **Edit Modal Assistance**: Added live guidance and border feedback when replacing temporary placeholder UIDs with real game UIDs.
+  - **Quality Gate**: **459/459 Vitest unit tests green** (+regression assertions in `tests/uid_validation.test.js`), 0 TypeScript errors, clean build.
+
 - **Quick-Clear Search Buttons Across All Search Inputs (V3.5.4)**:
   - **Feature**: Added a 1-click circular "X" quick clear button (`<button class="gm-search-clear-btn">`) to the Members List search bar (`#member-search-admin`) and systematically across all search inputs (Member Portal, Banned Players, Sanctions, OCR filter, SvS, GvG, Arms Race, Glory, Cross-Rank).
   - **Zero-Overhead Display**: Dual CSS `:not(:placeholder-shown)` and real-time JS input event delegation (`shell.js`), auto-displaying the button only when text is entered.
