@@ -22,6 +22,26 @@ function makeJson(req: Request) {
 
 const ADMIN_ROLES = ["super_admin", "server_admin", "guild_admin"];
 
+// SSRF-safe check mirroring discord-webhook-proxy: only real Discord webhook
+// URLs are accepted, and redirects are never followed.
+function isValidDiscordWebhook(url: string): boolean {
+  if (!url || typeof url !== "string") return false;
+  try {
+    const clean = url.trim();
+    const u = new URL(clean.startsWith("http") ? clean : "https://" + clean);
+    return (
+      u.protocol === "https:" &&
+      (u.hostname === "discord.com" ||
+        u.hostname === "discordapp.com" ||
+        u.hostname.endsWith(".discord.com") ||
+        u.hostname.endsWith(".discordapp.com")) &&
+      u.pathname.includes("/webhooks/")
+    );
+  } catch {
+    return false;
+  }
+}
+
 const SEVERITY_META: Record<string, { label: string; color: number }> = {
   low:     { label: "Low",     color: 5763719 }, // slate/grey
   medium:  { label: "Medium",  color: 15105570 }, // amber
@@ -111,23 +131,23 @@ serve(async (req: Request) => {
     };
 
     let webhookOk = false;
-    if (TICKET_WEBHOOK_URL) {
+    if (TICKET_WEBHOOK_URL && isValidDiscordWebhook(TICKET_WEBHOOK_URL)) {
       try {
-        const proxyRes = await admin.functions.invoke("discord-webhook-proxy", {
-          body: {
-            webhookUrl: TICKET_WEBHOOK_URL,
-            eventPrefix: "ticket",
-            guild: guild,
-            payload: { embeds: [embed] },
-          },
+        const discordRes = await fetch(TICKET_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] }),
+          redirect: "error",
         });
-        webhookOk = !!(proxyRes?.data && proxyRes.data.ok);
+        webhookOk = discordRes.ok || discordRes.status === 204;
         if (!webhookOk) {
-          logger.warn("Ticket webhook dispatch failed", { ticketNo });
+          logger.warn("Ticket Discord dispatch failed", { ticketNo, status: discordRes.status });
         }
       } catch (e) {
-        logger.warn("Ticket webhook invoke error", undefined, { ticketNo, message: String((e as Error)?.message || e) });
+        logger.warn("Ticket Discord dispatch error", undefined, { ticketNo, message: String((e as Error)?.message || e) });
       }
+    } else {
+      logger.warn("TICKET_WEBHOOK_URL missing or invalid", { ticketNo });
     }
 
     // Audit log (service role can write to system_audit_logs).

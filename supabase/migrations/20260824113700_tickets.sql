@@ -120,7 +120,8 @@ BEGIN
         COALESCE(NULLIF(p_severity, ''), 'medium'),
         'open'
     )
-    RETURNING id, ticket_number, status INTO v_ticket_id, v_ticket_number, v_status;
+    RETURNING tickets.id, tickets.ticket_number, tickets.status
+    INTO v_ticket_id, v_ticket_number, v_status;
 
     RETURN QUERY SELECT v_ticket_number, v_ticket_id, v_status;
 END;
