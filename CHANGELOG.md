@@ -2,6 +2,10 @@
 
 ## New
 
+- **Shadowfront Squad Composition Toolbar Right-Aligned Discord Sharing (V3.5.7)**:
+  - **Feature**: Re-architected `.sf-compose-bar` and added `.sf-compose-controls` ensuring the "Share on Discord" button is strictly right-aligned (`margin-left: auto`) across desktop, tablet, and mobile viewports.
+  - **Quality Gate**: **460/460 Vitest unit tests green**, 0 TypeScript errors, clean build.
+
 - **Shadowfront Squad Attendance Ratio Visibility Across All Columns (V3.5.6)**:
   - **Feature**: Added the historical Shadowfront attendance fraction (e.g. `4/4`, `3/4`, `0/4`, `-`) to member rows in both **Main Participants** and **Substitutes** (`renderAssignedRow` in `shadowfront.js`), matching the existing display in the Member Pool.
   - **Consistency**: All three columns in the Shadowfront Squad Composition view now share identical attendance fraction badges (`.sf-hist-stat`).

@@ -844,19 +844,19 @@
             var avgRate = rateCount > 0 ? Math.round((rateSum / rateCount) * 100) + '%' : 'N/A';
 
             html += '<div class="sf-sub-panel active">';
-            html += '<div class="sf-compose-bar" style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem;">' +
-                '<div class="sf-compose-summary" style="display:flex; gap:0.5rem; flex-wrap:wrap;">' +
+            html += '<div class="sf-compose-bar">' +
+                '<div class="sf-compose-summary">' +
                     '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + t('sf_pool') + ': ' + poolPseudos.length + '</span>' +
                     '<span class="stat-chip"><i class="ph-fill ph-shield-check"></i> ' + t('sf_participants') + ': ' + confirmedParticipants.length + '/20</span>' +
                     '<span class="stat-chip"><i class="ph-fill ph-clock-countdown"></i> ' + t('sf_reserves') + ': ' + confirmedReserves.length + '/10</span>' +
                     '<span class="stat-chip"><i class="ph-fill ph-chart-line"></i> ' + t('sf_avg_rate') + ': ' + avgRate + '</span>' +
                 '</div>' +
-                '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
+                '<div class="sf-compose-controls">' +
                     '<div class="sf-sort-toggle" style="display:flex; gap:0.25rem;">' +
                         '<button class="gm-btn gm-btn-xs sf-sort-btn' + (sfSort === 'rate' ? ' sf-sort-active' : '') + '" data-sort="rate" title="' + t('sf_sort_rate') + '"><i class="ph ph-chart-pie"></i> ' + t('sf_sort_rate') + '</button>' +
                         '<button class="gm-btn gm-btn-xs sf-sort-btn' + (sfSort === 'power' ? ' sf-sort-active' : '') + '" data-sort="power" title="' + t('sf_sort_power') + '"><i class="ph ph-lightning"></i> ' + t('sf_sort_power') + '</button>' +
                     '</div>' +
-                    '<button class="gm-btn sf-share-discord-btn" style="display: inline-flex; align-items: center; gap: 0.4rem;"><i class="ph ph-paper-plane-tilt"></i> ' + t('sf_share_discord') + '</button>' +
+                    '<button class="gm-btn sf-share-discord-btn" style="margin-left: auto;"><i class="ph ph-paper-plane-tilt"></i> ' + t('sf_share_discord') + '</button>' +
                 '</div>' +
             '</div>';
             html += '<div class="sf-layout">';

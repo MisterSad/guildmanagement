@@ -1135,6 +1135,38 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .squad-chip.squad1 { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
 .squad-chip.squad2 { background: rgba(139,92,246,0.15); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
 
+/* ─── Shadowfront Composition Toolbar ─── */
+.sf-compose-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+.sf-compose-summary {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.sf-compose-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.sf-share-discord-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
 /* Hide the static Shadowfront banner as each squad will have its own dynamic banner */
 #event-shadowfront .gm-event-banner {
     display: none;
