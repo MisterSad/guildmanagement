@@ -11,8 +11,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="styles.css?v=7">
     <link rel="stylesheet" href="tokens.css?v=5">
-    <link rel="stylesheet" href="components.css?v=28">
-    <link rel="stylesheet" href="shell.css?v=18">
+    <link rel="stylesheet" href="components.css?v=29">
+    <link rel="stylesheet" href="shell.css?v=19">
     <link rel="icon" type="image/png" href="favicon.png?v=2">
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#141416">
@@ -910,6 +910,9 @@
                                 <div class="gm-input-with-icon" style="flex: 2;">
                                     <i class="ph ph-magnifying-glass gm-icon"></i>
                                     <input type="text" id="member-search-admin" class="gm-input" data-i18n-placeholder="search_placeholder" placeholder="Search username, UID...">
+                                    <button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1">
+                                        <span class="material-symbols-rounded">cancel</span>
+                                    </button>
                                 </div>
                                 <select id="member-tier-filter-admin" class="gm-input" style="flex: 1; min-width: 120px; padding: 0.25rem 0.5rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-md); color: var(--text-normal);">
                                     <option value="ALL">All Tiers</option>
@@ -998,6 +1001,9 @@
                                 <input type="text" id="banned-search" class="gm-input"
                                     data-i18n-placeholder="search_placeholder"
                                     placeholder="Search username, UID...">
+                                <button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1">
+                                    <span class="material-symbols-rounded">cancel</span>
+                                </button>
                             </div>
                         </div>
                         <div id="banned-list-container">
@@ -1449,9 +1455,12 @@
                         </div>
 
                         <div class="search-bar-row slide-up" style="display: flex; gap: 0.5rem; align-items: center;">
-                            <div class="input-wrapper search-wrapper" style="flex: 2; margin: 0;">
-                                <i class="ph ph-magnifying-glass"></i>
+                            <div class="input-wrapper search-wrapper" style="flex: 2; margin: 0; position: relative;">
+                                <i class="ph ph-magnifying-glass search-icon"></i>
                                 <input type="text" id="member-search-member" data-i18n-placeholder="search_placeholder" placeholder="Search...">
+                                <button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1">
+                                    <span class="material-symbols-rounded">cancel</span>
+                                </button>
                             </div>
                             <select id="member-tier-filter-member" style="flex: 1; max-width: 140px; padding: 0.65rem 0.5rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-md); color: var(--text-normal); font-family: var(--font-family-body); font-size: 0.88rem;">
                                 <option value="ALL">All Tiers</option>
@@ -1567,7 +1576,10 @@
                     <div class="ocr-filter-bar" style="margin-bottom: 0.65rem;">
                         <div style="position: relative; display: flex; align-items: center;">
                             <i class="ph ph-magnifying-glass" style="position: absolute; left: 0.75rem; color: var(--text-muted); font-size: 0.95rem; pointer-events: none;"></i>
-                            <input type="search" id="ocr-filter-search" class="gm-input" placeholder="Quick search player name (e.g. Trader)..." style="width: 100%; padding: 0.4rem 0.75rem 0.4rem 2.2rem; font-size: 0.82rem; border-radius: var(--radius-md);">
+                            <input type="text" id="ocr-filter-search" class="gm-input" placeholder="Quick search player name (e.g. Trader)..." style="width: 100%; padding: 0.4rem 2.2rem 0.4rem 2.2rem; font-size: 0.82rem; border-radius: var(--radius-md);">
+                            <button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1">
+                                <span class="material-symbols-rounded">cancel</span>
+                            </button>
                         </div>
                     </div>
 
@@ -1617,25 +1629,25 @@
     <!-- TODO(phase-3): vendor supabase-js and phosphor-icons via Vite, drop CDN origins from CSP -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>
-    <script src="gm-utils.js?v=43"></script>
+    <script src="gm-utils.js?v=44"></script>
     <script src="push.js?v=5"></script>
-    <script src="events.js?v=28"></script>
+    <script src="events.js?v=29"></script>
     <script src="shadowfront.js?v=32"></script>
-    <script src="armsrace.js?v=13"></script>
-    <script src="glory.js?v=20"></script>
+    <script src="armsrace.js?v=14"></script>
+    <script src="glory.js?v=21"></script>
     <script src="history.js?v=26"></script>
     <script src="stats.js?v=56"></script>
     <script src="sanctions.js?v=14"></script>
     <script src="overview.js?v=18"></script>
-    <script src="cross-rank.js?v=6"></script>
+    <script src="cross-rank.js?v=7"></script>
     <script src="tickets.js?v=2"></script>
-    <script src="svs-matchup.js?v=11"></script>
-    <script src="gvg-matchup.js?v=10"></script>
+    <script src="svs-matchup.js?v=12"></script>
+    <script src="gvg-matchup.js?v=11"></script>
     <script src="subscription.js?v=13"></script>
     <script src="badges.js?v=6"></script>
     <script src="portal.js?v=13"></script>
     <script src="gm-help.js?v=3"></script>
     <script src="app.js?v=79"></script>
-    <script src="shell.js?v=37"></script>
+    <script src="shell.js?v=38"></script>
 </body>
 </html>

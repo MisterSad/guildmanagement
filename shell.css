@@ -888,6 +888,60 @@ html, body {
     background: var(--md-sys-color-surface-container-high);
 }
 
+/* ── Search Input Quick Clear Button ─────────────────────── */
+.gm-search-clear-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--md-sys-color-on-surface-dim, #8e918f);
+    padding: 0.35rem;
+    cursor: pointer;
+    border-radius: var(--md-sys-shape-corner-small, 6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    line-height: 1;
+    z-index: 5;
+    transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.gm-search-clear-btn .material-symbols-rounded,
+.gm-search-clear-btn .ph {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.gm-search-clear-btn:hover {
+    color: var(--md-sys-color-on-surface, #fff);
+    background: var(--md-sys-color-surface-container-high, rgba(255, 255, 255, 0.1));
+    transform: translateY(-50%) scale(1.08);
+}
+
+.gm-search-clear-btn:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+/* Auto-show clear button when input is not empty (CSS selector + JS gm-visible) */
+.gm-search-clear-btn.gm-visible,
+.gm-input:not(:placeholder-shown) ~ .gm-search-clear-btn,
+input:not(:placeholder-shown) ~ .gm-search-clear-btn {
+    display: flex !important;
+}
+
+/* Ensure typed search text doesn't overlap with the clear button */
+.gm-input-with-icon:has(.gm-search-clear-btn) .gm-input,
+.gm-input-with-icon:has([data-gm-search-clear]) .gm-input,
+.search-wrapper:has(.gm-search-clear-btn) input,
+.ocr-filter-bar:has(.gm-search-clear-btn) input,
+.gm-input-with-clear .gm-input {
+    padding-right: 2.5rem;
+}
+
+
 .gm-login-error {
     display: flex;
     align-items: center;

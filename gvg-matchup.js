@@ -325,6 +325,7 @@
                     '<div class="gm-input-with-icon" style="flex:1;">' +
                         '<i class="ph ph-magnifying-glass gm-icon"></i>' +
                         '<input type="text" id="gvg-matchup-search" class="gm-input" value="' + esc(state.query) + '" placeholder="Search player pseudo or guild name...">' +
+                        '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><span class="material-symbols-rounded">cancel</span></button>' +
                     '</div>' +
                 '</div>' +
             '</div>';

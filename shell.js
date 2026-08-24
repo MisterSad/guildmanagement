@@ -69,6 +69,7 @@
         observeActiveTab();
         observeViewport();
         wireLoginPasswordToggle();
+        wireSearchClearButtons();
     });
 
     // ── Events tabs-pill : injectée dans chaque event panel ─────────────────
@@ -137,6 +138,40 @@
                 var matIcon = btn.querySelector('.material-symbols-rounded');
                 if (matIcon) matIcon.textContent = isPwd ? 'visibility_off' : 'visibility';
             });
+        });
+    }
+
+    // ── Search inputs : quick clear button handler (delegated) ────────────
+    function wireSearchClearButtons() {
+        // Dynamic visibility handler for search clear buttons
+        document.addEventListener('input', function (e) {
+            var input = e.target;
+            if (!input || input.tagName !== 'INPUT') return;
+            var wrap = input.closest('.gm-input-with-icon, .input-wrapper, .search-wrapper, .ocr-filter-bar') || input.parentElement;
+            if (!wrap) return;
+            var clearBtn = wrap.querySelector('[data-gm-search-clear], .gm-search-clear-btn');
+            if (!clearBtn) return;
+            if (input.value && input.value.trim().length > 0) {
+                clearBtn.classList.add('gm-visible');
+            } else {
+                clearBtn.classList.remove('gm-visible');
+            }
+        });
+
+        // Clear and trigger re-render on button click
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-gm-search-clear], .gm-search-clear-btn');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var wrap = btn.closest('.gm-input-with-icon, .input-wrapper, .search-wrapper, .ocr-filter-bar') || btn.parentElement;
+            var input = wrap ? wrap.querySelector('input') : null;
+            if (!input) return;
+            input.value = '';
+            btn.classList.remove('gm-visible');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.focus();
         });
     }
 

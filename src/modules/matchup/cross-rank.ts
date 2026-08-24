@@ -324,6 +324,7 @@ export class CrossRankView {
           <div class="gm-input-with-icon" style="flex:2; min-width:220px;">
             <i class="ph ph-magnifying-glass gm-icon"></i>
             <input type="text" id="cross-rank-search" class="gm-input" placeholder="Search candidate, server #, or guild..." value="${escapeHTML(this.state.query)}">
+            <button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><span class="material-symbols-rounded">cancel</span></button>
           </div>
           <select id="cross-rank-server" class="gm-input" style="flex:1; min-width:140px;">
             <option value="ALL">All Migration Servers</option>

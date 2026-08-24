@@ -2,6 +2,12 @@
 
 ## New
 
+- **Quick-Clear Search Buttons Across All Search Inputs (V3.5.4)**:
+  - **Feature**: Added a 1-click circular "X" quick clear button (`<button class="gm-search-clear-btn">`) to the Members List search bar (`#member-search-admin`) and systematically across all search inputs (Member Portal, Banned Players, Sanctions, OCR filter, SvS, GvG, Arms Race, Glory, Cross-Rank).
+  - **Zero-Overhead Display**: Dual CSS `:not(:placeholder-shown)` and real-time JS input event delegation (`shell.js`), auto-displaying the button only when text is entered.
+  - **Material Symbols Rounded**: Standardized on webfont `<span class="material-symbols-rounded">cancel</span>` for resilient, zero-flicker rendering across static and dynamically generated innerHTML.
+  - **Quality Gate**: **450/450 Vitest unit tests green** (+regression assertions in `tests/search_clear.test.js`), 0 TypeScript errors, clean build.
+
 - **Bug-Reporting Ticketing System (V3.5.3)**:
   - **Report a Bug**: any `guild_admin`, `server_admin`, or `super_admin` can report a bug from the top-bar / desktop sidebar button.
   - **Structured Ticket Schema & Media Attachments**: dedicated modal form fields for Title, Current Behavior / Issue, Expected Behavior, Steps to Reproduce, Additional Context / Information, and Auto-detected Client Environment (FGF Version, OS + Version, Browser + Version).

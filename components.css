@@ -164,6 +164,45 @@
     font-size: 1.1rem;
 }
 .gm-input-with-icon .gm-input { padding-left: 2.5rem; }
+.gm-search-clear-btn {
+    position: absolute;
+    right: 8px; top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--fg-dim);
+    padding: .35rem;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    line-height: 1;
+    z-index: 5;
+    transition: color .18s ease, background .18s ease;
+}
+.gm-search-clear-btn .material-symbols-rounded,
+.gm-search-clear-btn .ph {
+    font-size: 1.25rem;
+    display: block;
+}
+.gm-search-clear-btn:hover {
+    color: var(--fg);
+    background: var(--bg-2);
+}
+.gm-search-clear-btn.gm-visible,
+.gm-input:not(:placeholder-shown) ~ .gm-search-clear-btn,
+input:not(:placeholder-shown) ~ .gm-search-clear-btn {
+    display: flex !important;
+}
+.gm-input-with-icon:has(.gm-search-clear-btn) .gm-input,
+.gm-input-with-icon:has([data-gm-search-clear]) .gm-input,
+.search-wrapper:has(.gm-search-clear-btn) input,
+.gm-input-with-clear .gm-input {
+    padding-right: 2.5rem;
+}
+
 
 .gm-score-input, .gm-glory-input {
     width: 130px;

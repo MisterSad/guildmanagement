@@ -405,6 +405,7 @@
                     '<div class="gm-input-with-icon" style="flex:2; min-width:200px; max-width:340px;">' +
                         '<i class="ph ph-magnifying-glass gm-icon"></i>' +
                         '<input type="text" id="cross-rank-search" class="gm-input" value="' + esc(state.query) + '" placeholder="Search candidate, server #, or guild...">' +
+                        '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><span class="material-symbols-rounded">cancel</span></button>' +
                     '</div>' +
                     '<select id="cross-rank-server" class="gm-input" style="width:auto; min-width:140px;">' +
                         '<option value="ALL">All Migration Servers</option>' +

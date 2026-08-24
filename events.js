@@ -589,6 +589,7 @@
                 '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
                     '<i class="ph ph-magnifying-glass gm-icon"></i>' +
                     '<input type="text" class="gm-input event-search-input" placeholder="' + t('search_placeholder') + '">' +
+                    '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><span class="material-symbols-rounded">cancel</span></button>' +
                 '</div>' +
                 '</div>' +
             '<div class="gm-table-wrap"><div class="gm-table-scroll">' +
