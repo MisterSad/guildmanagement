@@ -34,7 +34,7 @@ Every autonomous AI agent interacting with this codebase must embody four operat
 - **10 Edge Functions & JWT Matrix (Codified in `supabase/config.toml`)**:
   - *Public (`verify_jwt = false`)*: `auth-login`, `player-register`, `event-reminders` (Vault cron-secret gated), `gm-stripe-webhook` (Stripe signature gated).
   - *JWT-Gated (`verify_jwt = true`)*: `member-portal`, `admin-accounts`, `gm-create-order`, `gm-order-status`, `discord-webhook-proxy`, `ocr-guild-members`.
-- **Quality Gate**: Vitest + jsdom test battery (**427/427 tests green**), TypeScript (`tsc --noEmit`), root syntax validation (`node --check`).
+- **Quality Gate**: Vitest + jsdom test battery (**430/430 tests green**), TypeScript (`tsc --noEmit`), root syntax validation (`node --check`).
 - **Production Hosting**: Vercel automated deployment from branch `main` at `https://guildmanagement.vercel.app` (canonical CORS/CSP origin).
 
 ---
@@ -124,6 +124,8 @@ Event sessions carry deterministic, sortable IDs synced across `src/core/config/
 
 1. **`CHANGELOG.md`**: Append-only, English, chronological version history (`## New`, `## Fixed`, `## Performance`). Sync test counts on every release.
 2. **`DISCORD_CHANGELOG.md`**: Single consolidated member-facing digest rewritten per release (`CHANG_V<Major>.<Minor>`).
+   - **Owner-Chosen Version (MANDATORY)**: Before releasing any user-visible change, the agent MUST ask the owner how they want to name the release version. Never invent or auto-increment the version autonomously.
+   - **Systematic Propagation**: The owner-chosen version number must be propagated everywhere it appears, in the SAME commit: the `DISCORD_CHANGELOG.md` title, the user-facing app version (`APP_VERSION` in `gm-utils.js`, surfaced in the navigation bar above "Terms & Conditions"), and any `CHANGELOG.md` version references. A mismatch between the displayed app version and the changelog version is a release blocker.
    - **Audience Filter**: Only include features, UX fixes, and security benefits that players and guild leaders directly experience. Exclude backend RPC, CORS, migration mechanics, or internal tooling.
    - **Solo Creator Voice**: First-person singular ("I", not "WE"), human, transparent, Discord-formatted with emojis (`🚀`, `📸`, `🔒`, `🛠️`, `💳`, `📊`).
 
@@ -134,7 +136,7 @@ Event sessions carry deterministic, sortable IDs synced across `src/core/config/
 Run the complete verification sequence before every commit:
 ```sh
 npm run type-check   # 0 TypeScript errors required
-npm test             # 427/427 Vitest unit tests green required
+npm test             # 430/430 Vitest unit tests green required
 npm run build        # Clean production build + root syntax check
 ```
 

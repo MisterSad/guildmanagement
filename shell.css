@@ -1017,6 +1017,17 @@ html, body {
     margin-top: auto;
 }
 
+.gm-app-version {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-muted, #94a3b8);
+    opacity: 0.75;
+    margin-bottom: 0.35rem;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+}
+
 .gm-sidebar-legal-link {
     color: var(--text-muted, #94a3b8);
     text-decoration: none;

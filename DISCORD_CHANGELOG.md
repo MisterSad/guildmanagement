@@ -1,4 +1,4 @@
-📢 **FGF Guild Management Tool Update — CHANG_V128.0**
+📢 **FGF Guild Management Tool Update — CHANG_V3.5.2**
 
 Hey everyone! I heard you loud and clear: the app on phones needed love. Today I shipped a full mobile overhaul — every screen was audited on a phone-sized display and rebuilt where it failed. Here is what changed:
 

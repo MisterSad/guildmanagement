@@ -20,6 +20,12 @@
         }
     } catch (e) { /* localStorage indisponible (sans permis) : ignoré */ }
 
+    // Single source of truth for the user-facing app version, shown in the
+    // navigation bar. Bumped on every release alongside the Discord changelog
+    // version (see AGENTS.md §6: the version is chosen by the owner and must be
+    // reflected here AND in DISCORD_CHANGELOG.md systematically).
+    var APP_VERSION = 'V3.5.2';
+
     var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
     var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
 
@@ -2211,6 +2217,7 @@
         categorizeOcrDiff: categorizeOcrDiff,
         computeOcrRosterDelta: computeOcrRosterDelta,
         upsertPlayerMetrics: upsertPlayerMetrics,
+        appVersion: APP_VERSION,
         config: {
             get: getGuildConfig,
             set: setGuildConfig
