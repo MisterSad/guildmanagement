@@ -34,7 +34,7 @@ Every autonomous AI agent interacting with this codebase must embody four operat
 - **10 Edge Functions & JWT Matrix (Codified in `supabase/config.toml`)**:
   - *Public (`verify_jwt = false`)*: `auth-login`, `player-register`, `event-reminders` (Vault cron-secret gated), `gm-stripe-webhook` (Stripe signature gated).
   - *JWT-Gated (`verify_jwt = true`)*: `member-portal`, `admin-accounts`, `gm-create-order`, `gm-order-status`, `discord-webhook-proxy`, `ocr-guild-members`.
-- **Quality Gate**: Vitest + jsdom test battery (**442/442 tests green**), TypeScript (`tsc --noEmit`), root syntax validation (`node --check`).
+- **Quality Gate**: Vitest + jsdom test battery (**443/443 tests green**), TypeScript (`tsc --noEmit`), root syntax validation (`node --check`).
 - **Production Hosting**: Vercel automated deployment from branch `main` at `https://guildmanagement.vercel.app` (canonical CORS/CSP origin).
 
 ---
@@ -136,7 +136,7 @@ Event sessions carry deterministic, sortable IDs synced across `src/core/config/
 Run the complete verification sequence before every commit:
 ```sh
 npm run type-check   # 0 TypeScript errors required
-npm test             # 442/442 Vitest unit tests green required
+npm test             # 443/443 Vitest unit tests green required
 npm run build        # Clean production build + root syntax check
 ```
 
