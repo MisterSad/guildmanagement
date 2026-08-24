@@ -42,6 +42,28 @@ function isValidDiscordWebhook(url: string): boolean {
   }
 }
 
+function dataUrlToBytes(dataUrl: string): { bytes: Uint8Array; mimeType: string; extension: string } | null {
+  if (typeof dataUrl !== "string") return null;
+  try {
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return null;
+    const mimeType = match[1];
+    const b64 = match[2];
+    const binaryStr = atob(b64);
+    const len = binaryStr.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    let extension = "jpg";
+    if (mimeType.includes("png")) extension = "png";
+    else if (mimeType.includes("webp")) extension = "webp";
+    return { bytes, mimeType, extension };
+  } catch {
+    return null;
+  }
+}
+
 const SEVERITY_META: Record<string, { label: string; color: number }> = {
   low:     { label: "Low",     color: 5763719 }, // slate/grey
   medium:  { label: "Medium",  color: 15105570 }, // amber
@@ -92,6 +114,11 @@ serve(async (req: Request) => {
       return json({ ok: false, error: "missing_fields" }, 400);
     }
 
+    const rawAttachments = Array.isArray(body?.attachments) ? body.attachments : [];
+    const attachments = rawAttachments
+      .filter((a) => typeof a === "string" && a.startsWith("data:image/") && a.length < 2_500_000)
+      .slice(0, 3);
+
     const { data, error } = await admin.rpc("gm_create_ticket", {
       p_title: title,
       p_description: description,
@@ -100,6 +127,7 @@ serve(async (req: Request) => {
       p_guild: guild,
       p_reporter_account_id: caller.accountId,
       p_reporter_role: caller.role,
+      p_attachments: attachments,
     });
 
     if (error) {
@@ -150,7 +178,7 @@ serve(async (req: Request) => {
       embedFields.push({ name: "Description", value: description.length > 1020 ? description.slice(0, 1017) + "…" : description, inline: false });
     }
 
-    const embed = {
+    const embed: Record<string, unknown> = {
       title: `#TICKET-${String(ticketNo).padStart(4, "0")} — ${title}`,
       color: sev.color,
       fields: embedFields,
@@ -161,12 +189,34 @@ serve(async (req: Request) => {
     let webhookOk = false;
     if (TICKET_WEBHOOK_URL && isValidDiscordWebhook(TICKET_WEBHOOK_URL)) {
       try {
-        const discordRes = await fetch(TICKET_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ embeds: [embed] }),
-          redirect: "error",
-        });
+        let discordRes: Response;
+        if (attachments.length > 0) {
+          const form = new FormData();
+          const p0 = dataUrlToBytes(attachments[0]);
+          if (p0) {
+            embed.image = { url: `attachment://screenshot_0.${p0.extension}` };
+            form.append("files[0]", new Blob([p0.bytes], { type: p0.mimeType }), `screenshot_0.${p0.extension}`);
+          }
+          for (let i = 1; i < attachments.length; i++) {
+            const pi = dataUrlToBytes(attachments[i]);
+            if (pi) {
+              form.append(`files[${i}]`, new Blob([pi.bytes], { type: pi.mimeType }), `screenshot_${i}.${pi.extension}`);
+            }
+          }
+          form.append("payload_json", JSON.stringify({ embeds: [embed] }));
+          discordRes = await fetch(TICKET_WEBHOOK_URL, {
+            method: "POST",
+            body: form,
+            redirect: "error",
+          });
+        } else {
+          discordRes = await fetch(TICKET_WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ embeds: [embed] }),
+            redirect: "error",
+          });
+        }
         webhookOk = discordRes.ok || discordRes.status === 204;
         if (!webhookOk) {
           logger.warn("Ticket Discord dispatch failed", { ticketNo, status: discordRes.status });

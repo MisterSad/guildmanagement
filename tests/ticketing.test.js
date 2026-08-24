@@ -90,7 +90,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     const shell = read('shell.js');
     expect(shell).toContain("functions.invoke('tickets'");
     const modalStart = shell.indexOf('function openBugReportModal');
-    const modal = shell.slice(modalStart, modalStart + 8000);
+    const modal = shell.slice(modalStart, modalStart + 20000);
     expect(modal).toContain('gm-modal-overlay');
     expect(modal).toContain('bug-report-submit');
     expect(modal).toContain('ticket-current-behavior');
@@ -131,16 +131,38 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(desc).toContain('• Browser + Version: Chrome 128');
   });
 
-  it('the super-admin tickets console lists and updates statuses', () => {
+  it('the super-admin tickets console lists, updates statuses, and displays screenshot thumbnails', () => {
     const tickets = read('tickets.js');
     expect(tickets).toContain('window.GM_TICKETS');
     expect(tickets).toContain("action: 'list'");
     expect(tickets).toContain("action: 'update-status'");
     expect(tickets).toContain('gm-ticket-status');
+    expect(tickets).toContain('gm-ticket-thumb');
+    expect(tickets).toContain('openLightbox');
     expect(tickets).toContain('esc(');
   });
 
-  it('i18n exposes the ticket strings', () => {
+  it('supports screenshot attachments across migration, modal dropzone, and edge function', () => {
+    const migration = read('supabase/migrations/20260824123500_tickets_attachments.sql');
+    expect(migration).toContain('ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS attachments JSONB');
+    expect(migration).toContain('p_attachments jsonb');
+
+    const shell = read('shell.js');
+    expect(shell).toContain('ticket-dropzone');
+    expect(shell).toContain('ticket-file-input');
+    expect(shell).toContain('ticket-screenshots-preview');
+    expect(shell).toContain('attachedScreenshots');
+    expect(shell).toContain('onPaste');
+
+    const edge = read('supabase/functions/tickets/index.ts');
+    expect(edge).toContain('dataUrlToBytes');
+    expect(edge).toContain('p_attachments: attachments');
+    expect(edge).toContain('payload_json');
+
+    expect(typeof window.GM.compressImageForUpload).toBe('function');
+  });
+
+  it('i18n exposes the ticket strings including screenshots', () => {
     const i18n = read('i18n.js');
     expect(i18n).toContain('gm_nav_tickets:');
     expect(i18n).toContain("ticket_report_bug:");
@@ -149,6 +171,9 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(i18n).toContain('ticket_expected_behavior:');
     expect(i18n).toContain('ticket_steps:');
     expect(i18n).toContain('ticket_additional_context:');
+    expect(i18n).toContain('ticket_screenshots_title:');
+    expect(i18n).toContain('ticket_screenshots_hint:');
+    expect(i18n).toContain('ticket_screenshots_max_err:');
     expect(i18n).toContain('ticket_env_title:');
   });
 });

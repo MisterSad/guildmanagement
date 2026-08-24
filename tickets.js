@@ -114,6 +114,15 @@
             var rawDesc = tk.description || '';
             var desc = esc(rawDesc).replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--fg); font-weight:700; display:inline-block; margin-top:0.25rem;">$1</strong>');
 
+            var attachHtml = '';
+            if (Array.isArray(tk.attachments) && tk.attachments.length > 0) {
+                attachHtml = '<div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.45rem;">';
+                tk.attachments.forEach(function (attUrl) {
+                    attachHtml += '<img src="' + esc(attUrl) + '" class="gm-ticket-thumb" data-full="' + esc(attUrl) + '" style="width:54px; height:42px; object-fit:cover; border-radius:4px; border:1px solid var(--border-soft); cursor:pointer; transition:transform 0.15s;" title="Click to view screenshot" onmouseover="this.style.transform=\'scale(1.08)\'" onmouseout="this.style.transform=\'scale(1)\'">';
+                });
+                attachHtml += '</div>';
+            }
+
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft); vertical-align:top;">' +
                     '<td data-label="#" style="padding:0.65rem 0.75rem; font-weight:700; font-variant-numeric:tabular-nums;">#TICKET-' + pad(tk.ticket_number) + '</td>' +
@@ -127,6 +136,7 @@
                     '<td data-label="Title" style="padding:0.65rem 0.5rem; min-width:260px;">' +
                         '<div style="font-weight:700; font-size:0.92rem; color:var(--fg);">' + esc(tk.title) + '</div>' +
                         (desc ? '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem; line-height:1.45; white-space:pre-wrap; background:rgba(0,0,0,0.18); padding:0.5rem 0.65rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">' + desc + '</div>' : '') +
+                        attachHtml +
                     '</td>' +
                     '<td data-label="' + esc(t('tickets_date')) + '" style="padding:0.65rem 0.5rem; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">' + esc(dateStr) + '</td>' +
                     '<td data-label="' + esc(t('tickets_set')) + '" style="padding:0.65rem 0.75rem; text-align:center;">' +
@@ -147,6 +157,27 @@
                 updateStatus(sel.getAttribute('data-id'), sel.value, sel);
             });
         });
+
+        container.querySelectorAll('.gm-ticket-thumb').forEach(function (img) {
+            img.addEventListener('click', function () {
+                openLightbox(img.getAttribute('data-full'));
+            });
+        });
+    }
+
+    function openLightbox(src) {
+        if (!src) return;
+        var modal = document.createElement('div');
+        modal.className = 'gm-modal-overlay visible';
+        modal.style.zIndex = '9999';
+        modal.innerHTML =
+            '<div style="position:relative; max-width:92vw; max-height:92vh; display:flex; flex-direction:column; align-items:center;">' +
+                '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" style="position:absolute; top:-38px; right:0; color:#fff; font-size:1.4rem;" title="Close">✕</button>' +
+                '<img src="' + esc(src) + '" style="max-width:100%; max-height:85vh; object-fit:contain; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.8); border:1px solid rgba(255,255,255,0.1);">' +
+            '</div>';
+        document.body.appendChild(modal);
+        function close() { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); }
+        modal.addEventListener('click', close);
     }
 
     async function updateStatus(id, status, sel) {

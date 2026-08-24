@@ -4,12 +4,13 @@
 
 - **Bug-Reporting Ticketing System (V3.5.3)**:
   - **Report a Bug**: any `guild_admin`, `server_admin`, or `super_admin` can report a bug from the top-bar / desktop sidebar button.
-  - **Structured Ticket Schema**: dedicated modal form fields for Title, Current Behavior / Issue, Expected Behavior, Steps to Reproduce, Additional Context / Information, and Auto-detected Client Environment (FGF Version, OS + Version, Browser + Version via `window.GM.detectClientEnvironment`).
+  - **Structured Ticket Schema & Media Attachments**: dedicated modal form fields for Title, Current Behavior / Issue, Expected Behavior, Steps to Reproduce, Additional Context / Information, and Auto-detected Client Environment (FGF Version, OS + Version, Browser + Version).
+  - **Screenshot & Media Uploads**: drag-and-drop, clipboard paste (`Cmd+V` / `Ctrl+V`), and file picker for up to 3 screenshots with client-side canvas compression (`compressImageForUpload`), thumbnail management, Discord embed image attachment, and Super Admin lightbox zoom.
   - **Global sequential ticket numbers** (`#TICKET-xxxx`): the `tickets` table uses a single global sequence (race-safe, cross-guild), with guild / reporter account / reporter role attribution.
-  - **Discord dispatch**: each ticket is posted to a central support webhook with structured Discord Embed fields (Current Behavior, Expected Behavior, Steps to Reproduce, Environment, Context, Category, Severity, Reporter, Guild).
-  - **Tickets console (super admin)**: "Tickets" nav item lists every report from every guild (newest first) with Open / Resolved / Closed status controls and structured formatted description layout.
+  - **Discord dispatch**: each ticket is posted to a central support webhook with structured Discord Embed fields (Current Behavior, Expected Behavior, Steps to Reproduce, Environment, Context, Category, Severity, Reporter, Guild) and embedded screenshot attachment.
+  - **Tickets console (super admin)**: "Tickets" nav item lists every report from every guild (newest first) with Open / Resolved / Closed status controls, structured formatted description layout, and interactive screenshot lightbox.
   - **Security**: reporter is resolved server-side from `accounts` (member + anonymous rejected); the `gm_create_ticket` RPC follows the service-safe `IF auth.uid() IS NOT NULL` guard so browser and Edge calls both work; audit trail via `gm_log_player_audit`.
-  - **Quality Gate**: **445/445 Vitest unit tests green** (+environment detection and schema formatting unit tests), 0 TypeScript errors, clean build.
+  - **Quality Gate**: **446/446 Vitest unit tests green** (+screenshot upload, dropzone, and lightbox test assertions), 0 TypeScript errors, clean build.
 
 ## Fixed
 

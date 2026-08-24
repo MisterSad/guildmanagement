@@ -2226,6 +2226,58 @@
         return parts.join('\n\n');
     }
 
+    function compressImageForUpload(fileOrBlob, maxDimension, quality) {
+        maxDimension = maxDimension || 1280;
+        quality = (typeof quality === 'number') ? quality : 0.82;
+
+        return new Promise(function (resolve, reject) {
+            if (!fileOrBlob || typeof FileReader === 'undefined') {
+                return reject(new Error('Invalid image file'));
+            }
+
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                if (typeof Image === 'undefined' || typeof document === 'undefined') {
+                    return resolve(e.target.result);
+                }
+                var img = new Image();
+                img.onload = function () {
+                    try {
+                        var w = img.width;
+                        var h = img.height;
+                        if (w > maxDimension || h > maxDimension) {
+                            if (w > h) {
+                                h = Math.round((h * maxDimension) / w);
+                                w = maxDimension;
+                            } else {
+                                w = Math.round((w * maxDimension) / h);
+                                h = maxDimension;
+                            }
+                        }
+                        var canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        var ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            return resolve(e.target.result);
+                        }
+                        ctx.drawImage(img, 0, 0, w, h);
+                        var dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        resolve(dataUrl);
+                    } catch (err) {
+                        resolve(e.target.result);
+                    }
+                };
+                img.onerror = function () {
+                    resolve(e.target.result);
+                };
+                img.src = e.target.result;
+            };
+            reader.onerror = function (err) { reject(err); };
+            reader.readAsDataURL(fileOrBlob);
+        });
+    }
+
     var gmExports = {
         db: db,
         t: t,
@@ -2305,7 +2357,8 @@
             buildGvgDailyTaskEmbed: buildGvgDailyTaskEmbed
         },
         detectClientEnvironment: detectClientEnvironment,
-        formatTicketDescription: formatTicketDescription
+        formatTicketDescription: formatTicketDescription,
+        compressImageForUpload: compressImageForUpload
     };
 
     window.GM = Object.assign(window.GM || {}, gmExports);

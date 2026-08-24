@@ -624,6 +624,20 @@
                         '<label class="gm-label" for="ticket-additional-context">' + t_('ticket_additional_context') + '</label>' +
                         '<textarea id="ticket-additional-context" class="gm-input" rows="2" maxlength="2000" placeholder="' + t_('ticket_additional_context_ph') + '" style="resize:vertical; min-height:60px;"></textarea>' +
                     '</div>' +
+                    '<div class="gm-form-group">' +
+                        '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.25rem;">' +
+                            '<label class="gm-label" style="margin:0;">' + esc(t_('ticket_screenshots_title')) + '</label>' +
+                            '<span style="font-size:0.72rem; color:var(--text-muted);"><span id="ticket-screenshots-count">0</span>/3</span>' +
+                        '</div>' +
+                        '<div id="ticket-dropzone" style="border:1px dashed var(--border-soft); border-radius:var(--radius-sm); padding:0.75rem; text-align:center; cursor:pointer; background:rgba(255,255,255,0.02); transition:border-color 0.2s, background 0.2s;">' +
+                            '<input type="file" id="ticket-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display:none;">' +
+                            '<div style="display:flex; align-items:center; justify-content:center; gap:0.4rem; color:var(--text-muted); font-size:0.78rem;">' +
+                                '<span class="material-symbols-rounded" style="font-size:1.15rem; color:var(--accent);">add_photo_alternate</span>' +
+                                '<span>' + esc(t_('ticket_screenshots_hint')) + '</span>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div id="ticket-screenshots-preview" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;"></div>' +
+                    '</div>' +
                     '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:var(--radius-sm); padding:0.55rem 0.75rem; font-size:0.78rem;">' +
                         '<div style="font-weight:700; color:var(--text-muted); text-transform:uppercase; font-size:0.68rem; letter-spacing:0.05em; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.3rem;">' +
                             '<span class="material-symbols-rounded" style="font-size:0.95rem;">devices</span> ' + esc(t_('ticket_env_title')) +
@@ -644,7 +658,96 @@
 
         document.body.appendChild(overlay);
 
+        var attachedScreenshots = [];
+
+        function renderScreenshots() {
+            var countEl = overlay.querySelector('#ticket-screenshots-count');
+            if (countEl) countEl.textContent = String(attachedScreenshots.length);
+            var previewEl = overlay.querySelector('#ticket-screenshots-preview');
+            if (!previewEl) return;
+            previewEl.innerHTML = '';
+            attachedScreenshots.forEach(function (dataUrl, idx) {
+                var item = document.createElement('div');
+                item.style.cssText = 'position:relative; width:80px; height:60px; border-radius:6px; overflow:hidden; border:1px solid var(--border-soft); background:#000; display:inline-block;';
+                item.innerHTML =
+                    '<img src="' + dataUrl + '" style="width:100%; height:100%; object-fit:cover;">' +
+                    '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" data-remove="' + idx + '" style="position:absolute; top:2px; right:2px; width:20px; height:20px; min-width:20px; background:rgba(0,0,0,0.7); border-radius:999px; color:#fff; padding:0; line-height:1; font-size:12px;" title="Remove">×</button>';
+                item.querySelector('[data-remove]').addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    attachedScreenshots.splice(idx, 1);
+                    renderScreenshots();
+                });
+                previewEl.appendChild(item);
+            });
+        }
+
+        async function handleFiles(files) {
+            if (!files || files.length === 0) return;
+            for (var i = 0; i < files.length; i++) {
+                var f = files[i];
+                if (!f.type || !f.type.startsWith('image/')) continue;
+                if (attachedScreenshots.length >= 3) {
+                    if (window.GM && window.GM.showToast) window.GM.showToast(t_('ticket_screenshots_max_err'), 'error');
+                    break;
+                }
+                try {
+                    var dataUrl = (window.GM && window.GM.compressImageForUpload)
+                        ? await window.GM.compressImageForUpload(f, 1280, 0.82)
+                        : await new Promise(function(res){ var r = new FileReader(); r.onload = function(){ res(r.result); }; r.readAsDataURL(f); });
+                    attachedScreenshots.push(dataUrl);
+                    renderScreenshots();
+                } catch (err) {
+                    console.warn('Screenshot upload error', err);
+                }
+            }
+        }
+
+        var dropzone = overlay.querySelector('#ticket-dropzone');
+        var fileInput = overlay.querySelector('#ticket-file-input');
+        if (dropzone && fileInput) {
+            dropzone.addEventListener('click', function () { fileInput.click(); });
+            fileInput.addEventListener('change', function () {
+                handleFiles(fileInput.files);
+                fileInput.value = '';
+            });
+            dropzone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                dropzone.style.borderColor = 'var(--accent)';
+                dropzone.style.background = 'rgba(255,255,255,0.06)';
+            });
+            dropzone.addEventListener('dragleave', function () {
+                dropzone.style.borderColor = 'var(--border-soft)';
+                dropzone.style.background = 'rgba(255,255,255,0.02)';
+            });
+            dropzone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                dropzone.style.borderColor = 'var(--border-soft)';
+                dropzone.style.background = 'rgba(255,255,255,0.02)';
+                if (e.dataTransfer && e.dataTransfer.files) {
+                    handleFiles(e.dataTransfer.files);
+                }
+            });
+        }
+
+        function onPaste(e) {
+            if (!e.clipboardData || !e.clipboardData.items) return;
+            var items = e.clipboardData.items;
+            var imageFiles = [];
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].type && items[i].type.startsWith('image/')) {
+                    var blob = items[i].getAsFile();
+                    if (blob) imageFiles.push(blob);
+                }
+            }
+            if (imageFiles.length > 0) {
+                e.preventDefault();
+                handleFiles(imageFiles);
+            }
+        }
+        window.addEventListener('paste', onPaste);
+
         function close() {
+            window.removeEventListener('paste', onPaste);
             if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
         }
         overlay.querySelectorAll('.bug-report-close').forEach(function (b) { b.addEventListener('click', close); });
@@ -694,7 +797,8 @@
                         expected_behavior: expectedBehavior,
                         steps: steps,
                         additional_context: additionalContext,
-                        env: env
+                        env: env,
+                        attachments: attachedScreenshots
                     }
                 });
                 var data = res && res.data;
