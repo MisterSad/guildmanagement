@@ -30,6 +30,13 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     // List + status RPCs exist (super admin)
     expect(migration).toContain('gm_list_tickets');
     expect(migration).toContain('gm_update_ticket_status');
+
+    // Service-role fix migration guarantees gm_list_tickets and gm_update_ticket_status allow service role
+    const fixMigration = read('supabase/migrations/20260824122000_fix_tickets_service_role_rpc.sql');
+    expect(fixMigration).toMatch(/WHERE \(auth\.uid\(\) IS NULL OR public\.is_super_admin\(\)\)/);
+    expect(fixMigration).toMatch(/IF auth\.uid\(\) IS NOT NULL THEN[\s\S]*?IF NOT public\.is_super_admin\(\)/);
+    expect(fixMigration).toContain("GRANT EXECUTE ON FUNCTION public.gm_list_tickets() TO authenticated, service_role;");
+    expect(fixMigration).toContain("GRANT EXECUTE ON FUNCTION public.gm_update_ticket_status(bigint, text) TO authenticated, service_role;");
   });
 
   it('the tickets Edge Function enforces identity + the 3-role gate and is CORS-correct', () => {

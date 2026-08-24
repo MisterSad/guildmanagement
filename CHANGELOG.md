@@ -13,6 +13,12 @@
 
 ## Fixed
 
+- **Tickets Super-Admin Console: gm_list_tickets & gm_update_ticket_status Service-Role Safety**:
+  - **Root Cause**: `gm_list_tickets` and `gm_update_ticket_status` checked `public.is_super_admin()`. When invoked via the `tickets` Edge Function using the Supabase **service role** (`SERVICE_ROLE_KEY`), `auth.uid()` is `NULL` in Postgres, causing `is_super_admin()` to evaluate to `false`. `gm_list_tickets` returned `[]` (empty list) and `gm_update_ticket_status` returned `forbidden`.
+  - **Fix (`20260824122000_fix_tickets_service_role_rpc.sql`)**: updated `gm_list_tickets` to allow service-role callers (`WHERE auth.uid() IS NULL OR public.is_super_admin()`) and `gm_update_ticket_status` to only enforce `is_super_admin()` on the browser JWT path (`IF auth.uid() IS NOT NULL THEN`). The Edge Function remains the authoritative authorization point (`caller.role === 'super_admin'`).
+  - **Verified**: Live test query against linked database verified that `gm_list_tickets()` and `gm_update_ticket_status()` execute successfully and retrieve reported tickets.
+  - **Quality Gate**: **444/444 Vitest unit tests green** (+regression assertions in `tests/ticketing.test.js`), 0 TypeScript errors, clean build.
+
 - **Admin Account Creation server_error: gm_admin_upsert Service-Role Safety (v128.3)**:
   - **Root Cause**: the v124.1 RPC lockdown gave `gm_admin_upsert` an unconditional caller-authorization gate (`is_super_admin` / `check_user_guild_write_access`), but its only production caller — the `admin-accounts` Edge Function — invokes it with the **service role**, where `auth.uid()` is NULL. The gate resolved no caller and raised `Access denied`, which the Edge mapped to `server_error`. Admin account creation had been broken on live since the lockdown deployment; guild creation uses a different path, which is why creating the guild worked while creating its admin failed.
   - **Fix (`20260824090000`)**: the gate now applies only when called with an authenticated JWT (browser path), mirroring the service-safe pattern already used by `gm_upsert_player_metrics` and `gm_reset_account_password` in the same lockdown migration. The Edge Function remains the authorization point (identity resolution + `_shared/admin-authz` matrix). Browser-call protections are unchanged (role ceiling for non-super callers, guild write access).
