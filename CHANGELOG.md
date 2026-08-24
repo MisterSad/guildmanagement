@@ -2,6 +2,16 @@
 
 ## Fixed
 
+- **Admin Account Creation server_error: gm_admin_upsert Service-Role Safety (v128.3)**:
+  - **Root Cause**: the v124.1 RPC lockdown gave `gm_admin_upsert` an unconditional caller-authorization gate (`is_super_admin` / `check_user_guild_write_access`), but its only production caller — the `admin-accounts` Edge Function — invokes it with the **service role**, where `auth.uid()` is NULL. The gate resolved no caller and raised `Access denied`, which the Edge mapped to `server_error`. Admin account creation had been broken on live since the lockdown deployment; guild creation uses a different path, which is why creating the guild worked while creating its admin failed.
+  - **Fix (`20260824090000`)**: the gate now applies only when called with an authenticated JWT (browser path), mirroring the service-safe pattern already used by `gm_upsert_player_metrics` and `gm_reset_account_password` in the same lockdown migration. The Edge Function remains the authorization point (identity resolution + `_shared/admin-authz` matrix). Browser-call protections are unchanged (role ceiling for non-super callers, guild write access).
+  - **Systematic RPC Audit**: every W6-gated RPC called by edge functions with the service role was verified service-safe (`gm_upsert_player_metrics`, `gm_get_player_metrics_history`, `gm_personal_kpis`, `request_guild_transfer`, `gm_reset_account_password` — all correctly guarded); `gm_transfer_guild_member` keeps its unconditional browser-only gate by design.
+  - **Orphan Cleanup**: the GoTrue shadow user provisioned by the failed creation attempt (created before the RPC failed) was removed; the orphan drift query returns zero rows.
+  - **Verified**: the exact failing chain (service-role `gm_admin_upsert` insert with vault-encrypted password + guild link) now succeeds in a rolled-back live transaction; regression guards added in `tests/admin_upsert_service_safety.test.js`.
+  - **Quality Gate**: **427/427 Vitest unit tests green** (+3), 0 TypeScript errors, clean build.
+
+## New
+
 - **Glory Outage: event_participants Live Schema Reconciliation (v128.2)**:
   - **Root Cause**: the live `event_participants` table had drifted from the canonical master DDL — it lacked both the `created_at` column and the non-partial `UNIQUE (guild, event_name, session_id, pseudo)` constraint (the master DDL's `CREATE TABLE IF NOT EXISTS` is a no-op on a pre-existing live table). Every runtime writer using plain `ON CONFLICT` on those columns failed live while a fresh canonical replay succeeded: the Glory tab manual input errored on every keystroke save, the Glory OCR weekly routing (v128.1) failed to write the weekly rows, and the player self-submission path (`update-glory`) had never worked on live.
   - **Reconciliation Migration (`20260823213000`)**: `ADD COLUMN IF NOT EXISTS created_at` + guarded `ADD CONSTRAINT event_participants_guild_event_session_pseudo_key UNIQUE (guild, event_name, session_id, pseudo)` (idempotent DO block; 0 duplicate rows verified pre-apply), converging live to the canonical DDL and repairing all five affected RPCs at once. Applied and verified: the exact failing probe now returns `{"ok":true}`, is idempotent, writes the weekly `event_participants` row (`GLORY-YYYY-Www`) and syncs `guild_members.glory_score`.
