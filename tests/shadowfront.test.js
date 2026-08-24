@@ -297,4 +297,32 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         const startBtn = area().querySelector('.sf-squad-start-btn');
         expect(startBtn).not.toBeNull();
     });
+
+    it('renders attendance fraction column (.sf-hist-stat) for assigned participants and reserves', async () => {
+        tables.event_participants = [
+            { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S1', participated: 1, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
+            { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S2', participated: 1, late: false, excused: false, sub_present: false, week_start: '2026-08-09' },
+            { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S1', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
+        ];
+        tables.shadowfront_squads = [
+            { pseudo: 'Alpha', guild: 'ALPHA', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' },
+            { pseudo: 'Bravo', guild: 'ALPHA', session_id: 'S1', squad: 'squad1', role: 'reserve', is_commander: false, week_start: '2026-08-02' },
+        ];
+
+        await SF.load();
+
+        const assignedRows = area().querySelectorAll('.sf-assigned-row');
+        expect(assignedRows.length).toBe(2);
+
+        // First row: Alpha (Participant with 1 past session S2)
+        const alphaStat = assignedRows[0].querySelector('.sf-hist-stat');
+        expect(alphaStat).not.toBeNull();
+        expect(alphaStat.textContent).toBe('1/1');
+
+        // Second row: Bravo (Reserve without past sessions)
+        const bravoStat = assignedRows[1].querySelector('.sf-hist-stat');
+        expect(bravoStat).not.toBeNull();
+        expect(bravoStat.textContent).toBe('-');
+    });
 });
+

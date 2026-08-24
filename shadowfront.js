@@ -44,6 +44,8 @@
     // ── Public API ─────────────────────────────────────────────────────────────
     window.GM_SHADOWFRONT = {
         load: loadShadowfront,
+        render: renderShadowfront,
+        setStateForTest: function (state) { sfState = Object.assign(sfState, state); renderShadowfront(); },
         getAssignments: function () { return sfState.assignments || []; },
         getActiveSquadSession: function (squadKey) { return sfState.squads[squadKey] ? sfState.squads[squadKey].sessionId : null; }
     };
@@ -993,9 +995,10 @@
                 var powerVal = member ? parseInt(member.overall_power) || 0 : 0;
                 var pTier = window.GM.getPowerTier(powerVal, sfState.maxPower);
                 var pMeta = window.GM.getPowerTierMeta(pTier);
-                var powerBadge = powerVal > 0
-                    ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem;"><span style="font-size:0.75rem;">' + pMeta.icon + '</span> ' + window.GM.formatPower(powerVal) + '</span>'
-                    : '';
+                var h = sfState.history[pseudo] || { assigned: 0, participated: 0, excused_count: 0 };
+                var stats = h.assigned > 0
+                    ? '<span class="sf-hist-stat">' + h.participated + '/' + h.assigned + '</span>'
+                    : '<span class="sf-hist-stat">-</span>';
 
                 html +=
                     '<div class="sf-member-row" style="display:flex; align-items:center; gap:0.4rem; padding:0.45rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.04);">' +
@@ -1003,6 +1006,7 @@
                             getParticipationBadgeHtml(pseudo) +
                             '<span class="sf-pseudo" style="font-size:0.83rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(pseudo) + '</span>' +
                             powerBadge +
+                            stats +
                         '</span>' +
                         '<button class="sf-btn sf-avail-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove_avail') + '" style="background:none; border:none; color:var(--fg-dim); cursor:pointer; padding:0.2rem;"><i class="ph ph-x"></i></button>' +
                     '</div>';
@@ -1067,6 +1071,9 @@
         var rateText = h.assigned > 0
             ? Math.round((h.participated / h.assigned) * 100) + '%'
             : 'N/A';
+        var stats = h.assigned > 0
+            ? '<span class="sf-hist-stat">' + h.participated + '/' + h.assigned + '</span>'
+            : '<span class="sf-hist-stat">-</span>';
         var tooltipText = h.assigned > 0
             ? h.participated + ' Played / ' + missed + ' Missed / ' + h.excused_count + ' Excused'
             : 'No previous matches';
@@ -1097,6 +1104,7 @@
                 esc(pseudo) +
             '</span>' +
             powerBadge +
+            stats +
             '<div style="display: flex; align-items: center; gap: 0.2rem;">' +
                 cmdBtn +
                 '<button class="sf-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove') + '"><i class="ph ph-x"></i></button>' +

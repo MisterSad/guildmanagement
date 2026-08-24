@@ -2,6 +2,11 @@
 
 ## New
 
+- **Shadowfront Squad Attendance Ratio Visibility Across All Columns (V3.5.6)**:
+  - **Feature**: Added the historical Shadowfront attendance fraction (e.g. `4/4`, `3/4`, `0/4`, `-`) to member rows in both **Main Participants** and **Substitutes** (`renderAssignedRow` in `shadowfront.js`), matching the existing display in the Member Pool.
+  - **Consistency**: All three columns in the Shadowfront Squad Composition view now share identical attendance fraction badges (`.sf-hist-stat`).
+  - **Quality Gate**: **460/460 Vitest unit tests green** (+regression assertions in `tests/shadowfront.test.js`), 0 TypeScript errors, clean build.
+
 - **Game UID Validity Qualification, Red Warning Alerting & Roster Filtering (V3.5.5)**:
   - **Feature**: Added universal FGF in-game UID validation (`window.GM.getUidStatus(uid)`) verifying numeric 6-10 digit identifiers, and flagging temporary import placeholders (`TEMP-*`, `TMP-*`), missing values, and malformed inputs.
   - **Platform-Wide Red Warning Alerts**: Temporary and invalid UIDs are prominently highlighted in red with warning icons (`.gm-uid-invalid`) across Roster Cards (`memberTileHtml`), Tactical Force Matrix (`buildMilitaryMatrixHtml`), and OCR review tables.

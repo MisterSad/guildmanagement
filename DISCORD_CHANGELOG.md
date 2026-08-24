@@ -1,13 +1,12 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.5.5**
+📢 **FGF Guild Management Tool Update — CHANG_V3.5.6**
 
-Hey everyone! A major quality-of-life upgrade for roster setup and member UID management is now live! 🆔✨
+Hey everyone! A handy display upgrade for Shadowfront squad composition is now live! 👻⚔️
 
-### 🆔 Game UID Verification & Temporary UID Alerts
-- **Red Warning Badges**: Any temporary (`TEMP-*`), missing, or invalid in-game UIDs are now highlighted in red across Roster cards, Tactical Force Matrix, and OCR review so they immediately catch your eye.
-- **1-Click Header Filter**: If your guild has members with temporary UIDs, a new `⚠️ X Temp UID` badge appears in the Members List title — click it to filter and see only those members instantly!
-- **Dedicated Sort & Filter**: Added `⚠️ Temp / Missing UID` filter and `⚠️ Sort: Temp UID First` options to quickly review and update your roster.
-- **Smart Edit Helper**: When editing a member, a dynamic helper guides you to replace temporary placeholders with their real 6-10 digit game UID.
+### 📊 Shadowfront Attendance Ratio Across All Columns
+- **Full Visibility in Squads**: The historical Shadowfront attendance fraction (e.g. `4/4`, `3/4`, `0/4`) previously shown only in the Member Pool is now also displayed directly on every member in **Main Participants** and **Substitutes**.
+- **Effortless Lineup Tuning**: Instantly compare active attendance history across assigned commanders, regular participants, and reserves at a single glance!
 
 *Have fun managing your guilds and fly safe!* 🚀⚔️
+
 
 
