@@ -71,6 +71,14 @@ const SEVERITY_META: Record<string, { label: string; color: number }> = {
   critical:{ label: "Critical",color: 15158332 }, // red
 };
 
+const STATUS_META: Record<string, { label: string; color: number }> = {
+  waiting:     { label: "⏳ Waiting for resolution", color: 15105570 }, // amber
+  in_progress: { label: "🔨 In progress (Working on it)", color: 3447003 }, // blue
+  open:        { label: "⏳ Waiting for resolution", color: 15105570 },
+  resolved:    { label: "✅ Resolved", color: 3066993 }, // green
+  closed:      { label: "🔒 Closed", color: 9807270 }, // slate grey
+};
+
 const CATEGORY_LABEL: Record<string, string> = {
   bug: "Bug",
   feature: "Feature request",
@@ -136,7 +144,7 @@ serve(async (req: Request) => {
     }
 
     const row = Array.isArray(data) ? data[0] : data;
-    if (!row || !row.ticket_number || row.status !== "open") {
+    if (!row || !row.ticket_number || !["open", "waiting"].includes(row.status)) {
       return json({ ok: false, error: row?.status || "create_failed" }, 200);
     }
 
@@ -151,6 +159,7 @@ serve(async (req: Request) => {
     const envObj = (body?.env && typeof body.env === "object") ? (body.env as Record<string, string>) : null;
 
     const embedFields: Array<{ name: string; value: string; inline?: boolean }> = [
+      { name: "Status", value: "⏳ Waiting for resolution", inline: true },
       { name: "Category", value: CATEGORY_LABEL[category] || category, inline: true },
       { name: "Severity", value: sev.label, inline: true },
       { name: "Reporter", value: `${caller.accountId || "unknown"} (${caller.role})`, inline: true },
@@ -187,7 +196,8 @@ serve(async (req: Request) => {
     };
 
     let webhookOk = false;
-    if (TICKET_WEBHOOK_URL && isValidDiscordWebhook(TICKET_WEBHOOK_URL)) {
+    const TICKET_STATUS_WEBHOOK_URL = Deno.env.get("TICKET_STATUS_WEBHOOK_URL") || TICKET_WEBHOOK_URL;
+    if (TICKET_STATUS_WEBHOOK_URL && isValidDiscordWebhook(TICKET_STATUS_WEBHOOK_URL)) {
       try {
         let discordRes: Response;
         if (attachments.length > 0) {
@@ -204,13 +214,13 @@ serve(async (req: Request) => {
             }
           }
           form.append("payload_json", JSON.stringify({ embeds: [embed] }));
-          discordRes = await fetch(TICKET_WEBHOOK_URL, {
+          discordRes = await fetch(TICKET_STATUS_WEBHOOK_URL, {
             method: "POST",
             body: form,
             redirect: "error",
           });
         } else {
-          discordRes = await fetch(TICKET_WEBHOOK_URL, {
+          discordRes = await fetch(TICKET_STATUS_WEBHOOK_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ embeds: [embed] }),
@@ -269,7 +279,7 @@ serve(async (req: Request) => {
     }
     const id = Number(body?.id);
     const status = (body?.status ?? "").toString();
-    if (!id || !["open", "resolved", "closed"].includes(status)) {
+    if (!id || !["waiting", "in_progress", "resolved", "closed", "open"].includes(status)) {
       return json({ ok: false, error: "invalid_input" }, 400);
     }
     const { data, error } = await admin.rpc("gm_update_ticket_status", { p_id: id, p_status: status });
@@ -279,7 +289,60 @@ serve(async (req: Request) => {
     }
     const row = Array.isArray(data) ? data[0] : data;
     if (!row || !row.ok) return json({ ok: false, error: row?.error || "update_failed" }, 200);
-    return json({ ok: true });
+
+    const ticketNo = Number(row.ticket_number || id);
+    const oldStatusKey = (row.old_status || "waiting").toString();
+    const newStatusKey = (row.new_status || status).toString();
+    const oldMeta = STATUS_META[oldStatusKey] || { label: oldStatusKey, color: 9807270 };
+    const newMeta = STATUS_META[newStatusKey] || { label: newStatusKey, color: 9807270 };
+
+    let webhookOk = false;
+    const TICKET_STATUS_WEBHOOK_URL = Deno.env.get("TICKET_STATUS_WEBHOOK_URL") || TICKET_WEBHOOK_URL;
+    if (TICKET_STATUS_WEBHOOK_URL && isValidDiscordWebhook(TICKET_STATUS_WEBHOOK_URL)) {
+      try {
+        const embed = {
+          title: `Ticket Status: #TICKET-${String(ticketNo).padStart(4, "0")}`,
+          description: `**${row.title || "Bug Report"}**\nStatus has been updated to **${newMeta.label}**.`,
+          color: newMeta.color,
+          fields: [
+            { name: "New Status", value: newMeta.label, inline: true },
+            { name: "Previous Status", value: oldMeta.label, inline: true },
+            { name: "Updated By", value: `${caller.accountId || "Super Admin"} (${caller.role})`, inline: true },
+            { name: "Guild", value: row.guild || "Global", inline: true },
+            { name: "Category", value: CATEGORY_LABEL[row.category] || row.category || "Bug", inline: true },
+            { name: "Severity", value: (SEVERITY_META[row.severity]?.label) || row.severity || "Medium", inline: true },
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: "FGF Guild Management Tool — Ticket Status Update" },
+        };
+
+        const discordRes = await fetch(TICKET_STATUS_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] }),
+          redirect: "error",
+        });
+        webhookOk = discordRes.ok || discordRes.status === 204;
+      } catch (e) {
+        logger.warn("Ticket status Discord dispatch error", undefined, { ticketNo, message: String((e as Error)?.message || e) });
+      }
+    }
+
+    try {
+      await admin.rpc("gm_log_player_audit", {
+        p_action_type: "ticket_status_updated",
+        p_pseudo: caller.accountId,
+        p_uid: caller.userId,
+        p_guild: row.guild,
+        p_message: `Ticket #TICKET-${String(ticketNo).padStart(4, "0")} status changed from ${oldStatusKey} to ${newStatusKey}`,
+        p_metadata: { ticket_number: ticketNo, old_status: oldStatusKey, new_status: newStatusKey, webhook: webhookOk },
+        p_service: "tickets",
+      });
+    } catch {
+      // ignore
+    }
+
+    return json({ ok: true, webhook: webhookOk });
   }
 
   return json({ ok: false, error: "unknown_action" }, 400);

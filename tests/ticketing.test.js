@@ -162,7 +162,26 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(typeof window.GM.compressImageForUpload).toBe('function');
   });
 
-  it('i18n exposes the ticket strings including screenshots', () => {
+  it('supports 4 ticket statuses and sends Discord status updates', () => {
+    const migration = read('supabase/migrations/20260824124500_ticket_statuses.sql');
+    expect(migration).toContain("ALTER TABLE public.tickets ALTER COLUMN status SET DEFAULT 'waiting'");
+    expect(migration).toContain("'waiting'");
+    expect(migration).toContain("'in_progress'");
+
+    const tickets = read('tickets.js');
+    expect(tickets).toContain('tickets_status_waiting');
+    expect(tickets).toContain('tickets_status_in_progress');
+    expect(tickets).toContain('tickets_status_resolved');
+    expect(tickets).toContain('tickets_status_closed');
+    expect(tickets).toContain('curStatus === \'in_progress\'');
+
+    const edge = read('supabase/functions/tickets/index.ts');
+    expect(edge).toContain('STATUS_META');
+    expect(edge).toContain('Ticket Status: #TICKET-');
+    expect(edge).toContain('TICKET_STATUS_WEBHOOK_URL');
+  });
+
+  it('i18n exposes the ticket strings including screenshots and statuses', () => {
     const i18n = read('i18n.js');
     expect(i18n).toContain('gm_nav_tickets:');
     expect(i18n).toContain("ticket_report_bug:");
@@ -175,5 +194,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(i18n).toContain('ticket_screenshots_hint:');
     expect(i18n).toContain('ticket_screenshots_max_err:');
     expect(i18n).toContain('ticket_env_title:');
+    expect(i18n).toContain('tickets_status_waiting:');
+    expect(i18n).toContain('tickets_status_in_progress:');
   });
 });

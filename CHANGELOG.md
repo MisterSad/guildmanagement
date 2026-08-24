@@ -7,10 +7,10 @@
   - **Structured Ticket Schema & Media Attachments**: dedicated modal form fields for Title, Current Behavior / Issue, Expected Behavior, Steps to Reproduce, Additional Context / Information, and Auto-detected Client Environment (FGF Version, OS + Version, Browser + Version).
   - **Screenshot & Media Uploads**: drag-and-drop, clipboard paste (`Cmd+V` / `Ctrl+V`), and file picker for up to 3 screenshots with client-side canvas compression (`compressImageForUpload`), thumbnail management, Discord embed image attachment, and Super Admin lightbox zoom.
   - **Global sequential ticket numbers** (`#TICKET-xxxx`): the `tickets` table uses a single global sequence (race-safe, cross-guild), with guild / reporter account / reporter role attribution.
-  - **Discord dispatch**: each ticket is posted to a central support webhook with structured Discord Embed fields (Current Behavior, Expected Behavior, Steps to Reproduce, Environment, Context, Category, Severity, Reporter, Guild) and embedded screenshot attachment.
-  - **Tickets console (super admin)**: "Tickets" nav item lists every report from every guild (newest first) with Open / Resolved / Closed status controls, structured formatted description layout, and interactive screenshot lightbox.
+  - **4-Stage Status Lifecycle & Discord Webhook Broadcast**: new tickets start with status `waiting` ("Waiting for resolution"). Super Admins can update ticket status between `waiting` (⏳ Waiting for resolution), `in_progress` (🔨 In progress / Working on it), `resolved` (✅ Resolved), and `closed` (🔒 Closed). Every status change immediately broadcasts a formatted embed update to the dedicated Discord status webhook.
+  - **Tickets console (super admin)**: "Tickets" nav item lists every report from every guild (newest first) with 4-state status controls, structured formatted description layout, and interactive screenshot lightbox.
   - **Security**: reporter is resolved server-side from `accounts` (member + anonymous rejected); the `gm_create_ticket` RPC follows the service-safe `IF auth.uid() IS NOT NULL` guard so browser and Edge calls both work; audit trail via `gm_log_player_audit`.
-  - **Quality Gate**: **446/446 Vitest unit tests green** (+screenshot upload, dropzone, and lightbox test assertions), 0 TypeScript errors, clean build.
+  - **Quality Gate**: **447/447 Vitest unit tests green** (+status change and Discord notification test assertions), 0 TypeScript errors, clean build.
 
 ## Fixed
 

@@ -22,14 +22,18 @@
         critical: 'background:rgba(239,68,68,0.14); color:#f87171; border:1px solid rgba(239,68,68,0.3);'
     };
     var STATUS_LABEL = {
-        open:     'tickets_status_open',
-        resolved: 'tickets_status_resolved',
-        closed:   'tickets_status_closed'
+        waiting:     'tickets_status_waiting',
+        in_progress: 'tickets_status_in_progress',
+        open:        'tickets_status_waiting',
+        resolved:    'tickets_status_resolved',
+        closed:      'tickets_status_closed'
     };
     var STATUS_CLASS = {
-        open:     'gm-chip',
-        resolved: 'gm-chip',
-        closed:   'gm-chip'
+        waiting:     'gm-chip',
+        in_progress: 'gm-chip',
+        open:        'gm-chip',
+        resolved:    'gm-chip',
+        closed:      'gm-chip'
     };
     var CATEGORY = { bug: 'ticket_cat_bug', feature: 'ticket_cat_feature', other: 'ticket_cat_other' };
 
@@ -38,13 +42,16 @@
     function pad(n) { return String(n).padStart(4, '0'); }
 
     function statusChip(status) {
-        var label = STATUS_LABEL[status] ? t(STATUS_LABEL[status]) : status;
-        var bg = status === 'open'
-            ? 'background:rgba(59,130,246,0.14); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);'
-            : status === 'resolved'
-                ? 'background:rgba(16,185,129,0.14); color:#34d399; border:1px solid rgba(16,185,129,0.3);'
-                : 'background:rgba(100,116,139,0.14); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);';
-        return '<span class="' + STATUS_CLASS[status] + '" style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' + bg + ';">' + esc(label) + '</span>';
+        var s = (status === 'open') ? 'waiting' : status;
+        var label = STATUS_LABEL[s] ? t(STATUS_LABEL[s]) : s;
+        var bg = (s === 'waiting')
+            ? 'background:rgba(245,158,11,0.14); color:#fbbf24; border:1px solid rgba(245,158,11,0.3);'
+            : (s === 'in_progress')
+                ? 'background:rgba(59,130,246,0.14); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);'
+                : (s === 'resolved')
+                    ? 'background:rgba(16,185,129,0.14); color:#34d399; border:1px solid rgba(16,185,129,0.3);'
+                    : 'background:rgba(100,116,139,0.14); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);';
+        return '<span class="' + (STATUS_CLASS[s] || 'gm-chip') + '" style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' + bg + ';">' + esc(label) + '</span>';
     }
 
     function severityChip(sev) {
@@ -122,6 +129,7 @@
                 });
                 attachHtml += '</div>';
             }
+            var curStatus = (tk.status === 'open') ? 'waiting' : (tk.status || 'waiting');
 
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft); vertical-align:top;">' +
@@ -140,10 +148,11 @@
                     '</td>' +
                     '<td data-label="' + esc(t('tickets_date')) + '" style="padding:0.65rem 0.5rem; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">' + esc(dateStr) + '</td>' +
                     '<td data-label="' + esc(t('tickets_set')) + '" style="padding:0.65rem 0.75rem; text-align:center;">' +
-                        '<select class="gm-select gm-select-sm gm-ticket-status" data-id="' + tk.id + '" data-ticket-no="' + tk.ticket_number + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; height:auto; width:auto; min-width:90px; border-radius:4px;">' +
-                            '<option value="open"' + (tk.status === 'open' ? ' selected' : '') + '>' + esc(t('tickets_status_open')) + '</option>' +
-                            '<option value="resolved"' + (tk.status === 'resolved' ? ' selected' : '') + '>' + esc(t('tickets_status_resolved')) + '</option>' +
-                            '<option value="closed"' + (tk.status === 'closed' ? ' selected' : '') + '>' + esc(t('tickets_status_closed')) + '</option>' +
+                        '<select class="gm-select gm-select-sm gm-ticket-status" data-id="' + tk.id + '" data-ticket-no="' + tk.ticket_number + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; height:auto; width:auto; min-width:145px; border-radius:4px;">' +
+                            '<option value="waiting"' + (curStatus === 'waiting' ? ' selected' : '') + '>⏳ ' + esc(t('tickets_status_waiting')) + '</option>' +
+                            '<option value="in_progress"' + (curStatus === 'in_progress' ? ' selected' : '') + '>🔨 ' + esc(t('tickets_status_in_progress')) + '</option>' +
+                            '<option value="resolved"' + (curStatus === 'resolved' ? ' selected' : '') + '>✅ ' + esc(t('tickets_status_resolved')) + '</option>' +
+                            '<option value="closed"' + (curStatus === 'closed' ? ' selected' : '') + '>🔒 ' + esc(t('tickets_status_closed')) + '</option>' +
                         '</select>' +
                     '</td>' +
                 '</tr>';
