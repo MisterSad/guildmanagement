@@ -1,16 +1,104 @@
 -- 20260824122000_fix_tickets_service_role_rpc.sql
 -- Workstream: Fix tickets listing & status update when called from service role (tickets Edge Function)
+-- and ensure single nextval increment per ticket creation.
 --
 -- Root cause: gm_list_tickets and gm_update_ticket_status guarded caller access via
 -- public.is_super_admin(). When invoked from the tickets Edge Function using the SERVICE ROLE key,
 -- auth.uid() is NULL in Postgres, causing is_super_admin() to evaluate to false.
 -- This returned an empty array [] on list and 'forbidden' on status update.
+-- In gm_create_ticket, omitting explicit id caused nextval to be evaluated twice (once for id default, once for ticket_number).
 --
 -- Fix: Allow service-role calls (auth.uid() IS NULL) while preserving strict super_admin
 -- enforcement when called directly with an authenticated JWT (auth.uid() IS NOT NULL).
 -- The Edge Function already enforces caller.role === 'super_admin' server-side via validateCallerAuth.
+-- In gm_create_ticket, compute v_ticket_number := nextval(...) once and supply both id and ticket_number.
 
--- 1. List tickets (service-role safe + browser super-admin gated)
+-- 1. Create ticket (single nextval call for id & ticket_number)
+CREATE OR REPLACE FUNCTION public.gm_create_ticket(
+    p_title text,
+    p_description text,
+    p_category text DEFAULT 'bug',
+    p_severity text DEFAULT 'medium',
+    p_guild text DEFAULT NULL,
+    p_reporter_account_id text DEFAULT NULL,
+    p_reporter_role text DEFAULT NULL
+)
+RETURNS TABLE(ticket_number bigint, id bigint, status text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $$
+DECLARE
+    v_reporter_account text;
+    v_reporter_role text;
+    v_ticket_id bigint;
+    v_ticket_number bigint;
+    v_status text;
+    v_title text;
+    v_description text;
+BEGIN
+    IF p_title IS NULL OR length(trim(p_title)) = 0 THEN
+        RETURN QUERY SELECT NULL::bigint, NULL::bigint, 'missing_title'::text;
+        RETURN;
+    END IF;
+    IF p_description IS NULL OR length(trim(p_description)) = 0 THEN
+        RETURN QUERY SELECT NULL::bigint, NULL::bigint, 'missing_description'::text;
+        RETURN;
+    END IF;
+
+    v_title := left(trim(p_title), 120);
+    v_description := left(trim(p_description), 4000);
+
+    -- Browser path (authenticated JWT): resolve the reporter from accounts and
+    -- enforce the 3-admin-role gate. Any caller-supplied reporter params are
+    -- IGNORED here so a browser user cannot forge attribution.
+    IF auth.uid() IS NOT NULL THEN
+        SELECT a.id, a.role INTO v_reporter_account, v_reporter_role
+        FROM public.accounts a
+        WHERE a.auth_user_id = auth.uid() AND a.status = 'active'
+        LIMIT 1;
+        IF v_reporter_account IS NULL OR v_reporter_role NOT IN ('super_admin', 'server_admin', 'guild_admin') THEN
+            RETURN QUERY SELECT NULL::bigint, NULL::bigint, 'forbidden'::text;
+            RETURN;
+        END IF;
+    ELSE
+        -- Service-role path (tickets Edge Function): the Edge has already
+        -- resolved and authorized the caller; trust its explicit reporter.
+        v_reporter_account := p_reporter_account_id;
+        v_reporter_role := p_reporter_role;
+        IF v_reporter_account IS NULL OR v_reporter_role NOT IN ('super_admin', 'server_admin', 'guild_admin') THEN
+            RETURN QUERY SELECT NULL::bigint, NULL::bigint, 'forbidden'::text;
+            RETURN;
+        END IF;
+    END IF;
+
+    v_ticket_number := nextval(pg_get_serial_sequence('public.tickets', 'id'));
+
+    INSERT INTO public.tickets (
+        id, ticket_number, guild, reporter_account_id, reporter_role,
+        title, description, category, severity, status
+    )
+    VALUES (
+        v_ticket_number,
+        v_ticket_number,
+        NULLIF(p_guild, ''),
+        v_reporter_account, v_reporter_role,
+        v_title, v_description,
+        COALESCE(NULLIF(p_category, ''), 'bug'),
+        COALESCE(NULLIF(p_severity, ''), 'medium'),
+        'open'
+    )
+    RETURNING tickets.id, tickets.ticket_number, tickets.status
+    INTO v_ticket_id, v_ticket_number, v_status;
+
+    RETURN QUERY SELECT v_ticket_number, v_ticket_id, v_status;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.gm_create_ticket(text, text, text, text, text, text, text) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.gm_create_ticket(text, text, text, text, text, text, text) TO authenticated, service_role;
+
+-- 2. List tickets (service-role safe + browser super-admin gated)
 CREATE OR REPLACE FUNCTION public.gm_list_tickets()
 RETURNS TABLE(
     id bigint,
@@ -41,7 +129,7 @@ $$;
 REVOKE ALL ON FUNCTION public.gm_list_tickets() FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.gm_list_tickets() TO authenticated, service_role;
 
--- 2. Update ticket status (service-role safe + browser super-admin gated)
+-- 3. Update ticket status (service-role safe + browser super-admin gated)
 CREATE OR REPLACE FUNCTION public.gm_update_ticket_status(
     p_id bigint,
     p_status text
