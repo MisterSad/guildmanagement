@@ -1733,7 +1733,7 @@
     display: flex;
     align-items: center;
     gap: 0.85rem;
-    background: oklch(0.18 0.024 250 / 0.85);
+    background: var(--bg-elev);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--border-soft);
