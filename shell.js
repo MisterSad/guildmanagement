@@ -375,6 +375,8 @@
 
         checkSubscriptionStatus();
 
+        var canReportBug = window.GM.isGuildAdmin ? window.GM.isGuildAdmin() : false;
+
         var visible = visibleNavItems();
         var playItems = visible.filter(function (i) { return i.section === 'play'; });
         var adminItems = visible.filter(function (i) { return i.section === 'admin'; });
@@ -415,6 +417,12 @@
                 navHtml +
             '</nav>' +
             getSubscriptionCardHtml() +
+            (canReportBug
+                ? '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-report-bug style="width:calc(100% - 2rem); margin:0 1rem 0.4rem; justify-content:center; gap:0.4rem; padding:0.5rem 0.75rem;">' +
+                    '<span class="material-symbols-rounded" style="font-size:1.1rem;">bug_report</span>' +
+                    '<span>' + t('ticket_report_bug') + '</span>' +
+                  '</button>'
+                : '') +
             '<div class="gm-sidebar-legal-footer">' +
                 '<div class="gm-app-version">' + esc(window.GM && window.GM.appVersion ? window.GM.appVersion : '') + '</div>' +
                 '<a href="terms.html" class="gm-sidebar-legal-link" data-i18n="footer_terms">Terms &amp; Conditions</a>' +
@@ -427,6 +435,9 @@
                 gotoItem(btn.getAttribute('data-gm-nav-item'));
             });
         });
+
+        var rb = el.querySelector('[data-gm-report-bug]');
+        if (rb) rb.addEventListener('click', openBugReportModal);
 
         var gSel = el.querySelector('[data-gm-guild-select]');
         if (gSel) {

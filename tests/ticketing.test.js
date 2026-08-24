@@ -59,6 +59,17 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(shell).toContain("id: 'tickets'");
   });
 
+  it('the desktop sidebar also renders the Report-a-bug button (topbar is hidden >= 901px)', () => {
+    const shell = read('shell.js');
+    const sidebar = shell.slice(shell.indexOf('function renderSidebar'), shell.indexOf('function renderTopbar'));
+    expect(sidebar).toContain('gm-sidebar-report-bug');
+    expect(sidebar).toContain("(canReportBug");
+    expect(sidebar).toContain('openBugReportModal');
+    const css = read('shell.css');
+    // The topbar is hidden on desktop, confirming the sidebar button is required
+    expect(css).toMatch(/@media \(min-width: 901px\)[\s\S]*?\.gm-topbar \{[\s\S]*?display: none/);
+  });
+
   it('isGuildAdmin() covers guild_admin, server_admin and super_admin (and excludes member)', () => {
     const utils = read('gm-utils.js');
     const fnStart = utils.indexOf('function isGuildAdmin()');
