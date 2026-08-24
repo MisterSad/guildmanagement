@@ -36,8 +36,6 @@
 
         { id: 'superadmin-accounts', tabId: 'admin-superadmin', m3Icon: 'admin_panel_settings', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
         { id: 'settings', tabId: 'tab-settings', m3Icon: 'tune', icon: 'ph-note-pencil', labelKey: 'gm_nav_settings', section: 'superadmin', r5Only: true, panels: ['tab-settings'] },
-        { id: 'svs-matchup', tabId: 'tab-svs-matchup', m3Icon: 'rocket_launch', icon: 'ph-sword', labelKey: 'gm_nav_svs_matchup', section: 'superadmin', r5Only: true, panels: ['tab-svs-matchup'] },
-        { id: 'gvg-matchup', tabId: 'tab-gvg-matchup', m3Icon: 'flag', icon: 'ph-flag-banner', labelKey: 'gm_nav_gvg_matchup', section: 'superadmin', r5Only: true, panels: ['tab-gvg-matchup'] },
         { id: 'system-logs', tabId: 'tab-system-logs', m3Icon: 'terminal', icon: 'ph-terminal-window', labelKey: 'gm_nav_system_logs', section: 'superadmin', r5Only: true, panels: ['tab-system-logs'] }
     ];
 
@@ -223,6 +221,39 @@
         renderBottomNav();
         renderDrawer();
         wireLangSwitcher();
+        wireSettingsSubtabs();
+    }
+
+    // ── Settings sub-tabs (Draft / SvS / GvG consolidated into one tab) ──────
+    var settingsSubtabsWired = false;
+    function wireSettingsSubtabs() {
+        if (settingsSubtabsWired) return;
+        var bar = document.getElementById('settings-subtabs');
+        if (!bar) return;
+        settingsSubtabsWired = true;
+
+        var PANEL_TO_LOADER = {
+            draft: function () { if (window.GM_SETTINGS) window.GM_SETTINGS.load(); },
+            svs:   function () { if (window.GM_SVS_MATCHUP) window.GM_SVS_MATCHUP.load(); },
+            gvg:   function () { if (window.GM_GVG_MATCHUP) window.GM_GVG_MATCHUP.load(); }
+        };
+
+        bar.querySelectorAll('.gm-settings-tab').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var key = btn.getAttribute('data-settings-tab');
+                bar.querySelectorAll('.gm-settings-tab').forEach(function (b) {
+                    var active = b.getAttribute('data-settings-tab') === key;
+                    b.classList.toggle('active', active);
+                    b.style.background = active ? 'var(--accent)' : 'transparent';
+                    b.style.color = active ? '#fff' : 'var(--text-muted)';
+                });
+                document.querySelectorAll('#tab-settings [data-settings-panel]').forEach(function (panel) {
+                    panel.classList.toggle('hidden', panel.getAttribute('data-settings-panel') !== key);
+                });
+                var loader = PANEL_TO_LOADER[key];
+                if (loader) loader();
+            });
+        });
     }
 
     function getUserName() {
