@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AuditService } from '../src/modules/audit/audit.service';
-import { AuditView } from '../src/modules/audit/audit-view';
 
 // Mock Supabase client
 const mockSelect = vi.fn();
@@ -94,21 +93,5 @@ describe('AuditService and Player Portal Logging', () => {
     expect(stats.uniquePlayers24h).toBe(4); // U1, U2, U3, U4
     expect(stats.errors24h).toBe(1);
     expect(stats.avgDurationMs).toBe(91.7); // (120+80+50+40+60+200)/6 = 550/6 ≈ 91.667 -> 91.7
-  });
-
-  it('populates guild dropdown with all 13 tenant guilds', () => {
-    document.body.innerHTML = `
-      <select id="filter-logs-guild">
-        <option value="ALL">All Guilds</option>
-      </select>
-    `;
-
-    AuditView.populateGuildSelect();
-
-    const select = document.getElementById('filter-logs-guild');
-    expect(select.children.length).toBe(14); // 1 (ALL) + 13 guilds
-    expect(select.querySelector('option[value="ALPHA"]')).not.toBeNull();
-    expect(select.querySelector('option[value="OMEGA"]')).not.toBeNull();
-    expect(select.querySelector('option[value="DEMO"]')).not.toBeNull();
   });
 });

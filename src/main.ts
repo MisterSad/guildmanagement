@@ -23,7 +23,6 @@ import { ShadowfrontService } from './modules/shadowfront/shadowfront.service';
 import { StatsService } from './modules/stats/stats.service';
 import { PortalService } from './modules/portal/portal.service';
 import { AuditService } from './modules/audit/audit.service';
-import { AuditView } from './modules/audit/audit-view';
 import { logger } from './core/logger/logger';
 
 import { BaseComponent } from './components/ui/BaseComponent';
@@ -96,7 +95,6 @@ if (typeof window !== 'undefined') {
     setAppNotificationBadge
   };
 
-  (window as any).GM_AUDIT = AuditView;
   (window as any).GM_CROSSRANK = CrossRankView;
   (window as any).GM_SVS_MATCHUP = SvSMatchupView;
   (window as any).GM_GVG_MATCHUP = GvGMatchupView;
@@ -104,6 +102,5 @@ if (typeof window !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     applyTranslations();
     initPWA();
-    AuditView.init();
   });
 }

@@ -91,7 +91,7 @@ Authentication operates on an **accounts-table-only** role resolution model. `us
 ```
 
 #### The Four Access Roles:
-1. **`super_admin`**: Single global master account (`HawkEye`). Bypasses tenant RLS qualifiers. Accesses full Command Center, Draft Mercato, Server Matchups, and `#tab-system-logs`.
+1. **`super_admin`**: Single global master account (`HawkEye`). Bypasses tenant RLS qualifiers. Accesses full Command Center, Draft Mercato, Server Matchups, and `#tab-tickets`.
 2. **`server_admin`**: Reads and writes all tenant guilds sharing their assigned `server_number`. Uses server-scoped Guild Switcher.
 3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Write operations require active SaaS subscription (`public.is_subscription_active()`).
 4. **`member`**: **Zero direct database table access**. Communicates exclusively through the `member-portal` Edge Function.

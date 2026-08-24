@@ -45,7 +45,7 @@ Access control is strictly partitioned into four roles. **Role resolution is acc
 
 | Role | Database & REST Scope | UI Access |
 | :--- | :--- | :--- |
-| `super_admin` | Reads & writes **all guild tenants**. Bypasses tenant scoping. Master account (`HawkEye`). | Full Command Center, Cross-Guild Rankings, Server Matchups, Live System Logs (`#tab-system-logs`). |
+| `super_admin` | Reads & writes **all guild tenants**. Bypasses tenant scoping. Master account (`HawkEye`). | Full Command Center, Cross-Guild Rankings, Server Matchups, Bug Tickets Console (`#tab-tickets`). |
 | `server_admin` | Reads & writes **all guild tenants sharing their assigned `server_number`**. | Command Center with server-scoped Guild Switcher. Can manage rosters, events, scores, sanctions, webhooks for server guilds. |
 | `guild_admin` | Reads & writes **only their own single guild tenant**. | Command Center for their guild: Members, Events, Scores, Sanctions, Settings. |
 | `member` | **ZERO direct database access**. Receives denial / `[]` on all tenant tables, `guilds`, and `accounts` (except own row). | **Player Portal only** (`portal.js` / `PortalService`). Communicates exclusively through `member-portal` Edge Function. |

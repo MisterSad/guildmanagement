@@ -14,6 +14,11 @@
 
 ## Fixed
 
+- **Decommissioned & Cleaned Inactive "System Logs" Tab**:
+  - **Reason**: The `#tab-system-logs` panel in Super Admin was obsolete and provided no actionable live data to operators.
+  - **Cleanup**: Removed `#nav-tab-system-logs` button and `#tab-system-logs` DOM tree from `index.html`, removed `system-logs` entry from `shell.js` `NAV_ITEMS`, removed `GM_AUDIT` trigger from `app.js`, deleted `AuditView` (`src/modules/audit/audit-view.ts`), cleaned up unused `i18n` keys, and updated architecture guidelines and test suites. Server-side Postgres audit logging remains fully functional.
+  - **Quality Gate**: **446/446 Vitest unit tests green**, 0 TypeScript errors, clean production bundle.
+
 - **Tickets Super-Admin Console: gm_list_tickets & gm_update_ticket_status Service-Role Safety**:
   - **Root Cause**: `gm_list_tickets` and `gm_update_ticket_status` checked `public.is_super_admin()`. When invoked via the `tickets` Edge Function using the Supabase **service role** (`SERVICE_ROLE_KEY`), `auth.uid()` is `NULL` in Postgres, causing `is_super_admin()` to evaluate to `false`. `gm_list_tickets` returned `[]` (empty list) and `gm_update_ticket_status` returned `forbidden`.
   - **Fix (`20260824122000_fix_tickets_service_role_rpc.sql`)**: updated `gm_list_tickets` to allow service-role callers (`WHERE auth.uid() IS NULL OR public.is_super_admin()`) and `gm_update_ticket_status` to only enforce `is_super_admin()` on the browser JWT path (`IF auth.uid() IS NOT NULL THEN`). The Edge Function remains the authoritative authorization point (`caller.role === 'super_admin'`).

@@ -108,17 +108,13 @@ describe('Audit Remediation Verification Suite', () => {
     expect(result.members[0].adjustedPower).toBe(90_000_000);
   });
 
-  it('SEV-09: verifies AuditService and Super Admin monitoring UI existence', () => {
+  it('SEV-09: verifies AuditService existence and decommissioned system logs tab cleanup', () => {
     const auditServicePath = path.resolve(__dirname, '../src/modules/audit/audit.service.ts');
     expect(fs.existsSync(auditServicePath)).toBe(true);
 
-    const auditViewPath = path.resolve(__dirname, '../src/modules/audit/audit-view.ts');
-    expect(fs.existsSync(auditViewPath)).toBe(true);
-
     const indexHtml = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-    expect(indexHtml).toContain('id="nav-tab-system-logs"');
-    expect(indexHtml).toContain('id="tab-system-logs"');
-    expect(indexHtml).toContain('id="audit-logs-table-container"');
+    expect(indexHtml).not.toContain('id="nav-tab-system-logs"');
+    expect(indexHtml).not.toContain('id="tab-system-logs"');
   });
 
   it('W3 & W7: verifies payment hardening migration locks rows and normalizes subscription_type', () => {

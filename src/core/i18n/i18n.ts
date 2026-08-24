@@ -110,11 +110,6 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     tab_armsrace: 'Arms Race',
     tab_shadowfront: 'Shadowfront',
     tab_glory: 'Glory',
-    nav_system_logs: 'System Logs',
-    gm_nav_system_logs: 'System Logs',
-    logs_title: 'System Logs & Diagnostic',
-    logs_subtitle: 'Real-time observability, security auditing & error tracking',
-    logs_auto_refresh: 'Auto-refresh (10s)',
     btn_refresh: 'Refresh'
   }
 };

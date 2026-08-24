@@ -374,7 +374,6 @@
             gm_svs_matchup_sub:    'Server vs Server Matchup & Dangerosity Ranking',
             gm_nav_gvg_matchup:    'GvG',
             gm_gvg_matchup_sub:    'Server vs Server Guild Matchup & Dangerosity Ranking',
-            gm_nav_system_logs:    'System Logs',
             /* ── Bug-report ticketing ── */
             gm_nav_tickets:        'Tickets',
             ticket_report_bug:     'Report a bug',
@@ -555,10 +554,6 @@
             placeholder_uid:                 'Player UID',
             placeholder_banned_reason:       'Ban reason (optional)',
             label_uid:                       'Player UID',
-            nav_system_logs:                 'System Logs',
-            logs_title:                      'System Logs & Diagnostic',
-            logs_subtitle:                   'Real-time observability, security auditing & error tracking',
-            logs_auto_refresh:               'Auto-refresh (10s)',
             btn_refresh:                     'Refresh',
         }
     };

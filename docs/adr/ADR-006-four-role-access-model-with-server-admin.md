@@ -24,7 +24,7 @@ We introduce the **`server_admin`** role level, creating a unified Four-Role Zer
 
 | Role | Database & REST Scope | UI Access |
 | :--- | :--- | :--- |
-| `super_admin` | Global read & write across **all guild tenants** and all servers. | Full Admin Command Center + Cross-Guild Draft Ranking, Server Matchups, System Diagnostics (`#tab-system-logs`). |
+| `super_admin` | Global read & write across **all guild tenants** and all servers. | Full Admin Command Center + Cross-Guild Draft Ranking, Server Matchups, Bug Tickets (`#tab-tickets`). |
 | `server_admin` | Reads & writes **all guilds matching their assigned `server_number`**. | Command Center with dynamic server-scoped Guild Switcher dropdown. Can manage rosters, active events, scores, sanctions, and webhooks for all guilds on their server. |
 | `guild_admin` | Reads & writes **only their own single guild tenant**. | Command Center locked to their specific guild: Members, Active Events, Scores, Sanctions, Guild Settings. |
 | `member` | **ZERO direct database access**. Receives `[]` or denial on all tenant tables. | **Player Portal only** (`portal.js` / `PortalService`), communicating via `member-portal` Edge Function with cryptographically validated identity. |
@@ -52,5 +52,5 @@ We introduce the **`server_admin`** role level, creating a unified Four-Role Zer
 ## Consequences & Anti-Regression Rules
 
 - **Never allow cross-server leaks**: A `server_admin` must never read or modify data from a guild on a different server number.
-- **Never grant Super Admin diagnostics**: A `server_admin` must not access `#tab-system-logs` or system audit logs.
+- **Never grant Super Admin consoles**: A `server_admin` must not access `#tab-tickets` or super-admin only consoles.
 - **Uniformity**: Every new RPC, Edge Function, or UI module must check `is_server_admin()` and handle server-scoping uniformly.
