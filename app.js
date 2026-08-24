@@ -525,6 +525,9 @@
             // settings sub-tab bar (wired in shell.js).
             window.GM_SETTINGS.load();
         }
+        if (tabId === 'tab-tickets' && window.GM_TICKETS) {
+            window.GM_TICKETS.load();
+        }
         if ((tabId === 'tab-sanctions' || tabId === 'sanctions') && window.GM_SANCTIONS) {
             window.GM_SANCTIONS.load();
         }

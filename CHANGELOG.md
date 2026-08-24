@@ -1,5 +1,16 @@
 # Changelog
 
+## New
+
+- **Bug-Reporting Ticketing System (V3.5.3)**:
+  - **Report a Bug**: any `guild_admin`, `server_admin`, or `super_admin` can report a bug from a new top-bar button. A modal captures title, description, category (bug / feature / other), and severity (low / medium / high / critical).
+  - **Global sequential ticket numbers** (`#TICKET-xxxx`): the `tickets` table uses a single global sequence (race-safe, cross-guild), with guild / reporter account / reporter role attribution.
+  - **Discord dispatch**: each ticket is posted to a central support webhook via the existing SSRF-safe `discord-webhook-proxy` (webhook URL stored as the `TICKET_WEBHOOK_URL` function secret, never committed).
+  - **Tickets console (super admin)**: new "Tickets" nav item lists every report from every guild (newest first) with Open / Resolved / Closed status controls.
+  - **Security**: reporter is resolved server-side from `accounts` (member + anonymous rejected); the `gm_create_ticket` RPC follows the service-safe `IF auth.uid() IS NOT NULL` guard so browser and Edge calls both work; audit trail via `gm_log_player_audit`.
+  - **Version**: propagated to `APP_VERSION` (V3.5.3), `DISCORD_CHANGELOG.md` (CHANG_V3.5.3), and this changelog.
+  - **Quality Gate**: **441/441 Vitest unit tests green** (+7 ticketing guards, +tickets in the CORS suite), 0 TypeScript errors, clean build.
+
 ## Fixed
 
 - **Admin Account Creation server_error: gm_admin_upsert Service-Role Safety (v128.3)**:

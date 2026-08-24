@@ -36,6 +36,7 @@
 
         { id: 'superadmin-accounts', tabId: 'admin-superadmin', m3Icon: 'admin_panel_settings', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
         { id: 'settings', tabId: 'tab-settings', m3Icon: 'tune', icon: 'ph-note-pencil', labelKey: 'gm_nav_settings', section: 'superadmin', r5Only: true, panels: ['tab-settings'] },
+        { id: 'tickets', tabId: 'tab-tickets', m3Icon: 'confirmation_number', icon: 'ph-ticket', labelKey: 'gm_nav_tickets', section: 'superadmin', r5Only: true, panels: ['tab-tickets'] },
         { id: 'system-logs', tabId: 'tab-system-logs', m3Icon: 'terminal', icon: 'ph-terminal-window', labelKey: 'gm_nav_system_logs', section: 'superadmin', r5Only: true, panels: ['tab-system-logs'] }
     ];
 
@@ -501,11 +502,19 @@
             ? 'padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
             : 'display: none; padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
 
+        var canReportBug = window.GM.isGuildAdmin ? window.GM.isGuildAdmin() : false;
+
         var html = brandHtml +
             '<div class="gm-topbar-actions">' +
                 '<select id="guild-selector" class="gm-select" style="' + selectStyle + '">' +
                     guildOptions +
                 '</select>' +
+                (canReportBug
+                    ? '<button class="gm-btn gm-btn-ghost gm-btn-sm" data-gm-report-bug title="' + t('ticket_report_bug') + '" style="gap:0.3rem;">' +
+                        '<span class="material-symbols-rounded" style="font-size:1.05rem;">bug_report</span>' +
+                        '<span class="gm-report-bug-label" style="font-size:0.78rem; font-weight:600;">' + t('ticket_report_bug') + '</span>' +
+                      '</button>'
+                    : '') +
                 '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + t('nav_logout_title') + '">' +
                     '<span class="material-symbols-rounded">logout</span>' +
                 '</button>' +
@@ -535,6 +544,115 @@
         if (lo) lo.addEventListener('click', function () {
             var legacy = document.getElementById('logout-btn');
             if (legacy) legacy.click();
+        });
+
+        var rb = el.querySelector('[data-gm-report-bug]');
+        if (rb) rb.addEventListener('click', openBugReportModal);
+    }
+
+    // ── Bug-report ticket modal ──────────────────────────────────────────────
+    function openBugReportModal() {
+        if (!window.GM || !window.GM.isGuildAdmin()) return;
+        if (document.getElementById('bug-report-modal')) return;
+
+        var esc = window.GM.escapeHTML || function (s) { return s; };
+        var t_ = function (k) { return window.GM.t ? window.GM.t(k) : k; };
+
+        var overlay = document.createElement('div');
+        overlay.className = 'gm-modal-overlay visible';
+        overlay.id = 'bug-report-modal';
+        overlay.innerHTML =
+            '<div class="gm-modal-card" style="max-width:520px; width:94%; text-align:left;">' +
+                '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.9rem;">' +
+                    '<div style="display:flex; align-items:center; gap:0.55rem;">' +
+                        '<span class="material-symbols-rounded" style="color:var(--accent);">bug_report</span>' +
+                        '<strong style="font-size:1.05rem;">' + t_('ticket_report_bug') + '</strong>' +
+                    '</div>' +
+                    '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm bug-report-close" title="Close"><span class="material-symbols-rounded">close</span></button>' +
+                '</div>' +
+                '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:0.8rem;">' +
+                    '<div class="gm-form-group">' +
+                        '<label class="gm-label" for="ticket-title">' + t_('ticket_title') + ' *</label>' +
+                        '<input type="text" id="ticket-title" class="gm-input" maxlength="120" placeholder="' + t_('ticket_title_ph') + '">' +
+                    '</div>' +
+                    '<div class="gm-form-group">' +
+                        '<label class="gm-label" for="ticket-desc">' + t_('ticket_description') + ' *</label>' +
+                        '<textarea id="ticket-desc" class="gm-input" rows="5" maxlength="4000" placeholder="' + t_('ticket_description_ph') + '" style="resize:vertical; min-height:120px;"></textarea>' +
+                    '</div>' +
+                    '<div style="display:flex; gap:0.8rem; flex-wrap:wrap;">' +
+                        '<div class="gm-form-group" style="flex:1; min-width:140px;">' +
+                            '<label class="gm-label" for="ticket-category">' + t_('ticket_category') + '</label>' +
+                            '<select id="ticket-category" class="gm-select">' +
+                                '<option value="bug">' + t_('ticket_cat_bug') + '</option>' +
+                                '<option value="feature">' + t_('ticket_cat_feature') + '</option>' +
+                                '<option value="other">' + t_('ticket_cat_other') + '</option>' +
+                            '</select>' +
+                        '</div>' +
+                        '<div class="gm-form-group" style="flex:1; min-width:140px;">' +
+                            '<label class="gm-label" for="ticket-severity">' + t_('ticket_severity') + '</label>' +
+                            '<select id="ticket-severity" class="gm-select">' +
+                                '<option value="low">' + t_('ticket_sev_low') + '</option>' +
+                                '<option value="medium" selected>' + t_('ticket_sev_medium') + '</option>' +
+                                '<option value="high">' + t_('ticket_sev_high') + '</option>' +
+                                '<option value="critical">' + t_('ticket_sev_critical') + '</option>' +
+                            '</select>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div id="bug-report-msg" class="gm-dim" style="min-height:1rem; margin-top:0.6rem; font-size:0.8rem;"></div>' +
+                '<div style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:1rem;">' +
+                    '<button type="button" class="gm-btn gm-btn-ghost bug-report-close">' + t_('cancel') + '</button>' +
+                    '<button type="button" class="gm-btn gm-btn-primary" id="bug-report-submit">' + t_('ticket_submit') + '</button>' +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(overlay);
+
+        function close() {
+            if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }
+        overlay.querySelectorAll('.bug-report-close').forEach(function (b) { b.addEventListener('click', close); });
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+        var submit = overlay.querySelector('#bug-report-submit');
+        submit.addEventListener('click', async function () {
+            var title = (overlay.querySelector('#ticket-title').value || '').trim();
+            var desc = (overlay.querySelector('#ticket-desc').value || '').trim();
+            var category = overlay.querySelector('#ticket-category').value;
+            var severity = overlay.querySelector('#ticket-severity').value;
+            var msgEl = overlay.querySelector('#bug-report-msg');
+
+            if (!title || !desc) {
+                msgEl.textContent = t_('ticket_missing_fields');
+                msgEl.style.color = '#ef4444';
+                return;
+            }
+
+            submit.disabled = true;
+            submit.innerHTML = '<span class="material-symbols-rounded" style="font-size:1rem;">sync</span> ' + t_('ticket_submitting');
+            msgEl.textContent = '';
+            try {
+                var db = (window.GM && window.GM.db) ? window.GM.db : null;
+                if (!db || !db.functions) throw new Error('db unavailable');
+                var res = await db.functions.invoke('tickets', {
+                    body: { action: 'create', title: title, description: desc, category: category, severity: severity }
+                });
+                var data = res && res.data;
+                if (!data || !data.ok) {
+                    throw new Error((data && data.error) || 'request_failed');
+                }
+                var num = String(data.ticket_number).padStart(4, '0');
+                msgEl.textContent = t_('ticket_success') + ' #TICKET-' + num;
+                msgEl.style.color = '#34d399';
+                if (window.GM.showToast) window.GM.showToast(t_('ticket_success') + ' #TICKET-' + num, 'success');
+                setTimeout(close, 1800);
+            } catch (err) {
+                console.error('ticket submit error', err);
+                msgEl.textContent = (err && err.message) || 'Error';
+                msgEl.style.color = '#ef4444';
+                submit.disabled = false;
+                submit.innerHTML = t_('ticket_submit');
+            }
         });
     }
 

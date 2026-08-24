@@ -396,6 +396,11 @@ html, body {
     display: flex; align-items: center; gap: .6rem;
 }
 
+/* Report-a-bug button: keep the icon, hide the label on very small screens */
+@media (max-width: 480px) {
+    .gm-report-bug-label { display: none; }
+}
+
 .gm-lang-toggle {
     display: inline-flex;
     padding: 3px; gap: 2px;

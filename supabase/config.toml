@@ -441,3 +441,6 @@ verify_jwt = true
 
 [functions.ocr-guild-members]
 verify_jwt = true
+
+[functions.tickets]
+verify_jwt = true
