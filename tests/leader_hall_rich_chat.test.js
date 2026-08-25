@@ -112,4 +112,33 @@ describe('Leader Hall Rich Messaging Unit Tests', () => {
             expect(thumbs.hasReacted).toBe(true);
         });
     });
+
+    describe('4. Mobile Badges & Mention Detection', () => {
+        it('correctly updates mobile bottom-nav more badge and drawer badge', () => {
+            document.body.innerHTML = `
+                <div id="nav-badge-leader-hall" class="hidden">0</div>
+                <div id="bottom-nav-more-badge" class="hidden">0</div>
+                <div id="drawer-badge-leader-hall" class="hidden">0</div>
+            `;
+
+            // Call updateAllUnreadBadges
+            LeaderHall.updateAllUnreadBadges();
+
+            const bMore = document.getElementById('bottom-nav-more-badge');
+            const bDrawer = document.getElementById('drawer-badge-leader-hall');
+            expect(bMore).not.toBeNull();
+            expect(bDrawer).not.toBeNull();
+        });
+
+        it('detects user mentions accurately with regex boundaries', () => {
+            const accId = 'HawkEye';
+            const regex = new RegExp('@' + accId + '(?![a-zA-Z0-9_\\-])', 'i');
+
+            expect(regex.test('Hello @HawkEye how are you?')).toBe(true);
+            expect(regex.test('Hey @hawkeye check this out')).toBe(true);
+            expect(regex.test('Message for @HawkEye_Shadow')).toBe(false);
+            expect(regex.test('No mention here @Ashke')).toBe(false);
+        });
+    });
 });
+

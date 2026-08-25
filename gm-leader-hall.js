@@ -663,7 +663,7 @@
             }
         });
 
-        // 1. Top Navigation Tab Badge
+        // 1. Top & Desktop Navigation Tab Badge
         var navBadge = document.getElementById('nav-badge-leader-hall');
         if (navBadge) {
             if (totalUnread > 0) {
@@ -674,7 +674,38 @@
             }
         }
 
-        // 2. Accordion Header Badges
+        // 2. Mobile Bottom-Nav More Button Badge
+        var bMore = document.getElementById('bottom-nav-more-badge');
+        if (bMore) {
+            if (totalUnread > 0) {
+                bMore.innerText = totalUnread > 99 ? '99+' : totalUnread;
+                bMore.classList.remove('hidden');
+            } else {
+                bMore.classList.add('hidden');
+            }
+        }
+
+        // 3. Mobile Drawer Leader Hall Item Badge
+        var bDrawer = document.getElementById('drawer-badge-leader-hall');
+        if (bDrawer) {
+            if (totalUnread > 0) {
+                bDrawer.innerText = totalUnread > 99 ? '99+' : totalUnread;
+                bDrawer.classList.remove('hidden');
+            } else {
+                bDrawer.classList.add('hidden');
+            }
+        }
+
+        // 4. Native App Icon Badging (PWA / Mobile Safari / Chrome)
+        if (typeof navigator !== 'undefined') {
+            if (totalUnread > 0 && 'setAppBadge' in navigator) {
+                try { navigator.setAppBadge(totalUnread); } catch (e) {}
+            } else if (totalUnread === 0 && 'clearAppBadge' in navigator) {
+                try { navigator.clearAppBadge(); } catch (e) {}
+            }
+        }
+
+        // 5. Accordion Header Badges
         var bDirect = document.getElementById('badge-direct-unread');
         if (bDirect) {
             if (directUnread > 0) {
@@ -705,7 +736,7 @@
             }
         }
 
-        // 3. Update individual channel items in sidebar
+        // 6. Update individual channel items in sidebar
         document.querySelectorAll('.gm-hall-channel-item').forEach(function (el) {
             var cId = el.getAttribute('data-conv-id');
             if (!cId) return;
@@ -734,12 +765,23 @@
             db.removeChannel(globalUnreadChannel);
         }
 
+        // Proactively request Notification permission on user interaction if not decided yet
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+            try {
+                var reqPerm = function () {
+                    Notification.requestPermission();
+                    document.removeEventListener('click', reqPerm);
+                };
+                document.addEventListener('click', reqPerm, { once: true });
+            } catch (e) {}
+        }
+
         globalUnreadChannel = db.channel('leader_hall_global_unreads_' + accId)
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'e2ee_messages'
-            }, function (payload) {
+            }, async function (payload) {
                 var msg = payload.new;
                 if (!msg || msg.sender_account_id === accId) return;
 
@@ -753,9 +795,102 @@
                     unreadCounts[msg.conversation_id] = (unreadCounts[msg.conversation_id] || 0) + 1;
                     updateAllUnreadBadges();
 
-                    if (!isViewingThisConv && window.GM && window.GM.showToast) {
-                        var senderTag = msg.sender_guild ? '[' + msg.sender_guild + '] ' : '';
-                        window.GM.showToast('💬 ' + senderTag + msg.sender_account_id + ': New encrypted message', 'info');
+                    // Resolve conversation details
+                    var convObj = conversationsList.find(function (c) { return c.id === msg.conversation_id; });
+                    var isDirect = convObj ? (convObj.type === 'direct') : false;
+                    var isGroup = convObj ? (convObj.type === 'group') : false;
+                    var isR5Summit = convObj ? (isGroup && convObj.isR5Only) : false;
+                    var groupTitle = convObj ? convObj.title : (isDirect ? 'Direct 1:1' : 'Discussion');
+                    var senderGuild = msg.sender_guild ? '[' + msg.sender_guild + '] ' : '';
+                    var senderLabel = senderGuild + msg.sender_account_id;
+
+                    // Decrypt message to inspect snippet and detect @player mentions
+                    var plainText = '';
+                    try {
+                        var rawDec = await decryptMessage(msg);
+                        var parsed = parseMessagePayload(rawDec);
+                        plainText = parsed.text || '';
+                    } catch (e) {}
+
+                    var cleanSnippet = plainText.trim();
+                    if (cleanSnippet.length > 70) {
+                        cleanSnippet = cleanSnippet.slice(0, 67) + '...';
+                    }
+
+                    // Check for @mention
+                    var isMentioned = Boolean(accId && cleanSnippet && new RegExp('@' + accId + '(?![a-zA-Z0-9_\\-])', 'i').test(cleanSnippet));
+
+                    // Construct notification content
+                    var notifTitle = '';
+                    var notifBody = '';
+                    var toastType = 'info';
+
+                    if (isMentioned) {
+                        notifTitle = '🔔 ' + senderLabel + ' mentioned you in ' + groupTitle;
+                        notifBody = cleanSnippet || 'Mentioned you in a message';
+                        toastType = 'warning';
+                        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                            try { navigator.vibrate([150, 70, 150]); } catch (e) {}
+                        }
+                    } else if (isDirect) {
+                        notifTitle = '💬 Direct message from ' + senderLabel;
+                        notifBody = cleanSnippet || 'New encrypted direct message';
+                        toastType = 'info';
+                        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                            try { navigator.vibrate([100, 50, 100]); } catch (e) {}
+                        }
+                    } else if (isR5Summit) {
+                        notifTitle = '👑 R5 Summit • ' + senderLabel;
+                        notifBody = cleanSnippet || 'New confidential high-command message';
+                        toastType = 'info';
+                        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                            try { navigator.vibrate([120, 60, 120]); } catch (e) {}
+                        }
+                    } else {
+                        notifTitle = '👥 ' + groupTitle + ' • ' + senderLabel;
+                        notifBody = cleanSnippet || 'New message in discussion';
+                        toastType = 'info';
+                        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                            try { navigator.vibrate(80); } catch (e) {}
+                        }
+                    }
+
+                    // 1. In-App Toast
+                    if (window.GM && window.GM.showToast) {
+                        window.GM.showToast(notifTitle + (cleanSnippet ? ': "' + cleanSnippet + '"' : ''), toastType);
+                    }
+
+                    // 2. Native System Notification (mobile PWA / background)
+                    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                        try {
+                            var notif = new Notification(notifTitle, {
+                                body: notifBody,
+                                icon: '/assets/favicon-RURjxqe3.png',
+                                badge: '/assets/favicon-RURjxqe3.png',
+                                tag: 'leader-hall-' + msg.conversation_id,
+                                silent: false
+                            });
+                            notif.onclick = function () {
+                                window.focus();
+                                if (typeof window !== 'undefined' && window.GM && window.GM.shell && window.GM.shell.gotoItem) {
+                                    window.GM.shell.gotoItem('leader-hall');
+                                }
+                                selectConversation(msg.conversation_id);
+                            };
+                        } catch (e) {
+                            // Fallback to service worker notification
+                            if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.ready) {
+                                navigator.serviceWorker.ready.then(function (reg) {
+                                    reg.showNotification(notifTitle, {
+                                        body: notifBody,
+                                        icon: '/assets/favicon-RURjxqe3.png',
+                                        badge: '/assets/favicon-RURjxqe3.png',
+                                        tag: 'leader-hall-' + msg.conversation_id,
+                                        data: { conversation_id: msg.conversation_id }
+                                    });
+                                });
+                            }
+                        }
                     }
                 }
             })

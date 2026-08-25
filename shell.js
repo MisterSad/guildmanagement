@@ -873,6 +873,7 @@
         });
         html += '<button class="gm-bottom-nav-item" data-gm-more>' +
                     '<span class="material-symbols-rounded gm-icon">more_horiz</span>' +
+                    '<span class="gm-bottom-nav-unread-badge hidden" id="bottom-nav-more-badge">0</span>' +
                     '<span>' + t('gm_nav_more') + '</span>' +
                 '</button>';
         html += '</div>';
@@ -885,6 +886,10 @@
         });
         var moreBtn = el.querySelector('[data-gm-more]');
         if (moreBtn) moreBtn.addEventListener('click', openDrawer);
+
+        if (typeof window !== 'undefined' && window.GM_LEADER_HALL && typeof window.GM_LEADER_HALL.updateAllUnreadBadges === 'function') {
+            window.GM_LEADER_HALL.updateAllUnreadBadges();
+        }
     }
 
     function renderDrawer() {
@@ -897,8 +902,10 @@
             var isActive = state.active === item.id;
             var label = t(item.labelKey);
             var m3Icon = item.m3Icon || 'circle';
+            var badgeHtml = (item.id === 'leader-hall') ? '<span class="gm-drawer-unread-badge hidden" id="drawer-badge-leader-hall">0</span>' : '';
 
             html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
+                        badgeHtml +
                         '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
                         '<span>' + label + '</span>' +
                     '</button>';
@@ -917,6 +924,10 @@
             });
         });
         backdrop.addEventListener('click', closeDrawer);
+
+        if (typeof window !== 'undefined' && window.GM_LEADER_HALL && typeof window.GM_LEADER_HALL.updateAllUnreadBadges === 'function') {
+            window.GM_LEADER_HALL.updateAllUnreadBadges();
+        }
     }
 
     function openDrawer() {
