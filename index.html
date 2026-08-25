@@ -1131,8 +1131,21 @@
                                     <div class="gm-empty-title">Select or start a discussion</div>
                                 </div>
                             </div>
+                            <div class="gm-mention-autocomplete-popup hidden" id="leader-hall-mention-popup"></div>
+                            <div class="gm-reply-preview-bar hidden" id="leader-hall-reply-preview">
+                                <div class="gm-reply-preview-left">
+                                    <i class="ph ph-arrow-bend-up-left gm-reply-icon"></i>
+                                    <div class="gm-reply-preview-content">
+                                        <div class="gm-reply-preview-sender" id="leader-hall-reply-sender">Replying to ...</div>
+                                        <div class="gm-reply-preview-text" id="leader-hall-reply-text">...</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="gm-reply-cancel-btn" id="leader-hall-cancel-reply" title="Cancel reply">
+                                    <i class="ph ph-x"></i>
+                                </button>
+                            </div>
                             <div class="gm-chat-input-bar" id="leader-hall-input-bar">
-                                <input type="text" id="leader-hall-msg-input" class="gm-chat-input" placeholder="Type an encrypted message..." autocomplete="off">
+                                <input type="text" id="leader-hall-msg-input" class="gm-chat-input" placeholder="Type an encrypted message... (use @ to mention)" autocomplete="off">
                                 <button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="leader-hall-send-btn">
                                     <i class="ph ph-paper-plane-right"></i>
                                     <span>Send</span>
@@ -1870,7 +1883,7 @@
     <script src="badges.js?v=6"></script>
     <script src="portal.js?v=13"></script>
     <script src="gm-help.js?v=3"></script>
-    <script src="gm-leader-hall.js?v=24"></script>
+    <script src="gm-leader-hall.js?v=25"></script>
     <script src="app.js?v=82"></script>
     <script src="shell.js?v=39"></script>
 </body>

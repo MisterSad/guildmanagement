@@ -42,6 +42,324 @@
     var lastReadMessageIds = {}; // convId -> highest message id read
     var globalUnreadChannel = null;
 
+    // ─── Rich Messaging State: Mentions, Reactions & Quoted Replies ──────────
+    var replyingTo = null; // { id, sender, guild, snippet }
+    var messageReactions = {}; // messageId -> [{ emoji, account_id }]
+    var reactionsRealtimeChannel = null;
+    var mentionCandidates = [];
+    var mentionSelectedIndex = 0;
+    var mentionActiveQuery = '';
+    var QUICK_EMOJIS = ['👍', '❤️', '🔥', '⚔️', '🛡️', '😂', '👏', '🚀'];
+
+    function parseMessagePayload(raw) {
+        if (!raw) return { text: '', replyTo: null };
+        if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+            try {
+                var parsed = JSON.parse(raw);
+                if (parsed && typeof parsed.text === 'string') {
+                    return {
+                        text: parsed.text,
+                        replyTo: parsed.replyTo || null
+                    };
+                }
+            } catch (e) {}
+        }
+        return { text: String(raw), replyTo: null };
+    }
+
+    function formatMessageBody(text, currentAccountId) {
+        if (!text) return '';
+        var safe = esc(text);
+        safe = safe.replace(/@([a-zA-Z0-9_\-\.]+)/g, function (match, username) {
+            var isMe = currentAccountId && username.toLowerCase() === currentAccountId.toLowerCase();
+            return '<span class="gm-mention-badge ' + (isMe ? 'is-me' : '') + '" data-mention="' + esc(username) + '">@' + esc(username) + '</span>';
+        });
+        return safe.replace(/\n/g, '<br>');
+    }
+
+    function aggregateReactions(reactionsList, currentAccountId) {
+        if (!reactionsList || reactionsList.length === 0) return [];
+        var map = {};
+        reactionsList.forEach(function (r) {
+            if (!r || !r.emoji) return;
+            if (!map[r.emoji]) {
+                map[r.emoji] = { emoji: r.emoji, count: 0, users: [], hasReacted: false };
+            }
+            map[r.emoji].count++;
+            map[r.emoji].users.push(r.account_id);
+            if (r.account_id === currentAccountId) {
+                map[r.emoji].hasReacted = true;
+            }
+        });
+        return Object.values(map);
+    }
+
+    function setReplyingTo(replyObj) {
+        if (!replyObj) {
+            clearReplyingTo();
+            return;
+        }
+        replyingTo = {
+            id: replyObj.id,
+            sender: replyObj.sender,
+            guild: replyObj.guild,
+            snippet: (replyObj.snippet || '').slice(0, 100)
+        };
+
+        var previewEl = document.getElementById('leader-hall-reply-preview');
+        var senderEl = document.getElementById('leader-hall-reply-sender');
+        var textEl = document.getElementById('leader-hall-reply-text');
+        var input = document.getElementById('leader-hall-msg-input');
+
+        if (senderEl) {
+            var gTag = replyingTo.guild ? '[' + esc(replyingTo.guild) + '] ' : '';
+            senderEl.innerHTML = '<i class="ph ph-arrow-bend-up-left"></i> Replying to ' + gTag + esc(replyingTo.sender);
+        }
+        if (textEl) {
+            textEl.innerText = replyingTo.snippet + ((replyObj.snippet && replyObj.snippet.length > 100) ? '...' : '');
+        }
+        if (previewEl) {
+            previewEl.classList.remove('hidden');
+        }
+        if (input) {
+            input.focus();
+        }
+    }
+
+    function clearReplyingTo() {
+        replyingTo = null;
+        var previewEl = document.getElementById('leader-hall-reply-preview');
+        if (previewEl) previewEl.classList.add('hidden');
+    }
+
+    async function fetchReactions(convId) {
+        var db = getDb();
+        if (!db || !convId) return;
+        try {
+            var res = await db
+                .from('e2ee_message_reactions')
+                .select('message_id, account_id, emoji')
+                .eq('conversation_id', convId);
+
+            var grouped = {};
+            (res.data || []).forEach(function (r) {
+                var mid = String(r.message_id);
+                if (!grouped[mid]) grouped[mid] = [];
+                grouped[mid].push(r);
+            });
+            messageReactions = grouped;
+        } catch (e) {
+            console.error('Error fetching reactions', e);
+        }
+    }
+
+    async function handleToggleReaction(messageId, emoji) {
+        var db = getDb();
+        if (!db || !messageId || !emoji) return;
+
+        try {
+            var res = await db.rpc('gm_toggle_e2ee_reaction', {
+                p_message_id: Number(messageId),
+                p_emoji: emoji
+            });
+
+            if (res.error) throw res.error;
+
+            if (currentConversation) {
+                await fetchReactions(currentConversation.id);
+                renderMessageReactionsRow(messageId);
+            }
+        } catch (err) {
+            console.error('Error toggling reaction', err);
+            if (window.GM && window.GM.showToast) {
+                window.GM.showToast('Could not react: ' + (err.message || err), 'danger');
+            }
+        }
+    }
+
+    function renderMessageReactionsRow(messageId) {
+        var rowEl = document.getElementById('msg-row-' + messageId);
+        if (!rowEl) return;
+        var bubbleEl = rowEl.querySelector('.gm-message-bubble');
+        if (!bubbleEl) return;
+
+        var existingRow = bubbleEl.querySelector('.gm-message-reactions-row');
+        var acc = getAccount();
+        var accId = acc ? (acc.id || acc.account_id) : '';
+        var msgReactions = messageReactions[String(messageId)] || [];
+        var agg = aggregateReactions(msgReactions, accId);
+
+        if (agg.length === 0) {
+            if (existingRow) existingRow.remove();
+            return;
+        }
+
+        var html = '<div class="gm-message-reactions-row">';
+        agg.forEach(function (ag) {
+            var userList = ag.users.join(', ');
+            html +=
+                '<button type="button" class="gm-reaction-pill ' + (ag.hasReacted ? 'has-reacted' : '') + '" data-msg-id="' + esc(String(messageId)) + '" data-emoji="' + esc(ag.emoji) + '" title="Reacted by ' + esc(userList) + '">' +
+                    '<span>' + esc(ag.emoji) + '</span>' +
+                    '<span class="gm-reaction-count">' + ag.count + '</span>' +
+                '</button>';
+        });
+        html += '</div>';
+
+        if (existingRow) {
+            existingRow.outerHTML = html;
+        } else {
+            bubbleEl.insertAdjacentHTML('beforeend', html);
+        }
+
+        var newRow = bubbleEl.querySelector('.gm-message-reactions-row');
+        if (newRow) {
+            newRow.querySelectorAll('.gm-reaction-pill').forEach(function (pill) {
+                pill.onclick = function (e) {
+                    e.stopPropagation();
+                    var mid = pill.getAttribute('data-msg-id');
+                    var em = pill.getAttribute('data-emoji');
+                    handleToggleReaction(mid, em);
+                };
+            });
+        }
+    }
+
+    function getMentionCandidates(query) {
+        var map = new Map();
+        if (currentConversation && currentConversation.members) {
+            currentConversation.members.forEach(function (m) {
+                map.set(m.account_id, { id: m.account_id, guild: m.guild, role: m.role });
+            });
+        }
+        activeAccounts.forEach(function (a) {
+            if (!map.has(a.id)) {
+                map.set(a.id, { id: a.id, guild: a.guild, role: a.role });
+            }
+        });
+
+        var all = Array.from(map.values());
+        if (!query) return all.slice(0, 7);
+        var q = query.toLowerCase();
+        return all.filter(function (c) {
+            return c.id.toLowerCase().includes(q) || (c.guild && c.guild.toLowerCase().includes(q));
+        }).slice(0, 7);
+    }
+
+    function renderMentionPopup() {
+        var popup = document.getElementById('leader-hall-mention-popup');
+        if (!popup) return;
+
+        if (mentionCandidates.length === 0) {
+            popup.classList.add('hidden');
+            return;
+        }
+
+        var html = mentionCandidates.map(function (c, idx) {
+            var isSel = (idx === mentionSelectedIndex);
+            var gTag = c.guild ? '[' + esc(c.guild) + '] ' : '';
+            return '<div class="gm-mention-item ' + (isSel ? 'is-selected' : '') + '" data-index="' + idx + '" data-id="' + esc(c.id) + '">' +
+                '<div style="display:flex; align-items:center; gap:0.4rem;">' +
+                    '<span class="gm-sender-guild" style="font-size:0.75rem; font-weight:700;">' + gTag + '</span>' +
+                    '<span class="gm-mention-item-name">' + esc(c.id) + '</span>' +
+                '</div>' +
+                '<span class="gm-mention-item-role">(' + esc(c.role || 'Leader') + ')</span>' +
+            '</div>';
+        }).join('');
+
+        popup.innerHTML = html;
+        popup.classList.remove('hidden');
+
+        popup.querySelectorAll('.gm-mention-item').forEach(function (item) {
+            item.onclick = function (e) {
+                e.stopPropagation();
+                var idx = Number(item.getAttribute('data-index'));
+                applyMentionSelection(mentionCandidates[idx]);
+            };
+        });
+    }
+
+    function applyMentionSelection(candidate) {
+        if (!candidate) return;
+        var input = document.getElementById('leader-hall-msg-input');
+        if (!input) return;
+
+        var val = input.value;
+        var cursor = input.selectionStart || val.length;
+        var textBefore = val.slice(0, cursor);
+        var textAfter = val.slice(cursor);
+
+        var match = textBefore.match(/@([a-zA-Z0-9_\-\.]*)$/);
+        if (match) {
+            var replaceStart = textBefore.length - match[0].length;
+            var newBefore = textBefore.slice(0, replaceStart) + '@' + candidate.id + ' ';
+            input.value = newBefore + textAfter;
+            var newCursor = newBefore.length;
+            input.setSelectionRange(newCursor, newCursor);
+        }
+
+        var popup = document.getElementById('leader-hall-mention-popup');
+        if (popup) popup.classList.add('hidden');
+        mentionCandidates = [];
+        input.focus();
+    }
+
+    function initMentionAutocomplete() {
+        var input = document.getElementById('leader-hall-msg-input');
+        var popup = document.getElementById('leader-hall-mention-popup');
+        if (!input) return;
+
+        input.addEventListener('input', function () {
+            var val = input.value;
+            var cursor = input.selectionStart || val.length;
+            var textBefore = val.slice(0, cursor);
+            var match = textBefore.match(/@([a-zA-Z0-9_\-\.]*)$/);
+
+            if (match) {
+                mentionActiveQuery = match[1];
+                mentionCandidates = getMentionCandidates(mentionActiveQuery);
+                mentionSelectedIndex = 0;
+                renderMentionPopup();
+            } else {
+                if (popup) popup.classList.add('hidden');
+                mentionCandidates = [];
+            }
+        });
+
+        input.addEventListener('keydown', function (e) {
+            if (popup && !popup.classList.contains('hidden') && mentionCandidates.length > 0) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    mentionSelectedIndex = (mentionSelectedIndex + 1) % mentionCandidates.length;
+                    renderMentionPopup();
+                    return;
+                }
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    mentionSelectedIndex = (mentionSelectedIndex - 1 + mentionCandidates.length) % mentionCandidates.length;
+                    renderMentionPopup();
+                    return;
+                }
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault();
+                    applyMentionSelection(mentionCandidates[mentionSelectedIndex]);
+                    return;
+                }
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    popup.classList.add('hidden');
+                    mentionCandidates = [];
+                    return;
+                }
+            }
+        });
+
+        document.addEventListener('click', function (e) {
+            if (popup && !popup.contains(e.target) && e.target !== input) {
+                popup.classList.add('hidden');
+            }
+        });
+    }
+
     var accordionState = {
         global: true,
         direct: true,
@@ -49,8 +367,19 @@
         r5: true
     };
 
-    var esc = (window.GM && window.GM.escapeHTML) ? window.GM.escapeHTML : function (s) { return s || ''; };
-    var t = (window.GM && window.GM.t) ? window.GM.t : function (k) { return k; };
+    function esc(s) {
+        if (!s) return '';
+        if (typeof window !== 'undefined' && window.GM && typeof window.GM.escapeHTML === 'function') {
+            return window.GM.escapeHTML(s);
+        }
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+    var t = (typeof window !== 'undefined' && window.GM && window.GM.t) ? window.GM.t : function (k) { return k; };
 
     function getDb() {
         return (window.GM && window.GM.db) ? window.GM.db : null;
@@ -633,6 +962,18 @@
         var role = acc.role || 'R4';
         var cleanText = text.trim();
 
+        // Encode message payload with optional quoted reply
+        var payloadObj = {
+            text: cleanText,
+            replyTo: replyingTo ? {
+                id: replyingTo.id,
+                sender: replyingTo.sender,
+                guild: replyingTo.guild,
+                snippet: replyingTo.snippet
+            } : null
+        };
+        var payloadString = JSON.stringify(payloadObj);
+
         try {
             var encrypted = null;
             var usedDoubleRatchet = false;
@@ -643,7 +984,7 @@
                 var session = await getOrEstablish1to1Session(targetId);
                 if (session) {
                     try {
-                        encrypted = await S.doubleRatchetEncrypt(session, cleanText);
+                        encrypted = await S.doubleRatchetEncrypt(session, payloadString);
                         await saveSession(accId + ':' + targetId, session);
                         usedDoubleRatchet = true;
                     } catch (e) {
@@ -654,7 +995,7 @@
 
             if (!usedDoubleRatchet) {
                 var senderKey = await getOrEstablishGroupSenderKey(currentConversation.id);
-                encrypted = await S.groupSenderKeyEncrypt(senderKey, cleanText);
+                encrypted = await S.groupSenderKeyEncrypt(senderKey, payloadString);
                 var toStore = {
                     groupId: senderKey.groupId,
                     senderAccountId: senderKey.senderAccountId,
@@ -679,9 +1020,10 @@
             }).select();
 
             if (insertRes.data && insertRes.data[0]) {
-                setCachedDecrypted(insertRes.data[0].id, cleanText);
+                setCachedDecrypted(insertRes.data[0].id, payloadString);
             }
 
+            clearReplyingTo();
             renderMessages();
         } catch (err) {
             console.error('Failed to encrypt & send E2EE message', err);
@@ -1803,6 +2145,8 @@
         }
 
         try {
+            await fetchReactions(currentConversation.id);
+
             var res = await db
                 .from('e2ee_messages')
                 .select('*')
@@ -1845,26 +2189,110 @@
             for (var i = 0; i < messages.length; i++) {
                 var m = messages[i];
                 var isMe = m.sender_account_id === accId;
-                var text = await decryptMessage(m);
+                var rawDecrypted = await decryptMessage(m);
+                var parsedPayload = parseMessagePayload(rawDecrypted);
+                var text = parsedPayload.text;
+                var replyTo = parsedPayload.replyTo;
+                var formattedBody = formatMessageBody(text, accId);
                 var timeStr = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '';
                 var guildTag = m.sender_guild ? '[' + m.sender_guild + ']' : '';
                 var roleTag = m.sender_role || 'R4';
 
+                // Quote card HTML
+                var quoteHtml = '';
+                if (replyTo && replyTo.snippet) {
+                    var qSender = (replyTo.guild ? '[' + replyTo.guild + '] ' : '') + replyTo.sender;
+                    quoteHtml =
+                        '<div class="gm-message-quote" data-quote-id="' + esc(String(replyTo.id)) + '" title="Click to jump to original message">' +
+                            '<div class="gm-quote-sender"><i class="ph ph-arrow-bend-up-left"></i> ' + esc(qSender) + '</div>' +
+                            '<div class="gm-quote-text">' + esc(replyTo.snippet) + '</div>' +
+                        '</div>';
+                }
+
+                // Reactions row HTML
+                var msgReactions = messageReactions[String(m.id)] || [];
+                var aggReactions = aggregateReactions(msgReactions, accId);
+                var reactionsHtml = '';
+                if (aggReactions.length > 0) {
+                    reactionsHtml = '<div class="gm-message-reactions-row">';
+                    aggReactions.forEach(function (ag) {
+                        var userList = ag.users.join(', ');
+                        reactionsHtml +=
+                            '<button type="button" class="gm-reaction-pill ' + (ag.hasReacted ? 'has-reacted' : '') + '" data-msg-id="' + esc(String(m.id)) + '" data-emoji="' + esc(ag.emoji) + '" title="Reacted by ' + esc(userList) + '">' +
+                                '<span>' + esc(ag.emoji) + '</span>' +
+                                '<span class="gm-reaction-count">' + ag.count + '</span>' +
+                            '</button>';
+                    });
+                    reactionsHtml += '</div>';
+                }
+
+                // Quick actions bar
+                var actionsBarHtml =
+                    '<div class="gm-message-actions-bar">' +
+                        QUICK_EMOJIS.map(function (em) {
+                            return '<button type="button" class="gm-action-emoji-btn" data-msg-id="' + esc(String(m.id)) + '" data-emoji="' + esc(em) + '" title="React ' + esc(em) + '">' + esc(em) + '</button>';
+                        }).join('') +
+                        '<button type="button" class="gm-action-reply-btn btn-reply-msg" data-msg-id="' + esc(String(m.id)) + '" data-sender="' + esc(m.sender_account_id) + '" data-guild="' + esc(m.sender_guild || '') + '">' +
+                            '<i class="ph ph-arrow-bend-up-left"></i> Reply' +
+                        '</button>' +
+                    '</div>';
+
                 html +=
-                    '<div class="gm-message-row ' + (isMe ? 'me' : 'other') + '">' +
+                    '<div class="gm-message-row ' + (isMe ? 'me' : 'other') + '" id="msg-row-' + esc(String(m.id)) + '" data-msg-id="' + esc(String(m.id)) + '" data-text="' + esc(text) + '">' +
+                        actionsBarHtml +
                         '<div class="gm-message-bubble">' +
                             (!isMe ? '<div class="gm-message-sender"><span class="gm-sender-guild">' + esc(guildTag) + '</span> ' + esc(m.sender_account_id) + ' <span class="gm-sender-role">(' + esc(roleTag) + ')</span></div>' : '') +
-                            '<div class="gm-message-body">' + esc(text) + '</div>' +
+                            quoteHtml +
+                            '<div class="gm-message-body">' + formattedBody + '</div>' +
                             '<div class="gm-message-meta">' +
                                 '<span>' + esc(timeStr) + '</span>' +
                                 '<i class="ph ph-lock-key" style="font-size:0.75rem; margin-left:4px;" title="Signal E2EE Encrypted"></i>' +
                             '</div>' +
+                            reactionsHtml +
                         '</div>' +
                     '</div>';
             }
 
             container.innerHTML = watermarkHtml + html;
             container.scrollTop = container.scrollHeight;
+
+            // Bind click handlers for quotes, replies and reactions
+            container.querySelectorAll('.gm-message-quote').forEach(function (qEl) {
+                qEl.onclick = function (e) {
+                    e.stopPropagation();
+                    var qId = qEl.getAttribute('data-quote-id');
+                    if (qId) {
+                        var target = document.getElementById('msg-row-' + qId);
+                        if (target) {
+                            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            target.classList.remove('gm-highlight-jump');
+                            void target.offsetWidth;
+                            target.classList.add('gm-highlight-jump');
+                        }
+                    }
+                };
+            });
+
+            container.querySelectorAll('.btn-reply-msg').forEach(function (rBtn) {
+                rBtn.onclick = function (e) {
+                    e.stopPropagation();
+                    var mid = rBtn.getAttribute('data-msg-id');
+                    var sender = rBtn.getAttribute('data-sender');
+                    var guild = rBtn.getAttribute('data-guild');
+                    var rowEl = document.getElementById('msg-row-' + mid);
+                    var snippet = rowEl ? (rowEl.getAttribute('data-text') || '') : '';
+                    setReplyingTo({ id: mid, sender: sender, guild: guild, snippet: snippet });
+                };
+            });
+
+            container.querySelectorAll('.gm-action-emoji-btn, .gm-reaction-pill').forEach(function (btn) {
+                btn.onclick = function (e) {
+                    e.stopPropagation();
+                    var mid = btn.getAttribute('data-msg-id');
+                    var em = btn.getAttribute('data-emoji');
+                    if (mid && em) handleToggleReaction(mid, em);
+                };
+            });
 
             if (messages.length > 0) {
                 var maxId = messages[messages.length - 1].id;
@@ -1891,6 +2319,9 @@
         if (realtimeChannel) {
             db.removeChannel(realtimeChannel);
         }
+        if (reactionsRealtimeChannel) {
+            db.removeChannel(reactionsRealtimeChannel);
+        }
 
         realtimeChannel = db.channel('e2ee_conv_' + convId)
             .on('postgres_changes', {
@@ -1900,6 +2331,31 @@
                 filter: 'conversation_id=eq.' + convId
             }, function (payload) {
                 renderMessages();
+            })
+            .subscribe();
+
+        reactionsRealtimeChannel = db.channel('e2ee_reactions_' + convId)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'e2ee_message_reactions',
+                filter: 'conversation_id=eq.' + convId
+            }, function (payload) {
+                if (payload && payload.new && payload.new.message_id) {
+                    fetchReactions(convId).then(function () {
+                        renderMessageReactionsRow(payload.new.message_id);
+                    });
+                } else if (payload && payload.old && payload.old.message_id) {
+                    fetchReactions(convId).then(function () {
+                        renderMessageReactionsRow(payload.old.message_id);
+                    });
+                } else {
+                    fetchReactions(convId).then(function () {
+                        if (currentConversation && currentConversation.id === convId) {
+                            Object.keys(messageReactions).forEach(renderMessageReactionsRow);
+                        }
+                    });
+                }
             })
             .subscribe();
 
@@ -2207,12 +2663,25 @@
             };
             input.onkeydown = function (e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
+                    var popup = document.getElementById('leader-hall-mention-popup');
+                    if (popup && !popup.classList.contains('hidden') && mentionCandidates.length > 0) {
+                        return; // Let mention autocomplete handle selection!
+                    }
                     e.preventDefault();
                     sendMessage(input.value);
                     input.value = '';
                 }
             };
         }
+
+        var btnCancelReply = document.getElementById('leader-hall-cancel-reply');
+        if (btnCancelReply) {
+            btnCancelReply.onclick = function () {
+                clearReplyingTo();
+            };
+        }
+
+        initMentionAutocomplete();
 
         var btnSubmitCreate = document.getElementById('modal-leader-submit-btn');
         if (btnSubmitCreate) {
@@ -2407,6 +2876,13 @@
         initGlobalUnreadListener: initGlobalUnreadListener,
         fetchUnreadCounts: fetchUnreadCounts,
         markConversationRead: markConversationRead,
-        updateAllUnreadBadges: updateAllUnreadBadges
+        updateAllUnreadBadges: updateAllUnreadBadges,
+        parseMessagePayload: parseMessagePayload,
+        formatMessageBody: formatMessageBody,
+        aggregateReactions: aggregateReactions,
+        getMentionCandidates: getMentionCandidates,
+        setReplyingTo: setReplyingTo,
+        clearReplyingTo: clearReplyingTo,
+        handleToggleReaction: handleToggleReaction
     };
 });
