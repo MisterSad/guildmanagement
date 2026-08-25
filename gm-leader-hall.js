@@ -114,6 +114,10 @@
         return accRole === 'super_admin' || accRole === 'server_admin' || accRole === 'guild_admin' || accRole === 'r5' || accRole === 'admin';
     }
 
+    function isProtectedConversation() {
+        return currentConversation && (currentConversation.type === 'direct' || currentConversation.type === 'group');
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // 1. SIGNAL IDENTITY & PREKEY SYNC
     // ─────────────────────────────────────────────────────────────────────────
@@ -958,6 +962,11 @@
                         '</div>' +
                     '</aside>' +
                     '<section class="gm-leader-hall-main">' +
+                        '<div class="gm-privacy-shield-overlay" id="leader-hall-privacy-shield">' +
+                            '<i class="ph ph-shield-warning gm-privacy-shield-icon"></i>' +
+                            '<h3 class="gm-privacy-shield-title">Confidential Session Protected</h3>' +
+                            '<p class="gm-privacy-shield-desc">Screen capture and background window viewing are restricted for high-command diplomatic communications.</p>' +
+                        '</div>' +
                         '<div class="gm-chat-header" id="leader-hall-chat-header">' +
                             '<div class="gm-chat-header-left">' +
                                 '<h2 class="gm-chat-title">Select a channel or discussion</h2>' +
@@ -1189,12 +1198,19 @@
             '</h2>' :
             '<h2 class="gm-chat-title">' + esc(title) + '</h2>';
 
+        var isProt = isProtectedConversation();
+        var shieldBadge = isProt ?
+            '<span class="gm-chip-shield" title="Copying, text selection, and screen capture are restricted"><i class="ph ph-shield-check"></i> Anti-Capture Protected</span>' : '';
+
         header.innerHTML =
             '<div class="gm-chat-header-left">' +
                 titleHtml +
-                '<div class="gm-chat-e2ee-tag">' +
-                    '<i class="ph ph-lock-key"></i>' +
-                    '<span>' + esc(subtitle) + '</span>' +
+                '<div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-top:2px;">' +
+                    '<div class="gm-chat-e2ee-tag">' +
+                        '<i class="ph ph-lock-key"></i>' +
+                        '<span>' + esc(subtitle) + '</span>' +
+                    '</div>' +
+                    shieldBadge +
                 '</div>' +
             '</div>' +
             '<div class="gm-chat-header-actions" style="display:flex; align-items:center; gap:0.4rem;">' +
@@ -1536,6 +1552,23 @@
 
         container.innerHTML = '<div class="gm-empty" style="padding:3rem 1rem;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Decrypting messages...</div></div>';
 
+        var mainEl = document.querySelector('.gm-leader-hall-main');
+        var isProt = isProtectedConversation();
+        if (mainEl) {
+            if (isProt) {
+                mainEl.classList.add('gm-protected-session');
+            } else {
+                mainEl.classList.remove('gm-protected-session');
+            }
+        }
+        if (container) {
+            if (isProt) {
+                container.classList.add('gm-has-watermark');
+            } else {
+                container.classList.remove('gm-has-watermark');
+            }
+        }
+
         try {
             var res = await db
                 .from('e2ee_messages')
@@ -1563,6 +1596,19 @@
             var acc = getAccount();
             var accId = acc ? (acc.id || acc.account_id) : '';
 
+            // Generate forensic watermark overlay
+            var watermarkHtml = '';
+            if (isProt) {
+                var callerGuild = acc ? (acc.guild || 'FGF') : 'FGF';
+                var callerServer = acc ? (acc.server_number ? 'S' + acc.server_number : 'S1058') : 'S1058';
+                var watermarkText = '[' + esc(callerGuild) + '] ' + esc(accId) + ' • ' + esc(callerServer) + ' • CONFIDENTIAL';
+                watermarkHtml = '<div class="gm-watermark-overlay" aria-hidden="true">';
+                for (var w = 0; w < 16; w++) {
+                    watermarkHtml += '<div class="gm-watermark-item">' + watermarkText + '</div>';
+                }
+                watermarkHtml += '</div>';
+            }
+
             for (var i = 0; i < messages.length; i++) {
                 var m = messages[i];
                 var isMe = m.sender_account_id === accId;
@@ -1584,7 +1630,7 @@
                     '</div>';
             }
 
-            container.innerHTML = html;
+            container.innerHTML = watermarkHtml + html;
             container.scrollTop = container.scrollHeight;
         } catch (e) {
             console.error('Error loading messages', e);
@@ -1976,6 +2022,96 @@
                 document.getElementById('modal-group-members').classList.add('hidden');
             };
         }
+
+        setupAntiCaptureProtection();
+    }
+
+    var antiCaptureInitialized = false;
+
+    function setupAntiCaptureProtection() {
+        if (antiCaptureInitialized) return;
+        antiCaptureInitialized = true;
+
+        var lastToastTime = 0;
+        function showSecurityNotification() {
+            var now = Date.now();
+            if (now - lastToastTime < 2500) return;
+            lastToastTime = now;
+            if (window.GM && window.GM.showToast) {
+                window.GM.showToast('🛡️ Content Protection: Copying, text selection, and screen capture are restricted in confidential diplomatic sessions.', 'warning');
+            }
+        }
+
+        function pulseShieldBlur() {
+            var mainEl = document.querySelector('.gm-leader-hall-main');
+            if (!mainEl || !isProtectedConversation()) return;
+            mainEl.classList.add('gm-capture-shield-active');
+            setTimeout(function () {
+                if (mainEl && !document.hidden && document.hasFocus()) {
+                    mainEl.classList.remove('gm-capture-shield-active');
+                }
+            }, 1200);
+            showSecurityNotification();
+        }
+
+        // Global Anti-copy / cut / contextmenu on protected messages viewport
+        ['copy', 'cut', 'contextmenu', 'dragstart', 'selectstart'].forEach(function (evt) {
+            document.addEventListener(evt, function (e) {
+                if (!isProtectedConversation()) return;
+                var target = e.target;
+                if (target && (target.closest('#leader-hall-messages') || target.closest('.gm-protected-session'))) {
+                    // Do not block input typing fields
+                    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+                    e.preventDefault();
+                    showSecurityNotification();
+                }
+            }, true);
+        });
+
+        // Window Blur & Visibility change (Defense against window captures / background recordings / app switchers)
+        function handleVisibility() {
+            var mainEl = document.querySelector('.gm-leader-hall-main');
+            if (!mainEl || !isProtectedConversation()) return;
+            if (document.hidden || !document.hasFocus()) {
+                mainEl.classList.add('gm-capture-shield-active');
+            } else {
+                mainEl.classList.remove('gm-capture-shield-active');
+            }
+        }
+
+        window.addEventListener('blur', handleVisibility);
+        window.addEventListener('focus', function () {
+            var mainEl = document.querySelector('.gm-leader-hall-main');
+            if (mainEl) mainEl.classList.remove('gm-capture-shield-active');
+        });
+        document.addEventListener('visibilitychange', handleVisibility);
+
+        // Keyboard Shortcut Interceptions (PrintScreen, Meta/Ctrl+Shift+3/4/5/S, Ctrl/Cmd+P, Ctrl/Cmd+C)
+        window.addEventListener('keydown', function (e) {
+            if (!isProtectedConversation()) return;
+
+            var activeTab = document.querySelector('.tab-panel.active');
+            if (!activeTab || activeTab.id !== 'tab-leader-hall') return;
+
+            // Screenshot / Print shortcuts
+            if (e.key === 'PrintScreen' ||
+                ((e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P')) ||
+                ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === '3' || e.key === '4' || e.key === '5' || e.key === 's' || e.key === 'S'))
+            ) {
+                e.preventDefault();
+                pulseShieldBlur();
+            }
+
+            // Copy shortcut
+            if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
+                var target = e.target;
+                if (target && target.closest && (target.closest('#leader-hall-messages') || target.closest('.gm-protected-session'))) {
+                    if (target.id === 'leader-hall-msg-input') return;
+                    e.preventDefault();
+                    showSecurityNotification();
+                }
+            }
+        }, true);
     }
 
     return {

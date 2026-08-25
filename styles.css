@@ -2349,6 +2349,125 @@ body.guild-read-only .gm-content .score-cell {
     font-size: 0.88rem;
 }
 
+/* ─── Private Anti-Capture & Anti-Copy Protection ─────────────────────── */
+.gm-protected-session {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+}
+
+.gm-protected-session .gm-message-bubble,
+.gm-protected-session .gm-message-body,
+.gm-protected-session .gm-chat-messages-viewport {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+}
+
+/* Watermark Overlay */
+.gm-chat-messages-viewport.gm-has-watermark {
+    position: relative;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+.gm-watermark-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: space-around;
+    justify-content: space-around;
+    opacity: 0.04;
+    overflow: hidden;
+    user-select: none;
+}
+
+.gm-watermark-item {
+    transform: rotate(-25deg);
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #ffffff;
+    white-space: nowrap;
+    padding: 2rem 1.5rem;
+}
+
+/* Privacy Blur Shield (When tab blurred / app switch / screenshot shortcut detected) */
+.gm-capture-shield-active .gm-chat-messages-viewport {
+    filter: blur(30px) !important;
+    opacity: 0.04 !important;
+    transition: filter 0.08s ease, opacity 0.08s ease;
+}
+
+.gm-privacy-shield-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: none;
+    background: rgba(18, 18, 22, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.gm-capture-shield-active .gm-privacy-shield-overlay {
+    display: flex !important;
+}
+
+.gm-privacy-shield-icon {
+    font-size: 2.5rem;
+    color: #f59e0b;
+    margin-bottom: 0.5rem;
+}
+
+.gm-privacy-shield-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 0.35rem 0;
+}
+
+.gm-privacy-shield-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted, #94a3b8);
+    max-width: 320px;
+    margin: 0;
+}
+
+.gm-chip-shield {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 1px 7px;
+    border-radius: 9999px;
+    font-weight: 700;
+}
+
+/* Print Media Protection */
+@media print {
+    #tab-leader-hall,
+    .gm-leader-hall-main,
+    .gm-protected-session {
+        display: none !important;
+        visibility: hidden !important;
+    }
+}
+
 .gm-chat-input:focus {
     outline: none;
     border-color: var(--primary, #38bdf8);
