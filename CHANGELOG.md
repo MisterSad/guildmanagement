@@ -2,6 +2,16 @@
 
 ## New
 
+- **Guild Leader Hall & Signal Protocol E2EE (V3.7)**:
+  - **Guild Leader Hall**: Dedicated command and diplomatic hub for Guild Masters (R5), Officers (R4), Server Admins, and Super Admins to coordinate alliances, SvS battle plans, N.A.P. terms, and dispute resolutions across guilds.
+  - **End-to-End Encryption (Signal Protocol Engine)**: Implemented complete zero-knowledge cryptographic core (`gm-signal-crypto.js` + `src/core/crypto/signal.ts`) featuring **X25519** ECDH key agreement, **Ed25519 / Schnorr** signatures, **HKDF-SHA256**, and **AES-256-GCM** authenticated encryption.
+  - **1:1 Direct Diplomacy**: Protected with **X3DH** (Extended Triple Diffie-Hellman) asynchronous key handshakes and the **Double Ratchet Algorithm** ensuring continuous forward secrecy and break-in recovery.
+  - **Group Discussions & War Councils**: Multi-member group chat utilizing the **Signal Sender Keys Protocol** with forward secrecy on member eviction and key rotation.
+  - **👑 R5-Only Summit Protection**: Guild Masters can create exclusive high-level summit groups restricted strictly to R5 leaders and Super Admins.
+  - **Cryptographic Safety Fingerprints**: 60-digit safety numbers comparison modal to defeat Man-in-the-Middle (MITM) attacks and guarantee authenticity.
+  - **Blind Server Relay & Zero-Trust RLS**: PostgreSQL schema (`20260825000001_guild_leader_hall_e2ee.sql`) acting as a blind ciphertext relay; strict RLS locking out the `member` role from all leader communications.
+  - **Quality Gate**: **468/468 Vitest unit tests green**, 0 TypeScript errors, clean production build.
+
 - **Comprehensive Feature & UX Major Update (V3.6)**:
   - **1-Click Quick-Clear Search Buttons**: Added circular "X" quick clear buttons across all search bars (Members list, Member Portal, Banned Players, Sanctions, OCR filter, SvS, GvG, Arms Race, Glory, Cross-Rank) with zero-overhead CSS and event delegation.
   - **Game UID Validity Qualification & Red Alerts**: Universal FGF in-game UID validation (`window.GM.getUidStatus(uid)`) verifying numeric 6-10 digit identifiers, and flagging temporary placeholders (`TEMP-*`, `TMP-*`), missing values, and malformed inputs with red warning badges platform-wide.

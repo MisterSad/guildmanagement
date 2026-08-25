@@ -519,6 +519,9 @@
         if (tabId === 'tab-tickets' && window.GM_TICKETS) {
             window.GM_TICKETS.load();
         }
+        if (tabId === 'tab-leader-hall' && window.GM_LEADER_HALL) {
+            window.GM_LEADER_HALL.load();
+        }
         if ((tabId === 'tab-sanctions' || tabId === 'sanctions') && window.GM_SANCTIONS) {
             window.GM_SANCTIONS.load();
         }

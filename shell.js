@@ -30,6 +30,7 @@
 
         { id: 'accounts',  tabId: 'admin-home',  m3Icon: 'manage_accounts', icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
         { id: 'discord',   tabId: 'admin-discord', m3Icon: 'notifications', icon: 'ph-bell-ringing',   labelKey: 'gm_nav_discord',   section: 'admin', panels: ['admin-discord'] },
+        { id: 'leader-hall', tabId: 'tab-leader-hall', m3Icon: 'forum', icon: 'ph-chat-circle-dots', labelKey: 'nav_leader_hall', section: 'admin', panels: ['tab-leader-hall'] },
         { id: 'sanctions', tabId: 'tab-sanctions', m3Icon: 'gavel', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
         { id: 'banned',    tabId: 'admin-banned', m3Icon: 'block', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] },
         { id: 'subscription', tabId: 'tab-subscription', m3Icon: 'local_cafe', icon: 'ph-coffee', labelKey: 'gm_nav_donate', section: 'admin', adminOnly: true, panels: ['tab-subscription'] },

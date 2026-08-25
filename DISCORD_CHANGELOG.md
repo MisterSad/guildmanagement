@@ -1,24 +1,17 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.6**
+📢 **FGF Guild Management Tool Update — CHANG_V3.7**
 
-Hey everyone! I've just rolled out a major feature & quality-of-life update across the platform! 🚀✨
+Hey everyone! I'm thrilled to release a major strategic & security milestone for the platform: the **Guild Leader Hall**! 🏛️🔒✨
 
-### ⚡ 1-Click Quick-Clear Search
-- **Instant Search Reset**: Added a clean circular "X" clear button inside all search bars across the tool (Members list, Member Portal, Banned list, Sanctions, OCR scanner, SvS, GvG, Arms Race, Glory, Cross-Rank).
-- **Save Time on Roster Setup**: No more selecting all text or spamming Backspace when filtering through large rosters!
+### 🏛️ Guild Leader Hall (Diplomatic Command Hub)
+- **Inter-Guild Coordination**: A dedicated space for Guild Masters (R5) and Officers (R4) to discuss diplomacy, N.A.P. terms, and battle tactics directly within the tool.
+- **1:1 Direct Diplomacy**: Open direct communication channels with leaders and officers from any guild in the galaxy.
+- **Custom Strategic Groups**: Create multi-guild coalitions, sector defense rooms, or war councils with live participant management.
+- **👑 R5-Only Summits**: Guild Masters can toggle exclusive "R5-Only" rooms to deliberate high-level treaties and server pacts.
 
-### 🆔 Universal Game UID Verification & Alerts
-- **Red Alert Warnings**: Any temporary (`TEMP-*`), missing, or invalid in-game UIDs are now highlighted in red with warning icons across Roster Cards, Tactical Force Matrix, and OCR review tables so they immediately catch your eye.
-- **1-Click Header Counter Badge**: If your guild has members with temporary UIDs, a new `⚠️ X Temp UID` badge appears in the Members List title — click it to filter and see only those members in 1 click!
-- **Dedicated Sort & Filter**: Added `⚠️ Temp / Missing UID` tier filter and `⚠️ Sort: Temp UID First` options to quickly review and update your roster.
-- **Smart Edit Helper**: When editing a member, a dynamic helper guides you to replace temporary placeholders with their real 6-10 digit game UID with live validation.
+### 🔒 Military-Grade End-to-End Encryption (Signal Protocol)
+- **Signal Protocol Powered**: All 1:1 and Group conversations are end-to-end encrypted using the **Double Ratchet Algorithm**, **X3DH Handshakes**, and **Signal Sender Keys**.
+- **Zero-Knowledge Privacy**: Your messages are encrypted directly inside your browser before transmission. Nobody outside your discussion — not even FGF Tool administrators or the database — can read your messages.
+- **Forward Secrecy & Break-in Recovery**: Encryption keys rotate automatically with every message sent, guaranteeing that past and future communications remain completely secure.
+- **🔍 Safety Fingerprints**: Compare 60-digit cryptographic fingerprints with fellow leaders to verify identity and guarantee tamper-proof communications.
 
-### 👻 Shadowfront Squad Composition Upgrades
-- **Attendance Ratio on Every Member**: The historical Shadowfront attendance fraction (e.g. `4/4`, `3/4`, `0/4`) is now displayed directly on every member in **Main Participants** and **Substitutes**, matching the Member Pool.
-- **Right-Aligned Discord Sharing**: The "Share on Discord" button in the squad composition toolbar is now cleanly right-aligned across all screen sizes (desktop, tablet, and mobile).
-
-*Have fun managing your guilds and fly safe!* 🚀⚔️
-
-
-
-
-
+*Have fun negotiating, building alliances, and fly safe!* 🚀⚔️🛡️

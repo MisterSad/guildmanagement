@@ -306,6 +306,10 @@
                             <span class="material-symbols-rounded" style="color:var(--gm-status-sanctions);">gavel</span>
                             <span data-i18n="nav_sanctions">Sanctions</span>
                         </button>
+                        <button class="nav-tab" data-tab="tab-leader-hall" data-view="dashboard-view">
+                            <span class="material-symbols-rounded" style="color:#38bdf8;">forum</span>
+                            <span data-i18n="nav_leader_hall">Leader Hall</span>
+                        </button>
                         <button class="nav-tab" data-tab="admin-banned" data-view="dashboard-view">
                             <span class="material-symbols-rounded">block</span>
                             <span data-i18n="nav_banned_players">Banned Players</span>
@@ -1021,6 +1025,75 @@
                 </div>
             </main>
 
+            <!-- ─ Tab: Guild Leader Hall (E2EE Signal Protocol) ──────────── -->
+            <main class="dashboard-content tab-panel" id="tab-leader-hall">
+                <div class="gm-page" style="max-width:1400px; padding:0 0.5rem;">
+                    <header class="gm-page-header" style="margin-bottom:1rem;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                            <div>
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <h1 class="gm-page-title" data-i18n="leader_hall_title">Guild Leader Hall</h1>
+                                    <span class="gm-chip" style="background:rgba(52,211,153,0.12); color:#34d399; border:1px solid rgba(52,211,153,0.3); font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:9999px;">
+                                        <i class="ph ph-shield-check"></i> Signal Protocol E2EE
+                                    </span>
+                                </div>
+                                <p class="gm-page-subtitle" data-i18n="leader_hall_subtitle">End-to-End Encrypted diplomacy and tactical coordination for Guild Masters (R5) and Officers (R4)</p>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div class="gm-leader-hall-layout">
+                        <!-- Sidebar: Conversations & Filters -->
+                        <aside class="gm-leader-hall-sidebar">
+                            <div class="gm-hall-sidebar-header">
+                                <button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="btn-new-discussion" style="width:100%; justify-content:center;">
+                                    <i class="ph ph-plus-circle"></i>
+                                    <span data-i18n="leader_hall_new_conv">New Discussion</span>
+                                </button>
+                                <div class="gm-hall-filters">
+                                    <button type="button" class="gm-hall-filter-pill active" data-filter="all">All</button>
+                                    <button type="button" class="gm-hall-filter-pill" data-filter="direct">1:1 Direct</button>
+                                    <button type="button" class="gm-hall-filter-pill" data-filter="group">Groups</button>
+                                    <button type="button" class="gm-hall-filter-pill" data-filter="r5">👑 R5 Summit</button>
+                                </div>
+                            </div>
+                            <div class="gm-leader-conv-list" id="leader-hall-conv-list">
+                                <div class="gm-empty" style="padding:2rem 1rem;">
+                                    <i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i>
+                                    <div class="gm-empty-title">Loading discussions...</div>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <!-- Main Chat View -->
+                        <section class="gm-leader-hall-main">
+                            <div class="gm-chat-header" id="leader-hall-chat-header">
+                                <div class="gm-chat-header-left">
+                                    <h2 class="gm-chat-title">Select a conversation</h2>
+                                    <div class="gm-chat-e2ee-tag">
+                                        <i class="ph ph-lock-key"></i>
+                                        <span>End-to-End Encrypted</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="gm-chat-messages-viewport" id="leader-hall-messages">
+                                <div class="gm-empty" style="padding:4rem 1rem;">
+                                    <i class="ph ph-chats-circle gm-icon"></i>
+                                    <div class="gm-empty-title">Select or start a discussion</div>
+                                </div>
+                            </div>
+                            <div class="gm-chat-input-bar">
+                                <input type="text" id="leader-hall-msg-input" class="gm-chat-input" placeholder="Type an encrypted message..." autocomplete="off">
+                                <button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="leader-hall-send-btn">
+                                    <i class="ph ph-paper-plane-right"></i>
+                                    <span>Send</span>
+                                </button>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </main>
+
             <!-- ─ Tab: Bug Tickets (Super Admin only) ────────────────────── -->
             <main class="dashboard-content tab-panel" id="tab-tickets">
                 <div class="gm-page">
@@ -1623,6 +1696,47 @@
         </div>
     </div>
 
+    <!-- Modal: Create Leader Discussion -->
+    <div id="modal-leader-create" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 520px; background:var(--bg-1, #18181c); border:1px solid var(--border-soft); border-radius:var(--radius-lg); padding:1.25rem;">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <i class="ph ph-chat-circle-dots" style="color:var(--primary, #38bdf8); font-size:1.25rem;"></i>
+                    <h3 class="modal-title" style="margin:0; font-size:1.1rem; color:var(--text-main);">New Encrypted Discussion</h3>
+                </div>
+                <button type="button" class="modal-close-btn" id="modal-leader-close-btn" style="background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-leader-create-body" style="display:flex; flex-direction:column; gap:1rem;"></div>
+            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; padding-top:1rem; border-top:1px solid var(--border-soft);">
+                <button type="button" class="gm-btn gm-btn-primary" id="modal-leader-submit-btn">
+                    <i class="ph ph-lock-key"></i>
+                    <span>Initialize Session</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Safety Numbers Fingerprint -->
+    <div id="modal-safety-numbers" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 480px; background:var(--bg-1, #18181c); border:1px solid var(--border-soft); border-radius:var(--radius-lg); padding:1.25rem; text-align:center;">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 class="modal-title" style="margin:0; font-size:1.1rem; color:var(--text-main);"><i class="ph ph-fingerprint"></i> Safety Fingerprint</h3>
+                <button type="button" class="modal-close-btn" id="modal-safety-close-btn" style="background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:1rem 0.5rem;">
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.25rem;">
+                    Compare this 60-digit safety fingerprint with your peer to verify identity and guarantee that no one is intercepting your communication.
+                </p>
+                <div id="safety-numbers-code" style="font-family:monospace; font-size:1.15rem; font-weight:700; letter-spacing:0.1em; background:rgba(255,255,255,0.06); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-soft); color:#38bdf8; word-break:break-all;"></div>
+                <div style="margin-top:1rem; display:flex; justify-content:center;">
+                    <span class="gm-chip" style="background:rgba(52,211,153,0.14); color:#34d399; border:1px solid rgba(52,211,153,0.3); font-size:0.78rem;">
+                        <i class="ph ph-check-circle"></i> Cryptographically Verified
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast-container"></div>
 
@@ -1635,6 +1749,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>
     <script src="gm-utils.js?v=47"></script>
+    <script src="gm-signal-crypto.js?v=1"></script>
     <script src="push.js?v=5"></script>
     <script src="events.js?v=29"></script>
     <script src="shadowfront.js?v=34"></script>
@@ -1652,6 +1767,7 @@
     <script src="badges.js?v=6"></script>
     <script src="portal.js?v=13"></script>
     <script src="gm-help.js?v=3"></script>
+    <script src="gm-leader-hall.js?v=1"></script>
     <script src="app.js?v=80"></script>
     <script src="shell.js?v=38"></script>
 </body>
