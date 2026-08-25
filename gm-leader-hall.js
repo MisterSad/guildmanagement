@@ -475,8 +475,7 @@
                 sender_role: role,
                 ciphertext: encrypted.ciphertext,
                 header_data: encrypted.header,
-                iv: encrypted.iv,
-                created_at: new Date().toISOString()
+                iv: encrypted.iv
             }).select();
 
             if (insertRes.data && insertRes.data[0]) {
@@ -1542,9 +1541,12 @@
                 .from('e2ee_messages')
                 .select('*')
                 .eq('conversation_id', currentConversation.id)
-                .order('created_at', { ascending: true });
+                .order('id', { ascending: true });
 
             var messages = res.data || [];
+            // Strict monotonic ordering by message sequence ID
+            messages.sort(function (a, b) { return Number(a.id) - Number(b.id); });
+
             if (messages.length === 0) {
                 container.innerHTML =
                     '<div class="gm-empty" style="padding:3rem 1rem;">' +
@@ -1565,7 +1567,7 @@
                 var m = messages[i];
                 var isMe = m.sender_account_id === accId;
                 var text = await decryptMessage(m);
-                var timeStr = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                var timeStr = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '';
                 var guildTag = m.sender_guild ? '[' + m.sender_guild + ']' : '';
                 var roleTag = m.sender_role || 'R4';
 
