@@ -3,7 +3,7 @@
 --
 -- Provides tables, indexes, Security Definer RPCs, and RLS policies for:
 -- 1. Prekey Bundles & One-Time Prekeys (Signal Protocol X3DH)
--- 2. Conversations (1:1 and Groups with R5/R4 access controls)
+-- 2. Conversations (Global Lounge, 1:1 Direct, and Groups with R5/R4 access controls)
 -- 3. Conversation Members & Roles
 -- 4. E2EE Ciphertext Messages (Blind server relay)
 
@@ -39,9 +39,9 @@ CREATE INDEX IF NOT EXISTS idx_e2ee_otk_acc_unused
 -- 3. CONVERSATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.e2ee_conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    type TEXT NOT NULL CHECK (type IN ('direct', 'group')),
+    type TEXT NOT NULL CHECK (type IN ('global', 'direct', 'group')),
     title TEXT,
-    created_by TEXT NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+    created_by TEXT REFERENCES public.accounts(id) ON DELETE SET NULL,
     is_r5_only BOOLEAN NOT NULL DEFAULT false,
     server_number TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -52,6 +52,19 @@ ALTER TABLE public.e2ee_conversations ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_e2ee_conv_updated_at
     ON public.e2ee_conversations (updated_at DESC);
+
+-- Seed permanent Global Leader Lounge (accessible by all leaders across all servers)
+INSERT INTO public.e2ee_conversations (
+    id,
+    type,
+    title,
+    is_r5_only
+) VALUES (
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    'global',
+    'Global Leaders Lounge',
+    false
+) ON CONFLICT (id) DO UPDATE SET title = 'Global Leaders Lounge';
 
 -- 4. CONVERSATION MEMBERS TABLE
 CREATE TABLE IF NOT EXISTS public.e2ee_conversation_members (
@@ -109,7 +122,7 @@ $$;
 REVOKE ALL ON FUNCTION public.gm_is_leader_caller() FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.gm_is_leader_caller() TO authenticated;
 
--- Helper: verify caller is a member of the conversation or super_admin
+-- Helper: verify caller is a member of the conversation, it's global lounge, or super_admin
 CREATE OR REPLACE FUNCTION public.gm_can_access_e2ee_conversation(p_conversation_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -118,6 +131,10 @@ SECURITY DEFINER
 SET search_path TO ''
 AS $$
     SELECT EXISTS (
+        SELECT 1 FROM public.e2ee_conversations
+        WHERE id = p_conversation_id AND type = 'global'
+          AND public.gm_is_leader_caller()
+    ) OR EXISTS (
         SELECT 1
         FROM public.e2ee_conversation_members m
         JOIN public.accounts a ON a.id = m.account_id
@@ -166,7 +183,7 @@ CREATE POLICY e2ee_one_time_prekeys_all ON public.e2ee_one_time_prekeys
         )
     );
 
--- Conversations: select permitted for members
+-- Conversations: select permitted for members and global lounge
 CREATE POLICY e2ee_conversations_select ON public.e2ee_conversations
     FOR SELECT TO authenticated
     USING (public.gm_can_access_e2ee_conversation(id));
@@ -377,10 +394,3 @@ GRANT EXECUTE ON FUNCTION public.gm_create_e2ee_conversation(text, text, boolean
 
 -- Notify schema reload
 NOTIFY pgrst, 'reload schema';
-
--- ROLLBACK SQL
--- DROP TABLE IF EXISTS public.e2ee_messages CASCADE;
--- DROP TABLE IF EXISTS public.e2ee_conversation_members CASCADE;
--- DROP TABLE IF EXISTS public.e2ee_conversations CASCADE;
--- DROP TABLE IF EXISTS public.e2ee_one_time_prekeys CASCADE;
--- DROP TABLE IF EXISTS public.e2ee_prekey_bundles CASCADE;

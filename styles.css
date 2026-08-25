@@ -2302,3 +2302,95 @@ body.guild-read-only .gm-content .score-cell {
     color: var(--text-muted, #94a3b8);
     font-size: 0.75rem;
 }
+
+.gm-hall-section-title {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--text-muted, #94a3b8);
+    padding: 0.75rem 1rem 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.gm-hall-global-channel-box {
+    margin: 0 0.5rem;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(99, 102, 241, 0.08));
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: var(--radius-md, 8px);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gm-hall-global-channel-box:hover {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(99, 102, 241, 0.16));
+    border-color: rgba(56, 189, 248, 0.45);
+    transform: translateY(-1px);
+}
+
+.gm-hall-global-channel-box.active {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(99, 102, 241, 0.22));
+    border-color: var(--primary, #38bdf8);
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+}
+
+.gm-global-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: rgba(56, 189, 248, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: var(--primary, #38bdf8);
+    flex-shrink: 0;
+}
+
+.gm-global-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.gm-global-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-main, #f8fafc);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gm-global-sub {
+    font-size: 0.7rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.gm-global-badge {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    background: rgba(52, 211, 153, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    padding: 1px 6px;
+    border-radius: 9999px;
+}
+
+.gm-direct-leader-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--radius-sm, 6px);
+    transition: background 0.15s ease;
+}
+
+.gm-direct-leader-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}

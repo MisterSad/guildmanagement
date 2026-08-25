@@ -1,12 +1,12 @@
 /**
- * gm-leader-hall.js — Guild Leader Hall (E2EE 1:1 & Group Chat)
+ * gm-leader-hall.js — Guild Leader Hall (Global Lounge + E2EE 1:1 & Groups)
  * FGF Guild Management Tool — 2026 Zero-Trust Architecture
  *
  * Implements:
- * 1. Role verification & Signal Keypair lifecycle (IndexedDB + Supabase)
- * 2. 1:1 Double Ratchet E2EE Sessions with X3DH handshake
- * 3. Group Discussions with Signal Sender Keys & forward secrecy
- * 4. Supabase Realtime messaging subscription & Presence engine
+ * 1. Pinned Global Leaders Lounge (All Guild Leaders across all servers)
+ * 2. 1:1 Direct Discussions (Double Ratchet E2EE with X3DH handshake)
+ * 3. Custom Group Discussions (Signal Sender Keys with R5-only filter)
+ * 4. Realtime messaging subscription & Presence engine
  * 5. Safety Numbers verification modal (60-digit fingerprint)
  */
 (function (root, factory) {
@@ -18,6 +18,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
     'use strict';
 
+    var GLOBAL_CONV_ID = '00000000-0000-0000-0000-000000000001';
     var esc = (window.GM && window.GM.escapeHTML) ? window.GM.escapeHTML : function (s) { return s || ''; };
     var t = (window.GM && window.GM.t) ? window.GM.t : function (k) { return k; };
 
@@ -28,6 +29,14 @@
     var localIdentity = null;
     var activeAccounts = [];
     var decryptedCache = {}; // messageId -> plaintext
+
+    var GLOBAL_LOUNGE_CONV = {
+        id: GLOBAL_CONV_ID,
+        type: 'global',
+        title: 'Global Leaders Lounge',
+        isR5Only: false,
+        members: []
+    };
 
     function getDb() {
         return (window.GM && window.GM.db) ? window.GM.db : null;
@@ -66,12 +75,8 @@
     }
 
     function isLeader() {
-        if (window.GM && window.GM.isGuildAdmin && window.GM.isGuildAdmin()) {
-            return true;
-        }
-        if (window.GM && window.GM.isSuperAdmin && window.GM.isSuperAdmin()) {
-            return true;
-        }
+        if (window.GM && window.GM.isGuildAdmin && window.GM.isGuildAdmin()) return true;
+        if (window.GM && window.GM.isSuperAdmin && window.GM.isSuperAdmin()) return true;
         var role = (window.GM && window.GM.roleFromStorage) ? window.GM.roleFromStorage() : localStorage.getItem('gm_role');
         if (role) {
             var r = role.toLowerCase();
@@ -86,9 +91,7 @@
     }
 
     function isR5() {
-        if (window.GM && window.GM.isSuperAdmin && window.GM.isSuperAdmin()) {
-            return true;
-        }
+        if (window.GM && window.GM.isSuperAdmin && window.GM.isSuperAdmin()) return true;
         var role = (window.GM && window.GM.roleFromStorage) ? window.GM.roleFromStorage() : localStorage.getItem('gm_role');
         if (role) {
             var r = role.toLowerCase();
@@ -118,7 +121,6 @@
             return stored;
         }
 
-        // Generate full Signal PreKey Bundle
         var bundle = S.createPreKeyBundle(30);
         var recordToStore = {
             identityKey: {
@@ -145,7 +147,6 @@
         await S.saveKeyRecord('identity_keys', accId, recordToStore);
         localIdentity = recordToStore;
 
-        // Publish public prekey bundle to Supabase
         try {
             await db.from('e2ee_prekey_bundles').upsert({
                 account_id: accId,
@@ -180,7 +181,7 @@
     async function fetchConversations() {
         var db = getDb();
         var acc = getAccount();
-        if (!db || !acc) return [];
+        if (!db || !acc) return [GLOBAL_LOUNGE_CONV];
 
         var accId = acc.id || acc.account_id;
         try {
@@ -190,9 +191,9 @@
                 .eq('account_id', accId)
                 .order('conversation_id', { ascending: false });
 
-            if (res.error) throw res.error;
             var list = (res.data || []).map(function (row) {
                 var c = row.e2ee_conversations;
+                if (!c) return null;
                 return {
                     id: c.id,
                     type: c.type,
@@ -203,7 +204,7 @@
                     updatedAt: c.updated_at,
                     myGroupRole: row.group_role
                 };
-            });
+            }).filter(Boolean);
 
             for (var i = 0; i < list.length; i++) {
                 var memRes = await db
@@ -239,7 +240,7 @@
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 3. E2EE DOUBLE RATCHET & SENDER KEY SESSION HANDLERS
+    // 3. E2EE DOUBLE RATCHET & SENDER KEY SESSIONS
     // ─────────────────────────────────────────────────────────────────────────
 
     async function getOrEstablish1to1Session(targetAccountId) {
@@ -458,17 +459,26 @@
                 '</header>' +
                 '<div class="gm-leader-hall-layout">' +
                     '<aside class="gm-leader-hall-sidebar">' +
-                        '<div class="gm-hall-sidebar-header">' +
-                            '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="btn-new-discussion" style="width:100%; justify-content:center;">' +
-                                '<i class="ph ph-plus-circle"></i>' +
-                                '<span data-i18n="leader_hall_new_conv">' + esc(t('leader_hall_new_conv') || 'New Discussion') + '</span>' +
-                            '</button>' +
-                            '<div class="gm-hall-filters">' +
-                                '<button type="button" class="gm-hall-filter-pill active" data-filter="all">All</button>' +
-                                '<button type="button" class="gm-hall-filter-pill" data-filter="direct">1:1 Direct</button>' +
-                                '<button type="button" class="gm-hall-filter-pill" data-filter="group">Groups</button>' +
-                                '<button type="button" class="gm-hall-filter-pill" data-filter="r5">👑 R5 Summit</button>' +
+                        '<div class="gm-hall-section-title"><i class="ph ph-broadcast"></i> MAIN CHANNELS</div>' +
+                        '<div class="gm-hall-global-channel-box" id="btn-select-global-lounge">' +
+                            '<div class="gm-global-icon"><i class="ph ph-planet"></i></div>' +
+                            '<div class="gm-global-info">' +
+                                '<div class="gm-global-title">Global Leaders Lounge</div>' +
+                                '<div class="gm-global-sub">All Guilds & Servers (R5/R4)</div>' +
                             '</div>' +
+                            '<span class="gm-global-badge">LIVE</span>' +
+                        '</div>' +
+                        '<div class="gm-hall-section-title" style="margin-top:1.25rem; display:flex; justify-content:space-between; align-items:center;">' +
+                            '<span><i class="ph ph-chats-circle"></i> PRIVATE DISCUSSIONS</span>' +
+                            '<button type="button" class="gm-btn gm-btn-primary gm-btn-xs" id="btn-new-discussion" style="padding:2px 8px; font-size:0.75rem;">' +
+                                '<i class="ph ph-plus"></i> New' +
+                            '</button>' +
+                        '</div>' +
+                        '<div class="gm-hall-filters" style="margin-bottom:0.5rem;">' +
+                            '<button type="button" class="gm-hall-filter-pill active" data-filter="all">All</button>' +
+                            '<button type="button" class="gm-hall-filter-pill" data-filter="direct">1:1</button>' +
+                            '<button type="button" class="gm-hall-filter-pill" data-filter="group">Groups</button>' +
+                            '<button type="button" class="gm-hall-filter-pill" data-filter="r5">👑 R5</button>' +
                         '</div>' +
                         '<div class="gm-leader-conv-list" id="leader-hall-conv-list">' +
                             '<div class="gm-empty" style="padding:2rem 1rem;">' +
@@ -507,9 +517,19 @@
 
     function renderConversationList() {
         var listContainer = document.getElementById('leader-hall-conv-list');
+        var globalBox = document.getElementById('btn-select-global-lounge');
+        if (globalBox) {
+            if (currentConversation && currentConversation.id === GLOBAL_CONV_ID) {
+                globalBox.classList.add('active');
+            } else {
+                globalBox.classList.remove('active');
+            }
+        }
+
         if (!listContainer) return;
 
         var filtered = conversationsList.filter(function (c) {
+            if (c.id === GLOBAL_CONV_ID) return false;
             if (activeFilter === 'direct') return c.type === 'direct';
             if (activeFilter === 'group') return c.type === 'group';
             if (activeFilter === 'r5') return c.isR5Only;
@@ -518,10 +538,10 @@
 
         if (filtered.length === 0) {
             listContainer.innerHTML =
-                '<div class="gm-empty" style="padding:2rem 0.5rem;">' +
-                    '<i class="ph ph-chat-circle-dots gm-icon" style="color:var(--primary, #38bdf8); font-size:1.75rem;"></i>' +
-                    '<div class="gm-empty-title" style="margin-top:0.5rem;">' + esc(t('leader_hall_no_convs') || 'No discussions yet') + '</div>' +
-                    '<p style="color:var(--text-muted); font-size:0.8rem; margin:0.35rem 0 0.75rem;">Start an encrypted discussion with any guild leader.</p>' +
+                '<div class="gm-empty" style="padding:1.5rem 0.5rem; text-align:center;">' +
+                    '<i class="ph ph-chat-circle-dots" style="color:var(--text-muted); font-size:1.5rem;"></i>' +
+                    '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:0.35rem;">No private discussions yet</div>' +
+                    '<p style="color:var(--text-muted); font-size:0.75rem; margin:0.25rem 0 0.5rem;">Click <strong>+ New</strong> to start a 1:1 or Group discussion.</p>' +
                 '</div>';
             return;
         }
@@ -565,13 +585,18 @@
     }
 
     async function selectConversation(id) {
-        var conv = conversationsList.find(function (c) { return c.id === id; });
-        if (!conv) return;
-        currentConversation = conv;
+        if (id === GLOBAL_CONV_ID) {
+            currentConversation = GLOBAL_LOUNGE_CONV;
+        } else {
+            var conv = conversationsList.find(function (c) { return c.id === id; });
+            if (!conv) return;
+            currentConversation = conv;
+        }
+
         renderConversationList();
         renderActiveConversationHeader();
         await loadAndRenderMessages();
-        subscribeToRealtime(conv.id);
+        subscribeToRealtime(currentConversation.id);
     }
 
     function renderActiveConversationHeader() {
@@ -583,7 +608,10 @@
         var title = currentConversation.title;
         var subtitle = '';
 
-        if (currentConversation.type === 'direct') {
+        if (currentConversation.id === GLOBAL_CONV_ID) {
+            title = '🌐 Global Leaders Lounge';
+            subtitle = 'Universal Channel • Open to all Guild Masters (R5) and Officers (R4)';
+        } else if (currentConversation.type === 'direct') {
             var other = (currentConversation.members || []).find(function (m) { return m.account_id !== accId; });
             var targetId = other ? other.account_id : 'Leader';
             var targetGuild = other ? other.guild : 'FGF';
@@ -633,8 +661,10 @@
                 container.innerHTML =
                     '<div class="gm-empty" style="padding:3rem 1rem;">' +
                         '<i class="ph ph-shield-check gm-icon" style="color:var(--primary, #38bdf8); font-size:2rem;"></i>' +
-                        '<div class="gm-empty-title" style="margin-top:0.5rem;">End-to-End Encrypted Session Established</div>' +
-                        '<p style="color:var(--text-muted); font-size:0.85rem; max-width:380px; margin:0.5rem auto;">Messages in this discussion are protected by the Signal Protocol. No third party can read them.</p>' +
+                        '<div class="gm-empty-title" style="margin-top:0.5rem;">' + (currentConversation.id === GLOBAL_CONV_ID ? 'Welcome to the Global Leaders Lounge' : 'End-to-End Encrypted Session Established') + '</div>' +
+                        '<p style="color:var(--text-muted); font-size:0.85rem; max-width:400px; margin:0.5rem auto;">' +
+                            (currentConversation.id === GLOBAL_CONV_ID ? 'Connect, coordinate diplomacy, and discuss galaxy tactics with leaders across all guilds and servers.' : 'Messages in this private discussion are protected by the Signal Protocol.') +
+                        '</p>' +
                     '</div>';
                 return;
             }
@@ -704,43 +734,70 @@
         if (!modal) return;
 
         var acc = getAccount();
+        var accId = acc ? (acc.id || acc.account_id) : '';
         var isCallerR5 = isR5();
 
-        var selectLeadersHtml = activeAccounts.filter(function (a) {
-            return a.id !== (acc ? (acc.id || acc.account_id) : '');
-        }).map(function (a) {
-            return '<label class="gm-leader-picker-item">' +
+        var otherLeaders = activeAccounts.filter(function (a) {
+            return a.id !== accId;
+        });
+
+        var directLeadersHtml = otherLeaders.map(function (a) {
+            return '<div class="gm-direct-leader-row" data-account-id="' + esc(a.id) + '">' +
+                '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                    '<span class="gm-chip" style="font-weight:700;">[' + esc(a.guild || 'FGF') + ']</span>' +
+                    '<span style="font-weight:600; color:var(--text-main);">' + esc(a.id) + '</span>' +
+                    '<span style="font-size:0.75rem; color:var(--text-muted);">(' + esc(a.role) + ')</span>' +
+                '</div>' +
+                '<button type="button" class="gm-btn gm-btn-primary gm-btn-xs btn-start-direct-chat" data-account-id="' + esc(a.id) + '">' +
+                    '<i class="ph ph-chat-circle"></i> Chat' +
+                '</button>' +
+            '</div>';
+        }).join('');
+
+        var groupLeadersHtml = otherLeaders.map(function (a) {
+            return '<label class="gm-leader-picker-item" style="display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0.5rem; border-radius:var(--radius-sm); cursor:pointer;">' +
                 '<input type="checkbox" name="leader_member" value="' + esc(a.id) + '" data-role="' + esc(a.role) + '">' +
                 '<span class="gm-picker-guild">[' + esc(a.guild || 'FGF') + ']</span>' +
-                '<span class="gm-picker-name">' + esc(a.id) + '</span>' +
-                '<span class="gm-picker-role">(' + esc(a.role) + ')</span>' +
+                '<span class="gm-picker-name" style="font-weight:600;">' + esc(a.id) + '</span>' +
+                '<span class="gm-picker-role" style="font-size:0.75rem; color:var(--text-muted);">(' + esc(a.role) + ')</span>' +
             '</label>';
         }).join('');
 
         var body = document.getElementById('modal-leader-create-body');
         if (body) {
             body.innerHTML =
-                '<div class="gm-login-field">' +
-                    '<label>Discussion Type</label>' +
-                    '<div class="gm-segmented-control" style="display:flex; gap:0.5rem; margin-top:0.35rem;">' +
-                        '<button type="button" class="gm-seg-btn active gm-btn gm-btn-sm gm-btn-primary" data-type="direct">Direct 1:1</button>' +
-                        '<button type="button" class="gm-seg-btn gm-btn gm-btn-sm gm-btn-ghost" data-type="group">Group Discussion</button>' +
+                '<div class="gm-segmented-control" style="display:flex; gap:0.5rem; margin-bottom:1rem;">' +
+                    '<button type="button" class="gm-seg-btn active gm-btn gm-btn-sm gm-btn-primary" data-type="direct" style="flex:1; justify-content:center;">' +
+                        '<i class="ph ph-user"></i> 1:1 Direct Chat' +
+                    '</button>' +
+                    '<button type="button" class="gm-seg-btn gm-btn gm-btn-sm gm-btn-ghost" data-type="group" style="flex:1; justify-content:center;">' +
+                        '<i class="ph ph-users-three"></i> Group Discussion' +
+                    '</button>' +
+                '</div>' +
+                '<div id="panel-create-direct">' +
+                    '<div style="margin-bottom:0.5rem;">' +
+                        '<input type="text" id="filter-direct-leaders" class="gm-input" placeholder="🔍 Search leader by name, guild..." style="width:100%;">' +
+                    '</div>' +
+                    '<div class="gm-direct-leader-list" id="direct-leader-list-container" style="max-height:240px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.25rem;">' +
+                        (directLeadersHtml || '<div class="gm-empty" style="padding:1.5rem;">No other leaders found</div>') +
                     '</div>' +
                 '</div>' +
-                '<div class="gm-login-field hidden" id="field-group-title">' +
-                    '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Group Title</label>' +
-                    '<input type="text" id="input-group-title" class="gm-input" placeholder="e.g. SvS Northern Sector Coalition" style="width:100%;">' +
-                '</div>' +
-                '<div class="gm-login-field hidden" id="field-r5-only">' +
-                    '<label class="gm-checkbox-label" style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">' +
-                        '<input type="checkbox" id="check-r5-only" ' + (!isCallerR5 ? 'disabled' : '') + '> ' +
-                        '<span>👑 R5-Only Summit (Guild Masters only)</span>' +
-                    '</label>' +
-                '</div>' +
-                '<div class="gm-login-field">' +
-                    '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Select Leader Participants</label>' +
-                    '<div class="gm-leader-picker-list" style="max-height:200px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.5rem;">' +
-                        (selectLeadersHtml || '<div class="gm-empty-title">No other leaders found</div>') +
+                '<div id="panel-create-group" class="hidden">' +
+                    '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
+                        '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Group Title</label>' +
+                        '<input type="text" id="input-group-title" class="gm-input" placeholder="e.g. SvS Northern Sector Coalition" style="width:100%;">' +
+                    '</div>' +
+                    '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
+                        '<label class="gm-checkbox-label" style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">' +
+                            '<input type="checkbox" id="check-r5-only" ' + (!isCallerR5 ? 'disabled' : '') + '> ' +
+                            '<span>👑 R5-Only Summit (Guild Masters only)</span>' +
+                        '</label>' +
+                    '</div>' +
+                    '<div class="gm-login-field">' +
+                        '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Select Participants</label>' +
+                        '<div class="gm-leader-picker-list" style="max-height:180px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.35rem;">' +
+                            (groupLeadersHtml || '<div class="gm-empty" style="padding:1rem;">No other leaders found</div>') +
+                        '</div>' +
                     '</div>' +
                 '</div>';
 
@@ -748,37 +805,82 @@
             segBtns.forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     segBtns.forEach(function (b) {
-                        b.classList.remove('active');
-                        b.classList.remove('gm-btn-primary');
+                        b.classList.remove('active', 'gm-btn-primary');
                         b.classList.add('gm-btn-ghost');
                     });
-                    btn.classList.add('active');
-                    btn.classList.add('gm-btn-primary');
+                    btn.classList.add('active', 'gm-btn-primary');
                     btn.classList.remove('gm-btn-ghost');
                     var type = btn.getAttribute('data-type');
-                    var titleField = document.getElementById('field-group-title');
-                    var r5Field = document.getElementById('field-r5-only');
+                    var pDirect = document.getElementById('panel-create-direct');
+                    var pGroup = document.getElementById('panel-create-group');
+                    var submitBtn = document.getElementById('modal-leader-submit-btn');
+
                     if (type === 'group') {
-                        if (titleField) titleField.classList.remove('hidden');
-                        if (r5Field) r5Field.classList.remove('hidden');
+                        if (pDirect) pDirect.classList.add('hidden');
+                        if (pGroup) pGroup.classList.remove('hidden');
+                        if (submitBtn) submitBtn.classList.remove('hidden');
                     } else {
-                        if (titleField) titleField.classList.add('hidden');
-                        if (r5Field) r5Field.classList.add('hidden');
+                        if (pDirect) pDirect.classList.remove('hidden');
+                        if (pGroup) pGroup.classList.add('hidden');
+                        if (submitBtn) submitBtn.classList.add('hidden');
                     }
                 });
             });
+
+            // 1-Click Direct Chat triggers
+            body.querySelectorAll('.btn-start-direct-chat').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var targetId = btn.getAttribute('data-account-id');
+                    if (targetId) startDirectChatWith(targetId);
+                });
+            });
+
+            // Filter for 1:1 search
+            var directFilterInput = document.getElementById('filter-direct-leaders');
+            if (directFilterInput) {
+                directFilterInput.addEventListener('input', function () {
+                    var q = directFilterInput.value.toLowerCase().trim();
+                    body.querySelectorAll('.gm-direct-leader-row').forEach(function (row) {
+                        var text = row.innerText.toLowerCase();
+                        row.style.display = text.includes(q) ? 'flex' : 'none';
+                    });
+                });
+            }
+
+            var submitBtn = document.getElementById('modal-leader-submit-btn');
+            if (submitBtn) submitBtn.classList.add('hidden'); // hidden by default for 1:1 direct mode
         }
 
         modal.classList.remove('hidden');
     }
 
-    async function handleCreateSubmit() {
+    async function startDirectChatWith(targetAccountId) {
         var db = getDb();
         if (!db) return;
 
-        var type = 'direct';
-        var activeBtn = document.querySelector('#modal-leader-create-body .gm-seg-btn.active');
-        if (activeBtn) type = activeBtn.getAttribute('data-type');
+        try {
+            var res = await db.rpc('gm_create_e2ee_conversation', {
+                p_type: 'direct',
+                p_title: null,
+                p_is_r5_only: false,
+                p_member_account_ids: [targetAccountId]
+            });
+
+            if (res.error) throw res.error;
+            var newId = res.data;
+            document.getElementById('modal-leader-create').classList.add('hidden');
+            await fetchConversations();
+            renderConversationList();
+            if (newId) selectConversation(newId);
+        } catch (err) {
+            console.error('Error starting direct chat', err);
+            alert('Could not start direct chat: ' + (err.message || err));
+        }
+    }
+
+    async function handleCreateSubmit() {
+        var db = getDb();
+        if (!db) return;
 
         var title = '';
         var titleInput = document.getElementById('input-group-title');
@@ -798,14 +900,9 @@
             return;
         }
 
-        if (type === 'direct' && checkedMembers.length > 1) {
-            alert('Direct 1:1 chat can only have 1 recipient.');
-            return;
-        }
-
         try {
             var res = await db.rpc('gm_create_e2ee_conversation', {
-                p_type: type,
+                p_type: 'group',
                 p_title: title || 'Group Discussion',
                 p_is_r5_only: isR5Only,
                 p_member_account_ids: checkedMembers
@@ -868,10 +965,21 @@
         await initSignalIdentity();
         await fetchEligibleLeaders();
         await fetchConversations();
-        renderConversationList();
 
-        if (conversationsList.length > 0 && !currentConversation) {
-            selectConversation(conversationsList[0].id);
+        // Default to Global Leaders Lounge on first load
+        if (!currentConversation) {
+            selectConversation(GLOBAL_CONV_ID);
+        } else {
+            renderConversationList();
+            renderActiveConversationHeader();
+        }
+
+        // Setup Global Lounge button click
+        var globalBox = document.getElementById('btn-select-global-lounge');
+        if (globalBox) {
+            globalBox.onclick = function () {
+                selectConversation(GLOBAL_CONV_ID);
+            };
         }
 
         // Setup filter pills
