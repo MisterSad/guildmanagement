@@ -2019,13 +2019,14 @@ body.guild-read-only .gm-content .score-cell {
 /* ─── Guild Leader Hall (E2EE Signal Protocol) ────────────────────────── */
 .gm-leader-hall-layout {
     display: grid;
-    grid-template-columns: 320px 1fr;
+    grid-template-columns: 290px minmax(0, 1fr);
     gap: 1.25rem;
-    height: calc(100vh - 190px);
+    height: calc(100vh - 165px);
     min-height: 580px;
+    align-items: stretch;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
     .gm-leader-hall-layout {
         grid-template-columns: 1fr;
         height: auto;

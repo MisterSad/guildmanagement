@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="stylesheet" href="styles.css?v=8">
+    <link rel="stylesheet" href="styles.css?v=9">
     <link rel="stylesheet" href="tokens.css?v=5">
     <link rel="stylesheet" href="components.css?v=29">
     <link rel="stylesheet" href="shell.css?v=19">
@@ -1043,33 +1043,74 @@
                     </header>
 
                     <div class="gm-leader-hall-layout">
-                        <!-- Sidebar: Conversations & Filters -->
+                        <!-- Sidebar: 4 Accordion Spaces -->
                         <aside class="gm-leader-hall-sidebar">
-                            <div class="gm-hall-sidebar-header">
-                                <button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="btn-new-discussion" style="width:100%; justify-content:center;">
-                                    <i class="ph ph-plus-circle"></i>
-                                    <span data-i18n="leader_hall_new_conv">New Discussion</span>
-                                </button>
-                                <div class="gm-hall-filters">
-                                    <button type="button" class="gm-hall-filter-pill active" data-filter="all">All</button>
-                                    <button type="button" class="gm-hall-filter-pill" data-filter="direct">1:1 Direct</button>
-                                    <button type="button" class="gm-hall-filter-pill" data-filter="group">Groups</button>
-                                    <button type="button" class="gm-hall-filter-pill" data-filter="r5">👑 R5 Summit</button>
+                            <div class="gm-hall-sidebar-scroll" id="leader-hall-sidebar-accordions">
+                                <!-- Space 1: Global Leaders Lounge -->
+                                <div class="gm-hall-accordion" id="acc-space-global">
+                                    <div class="gm-hall-acc-header" data-space="global">
+                                        <div class="gm-hall-acc-title">
+                                            <i class="ph ph-caret-down gm-acc-caret"></i>
+                                            <i class="ph ph-planet" style="color:var(--primary, #38bdf8);"></i>
+                                            <span>Global Leaders Lounge</span>
+                                        </div>
+                                        <span class="gm-hall-acc-badge">3</span>
+                                    </div>
+                                    <div class="gm-hall-acc-body" id="acc-body-global"></div>
                                 </div>
-                            </div>
-                            <div class="gm-leader-conv-list" id="leader-hall-conv-list">
-                                <div class="gm-empty" style="padding:2rem 1rem;">
-                                    <i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i>
-                                    <div class="gm-empty-title">Loading discussions...</div>
+                                <!-- Space 2: 1:1 Discussions -->
+                                <div class="gm-hall-accordion" id="acc-space-direct">
+                                    <div class="gm-hall-acc-header" data-space="direct">
+                                        <div class="gm-hall-acc-title">
+                                            <i class="ph ph-caret-down gm-acc-caret"></i>
+                                            <i class="ph ph-user" style="color:#a855f7;"></i>
+                                            <span>1:1 Discussions</span>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:0.35rem;">
+                                            <span class="gm-hall-acc-badge" id="badge-direct-count">0</span>
+                                            <button type="button" class="gm-acc-add-btn" id="btn-add-direct" title="Start 1:1 Chat"><i class="ph ph-plus"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="gm-hall-acc-body" id="acc-body-direct"></div>
+                                </div>
+                                <!-- Space 3: Group Discussions -->
+                                <div class="gm-hall-accordion" id="acc-space-group">
+                                    <div class="gm-hall-acc-header" data-space="group">
+                                        <div class="gm-hall-acc-title">
+                                            <i class="ph ph-caret-down gm-acc-caret"></i>
+                                            <i class="ph ph-users-three" style="color:#34d399;"></i>
+                                            <span>Group Discussions</span>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:0.35rem;">
+                                            <span class="gm-hall-acc-badge" id="badge-group-count">0</span>
+                                            <button type="button" class="gm-acc-add-btn" id="btn-add-group" title="Create Group"><i class="ph ph-plus"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="gm-hall-acc-body" id="acc-body-group"></div>
+                                </div>
+                                <!-- Space 4: R5 Summit -->
+                                <div class="gm-hall-accordion" id="acc-space-r5">
+                                    <div class="gm-hall-acc-header" data-space="r5">
+                                        <div class="gm-hall-acc-title">
+                                            <i class="ph ph-caret-down gm-acc-caret"></i>
+                                            <i class="ph ph-crown" style="color:#facc15;"></i>
+                                            <span>R5 Summit</span>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:0.35rem;">
+                                            <span class="gm-hall-acc-badge" id="badge-r5-count">0</span>
+                                            <button type="button" class="gm-acc-add-btn" id="btn-add-r5" title="New R5 Summit"><i class="ph ph-plus"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="gm-hall-acc-body" id="acc-body-r5"></div>
                                 </div>
                             </div>
                         </aside>
 
-                        <!-- Main Chat View -->
+                        <!-- Main Chat / Treaty View (Right side) -->
                         <section class="gm-leader-hall-main">
                             <div class="gm-chat-header" id="leader-hall-chat-header">
                                 <div class="gm-chat-header-left">
-                                    <h2 class="gm-chat-title">Select a conversation</h2>
+                                    <h2 class="gm-chat-title">Select a channel or discussion</h2>
                                     <div class="gm-chat-e2ee-tag">
                                         <i class="ph ph-lock-key"></i>
                                         <span>End-to-End Encrypted</span>
@@ -1082,7 +1123,7 @@
                                     <div class="gm-empty-title">Select or start a discussion</div>
                                 </div>
                             </div>
-                            <div class="gm-chat-input-bar">
+                            <div class="gm-chat-input-bar" id="leader-hall-input-bar">
                                 <input type="text" id="leader-hall-msg-input" class="gm-chat-input" placeholder="Type an encrypted message..." autocomplete="off">
                                 <button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="leader-hall-send-btn">
                                     <i class="ph ph-paper-plane-right"></i>
