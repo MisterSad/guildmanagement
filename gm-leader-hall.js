@@ -401,6 +401,27 @@
         return newKey;
     }
 
+    function getCachedDecrypted(msgId) {
+        if (!msgId) return null;
+        if (decryptedCache[msgId]) return decryptedCache[msgId];
+        try {
+            var raw = localStorage.getItem('gm_e2ee_cache_' + msgId);
+            if (raw) {
+                decryptedCache[msgId] = raw;
+                return raw;
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function setCachedDecrypted(msgId, text) {
+        if (!msgId || !text) return;
+        decryptedCache[msgId] = text;
+        try {
+            localStorage.setItem('gm_e2ee_cache_' + msgId, text);
+        } catch (e) {}
+    }
+
     async function sendMessage(text) {
         if (!currentConversation || !text || !text.trim()) return;
         var S = getSignal();
@@ -422,9 +443,13 @@
                 var targetId = otherMember ? otherMember.account_id : accId;
                 var session = await getOrEstablish1to1Session(targetId);
                 if (session) {
-                    encrypted = await S.doubleRatchetEncrypt(session, cleanText);
-                    await saveSession(accId + ':' + targetId, session);
-                    usedDoubleRatchet = true;
+                    try {
+                        encrypted = await S.doubleRatchetEncrypt(session, cleanText);
+                        await saveSession(accId + ':' + targetId, session);
+                        usedDoubleRatchet = true;
+                    } catch (e) {
+                        usedDoubleRatchet = false;
+                    }
                 }
             }
 
@@ -456,7 +481,7 @@
             }).select();
 
             if (insertRes.data && insertRes.data[0]) {
-                decryptedCache[insertRes.data[0].id] = cleanText;
+                setCachedDecrypted(insertRes.data[0].id, cleanText);
             }
 
             renderMessages();
@@ -467,7 +492,10 @@
     }
 
     async function decryptMessage(msg) {
-        if (decryptedCache[msg.id]) return decryptedCache[msg.id];
+        if (!msg || !msg.id) return '';
+        var cached = getCachedDecrypted(msg.id);
+        if (cached) return cached;
+
         var S = getSignal();
         var acc = getAccount();
         var accId = acc ? (acc.id || acc.account_id) : '';
@@ -478,38 +506,31 @@
 
         try {
             var plaintext = '';
-            if (currentConversation.type === 'direct') {
-                if (msg.sender_account_id === accId) {
-                    if (decryptedCache[msg.id]) {
-                        return decryptedCache[msg.id];
-                    }
-                    try {
-                        var senderKey = await getOrEstablishGroupSenderKey(currentConversation.id);
-                        plaintext = await S.groupSenderKeyDecrypt(senderKey, msg.header_data, msg.iv, msg.ciphertext);
-                    } catch (e) {
-                        plaintext = '[Your message]';
+            var sKey = await getOrEstablishGroupSenderKey(currentConversation.id);
+            try {
+                plaintext = await S.groupSenderKeyDecrypt(sKey, msg.header_data, msg.iv, msg.ciphertext);
+            } catch (errGroup) {
+                if (currentConversation.type === 'direct') {
+                    var otherMemberId = msg.sender_account_id === accId ?
+                        ((currentConversation.members || []).find(function (m) { return m.account_id !== accId; }) || {}).account_id :
+                        msg.sender_account_id;
+
+                    var session = await getOrEstablish1to1Session(otherMemberId);
+                    if (session && msg.header_data && (msg.header_data.dhPub || msg.header_data.dhPublicKey)) {
+                        plaintext = await S.doubleRatchetDecrypt(session, msg.header_data, msg.iv, msg.ciphertext);
+                    } else {
+                        throw errGroup;
                     }
                 } else {
-                    var session = await getOrEstablish1to1Session(msg.sender_account_id);
-                    if (session && msg.header_data && msg.header_data.dhPublicKey) {
-                        try {
-                            plaintext = await S.doubleRatchetDecrypt(session, msg.header_data, msg.iv, msg.ciphertext);
-                            await saveSession(accId + ':' + msg.sender_account_id, session);
-                        } catch (e) {
-                            var sKey = await getOrEstablishGroupSenderKey(currentConversation.id);
-                            plaintext = await S.groupSenderKeyDecrypt(sKey, msg.header_data, msg.iv, msg.ciphertext);
-                        }
-                    } else {
-                        var sKey2 = await getOrEstablishGroupSenderKey(currentConversation.id);
-                        plaintext = await S.groupSenderKeyDecrypt(sKey2, msg.header_data, msg.iv, msg.ciphertext);
-                    }
+                    throw errGroup;
                 }
-            } else {
-                var sKey3 = await getOrEstablishGroupSenderKey(currentConversation.id);
-                plaintext = await S.groupSenderKeyDecrypt(sKey3, msg.header_data, msg.iv, msg.ciphertext);
             }
-            decryptedCache[msg.id] = plaintext;
-            return plaintext;
+
+            if (plaintext) {
+                setCachedDecrypted(msg.id, plaintext);
+                return plaintext;
+            }
+            return '[🔒 Encrypted Message]';
         } catch (err) {
             return '[🔒 Encrypted Message]';
         }

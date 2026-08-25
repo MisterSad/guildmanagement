@@ -594,6 +594,17 @@
         };
     }
 
+    function canonicalHeaderBytes(header) {
+        if (!header || typeof header !== 'object') return new Uint8Array(0);
+        var sortedKeys = Object.keys(header).sort();
+        var canonicalObj = {};
+        for (var i = 0; i < sortedKeys.length; i++) {
+            var k = sortedKeys[i];
+            canonicalObj[k] = header[k];
+        }
+        return utf8ToBytes(JSON.stringify(canonicalObj));
+    }
+
     async function doubleRatchetEncrypt(session, plaintextUtf8) {
         if (!session.sendingChainKey) {
             var dhOut = calculateX25519Agreement(session.dhKeyPair.privateKey, session.remoteDhPublicKey);
@@ -616,7 +627,7 @@
         };
         session.sendCount++;
 
-        var headerBytes = utf8ToBytes(JSON.stringify(header));
+        var headerBytes = canonicalHeaderBytes(header);
         var ciphertext = await encryptAesGcm(messageKey, plaintextBytes, iv, headerBytes);
 
         return {
@@ -630,7 +641,6 @@
         var remoteDhPub = hexToBytes(header.dhPub);
         var iv = hexToBytes(ivHex);
         var ciphertextWithTag = base64ToBytes(ciphertextB64);
-        var headerBytes = utf8ToBytes(JSON.stringify(header));
 
         var dhChanged = !session.remoteDhPublicKey || bytesToHex(session.remoteDhPublicKey) !== header.dhPub;
         if (dhChanged) {
@@ -664,8 +674,23 @@
         session.receiveCount++;
         var messageKey = chainRes.messageKey;
 
-        var decryptedBytes = await decryptAesGcm(messageKey, ciphertextWithTag, iv, headerBytes);
-        return bytesToUtf8(decryptedBytes);
+        // Try canonical AAD, then raw, then legacy key order
+        try {
+            var aad1 = canonicalHeaderBytes(header);
+            var dec1 = await decryptAesGcm(messageKey, ciphertextWithTag, iv, aad1);
+            return bytesToUtf8(dec1);
+        } catch (e1) {
+            try {
+                var aad2 = utf8ToBytes(JSON.stringify(header));
+                var dec2 = await decryptAesGcm(messageKey, ciphertextWithTag, iv, aad2);
+                return bytesToUtf8(dec2);
+            } catch (e2) {
+                var rawOrder = { dhPub: header.dhPub, pn: header.pn, n: header.n };
+                var aad3 = utf8ToBytes(JSON.stringify(rawOrder));
+                var dec3 = await decryptAesGcm(messageKey, ciphertextWithTag, iv, aad3);
+                return bytesToUtf8(dec3);
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -729,7 +754,7 @@
             iteration: iteration,
             sigPub: bytesToHex(senderKeyRecord.signingKeyPair.publicKey)
         };
-        var headerBytes = utf8ToBytes(JSON.stringify(header));
+        var headerBytes = canonicalHeaderBytes(header);
         var plaintextBytes = utf8ToBytes(plaintextUtf8);
 
         var ciphertext = await encryptAesGcm(messageKey, plaintextBytes, iv, headerBytes);
@@ -744,12 +769,39 @@
     async function groupSenderKeyDecrypt(senderKeyRecord, header, ivHex, ciphertextB64) {
         var iv = hexToBytes(ivHex);
         var ciphertextWithTag = base64ToBytes(ciphertextB64);
-        var headerBytes = utf8ToBytes(JSON.stringify(header));
         var iteration = (header && typeof header.iteration === 'number') ? header.iteration : 0;
 
         var messageKey = hkdf(senderKeyRecord.chainKey, iv, utf8ToBytes('group_msg_kdf_' + iteration), 32);
-        var decryptedBytes = await decryptAesGcm(messageKey, ciphertextWithTag, iv, headerBytes);
-        return bytesToUtf8(decryptedBytes);
+
+        // Attempt 1: Canonical sorted JSON header
+        try {
+            var aad1 = canonicalHeaderBytes(header);
+            var dec1 = await decryptAesGcm(messageKey, ciphertextWithTag, iv, aad1);
+            return bytesToUtf8(dec1);
+        } catch (e1) {
+            // Attempt 2: Direct JSON.stringify(header)
+            try {
+                var aad2 = utf8ToBytes(JSON.stringify(header));
+                var dec2 = await decryptAesGcm(messageKey, ciphertextWithTag, iv, aad2);
+                return bytesToUtf8(dec2);
+            } catch (e2) {
+                // Attempt 3: Legacy key order { senderAccountId, iteration, sigPub }
+                try {
+                    var rawOrder = {
+                        senderAccountId: header.senderAccountId,
+                        iteration: header.iteration,
+                        sigPub: header.sigPub
+                    };
+                    var aad3 = utf8ToBytes(JSON.stringify(rawOrder));
+                    var dec3 = await decryptAesGcm(messageKey, ciphertextWithTag, iv, aad3);
+                    return bytesToUtf8(dec3);
+                } catch (e3) {
+                    // Attempt 4: Empty AAD
+                    var dec4 = await decryptAesGcm(messageKey, ciphertextWithTag, iv, new Uint8Array(0));
+                    return bytesToUtf8(dec4);
+                }
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
