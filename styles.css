@@ -2632,7 +2632,8 @@ body.guild-read-only .gm-content .score-cell {
 .modal-overlay,
 #modal-leader-create,
 #modal-safety-numbers,
-#modal-treaty-create {
+#modal-treaty-create,
+#modal-group-members {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -2652,14 +2653,16 @@ body.guild-read-only .gm-content .score-cell {
 .modal-overlay.hidden,
 #modal-leader-create.hidden,
 #modal-safety-numbers.hidden,
-#modal-treaty-create.hidden {
+#modal-treaty-create.hidden,
+#modal-group-members.hidden {
     display: none !important;
 }
 
 .modal-overlay .modal-card,
 #modal-leader-create .modal-card,
 #modal-safety-numbers .modal-card,
-#modal-treaty-create .modal-card {
+#modal-treaty-create .modal-card,
+#modal-group-members .modal-card {
     background: var(--bg-1, #18181c) !important;
     border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15)) !important;
     border-radius: var(--radius-xl, 16px) !important;

@@ -1155,6 +1155,8 @@
             var isCreator = currentConversation.createdBy === accId;
 
             actionsHtml =
+                '<button class="gm-btn gm-btn-outline gm-btn-xs" id="btn-manage-members" title="Manage Group Participants"><i class="ph ph-users"></i> ' + (currentConversation.members || []).length + ' Members</button>' +
+                '<button class="gm-btn gm-btn-primary gm-btn-xs" id="btn-header-add-member" title="Add Member to Group"><i class="ph ph-user-plus"></i> Add</button>' +
                 '<button class="gm-btn gm-btn-outline gm-btn-xs" id="btn-rename-group" title="Rename Group"><i class="ph ph-pencil-simple"></i> Rename</button>' +
                 '<button class="gm-btn gm-btn-outline gm-btn-xs" id="btn-leave-group" title="Leave Group"><i class="ph ph-sign-out"></i> Leave Group</button>' +
                 (isCreator || isSuper ? '<button class="gm-btn gm-btn-outline gm-btn-xs" id="btn-delete-conv" style="color:var(--danger);" title="Delete Group"><i class="ph ph-trash"></i> Delete Group</button>' : '');
@@ -1194,6 +1196,12 @@
             };
         }
 
+        var btnManageMembers = document.getElementById('btn-manage-members');
+        if (btnManageMembers) btnManageMembers.onclick = showGroupMembersModal;
+
+        var btnHeaderAddMember = document.getElementById('btn-header-add-member');
+        if (btnHeaderAddMember) btnHeaderAddMember.onclick = showGroupMembersModal;
+
         var btnPropose = document.getElementById('btn-header-propose-treaty');
         if (btnPropose) btnPropose.onclick = showCreateTreatyModal;
 
@@ -1220,6 +1228,183 @@
             btnLeave.onclick = function () {
                 handleLeaveGroup(currentConversation.id);
             };
+        }
+    }
+
+    function showGroupMembersModal() {
+        var modal = document.getElementById('modal-group-members');
+        if (!modal || !currentConversation || currentConversation.type !== 'group') return;
+
+        var acc = getAccount();
+        var accId = acc ? (acc.id || acc.account_id) : '';
+        var isSuper = window.GM && window.GM.isSuperAdmin && window.GM.isSuperAdmin();
+        var isCreator = currentConversation.createdBy === accId;
+
+        var members = currentConversation.members || [];
+        var existingIds = new Set(members.map(function (m) { return m.account_id; }));
+
+        // Candidates to add
+        var candidateLeaders = activeAccounts.filter(function (a) {
+            if (existingIds.has(a.id)) return false;
+            if (currentConversation.isR5Only) {
+                var r = (a.role || '').toLowerCase();
+                return r === 'super_admin' || r === 'r5' || r === 'admin';
+            }
+            return true;
+        });
+
+        var addOptionsHtml = candidateLeaders.map(function (a) {
+            return '<option value="' + esc(a.id) + '">' + esc(a.id) + ' [' + esc(a.guild || 'FGF') + '] (' + esc(a.role) + ')</option>';
+        }).join('');
+
+        var membersListHtml = members.map(function (m) {
+            var isThisCreator = currentConversation.createdBy === m.account_id;
+            var canRemove = (isCreator || isSuper) && !isThisCreator;
+            var isSelf = (m.account_id === accId);
+
+            var badgeRole = isThisCreator ?
+                '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; font-size:0.72rem; padding:1px 6px;">👑 Creator</span>' :
+                '<span class="gm-chip" style="font-size:0.72rem; padding:1px 6px;">Member</span>';
+
+            return '<div class="gm-direct-leader-row" style="padding:0.45rem 0.5rem; background:rgba(255,255,255,0.02); margin-bottom:4px; border-radius:var(--radius-sm);">' +
+                '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                    '<span class="gm-picker-guild">[' + esc(m.guild || 'FGF') + ']</span>' +
+                    '<span style="font-weight:700; color:var(--text-main);">' + esc(m.account_id) + '</span>' +
+                    '<span style="font-size:0.75rem; color:var(--text-muted);">(' + esc(m.role || 'Leader') + ')</span>' +
+                    badgeRole +
+                '</div>' +
+                '<div>' +
+                    (canRemove ? '<button type="button" class="gm-btn gm-btn-outline gm-btn-xs btn-remove-member" style="color:var(--danger); border-color:rgba(239,68,68,0.3);" data-member-id="' + esc(m.account_id) + '"><i class="ph ph-user-minus"></i> Remove</button>' : '') +
+                    (isSelf && !isThisCreator ? '<button type="button" class="gm-btn gm-btn-outline gm-btn-xs btn-remove-member" style="color:var(--text-muted);" data-member-id="' + esc(m.account_id) + '"><i class="ph ph-sign-out"></i> Leave</button>' : '') +
+                '</div>' +
+            '</div>';
+        }).join('');
+
+        var titleEl = document.getElementById('modal-group-members-title');
+        if (titleEl) {
+            titleEl.innerHTML = '<i class="ph ph-users-three" style="color:var(--primary);"></i> ' + esc(currentConversation.title) + ' (' + members.length + ' Participants)';
+        }
+
+        var body = document.getElementById('modal-group-members-body');
+        if (body) {
+            body.innerHTML =
+                '<div style="background:rgba(56,189,248,0.04); border:1px solid rgba(56,189,248,0.15); border-radius:var(--radius-md); padding:0.75rem;">' +
+                    '<label style="display:block; font-size:0.8rem; font-weight:700; color:var(--text-main); margin-bottom:0.35rem;">Add Leader to Group</label>' +
+                    (candidateLeaders.length > 0 ?
+                        '<div style="display:flex; gap:0.5rem;">' +
+                            '<select id="select-add-member-id" class="gm-input" style="flex:1;">' +
+                                addOptionsHtml +
+                            '</select>' +
+                            '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="btn-submit-add-member">' +
+                                '<i class="ph ph-user-plus"></i> Add' +
+                            '</button>' +
+                        '</div>' :
+                        '<div style="font-size:0.8rem; color:var(--text-muted);">All eligible leaders are already in this group.</div>'
+                    ) +
+                '</div>' +
+                '<div>' +
+                    '<div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-bottom:0.4rem;">Current Participants (' + members.length + ')</div>' +
+                    '<div style="max-height:240px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.35rem;">' +
+                        (membersListHtml || '<div class="gm-empty" style="padding:1rem;">No members found</div>') +
+                    '</div>' +
+                '</div>';
+
+            var btnAddSubmit = document.getElementById('btn-submit-add-member');
+            if (btnAddSubmit) {
+                btnAddSubmit.onclick = async function () {
+                    var sel = document.getElementById('select-add-member-id');
+                    if (!sel || !sel.value) return;
+                    var targetId = sel.value;
+                    await handleAddGroupMember(currentConversation.id, targetId);
+                };
+            }
+
+            body.querySelectorAll('.btn-remove-member').forEach(function (btn) {
+                btn.onclick = async function () {
+                    var targetId = btn.getAttribute('data-member-id');
+                    if (targetId) await handleRemoveGroupMember(currentConversation.id, targetId);
+                };
+            });
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    async function handleAddGroupMember(convId, targetAccountId) {
+        var db = getDb();
+        if (!db) return;
+
+        try {
+            var res = await db.rpc('gm_add_e2ee_group_members', {
+                p_conversation_id: convId,
+                p_account_ids: [targetAccountId]
+            });
+
+            if (res.error) throw res.error;
+
+            var memRes = await db
+                .from('e2ee_conversation_members')
+                .select('account_id, guild, role, group_role')
+                .eq('conversation_id', convId);
+
+            if (currentConversation && currentConversation.id === convId) {
+                currentConversation.members = memRes.data || [];
+                var found = conversationsList.find(function (c) { return c.id === convId; });
+                if (found) found.members = memRes.data || [];
+            }
+
+            renderAccordions();
+            renderActiveConversationHeader();
+            showGroupMembersModal();
+        } catch (err) {
+            console.error('Error adding member to group', err);
+            alert('Failed to add member: ' + (err.message || err));
+        }
+    }
+
+    async function handleRemoveGroupMember(convId, targetAccountId) {
+        var acc = getAccount();
+        var accId = acc ? (acc.id || acc.account_id) : '';
+        var isSelf = (targetAccountId === accId);
+
+        if (!confirm('Are you sure you want to ' + (isSelf ? 'leave' : 'remove ' + targetAccountId + ' from') + ' this group?')) return;
+
+        var db = getDb();
+        if (!db) return;
+
+        try {
+            var res = await db.rpc('gm_remove_e2ee_group_member', {
+                p_conversation_id: convId,
+                p_target_account_id: targetAccountId
+            });
+
+            if (res.error) throw res.error;
+
+            if (isSelf) {
+                document.getElementById('modal-group-members').classList.add('hidden');
+                currentConversation = null;
+                await fetchConversations();
+                selectConversation(GLOBAL_CHANNELS[0].id);
+                return;
+            }
+
+            var memRes = await db
+                .from('e2ee_conversation_members')
+                .select('account_id, guild, role, group_role')
+                .eq('conversation_id', convId);
+
+            if (currentConversation && currentConversation.id === convId) {
+                currentConversation.members = memRes.data || [];
+                var found = conversationsList.find(function (c) { return c.id === convId; });
+                if (found) found.members = memRes.data || [];
+            }
+
+            renderAccordions();
+            renderActiveConversationHeader();
+            showGroupMembersModal();
+        } catch (err) {
+            console.error('Error removing member from group', err);
+            alert('Failed to remove member: ' + (err.message || err));
         }
     }
 
@@ -1752,6 +1937,21 @@
         if (btnCancelTreaty) {
             btnCancelTreaty.onclick = function () {
                 document.getElementById('modal-treaty-create').classList.add('hidden');
+            };
+        }
+
+        // Group Members Modal Handlers
+        var btnCloseMembers = document.getElementById('modal-group-members-close-btn');
+        if (btnCloseMembers) {
+            btnCloseMembers.onclick = function () {
+                document.getElementById('modal-group-members').classList.add('hidden');
+            };
+        }
+
+        var btnDoneMembers = document.getElementById('modal-group-members-done-btn');
+        if (btnDoneMembers) {
+            btnDoneMembers.onclick = function () {
+                document.getElementById('modal-group-members').classList.add('hidden');
             };
         }
     }
