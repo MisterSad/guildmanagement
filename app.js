@@ -168,6 +168,9 @@
         if (role !== 'member' && window.GM_SHELL && window.GM_SHELL.renderShell) {
             window.GM_SHELL.renderShell();
         }
+        if (role !== 'member' && window.GM_LEADER_HALL && window.GM_LEADER_HALL.initGlobalUnreadListener) {
+            window.GM_LEADER_HALL.initGlobalUnreadListener();
+        }
         reloadActiveView();
 
         // Handle a Stripe checkout redirect (back from the hosted payment
@@ -286,6 +289,9 @@
                 showAdminDashboard(role);
                 if (role !== 'member' && window.GM_SHELL && window.GM_SHELL.renderShell) {
                     window.GM_SHELL.renderShell();
+                }
+                if (role !== 'member' && window.GM_LEADER_HALL && window.GM_LEADER_HALL.initGlobalUnreadListener) {
+                    window.GM_LEADER_HALL.initGlobalUnreadListener();
                 }
                 showToast(role === 'super_admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
             } else if (resp.error === 'pending_approval') {

@@ -38,6 +38,9 @@
     var activeAccounts = [];
     var availableGuilds = [];
     var decryptedCache = {}; // messageId -> plaintext
+    var unreadCounts = {}; // convId -> number of unread messages
+    var lastReadMessageIds = {}; // convId -> highest message id read
+    var globalUnreadChannel = null;
 
     var accordionState = {
         global: true,
@@ -232,11 +235,204 @@
             }
 
             conversationsList = list;
+            await fetchUnreadCounts();
             return list;
         } catch (err) {
             console.error('Error fetching E2EE conversations', err);
             return [];
         }
+    }
+
+    function getLastReadKey() {
+        var acc = getAccount();
+        var accId = acc ? (acc.id || acc.account_id) : 'anon';
+        return 'gm_e2ee_last_read_' + accId;
+    }
+
+    function loadLastReadMap() {
+        try {
+            var raw = localStorage.getItem(getLastReadKey());
+            if (raw) {
+                lastReadMessageIds = JSON.parse(raw) || {};
+            }
+        } catch (e) {
+            lastReadMessageIds = {};
+        }
+    }
+
+    function saveLastReadMap() {
+        try {
+            localStorage.setItem(getLastReadKey(), JSON.stringify(lastReadMessageIds));
+        } catch (e) {}
+    }
+
+    function markConversationRead(convId, latestId) {
+        if (!convId) return;
+        unreadCounts[convId] = 0;
+        if (latestId) {
+            lastReadMessageIds[convId] = Math.max(lastReadMessageIds[convId] || 0, Number(latestId));
+        }
+        saveLastReadMap();
+        updateAllUnreadBadges();
+    }
+
+    async function fetchUnreadCounts() {
+        var db = getDb();
+        var acc = getAccount();
+        if (!db || !acc) return;
+        var accId = acc.id || acc.account_id;
+        loadLastReadMap();
+
+        try {
+            var convIds = conversationsList.map(function (c) { return c.id; });
+            if (convIds.length === 0) {
+                unreadCounts = {};
+                updateAllUnreadBadges();
+                return;
+            }
+
+            var res = await db
+                .from('e2ee_messages')
+                .select('id, conversation_id, sender_account_id')
+                .in('conversation_id', convIds)
+                .neq('sender_account_id', accId)
+                .order('id', { ascending: true });
+
+            if (res.data) {
+                var counts = {};
+                res.data.forEach(function (m) {
+                    var cId = m.conversation_id;
+                    var lastRead = lastReadMessageIds[cId] || 0;
+                    if (Number(m.id) > lastRead) {
+                        counts[cId] = (counts[cId] || 0) + 1;
+                    }
+                });
+                unreadCounts = counts;
+                updateAllUnreadBadges();
+            }
+        } catch (e) {
+            console.error('Error fetching unread counts', e);
+        }
+    }
+
+    function updateAllUnreadBadges() {
+        var totalUnread = 0;
+        var directUnread = 0;
+        var groupUnread = 0;
+        var r5Unread = 0;
+
+        conversationsList.forEach(function (c) {
+            var u = unreadCounts[c.id] || 0;
+            if (u > 0) {
+                totalUnread += u;
+                if (c.type === 'direct') {
+                    directUnread += u;
+                } else if (c.type === 'group') {
+                    if (c.isR5Only) r5Unread += u;
+                    else groupUnread += u;
+                }
+            }
+        });
+
+        // 1. Top Navigation Tab Badge
+        var navBadge = document.getElementById('nav-badge-leader-hall');
+        if (navBadge) {
+            if (totalUnread > 0) {
+                navBadge.innerText = totalUnread > 99 ? '99+' : totalUnread;
+                navBadge.classList.remove('hidden');
+            } else {
+                navBadge.classList.add('hidden');
+            }
+        }
+
+        // 2. Accordion Header Badges
+        var bDirect = document.getElementById('badge-direct-unread');
+        if (bDirect) {
+            if (directUnread > 0) {
+                bDirect.innerText = directUnread + ' new';
+                bDirect.classList.remove('hidden');
+            } else {
+                bDirect.classList.add('hidden');
+            }
+        }
+
+        var bGroup = document.getElementById('badge-group-unread');
+        if (bGroup) {
+            if (groupUnread > 0) {
+                bGroup.innerText = groupUnread + ' new';
+                bGroup.classList.remove('hidden');
+            } else {
+                bGroup.classList.add('hidden');
+            }
+        }
+
+        var bR5 = document.getElementById('badge-r5-unread');
+        if (bR5) {
+            if (r5Unread > 0) {
+                bR5.innerText = r5Unread + ' new';
+                bR5.classList.remove('hidden');
+            } else {
+                bR5.classList.add('hidden');
+            }
+        }
+
+        // 3. Update individual channel items in sidebar
+        document.querySelectorAll('.gm-hall-channel-item').forEach(function (el) {
+            var cId = el.getAttribute('data-conv-id');
+            if (!cId) return;
+            var count = unreadCounts[cId] || 0;
+            var bubble = el.querySelector('.gm-channel-unread-bubble');
+            if (count > 0) {
+                if (!bubble) {
+                    bubble = document.createElement('div');
+                    bubble.className = 'gm-channel-unread-bubble';
+                    el.appendChild(bubble);
+                }
+                bubble.innerText = count > 99 ? '99+' : count;
+            } else if (bubble) {
+                bubble.remove();
+            }
+        });
+    }
+
+    function initGlobalUnreadListener() {
+        var db = getDb();
+        var acc = getAccount();
+        if (!db || !acc) return;
+        var accId = acc.id || acc.account_id;
+
+        if (globalUnreadChannel) {
+            db.removeChannel(globalUnreadChannel);
+        }
+
+        globalUnreadChannel = db.channel('leader_hall_global_unreads_' + accId)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'e2ee_messages'
+            }, function (payload) {
+                var msg = payload.new;
+                if (!msg || msg.sender_account_id === accId) return;
+
+                var activeTab = document.querySelector('.tab-panel.active');
+                var isLeaderHallTab = activeTab && activeTab.id === 'tab-leader-hall';
+                var isViewingThisConv = isLeaderHallTab && currentConversation && currentConversation.id === msg.conversation_id;
+
+                if (isViewingThisConv) {
+                    markConversationRead(msg.conversation_id, msg.id);
+                } else {
+                    unreadCounts[msg.conversation_id] = (unreadCounts[msg.conversation_id] || 0) + 1;
+                    updateAllUnreadBadges();
+
+                    if (!isViewingThisConv && window.GM && window.GM.showToast) {
+                        var senderTag = msg.sender_guild ? '[' + msg.sender_guild + '] ' : '';
+                        window.GM.showToast('💬 ' + senderTag + msg.sender_account_id + ': New encrypted message', 'info');
+                    }
+                }
+            })
+            .subscribe();
+
+        fetchUnreadCounts();
     }
 
     async function fetchTreaties() {
@@ -1040,6 +1236,8 @@
                     var title = other ? (other.account_id + ' [' + (other.guild || 'FGF') + ']') : 'Direct Chat';
                     var roleTag = other ? other.role : 'R4';
                     var isBlocked = other && blockedAccountIds.has(other.account_id);
+                    var unread = unreadCounts[c.id] || 0;
+                    var unreadHtml = unread > 0 ? '<div class="gm-channel-unread-bubble">' + (unread > 99 ? '99+' : unread) + '</div>' : '';
 
                     return '<div class="gm-hall-channel-item ' + (isSelected ? 'active' : '') + '" data-conv-id="' + esc(c.id) + '">' +
                         '<div class="gm-channel-icon"><i class="ph ph-user"></i></div>' +
@@ -1047,6 +1245,7 @@
                             '<div class="gm-channel-title">' + esc(title) + (isBlocked ? ' <span class="gm-badge-blocked">BLOCKED</span>' : '') + '</div>' +
                             '<div class="gm-channel-sub">' + esc(roleTag) + ' • E2EE Direct</div>' +
                         '</div>' +
+                        unreadHtml +
                     '</div>';
                 }).join('');
             }
@@ -1063,12 +1262,16 @@
             } else {
                 groupContainer.innerHTML = groupList.map(function (c) {
                     var isSelected = currentConversation && currentConversation.id === c.id;
+                    var unread = unreadCounts[c.id] || 0;
+                    var unreadHtml = unread > 0 ? '<div class="gm-channel-unread-bubble">' + (unread > 99 ? '99+' : unread) + '</div>' : '';
+
                     return '<div class="gm-hall-channel-item ' + (isSelected ? 'active' : '') + '" data-conv-id="' + esc(c.id) + '">' +
                         '<div class="gm-channel-icon"><i class="ph ph-users-three"></i></div>' +
                         '<div class="gm-channel-info">' +
                             '<div class="gm-channel-title">' + esc(c.title) + '</div>' +
                             '<div class="gm-channel-sub">' + (c.members || []).length + ' Leaders • Coalition</div>' +
                         '</div>' +
+                        unreadHtml +
                     '</div>';
                 }).join('');
             }
@@ -1085,16 +1288,22 @@
             } else {
                 r5Container.innerHTML = r5List.map(function (c) {
                     var isSelected = currentConversation && currentConversation.id === c.id;
+                    var unread = unreadCounts[c.id] || 0;
+                    var unreadHtml = unread > 0 ? '<div class="gm-channel-unread-bubble">' + (unread > 99 ? '99+' : unread) + '</div>' : '';
+
                     return '<div class="gm-hall-channel-item ' + (isSelected ? 'active' : '') + '" data-conv-id="' + esc(c.id) + '">' +
                         '<div class="gm-channel-icon" style="color:#facc15;"><i class="ph ph-crown"></i></div>' +
                         '<div class="gm-channel-info">' +
                             '<div class="gm-channel-title">' + esc(c.title) + ' <span class="gm-chip-r5">R5 ONLY</span></div>' +
                             '<div class="gm-channel-sub">' + (c.members || []).length + ' Guild Masters</div>' +
                         '</div>' +
+                        unreadHtml +
                     '</div>';
                 }).join('');
             }
         }
+
+        updateAllUnreadBadges();
 
         document.querySelectorAll('.gm-hall-channel-item').forEach(function (el) {
             el.onclick = function () {
@@ -1126,6 +1335,7 @@
             var conv = conversationsList.find(function (c) { return c.id === id; });
             if (!conv) return;
             currentConversation = conv;
+            markConversationRead(id);
         }
 
         renderAccordions();
@@ -1632,6 +1842,11 @@
 
             container.innerHTML = watermarkHtml + html;
             container.scrollTop = container.scrollHeight;
+
+            if (messages.length > 0) {
+                var maxId = messages[messages.length - 1].id;
+                markConversationRead(currentConversation.id, maxId);
+            }
         } catch (e) {
             console.error('Error loading messages', e);
             container.innerHTML = '<div class="gm-empty"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Error loading messages</div></div>';
@@ -1925,6 +2140,7 @@
         await fetchBlockedAccounts();
         await fetchEligibleLeaders();
         await fetchConversations();
+        initGlobalUnreadListener();
 
         if (!currentConversation) {
             selectConversation(GLOBAL_CHANNELS[0].id);
@@ -2160,6 +2376,10 @@
         fetchConversations: fetchConversations,
         fetchTreaties: fetchTreaties,
         sendMessage: sendMessage,
-        decryptMessage: decryptMessage
+        decryptMessage: decryptMessage,
+        initGlobalUnreadListener: initGlobalUnreadListener,
+        fetchUnreadCounts: fetchUnreadCounts,
+        markConversationRead: markConversationRead,
+        updateAllUnreadBadges: updateAllUnreadBadges
     };
 });

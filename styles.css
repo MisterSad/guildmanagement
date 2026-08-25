@@ -2113,6 +2113,67 @@ body.guild-read-only .gm-content .score-cell {
     border-radius: 9999px;
 }
 
+.gm-acc-unread-badge {
+    font-size: 0.68rem;
+    font-weight: 800;
+    background: #ef4444;
+    color: #ffffff;
+    padding: 1px 7px;
+    border-radius: 9999px;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+}
+
+.gm-nav-unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9999px;
+    margin-left: 5px;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+    line-height: 1;
+    animation: gmUnreadPulse 2s infinite ease-in-out;
+}
+
+.gm-channel-unread-bubble {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    margin-left: auto;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    animation: gmUnreadPulse 2s infinite ease-in-out;
+}
+
+@keyframes gmUnreadPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 14px rgba(239, 68, 68, 0.85);
+    }
+}
+
 .gm-acc-add-btn {
     background: rgba(56, 189, 248, 0.15);
     border: 1px solid rgba(56, 189, 248, 0.3);

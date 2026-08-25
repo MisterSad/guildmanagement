@@ -309,6 +309,7 @@
                         <button class="nav-tab" data-tab="tab-leader-hall" data-view="dashboard-view">
                             <span class="material-symbols-rounded" style="color:#38bdf8;">forum</span>
                             <span data-i18n="nav_leader_hall">Leader Hall</span>
+                            <span class="gm-nav-unread-badge hidden" id="nav-badge-leader-hall">0</span>
                         </button>
                         <button class="nav-tab" data-tab="admin-banned" data-view="dashboard-view">
                             <span class="material-symbols-rounded">block</span>
@@ -1067,6 +1068,7 @@
                                             <span>1:1 Discussions</span>
                                         </div>
                                         <div style="display:flex; align-items:center; gap:0.35rem;">
+                                            <span class="gm-acc-unread-badge hidden" id="badge-direct-unread">0 new</span>
                                             <span class="gm-hall-acc-badge" id="badge-direct-count">0</span>
                                             <button type="button" class="gm-acc-add-btn" id="btn-add-direct" title="Start 1:1 Chat"><i class="ph ph-plus"></i></button>
                                         </div>
@@ -1082,6 +1084,7 @@
                                             <span>Group Discussions</span>
                                         </div>
                                         <div style="display:flex; align-items:center; gap:0.35rem;">
+                                            <span class="gm-acc-unread-badge hidden" id="badge-group-unread">0 new</span>
                                             <span class="gm-hall-acc-badge" id="badge-group-count">0</span>
                                             <button type="button" class="gm-acc-add-btn" id="btn-add-group" title="Create Group"><i class="ph ph-plus"></i></button>
                                         </div>
@@ -1097,6 +1100,7 @@
                                             <span>R5 Summit</span>
                                         </div>
                                         <div style="display:flex; align-items:center; gap:0.35rem;">
+                                            <span class="gm-acc-unread-badge hidden" id="badge-r5-unread">0 new</span>
                                             <span class="gm-hall-acc-badge" id="badge-r5-count">0</span>
                                             <button type="button" class="gm-acc-add-btn" id="btn-add-r5" title="New R5 Summit"><i class="ph ph-plus"></i></button>
                                         </div>
@@ -1866,8 +1870,8 @@
     <script src="badges.js?v=6"></script>
     <script src="portal.js?v=13"></script>
     <script src="gm-help.js?v=3"></script>
-    <script src="gm-leader-hall.js?v=21"></script>
-    <script src="app.js?v=80"></script>
+    <script src="gm-leader-hall.js?v=22"></script>
+    <script src="app.js?v=81"></script>
     <script src="shell.js?v=38"></script>
 </body>
 </html>
