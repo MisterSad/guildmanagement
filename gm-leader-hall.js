@@ -2048,7 +2048,7 @@
         if (now - lastToastTime < 2500) return;
         lastToastTime = now;
         if (window.GM && window.GM.showToast) {
-            window.GM.showToast('🚫 Capture d\'écran restreinte dans les sessions confidentielles.', 'warning');
+            window.GM.showToast('🚫 Screen capture is restricted in confidential diplomatic sessions.', 'warning');
         }
     }
 
