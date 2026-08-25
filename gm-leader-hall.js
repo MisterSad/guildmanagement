@@ -38,25 +38,66 @@
     }
 
     function getAccount() {
-        if (!window.GM) return null;
-        var acc = window.GM.currentAccount;
-        if (acc) return acc;
-        var raw = localStorage.getItem('gm_account');
-        return raw ? JSON.parse(raw) : null;
+        var username = localStorage.getItem('gm_user') || (window.GM && window.GM.currentUser) || window.currentUser;
+        var role = (window.GM && window.GM.roleFromStorage) ? window.GM.roleFromStorage() : localStorage.getItem('gm_role');
+        var guild = (window.GM && window.GM.getActiveGuild) ? window.GM.getActiveGuild() : (localStorage.getItem('gm_current_guild') || localStorage.getItem('gm_guild') || 'ALPHA');
+        var server = localStorage.getItem('gm_server_restriction') || null;
+
+        if (!username) {
+            var raw = localStorage.getItem('gm_account');
+            if (raw) {
+                try {
+                    var parsed = JSON.parse(raw);
+                    username = parsed.id || parsed.account_id || parsed.username;
+                    if (parsed.role) role = parsed.role;
+                    if (parsed.guild) guild = parsed.guild;
+                } catch (e) {}
+            }
+        }
+
+        if (!username) return null;
+        return {
+            id: username,
+            account_id: username,
+            role: role || 'guild_admin',
+            guild: guild,
+            server_number: server
+        };
     }
 
     function isLeader() {
+        if (window.GM && window.GM.isGuildAdmin && window.GM.isGuildAdmin()) {
+            return true;
+        }
+        if (window.GM && window.GM.isSuperAdmin && window.GM.isSuperAdmin()) {
+            return true;
+        }
+        var role = (window.GM && window.GM.roleFromStorage) ? window.GM.roleFromStorage() : localStorage.getItem('gm_role');
+        if (role) {
+            var r = role.toLowerCase();
+            if (r === 'super_admin' || r === 'server_admin' || r === 'guild_admin' || r === 'r5' || r === 'r4' || r === 'admin') {
+                return true;
+            }
+        }
         var acc = getAccount();
         if (!acc) return false;
-        var r = (acc.role || '').toLowerCase();
-        return r === 'super_admin' || r === 'server_admin' || r === 'guild_admin' || r === 'r5' || r === 'r4' || r === 'admin';
+        var accRole = (acc.role || '').toLowerCase();
+        return accRole === 'super_admin' || accRole === 'server_admin' || accRole === 'guild_admin' || accRole === 'r5' || accRole === 'r4' || accRole === 'admin';
     }
 
     function isR5() {
+        if (window.GM && window.GM.isSuperAdmin && window.GM.isSuperAdmin()) {
+            return true;
+        }
+        var role = (window.GM && window.GM.roleFromStorage) ? window.GM.roleFromStorage() : localStorage.getItem('gm_role');
+        if (role) {
+            var r = role.toLowerCase();
+            if (r === 'super_admin' || r === 'r5' || r === 'admin') return true;
+        }
         var acc = getAccount();
         if (!acc) return false;
-        var r = (acc.role || '').toLowerCase();
-        return r === 'super_admin' || r === 'r5' || r === 'admin';
+        var accRole = (acc.role || '').toLowerCase();
+        return accRole === 'super_admin' || accRole === 'r5' || accRole === 'admin';
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -164,7 +205,6 @@
                 };
             });
 
-            // Fetch members for each conversation
             for (var i = 0; i < list.length; i++) {
                 var memRes = await db
                     .from('e2ee_conversation_members')
@@ -211,7 +251,6 @@
         var sessionId = accId + ':' + targetAccountId;
         var existing = await S.loadKeyRecord('sessions', sessionId);
         if (existing) {
-            // Rehydrate typed arrays
             existing.identityKeyPair = {
                 privateKey: S.hexToBytes(existing.identityKeyPair.privateKey),
                 publicKey: S.hexToBytes(existing.identityKeyPair.publicKey)
@@ -227,7 +266,6 @@
             return existing;
         }
 
-        // Establish session via X3DH
         var rpcRes = await db.rpc('gm_get_e2ee_prekey_bundle', { p_target_account_id: targetAccountId });
         if (rpcRes.error || !rpcRes.data || rpcRes.data.length === 0) {
             throw new Error('Could not fetch recipient prekey bundle');
@@ -332,7 +370,6 @@
             } else {
                 var senderKey = await getOrEstablishGroupSenderKey(currentConversation.id);
                 encrypted = await S.groupSenderKeyEncrypt(senderKey, cleanText);
-                // Save updated iteration
                 var toStore = {
                     groupId: senderKey.groupId,
                     senderAccountId: senderKey.senderAccountId,
@@ -372,7 +409,7 @@
         if (decryptedCache[msg.id]) return decryptedCache[msg.id];
         var S = getSignal();
         var acc = getAccount();
-        var accId = acc.id || acc.account_id;
+        var accId = acc ? (acc.id || acc.account_id) : '';
 
         try {
             var plaintext = '';
@@ -399,6 +436,75 @@
     // 5. UI RENDERING & EVENT HANDLERS
     // ─────────────────────────────────────────────────────────────────────────
 
+    function ensureLayoutRendered() {
+        var container = document.getElementById('tab-leader-hall');
+        if (!container) return;
+        if (document.getElementById('leader-hall-conv-list')) return;
+
+        container.innerHTML =
+            '<div class="gm-page" style="max-width:1400px; padding:0 0.5rem;">' +
+                '<header class="gm-page-header" style="margin-bottom:1rem;">' +
+                    '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">' +
+                        '<div>' +
+                            '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                                '<h1 class="gm-page-title" data-i18n="leader_hall_title">' + esc(t('leader_hall_title') || 'Guild Leader Hall') + '</h1>' +
+                                '<span class="gm-chip" style="background:rgba(52,211,153,0.12); color:#34d399; border:1px solid rgba(52,211,153,0.3); font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:9999px;">' +
+                                    '<i class="ph ph-shield-check"></i> Signal Protocol E2EE' +
+                                '</span>' +
+                            '</div>' +
+                            '<p class="gm-page-subtitle" data-i18n="leader_hall_subtitle">' + esc(t('leader_hall_subtitle') || 'End-to-End Encrypted diplomacy and tactical coordination for Guild Masters (R5) and Officers (R4)') + '</p>' +
+                        '</div>' +
+                    '</div>' +
+                '</header>' +
+                '<div class="gm-leader-hall-layout">' +
+                    '<aside class="gm-leader-hall-sidebar">' +
+                        '<div class="gm-hall-sidebar-header">' +
+                            '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="btn-new-discussion" style="width:100%; justify-content:center;">' +
+                                '<i class="ph ph-plus-circle"></i>' +
+                                '<span data-i18n="leader_hall_new_conv">' + esc(t('leader_hall_new_conv') || 'New Discussion') + '</span>' +
+                            '</button>' +
+                            '<div class="gm-hall-filters">' +
+                                '<button type="button" class="gm-hall-filter-pill active" data-filter="all">All</button>' +
+                                '<button type="button" class="gm-hall-filter-pill" data-filter="direct">1:1 Direct</button>' +
+                                '<button type="button" class="gm-hall-filter-pill" data-filter="group">Groups</button>' +
+                                '<button type="button" class="gm-hall-filter-pill" data-filter="r5">👑 R5 Summit</button>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="gm-leader-conv-list" id="leader-hall-conv-list">' +
+                            '<div class="gm-empty" style="padding:2rem 1rem;">' +
+                                '<i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i>' +
+                                '<div class="gm-empty-title">Loading discussions...</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</aside>' +
+                    '<section class="gm-leader-hall-main">' +
+                        '<div class="gm-chat-header" id="leader-hall-chat-header">' +
+                            '<div class="gm-chat-header-left">' +
+                                '<h2 class="gm-chat-title">Select a conversation</h2>' +
+                                '<div class="gm-chat-e2ee-tag">' +
+                                    '<i class="ph ph-lock-key"></i>' +
+                                    '<span>End-to-End Encrypted</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="gm-chat-messages-viewport" id="leader-hall-messages">' +
+                            '<div class="gm-empty" style="padding:4rem 1rem;">' +
+                                '<i class="ph ph-chats-circle gm-icon"></i>' +
+                                '<div class="gm-empty-title">Select or start a discussion</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="gm-chat-input-bar">' +
+                            '<input type="text" id="leader-hall-msg-input" class="gm-chat-input" placeholder="Type an encrypted message..." autocomplete="off">' +
+                            '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="leader-hall-send-btn">' +
+                                '<i class="ph ph-paper-plane-right"></i>' +
+                                '<span>Send</span>' +
+                            '</button>' +
+                        '</div>' +
+                    '</section>' +
+                '</div>' +
+            '</div>';
+    }
+
     function renderConversationList() {
         var listContainer = document.getElementById('leader-hall-conv-list');
         if (!listContainer) return;
@@ -411,7 +517,12 @@
         });
 
         if (filtered.length === 0) {
-            listContainer.innerHTML = '<div class="gm-empty" style="padding:1.5rem 0.5rem;"><i class="ph ph-chat-teardrop-slash gm-icon"></i><div class="gm-empty-title">' + esc(t('leader_hall_no_convs')) + '</div></div>';
+            listContainer.innerHTML =
+                '<div class="gm-empty" style="padding:2rem 0.5rem;">' +
+                    '<i class="ph ph-chat-circle-dots gm-icon" style="color:var(--primary, #38bdf8); font-size:1.75rem;"></i>' +
+                    '<div class="gm-empty-title" style="margin-top:0.5rem;">' + esc(t('leader_hall_no_convs') || 'No discussions yet') + '</div>' +
+                    '<p style="color:var(--text-muted); font-size:0.8rem; margin:0.35rem 0 0.75rem;">Start an encrypted discussion with any guild leader.</p>' +
+                '</div>';
             return;
         }
 
@@ -521,8 +632,8 @@
             if (messages.length === 0) {
                 container.innerHTML =
                     '<div class="gm-empty" style="padding:3rem 1rem;">' +
-                        '<i class="ph ph-shield-check gm-icon" style="color:var(--primary);"></i>' +
-                        '<div class="gm-empty-title">End-to-End Encrypted Session Established</div>' +
+                        '<i class="ph ph-shield-check gm-icon" style="color:var(--primary, #38bdf8); font-size:2rem;"></i>' +
+                        '<div class="gm-empty-title" style="margin-top:0.5rem;">End-to-End Encrypted Session Established</div>' +
                         '<p style="color:var(--text-muted); font-size:0.85rem; max-width:380px; margin:0.5rem auto;">Messages in this discussion are protected by the Signal Protocol. No third party can read them.</p>' +
                     '</div>';
                 return;
@@ -611,14 +722,14 @@
             body.innerHTML =
                 '<div class="gm-login-field">' +
                     '<label>Discussion Type</label>' +
-                    '<div class="gm-segmented-control">' +
-                        '<button type="button" class="gm-seg-btn active" data-type="direct">Direct 1:1</button>' +
-                        '<button type="button" class="gm-seg-btn" data-type="group">Group Discussion</button>' +
+                    '<div class="gm-segmented-control" style="display:flex; gap:0.5rem; margin-top:0.35rem;">' +
+                        '<button type="button" class="gm-seg-btn active gm-btn gm-btn-sm gm-btn-primary" data-type="direct">Direct 1:1</button>' +
+                        '<button type="button" class="gm-seg-btn gm-btn gm-btn-sm gm-btn-ghost" data-type="group">Group Discussion</button>' +
                     '</div>' +
                 '</div>' +
                 '<div class="gm-login-field hidden" id="field-group-title">' +
-                    '<label>Group Title</label>' +
-                    '<input type="text" id="input-group-title" class="gm-input" placeholder="e.g. SvS Northern Sector Coalition">' +
+                    '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Group Title</label>' +
+                    '<input type="text" id="input-group-title" class="gm-input" placeholder="e.g. SvS Northern Sector Coalition" style="width:100%;">' +
                 '</div>' +
                 '<div class="gm-login-field hidden" id="field-r5-only">' +
                     '<label class="gm-checkbox-label" style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">' +
@@ -627,7 +738,7 @@
                     '</label>' +
                 '</div>' +
                 '<div class="gm-login-field">' +
-                    '<label>Select Leader Participants</label>' +
+                    '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Select Leader Participants</label>' +
                     '<div class="gm-leader-picker-list" style="max-height:200px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.5rem;">' +
                         (selectLeadersHtml || '<div class="gm-empty-title">No other leaders found</div>') +
                     '</div>' +
@@ -636,17 +747,23 @@
             var segBtns = body.querySelectorAll('.gm-seg-btn');
             segBtns.forEach(function (btn) {
                 btn.addEventListener('click', function () {
-                    segBtns.forEach(function (b) { b.classList.remove('active'); });
+                    segBtns.forEach(function (b) {
+                        b.classList.remove('active');
+                        b.classList.remove('gm-btn-primary');
+                        b.classList.add('gm-btn-ghost');
+                    });
                     btn.classList.add('active');
+                    btn.classList.add('gm-btn-primary');
+                    btn.classList.remove('gm-btn-ghost');
                     var type = btn.getAttribute('data-type');
                     var titleField = document.getElementById('field-group-title');
                     var r5Field = document.getElementById('field-r5-only');
                     if (type === 'group') {
-                        titleField.classList.remove('hidden');
-                        r5Field.classList.remove('hidden');
+                        if (titleField) titleField.classList.remove('hidden');
+                        if (r5Field) r5Field.classList.remove('hidden');
                     } else {
-                        titleField.classList.add('hidden');
-                        r5Field.classList.add('hidden');
+                        if (titleField) titleField.classList.add('hidden');
+                        if (r5Field) r5Field.classList.add('hidden');
                     }
                 });
             });
@@ -738,6 +855,8 @@
     // ─────────────────────────────────────────────────────────────────────────
 
     async function load() {
+        ensureLayoutRendered();
+
         if (!isLeader()) {
             var container = document.getElementById('tab-leader-hall');
             if (container) {
@@ -757,12 +876,12 @@
 
         // Setup filter pills
         document.querySelectorAll('.gm-hall-filter-pill').forEach(function (pill) {
-            pill.addEventListener('click', function () {
+            pill.onclick = function () {
                 document.querySelectorAll('.gm-hall-filter-pill').forEach(function (p) { p.classList.remove('active'); });
                 pill.classList.add('active');
                 activeFilter = pill.getAttribute('data-filter') || 'all';
                 renderConversationList();
-            });
+            };
         });
 
         // Setup Send message button & input
