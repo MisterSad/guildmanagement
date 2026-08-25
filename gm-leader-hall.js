@@ -112,8 +112,7 @@
         var input = document.getElementById('leader-hall-msg-input');
 
         if (senderEl) {
-            var gTag = replyingTo.guild ? '[' + esc(replyingTo.guild) + '] ' : '';
-            senderEl.innerHTML = '<i class="ph ph-arrow-bend-up-left"></i> Replying to ' + gTag + esc(replyingTo.sender);
+            senderEl.innerHTML = '<i class="ph ph-arrow-bend-up-left"></i> Replying to ' + formatLeaderHtml(replyingTo.sender, replyingTo.guild);
         }
         if (textEl) {
             textEl.innerText = replyingTo.snippet + ((replyObj.snippet && replyObj.snippet.length > 100) ? '...' : '');
@@ -228,12 +227,12 @@
         var map = new Map();
         if (currentConversation && currentConversation.members) {
             currentConversation.members.forEach(function (m) {
-                map.set(m.account_id, { id: m.account_id, guild: m.guild, role: m.role });
+                map.set(m.account_id, { id: m.account_id, guild: m.guild, role: m.role, server_number: m.server_number });
             });
         }
         activeAccounts.forEach(function (a) {
             if (!map.has(a.id)) {
-                map.set(a.id, { id: a.id, guild: a.guild, role: a.role });
+                map.set(a.id, { id: a.id, guild: a.guild, role: a.role, server_number: a.server_number });
             }
         });
 
@@ -256,13 +255,14 @@
 
         var html = mentionCandidates.map(function (c, idx) {
             var isSel = (idx === mentionSelectedIndex);
+            var sNum = resolveLeaderServer(c.id, c.guild, c.server_number);
             var gTag = c.guild ? '[' + esc(c.guild) + '] ' : '';
             return '<div class="gm-mention-item ' + (isSel ? 'is-selected' : '') + '" data-index="' + idx + '" data-id="' + esc(c.id) + '">' +
                 '<div style="display:flex; align-items:center; gap:0.4rem;">' +
                     '<span class="gm-sender-guild" style="font-size:0.75rem; font-weight:700;">' + gTag + '</span>' +
                     '<span class="gm-mention-item-name">' + esc(c.id) + '</span>' +
                 '</div>' +
-                '<span class="gm-mention-item-role">(' + esc(c.role || 'Leader') + ')</span>' +
+                '<span class="gm-mention-item-server">#' + esc(sNum) + '</span>' +
             '</div>';
         }).join('');
 
@@ -415,6 +415,76 @@
             guild: guild,
             server_number: server
         };
+    }
+
+    function resolveLeaderServer(pseudo, guild, explicitServer) {
+        if (explicitServer && String(explicitServer).trim()) {
+            return String(explicitServer).trim().replace(/^#/, '').replace(/^[sS]/, '');
+        }
+        if (pseudo && activeAccounts && activeAccounts.length > 0) {
+            var pLower = String(pseudo).trim().toLowerCase();
+            var accMatch = activeAccounts.find(function (a) {
+                return a.id && a.id.toLowerCase() === pLower;
+            });
+            if (accMatch) {
+                if (accMatch.server_number) {
+                    return String(accMatch.server_number).replace(/^#/, '').replace(/^[sS]/, '');
+                }
+                if (accMatch.guild && !guild) {
+                    guild = accMatch.guild;
+                }
+            }
+        }
+        var curAcc = getAccount();
+        if (curAcc && pseudo && curAcc.id && curAcc.id.toLowerCase() === String(pseudo).trim().toLowerCase()) {
+            if (curAcc.server_number) {
+                return String(curAcc.server_number).replace(/^#/, '').replace(/^[sS]/, '');
+            }
+            if (curAcc.guild && !guild) {
+                guild = curAcc.guild;
+            }
+        }
+        if (guild && availableGuilds && availableGuilds.length > 0) {
+            var gLower = String(guild).trim().toLowerCase();
+            var gMatch = availableGuilds.find(function (g) {
+                return (g.id && g.id.toLowerCase() === gLower) || (g.name && g.name.toLowerCase() === gLower);
+            });
+            if (gMatch && gMatch.server_number) {
+                return String(gMatch.server_number).replace(/^#/, '').replace(/^[sS]/, '');
+            }
+        }
+        if (guild && typeof window !== 'undefined' && window.guildsData && window.guildsData[guild] && window.guildsData[guild].server_number) {
+            return String(window.guildsData[guild].server_number).replace(/^#/, '').replace(/^[sS]/, '');
+        }
+        if (guild && typeof localStorage !== 'undefined') {
+            var ls = localStorage.getItem('gm_server_number_' + guild);
+            if (ls) return String(ls).replace(/^#/, '').replace(/^[sS]/, '');
+        }
+        if (typeof localStorage !== 'undefined') {
+            var restr = localStorage.getItem('gm_server_restriction');
+            if (restr) return String(restr).replace(/^#/, '').replace(/^[sS]/, '');
+        }
+        return '1058';
+    }
+
+    function formatLeaderTag(pseudo, guild, explicitServer) {
+        var p = (pseudo || '').trim();
+        var g = (guild || '').trim();
+        var sNum = resolveLeaderServer(p, g, explicitServer);
+        if (g) {
+            return '[' + g + '] ' + p + ' #' + sNum;
+        }
+        return p + ' #' + sNum;
+    }
+
+    function formatLeaderHtml(pseudo, guild, explicitServer) {
+        var p = (pseudo || '').trim();
+        var g = (guild || '').trim();
+        var sNum = resolveLeaderServer(p, g, explicitServer);
+        if (g) {
+            return '<span class="gm-sender-guild">[' + esc(g) + ']</span> ' + esc(p) + ' <span class="gm-sender-server">#' + esc(sNum) + '</span>';
+        }
+        return esc(p) + ' <span class="gm-sender-server">#' + esc(sNum) + '</span>';
     }
 
     function isLeader() {
@@ -801,8 +871,7 @@
                     var isGroup = convObj ? (convObj.type === 'group') : false;
                     var isR5Summit = convObj ? (isGroup && convObj.isR5Only) : false;
                     var groupTitle = convObj ? convObj.title : (isDirect ? 'Direct 1:1' : 'Discussion');
-                    var senderGuild = msg.sender_guild ? '[' + msg.sender_guild + '] ' : '';
-                    var senderLabel = senderGuild + msg.sender_account_id;
+                    var senderLabel = formatLeaderTag(msg.sender_account_id, msg.sender_guild);
 
                     // Decrypt message to inspect snippet and detect @player mentions
                     var plainText = '';
@@ -1264,12 +1333,12 @@
 
                 // Signature status for Guild A
                 var aSigned = tr.guild_a_signed_by ?
-                    '<div class="gm-sign-status signed"><i class="ph ph-check-circle"></i> Signed by <strong>' + esc(tr.guild_a_signed_by) + '</strong> (' + esc(tr.guild_a) + ')</div>' :
+                    '<div class="gm-sign-status signed"><i class="ph ph-check-circle"></i> Signed by <strong>' + esc(formatLeaderTag(tr.guild_a_signed_by, tr.guild_a, tr.guild_a_server)) + '</strong></div>' :
                     '<div class="gm-sign-status pending"><i class="ph ph-clock"></i> Awaiting ' + esc(tr.guild_a) + ' signature</div>';
 
                 // Signature status for Guild B
                 var bSigned = tr.guild_b_signed_by ?
-                    '<div class="gm-sign-status signed"><i class="ph ph-check-circle"></i> Signed by <strong>' + esc(tr.guild_b_signed_by) + '</strong> (' + esc(tr.guild_b) + ')</div>' :
+                    '<div class="gm-sign-status signed"><i class="ph ph-check-circle"></i> Signed by <strong>' + esc(formatLeaderTag(tr.guild_b_signed_by, tr.guild_b, tr.guild_b_server)) + '</strong></div>' :
                     '<div class="gm-sign-status pending"><i class="ph ph-clock"></i> Awaiting ' + esc(tr.guild_b) + ' signature</div>';
 
                 // Can caller sign?
@@ -1299,12 +1368,12 @@
                     '<div class="gm-treaty-card-body">' +
                         '<div class="gm-treaty-parties">' +
                             '<div class="gm-party-box">' +
-                                '<div class="gm-party-name">👑 Guild A: [' + esc(tr.guild_a) + '] (S' + esc(tr.guild_a_server) + ')</div>' +
+                                '<div class="gm-party-name">👑 Guild A: [' + esc(tr.guild_a) + '] #' + esc(tr.guild_a_server) + '</div>' +
                                 aSigned +
                             '</div>' +
                             '<div class="gm-party-divider"><i class="ph ph-handshake"></i></div>' +
                             '<div class="gm-party-box">' +
-                                '<div class="gm-party-name">🛡️ Guild B: [' + esc(tr.guild_b) + '] (S' + esc(tr.guild_b_server) + ')</div>' +
+                                '<div class="gm-party-name">🛡️ Guild B: [' + esc(tr.guild_b) + '] #' + esc(tr.guild_b_server) + '</div>' +
                                 bSigned +
                             '</div>' +
                         '</div>' +
@@ -1387,7 +1456,7 @@
         var guildOptions = availableGuilds.filter(function (g) {
             return g.id !== callerGuild;
         }).map(function (g) {
-            return '<option value="' + esc(g.id) + '" data-server="' + esc(g.server_number || callerServer) + '">' + esc(g.name || g.id) + ' [' + esc(g.id) + '] (S' + esc(g.server_number || callerServer) + ')</option>';
+            return '<option value="' + esc(g.id) + '" data-server="' + esc(g.server_number || callerServer) + '">[' + esc(g.id) + '] ' + esc(g.name || g.id) + ' #' + esc(g.server_number || callerServer) + '</option>';
         }).join('');
 
         var body = document.getElementById('modal-treaty-create-body');
@@ -1398,12 +1467,12 @@
                     '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">' +
                         '<div style="background:rgba(255,255,255,0.04); padding:0.65rem; border-radius:var(--radius-sm); border:1px solid var(--border-soft);">' +
                             '<div style="font-size:0.75rem; color:var(--text-muted);">Proposing Party (Party A)</div>' +
-                            '<div style="font-weight:700; color:var(--text-main); font-size:0.95rem; margin-top:2px;">[' + esc(callerGuild) + '] (S' + esc(callerServer) + ')</div>' +
+                            '<div style="font-weight:700; color:var(--text-main); font-size:0.95rem; margin-top:2px;">[' + esc(callerGuild) + '] #' + esc(callerServer) + '</div>' +
                         '</div>' +
                         '<div>' +
                             '<div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">Target Guild (Party B)</div>' +
                             '<select id="input-treaty-guild-b" class="gm-input" style="width:100%;">' +
-                                (guildOptions || '<option value="OMEGA">OMEGA [OMEGA] (S1058)</option>') +
+                                (guildOptions || '<option value="OMEGA">[OMEGA] OMEGA #1058</option>') +
                             '</select>' +
                         '</div>' +
                     '</div>' +
@@ -1710,8 +1779,7 @@
                 directContainer.innerHTML = directList.map(function (c) {
                     var isSelected = currentConversation && currentConversation.id === c.id;
                     var other = (c.members || []).find(function (m) { return m.account_id !== accId; });
-                    var title = other ? (other.account_id + ' [' + (other.guild || 'FGF') + ']') : 'Direct Chat';
-                    var roleTag = other ? other.role : 'R4';
+                    var title = other ? formatLeaderTag(other.account_id, other.guild, other.server_number) : 'Direct Chat';
                     var isBlocked = other && blockedAccountIds.has(other.account_id);
                     var unread = unreadCounts[c.id] || 0;
                     var unreadHtml = unread > 0 ? '<div class="gm-channel-unread-bubble">' + (unread > 99 ? '99+' : unread) + '</div>' : '';
@@ -1720,7 +1788,7 @@
                         '<div class="gm-channel-icon"><i class="ph ph-user"></i></div>' +
                         '<div class="gm-channel-info">' +
                             '<div class="gm-channel-title">' + esc(title) + (isBlocked ? ' <span class="gm-badge-blocked">BLOCKED</span>' : '') + '</div>' +
-                            '<div class="gm-channel-sub">' + esc(roleTag) + ' • E2EE Direct</div>' +
+                            '<div class="gm-channel-sub">E2EE Direct</div>' +
                         '</div>' +
                         unreadHtml +
                     '</div>';
@@ -1862,9 +1930,7 @@
             subtitle = currentConversation.subtitle || 'Universal Channel • Open to all Guild Leaders';
         } else if (currentConversation.type === 'direct') {
             var other = (currentConversation.members || []).find(function (m) { return m.account_id !== accId; });
-            var targetId = other ? other.account_id : 'Leader';
-            var targetGuild = other ? other.guild : 'FGF';
-            title = targetId + ' [' + targetGuild + ']';
+            title = other ? formatLeaderTag(other.account_id, other.guild, other.server_number) : 'Direct Chat';
             subtitle = 'Direct 1:1 Signal Protocol Session';
 
             var isBlocked = other && blockedAccountIds.has(other.account_id);
@@ -1999,13 +2065,14 @@
         });
 
         var addOptionsHtml = candidateLeaders.map(function (a) {
-            return '<option value="' + esc(a.id) + '">' + esc(a.id) + ' [' + esc(a.guild || 'FGF') + '] (' + esc(a.role) + ')</option>';
+            return '<option value="' + esc(a.id) + '">' + esc(formatLeaderTag(a.id, a.guild, a.server_number)) + '</option>';
         }).join('');
 
         var membersListHtml = members.map(function (m) {
             var isThisCreator = currentConversation.createdBy === m.account_id;
             var canRemove = (isCreator || isSuper) && !isThisCreator;
             var isSelf = (m.account_id === accId);
+            var sNum = resolveLeaderServer(m.account_id, m.guild, m.server_number);
 
             var badgeRole = isThisCreator ?
                 '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; font-size:0.72rem; padding:1px 6px;">👑 Creator</span>' :
@@ -2015,7 +2082,7 @@
                 '<div style="display:flex; align-items:center; gap:0.5rem;">' +
                     '<span class="gm-picker-guild">[' + esc(m.guild || 'FGF') + ']</span>' +
                     '<span style="font-weight:700; color:var(--text-main);">' + esc(m.account_id) + '</span>' +
-                    '<span style="font-size:0.75rem; color:var(--text-muted);">(' + esc(m.role || 'Leader') + ')</span>' +
+                    '<span class="gm-picker-server" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">#' + esc(sNum) + '</span>' +
                     badgeRole +
                 '</div>' +
                 '<div>' +
@@ -2312,8 +2379,8 @@
             var watermarkHtml = '';
             if (isProt) {
                 var callerGuild = acc ? (acc.guild || 'FGF') : 'FGF';
-                var callerServer = acc ? (acc.server_number ? 'S' + acc.server_number : 'S1058') : 'S1058';
-                var watermarkText = '[' + esc(callerGuild) + '] ' + esc(accId) + ' • ' + esc(callerServer) + ' • CONFIDENTIAL';
+                var callerServerNum = resolveLeaderServer(accId, callerGuild, acc ? acc.server_number : '');
+                var watermarkText = '[' + esc(callerGuild) + '] ' + esc(accId) + ' #' + esc(callerServerNum) + ' • CONFIDENTIAL';
                 watermarkHtml = '<div class="gm-watermark-overlay" aria-hidden="true">';
                 for (var w = 0; w < 16; w++) {
                     watermarkHtml += '<div class="gm-watermark-item">' + watermarkText + '</div>';
@@ -2330,13 +2397,11 @@
                 var replyTo = parsedPayload.replyTo;
                 var formattedBody = formatMessageBody(text, accId);
                 var timeStr = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '';
-                var guildTag = m.sender_guild ? '[' + m.sender_guild + ']' : '';
-                var roleTag = m.sender_role || 'R4';
 
                 // Quote card HTML
                 var quoteHtml = '';
                 if (replyTo && replyTo.snippet) {
-                    var qSender = (replyTo.guild ? '[' + replyTo.guild + '] ' : '') + replyTo.sender;
+                    var qSender = formatLeaderTag(replyTo.sender, replyTo.guild);
                     quoteHtml =
                         '<div class="gm-message-quote" data-quote-id="' + esc(String(replyTo.id)) + '" title="Click to jump to original message">' +
                             '<div class="gm-quote-sender"><i class="ph ph-arrow-bend-up-left"></i> ' + esc(qSender) + '</div>' +
@@ -2376,7 +2441,7 @@
                     '<div class="gm-message-row ' + (isMe ? 'me' : 'other') + '" id="msg-row-' + esc(String(m.id)) + '" data-msg-id="' + esc(String(m.id)) + '" data-text="' + esc(text) + '">' +
                         actionsBarHtml +
                         '<div class="gm-message-bubble">' +
-                            (!isMe ? '<div class="gm-message-sender"><span class="gm-sender-guild">' + esc(guildTag) + '</span> ' + esc(m.sender_account_id) + ' <span class="gm-sender-role">(' + esc(roleTag) + ')</span></div>' : '') +
+                            (!isMe ? '<div class="gm-message-sender">' + formatLeaderHtml(m.sender_account_id, m.sender_guild) + '</div>' : '') +
                             quoteHtml +
                             '<div class="gm-message-body">' + formattedBody + '</div>' +
                             '<div class="gm-message-meta">' +
@@ -2526,11 +2591,12 @@
         });
 
         var directLeadersHtml = otherLeaders.map(function (a) {
+            var sNum = resolveLeaderServer(a.id, a.guild, a.server_number);
             return '<div class="gm-direct-leader-row" data-account-id="' + esc(a.id) + '">' +
                 '<div style="display:flex; align-items:center; gap:0.5rem;">' +
                     '<span class="gm-chip" style="font-weight:700;">[' + esc(a.guild || 'FGF') + ']</span>' +
                     '<span style="font-weight:600; color:var(--text-main);">' + esc(a.id) + '</span>' +
-                    '<span style="font-size:0.75rem; color:var(--text-muted);">(' + esc(a.role) + ')</span>' +
+                    '<span class="gm-sender-server" style="font-size:0.8rem; font-weight:500;">#' + esc(sNum) + '</span>' +
                 '</div>' +
                 '<button type="button" class="gm-btn gm-btn-primary gm-btn-xs btn-start-direct-chat" data-account-id="' + esc(a.id) + '">' +
                     '<i class="ph ph-chat-circle"></i> Chat' +
@@ -2539,11 +2605,12 @@
         }).join('');
 
         var groupLeadersHtml = otherLeaders.map(function (a) {
+            var sNum = resolveLeaderServer(a.id, a.guild, a.server_number);
             return '<label class="gm-leader-picker-item" style="display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0.5rem; border-radius:var(--radius-sm); cursor:pointer;">' +
                 '<input type="checkbox" name="leader_member" value="' + esc(a.id) + '" data-role="' + esc(a.role) + '">' +
                 '<span class="gm-picker-guild">[' + esc(a.guild || 'FGF') + ']</span>' +
                 '<span class="gm-picker-name" style="font-weight:600;">' + esc(a.id) + '</span>' +
-                '<span class="gm-picker-role" style="font-size:0.75rem; color:var(--text-muted);">(' + esc(a.role) + ')</span>' +
+                '<span class="gm-picker-server" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">#' + esc(sNum) + '</span>' +
             '</label>';
         }).join('');
 
@@ -3018,6 +3085,9 @@
         getMentionCandidates: getMentionCandidates,
         setReplyingTo: setReplyingTo,
         clearReplyingTo: clearReplyingTo,
-        handleToggleReaction: handleToggleReaction
+        handleToggleReaction: handleToggleReaction,
+        formatLeaderTag: formatLeaderTag,
+        formatLeaderHtml: formatLeaderHtml,
+        resolveLeaderServer: resolveLeaderServer
     };
 });

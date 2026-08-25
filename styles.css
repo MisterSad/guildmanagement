@@ -2517,9 +2517,10 @@ body.guild-read-only .gm-content .score-cell {
     color: #f59e0b;
 }
 
-.gm-sender-role {
+.gm-sender-role,
+.gm-sender-server {
     color: var(--text-muted, #94a3b8);
-    font-weight: 400;
+    font-weight: 500;
 }
 
 .gm-message-meta {
@@ -2572,9 +2573,16 @@ body.guild-read-only .gm-content .score-cell {
     font-weight: 600;
     color: var(--text-main, #f8fafc);
 }
-.gm-mention-item-role {
-    font-size: 0.7rem;
+.gm-mention-item-role,
+.gm-mention-item-server {
+    font-size: 0.72rem;
     color: var(--text-muted, #94a3b8);
+    font-weight: 500;
+}
+.gm-picker-server {
+    font-size: 0.75rem;
+    color: var(--text-muted, #94a3b8);
+    font-weight: 500;
 }
 
 .gm-mention-badge {

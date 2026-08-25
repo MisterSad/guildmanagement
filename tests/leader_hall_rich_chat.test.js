@@ -140,5 +140,32 @@ describe('Leader Hall Rich Messaging Unit Tests', () => {
             expect(regex.test('No mention here @Ashke')).toBe(false);
         });
     });
+
+    describe('5. Leader Name & Server Tag Formatting ([Guild] Pseudo #Server)', () => {
+        it('formatLeaderTag accurately formats [Guild] Pseudo #Server and avoids guild_admin', () => {
+            const res = LeaderHall.formatLeaderTag('Ashke', 'BABE', '1089');
+            expect(res).toBe('[BABE] Ashke #1089');
+            expect(res).not.toContain('guild_admin');
+        });
+
+        it('formatLeaderTag handles empty guild gracefully', () => {
+            const res = LeaderHall.formatLeaderTag('Gideon', '', '1058');
+            expect(res).toBe('Gideon #1058');
+        });
+
+        it('formatLeaderHtml generates sanitized HTML with .gm-sender-guild and .gm-sender-server', () => {
+            const html = LeaderHall.formatLeaderHtml('Sly', 'EXPO', '1089');
+            expect(html).toContain('<span class="gm-sender-guild">[EXPO]</span>');
+            expect(html).toContain('Sly');
+            expect(html).toContain('<span class="gm-sender-server">#1089</span>');
+            expect(html).not.toContain('guild_admin');
+        });
+
+        it('resolveLeaderServer resolves explicit, storage, or fallback servers', () => {
+            expect(LeaderHall.resolveLeaderServer('Ashke', 'BABE', '1089')).toBe('1089');
+            expect(LeaderHall.resolveLeaderServer('Ashke', 'BABE', '#1089')).toBe('1089');
+            expect(LeaderHall.resolveLeaderServer('Ashke', 'BABE', 'S1089')).toBe('1089');
+        });
+    });
 });
 

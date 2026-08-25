@@ -18,4 +18,8 @@ Hey everyone! I've just deployed a major quality-of-life update for guild admini
 - **Interactive Bottom Bar**: Smoothly slides into view whenever members are selected, displaying a real-time selection counter.
 - **Color-Coded Rank Buttons**: 1-click assignment buttons for `🌱 R1 (Recruit)`, `👤 R2 (Member)`, `🛡️ R3 (Veteran)`, and `⚔️ R4 (Officer)`.
 
-*Enjoy smoother roster reorganizations and fly safe!* 🚀⚔️🛡️
+### 🏛️ Leader Hall Player Display Standardization (`[Guild] Pseudo #Server`)
+- **Clean In-Game Identity**: Replaced technical `guild_admin` role mentions with official player identity tags: `[Guild] Pseudo #Server` (e.g. `[BABE] Ashke #1089`, `[YARR] Gideon #1089`).
+- **Uniformity Across Hub**: Message headers, reply quotes, 1:1 conversation titles, participant modals, and mention popups now all follow the same clear format.
+
+*Enjoy smoother roster reorganizations, cleaner diplomacy, and fly safe!* 🚀⚔️🛡️

@@ -2,13 +2,14 @@
 
 ## New
 
-- **Bulk Member Rank Assignment with R5 Leadership Protection (V3.7.1)**:
+- **Bulk Member Rank Assignment & Leader Hall Display Standardization (V3.7.1)**:
   - **1-Click Multi-Member Rank Updates**: Added full multi-selection capability to the Members tab (`#admin-members`) in both **Roster Cards** and **Military Matrix** view modes with high-contrast glow states.
   - **Floating Bulk Action Dock**: Sleek Material Design 3 dock appearing smoothly on member selection with real-time selection counter, 1-click rank buttons (`🌱 R1`, `👤 R2`, `🛡️ R3`, `⚔️ R4`), and instant deselect controls.
   - **Toolbar Select All / Deselect All**: 1-click select all toggle in the members list header.
   - **Strict Guild Leader (R5) Protection**: R5 rank is strictly excluded from bulk target choices, R5 leader checkboxes are disabled, and filtering (`filterBulkEligibleMembers`) safeguards guild leadership from accidental batch modification.
   - **Single-Query Supabase Batch Persistence**: Executes bulk rank updates in a single database operation (`.update({ role: targetRole }).in('pseudo', eligiblePseudos)`), instantly refreshing state and recalculating groups.
-  - **Quality Gate**: **491/491 Vitest unit tests green** (+11 new unit & DOM tests in `tests/members_bulk_rank.test.js`), 0 TypeScript errors, clean production build.
+  - **Leader Hall Player Display Standardization (`[Guild] Pseudo #Server`)**: Standardized all player displays across Leader Hall (message bubbles, quotes, sidebar, @mention popups, participant pickers, and treaties) to strictly use `[Guild] Pseudo #Server`, eliminating internal `guild_admin` role mentions.
+  - **Quality Gate**: **495/495 Vitest unit tests green** (+15 new unit & DOM tests across `tests/members_bulk_rank.test.js` and `tests/leader_hall_rich_chat.test.js`), 0 TypeScript errors, clean production build.
 
 - **Guild Leader Hall, Diplomatic Treaties, Signal Protocol E2EE & Anti-Capture Security (V3.7)**:
   - **4-Section Accordion Command Architecture**: Left navigation organized into 4 collapsible spaces: `🌐 Global Leaders Lounge` (Global Lounge, Diplomacy & Treaties), `👤 1:1 Discussions`, `👥 Group Discussions`, and `👑 R5 Summit`.
