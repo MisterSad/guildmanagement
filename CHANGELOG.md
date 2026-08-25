@@ -9,7 +9,10 @@
   - **Strict Guild Leader (R5) Protection**: R5 rank is strictly excluded from bulk target choices, R5 leader checkboxes are disabled, and filtering (`filterBulkEligibleMembers`) safeguards guild leadership from accidental batch modification.
   - **Single-Query Supabase Batch Persistence**: Executes bulk rank updates in a single database operation (`.update({ role: targetRole }).in('pseudo', eligiblePseudos)`), instantly refreshing state and recalculating groups.
   - **Leader Hall Player Display Standardization (`[Guild] Pseudo #Server`)**: Standardized all player displays across Leader Hall (message bubbles, quotes, sidebar, @mention popups, participant pickers, and treaties) to strictly use `[Guild] Pseudo #Server`, eliminating internal `guild_admin` role mentions.
-  - **Quality Gate**: **495/495 Vitest unit tests green** (+15 new unit & DOM tests across `tests/members_bulk_rank.test.js` and `tests/leader_hall_rich_chat.test.js`), 0 TypeScript errors, clean production build.
+  - **Clean Date & Time Meta (`DD/MM/AAAA HH:MM`)**: Formatted message timestamps with exact calendar date and hour:minute without noisy seconds, preserving microsecond-accurate monotonic sorting under the hood.
+  - **High-Contrast `@player` Mentions**: Upgraded mention pills with dedicated contrast palettes across both dark (incoming) and blue (outgoing) bubbles with glowing `@Me` highlight badges.
+  - **Floating Bottom-Edge Reaction Badges**: Positioned emoji reactions as floating chips overlapping the bottom border of message bubbles, eliminating bubble stretching and height distortion.
+  - **Quality Gate**: **499/499 Vitest unit tests green** (+19 new unit & DOM tests across `tests/members_bulk_rank.test.js` and `tests/leader_hall_rich_chat.test.js`), 0 TypeScript errors, clean production build.
 
 - **Guild Leader Hall, Diplomatic Treaties, Signal Protocol E2EE & Anti-Capture Security (V3.7)**:
   - **4-Section Accordion Command Architecture**: Left navigation organized into 4 collapsible spaces: `🌐 Global Leaders Lounge` (Global Lounge, Diplomacy & Treaties), `👤 1:1 Discussions`, `👥 Group Discussions`, and `👑 R5 Summit`.

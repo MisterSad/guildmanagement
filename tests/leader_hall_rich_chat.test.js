@@ -167,5 +167,33 @@ describe('Leader Hall Rich Messaging Unit Tests', () => {
             expect(LeaderHall.resolveLeaderServer('Ashke', 'BABE', 'S1089')).toBe('1089');
         });
     });
+
+    describe('6. Timestamp Formatting (DD/MM/AAAA HH:MM) & Reactions Positioning', () => {
+        it('formatMessageTimestamp formats valid dates as DD/MM/YYYY HH:MM without seconds', () => {
+            const date = new Date(2026, 7, 26, 17, 36, 45); // 26 August 2026 17:36:45
+            const res = LeaderHall.formatMessageTimestamp(date);
+            expect(res).toBe('26/08/2026 17:36');
+            expect(res).not.toContain(':45');
+        });
+
+        it('formatMessageTimestamp pads single digit days, months, and hours with leading zeros', () => {
+            const date = new Date(2026, 0, 5, 9, 7, 0); // 5 Jan 2026 09:07:00
+            const res = LeaderHall.formatMessageTimestamp(date);
+            expect(res).toBe('05/01/2026 09:07');
+        });
+
+        it('formatMessageTimestamp returns empty string on null or invalid date', () => {
+            expect(LeaderHall.formatMessageTimestamp(null)).toBe('');
+            expect(LeaderHall.formatMessageTimestamp('')).toBe('');
+            expect(LeaderHall.formatMessageTimestamp('invalid-date')).toBe('');
+        });
+
+        it('formatMessageBody formats mentions with data-mention attribute and is-me class', () => {
+            const body = LeaderHall.formatMessageBody('Hello @Ashke and @HawkEye!', 'HawkEye');
+            expect(body).toContain('data-mention="Ashke"');
+            expect(body).toContain('data-mention="HawkEye"');
+            expect(body).toContain('is-me');
+        });
+    });
 });
 

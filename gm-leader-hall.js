@@ -190,9 +190,11 @@
 
         if (agg.length === 0) {
             if (existingRow) existingRow.remove();
+            rowEl.classList.remove('has-reactions');
             return;
         }
 
+        rowEl.classList.add('has-reactions');
         var html = '<div class="gm-message-reactions-row">';
         agg.forEach(function (ag) {
             var userList = ag.users.join(', ');
@@ -485,6 +487,22 @@
             return '<span class="gm-sender-guild">[' + esc(g) + ']</span> ' + esc(p) + ' <span class="gm-sender-server">#' + esc(sNum) + '</span>';
         }
         return esc(p) + ' <span class="gm-sender-server">#' + esc(sNum) + '</span>';
+    }
+
+    function formatMessageTimestamp(dateInput) {
+        if (!dateInput) return '';
+        var d = new Date(dateInput);
+        if (isNaN(d.getTime())) return '';
+        var dd = d.getDate();
+        var mm = d.getMonth() + 1;
+        var yyyy = d.getFullYear();
+        var hours = d.getHours();
+        var mins = d.getMinutes();
+        var ddStr = (dd < 10 ? '0' : '') + dd;
+        var mmStr = (mm < 10 ? '0' : '') + mm;
+        var hStr = (hours < 10 ? '0' : '') + hours;
+        var mStr = (mins < 10 ? '0' : '') + mins;
+        return ddStr + '/' + mmStr + '/' + yyyy + ' ' + hStr + ':' + mStr;
     }
 
     function isLeader() {
@@ -2396,7 +2414,7 @@
                 var text = parsedPayload.text;
                 var replyTo = parsedPayload.replyTo;
                 var formattedBody = formatMessageBody(text, accId);
-                var timeStr = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '';
+                var timeStr = formatMessageTimestamp(m.created_at);
 
                 // Quote card HTML
                 var quoteHtml = '';
@@ -2437,8 +2455,9 @@
                         '</button>' +
                     '</div>';
 
+                var hasReactions = aggReactions.length > 0;
                 html +=
-                    '<div class="gm-message-row ' + (isMe ? 'me' : 'other') + '" id="msg-row-' + esc(String(m.id)) + '" data-msg-id="' + esc(String(m.id)) + '" data-text="' + esc(text) + '">' +
+                    '<div class="gm-message-row ' + (isMe ? 'me' : 'other') + (hasReactions ? ' has-reactions' : '') + '" id="msg-row-' + esc(String(m.id)) + '" data-msg-id="' + esc(String(m.id)) + '" data-text="' + esc(text) + '">' +
                         actionsBarHtml +
                         '<div class="gm-message-bubble">' +
                             (!isMe ? '<div class="gm-message-sender">' + formatLeaderHtml(m.sender_account_id, m.sender_guild) + '</div>' : '') +
@@ -3088,6 +3107,7 @@
         handleToggleReaction: handleToggleReaction,
         formatLeaderTag: formatLeaderTag,
         formatLeaderHtml: formatLeaderHtml,
-        resolveLeaderServer: resolveLeaderServer
+        resolveLeaderServer: resolveLeaderServer,
+        formatMessageTimestamp: formatMessageTimestamp
     };
 });
