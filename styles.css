@@ -2379,31 +2379,66 @@ body.guild-read-only .gm-content .score-cell {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    z-index: 5;
+    z-index: 12;
     display: flex;
     flex-wrap: wrap;
     align-content: space-around;
     justify-content: space-around;
-    opacity: 0.04;
+    opacity: 0.085;
     overflow: hidden;
     user-select: none;
 }
 
 .gm-watermark-item {
     transform: rotate(-25deg);
-    font-size: 0.82rem;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    color: #38bdf8;
     white-space: nowrap;
-    padding: 2rem 1.5rem;
+    padding: 2.2rem 1.8rem;
+    text-shadow: 0 0 2px rgba(0,0,0,0.8);
+}
+
+/* Confidential Peek Mode (Telegram / Secret Chat Hover-to-Reveal) */
+.gm-peek-mode .gm-message-body {
+    filter: blur(9px) !important;
+    opacity: 0.22 !important;
+    transition: filter 0.12s ease, opacity 0.12s ease;
+    cursor: pointer;
+    user-select: none !important;
+}
+
+.gm-peek-mode .gm-message-bubble:hover .gm-message-body,
+.gm-peek-mode .gm-message-bubble:active .gm-message-body,
+.gm-peek-mode .gm-message-bubble.is-revealed .gm-message-body {
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+.gm-peek-mode .gm-message-bubble::after {
+    content: '🔒 Hover or tap to view';
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #f59e0b;
+    opacity: 0.85;
+    margin-top: 0.25rem;
+    transition: opacity 0.15s ease;
+}
+
+.gm-peek-mode .gm-message-bubble:hover::after,
+.gm-peek-mode .gm-message-bubble:active::after,
+.gm-peek-mode .gm-message-bubble.is-revealed::after {
+    opacity: 0;
+    display: none;
 }
 
 /* Privacy Blur Shield (When tab blurred / app switch / screenshot shortcut detected) */
 .gm-capture-shield-active .gm-chat-messages-viewport {
-    filter: blur(30px) !important;
-    opacity: 0.04 !important;
-    transition: filter 0.08s ease, opacity 0.08s ease;
+    filter: blur(32px) !important;
+    opacity: 0.03 !important;
+    transition: filter 0.06s ease, opacity 0.06s ease;
 }
 
 .gm-privacy-shield-overlay {
@@ -2411,9 +2446,9 @@ body.guild-read-only .gm-content .score-cell {
     inset: 0;
     z-index: 50;
     display: none;
-    background: rgba(18, 18, 22, 0.94);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(15, 15, 20, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     flex-direction: column;
     align-items: center;
     justify-content: center;
