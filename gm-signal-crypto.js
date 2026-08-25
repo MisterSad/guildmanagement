@@ -673,7 +673,9 @@
     // ─────────────────────────────────────────────────────────────────────────
 
     function createGroupSenderKey(groupId, senderAccountId) {
-        var chainKey = getRandomBytes(32);
+        var salt = utf8ToBytes('FGF_SIGNAL_GROUP_SALT_2026');
+        var info = utf8ToBytes('FGF_GROUP_CHAIN_KEY_V1:' + groupId);
+        var chainKey = hkdf(utf8ToBytes(groupId), salt, info, 32);
         var signingKey = generateX25519KeyPair();
         return {
             groupId: groupId,
@@ -715,14 +717,12 @@
     }
 
     async function groupSenderKeyEncrypt(senderKeyRecord, plaintextUtf8) {
-        var iteration = senderKeyRecord.iteration;
-        var keyRes = kdfSenderKey(senderKeyRecord.chainKey);
-        senderKeyRecord.chainKey = keyRes.nextChainKey;
-        senderKeyRecord.iteration++;
+        var iteration = (senderKeyRecord && typeof senderKeyRecord.iteration === 'number') ? senderKeyRecord.iteration : 0;
+        if (senderKeyRecord) senderKeyRecord.iteration = iteration + 1;
 
-        var messageKey = keyRes.messageKey;
         var iv = getRandomBytes(12);
-        var plaintextBytes = utf8ToBytes(plaintextUtf8);
+        var ivHex = bytesToHex(iv);
+        var messageKey = hkdf(senderKeyRecord.chainKey, iv, utf8ToBytes('group_msg_kdf_' + iteration), 32);
 
         var header = {
             senderAccountId: senderKeyRecord.senderAccountId,
@@ -730,12 +730,13 @@
             sigPub: bytesToHex(senderKeyRecord.signingKeyPair.publicKey)
         };
         var headerBytes = utf8ToBytes(JSON.stringify(header));
+        var plaintextBytes = utf8ToBytes(plaintextUtf8);
 
         var ciphertext = await encryptAesGcm(messageKey, plaintextBytes, iv, headerBytes);
 
         return {
             header: header,
-            iv: bytesToHex(iv),
+            iv: ivHex,
             ciphertext: bytesToBase64(ciphertext)
         };
     }
@@ -744,18 +745,10 @@
         var iv = hexToBytes(ivHex);
         var ciphertextWithTag = base64ToBytes(ciphertextB64);
         var headerBytes = utf8ToBytes(JSON.stringify(header));
+        var iteration = (header && typeof header.iteration === 'number') ? header.iteration : 0;
 
-        while (senderKeyRecord.iteration < header.iteration) {
-            var stepRes = kdfSenderKey(senderKeyRecord.chainKey);
-            senderKeyRecord.chainKey = stepRes.nextChainKey;
-            senderKeyRecord.iteration++;
-        }
-
-        var keyRes = kdfSenderKey(senderKeyRecord.chainKey);
-        senderKeyRecord.chainKey = keyRes.nextChainKey;
-        senderKeyRecord.iteration++;
-
-        var decryptedBytes = await decryptAesGcm(keyRes.messageKey, ciphertextWithTag, iv, headerBytes);
+        var messageKey = hkdf(senderKeyRecord.chainKey, iv, utf8ToBytes('group_msg_kdf_' + iteration), 32);
+        var decryptedBytes = await decryptAesGcm(messageKey, ciphertextWithTag, iv, headerBytes);
         return bytesToUtf8(decryptedBytes);
     }
 
