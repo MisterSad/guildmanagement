@@ -2028,8 +2028,84 @@ body.guild-read-only .gm-content .score-cell {
 
 @media (max-width: 768px) {
     .gm-leader-hall-layout {
-        grid-template-columns: 1fr;
-        height: auto;
+        display: flex !important;
+        flex-direction: column !important;
+        height: calc(100dvh - 140px) !important;
+        min-height: 480px !important;
+        gap: 0 !important;
+    }
+
+    /* By default on mobile: Show Sidebar (Channel list), hide chat viewport */
+    .gm-leader-hall-layout .gm-leader-hall-sidebar {
+        display: flex !important;
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: var(--radius-md, 8px) !important;
+    }
+    .gm-leader-hall-layout .gm-leader-hall-main {
+        display: none !important;
+    }
+
+    /* When conversation is selected on mobile: Hide Sidebar, show full-page chat viewport */
+    .gm-leader-hall-layout.gm-mobile-chat-active .gm-leader-hall-sidebar {
+        display: none !important;
+    }
+    .gm-leader-hall-layout.gm-mobile-chat-active .gm-leader-hall-main {
+        display: flex !important;
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: var(--radius-md, 8px) !important;
+    }
+
+    .gm-chat-header {
+        padding: 0.65rem 0.75rem !important;
+        flex-wrap: wrap !important;
+        gap: 0.4rem !important;
+    }
+
+    .gm-chat-header-actions {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.35rem !important;
+        overflow-x: auto !important;
+        padding-top: 0.25rem !important;
+        scrollbar-width: none !important;
+    }
+    .gm-chat-header-actions::-webkit-scrollbar {
+        display: none !important;
+    }
+    .gm-chat-header-actions .gm-btn {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.72rem !important;
+        white-space: nowrap !important;
+    }
+}
+
+.gm-chat-back-btn {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .gm-chat-back-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        border-radius: 50% !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        font-size: 1.1rem !important;
+        cursor: pointer !important;
+        margin-right: 0.35rem !important;
+        transition: background 0.15s ease !important;
+        flex-shrink: 0 !important;
+    }
+    .gm-chat-back-btn:hover {
+        background: rgba(255, 255, 255, 0.16) !important;
     }
 }
 

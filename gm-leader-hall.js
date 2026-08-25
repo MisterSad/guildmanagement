@@ -1338,6 +1338,11 @@
             markConversationRead(id);
         }
 
+        var layout = document.querySelector('.gm-leader-hall-layout');
+        if (layout) {
+            layout.classList.add('gm-mobile-chat-active');
+        }
+
         renderAccordions();
         renderActiveConversationHeader();
 
@@ -1412,20 +1417,33 @@
         var shieldBadge = isProt ?
             '<span class="gm-chip-shield" title="Copying, text selection, and screen capture are restricted"><i class="ph ph-shield-check"></i> Anti-Capture Protected</span>' : '';
 
+        var backBtnHtml = '<button type="button" class="gm-chat-back-btn" id="btn-back-to-channels" title="Back to Channels"><i class="ph ph-arrow-left"></i></button>';
+
         header.innerHTML =
-            '<div class="gm-chat-header-left">' +
-                titleHtml +
-                '<div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-top:2px;">' +
-                    '<div class="gm-chat-e2ee-tag">' +
-                        '<i class="ph ph-lock-key"></i>' +
-                        '<span>' + esc(subtitle) + '</span>' +
+            '<div class="gm-chat-header-left" style="display:flex; align-items:center; gap:0.4rem; min-width:0; flex:1;">' +
+                backBtnHtml +
+                '<div style="min-width:0; flex:1;">' +
+                    titleHtml +
+                    '<div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-top:2px;">' +
+                        '<div class="gm-chat-e2ee-tag">' +
+                            '<i class="ph ph-lock-key"></i>' +
+                            '<span>' + esc(subtitle) + '</span>' +
+                        '</div>' +
+                        shieldBadge +
                     '</div>' +
-                    shieldBadge +
                 '</div>' +
             '</div>' +
             '<div class="gm-chat-header-actions" style="display:flex; align-items:center; gap:0.4rem;">' +
                 actionsHtml +
             '</div>';
+
+        var btnBack = document.getElementById('btn-back-to-channels');
+        if (btnBack) {
+            btnBack.onclick = function () {
+                var l = document.querySelector('.gm-leader-hall-layout');
+                if (l) l.classList.remove('gm-mobile-chat-active');
+            };
+        }
 
         var titleEl = document.getElementById('active-chat-title');
         if (titleEl) {
@@ -2141,9 +2159,13 @@
         await fetchEligibleLeaders();
         await fetchConversations();
         initGlobalUnreadListener();
-
+        var isMobile = window.innerWidth <= 768;
         if (!currentConversation) {
-            selectConversation(GLOBAL_CHANNELS[0].id);
+            if (!isMobile) {
+                selectConversation(GLOBAL_CHANNELS[0].id);
+            } else {
+                renderAccordions();
+            }
         } else {
             renderAccordions();
             renderActiveConversationHeader();
