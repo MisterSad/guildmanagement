@@ -1338,6 +1338,10 @@
             markConversationRead(id);
         }
 
+        if (window.innerWidth <= 768) {
+            document.body.classList.add('gm-mobile-chat-open');
+        }
+
         var layout = document.querySelector('.gm-leader-hall-layout');
         if (layout) {
             layout.classList.add('gm-mobile-chat-active');
@@ -1440,6 +1444,7 @@
         var btnBack = document.getElementById('btn-back-to-channels');
         if (btnBack) {
             btnBack.onclick = function () {
+                document.body.classList.remove('gm-mobile-chat-open');
                 var l = document.querySelector('.gm-leader-hall-layout');
                 if (l) l.classList.remove('gm-mobile-chat-active');
             };

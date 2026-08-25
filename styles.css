@@ -2046,15 +2046,79 @@ body.guild-read-only .gm-content .score-cell {
         display: none !important;
     }
 
-    /* When conversation is selected on mobile: Hide Sidebar, show full-page chat viewport */
-    .gm-leader-hall-layout.gm-mobile-chat-active .gm-leader-hall-sidebar {
+    /* When conversation is active on mobile: True Fullscreen Native Messaging App Mode */
+    body.gm-mobile-chat-open .gm-bottom-nav,
+    body.gm-mobile-chat-open [data-gm-bottom-nav],
+    body.gm-mobile-chat-open .gm-topbar,
+    body.gm-mobile-chat-open .dashboard-header,
+    body.gm-mobile-chat-open #tab-leader-hall .gm-page-header {
         display: none !important;
     }
-    .gm-leader-hall-layout.gm-mobile-chat-active .gm-leader-hall-main {
-        display: flex !important;
+
+    body.gm-mobile-chat-open {
+        overflow: hidden !important;
+    }
+
+    body.gm-mobile-chat-open #tab-leader-hall {
+        padding: 0 !important;
+        margin: 0 !important;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        z-index: 9999 !important;
+        background: var(--bg-0, #0f0f12) !important;
+    }
+
+    body.gm-mobile-chat-open #tab-leader-hall .gm-page {
+        padding: 0 !important;
+        margin: 0 !important;
         width: 100% !important;
         height: 100% !important;
-        border-radius: var(--radius-md, 8px) !important;
+        max-width: none !important;
+    }
+
+    body.gm-mobile-chat-open .gm-leader-hall-layout {
+        height: 100% !important;
+        max-height: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    body.gm-mobile-chat-open .gm-leader-hall-sidebar {
+        display: none !important;
+    }
+
+    body.gm-mobile-chat-open .gm-leader-hall-main {
+        display: flex !important;
+        width: 100vw !important;
+        height: 100% !important;
+        max-height: 100dvh !important;
+        border: none !important;
+        border-radius: 0 !important;
+        background: var(--bg-0, #0f0f12) !important;
+    }
+
+    body.gm-mobile-chat-open .gm-chat-header {
+        padding: calc(0.65rem + env(safe-area-inset-top, 0px)) 0.75rem 0.65rem 0.75rem !important;
+        background: #18181c !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+        flex-shrink: 0 !important;
+    }
+
+    body.gm-mobile-chat-open .gm-chat-messages-viewport {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        padding: 0.75rem !important;
+        background: var(--bg-0, #0f0f12) !important;
+    }
+
+    body.gm-mobile-chat-open .gm-chat-input-bar {
+        padding: 0.65rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom, 0px)) 0.75rem !important;
+        background: #18181c !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        flex-shrink: 0 !important;
     }
 
     .gm-chat-header {
