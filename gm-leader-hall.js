@@ -106,12 +106,12 @@
         var role = (window.GM && window.GM.roleFromStorage) ? window.GM.roleFromStorage() : localStorage.getItem('gm_role');
         if (role) {
             var r = role.toLowerCase();
-            if (r === 'super_admin' || r === 'r5' || r === 'admin') return true;
+            if (r === 'super_admin' || r === 'server_admin' || r === 'guild_admin' || r === 'r5' || r === 'admin') return true;
         }
         var acc = getAccount();
         if (!acc) return false;
         var accRole = (acc.role || '').toLowerCase();
-        return accRole === 'super_admin' || accRole === 'r5' || accRole === 'admin';
+        return accRole === 'super_admin' || accRole === 'server_admin' || accRole === 'guild_admin' || accRole === 'r5' || accRole === 'admin';
     }
 
     // ─────────────────────────────────────────────────────────────────────────
