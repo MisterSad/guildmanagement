@@ -2,16 +2,19 @@
 
 ## New
 
-- **Guild Leader Hall, Diplomatic Treaties & Signal Protocol E2EE (V3.7)**:
+- **Guild Leader Hall, Diplomatic Treaties, Signal Protocol E2EE & Anti-Capture Security (V3.7)**:
   - **4-Section Accordion Command Architecture**: Left navigation organized into 4 collapsible spaces: `🌐 Global Leaders Lounge` (Global Lounge, Diplomacy & Treaties), `👤 1:1 Discussions`, `👥 Group Discussions`, and `👑 R5 Summit`.
+  - **Dynamic Group Management & Participant Modals**: Live group renaming (header title editing + `gm_rename_e2ee_conversation` RPC) and participant manager dialog (`#modal-group-members` + `gm_add_e2ee_group_members`, `gm_remove_e2ee_group_member` RPCs) to dynamically add/remove leaders after creation.
   - **Inter-Guild Diplomatic Treaties Registry**: Official treaty drafting and bilateral ratification protocol in `# 📜 Diplomacy & Treaties`. Standardized auto-titling (`Treaty between [Guild A] ([Server A]) and [Guild B] ([Server B])`), 1-click N.A.P. clause generator, validity countdowns, and bilateral digital signature requirement to achieve public ratified status across the FGF galaxy.
   - **Leader Moderation & Discussion Controls**: Comprehensive controls to leave groups, delete discussions, and block/unblock leaders.
   - **End-to-End Encryption (Signal Protocol Engine)**: Implemented complete zero-knowledge cryptographic core (`gm-signal-crypto.js` + `src/core/crypto/signal.ts`) featuring **X25519** ECDH key agreement, **Ed25519 / Schnorr** signatures, **HKDF-SHA256**, and **AES-256-GCM** authenticated encryption.
   - **1:1 Direct Diplomacy**: Protected with **X3DH** (Extended Triple Diffie-Hellman) asynchronous key handshakes and the **Double Ratchet Algorithm** ensuring continuous forward secrecy and break-in recovery.
   - **Group Discussions & War Councils**: Multi-member group chat utilizing the **Signal Sender Keys Protocol** with forward secrecy on member eviction and key rotation.
   - **👑 R5-Only Summit Protection**: Guild Masters can create exclusive high-level summit groups restricted strictly to R5 leaders and Super Admins.
+  - **Anti-Screen Capture & Anti-Copy Protection**: Multi-layered defense-in-depth security restricting text selection, disabling right-click context menu, real-time 30px privacy blur shield on window blur/multitasking/screen capture attempts, forensic background watermarking (`[GUILD] Account • Server • CONFIDENTIAL`), and print/PDF hiding.
   - **Cryptographic Safety Fingerprints**: 60-digit safety numbers comparison modal to defeat Man-in-the-Middle (MITM) attacks and guarantee authenticity.
-  - **Blind Server Relay & Zero-Trust RLS**: PostgreSQL schema (`20260825000001_guild_leader_hall_e2ee.sql`, `20260825152000_guild_leader_hall_actions.sql`, `20260825153000_diplomatic_treaties.sql`) acting as a blind ciphertext relay; strict RLS locking out the `member` role from all leader communications.
+  - **Monotonic Sequence Ordering & Exact Second Timestamps**: Messages sequenced strictly by integer database sequence ID and formatted down to the second (`HH:mm:ss`).
+  - **Blind Server Relay & Zero-Trust RLS**: PostgreSQL schema (`20260825000001_guild_leader_hall_e2ee.sql`, `20260825152000_guild_leader_hall_actions.sql`, `20260825153000_diplomatic_treaties.sql`, `20260825161000_leader_hall_tenant_access_audit.sql`) acting as a blind ciphertext relay; strict RLS locking out the `member` role from all leader communications.
   - **Quality Gate**: **468/468 Vitest unit tests green**, 0 TypeScript errors, clean production build.
 
 - **Comprehensive Feature & UX Major Update (V3.6)**:
