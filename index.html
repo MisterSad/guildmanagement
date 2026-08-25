@@ -1737,6 +1737,27 @@
         </div>
     </div>
 
+    <!-- Modal: Propose Diplomatic Treaty -->
+    <div id="modal-treaty-create" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 640px; background:var(--bg-1, #18181c); border:1px solid var(--border-soft); border-radius:var(--radius-lg); padding:1.5rem;">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 class="modal-title" style="margin:0; font-size:1.15rem; color:var(--text-main); display:flex; align-items:center; gap:0.5rem;">
+                    <i class="ph ph-scroll" style="color:var(--primary);"></i> Propose Diplomatic Treaty
+                </h3>
+                <button type="button" class="modal-close-btn" id="modal-treaty-close-btn" style="background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-treaty-create-body" style="display:flex; flex-direction:column; gap:0.85rem;">
+                <!-- Dynamically rendered -->
+            </div>
+            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border-soft);">
+                <button type="button" class="gm-btn gm-btn-outline" id="modal-treaty-cancel-btn">Cancel</button>
+                <button type="button" class="gm-btn gm-btn-primary" id="modal-treaty-submit-btn">
+                    <i class="ph ph-pen-nib"></i> Sign & Propose Treaty
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast-container"></div>
 
@@ -1767,7 +1788,7 @@
     <script src="badges.js?v=6"></script>
     <script src="portal.js?v=13"></script>
     <script src="gm-help.js?v=3"></script>
-    <script src="gm-leader-hall.js?v=4"></script>
+    <script src="gm-leader-hall.js?v=5"></script>
     <script src="app.js?v=80"></script>
     <script src="shell.js?v=38"></script>
 </body>

@@ -2390,3 +2390,239 @@ body.guild-read-only .gm-content .score-cell {
     background: rgba(255, 255, 255, 0.05);
 }
 
+/* ─── Diplomatic Treaties Registry ─────────────────────────────────────── */
+.gm-diplomacy-container {
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.gm-diplomacy-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.06), rgba(245, 158, 11, 0.06));
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+    border-radius: var(--radius-md, 8px);
+}
+
+.gm-diplomacy-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-main, #f8fafc);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.gm-diplomacy-subtitle {
+    font-size: 0.78rem;
+    color: var(--text-muted, #94a3b8);
+    margin-top: 2px;
+}
+
+.gm-diplomacy-filters {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+}
+
+.gm-treaty-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.gm-treaty-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+    border-radius: var(--radius-lg, 12px);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.gm-treaty-card:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.gm-treaty-card.ratified {
+    border-color: rgba(52, 211, 153, 0.35);
+    background: linear-gradient(180deg, rgba(52, 211, 153, 0.03), rgba(0, 0, 0, 0.1));
+}
+
+.gm-treaty-card.pending {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.03), rgba(0, 0, 0, 0.1));
+}
+
+.gm-treaty-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.gm-treaty-type-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.gm-treaty-type-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--primary, #38bdf8);
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.gm-chip-treaty {
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.gm-chip-treaty.ratified {
+    background: rgba(52, 211, 153, 0.18);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.gm-chip-treaty.pending {
+    background: rgba(245, 158, 11, 0.18);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.gm-chip-treaty.revoked {
+    background: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.gm-treaty-card-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-main, #f8fafc);
+    margin: 0;
+}
+
+.gm-treaty-card-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted, #94a3b8);
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.gm-treaty-parties {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.06));
+    border-radius: var(--radius-md, 8px);
+    padding: 0.85rem;
+}
+
+@media (max-width: 700px) {
+    .gm-treaty-parties {
+        grid-template-columns: 1fr;
+    }
+}
+
+.gm-party-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.gm-party-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-main, #f8fafc);
+}
+
+.gm-party-divider {
+    font-size: 1.4rem;
+    color: var(--primary, #38bdf8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gm-sign-status {
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.gm-sign-status.signed {
+    color: #34d399;
+}
+
+.gm-sign-status.pending {
+    color: #f59e0b;
+}
+
+.gm-treaty-terms-box {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.06));
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.75rem;
+}
+
+.gm-treaty-terms-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted, #94a3b8);
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.gm-treaty-terms-content {
+    font-size: 0.82rem;
+    color: var(--text-main, #e2e8f0);
+    line-height: 1.5;
+    font-family: inherit;
+}
+
+.gm-treaty-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid var(--border-soft, rgba(255, 255, 255, 0.06));
+}
+
+.gm-treaty-seal {
+    font-size: 0.72rem;
+    color: var(--text-muted, #94a3b8);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+

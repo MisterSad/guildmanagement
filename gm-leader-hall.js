@@ -1,14 +1,15 @@
 /**
- * gm-leader-hall.js — Guild Leader Hall (Accordions, Global Channels, 1:1, Groups & R5 Summit)
+ * gm-leader-hall.js — Guild Leader Hall (Accordions, Global Channels, 1:1, Groups & Diplomatic Treaties)
  * FGF Guild Management Tool — 2026 Zero-Trust Architecture
  *
  * Implements:
  * 1. 4 Collapsible Spaces (Global Lounge, 1:1 Direct, Group Discussions, R5 Summit)
- * 2. Discussion Actions (Delete, Leave Group, Block/Unblock Leader)
- * 3. 1:1 Double Ratchet E2EE Sessions with X3DH handshake
- * 4. Group Discussions with Signal Sender Keys & forward secrecy
- * 5. Realtime messaging subscription & Presence engine
- * 6. Safety Numbers verification modal (60-digit fingerprint)
+ * 2. Diplomatic Treaties Registry & Multi-Guild Signing Protocol
+ * 3. Discussion Actions (Delete, Leave Group, Block/Unblock Leader)
+ * 4. 1:1 Double Ratchet E2EE Sessions with X3DH handshake
+ * 5. Group Discussions with Signal Sender Keys & forward secrecy
+ * 6. Realtime messaging subscription & Presence engine
+ * 7. Safety Numbers verification modal (60-digit fingerprint)
  */
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
@@ -19,30 +20,35 @@
 })(typeof self !== 'undefined' ? self : this, function () {
     'use strict';
 
-    var esc = (window.GM && window.GM.escapeHTML) ? window.GM.escapeHTML : function (s) { return s || ''; };
-    var t = (window.GM && window.GM.t) ? window.GM.t : function (k) { return k; };
+    var DIPLOMACY_CHANNEL_ID = '00000000-0000-0000-0000-000000000002';
 
     var GLOBAL_CHANNELS = [
         { id: '00000000-0000-0000-0000-000000000001', type: 'global', title: 'Global Lounge', subtitle: 'General lounge for all guild leaders', icon: 'ph ph-chat-circle-dots' },
-        { id: '00000000-0000-0000-0000-000000000002', type: 'global', title: 'Diplomacy & Treaties', subtitle: 'Inter-guild N.A.P. & strategic pacts', icon: 'ph ph-scroll' },
+        { id: DIPLOMACY_CHANNEL_ID, type: 'global', title: 'Diplomacy & Treaties', subtitle: 'Inter-guild N.A.P., pacts & official treaty signings', icon: 'ph ph-scroll' },
         { id: '00000000-0000-0000-0000-000000000003', type: 'global', title: 'SvS War Council', subtitle: 'Cross-server tactics & battle plans', icon: 'ph ph-swords' }
     ];
 
     var currentConversation = null;
     var conversationsList = [];
+    var treatiesList = [];
+    var treatyFilter = 'all'; // 'all' | 'ratified' | 'pending' | 'mine'
     var blockedAccountIds = new Set();
     var realtimeChannel = null;
+    var treatiesRealtimeChannel = null;
     var localIdentity = null;
     var activeAccounts = [];
+    var availableGuilds = [];
     var decryptedCache = {}; // messageId -> plaintext
 
-    // Accordion state
     var accordionState = {
         global: true,
         direct: true,
         group: true,
         r5: true
     };
+
+    var esc = (window.GM && window.GM.escapeHTML) ? window.GM.escapeHTML : function (s) { return s || ''; };
+    var t = (window.GM && window.GM.t) ? window.GM.t : function (k) { return k; };
 
     function getDb() {
         return (window.GM && window.GM.db) ? window.GM.db : null;
@@ -56,7 +62,7 @@
         var username = localStorage.getItem('gm_user') || (window.GM && window.GM.currentUser) || window.currentUser;
         var role = (window.GM && window.GM.roleFromStorage) ? window.GM.roleFromStorage() : localStorage.getItem('gm_role');
         var guild = (window.GM && window.GM.getActiveGuild) ? window.GM.getActiveGuild() : (localStorage.getItem('gm_current_guild') || localStorage.getItem('gm_guild') || 'ALPHA');
-        var server = localStorage.getItem('gm_server_restriction') || null;
+        var server = localStorage.getItem('gm_server_restriction') || '1058';
 
         if (!username) {
             var raw = localStorage.getItem('gm_account');
@@ -181,7 +187,7 @@
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 2. CONVERSATION MANAGEMENT & FETCHING
+    // 2. FETCHING & REALTIME
     // ─────────────────────────────────────────────────────────────────────────
 
     async function fetchConversations() {
@@ -228,6 +234,22 @@
         }
     }
 
+    async function fetchTreaties() {
+        var db = getDb();
+        if (!db) return [];
+        try {
+            var res = await db
+                .from('diplomatic_treaties')
+                .select('*')
+                .order('created_at', { ascending: false });
+            treatiesList = res.data || [];
+            return treatiesList;
+        } catch (err) {
+            console.error('Error fetching diplomatic treaties', err);
+            return [];
+        }
+    }
+
     async function fetchBlockedAccounts() {
         var db = getDb();
         var acc = getAccount();
@@ -256,6 +278,10 @@
                 .in('role', ['super_admin', 'server_admin', 'guild_admin', 'R5', 'R4', 'admin'])
                 .order('guild', { ascending: true });
             activeAccounts = res.data || [];
+
+            var gRes = await db.from('guilds').select('id, name, server_number').order('id', { ascending: true });
+            availableGuilds = gRes.data || [];
+
             return activeAccounts;
         } catch (e) {
             return [];
@@ -263,7 +289,7 @@
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 3. E2EE DOUBLE RATCHET & SENDER KEY SESSIONS
+    // 3. E2EE SESSIONS & MESSAGING
     // ─────────────────────────────────────────────────────────────────────────
 
     async function getOrEstablish1to1Session(targetAccountId) {
@@ -367,10 +393,6 @@
         return newKey;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 4. SEND & DECRYPT MESSAGES
-    // ─────────────────────────────────────────────────────────────────────────
-
     async function sendMessage(text) {
         if (!currentConversation || !text || !text.trim()) return;
         var S = getSignal();
@@ -435,7 +457,6 @@
         var acc = getAccount();
         var accId = acc ? (acc.id || acc.account_id) : '';
 
-        // Filter out blocked leaders
         if (blockedAccountIds.has(msg.sender_account_id)) {
             return '[🚫 Message hidden from blocked leader]';
         }
@@ -458,6 +479,343 @@
             return plaintext;
         } catch (err) {
             return '[🔒 Decryption Error - Key Mismatch]';
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 4. DIPLOMATIC TREATIES & SIGNING ENGINE
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function renderTreatiesRegistry() {
+        var container = document.getElementById('leader-hall-messages');
+        if (!container) return;
+
+        var acc = getAccount();
+        var accId = acc ? (acc.id || acc.account_id) : '';
+        var callerGuild = acc ? acc.guild : 'ALPHA';
+
+        var filtered = treatiesList.filter(function (t) {
+            if (treatyFilter === 'ratified') return t.status === 'ratified';
+            if (treatyFilter === 'pending') return t.status === 'pending';
+            if (treatyFilter === 'mine') return t.guild_a === callerGuild || t.guild_b === callerGuild;
+            return true;
+        });
+
+        var cardsHtml = '';
+        if (filtered.length === 0) {
+            cardsHtml =
+                '<div class="gm-empty" style="padding:3rem 1rem; border:1px dashed var(--border-soft); border-radius:var(--radius-md);">' +
+                    '<i class="ph ph-scroll gm-icon" style="color:var(--primary); font-size:2.2rem;"></i>' +
+                    '<div class="gm-empty-title" style="margin-top:0.5rem;">No treaties found</div>' +
+                    '<p style="color:var(--text-muted); font-size:0.85rem; max-width:380px; margin:0.35rem auto 1rem;">Establish non-aggression pacts (N.A.P.), warfare coalitions, or mutual defense treaties with other guilds.</p>' +
+                    '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="btn-empty-propose-treaty"><i class="ph ph-pen-nib"></i> Propose a Treaty</button>' +
+                '</div>';
+        } else {
+            cardsHtml = filtered.map(function (tr) {
+                var isRatified = tr.status === 'ratified';
+                var isRevoked = tr.status === 'revoked';
+                var isPending = tr.status === 'pending';
+
+                var statusBadge = '';
+                if (isRatified) {
+                    statusBadge = '<span class="gm-chip-treaty ratified"><i class="ph ph-seal-check"></i> RATIFIED & PUBLIC</span>';
+                } else if (isPending) {
+                    statusBadge = '<span class="gm-chip-treaty pending"><i class="ph ph-hourglass-high"></i> PENDING SIGNATURES</span>';
+                } else {
+                    statusBadge = '<span class="gm-chip-treaty revoked"><i class="ph ph-x-circle"></i> REVOKED</span>';
+                }
+
+                var typeLabel = {
+                    nap: '🛡️ Non-Aggression Pact (N.A.P.)',
+                    mutual_defense: '⚔️ Mutual Defense Alliance',
+                    svs_coalition: '🚀 SvS Warfare Coalition',
+                    ceasefire: '🕊️ Ceasefire & Neutrality',
+                    custom: '📜 Custom Treaty'
+                }[tr.treaty_type] || '📜 Diplomatic Treaty';
+
+                // Signature status for Guild A
+                var aSigned = tr.guild_a_signed_by ?
+                    '<div class="gm-sign-status signed"><i class="ph ph-check-circle"></i> Signed by <strong>' + esc(tr.guild_a_signed_by) + '</strong> (' + esc(tr.guild_a) + ')</div>' :
+                    '<div class="gm-sign-status pending"><i class="ph ph-clock"></i> Awaiting ' + esc(tr.guild_a) + ' signature</div>';
+
+                // Signature status for Guild B
+                var bSigned = tr.guild_b_signed_by ?
+                    '<div class="gm-sign-status signed"><i class="ph ph-check-circle"></i> Signed by <strong>' + esc(tr.guild_b_signed_by) + '</strong> (' + esc(tr.guild_b) + ')</div>' :
+                    '<div class="gm-sign-status pending"><i class="ph ph-clock"></i> Awaiting ' + esc(tr.guild_b) + ' signature</div>';
+
+                // Can caller sign?
+                var canCallerSign = false;
+                if (isPending) {
+                    if ((callerGuild === tr.guild_a && !tr.guild_a_signed_by) || (callerGuild === tr.guild_b && !tr.guild_b_signed_by)) {
+                        canCallerSign = true;
+                    }
+                }
+
+                var isPartyLeader = (callerGuild === tr.guild_a || callerGuild === tr.guild_b || (window.GM && window.GM.isSuperAdmin && window.GM.isSuperAdmin()));
+
+                return '<div class="gm-treaty-card ' + tr.status + '">' +
+                    '<div class="gm-treaty-card-header">' +
+                        '<div>' +
+                            '<div class="gm-treaty-type-row">' +
+                                '<span class="gm-treaty-type-tag">' + esc(typeLabel) + '</span>' +
+                                statusBadge +
+                            '</div>' +
+                            '<h3 class="gm-treaty-card-title">' + esc(tr.title) + '</h3>' +
+                        '</div>' +
+                        '<div class="gm-treaty-card-meta">' +
+                            '<span>Created ' + new Date(tr.created_at).toLocaleDateString() + '</span>' +
+                            (tr.expires_at ? '<span style="color:#f59e0b;">Expires ' + new Date(tr.expires_at).toLocaleDateString() + '</span>' : '<span style="color:#34d399;">Permanent</span>') +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="gm-treaty-card-body">' +
+                        '<div class="gm-treaty-parties">' +
+                            '<div class="gm-party-box">' +
+                                '<div class="gm-party-name">👑 Guild A: [' + esc(tr.guild_a) + '] (S' + esc(tr.guild_a_server) + ')</div>' +
+                                aSigned +
+                            '</div>' +
+                            '<div class="gm-party-divider"><i class="ph ph-handshake"></i></div>' +
+                            '<div class="gm-party-box">' +
+                                '<div class="gm-party-name">🛡️ Guild B: [' + esc(tr.guild_b) + '] (S' + esc(tr.guild_b_server) + ')</div>' +
+                                bSigned +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="gm-treaty-terms-box">' +
+                            '<div class="gm-treaty-terms-title"><i class="ph ph-article"></i> Official Treaty Clauses & Terms</div>' +
+                            '<div class="gm-treaty-terms-content">' + esc(tr.terms).replace(/\n/g, '<br>') + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="gm-treaty-card-footer">' +
+                        '<div class="gm-treaty-seal">' +
+                            '<i class="ph ph-seal"></i> ' + (isRatified ? 'Officially Ratified & Bound in FGF Galaxy' : 'Awaiting Full Bilateral Ratification') +
+                        '</div>' +
+                        '<div style="display:flex; gap:0.5rem;">' +
+                            (canCallerSign ? '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm btn-sign-treaty" data-treaty-id="' + esc(tr.id) + '"><i class="ph ph-pen-nib"></i> Sign Treaty for [' + esc(callerGuild) + ']</button>' : '') +
+                            (isPartyLeader && !isRevoked ? '<button type="button" class="gm-btn gm-btn-outline gm-btn-sm btn-revoke-treaty" style="color:var(--danger);" data-treaty-id="' + esc(tr.id) + '"><i class="ph ph-x"></i> Revoke</button>' : '') +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        container.innerHTML =
+            '<div class="gm-diplomacy-container">' +
+                '<div class="gm-diplomacy-header-bar">' +
+                    '<div>' +
+                        '<div class="gm-diplomacy-title"><i class="ph ph-scroll" style="color:var(--primary);"></i> Inter-Guild Diplomatic Treaties</div>' +
+                        '<div class="gm-diplomacy-subtitle">Official bilateral agreements, non-aggression pacts (N.A.P.), and mutual defense pacts signed by guild leaders.</div>' +
+                    '</div>' +
+                    '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="btn-open-propose-treaty">' +
+                        '<i class="ph ph-plus-circle"></i> Propose Treaty' +
+                    '</button>' +
+                '</div>' +
+                '<div class="gm-diplomacy-filters">' +
+                    '<button type="button" class="gm-hall-filter-pill ' + (treatyFilter === 'all' ? 'active' : '') + '" data-tfilter="all">All Treaties (' + treatiesList.length + ')</button>' +
+                    '<button type="button" class="gm-hall-filter-pill ' + (treatyFilter === 'ratified' ? 'active' : '') + '" data-tfilter="ratified">🟢 Ratified & Public</button>' +
+                    '<button type="button" class="gm-hall-filter-pill ' + (treatyFilter === 'pending' ? 'active' : '') + '" data-tfilter="pending">🟡 Awaiting Signatures</button>' +
+                    '<button type="button" class="gm-hall-filter-pill ' + (treatyFilter === 'mine' ? 'active' : '') + '" data-tfilter="mine">My Guild [' + esc(callerGuild) + ']</button>' +
+                '</div>' +
+                '<div class="gm-treaty-feed">' +
+                    cardsHtml +
+                '</div>' +
+            '</div>';
+
+        // Bind treaty buttons
+        var btnPropose = document.getElementById('btn-open-propose-treaty');
+        if (btnPropose) btnPropose.onclick = showCreateTreatyModal;
+        var btnEmptyPropose = document.getElementById('btn-empty-propose-treaty');
+        if (btnEmptyPropose) btnEmptyPropose.onclick = showCreateTreatyModal;
+
+        container.querySelectorAll('.btn-sign-treaty').forEach(function (btn) {
+            btn.onclick = function () {
+                var tid = btn.getAttribute('data-treaty-id');
+                if (tid) handleSignTreaty(tid);
+            };
+        });
+
+        container.querySelectorAll('.btn-revoke-treaty').forEach(function (btn) {
+            btn.onclick = function () {
+                var tid = btn.getAttribute('data-treaty-id');
+                if (tid) handleRevokeTreaty(tid);
+            };
+        });
+
+        container.querySelectorAll('.gm-diplomacy-filters .gm-hall-filter-pill').forEach(function (pill) {
+            pill.onclick = function () {
+                treatyFilter = pill.getAttribute('data-tfilter') || 'all';
+                renderTreatiesRegistry();
+            };
+        });
+    }
+
+    function showCreateTreatyModal() {
+        var modal = document.getElementById('modal-treaty-create');
+        if (!modal) return;
+
+        var acc = getAccount();
+        var callerGuild = acc ? acc.guild : 'ALPHA';
+        var callerServer = acc ? (acc.server_number || '1058') : '1058';
+
+        var guildOptions = availableGuilds.filter(function (g) {
+            return g.id !== callerGuild;
+        }).map(function (g) {
+            return '<option value="' + esc(g.id) + '" data-server="' + esc(g.server_number || callerServer) + '">' + esc(g.name || g.id) + ' [' + esc(g.id) + '] (S' + esc(g.server_number || callerServer) + ')</option>';
+        }).join('');
+
+        var body = document.getElementById('modal-treaty-create-body');
+        if (body) {
+            body.innerHTML =
+                '<div class="gm-login-field">' +
+                    '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Signatory Parties</label>' +
+                    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">' +
+                        '<div style="background:rgba(255,255,255,0.04); padding:0.65rem; border-radius:var(--radius-sm); border:1px solid var(--border-soft);">' +
+                            '<div style="font-size:0.75rem; color:var(--text-muted);">Proposing Party (Party A)</div>' +
+                            '<div style="font-weight:700; color:var(--text-main); font-size:0.95rem; margin-top:2px;">[' + esc(callerGuild) + '] (S' + esc(callerServer) + ')</div>' +
+                        '</div>' +
+                        '<div>' +
+                            '<div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">Target Guild (Party B)</div>' +
+                            '<select id="input-treaty-guild-b" class="gm-input" style="width:100%;">' +
+                                (guildOptions || '<option value="OMEGA">OMEGA [OMEGA] (S1058)</option>') +
+                            '</select>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:grid; grid-template-columns:1.5fr 1fr; gap:0.75rem;">' +
+                    '<div class="gm-login-field">' +
+                        '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Treaty Category</label>' +
+                        '<select id="input-treaty-type" class="gm-input" style="width:100%;">' +
+                            '<option value="nap">🛡️ Non-Aggression Pact (N.A.P.)</option>' +
+                            '<option value="mutual_defense">⚔️ Mutual Defense Alliance</option>' +
+                            '<option value="svs_coalition">🚀 SvS Warfare Coalition</option>' +
+                            '<option value="ceasefire">🕊️ Ceasefire & Neutrality</option>' +
+                            '<option value="custom">📜 Custom Treaty</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="gm-login-field">' +
+                        '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Validity Duration</label>' +
+                        '<select id="input-treaty-expires" class="gm-input" style="width:100%;">' +
+                            '<option value="30">30 Days</option>' +
+                            '<option value="7">7 Days (SvS Cycle)</option>' +
+                            '<option value="14">14 Days</option>' +
+                            '<option value="90">90 Days</option>' +
+                            '<option value="0">Permanent (Until Revoked)</option>' +
+                        '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="gm-login-field">' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">' +
+                        '<label style="font-size:0.85rem; color:var(--text-muted);">Treaty Clauses & Articles</label>' +
+                        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-xs" id="btn-fill-nap-template" style="font-size:0.75rem; color:var(--primary);"><i class="ph ph-magic-wand"></i> Insert Standard N.A.P. Clauses</button>' +
+                    '</div>' +
+                    '<textarea id="input-treaty-terms" class="gm-input" rows="6" style="width:100%; font-family:inherit; font-size:0.85rem; line-height:1.45; resize:vertical;" placeholder="Specify the terms, non-aggression clauses, resource tile rules, SvS assistance commitments..."></textarea>' +
+                '</div>' +
+                '<div style="background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); border-radius:var(--radius-sm); padding:0.65rem; font-size:0.78rem; color:var(--text-muted); display:flex; gap:0.5rem; align-items:center;">' +
+                    '<i class="ph ph-info" style="color:var(--primary); font-size:1.2rem; flex-shrink:0;"></i>' +
+                    '<span>By proposing this treaty, your signature as <strong>' + esc(acc ? acc.id : 'Leader') + '</strong> for <strong>[' + esc(callerGuild) + ']</strong> will be appended automatically. The treaty will be publicly ratified as soon as the leader of Party B signs it.</span>' +
+                '</div>';
+
+            var templateBtn = document.getElementById('btn-fill-nap-template');
+            if (templateBtn) {
+                templateBtn.onclick = function () {
+                    var termsEl = document.getElementById('input-treaty-terms');
+                    if (termsEl) {
+                        termsEl.value =
+                            "ARTICLE 1: NON-AGGRESSION OBLIGATION\n" +
+                            "Both signatory guilds mutually agree to abstain from attacking each other's members, bases, outposts, and convoys.\n\n" +
+                            "ARTICLE 2: RESOURCE & MINING TILES\n" +
+                            "Neither guild shall engage or displace gathered forces from resource nodes or asteroid fields.\n\n" +
+                            "ARTICLE 3: SVS WARFARE COOPERATION\n" +
+                            "During Server vs Server (SvS) battles, both guilds shall coordinate tactical movements and avoid friendly fire.\n\n" +
+                            "ARTICLE 4: DISPUTE RESOLUTION\n" +
+                            "Any accidental engagements shall be resolved diplomatically through the Guild Leader Hall before taking retaliatory actions.";
+                    }
+                };
+            }
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    async function handleCreateTreatySubmit() {
+        var db = getDb();
+        if (!db) return;
+
+        var selGuildB = document.getElementById('input-treaty-guild-b');
+        var selType = document.getElementById('input-treaty-type');
+        var selExpires = document.getElementById('input-treaty-expires');
+        var termsInput = document.getElementById('input-treaty-terms');
+
+        if (!selGuildB || !termsInput) return;
+
+        var guildB = selGuildB.value;
+        var selectedOpt = selGuildB.options[selGuildB.selectedIndex];
+        var guildBServer = (selectedOpt && selectedOpt.getAttribute('data-server')) || '1058';
+        var treatyType = selType ? selType.value : 'nap';
+        var expiresDays = selExpires ? parseInt(selExpires.value, 10) : 30;
+        var terms = termsInput.value.trim();
+
+        if (!guildB) {
+            alert('Please select a target guild.');
+            return;
+        }
+
+        if (!terms) {
+            alert('Please specify the treaty terms and clauses.');
+            return;
+        }
+
+        try {
+            var res = await db.rpc('gm_create_diplomatic_treaty', {
+                p_guild_b: guildB,
+                p_guild_b_server: guildBServer,
+                p_treaty_type: treatyType,
+                p_terms: terms,
+                p_expires_days: expiresDays
+            });
+
+            if (res.error) throw res.error;
+
+            document.getElementById('modal-treaty-create').classList.add('hidden');
+            await fetchTreaties();
+            renderTreatiesRegistry();
+        } catch (err) {
+            console.error('Error creating treaty', err);
+            alert('Failed to propose treaty: ' + (err.message || err));
+        }
+    }
+
+    async function handleSignTreaty(treatyId) {
+        var db = getDb();
+        if (!db) return;
+
+        if (!confirm('Do you confirm the official signature and bilateral ratification of this treaty on behalf of your guild?')) return;
+
+        try {
+            var res = await db.rpc('gm_sign_diplomatic_treaty', { p_treaty_id: treatyId });
+            if (res.error) throw res.error;
+
+            await fetchTreaties();
+            renderTreatiesRegistry();
+        } catch (err) {
+            console.error('Error signing treaty', err);
+            alert('Failed to sign treaty: ' + (err.message || err));
+        }
+    }
+
+    async function handleRevokeTreaty(treatyId) {
+        var db = getDb();
+        if (!db) return;
+
+        if (!confirm('Are you sure you want to revoke this treaty? This action will mark the agreement as void.')) return;
+
+        try {
+            var res = await db.rpc('gm_revoke_diplomatic_treaty', { p_treaty_id: treatyId });
+            if (res.error) throw res.error;
+
+            await fetchTreaties();
+            renderTreatiesRegistry();
+        } catch (err) {
+            console.error('Error revoking treaty', err);
+            alert('Failed to revoke treaty: ' + (err.message || err));
         }
     }
 
@@ -563,7 +921,7 @@
                                 '<div class="gm-empty-title">Select or start a discussion</div>' +
                             '</div>' +
                         '</div>' +
-                        '<div class="gm-chat-input-bar">' +
+                        '<div class="gm-chat-input-bar" id="leader-hall-input-bar">' +
                             '<input type="text" id="leader-hall-msg-input" class="gm-chat-input" placeholder="Type an encrypted message..." autocomplete="off">' +
                             '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="leader-hall-send-btn">' +
                                 '<i class="ph ph-paper-plane-right"></i>' +
@@ -599,7 +957,6 @@
         var groupList = conversationsList.filter(function (c) { return c.type === 'group' && !c.isR5Only; });
         var r5List = conversationsList.filter(function (c) { return c.type === 'group' && c.isR5Only; });
 
-        // Update counts
         var badgeDirect = document.getElementById('badge-direct-count');
         var badgeGroup = document.getElementById('badge-group-count');
         var badgeR5 = document.getElementById('badge-r5-count');
@@ -678,7 +1035,6 @@
             }
         }
 
-        // Bind clicks on channel items
         document.querySelectorAll('.gm-hall-channel-item').forEach(function (el) {
             el.onclick = function () {
                 var id = el.getAttribute('data-conv-id');
@@ -686,7 +1042,6 @@
             };
         });
 
-        // Bind quick action buttons
         var qDirect = document.querySelector('.btn-quick-new-direct');
         if (qDirect) qDirect.onclick = function () { showCreateModal('direct'); };
         var qGroup = document.querySelector('.btn-quick-new-group');
@@ -714,7 +1069,19 @@
 
         renderAccordions();
         renderActiveConversationHeader();
-        await loadAndRenderMessages();
+
+        if (currentConversation.id === DIPLOMACY_CHANNEL_ID) {
+            // Show Treaty Registry & Feed
+            await fetchTreaties();
+            renderTreatiesRegistry();
+            var inputBar = document.getElementById('leader-hall-input-bar');
+            if (inputBar) inputBar.style.display = 'none';
+        } else {
+            var inputBar2 = document.getElementById('leader-hall-input-bar');
+            if (inputBar2) inputBar2.style.display = 'flex';
+            await loadAndRenderMessages();
+        }
+
         subscribeToRealtime(currentConversation.id);
     }
 
@@ -729,7 +1096,11 @@
         var subtitle = '';
         var actionsHtml = '';
 
-        if (currentConversation.type === 'global') {
+        if (currentConversation.id === DIPLOMACY_CHANNEL_ID) {
+            title = '📜 Diplomacy & Treaties';
+            subtitle = 'Bilateral Pacts, Non-Aggression Treaties (N.A.P.) & Signatures';
+            actionsHtml = '<button class="gm-btn gm-btn-primary gm-btn-xs" id="btn-header-propose-treaty"><i class="ph ph-pen-nib"></i> Propose Treaty</button>';
+        } else if (currentConversation.type === 'global') {
             title = '🌐 ' + currentConversation.title;
             subtitle = currentConversation.subtitle || 'Universal Channel • Open to all Guild Leaders';
         } else if (currentConversation.type === 'direct') {
@@ -747,7 +1118,6 @@
                 '</button>' +
                 '<button class="gm-btn gm-btn-outline gm-btn-xs" id="btn-delete-conv" style="color:var(--danger);" title="Delete Conversation"><i class="ph ph-trash"></i> Delete</button>';
         } else {
-            // Group or R5 Summit
             subtitle = (currentConversation.members || []).length + ' Leaders • ' + (currentConversation.isR5Only ? '👑 R5 Summit' : 'Tactical Group');
             var isCreator = currentConversation.createdBy === accId;
 
@@ -768,7 +1138,9 @@
                 actionsHtml +
             '</div>';
 
-        // Bind header actions
+        var btnPropose = document.getElementById('btn-header-propose-treaty');
+        if (btnPropose) btnPropose.onclick = showCreateTreatyModal;
+
         var btnSafety = document.getElementById('btn-safety-numbers');
         if (btnSafety) btnSafety.onclick = showSafetyNumbersModal;
 
@@ -923,12 +1295,17 @@
     }
 
     function renderMessages() {
-        loadAndRenderMessages();
+        if (currentConversation && currentConversation.id === DIPLOMACY_CHANNEL_ID) {
+            fetchTreaties().then(renderTreatiesRegistry);
+        } else {
+            loadAndRenderMessages();
+        }
     }
 
     function subscribeToRealtime(convId) {
         var db = getDb();
         if (!db) return;
+
         if (realtimeChannel) {
             db.removeChannel(realtimeChannel);
         }
@@ -943,6 +1320,20 @@
                 renderMessages();
             })
             .subscribe();
+
+        if (!treatiesRealtimeChannel) {
+            treatiesRealtimeChannel = db.channel('diplomatic_treaties_all')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'diplomatic_treaties'
+                }, function () {
+                    if (currentConversation && currentConversation.id === DIPLOMACY_CHANNEL_ID) {
+                        fetchTreaties().then(renderTreatiesRegistry);
+                    }
+                })
+                .subscribe();
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1191,7 +1582,6 @@
         await fetchEligibleLeaders();
         await fetchConversations();
 
-        // Default to Global Lounge on first load
         if (!currentConversation) {
             selectConversation(GLOBAL_CHANNELS[0].id);
         } else {
@@ -1199,10 +1589,8 @@
             renderActiveConversationHeader();
         }
 
-        // Setup Accordion toggles
         document.querySelectorAll('.gm-hall-acc-header').forEach(function (header) {
             header.onclick = function (e) {
-                // If clicked on add button, prevent accordion toggle
                 if (e.target.closest('.gm-acc-add-btn')) return;
                 var space = header.getAttribute('data-space');
                 var accEl = header.closest('.gm-hall-accordion');
@@ -1216,7 +1604,6 @@
             };
         });
 
-        // Setup Accordion Add Buttons
         var btnAddDirect = document.getElementById('btn-add-direct');
         if (btnAddDirect) btnAddDirect.onclick = function (e) { e.stopPropagation(); showCreateModal('direct'); };
         var btnAddGroup = document.getElementById('btn-add-group');
@@ -1224,7 +1611,6 @@
         var btnAddR5 = document.getElementById('btn-add-r5');
         if (btnAddR5) btnAddR5.onclick = function (e) { e.stopPropagation(); showCreateModal('r5'); };
 
-        // Setup Send message button & input
         var sendBtn = document.getElementById('leader-hall-send-btn');
         var input = document.getElementById('leader-hall-msg-input');
         if (sendBtn && input) {
@@ -1259,12 +1645,31 @@
                 document.getElementById('modal-safety-numbers').classList.add('hidden');
             };
         }
+
+        // Treaty Modal Handlers
+        var btnSubmitTreaty = document.getElementById('modal-treaty-submit-btn');
+        if (btnSubmitTreaty) btnSubmitTreaty.onclick = handleCreateTreatySubmit;
+
+        var btnCloseTreaty = document.getElementById('modal-treaty-close-btn');
+        if (btnCloseTreaty) {
+            btnCloseTreaty.onclick = function () {
+                document.getElementById('modal-treaty-create').classList.add('hidden');
+            };
+        }
+
+        var btnCancelTreaty = document.getElementById('modal-treaty-cancel-btn');
+        if (btnCancelTreaty) {
+            btnCancelTreaty.onclick = function () {
+                document.getElementById('modal-treaty-create').classList.add('hidden');
+            };
+        }
     }
 
     return {
         load: load,
         initSignalIdentity: initSignalIdentity,
         fetchConversations: fetchConversations,
+        fetchTreaties: fetchTreaties,
         sendMessage: sendMessage,
         decryptMessage: decryptMessage
     };
