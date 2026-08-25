@@ -2459,6 +2459,82 @@ body.guild-read-only .gm-content .score-cell {
     font-weight: 700;
 }
 
+/* ─── Fullscreen Blackout Screen for Capture Prohibited ────────────────── */
+.gm-blackout-shield {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: #000000 !important;
+    color: #ffffff !important;
+    z-index: 9999999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 2rem !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    box-sizing: border-box !important;
+}
+
+.gm-blackout-shield.hidden {
+    display: none !important;
+}
+
+.gm-blackout-content {
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.gm-blackout-icon {
+    font-size: 4.5rem;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+    color: #ef4444;
+}
+
+.gm-blackout-title {
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    color: #ef4444;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.gm-blackout-subtitle {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.gm-blackout-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 4px 14px;
+    border-radius: 9999px;
+    margin-top: 0.25rem;
+}
+
+.gm-blackout-notice {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0.5rem 0 0 0;
+    line-height: 1.5;
+}
+
 /* Print Media Protection */
 @media print {
     #tab-leader-hall,

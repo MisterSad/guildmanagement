@@ -2028,30 +2028,40 @@
 
     var antiCaptureInitialized = false;
 
+    var blackoutTimeout = null;
+
+    function triggerBlackoutScreen(durationMs) {
+        var overlay = document.getElementById('gm-anti-capture-fullscreen-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('hidden');
+        if (blackoutTimeout) clearTimeout(blackoutTimeout);
+        blackoutTimeout = setTimeout(function () {
+            overlay.classList.add('hidden');
+        }, durationMs || 2800);
+
+        showSecurityNotification();
+    }
+
+    var lastToastTime = 0;
+    function showSecurityNotification() {
+        var now = Date.now();
+        if (now - lastToastTime < 2500) return;
+        lastToastTime = now;
+        if (window.GM && window.GM.showToast) {
+            window.GM.showToast('🚫 Capture d\'écran restreinte dans les sessions confidentielles.', 'warning');
+        }
+    }
+
     function setupAntiCaptureProtection() {
         if (antiCaptureInitialized) return;
         antiCaptureInitialized = true;
 
-        var lastToastTime = 0;
-        function showSecurityNotification() {
-            var now = Date.now();
-            if (now - lastToastTime < 2500) return;
-            lastToastTime = now;
-            if (window.GM && window.GM.showToast) {
-                window.GM.showToast('🛡️ Content Protection: Copying, text selection, and screen capture are restricted in confidential diplomatic sessions.', 'warning');
-            }
-        }
-
-        function pulseShieldBlur() {
-            var mainEl = document.querySelector('.gm-leader-hall-main');
-            if (!mainEl || !isProtectedConversation()) return;
-            mainEl.classList.add('gm-capture-shield-active');
-            setTimeout(function () {
-                if (mainEl && !document.hidden && document.hasFocus()) {
-                    mainEl.classList.remove('gm-capture-shield-active');
-                }
-            }, 1200);
-            showSecurityNotification();
+        var overlay = document.getElementById('gm-anti-capture-fullscreen-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', function () {
+                overlay.classList.add('hidden');
+                if (blackoutTimeout) clearTimeout(blackoutTimeout);
+            });
         }
 
         // Global Anti-copy / cut / contextmenu on protected messages viewport
@@ -2060,7 +2070,6 @@
                 if (!isProtectedConversation()) return;
                 var target = e.target;
                 if (target && (target.closest('#leader-hall-messages') || target.closest('.gm-protected-session'))) {
-                    // Do not block input typing fields
                     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
                     e.preventDefault();
                     showSecurityNotification();
@@ -2068,47 +2077,51 @@
             }, true);
         });
 
-        // Window Blur & Visibility change (Defense against window captures / background recordings / app switchers)
+        // Window Blur & Visibility change (triggers blackout when external screenshot tool steals OS focus)
         function handleVisibility() {
-            var mainEl = document.querySelector('.gm-leader-hall-main');
-            if (!mainEl || !isProtectedConversation()) return;
-            if (document.hidden || !document.hasFocus()) {
-                mainEl.classList.add('gm-capture-shield-active');
-            } else {
-                mainEl.classList.remove('gm-capture-shield-active');
+            var activeTab = document.querySelector('.tab-panel.active');
+            var isLeaderHall = activeTab && activeTab.id === 'tab-leader-hall';
+            if (isLeaderHall && isProtectedConversation()) {
+                if (document.hidden || !document.hasFocus()) {
+                    triggerBlackoutScreen(3000);
+                }
             }
         }
 
-        window.addEventListener('blur', handleVisibility);
-        window.addEventListener('focus', function () {
-            var mainEl = document.querySelector('.gm-leader-hall-main');
-            if (mainEl) mainEl.classList.remove('gm-capture-shield-active');
-        });
-        document.addEventListener('visibilitychange', handleVisibility);
+        window.addEventListener('blur', handleVisibility, true);
+        document.addEventListener('visibilitychange', handleVisibility, true);
 
-        // Keyboard Shortcut Interceptions (PrintScreen, Meta/Ctrl+Shift+3/4/5/S, Ctrl/Cmd+P, Ctrl/Cmd+C)
-        window.addEventListener('keydown', function (e) {
+        // Universal Keyboard Screenshot Interceptions (Mac, Windows, Linux)
+        function handleScreenshotKey(e) {
             if (!isProtectedConversation()) return;
 
             var activeTab = document.querySelector('.tab-panel.active');
             if (!activeTab || activeTab.id !== 'tab-leader-hall') return;
 
-            // Screenshot / Print shortcuts (covering both key and code for international Mac/Win keyboards)
-            var isScreenshot =
-                e.key === 'PrintScreen' ||
-                e.code === 'PrintScreen' ||
-                ((e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P' || e.code === 'KeyP')) ||
-                ((e.metaKey || e.ctrlKey) && e.shiftKey && (
-                    e.key === '3' || e.key === '4' || e.key === '5' || e.key === 's' || e.key === 'S' ||
-                    e.code === 'Digit3' || e.code === 'Digit4' || e.code === 'Digit5' || e.code === 'KeyS'
-                ));
-
-            if (isScreenshot) {
-                e.preventDefault();
-                pulseShieldBlur();
+            if (e.key === 'Escape' && overlay) {
+                overlay.classList.add('hidden');
+                if (blackoutTimeout) clearTimeout(blackoutTimeout);
+                return;
             }
 
-            // Copy shortcut
+            // Universal detection: PrintScreen, Mac Cmd+Shift+3/4/5/6, Win+Shift+S, Win+Alt+R, Ctrl+P, Alt+PrtScn
+            var isPrtScn = e.key === 'PrintScreen' || e.code === 'PrintScreen' || e.keyCode === 44 || e.which === 44;
+            var isPrintPdf = (e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P' || e.code === 'KeyP');
+            var isMacScreenshot = (e.metaKey || e.ctrlKey) && e.shiftKey && (
+                e.code === 'Digit3' || e.code === 'Digit4' || e.code === 'Digit5' || e.code === 'Digit6' ||
+                e.key === '3' || e.key === '4' || e.key === '5' || e.key === '6' ||
+                e.key === '#' || e.key === '$' || e.key === '%' || e.key === '&' || e.key === '"' || e.key === "'"
+            );
+            var isWinSnipping = (e.metaKey || e.ctrlKey) && e.shiftKey && (e.code === 'KeyS' || e.key === 's' || e.key === 'S');
+            var isWinGameBar = (e.metaKey || e.ctrlKey) && e.altKey && (e.code === 'KeyR' || e.key === 'r' || e.key === 'R');
+
+            if (isPrtScn || isPrintPdf || isMacScreenshot || isWinSnipping || isWinGameBar) {
+                e.preventDefault();
+                e.stopPropagation();
+                triggerBlackoutScreen(3200);
+            }
+
+            // Block copy shortcut inside messages
             if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C' || e.code === 'KeyC')) {
                 var target = e.target;
                 if (target && target.closest && (target.closest('#leader-hall-messages') || target.closest('.gm-protected-session'))) {
@@ -2117,7 +2130,10 @@
                     showSecurityNotification();
                 }
             }
-        }, true);
+        }
+
+        window.addEventListener('keydown', handleScreenshotKey, true);
+        window.addEventListener('keyup', handleScreenshotKey, true);
     }
 
     return {
