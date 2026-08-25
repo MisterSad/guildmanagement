@@ -453,7 +453,7 @@
             '</nav>' +
             getSubscriptionCardHtml() +
             (canReportBug
-                ? '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-report-bug style="width:calc(100% - 2rem); margin:0 1rem 0.4rem; justify-content:center; gap:0.4rem; padding:0.5rem 0.75rem;">' +
+                ? '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-report-bug>' +
                     '<span class="material-symbols-rounded" style="font-size:1.1rem;">bug_report</span>' +
                     '<span>' + t('ticket_report_bug') + '</span>' +
                   '</button>'
