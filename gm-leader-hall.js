@@ -46,8 +46,6 @@
         r5: true
     };
 
-    var peekModeEnabled = localStorage.getItem('gm_e2ee_peek_mode') !== 'false';
-
     var esc = (window.GM && window.GM.escapeHTML) ? window.GM.escapeHTML : function (s) { return s || ''; };
     var t = (window.GM && window.GM.t) ? window.GM.t : function (k) { return k; };
 
@@ -1204,9 +1202,6 @@
         var shieldBadge = isProt ?
             '<span class="gm-chip-shield" title="Copying, text selection, and screen capture are restricted"><i class="ph ph-shield-check"></i> Anti-Capture Protected</span>' : '';
 
-        var peekToggleBtn = isProt ?
-            '<button class="gm-btn gm-btn-outline gm-btn-xs" id="btn-toggle-peek" title="Toggle Confidential Peek Mode (Hover or tap to reveal messages)"><i class="ph ph-eye' + (peekModeEnabled ? '' : '-slash') + '"></i> ' + (peekModeEnabled ? 'Peek: ON' : 'Peek: OFF') + '</button>' : '';
-
         header.innerHTML =
             '<div class="gm-chat-header-left">' +
                 titleHtml +
@@ -1219,22 +1214,8 @@
                 '</div>' +
             '</div>' +
             '<div class="gm-chat-header-actions" style="display:flex; align-items:center; gap:0.4rem;">' +
-                peekToggleBtn +
                 actionsHtml +
             '</div>';
-
-        var btnPeek = document.getElementById('btn-toggle-peek');
-        if (btnPeek) {
-            btnPeek.onclick = function () {
-                peekModeEnabled = !peekModeEnabled;
-                localStorage.setItem('gm_e2ee_peek_mode', peekModeEnabled ? 'true' : 'false');
-                var mainEl = document.querySelector('.gm-leader-hall-main');
-                if (mainEl) {
-                    mainEl.classList.toggle('gm-peek-mode', peekModeEnabled && isProtectedConversation());
-                }
-                renderActiveConversationHeader();
-            };
-        }
 
         var titleEl = document.getElementById('active-chat-title');
         if (titleEl) {
@@ -1576,10 +1557,8 @@
         if (mainEl) {
             if (isProt) {
                 mainEl.classList.add('gm-protected-session');
-                mainEl.classList.toggle('gm-peek-mode', peekModeEnabled);
             } else {
                 mainEl.classList.remove('gm-protected-session');
-                mainEl.classList.remove('gm-peek-mode');
             }
         }
         if (container) {
@@ -1653,14 +1632,6 @@
 
             container.innerHTML = watermarkHtml + html;
             container.scrollTop = container.scrollHeight;
-
-            container.querySelectorAll('.gm-message-bubble').forEach(function (bubble) {
-                bubble.addEventListener('click', function () {
-                    if (isProtectedConversation() && peekModeEnabled) {
-                        this.classList.toggle('is-revealed');
-                    }
-                });
-            });
         } catch (e) {
             console.error('Error loading messages', e);
             container.innerHTML = '<div class="gm-empty"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Error loading messages</div></div>';
@@ -2114,21 +2085,6 @@
             if (mainEl) mainEl.classList.remove('gm-capture-shield-active');
         });
         document.addEventListener('visibilitychange', handleVisibility);
-
-        // Mouseleave / Window-exit blur protection (triggers when cursor leaves browser to take screenshot)
-        var chatMain = document.querySelector('.gm-leader-hall-main');
-        if (chatMain) {
-            chatMain.addEventListener('mouseleave', function () {
-                if (isProtectedConversation()) {
-                    chatMain.classList.add('gm-capture-shield-active');
-                }
-            });
-            chatMain.addEventListener('mouseenter', function () {
-                if (!document.hidden && document.hasFocus()) {
-                    chatMain.classList.remove('gm-capture-shield-active');
-                }
-            });
-        }
 
         // Keyboard Shortcut Interceptions (PrintScreen, Meta/Ctrl+Shift+3/4/5/S, Ctrl/Cmd+P, Ctrl/Cmd+C)
         window.addEventListener('keydown', function (e) {

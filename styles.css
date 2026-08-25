@@ -2400,40 +2400,6 @@ body.guild-read-only .gm-content .score-cell {
     text-shadow: 0 0 2px rgba(0,0,0,0.8);
 }
 
-/* Confidential Peek Mode (Telegram / Secret Chat Hover-to-Reveal) */
-.gm-peek-mode .gm-message-body {
-    filter: blur(9px) !important;
-    opacity: 0.22 !important;
-    transition: filter 0.12s ease, opacity 0.12s ease;
-    cursor: pointer;
-    user-select: none !important;
-}
-
-.gm-peek-mode .gm-message-bubble:hover .gm-message-body,
-.gm-peek-mode .gm-message-bubble:active .gm-message-body,
-.gm-peek-mode .gm-message-bubble.is-revealed .gm-message-body {
-    filter: none !important;
-    opacity: 1 !important;
-}
-
-.gm-peek-mode .gm-message-bubble::after {
-    content: '🔒 Hover or tap to view';
-    display: block;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: #f59e0b;
-    opacity: 0.85;
-    margin-top: 0.25rem;
-    transition: opacity 0.15s ease;
-}
-
-.gm-peek-mode .gm-message-bubble:hover::after,
-.gm-peek-mode .gm-message-bubble:active::after,
-.gm-peek-mode .gm-message-bubble.is-revealed::after {
-    opacity: 0;
-    display: none;
-}
-
 /* Privacy Blur Shield (When tab blurred / app switch / screenshot shortcut detected) */
 .gm-capture-shield-active .gm-chat-messages-viewport {
     filter: blur(32px) !important;
