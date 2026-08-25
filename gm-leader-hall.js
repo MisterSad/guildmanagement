@@ -1155,13 +1155,22 @@
             var isCreator = currentConversation.createdBy === accId;
 
             actionsHtml =
+                '<button class="gm-btn gm-btn-outline gm-btn-xs" id="btn-rename-group" title="Rename Group"><i class="ph ph-pencil-simple"></i> Rename</button>' +
                 '<button class="gm-btn gm-btn-outline gm-btn-xs" id="btn-leave-group" title="Leave Group"><i class="ph ph-sign-out"></i> Leave Group</button>' +
                 (isCreator || isSuper ? '<button class="gm-btn gm-btn-outline gm-btn-xs" id="btn-delete-conv" style="color:var(--danger);" title="Delete Group"><i class="ph ph-trash"></i> Delete Group</button>' : '');
         }
 
+        var isGroup = currentConversation.type === 'group';
+        var titleHtml = isGroup ?
+            '<h2 class="gm-chat-title" id="active-chat-title" style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer;" title="Click to rename group">' +
+                '<span>' + esc(title) + '</span>' +
+                '<i class="ph ph-pencil-simple" style="font-size:0.85rem; color:var(--text-muted); opacity:0.75;"></i>' +
+            '</h2>' :
+            '<h2 class="gm-chat-title">' + esc(title) + '</h2>';
+
         header.innerHTML =
             '<div class="gm-chat-header-left">' +
-                '<h2 class="gm-chat-title">' + esc(title) + '</h2>' +
+                titleHtml +
                 '<div class="gm-chat-e2ee-tag">' +
                     '<i class="ph ph-lock-key"></i>' +
                     '<span>' + esc(subtitle) + '</span>' +
@@ -1170,6 +1179,20 @@
             '<div class="gm-chat-header-actions" style="display:flex; align-items:center; gap:0.4rem;">' +
                 actionsHtml +
             '</div>';
+
+        var titleEl = document.getElementById('active-chat-title');
+        if (titleEl) {
+            titleEl.onclick = function () {
+                handleRenameGroup(currentConversation.id);
+            };
+        }
+
+        var btnRename = document.getElementById('btn-rename-group');
+        if (btnRename) {
+            btnRename.onclick = function () {
+                handleRenameGroup(currentConversation.id);
+            };
+        }
 
         var btnPropose = document.getElementById('btn-header-propose-treaty');
         if (btnPropose) btnPropose.onclick = showCreateTreatyModal;
@@ -1197,6 +1220,41 @@
             btnLeave.onclick = function () {
                 handleLeaveGroup(currentConversation.id);
             };
+        }
+    }
+
+    async function handleRenameGroup(convId) {
+        if (!currentConversation || currentConversation.type !== 'group') return;
+        var currentTitle = currentConversation.title || '';
+        var newTitle = prompt('Enter new discussion group name:', currentTitle);
+        if (!newTitle || !newTitle.trim() || newTitle.trim() === currentTitle) return;
+
+        var cleanTitle = newTitle.trim();
+        if (cleanTitle.length < 2 || cleanTitle.length > 100) {
+            alert('Group title must be between 2 and 100 characters.');
+            return;
+        }
+
+        var db = getDb();
+        if (!db) return;
+
+        try {
+            var res = await db.rpc('gm_rename_e2ee_conversation', {
+                p_conversation_id: convId,
+                p_new_title: cleanTitle
+            });
+
+            if (res.error) throw res.error;
+
+            currentConversation.title = cleanTitle;
+            var found = conversationsList.find(function (c) { return c.id === convId; });
+            if (found) found.title = cleanTitle;
+
+            renderAccordions();
+            renderActiveConversationHeader();
+        } catch (err) {
+            console.error('Error renaming group', err);
+            alert('Failed to rename group: ' + (err.message || err));
         }
     }
 
