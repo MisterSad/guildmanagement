@@ -2034,12 +2034,31 @@
         var overlay = document.getElementById('gm-anti-capture-fullscreen-overlay');
         if (!overlay) return;
         overlay.classList.remove('hidden');
-        if (blackoutTimeout) clearTimeout(blackoutTimeout);
-        blackoutTimeout = setTimeout(function () {
-            overlay.classList.add('hidden');
-        }, durationMs || 2800);
+        if (blackoutTimeout) {
+            clearTimeout(blackoutTimeout);
+            blackoutTimeout = null;
+        }
+
+        // Only set auto-dismiss timer if window is focused.
+        // While window is unfocused / blurred, blackout remains permanently until focus returns.
+        if (durationMs && document.hasFocus() && !document.hidden) {
+            blackoutTimeout = setTimeout(function () {
+                if (document.hasFocus() && !document.hidden) {
+                    overlay.classList.add('hidden');
+                }
+            }, durationMs);
+        }
 
         showSecurityNotification();
+    }
+
+    function dismissBlackoutScreen() {
+        var overlay = document.getElementById('gm-anti-capture-fullscreen-overlay');
+        if (overlay) overlay.classList.add('hidden');
+        if (blackoutTimeout) {
+            clearTimeout(blackoutTimeout);
+            blackoutTimeout = null;
+        }
     }
 
     var lastToastTime = 0;
@@ -2059,8 +2078,7 @@
         var overlay = document.getElementById('gm-anti-capture-fullscreen-overlay');
         if (overlay) {
             overlay.addEventListener('click', function () {
-                overlay.classList.add('hidden');
-                if (blackoutTimeout) clearTimeout(blackoutTimeout);
+                dismissBlackoutScreen();
             });
         }
 
@@ -2077,18 +2095,21 @@
             }, true);
         });
 
-        // Window Blur & Visibility change (triggers blackout when external screenshot tool steals OS focus)
+        // Window Blur & Visibility change (permanent blackout as long as window is not focused!)
         function handleVisibility() {
             var activeTab = document.querySelector('.tab-panel.active');
             var isLeaderHall = activeTab && activeTab.id === 'tab-leader-hall';
             if (isLeaderHall && isProtectedConversation()) {
                 if (document.hidden || !document.hasFocus()) {
-                    triggerBlackoutScreen(3000);
+                    triggerBlackoutScreen(); // Indefinite blackout while unfocused!
+                } else {
+                    dismissBlackoutScreen(); // Dismiss as soon as user returns to the window!
                 }
             }
         }
 
         window.addEventListener('blur', handleVisibility, true);
+        window.addEventListener('focus', handleVisibility, true);
         document.addEventListener('visibilitychange', handleVisibility, true);
 
         // Universal Keyboard Screenshot Interceptions (Mac, Windows, Linux)
