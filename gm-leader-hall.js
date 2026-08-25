@@ -24,8 +24,7 @@
 
     var GLOBAL_CHANNELS = [
         { id: '00000000-0000-0000-0000-000000000001', type: 'global', title: 'Global Lounge', subtitle: 'General lounge for all guild leaders', icon: 'ph ph-chat-circle-dots' },
-        { id: DIPLOMACY_CHANNEL_ID, type: 'global', title: 'Diplomacy & Treaties', subtitle: 'Inter-guild N.A.P., pacts & official treaty signings', icon: 'ph ph-scroll' },
-        { id: '00000000-0000-0000-0000-000000000003', type: 'global', title: 'SvS War Council', subtitle: 'Cross-server tactics & battle plans', icon: 'ph ph-swords' }
+        { id: DIPLOMACY_CHANNEL_ID, type: 'global', title: 'Diplomacy & Treaties', subtitle: 'Inter-guild N.A.P., pacts & official treaty signings', icon: 'ph ph-scroll' }
     ];
 
     var currentConversation = null;
@@ -908,7 +907,7 @@
                                         '<i class="ph ph-planet" style="color:var(--primary, #38bdf8);"></i>' +
                                         '<span>Global Leaders Lounge</span>' +
                                     '</div>' +
-                                    '<span class="gm-hall-acc-badge">3</span>' +
+                                    '<span class="gm-hall-acc-badge">' + GLOBAL_CHANNELS.length + '</span>' +
                                 '</div>' +
                                 '<div class="gm-hall-acc-body" id="acc-body-global"></div>' +
                             '</div>' +

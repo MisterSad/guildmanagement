@@ -4,7 +4,7 @@ Hey everyone! I'm thrilled to release a major strategic & diplomatic milestone f
 
 ### 🏛️ Guild Leader Hall & 4-Space Command Hub
 - **4 Collapsible Spaces**:
-  - 🌐 **Global Leaders Lounge**: Open diplomatic channels (`# Global Lounge`, `# Diplomacy & Treaties`, `# SvS War Council`) connecting all guild masters and officers.
+  - 🌐 **Global Leaders Lounge**: Open diplomatic channels (`# Global Lounge`, `# Diplomacy & Treaties`) connecting all guild masters and officers.
   - 👤 **1:1 Discussions**: Direct encrypted discussions with leaders across all guilds.
   - 👥 **Group Discussions**: Multi-guild tactical coalitions and sector defense groups.
   - 👑 **R5 Summit**: High-level chambers strictly reserved for Guild Masters (R5) and Super Admins.

@@ -3,7 +3,7 @@
 ## New
 
 - **Guild Leader Hall, Diplomatic Treaties & Signal Protocol E2EE (V3.7)**:
-  - **4-Section Accordion Command Architecture**: Left navigation organized into 4 collapsible spaces: `🌐 Global Leaders Lounge` (Global Lounge, Diplomacy & Treaties, SvS War Council), `👤 1:1 Discussions`, `👥 Group Discussions`, and `👑 R5 Summit`.
+  - **4-Section Accordion Command Architecture**: Left navigation organized into 4 collapsible spaces: `🌐 Global Leaders Lounge` (Global Lounge, Diplomacy & Treaties), `👤 1:1 Discussions`, `👥 Group Discussions`, and `👑 R5 Summit`.
   - **Inter-Guild Diplomatic Treaties Registry**: Official treaty drafting and bilateral ratification protocol in `# 📜 Diplomacy & Treaties`. Standardized auto-titling (`Treaty between [Guild A] ([Server A]) and [Guild B] ([Server B])`), 1-click N.A.P. clause generator, validity countdowns, and bilateral digital signature requirement to achieve public ratified status across the FGF galaxy.
   - **Leader Moderation & Discussion Controls**: Comprehensive controls to leave groups, delete discussions, and block/unblock leaders.
   - **End-to-End Encryption (Signal Protocol Engine)**: Implemented complete zero-knowledge cryptographic core (`gm-signal-crypto.js` + `src/core/crypto/signal.ts`) featuring **X25519** ECDH key agreement, **Ed25519 / Schnorr** signatures, **HKDF-SHA256**, and **AES-256-GCM** authenticated encryption.
