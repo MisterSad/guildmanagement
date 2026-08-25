@@ -119,6 +119,29 @@
     // 1. SIGNAL IDENTITY & PREKEY SYNC
     // ─────────────────────────────────────────────────────────────────────────
 
+    async function publishIdentityBundle(recordToStore) {
+        var db = getDb();
+        if (!db || !recordToStore) return;
+        try {
+            var otks = (recordToStore.oneTimePreKeys || []).map(function (otk) {
+                return {
+                    key_id: otk.keyId,
+                    public_key: otk.publicKey
+                };
+            });
+
+            await db.rpc('gm_publish_e2ee_prekey_bundle', {
+                p_identity_key: recordToStore.identityKey.publicKey,
+                p_signed_prekey: recordToStore.signedPreKey.keyPair.publicKey,
+                p_signed_prekey_sig: recordToStore.signedPreKey.signature,
+                p_registration_id: recordToStore.registrationId,
+                p_one_time_prekeys: otks
+            });
+        } catch (err) {
+            console.error('Error syncing E2EE prekey bundle to server', err);
+        }
+    }
+
     async function initSignalIdentity() {
         var S = getSignal();
         var acc = getAccount();
@@ -130,6 +153,8 @@
 
         if (stored && stored.identityKey) {
             localIdentity = stored;
+            // Always sync prekey bundle to database to ensure freshness
+            await publishIdentityBundle(stored);
             return stored;
         }
 
@@ -159,30 +184,7 @@
         await S.saveKeyRecord('identity_keys', accId, recordToStore);
         localIdentity = recordToStore;
 
-        try {
-            await db.from('e2ee_prekey_bundles').upsert({
-                account_id: accId,
-                identity_key: recordToStore.identityKey.publicKey,
-                signed_prekey: recordToStore.signedPreKey.keyPair.publicKey,
-                signed_prekey_sig: recordToStore.signedPreKey.signature,
-                registration_id: recordToStore.registrationId,
-                updated_at: new Date().toISOString()
-            });
-
-            var otksToInsert = recordToStore.oneTimePreKeys.map(function (otk) {
-                return {
-                    account_id: accId,
-                    key_id: otk.keyId,
-                    public_key: otk.publicKey,
-                    is_used: false
-                };
-            });
-
-            await db.from('e2ee_one_time_prekeys').upsert(otksToInsert, { onConflict: 'account_id,key_id' });
-        } catch (err) {
-            console.error('Error publishing E2EE prekey bundle', err);
-        }
-
+        await publishIdentityBundle(recordToStore);
         return localIdentity;
     }
 
@@ -316,23 +318,29 @@
             return existing;
         }
 
-        var rpcRes = await db.rpc('gm_get_e2ee_prekey_bundle', { p_target_account_id: targetAccountId });
-        if (rpcRes.error || !rpcRes.data || rpcRes.data.length === 0) {
-            throw new Error('Could not fetch recipient prekey bundle');
+        try {
+            var rpcRes = await db.rpc('gm_get_e2ee_prekey_bundle', { p_target_account_id: targetAccountId });
+            if (rpcRes.error || !rpcRes.data || rpcRes.data.length === 0) {
+                // Target has not published custom keys yet
+                return null;
+            }
+            var recipientBundle = rpcRes.data[0];
+
+            var myIdentityKeyPair = {
+                privateKey: S.hexToBytes(localIdentity.identityKey.privateKey),
+                publicKey: S.hexToBytes(localIdentity.identityKey.publicKey)
+            };
+
+            var x3dhRes = S.x3dhInitiator(myIdentityKeyPair, recipientBundle);
+            var bobSignedPreKey = S.hexToBytes(recipientBundle.signed_prekey);
+
+            var session = S.initializeSessionAlice(x3dhRes.masterKey, bobSignedPreKey, myIdentityKeyPair);
+            await saveSession(sessionId, session);
+            return session;
+        } catch (e) {
+            console.warn('Could not establish Double Ratchet session, falling back to secure group key', e);
+            return null;
         }
-        var recipientBundle = rpcRes.data[0];
-
-        var myIdentityKeyPair = {
-            privateKey: S.hexToBytes(localIdentity.identityKey.privateKey),
-            publicKey: S.hexToBytes(localIdentity.identityKey.publicKey)
-        };
-
-        var x3dhRes = S.x3dhInitiator(myIdentityKeyPair, recipientBundle);
-        var bobSignedPreKey = S.hexToBytes(recipientBundle.signed_prekey);
-
-        var session = S.initializeSessionAlice(x3dhRes.masterKey, bobSignedPreKey, myIdentityKeyPair);
-        await saveSession(sessionId, session);
-        return session;
     }
 
     async function saveSession(sessionId, session) {
@@ -407,13 +415,20 @@
 
         try {
             var encrypted = null;
+            var usedDoubleRatchet = false;
+
             if (currentConversation.type === 'direct') {
                 var otherMember = (currentConversation.members || []).find(function (m) { return m.account_id !== accId; });
                 var targetId = otherMember ? otherMember.account_id : accId;
                 var session = await getOrEstablish1to1Session(targetId);
-                encrypted = await S.doubleRatchetEncrypt(session, cleanText);
-                await saveSession(accId + ':' + targetId, session);
-            } else {
+                if (session) {
+                    encrypted = await S.doubleRatchetEncrypt(session, cleanText);
+                    await saveSession(accId + ':' + targetId, session);
+                    usedDoubleRatchet = true;
+                }
+            }
+
+            if (!usedDoubleRatchet) {
                 var senderKey = await getOrEstablishGroupSenderKey(currentConversation.id);
                 encrypted = await S.groupSenderKeyEncrypt(senderKey, cleanText);
                 var toStore = {
@@ -465,20 +480,38 @@
             var plaintext = '';
             if (currentConversation.type === 'direct') {
                 if (msg.sender_account_id === accId) {
-                    plaintext = '[Your message]';
+                    if (decryptedCache[msg.id]) {
+                        return decryptedCache[msg.id];
+                    }
+                    try {
+                        var senderKey = await getOrEstablishGroupSenderKey(currentConversation.id);
+                        plaintext = await S.groupSenderKeyDecrypt(senderKey, msg.header_data, msg.iv, msg.ciphertext);
+                    } catch (e) {
+                        plaintext = '[Your message]';
+                    }
                 } else {
                     var session = await getOrEstablish1to1Session(msg.sender_account_id);
-                    plaintext = await S.doubleRatchetDecrypt(session, msg.header_data, msg.iv, msg.ciphertext);
-                    await saveSession(accId + ':' + msg.sender_account_id, session);
+                    if (session && msg.header_data && msg.header_data.dhPublicKey) {
+                        try {
+                            plaintext = await S.doubleRatchetDecrypt(session, msg.header_data, msg.iv, msg.ciphertext);
+                            await saveSession(accId + ':' + msg.sender_account_id, session);
+                        } catch (e) {
+                            var sKey = await getOrEstablishGroupSenderKey(currentConversation.id);
+                            plaintext = await S.groupSenderKeyDecrypt(sKey, msg.header_data, msg.iv, msg.ciphertext);
+                        }
+                    } else {
+                        var sKey2 = await getOrEstablishGroupSenderKey(currentConversation.id);
+                        plaintext = await S.groupSenderKeyDecrypt(sKey2, msg.header_data, msg.iv, msg.ciphertext);
+                    }
                 }
             } else {
-                var senderKey = await getOrEstablishGroupSenderKey(currentConversation.id);
-                plaintext = await S.groupSenderKeyDecrypt(senderKey, msg.header_data, msg.iv, msg.ciphertext);
+                var sKey3 = await getOrEstablishGroupSenderKey(currentConversation.id);
+                plaintext = await S.groupSenderKeyDecrypt(sKey3, msg.header_data, msg.iv, msg.ciphertext);
             }
             decryptedCache[msg.id] = plaintext;
             return plaintext;
         } catch (err) {
-            return '[🔒 Decryption Error - Key Mismatch]';
+            return '[🔒 Encrypted Message]';
         }
     }
 
