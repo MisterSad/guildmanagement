@@ -2,14 +2,16 @@
 
 ## New
 
-- **Guild Leader Hall & Signal Protocol E2EE (V3.7)**:
-  - **Guild Leader Hall**: Dedicated command and diplomatic hub for Guild Masters (R5), Officers (R4), Server Admins, and Super Admins to coordinate alliances, SvS battle plans, N.A.P. terms, and dispute resolutions across guilds.
+- **Guild Leader Hall, Diplomatic Treaties & Signal Protocol E2EE (V3.7)**:
+  - **4-Section Accordion Command Architecture**: Left navigation organized into 4 collapsible spaces: `🌐 Global Leaders Lounge` (Global Lounge, Diplomacy & Treaties, SvS War Council), `👤 1:1 Discussions`, `👥 Group Discussions`, and `👑 R5 Summit`.
+  - **Inter-Guild Diplomatic Treaties Registry**: Official treaty drafting and bilateral ratification protocol in `# 📜 Diplomacy & Treaties`. Standardized auto-titling (`Treaty between [Guild A] ([Server A]) and [Guild B] ([Server B])`), 1-click N.A.P. clause generator, validity countdowns, and bilateral digital signature requirement to achieve public ratified status across the FGF galaxy.
+  - **Leader Moderation & Discussion Controls**: Comprehensive controls to leave groups, delete discussions, and block/unblock leaders.
   - **End-to-End Encryption (Signal Protocol Engine)**: Implemented complete zero-knowledge cryptographic core (`gm-signal-crypto.js` + `src/core/crypto/signal.ts`) featuring **X25519** ECDH key agreement, **Ed25519 / Schnorr** signatures, **HKDF-SHA256**, and **AES-256-GCM** authenticated encryption.
   - **1:1 Direct Diplomacy**: Protected with **X3DH** (Extended Triple Diffie-Hellman) asynchronous key handshakes and the **Double Ratchet Algorithm** ensuring continuous forward secrecy and break-in recovery.
   - **Group Discussions & War Councils**: Multi-member group chat utilizing the **Signal Sender Keys Protocol** with forward secrecy on member eviction and key rotation.
   - **👑 R5-Only Summit Protection**: Guild Masters can create exclusive high-level summit groups restricted strictly to R5 leaders and Super Admins.
   - **Cryptographic Safety Fingerprints**: 60-digit safety numbers comparison modal to defeat Man-in-the-Middle (MITM) attacks and guarantee authenticity.
-  - **Blind Server Relay & Zero-Trust RLS**: PostgreSQL schema (`20260825000001_guild_leader_hall_e2ee.sql`) acting as a blind ciphertext relay; strict RLS locking out the `member` role from all leader communications.
+  - **Blind Server Relay & Zero-Trust RLS**: PostgreSQL schema (`20260825000001_guild_leader_hall_e2ee.sql`, `20260825152000_guild_leader_hall_actions.sql`, `20260825153000_diplomatic_treaties.sql`) acting as a blind ciphertext relay; strict RLS locking out the `member` role from all leader communications.
   - **Quality Gate**: **468/468 Vitest unit tests green**, 0 TypeScript errors, clean production build.
 
 - **Comprehensive Feature & UX Major Update (V3.6)**:
