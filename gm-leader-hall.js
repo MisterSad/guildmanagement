@@ -2104,25 +2104,22 @@
                 return;
             }
 
-            // Universal detection: PrintScreen, Mac Cmd+Shift+3/4/5/6, Win+Shift+S, Win+Alt+R, Ctrl+P, Alt+PrtScn
-            var isPrtScn = e.key === 'PrintScreen' || e.code === 'PrintScreen' || e.keyCode === 44 || e.which === 44;
-            var isPrintPdf = (e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P' || e.code === 'KeyP');
-            var isMacScreenshot = (e.metaKey || e.ctrlKey) && e.shiftKey && (
-                e.code === 'Digit3' || e.code === 'Digit4' || e.code === 'Digit5' || e.code === 'Digit6' ||
-                e.key === '3' || e.key === '4' || e.key === '5' || e.key === '6' ||
-                e.key === '#' || e.key === '$' || e.key === '%' || e.key === '&' || e.key === '"' || e.key === "'"
-            );
-            var isWinSnipping = (e.metaKey || e.ctrlKey) && e.shiftKey && (e.code === 'KeyS' || e.key === 's' || e.key === 'S');
-            var isWinGameBar = (e.metaKey || e.ctrlKey) && e.altKey && (e.code === 'KeyR' || e.key === 'r' || e.key === 'R');
+            // Proactive Mac/Win modifier chord detection: the instant Cmd+Shift or Win+Shift or Cmd+Alt is pressed
+            var hasCmdOrCtrl = e.metaKey || e.ctrlKey;
+            var isModifierChord = (hasCmdOrCtrl && e.shiftKey) ||
+                                  (hasCmdOrCtrl && e.altKey) ||
+                                  (e.key === 'Shift' && hasCmdOrCtrl) ||
+                                  ((e.key === 'Meta' || e.key === 'Control') && e.shiftKey);
 
-            if (isPrtScn || isPrintPdf || isMacScreenshot || isWinSnipping || isWinGameBar) {
-                e.preventDefault();
-                e.stopPropagation();
-                triggerBlackoutScreen(3200);
+            var isPrtScn = e.key === 'PrintScreen' || e.code === 'PrintScreen' || e.keyCode === 44 || e.which === 44;
+            var isPrintPdf = hasCmdOrCtrl && (e.key === 'p' || e.key === 'P' || e.code === 'KeyP');
+
+            if (isModifierChord || isPrtScn || isPrintPdf) {
+                triggerBlackoutScreen(3500);
             }
 
             // Block copy shortcut inside messages
-            if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C' || e.code === 'KeyC')) {
+            if (hasCmdOrCtrl && (e.key === 'c' || e.key === 'C' || e.code === 'KeyC')) {
                 var target = e.target;
                 if (target && target.closest && (target.closest('#leader-hall-messages') || target.closest('.gm-protected-session'))) {
                     if (target.id === 'leader-hall-msg-input') return;
