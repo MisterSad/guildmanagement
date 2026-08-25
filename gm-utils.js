@@ -24,7 +24,7 @@
     // navigation bar. Bumped on every release alongside the Discord changelog
     // version (see AGENTS.md §6: the version is chosen by the owner and must be
     // reflected here AND in DISCORD_CHANGELOG.md systematically).
-    var APP_VERSION = 'V3.7';
+    var APP_VERSION = 'V3.7.1';
 
     var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
     var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
@@ -998,6 +998,57 @@
         }
         clean = clean.replace(/^\[[^\]]+\]\s*/, '').trim();
         return clean || rawPseudo.trim();
+    }
+
+    // Allowed target roles for bulk assignment (R5 Leader is strictly excluded)
+    var ALLOWED_BULK_ROLES = ['R1', 'R2', 'R3', 'R4'];
+
+    function getAllowedBulkRoles() {
+        return ALLOWED_BULK_ROLES.slice();
+    }
+
+    function isRoleAllowedForBulk(role) {
+        return ALLOWED_BULK_ROLES.indexOf(role) !== -1;
+    }
+
+    /**
+     * Filters selected pseudos against guild roster, guaranteeing:
+     * 1) Selected players actually exist in the roster.
+     * 2) Any member whose current role is R5 is excluded to protect guild leadership.
+     *
+     * @param {Array<Object>} members List of guild members ({ pseudo, role, ... })
+     * @param {Array<string>|Set<string>} selectedPseudos Collection of selected pseudos
+     * @returns {{ eligiblePseudos: Array<string>, excludedR5Count: number }}
+     */
+    function filterBulkEligibleMembers(members, selectedPseudos) {
+        members = members || [];
+        var selArr = Array.isArray(selectedPseudos)
+            ? selectedPseudos
+            : (selectedPseudos && typeof selectedPseudos.forEach === 'function' ? Array.from(selectedPseudos) : []);
+
+        var selSet = {};
+        selArr.forEach(function (p) {
+            if (p) selSet[String(p).toLowerCase()] = true;
+        });
+
+        var eligible = [];
+        var excludedR5 = 0;
+
+        members.forEach(function (m) {
+            if (!m || !m.pseudo) return;
+            if (selSet[m.pseudo.toLowerCase()]) {
+                if (m.role === 'R5') {
+                    excludedR5++;
+                } else {
+                    eligible.push(m.pseudo);
+                }
+            }
+        });
+
+        return {
+            eligiblePseudos: eligible,
+            excludedR5Count: excludedR5
+        };
     }
 
     function levenshteinDistance(a, b) {
@@ -2387,7 +2438,10 @@
         },
         detectClientEnvironment: detectClientEnvironment,
         formatTicketDescription: formatTicketDescription,
-        compressImageForUpload: compressImageForUpload
+        compressImageForUpload: compressImageForUpload,
+        getAllowedBulkRoles: getAllowedBulkRoles,
+        isRoleAllowedForBulk: isRoleAllowedForBulk,
+        filterBulkEligibleMembers: filterBulkEligibleMembers
     };
 
     window.GM = Object.assign(window.GM || {}, gmExports);

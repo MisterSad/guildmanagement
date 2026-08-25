@@ -39,6 +39,7 @@
     var guildMembers  = [];
     var bannedPlayers = [];
     window.GM_COLLAPSED_ROLES = { R5: false, R4: false, R3: false, R2: false, R1: false };
+    window.adminSelectedMembers = window.adminSelectedMembers || new Set();
 
     // ─── Boot ─────────────────────────────────────────────────────────────────
     window.GM_I18N.applyTranslations();
@@ -2323,6 +2324,7 @@
     window.GM.getOcrModel = getOcrModel;
     window.GM.fetchGuildMembers = fetchGuildMembers;
     window.GM.renderGuildMembers = renderGuildMembers;
+    window.GM.bulkUpdateMemberRoles = bulkUpdateMemberRoles;
     window.GM.setGuildMembersForTest = function (list) { guildMembers = list; };
 
     // Document-level event delegation for OCR trigger buttons
@@ -4866,6 +4868,11 @@
                     '</div>' +
                 '</div>';
 
+            var eligibleInList = list.filter(function (m) { return m && m.pseudo && m.role !== 'R5'; });
+            var allMatrixSelected = withActions && eligibleInList.length > 0 && eligibleInList.every(function (m) {
+                return window.adminSelectedMembers && window.adminSelectedMembers.has(m.pseudo);
+            });
+
             var rowsHtml = sorted.map(function (m) {
                 var initial = window.GM.avatarInit(m.pseudo);
                 var uidVal = m.uid || '-';
@@ -4895,9 +4902,20 @@
                     ? '<div style="font-size:0.7rem; margin-top:2px;" class="gm-mono gm-uid-invalid" title="' + esc(mUidStatus.label + ' — ' + (mUidStatus.reason || 'Click Edit to set real game UID')) + '"><i class="ph-bold ph-warning-circle"></i> UID ' + esc(uidVal) + '</div>'
                     : '<div style="font-size:0.7rem; color:var(--text-muted);" class="gm-mono">UID ' + esc(uidVal) + '</div>';
 
-                return '<tr style="border-bottom:1px solid var(--border-soft); transition:background 0.15s ease;">' +
+                var isR5 = (roleVal === 'R5');
+                var isSelected = withActions && window.adminSelectedMembers && window.adminSelectedMembers.has(m.pseudo);
+                var chkHtml = withActions
+                    ? '<label class="gm-member-select-chk-wrap" title="' + (isR5 ? (t('bulk_r5_excluded_note') || 'R5 Leader cannot be modified in bulk') : 'Select member') + '">' +
+                          '<input type="checkbox" class="gm-member-select-chk admin-member-chk" data-pseudo="' + esc(m.pseudo) + '"' +
+                          (isSelected ? ' checked' : '') +
+                          (isR5 ? ' disabled' : '') + '>' +
+                      '</label>'
+                    : '';
+
+                return '<tr class="' + (isSelected ? 'is-selected' : '') + '" style="border-bottom:1px solid var(--border-soft); transition:background 0.15s ease;">' +
                     '<td style="padding:0.65rem 0.75rem;">' +
                         '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                            chkHtml +
                             '<div class="gm-avatar gm-avatar-squircle" style="width:28px; height:28px; font-size:0.75rem;">' + esc(initial) + '</div>' +
                             '<div>' +
                                 '<div style="font-weight:600; font-size:0.88rem; color:var(--fg);">' + esc(m.pseudo) + '</div>' +
@@ -4931,7 +4949,12 @@
                     '<table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:850px;">' +
                         '<thead>' +
                             '<tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">' +
-                                '<th style="padding:0.65rem 0.75rem; text-align:left;">Player</th>' +
+                                '<th style="padding:0.65rem 0.75rem; text-align:left;">' +
+                                    '<div style="display:flex; align-items:center; gap:0.4rem;">' +
+                                        (withActions ? '<label class="gm-member-select-chk-wrap" title="' + (t('bulk_select_all') || 'Select All') + '"><input type="checkbox" class="gm-member-select-chk admin-matrix-select-all-chk"' + (allMatrixSelected ? ' checked' : '') + '></label>' : '') +
+                                        '<span>Player</span>' +
+                                    '</div>' +
+                                '</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:center; color:#facc15;" title="Top 16 Rally Leaders vs Rally Joiners">🎯 Rally</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:center;">Role</th>' +
                                 '<th style="padding:0.65rem 0.5rem; text-align:right;">Power</th>' +
@@ -5000,6 +5023,71 @@
             guildMemberListM.innerHTML = buildGroupedListHtml(filteredMember, sortMember, false, portalUids);
         }
 
+        // Update Bulk Action Bar
+        updateBulkActionBar(filteredAdmin);
+
+        // Member selection checkboxes
+        document.querySelectorAll('.admin-member-chk').forEach(function (chk) {
+            chk.addEventListener('change', function () {
+                var pseudo = chk.getAttribute('data-pseudo');
+                if (!pseudo) return;
+                if (chk.checked) {
+                    window.adminSelectedMembers.add(pseudo);
+                } else {
+                    window.adminSelectedMembers.delete(pseudo);
+                }
+                updateBulkActionBar(filteredAdmin);
+                var rowOrCard = chk.closest('.gm-member-row, tr');
+                if (rowOrCard) rowOrCard.classList.toggle('is-selected', chk.checked);
+            });
+        });
+
+        // Matrix Select All checkbox in table header
+        var matrixSelectAllChk = document.querySelector('.admin-matrix-select-all-chk');
+        if (matrixSelectAllChk) {
+            matrixSelectAllChk.addEventListener('change', function () {
+                var eligible = filteredAdmin.filter(function (m) { return m && m.pseudo && m.role !== 'R5'; });
+                if (matrixSelectAllChk.checked) {
+                    eligible.forEach(function (m) { window.adminSelectedMembers.add(m.pseudo); });
+                } else {
+                    eligible.forEach(function (m) { window.adminSelectedMembers.delete(m.pseudo); });
+                }
+                renderGuildMembers();
+            });
+        }
+
+        // Toolbar Select All button
+        var selectAllBtn = document.getElementById('admin-members-select-all-btn');
+        if (selectAllBtn) {
+            selectAllBtn.onclick = function () {
+                var eligible = filteredAdmin.filter(function (m) { return m && m.pseudo && m.role !== 'R5'; });
+                var allSelected = eligible.length > 0 && eligible.every(function (m) { return window.adminSelectedMembers.has(m.pseudo); });
+                if (allSelected) {
+                    eligible.forEach(function (m) { window.adminSelectedMembers.delete(m.pseudo); });
+                } else {
+                    eligible.forEach(function (m) { window.adminSelectedMembers.add(m.pseudo); });
+                }
+                renderGuildMembers();
+            };
+        }
+
+        // Bulk action clear button
+        var bulkClearBtn = document.getElementById('admin-bulk-clear-btn');
+        if (bulkClearBtn) {
+            bulkClearBtn.onclick = function () {
+                window.adminSelectedMembers.clear();
+                renderGuildMembers();
+            };
+        }
+
+        // Bulk Role Assignment Buttons (R5 strictly excluded)
+        document.querySelectorAll('.gm-bulk-role-btn').forEach(function (btn) {
+            btn.onclick = async function () {
+                var role = btn.getAttribute('data-role');
+                await bulkUpdateMemberRoles(role);
+            };
+        });
+
         // View mode segmented switcher
         document.querySelectorAll('#admin-members-view-mode .gm-seg-btn').forEach(function (btn) {
             btn.onclick = function () {
@@ -5053,6 +5141,106 @@
         });
     }
 
+    function updateBulkActionBar(filteredList) {
+        var bar = document.getElementById('admin-members-bulk-bar');
+        var countSpan = document.getElementById('admin-bulk-selected-count');
+        if (!bar || !countSpan) return;
+
+        var activeGuild = window.GM ? window.GM.getActiveGuild() : (window.currentGuildRestriction || window.currentGuild || 'ALPHA');
+        var currentRoster = guildMembers.filter(function (m) { return (m.guild || 'ALPHA') === activeGuild; });
+        var rosterMap = {};
+        currentRoster.forEach(function (m) { if (m && m.pseudo) rosterMap[m.pseudo] = m; });
+
+        // Clean out pseudos that aren't in current active guild roster or are R5
+        Array.from(window.adminSelectedMembers).forEach(function (p) {
+            var mem = rosterMap[p];
+            if (!mem || mem.role === 'R5') {
+                window.adminSelectedMembers.delete(p);
+            }
+        });
+
+        var count = window.adminSelectedMembers.size;
+        if (count > 0) {
+            var labelText = (t('bulk_selected_count') || '{n} selected').replace('{n}', count);
+            countSpan.textContent = labelText;
+            bar.style.display = 'block';
+            requestAnimationFrame(function () {
+                bar.classList.add('is-visible');
+            });
+        } else {
+            bar.classList.remove('is-visible');
+            setTimeout(function () {
+                if (window.adminSelectedMembers.size === 0) {
+                    bar.style.display = 'none';
+                }
+            }, 280);
+        }
+        updateSelectAllBtnState(filteredList);
+    }
+
+    function updateSelectAllBtnState(filteredList) {
+        var selectAllBtn = document.getElementById('admin-members-select-all-btn');
+        if (!selectAllBtn) return;
+        var eligible = (filteredList || []).filter(function (m) { return m && m.pseudo && m.role !== 'R5'; });
+        var allSelected = eligible.length > 0 && eligible.every(function (m) { return window.adminSelectedMembers.has(m.pseudo); });
+        var labelSpan = selectAllBtn.querySelector('span');
+        var icon = selectAllBtn.querySelector('i');
+        if (allSelected) {
+            if (labelSpan) labelSpan.textContent = t('bulk_deselect_all') || 'Deselect All';
+            if (icon) icon.className = 'ph ph-check-square-offset';
+            selectAllBtn.classList.add('active');
+        } else {
+            if (labelSpan) labelSpan.textContent = t('bulk_select_all') || 'Select All';
+            if (icon) icon.className = 'ph ph-check-square';
+            selectAllBtn.classList.remove('active');
+        }
+    }
+
+    async function bulkUpdateMemberRoles(targetRole) {
+        if (!window.GM || !window.GM.isRoleAllowedForBulk || !window.GM.isRoleAllowedForBulk(targetRole)) {
+            showToast('Invalid role. R5 Leader cannot be assigned in bulk.', 'error');
+            return false;
+        }
+
+        var activeGuild = window.GM ? window.GM.getActiveGuild() : (window.currentGuildRestriction || window.currentGuild || 'ALPHA');
+        var currentRoster = guildMembers.filter(function (m) { return (m.guild || 'ALPHA') === activeGuild; });
+
+        var checkResult = window.GM.filterBulkEligibleMembers(currentRoster, window.adminSelectedMembers);
+        var eligible = checkResult.eligiblePseudos;
+
+        if (!eligible || eligible.length === 0) {
+            showToast(t('toast_no_members_selected') || 'No eligible members selected', 'error');
+            return false;
+        }
+
+        try {
+            var res = await supabase
+                .from('guild_members')
+                .update({
+                    role: targetRole,
+                    metrics_updated_at: new Date().toISOString()
+                })
+                .eq('guild', activeGuild)
+                .in('pseudo', eligible);
+
+            if (res.error) throw res.error;
+
+            var updatedCount = eligible.length;
+            window.adminSelectedMembers.clear();
+            await fetchGuildMembers();
+
+            var msg = (t('toast_bulk_role_updated') || '{n} member(s) successfully assigned to rank {role}')
+                .replace('{n}', updatedCount)
+                .replace('{role}', targetRole);
+            showToast(msg, 'success');
+            return true;
+        } catch (err) {
+            console.error('bulkUpdateMemberRoles error:', err);
+            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            return false;
+        }
+    }
+
     function memberTileHtml(m, i, withActions, maxPower, portalUids) {
         var lang = (window.GM_I18N && window.GM_I18N.getLang) ? window.GM_I18N.getLang() : 'en';
         var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
@@ -5068,6 +5256,16 @@
         var formattedPower = window.GM.formatPower(powerVal);
 
         var roleVal = m.role || 'R1';
+        var isR5 = (roleVal === 'R5');
+        var isSelected = withActions && window.adminSelectedMembers && window.adminSelectedMembers.has(m.pseudo);
+        var chkHtml = withActions
+            ? '<label class="gm-member-select-chk-wrap" title="' + (isR5 ? (t('bulk_r5_excluded_note') || 'R5 Leader cannot be modified in bulk') : 'Select member') + '">' +
+                  '<input type="checkbox" class="gm-member-select-chk admin-member-chk" data-pseudo="' + esc(m.pseudo) + '"' +
+                  (isSelected ? ' checked' : '') +
+                  (isR5 ? ' disabled' : '') + '>' +
+              '</label>'
+            : '';
+
         var roleStyles = {
             'R5': { text: 'R5', color: '#ffd166', bg: 'rgba(255,209,102,0.12)', border: 'rgba(255,209,102,0.3)', icon: '👑' },
             'R4': { text: 'R4', color: '#ffab76', bg: 'rgba(255,171,118,0.12)', border: 'rgba(255,171,118,0.3)', icon: '⚔️' },
@@ -5113,8 +5311,9 @@
             ? '<span class="gm-mono gm-uid-text gm-uid-invalid" title="' + esc(uidStatus.label + ' — ' + (uidStatus.reason || 'Click Edit to set real game UID')) + '"><i class="ph-bold ph-warning-circle"></i> UID ' + esc(uidVal) + '</span>'
             : '<span class="gm-mono gm-uid-text">UID ' + esc(uidVal) + '</span>';
 
-        return '<div class="gm-member-row" data-pseudo="' + esc(m.pseudo) + '">' +
+        return '<div class="gm-member-row' + (isSelected ? ' is-selected' : '') + '" data-pseudo="' + esc(m.pseudo) + '">' +
                 '<div class="gm-member-id">' +
+                    chkHtml +
                     '<div class="gm-avatar gm-avatar-squircle">' + esc(initial) + '</div>' +
                     '<div class="gm-grow gm-truncate">' +
                         '<div class="gm-member-pseudo-row">' +

@@ -71,8 +71,15 @@
             empty_members_roster_cta:   'Members OCR',
             empty_sanctions:       'No sanctions recorded',
             loading:               'Loading...',
-            toast_password_reset_success: 'Password reset successfully',
             search_placeholder:    'Search by username or UID...',
+            bulk_select_all:       'Select All',
+            bulk_deselect_all:     'Deselect All',
+            bulk_selected_count:   '{n} selected',
+            bulk_assign_rank:      'Assign Rank:',
+            bulk_r5_excluded_note: 'R5 Leader cannot be assigned or modified in bulk',
+            toast_bulk_role_updated: '{n} member(s) successfully assigned to rank {role}',
+            toast_no_members_selected: 'No eligible members selected',
+            toast_bulk_r5_skipped: 'R5 Leader was skipped to protect guild leadership',
 
             /* ── Tactical Military Scores ──────── */
             sort_fleet_desc:       'Sort: Fleet Rating (High-Low)',
