@@ -488,6 +488,10 @@
 
     function triggerTabDataLoad(tabId) {
         if (!tabId) return;
+        if (tabId !== 'tab-leader-hall') {
+            var blackout = document.getElementById('gm-anti-capture-fullscreen-overlay');
+            if (blackout) blackout.classList.add('hidden');
+        }
         if (tabId === 'admin-members' || tabId === 'member-members' || tabId === 'member-home') {
             fetchGuildMembers();
         }
