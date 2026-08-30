@@ -1946,11 +1946,6 @@
     // ─── OCR Bulk Roster & Power Import ─────────────────────────────────────
     var ocrExtractedPlayers = [];
     var ocrInitialized = false;
-    var BUILTIN_OCR_KEY = typeof atob === 'function' ? atob('QVEuQWI4Uk42SUI4YjhBNEdLWktocFVsVGVPSDlVWEdzQ0lybU5pWTRBeXZKMkhBNU5MMXc=') : '';
-
-    function getOcrApiKey() {
-        return BUILTIN_OCR_KEY;
-    }
 
     function getOcrModel() {
         return 'gemini-flash-latest';
@@ -2566,189 +2561,21 @@
         guildTag = guildTag || '';
         var db = (window.GM && window.GM.db) ? window.GM.db : null;
 
-        // 1. Try Supabase Edge Function 'ocr-guild-members' (Zero-Trust Serverless)
-        if (db && db.functions) {
-            try {
-                if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR Edge Function (' + metricType.toUpperCase() + (guildTag ? ' ' + guildTag : '') + ')...');
-                var res = await db.functions.invoke('ocr-guild-members', {
-                    body: { images: batchImageItems, metricType: metricType, guildTag: guildTag }
-                });
-                if (res.data && res.data.ok && Array.isArray(res.data.players)) {
-                    return res.data.players;
-                }
-                if (res.error) {
-                    console.warn('Edge Function OCR returned error, attempting direct API fallback:', res.error);
-                }
-            } catch (edgeErr) {
-                console.warn('Edge Function OCR invoke failed, falling back to direct API:', edgeErr);
-            }
+        if (!db || !db.functions) {
+            throw new Error('OCR service unavailable. Please sign in and try again.');
         }
 
-        // 2. Direct Gemini Fallback (with authorized CSP)
-        var activeKey = getOcrApiKey();
-        if (!activeKey) {
-            var prompt = document.getElementById('ocr-key-prompt');
-            if (prompt) prompt.style.display = 'block';
-            throw new Error('API Key Required. Please check your API key configuration.');
-        }
-
-        var meta = OCR_METRICS_META[metricType] || OCR_METRICS_META.power;
-        var isMulti = !!meta.isMultiGuild;
-        var multiGuildClause = isMulti ? ('\nNOTE: Server-wide multi-guild leaderboard.' + (guildTag ? ' Target guild tag is "' + guildTag + '". Clean leading tags from player pseudo.' : '')) : '';
-        
-        var systemPrompt = '';
-        if (metricType === 'svs_prep') {
-            systemPrompt = 'Extract player usernames (pseudos) and Day 1 to 5 Preparation stage score values for Server vs Server (SvS) from these FGF gaming screenshots. ' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "svs_prep", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
-        } else if (metricType === 'svs_pvp') {
-            systemPrompt = 'Extract player usernames (pseudos) and Day 6 PvP battle score values for Server vs Server (SvS) from these FGF gaming screenshots. ' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "svs_pvp", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
-        } else if (metricType === 'gvg_prep') {
-            systemPrompt = 'Extract player usernames (pseudos) and Day 1 to 5 Preparation stage score values for Guild vs Guild (GvG) from these FGF gaming screenshots. ' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "gvg_prep", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
-        } else if (metricType === 'gvg_pvp') {
-            systemPrompt = 'Extract player usernames (pseudos) and Day 6 PvP battle score values for Guild vs Guild (GvG) from these FGF gaming screenshots. ' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "gvg_pvp", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
-        } else if (metricType === 'shadowfront_s1' || metricType === 'shadowfront_s2') {
-            var sqName = metricType === 'shadowfront_s1' ? 'Squad 1' : 'Squad 2';
-            systemPrompt = 'Extract all visible player usernames (pseudos) participating or listed in this Shadowfront ' + sqName + ' battle or roster screenshot(s). Convert any visible score or power to integer. Return JSON matching schema: {"metric": "' + metricType + '", "players": [{"pseudo": "string", "score": number, "uid": "string or null"}]}';
-        } else if (metricType === 'dtr') {
-            systemPrompt = 'Extract all visible player usernames (pseudos) and their score/points from Defend Trade Route (DTR) screenshot(s). If score is explicitly 0 or 0 pts, output score as 0; if positive points, output positive integer score. Return JSON matching schema: {"metric": "dtr", "players": [{"pseudo": "string", "score": number, "uid": "string or null"}]}';
-        } else if (metricType === 'armsrace_sa' || metricType === 'armsrace_sb') {
-            var stgName = metricType === 'armsrace_sa' ? 'Stage A' : 'Stage B';
-            systemPrompt = 'Extract all visible player usernames (pseudos) participating or present in this Arms Race ' + stgName + ' screenshot(s). Return JSON matching schema: {"metric": "' + metricType + '", "players": [{"pseudo": "string", "score": number, "uid": "string or null"}]}';
-        } else {
-            systemPrompt = 'Extract all visible player usernames (pseudos) and ' + meta.header + ' values from these FGF gaming screenshots.' + multiGuildClause + ' Convert values like 145.2M or 2.16M to integers. Return JSON matching schema: {"metric": "' + metricType + '", "guild_tag": "' + guildTag + '", "players": [{"pseudo": "string", "guild_tag": "string or null", "score": number, "uid": "string or null"}]}';
-        }
-
-        var parts = [{ text: systemPrompt }];
-        batchImageItems.forEach(function (item) {
-            var cleanBase64 = item.base64Data.includes(';base64,') ? item.base64Data.split(';base64,')[1] : item.base64Data;
-            parts.push({
-                inline_data: {
-                    mime_type: item.mimeType || 'image/png',
-                    data: cleanBase64
-                }
-            });
+        if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR (' + metricType.toUpperCase() + (guildTag ? ' ' + guildTag : '') + ')...');
+        var res = await db.functions.invoke('ocr-guild-members', {
+            body: { images: batchImageItems, metricType: metricType, guildTag: guildTag }
         });
 
-        var payload = {
-            contents: [{ parts: parts }],
-            generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
-        };
-
-        var modelsToTry = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-3.7-flash', 'gemini-3-flash-preview', 'gemini-flash-lite-latest'];
-        var maxRetries = 3;
-        var lastErr = null;
-
-        for (var m = 0; m < modelsToTry.length; m++) {
-            var modelName = modelsToTry[m];
-            var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + activeKey;
-            var attempt = 0;
-
-            while (attempt < maxRetries) {
-                attempt++;
-                try {
-                    var response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    // 429 Rate Limit handling with auto delay
-                    if (response.status === 429) {
-                        var errBody = '';
-                        try { errBody = await response.text(); } catch (e) {}
-                        var waitSec = 6;
-                        var match = errBody.match(/retryDelay["\s:]+["']?(\d+)/i) || errBody.match(/retry in ([\d\.]+)s/i);
-                        if (match && match[1]) {
-                            waitSec = Math.max(3, Math.ceil(parseFloat(match[1])));
-                        }
-
-                        if (attempt < maxRetries) {
-                            if (updateStatusCallback) {
-                                updateStatusCallback('API Rate Limit (429). Auto-retrying in ' + waitSec + 's (Attempt ' + attempt + '/' + maxRetries + ')...');
-                            }
-                            await new Promise(function (r) { setTimeout(r, waitSec * 1000); });
-                            continue;
-                        } else {
-                            lastErr = new Error('API Rate Limit Exceeded (HTTP 429). Please wait a moment and try again.');
-                            break;
-                        }
-                    }
-
-                    // 503 / 500 / 502 / 504 Transient Server Overload handling with retry
-                    if (response.status === 503 || response.status === 500 || response.status === 502 || response.status === 504) {
-                        var backoffSec = attempt * 2;
-                        if (attempt < maxRetries) {
-                            if (updateStatusCallback) {
-                                updateStatusCallback('Google AI service busy (HTTP ' + response.status + '). Retrying in ' + backoffSec + 's (' + attempt + '/' + maxRetries + ')...');
-                            }
-                            await new Promise(function (r) { setTimeout(r, backoffSec * 1000); });
-                            continue;
-                        } else {
-                            console.warn('Model ' + modelName + ' returned HTTP ' + response.status + ' after ' + maxRetries + ' attempts. Trying next model...');
-                            lastErr = new Error('Google AI server temporarily overloaded (HTTP ' + response.status + '). Please wait 15-30 seconds and try again.');
-                            break;
-                        }
-                    }
-
-                    if (!response.ok) {
-                        if (response.status === 403) {
-                            var keyPromptBox = document.getElementById('ocr-key-prompt');
-                            if (keyPromptBox) keyPromptBox.style.display = 'block';
-                            throw new Error('Invalid or missing API Key (HTTP 403). Please enter your API key above.');
-                        }
-                        if (response.status === 404) {
-                            console.warn('Model ' + modelName + ' not available (HTTP 404), trying next model...');
-                            lastErr = new Error('OCR API HTTP 404 (Model not found)');
-                            break;
-                        }
-                        throw new Error('OCR API HTTP ' + response.status);
-                    }
-
-                    var resJson = await response.json();
-                    var jsonText = resJson && resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content && resJson.candidates[0].content.parts && resJson.candidates[0].content.parts[0] ? resJson.candidates[0].content.parts[0].text : '';
-                    
-                    if (!jsonText) return [];
-
-                    var parsed = parseGeminiJson(jsonText);
-                    var rawList = [];
-                    if (Array.isArray(parsed)) {
-                        rawList = parsed;
-                    } else if (parsed && typeof parsed === 'object') {
-                        rawList = parsed.players || parsed.members || parsed.roster || parsed.data || [];
-                        if (!Array.isArray(rawList)) {
-                            var keys = Object.keys(parsed);
-                            for (var k = 0; k < keys.length; k++) {
-                                if (Array.isArray(parsed[keys[k]])) {
-                                    rawList = parsed[keys[k]];
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    return rawList.map(function (p) {
-                        var scoreVal = p.score != null ? p.score : (p.overall_power != null ? p.overall_power : (p.power != null ? p.power : 0));
-                        var numScore = typeof scoreVal === 'number' ? Math.round(scoreVal) : (parseInt(String(scoreVal).replace(/[^0-9]/g, ''), 10) || 0);
-                        return {
-                            pseudo: String(p.pseudo || p.name || p.username || '').trim(),
-                            guild_tag: p.guild_tag ? String(p.guild_tag).trim() : null,
-                            score: numScore,
-                            overall_power: numScore,
-                            uid: p.uid ? String(p.uid).trim() : null
-                        };
-                    }).filter(function (p) { return p.pseudo.length > 0 && p.score >= 0; });
-                } catch (err) {
-                    lastErr = err;
-                    if (err.message && (err.message.includes('403') || err.message.includes('API Key Required'))) {
-                        throw err;
-                    }
-                    if (attempt < maxRetries) {
-                        await new Promise(function (r) { setTimeout(r, 1500); });
-                    }
-                }
-            }
+        if (res.data && res.data.ok && Array.isArray(res.data.players)) {
+            return res.data.players;
         }
-        if (lastErr) throw lastErr;
-        return [];
+
+        var errMsg = (res.data && res.data.error) || (res.error && res.error.message) || 'OCR analysis failed. Please try again.';
+        throw new Error(errMsg);
     }
 
     var calculateStringSimilarity = (window.GM && window.GM.calculateStringSimilarity) ? window.GM.calculateStringSimilarity : function () { return 0; };
