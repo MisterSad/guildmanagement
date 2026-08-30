@@ -39,7 +39,6 @@
     var sfActiveTab   = 'composition'; // 'composition' | 'tracking'
     var sfActiveSquad = 'squad1';   // 'squad1' | 'squad2'
     var sfSort        = 'rate';     // 'rate' | 'power'
-    var sfSelected    = {};         // pseudo → true (multi-select in Availability step)
 
     // ── Public API ─────────────────────────────────────────────────────────────
     window.GM_SHADOWFRONT = {
@@ -618,7 +617,9 @@
         if (!a) {
             var hasSignup = sfState.signups.some(function (s) { return s.pseudo === pseudo; });
             if (hasSignup) {
-                await saveAvailability(pseudo, 'none');
+                var week = window.GM.getWeekStart();
+                var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+                await db.from('shadowfront_signups').delete().eq('guild', currentG).eq('week_start', week).eq('pseudo', pseudo);
             }
             return;
         }
@@ -972,50 +973,6 @@
         attachSFListeners(area);
     }
 
-    function renderAvailabilityPool(squadKey) {
-        var declared = sfState.signups.filter(function (s) {
-            return s.availability === squadKey || s.availability === 'both';
-        }).map(function (s) { return s.pseudo; });
-
-        var sorted = declared.slice().sort(function (a, b) {
-            return getMemberPower(b) - getMemberPower(a);
-        });
-
-        var html =
-            '<div class="sf-column sf-avail-pool">' +
-            '<div class="sf-col-header squad-header ' + squadKey + '"><i class="ph-fill ph-users-three"></i> ' + squadLabel(squadKey) + ' - ' + t('sf_declared') +
-                ' <span class="count-badge">' + declared.length + '</span></div>' +
-            '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
-
-        if (sorted.length === 0) {
-            html += '<div class="sf-empty">' + t('sf_pool_empty') + '</div>';
-        } else {
-            sorted.forEach(function (pseudo) {
-                var member = sfState.membersData.find(function (m) { return m.pseudo === pseudo; });
-                var powerVal = member ? parseInt(member.overall_power) || 0 : 0;
-                var pTier = window.GM.getPowerTier(powerVal, sfState.maxPower);
-                var pMeta = window.GM.getPowerTierMeta(pTier);
-                var h = sfState.history[pseudo] || { assigned: 0, participated: 0, excused_count: 0 };
-                var stats = h.assigned > 0
-                    ? '<span class="sf-hist-stat">' + h.participated + '/' + h.assigned + '</span>'
-                    : '<span class="sf-hist-stat">-</span>';
-
-                html +=
-                    '<div class="sf-member-row" style="display:flex; align-items:center; gap:0.4rem; padding:0.45rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.04);">' +
-                        '<span style="flex:1; display:flex; align-items:center; gap:0.4rem; min-width:0; overflow:hidden;">' +
-                            getParticipationBadgeHtml(pseudo) +
-                            '<span class="sf-pseudo" style="font-size:0.83rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(pseudo) + '</span>' +
-                            powerBadge +
-                            stats +
-                        '</span>' +
-                        '<button class="sf-btn sf-avail-remove-btn" data-pseudo="' + esc(pseudo) + '" title="' + t('sf_remove_avail') + '" style="background:none; border:none; color:var(--fg-dim); cursor:pointer; padding:0.2rem;"><i class="ph ph-x"></i></button>' +
-                    '</div>';
-            });
-        }
-
-        html += '</div></div>';
-        return html;
-    }
 
     function countRate(pseudos, cat) {
         var n = 0;
@@ -1194,30 +1151,6 @@
         return html;
     }
 
-    async function bulkAddAvailability(squad) {
-        var db = getDb();
-        if (!db) return;
-        var week = window.GM.getWeekStart();
-        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
-        var pseudos = Object.keys(sfSelected).filter(function (p) { return sfSelected[p]; });
-        if (pseudos.length === 0) return;
-
-        try {
-            await db.from('shadowfront_signups').upsert(
-                pseudos.map(function (pseudo) {
-                    return { guild: currentG, week_start: week, pseudo: pseudo, availability: squad };
-                }),
-                { onConflict: 'guild,week_start,pseudo' }
-            );
-            sfSelected = {};
-            window.GM.showToast(t('sf_avail_bulk').replace('{n}', pseudos.length).replace('{squad}', squadLabel(squad)), 'success');
-            await loadShadowfront();
-        } catch (err) {
-            console.error('bulkAddAvailability failed', err);
-            window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
-        }
-    }
-
     async function bulkSetParticipation(value) {
         var db = getDb();
         if (!db) return;
@@ -1244,30 +1177,6 @@
         el.textContent = t('sf_saved');
         el.style.opacity = '1';
         setTimeout(function () { el.style.opacity = '0'; }, 1500);
-    }
-
-    async function saveAvailability(pseudo, availability) {
-        var db = getDb();
-        if (!db) return;
-        var week = window.GM.getWeekStart();
-        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
-        try {
-            if (availability === 'none') {
-                await db.from('shadowfront_signups').delete().eq('guild', currentG).eq('week_start', week).eq('pseudo', pseudo);
-            } else {
-                await db.from('shadowfront_signups').upsert({
-                    guild: currentG,
-                    week_start: week,
-                    pseudo: pseudo,
-                    availability: availability
-                }, { onConflict: 'guild,week_start,pseudo' });
-            }
-            window.GM.showToast(pseudo + '\'s availability updated', 'success');
-            await loadShadowfront();
-        } catch (err) {
-            console.error('saveAvailability failed', err);
-            window.GM.showToast('Failed to save availability', 'error');
-        }
     }
 
     async function saveSubPresent(pseudo, value) {
@@ -1342,24 +1251,6 @@
             btn.addEventListener('click', function () { toggleCommander(btn.getAttribute('data-pseudo')); });
         });
 
-        area.querySelectorAll('.sf-select-cb').forEach(function (cb) {
-            cb.addEventListener('change', function () {
-                var pseudo = cb.getAttribute('data-pseudo');
-                sfSelected[pseudo] = cb.checked;
-                if (!cb.checked) delete sfSelected[pseudo];
-                renderShadowfront();
-            });
-        });
-        area.querySelectorAll('.sf-bulk-add-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                bulkAddAvailability(btn.getAttribute('data-squad'));
-            });
-        });
-        area.querySelectorAll('.sf-avail-remove-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                saveAvailability(btn.getAttribute('data-pseudo'), 'none');
-            });
-        });
         area.querySelectorAll('.sf-sort-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 sfSort = btn.getAttribute('data-sort');
@@ -1442,6 +1333,7 @@
                     t('delete_title'),
                     '<strong>' + esc(pseudo) + '</strong><br>' + t('confirm_remove_participant_body'),
                     async function () {
+                        var db = getDb();
                         if (!db) return;
                         var p = sfState.participants.find(function (x) { return x.pseudo === pseudo; });
                         if (!p) return;
@@ -1474,7 +1366,7 @@
             searchInput.addEventListener('input', function (e) {
                 var q = e.target.value.toLowerCase();
                 area.querySelectorAll('.sf-member-row, .sf-assigned-row, .sf-entry-row').forEach(function (row) {
-                    var btn = row.querySelector('.sf-btn, .sf-remove-btn, .sf-select-cb');
+                    var btn = row.querySelector('.sf-btn, .sf-remove-btn');
                     var pseudo = btn ? btn.getAttribute('data-pseudo') : '';
                     var uid = sfState.uidMap[pseudo] || '';
                     var match = (pseudo.toLowerCase() + ' ' + uid.toLowerCase()).indexOf(q) !== -1;

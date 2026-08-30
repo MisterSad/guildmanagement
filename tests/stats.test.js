@@ -228,22 +228,86 @@ describe('GM_STATS participation mode', () => {
                 shadowfront_squads: () => new MockBuilder(SQUADS)
             }
         });
+        const realGetWeekStart = window.GM.getWeekStart;
         window.GM.getWeekStart = () => W2;
 
+        try {
+            await window.GM_STATS.load();
+            const btn = document.querySelector('button[data-gm-mode="participation"]');
+            btn.click();
+            await new Promise((r) => setTimeout(r, 0));
+            await window.GM_STATS.load();
+
+            const rows = parseLeaderboard();
+            const alpha = rows.find((r) => r.pseudo === 'AlphaPrime');
+            const beta = rows.find((r) => r.pseudo === 'BetaKnight');
+            // Same 2 events as without the future session: W3 is ignored.
+            expect(alpha.events).toBe('2/2');
+            expect(beta.events).toBe('1/2');
+        } finally {
+            // Restore the real implementation (gm-utils.js) rather than
+            // deleting it — a prior version of this test used `delete
+            // window.GM.getWeekStart`, which removes it for every test that
+            // runs afterward in this file (nothing re-installs it), causing
+            // fetchAvailableWeeks()'s internal fallback to throw uncaught
+            // and leave state.isLoading stuck true for the rest of the suite.
+            window.GM.getWeekStart = realGetWeekStart;
+        }
+    });
+});
+
+describe('GM_STATS coefficient resolution (regression)', () => {
+    // Real DB event_name values for DTR/Arms Race ('Defend Trade Route',
+    // 'ARMS RACE STAGE A') never matched the old hardcoded COEFFS keys
+    // ('DTR', 'Arms Race'), so both silently fell back to coefficient 1
+    // regardless of what the guild configured in Guild Settings. Proven here
+    // by confirming a guild-configured coeff_dtr value actually changes the
+    // weighted score for a Defend Trade Route participation, using the real
+    // DB event name throughout (not the short label the old bug's lookup
+    // key coincidentally used).
+    const DTR_MEMBERS = [{ pseudo: 'DeltaRunner', uid: '999', guild: G }];
+    const DTR_PARTS = [
+        { pseudo: 'DeltaRunner', event_name: 'Defend Trade Route', session_id: 'd1', week_start: W1, participated: 1, score: 0, score_prep: 0, score_pvp: 0, is_pending: false, guild: G }
+    ];
+
+    function buildDtrDb(guildConfigRows) {
+        return makeDb({
+            rpc: {
+                list_event_weeks: () => ({ data: [{ week_start: W1 }], error: null }),
+                gm_stats_data: () => ({ data: { guild: G, members: DTR_MEMBERS, participants: DTR_PARTS, glory: [], squads: [] }, error: null })
+            },
+            from: {
+                guild_members: () => new MockBuilder(DTR_MEMBERS),
+                event_participants: () => new MockBuilder(DTR_PARTS),
+                shadowfront_squads: () => new MockBuilder([]),
+                guild_config: () => new MockBuilder(guildConfigRows || [])
+            }
+        });
+    }
+
+    // Forces global (weighted-score) leaderboard mode via the hidden test-alias
+    // button stats.js renders specifically so tests aren't order-dependent on
+    // whatever mode an earlier describe block's test last left state.currentMode in.
+    async function loadInGlobalMode() {
         await window.GM_STATS.load();
-        const btn = document.querySelector('button[data-gm-mode="participation"]');
-        btn.click();
+        const globalBtn = document.querySelector('button[data-gm-mode="global"]');
+        expect(globalBtn).not.toBeNull();
+        globalBtn.click();
         await new Promise((r) => setTimeout(r, 0));
-        await window.GM_STATS.load();
+    }
 
-        const rows = parseLeaderboard();
-        const alpha = rows.find((r) => r.pseudo === 'AlphaPrime');
-        const beta = rows.find((r) => r.pseudo === 'BetaKnight');
-        // Same 2 events as without the future session: W3 is ignored.
-        expect(alpha.events).toBe('2/2');
-        expect(beta.events).toBe('1/2');
+    it('applies the guild-configured coeff_dtr to a Defend Trade Route row instead of the pre-bug fallback of 1', async () => {
+        window.GM.db = buildDtrDb([]); // no override: falls back to default coeff_dtr = '2'
+        await loadInGlobalMode();
+        const defaultScore = parseFloat(parseLeaderboard().find((r) => r.pseudo === 'DeltaRunner').score);
 
-        delete window.GM.getWeekStart;
+        window.GM.db = buildDtrDb([{ key: 'coeff_dtr', guild: G, value: '50' }]);
+        await loadInGlobalMode();
+        const customScore = parseFloat(parseLeaderboard().find((r) => r.pseudo === 'DeltaRunner').score);
+
+        // The configured coefficient must actually change the score — under
+        // the pre-fix bug it was silently ignored and both runs would match.
+        expect(customScore).toBeGreaterThan(defaultScore);
     });
 });
 

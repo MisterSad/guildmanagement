@@ -24,6 +24,7 @@ function chained(value) {
         in: (field, list) => { filters.push(r => list.indexOf(r[field]) !== -1); return chain; },
         limit: () => chain,
         single: () => chain,
+        delete: () => chain,
         maybeSingle: () => ({
             then: (resolve) => {
                 let res = (value || []).slice();
@@ -323,6 +324,36 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         const bravoStat = assignedRows[1].querySelector('.sf-hist-stat');
         expect(bravoStat).not.toBeNull();
         expect(bravoStat.textContent).toBe('-');
+    });
+
+    it('deletes a participant via the delete button without throwing (regression: db ReferenceError)', async () => {
+        const deleteSpy = vi.fn();
+        GM.db.from = (table) => {
+            const chain = chained(tables[table] || []);
+            if (table === 'event_participants') {
+                const originalDelete = chain.delete;
+                chain.delete = (...args) => { deleteSpy(...args); return originalDelete.apply(chain, args); };
+            }
+            return chain;
+        };
+        window.showConfirm = (title, message, onConfirm) => onConfirm();
+
+        await SF.load();
+        stepByLabel('2. Participation Tracking').click();
+        const delBtn = area().querySelector('.sf-delete-participant-btn');
+        expect(delBtn).not.toBeNull();
+        delBtn.click();
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(deleteSpy).toHaveBeenCalled();
+        delete window.showConfirm;
+    });
+
+    it('renders zero elements for the removed dead availability-signup controls', async () => {
+        await SF.load();
+        expect(area().querySelectorAll('.sf-bulk-add-btn').length).toBe(0);
+        expect(area().querySelectorAll('.sf-select-cb').length).toBe(0);
+        expect(area().querySelectorAll('.sf-avail-remove-btn').length).toBe(0);
     });
 });
 

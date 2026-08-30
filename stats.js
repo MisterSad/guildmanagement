@@ -97,14 +97,63 @@
         return row === target;
     }
 
+    // Maps a raw DB event_name (e.g. 'Defend Trade Route', 'ARMS RACE STAGE A')
+    // to its COEFFS bucket key, using the same substring rules as
+    // matchesEventName() above — kept in sync deliberately since both encode
+    // the same "which event family is this row" question.
+    function resolveCoeffBucket(evName) {
+        var row = (evName || '').trim().toLowerCase();
+        if (row === 'svs') return 'SvS';
+        if (row === 'gvg') return 'GvG';
+        if (row.indexOf('shadowfront') !== -1) return 'Shadowfront';
+        if (row.indexOf('arms race') !== -1) return 'Arms Race';
+        if (row.indexOf('dtr') !== -1 || row.indexOf('defend trade route') !== -1) return 'DTR';
+        return null;
+    }
+
     // ── Configuration Formule & Poids ───────────────────────────────────────────
-    var COEFFS = {
+    // Defaults, used when a guild hasn't customized its coefficients (or when
+    // window.GM.config is unavailable) — kept in sync with gm-utils.js's
+    // localConfigFallback coeff_* values.
+    var DEFAULT_COEFFS = {
         'SvS':         5,
         'GvG':         5,
         'Shadowfront': 3,
         'DTR':         2,
         'Arms Race':   1
     };
+
+    // Reads the guild's configured coeff_* settings (Guild Settings), falling
+    // back to DEFAULT_COEFFS per-key. Previously the leaderboard used
+    // DEFAULT_COEFFS unconditionally, silently ignoring this setting.
+    async function getConfiguredCoeffs() {
+        if (!window.GM || !window.GM.config || typeof window.GM.config.get !== 'function') {
+            return DEFAULT_COEFFS;
+        }
+        try {
+            var raw = await Promise.all([
+                window.GM.config.get('coeff_svs'),
+                window.GM.config.get('coeff_gvg'),
+                window.GM.config.get('coeff_shadowfront'),
+                window.GM.config.get('coeff_dtr'),
+                window.GM.config.get('coeff_armsrace')
+            ]);
+            function num(val, fallback) {
+                var n = parseFloat(val);
+                return isNaN(n) ? fallback : n;
+            }
+            return {
+                'SvS':         num(raw[0], DEFAULT_COEFFS['SvS']),
+                'GvG':         num(raw[1], DEFAULT_COEFFS['GvG']),
+                'Shadowfront': num(raw[2], DEFAULT_COEFFS['Shadowfront']),
+                'DTR':         num(raw[3], DEFAULT_COEFFS['DTR']),
+                'Arms Race':   num(raw[4], DEFAULT_COEFFS['Arms Race'])
+            };
+        } catch (err) {
+            console.warn('[GM_STATS] Failed to load configured coefficients, using defaults', err);
+            return DEFAULT_COEFFS;
+        }
+    }
 
     var WEIGHTS = {
         participation: 6,
@@ -190,10 +239,10 @@
             }
         }
 
-        await fetchAvailableWeeks();
-        renderControls();
-
         try {
+            await fetchAvailableWeeks();
+            renderControls();
+
             if (state.primaryView === 'cockpit' || state.currentMode.indexOf('kpi-') === 0) {
                 await renderCockpitView();
             } else if (state.primaryView === 'events' || ['SvS', 'GvG', 'Shadowfront', 'Arms Race', 'DTR'].indexOf(state.currentMode) !== -1) {
@@ -203,9 +252,9 @@
             }
         } catch (err) {
             console.error('[GM_STATS] load error', err);
+        } finally {
+            state.isLoading = false;
         }
-
-        state.isLoading = false;
     }
 
     async function fetchAvailableWeeks() {
@@ -230,7 +279,12 @@
             }
         } catch (err) {
             console.warn('[GM_STATS] Erreur fetchAvailableWeeks', err);
-            var fallbackW = window.GM ? window.GM.getWeekStart() : '';
+            var fallbackW = '';
+            try {
+                fallbackW = (window.GM && window.GM.getWeekStart) ? window.GM.getWeekStart() : '';
+            } catch (fallbackErr) {
+                console.warn('[GM_STATS] Erreur fetchAvailableWeeks fallback', fallbackErr);
+            }
             state.allWeeks = fallbackW ? [fallbackW] : [];
             state.selectedWeek = fallbackW;
         }
@@ -769,7 +823,8 @@
 
             state.activeWeeksLoaded = actualWeeks;
 
-            var computed = computeWeightedScores(membersList, partRows, gloryRows, actualWeeks, squadRows);
+            var coeffs = await getConfiguredCoeffs();
+            var computed = computeWeightedScores(membersList, partRows, gloryRows, actualWeeks, squadRows, coeffs);
             state.leaderboardData = computed.scores;
             state.lastMaxPossible = computed.maxPossible;
 
@@ -781,7 +836,8 @@
         }
     }
 
-    function computeWeightedScores(membersList, partRows, gloryRows, weeks, squadRows) {
+    function computeWeightedScores(membersList, partRows, gloryRows, weeks, squadRows, coeffs) {
+        coeffs = coeffs || DEFAULT_COEFFS;
         var gloryByWeek = {};
         weeks.forEach(function (w) { gloryByWeek[w] = {}; });
         gloryRows.forEach(function (r) {
@@ -837,7 +893,8 @@
 
             var agg = aggMap[memberMatch];
             var evName = (p.event_name || '').trim();
-            var coeff = COEFFS[evName] || 1;
+            var coeffBucket = resolveCoeffBucket(evName);
+            var coeff = (coeffBucket && coeffs[coeffBucket] != null) ? coeffs[coeffBucket] : 1;
             var evKey = (window.GM && window.GM.eventScoringKey) ? window.GM.eventScoringKey(evName, p.session_id, p.week_start) : (evName + '|' + (p.session_id || p.week_start));
 
             var attended = (p.participated > 0) || (p.sub_present === true) || (p.score > 0) || (p.score_prep > 0) || (p.score_pvp > 0);
