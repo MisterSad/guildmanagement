@@ -392,14 +392,17 @@
         return null;
     }
 
-    // UID : chiffres uniquement, 1-20 caractères.
+    // UID : chiffres uniquement, 6-10 caractères (même plage que getUidStatus,
+    // le validateur du jeu FGF réel — un UID ne doit plus pouvoir passer la
+    // saisie puis s'afficher aussitôt comme invalide partout ailleurs).
     function validateUid(uid) {
         if (uid == null || uid === '') return null; // UID optionnel côté validation
         if (typeof uid !== 'string')   return 'validation_uid_invalid';
         var v = uid.trim();
         if (v.length === 0)  return null;
-        if (v.length > 20)   return 'validation_uid_too_long';
         if (!/^[0-9]+$/.test(v)) return 'validation_uid_not_numeric';
+        if (v.length < 6)     return 'validation_uid_too_short';
+        if (v.length > 10)    return 'validation_uid_too_long';
         return null;
     }
 

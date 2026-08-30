@@ -3332,33 +3332,81 @@
             return;
         }
 
-        // Pre-flight 2: Global UID collision check via check_uid_exists_globally RPC
+        // Pre-flight 2: global UID collision + ban check (check_uid_exists_globally /
+        // gm_find_player_by_uid / banned_players — same RPCs the manual Add Member
+        // dialog uses). Resolved per-row rather than blocking the whole batch: OCR
+        // is a bulk operation, so one flagged player shouldn't hold back clean
+        // updates, adds, and removals. Flagged rows are dropped from this commit;
+        // the admin resolves them afterward via the single Add Member flow, which
+        // already has the full rename/transfer-request dialog for this exact case.
         if (newUidSeen.size > 0) {
             btnCommit.disabled = true;
             var preSpan = btnCommit.querySelector('span');
             if (preSpan) preSpan.textContent = 'Checking UIDs...';
 
-            var collidingUids = [];
             var dbClient = (window.GM && window.GM.db) ? window.GM.db : supabase;
             var uidArray = Array.from(newUidSeen);
+            var collidingUidInfo = {};
+            var bannedUidSet = new Set();
 
             for (var u = 0; u < uidArray.length; u++) {
                 var targetUid = uidArray[u];
                 try {
                     var chkRes = await dbClient.rpc('check_uid_exists_globally', { p_uid: targetUid });
                     if (chkRes && chkRes.data === true) {
-                        collidingUids.push(targetUid);
+                        try {
+                            var lookupRes = await dbClient.rpc('gm_find_player_by_uid', { p_uid: targetUid });
+                            collidingUidInfo[targetUid] = (lookupRes && lookupRes.data && lookupRes.data.ok) ? lookupRes.data : null;
+                        } catch (lookupErr) {
+                            console.warn('gm_find_player_by_uid failed for ' + targetUid + ':', lookupErr);
+                            collidingUidInfo[targetUid] = null;
+                        }
                     }
                 } catch (rpcErr) {
                     console.warn('Global UID check warning for ' + targetUid + ':', rpcErr);
                 }
+
+                try {
+                    var banRes = await dbClient.from('banned_players').select('uid').eq('uid', targetUid);
+                    if (banRes.data && banRes.data.length > 0) {
+                        bannedUidSet.add(targetUid);
+                    }
+                } catch (banErr) {
+                    console.warn('Ban check warning for ' + targetUid + ':', banErr);
+                }
             }
 
-            if (collidingUids.length > 0) {
-                btnCommit.disabled = false;
-                if (preSpan) preSpan.textContent = 'Validate & Apply Updates';
-                showToast('UID already exists globally: ' + collidingUids.join(', '), 'error');
-                return;
+            var collidingLabels = [];
+            var bannedLabels = [];
+            if (Object.keys(collidingUidInfo).length > 0 || bannedUidSet.size > 0) {
+                selectedNew = selectedNew.filter(function (np) {
+                    var uidVal = (np.uid || '').trim();
+                    if (!uidVal) return true;
+                    if (bannedUidSet.has(uidVal)) {
+                        bannedLabels.push(np.pseudo + ' (' + uidVal + ')');
+                        return false;
+                    }
+                    if (Object.prototype.hasOwnProperty.call(collidingUidInfo, uidVal)) {
+                        var info = collidingUidInfo[uidVal];
+                        var ownerGuild = info && info.player && info.player.guild ? info.player.guild : '?';
+                        collidingLabels.push(np.pseudo + ' (already in ' + ownerGuild + ')');
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            if (collidingLabels.length > 0 || bannedLabels.length > 0) {
+                var skipParts = [];
+                if (collidingLabels.length > 0) skipParts.push('UID already registered — ' + collidingLabels.join(', ') + '. Resolve via Add Member.');
+                if (bannedLabels.length > 0) skipParts.push('Banned — ' + bannedLabels.join(', ') + '.');
+                showToast('Skipped: ' + skipParts.join(' '), 'error');
+
+                if (selectedExisting.length === 0 && selectedNew.length === 0 && checkedRemovalPseudos.length === 0) {
+                    btnCommit.disabled = false;
+                    if (preSpan) preSpan.textContent = 'Validate & Apply Updates';
+                    return;
+                }
             }
         }
 
@@ -4202,7 +4250,8 @@
         try {
             // ON DELETE CASCADE fait le ménage côté DB sur :
             //   event_participants, shadowfront_squads, weekly_scores, sanctions
-            var res = await supabase.from('guild_members').delete().eq('pseudo', pseudo);
+            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+            var res = await supabase.from('guild_members').delete().eq('pseudo', pseudo).eq('guild', currentG);
             if (res.error) throw res.error;
             guildMembers = guildMembers.filter(function (m) { return m.pseudo !== pseudo; });
             renderGuildMembers();

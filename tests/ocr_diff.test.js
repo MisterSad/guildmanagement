@@ -228,10 +228,15 @@ describe('computeOcrRosterDelta', () => {
 });
 
 describe('validateUid Interplay', () => {
-    it('accepts numeric strings up to 20 digits', () => {
-        expect(GM.validateUid('12345')).toBeNull();
-        expect(GM.validateUid('12345678901234567890')).toBeNull();
+    it('accepts numeric strings within the 6-10 digit FGF UID range', () => {
+        expect(GM.validateUid('123456')).toBeNull();
+        expect(GM.validateUid('9999999999')).toBeNull();
         expect(GM.validateUid('999999999')).toBeNull();
+    });
+
+    it('rejects numeric strings outside the 6-10 digit range', () => {
+        expect(GM.validateUid('12345')).toBe('validation_uid_too_short');
+        expect(GM.validateUid('12345678901234567890')).toBe('validation_uid_too_long');
     });
 
     it('rejects TEMP-style generated UIDs', () => {
