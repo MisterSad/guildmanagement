@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../gm-utils.js';
 import '../i18n.js';
-import '../subscription.js';
+import '../src/modules/subscription/subscription-view.ts';
 
 const GM = window.GM;
 const SUB = window.GM_SUBSCRIPTION;

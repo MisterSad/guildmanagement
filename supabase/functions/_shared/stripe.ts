@@ -89,6 +89,12 @@ function setInvoiceCreation(body: URLSearchParams): void {
     "invoice_creation[invoice_data][footer]",
     "CODEA — TVA non applicable, art. 293 B du CGI."
   );
+  // Required by Stripe: invoice_creation needs a Customer to attach the
+  // invoice to. These are guest checkouts (no Supabase Auth-backed Stripe
+  // Customer exists ahead of time), so Checkout must create one itself.
+  // Without this, session creation is rejected outright — this broke every
+  // donation/subscription checkout when invoice_creation was added.
+  body.set("customer_creation", "always");
 }
 
 // ── Create a Donation Checkout Session (one-time voluntary payment, EUR) ──

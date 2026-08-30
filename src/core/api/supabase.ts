@@ -32,6 +32,10 @@ export function getSupabaseClient(): SupabaseClient | null {
   }
 }
 
+// Must stay byte-for-byte equivalent to gm-utils.js's escapeHTML (legacy):
+// window.GM.escapeHTML gets reassigned to this one on every page load
+// (see main.ts), so any drift here is a silent, load-order-dependent
+// regression for every legacy module reading window.GM.escapeHTML.
 export function escapeHTML(str: any): string {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -39,5 +43,6 @@ export function escapeHTML(str: any): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/'/g, '&#39;')
+    .replace(/`/g, '&#96;');
 }

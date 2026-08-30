@@ -149,8 +149,15 @@ export function applyTranslations(): void {
   });
 }
 
-// Expose on window.GM_I18N for full test & legacy compatibility
-if (typeof window !== 'undefined') {
+// Expose on window.GM_I18N — but only as a fallback. i18n.js (legacy,
+// loaded before this module ever runs — it's a classic sync script, this is
+// a deferred ES module) is the real, complete translation table in
+// production; this one only covers login/dashboard strings authored so far
+// in /src. Overwriting window.GM_I18N unconditionally here clobbered the
+// legacy dictionary the moment this module started actually executing
+// (build.js used to ship a broken /src/main.ts reference, so it never had),
+// and every t() call across the whole app started returning raw keys.
+if (typeof window !== 'undefined' && !(window as any).GM_I18N) {
   (window as any).GM_I18N = {
     t,
     getLang,

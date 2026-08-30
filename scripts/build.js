@@ -13,7 +13,15 @@ if (!fs.existsSync(distDir)) {
 }
 
 const files = fs.readdirSync(rootDir);
-const EXCLUDED_FILES = ['package.json', 'package-lock.json', 'tsconfig.json', 'vercel.json', 'vitest.config.ts'];
+// index.html is deliberately excluded: `vite build` already emitted a
+// correct dist/index.html above, with /src/main.ts replaced by its bundled
+// <script type="module" src="/assets/index-*.js"> tag (hoisted into <head>)
+// and every legacy <script src="foo.js"> left untouched. Copying the raw
+// source index.html over it here used to silently put the unbundled
+// /src/main.ts reference back — the browser can't execute raw .ts syntax,
+// so every /src module (including this one) has been dead code in
+// production: it 404s/fails to parse and never runs a single line.
+const EXCLUDED_FILES = ['package.json', 'package-lock.json', 'tsconfig.json', 'vercel.json', 'vitest.config.ts', 'index.html'];
 
 files.forEach(file => {
   if (file === 'node_modules' || file === 'dist' || file.startsWith('.') || EXCLUDED_FILES.includes(file)) return;
