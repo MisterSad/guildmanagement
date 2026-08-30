@@ -1,27 +1,28 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.7.1**
+📢 **FGF Guild Management Tool Update — CHANG_V3.8**
 
-Hey everyone! I've just deployed a major quality-of-life update for guild administrators and officers: **Bulk Member Rank Assignment** with **Built-in Guild Leader Protection**! 👥🎖️🛡️✨
+Hey everyone! This one's a big reliability pass. I spent the last stretch digging into payments, event tracking, player transfers, and security, and fixed a bunch of things that were quietly broken under the hood. Here's what changed for you: 🛠️🔒⚔️
 
-### 👥 1-Click Multi-Member Rank Assignment
-- **Effortless Batch Updates**: Reorganizing guild squads or promoting members after weekly battle events is now instantaneous. Select 2, 10, or 40 members and assign their new rank in a single operation!
-- **Dual View Support**:
-  - 🗂️ **Roster Cards**: Checkboxes integrated directly into every player card with subtle highlight glows.
-  - 📊 **Military Matrix**: Fast selection via player row checkboxes and a table header master toggle.
-- **Select All / Deselect All**: Convenient 1-click controls in the toolbar to select all eligible members instantly.
+### 💳 Donations Are Working Again
+- Fixed the **"Could not start the donation checkout"** error — the Buy Me a Coffee button works properly now.
 
-### 🛡️ Strict Guild Leader (R5) Protection
-- **Guaranteed Leadership Safeguard**: The `R5 (Leader)` rank is strictly excluded from bulk assignment actions.
-- **Leader Checkbox Disabled**: R5 guild masters cannot be accidentally selected or demoted during mass changes.
-- **Protected Database Execution**: Server-side filtering ensures leadership roles remain untouched under all circumstances.
+### 📸 Event OCR: Your Screenshots Actually Save Now
+- Fixed a bug where approving OCR-scanned screenshots for **Shadowfront, Arms Race, DTR, SvS, or GvG** could silently fail to add new participants to the event — most noticeable when uploading a roster *before* an event had started. Approved data now reliably shows up where it should.
 
-### ⚡ Floating Bulk Action Dock
-- **Interactive Bottom Bar**: Smoothly slides into view whenever members are selected, displaying a real-time selection counter.
-- **Color-Coded Rank Buttons**: 1-click assignment buttons for `🌱 R1 (Recruit)`, `👤 R2 (Member)`, `🛡️ R3 (Veteran)`, and `⚔️ R4 (Officer)`.
+### 🔄 Player Transfers: Fixed & Smoother
+- The **Transfer Member** button could fail with an "Access denied" error for guild and server admins, even though it looked like the transfer had gone through. Fixed — transfers between guilds now work correctly and automatically carry over the player's full event history.
+- The admin approval screen for transfer requests now shows a cleaner confirmation popup and clear, human error messages instead of raw error text.
 
-### 🏛️ Leader Hall UI & UX Polish
-- **Clean In-Game Identity (`[Guild] Pseudo #Server`)**: Replaced technical `guild_admin` role mentions with official player identity tags (e.g. `[BABE] Ashke #1089`, `[YARR] Gideon #1089`).
-- **Streamlined Timestamps (`DD/MM/AAAA HH:MM`)**: Message dates now cleanly display the day and time without intrusive seconds while maintaining microsecond-accurate chronology.
-- **High-Contrast `@Player` Mentions**: Mentions now vividly pop with high-contrast amber/gold styling and dedicated glowing highlights when you are tagged.
-- **Floating Bottom-Edge Reactions**: Emoji reactions now rest gracefully across the bottom border of message bubbles without stretching or distorting bubble layouts.
+### 👥 Smarter Member Imports
+- When bulk-importing members via OCR, a player whose ID already belongs to another guild is now clearly flagged instead of blocking your *entire* import batch — everyone else still goes through normally.
+- Player ID (UID) validation is now consistent everywhere in the app.
 
-*Enjoy smoother roster reorganizations, cleaner diplomacy, and fly safe!* 🚀⚔️🛡️
+### ⚔️ Shadowfront Fix
+- Fixed a crash when removing a participant from the Shadowfront tracking view.
+
+### 📊 Leaderboard Respects Your Guild Settings
+- If you've customized event weighting (SvS / GvG / Shadowfront / DTR / Arms Race coefficients) in Guild Settings, those settings now actually apply to the Global Leaderboard score — previously DTR and Arms Race quietly ignored your configuration and used the wrong default weight.
+
+### 🔒 Security
+- Strengthened the security of Leader Hall's private messaging and the OCR import pipeline.
+
+*Thanks for your patience through all this under-the-hood work — the app should feel noticeably more solid now. As always, report anything weird via the Report a Bug button!* 🚀🛡️
