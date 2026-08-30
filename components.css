@@ -4333,4 +4333,9 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     }
 }
 
+/* Ticket attachment thumbnails (tickets.js) — was a JS onmouseover/onmouseout pair */
+.gm-ticket-thumb:hover {
+    transform: scale(1.08);
+}
+
 

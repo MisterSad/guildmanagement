@@ -64,6 +64,7 @@ export async function createCheckoutSession(params: {
   body.set("client_reference_id", extRef);
   body.set("metadata[guild_id]", guildId);
   body.set("metadata[plan_key]", planKey);
+  setInvoiceCreation(body);
 
   const res = await fetch(`${stripeBaseUrl()}/v1/checkout/sessions`, {
     method: "POST",
@@ -76,6 +77,18 @@ export async function createCheckoutSession(params: {
   const jsonBody = await res.json().catch(() => null);
   if (!res.ok) throw new Error(`stripe_checkout_failed:${res.status}`);
   return jsonBody;
+}
+
+// Merchant (CODEA, individual auto-entrepreneur under the French "franchise
+// en base de TVA") does not charge VAT — Checkout never enables automatic_tax
+// (see createCheckoutSession/createDonationCheckoutSession above), and every
+// generated receipt/invoice must carry the legal exemption notice.
+function setInvoiceCreation(body: URLSearchParams): void {
+  body.set("invoice_creation[enabled]", "true");
+  body.set(
+    "invoice_creation[invoice_data][footer]",
+    "CODEA — TVA non applicable, art. 293 B du CGI."
+  );
 }
 
 // ── Create a Donation Checkout Session (one-time voluntary payment, EUR) ──
@@ -106,6 +119,7 @@ export async function createDonationCheckoutSession(params: {
   for (const [key, value] of Object.entries(metadata)) {
     body.set(`metadata[${key}]`, value);
   }
+  setInvoiceCreation(body);
 
   const res = await fetch(`${stripeBaseUrl()}/v1/checkout/sessions`, {
     method: "POST",

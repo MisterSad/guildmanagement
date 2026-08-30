@@ -39,6 +39,26 @@ const SENSITIVE_KEYS = new Set([
   "vapid_private_key",
 ]);
 
+// Key-based redaction (sanitizeData) only catches values under a sensitive
+// *key name*. A value interpolated straight into a message string
+// (`throw new Error('bad key: ' + key)`) or an error's stack trace bypasses
+// that entirely, so free-text messages/stacks are also scanned for
+// known-shaped secrets before logging.
+const SENSITIVE_TEXT_PATTERNS: RegExp[] = [
+  /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, // JWT (Supabase access/service tokens)
+  /\b(?:sk|rk|pk|whsec)_(?:live|test)_[A-Za-z0-9]{10,}\b/gi, // Stripe secret/publishable/webhook keys
+  /\bBearer\s+[A-Za-z0-9._-]{10,}\b/gi,
+  /\b(password|secret|token|api[_-]?key)\s*[:=]\s*\S+/gi,
+];
+
+export function redactSensitiveText(text: string): string {
+  let out = text;
+  for (const pattern of SENSITIVE_TEXT_PATTERNS) {
+    out = out.replace(pattern, "[REDACTED]");
+  }
+  return out;
+}
+
 /**
  * Deeply sanitizes objects by masking sensitive credentials.
  */
@@ -121,7 +141,7 @@ export class EdgeLogger {
       tenantId: this.tenantId,
       userId: this.userId,
       durationMs,
-      message,
+      message: redactSensitiveText(message),
       metadata: meta ? (sanitizeData(meta) as Record<string, unknown>) : undefined,
     };
 
@@ -129,12 +149,12 @@ export class EdgeLogger {
       if (err instanceof Error) {
         entry.error = {
           name: err.name,
-          message: err.message,
-          stack: err.stack,
+          message: redactSensitiveText(err.message),
+          stack: err.stack ? redactSensitiveText(err.stack) : undefined,
         };
       } else {
         entry.error = {
-          message: String(err),
+          message: redactSensitiveText(String(err)),
         };
       }
     }

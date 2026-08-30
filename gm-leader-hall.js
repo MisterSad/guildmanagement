@@ -558,7 +558,8 @@
                 p_signed_prekey: recordToStore.signedPreKey.keyPair.publicKey,
                 p_signed_prekey_sig: recordToStore.signedPreKey.signature,
                 p_registration_id: recordToStore.registrationId,
-                p_one_time_prekeys: otks
+                p_one_time_prekeys: otks,
+                p_identity_signing_key: recordToStore.identitySigningKey ? recordToStore.identitySigningKey.publicKey : null
             });
         } catch (err) {
             console.error('Error syncing E2EE prekey bundle to server', err);
@@ -575,6 +576,20 @@
         var stored = await S.loadKeyRecord('identity_keys', accId);
 
         if (stored && stored.identityKey) {
+            // R-03 audit fix migration: accounts created before the Ed25519
+            // signing key existed keep their X25519 identity key (and
+            // safety number) unchanged, but need a signing key added so
+            // verifyPreKeySignature() can do real verification. Existing
+            // 1:1 sessions are unaffected — they don't depend on the
+            // prekey bundle once established.
+            if (!stored.identitySigningKey) {
+                var signingKeyPair = S.generateEd25519KeyPair();
+                stored.identitySigningKey = {
+                    privateKey: S.bytesToHex(signingKeyPair.privateKey),
+                    publicKey: S.bytesToHex(signingKeyPair.publicKey)
+                };
+                await S.saveKeyRecord('identity_keys', accId, stored);
+            }
             localIdentity = stored;
             // Always sync prekey bundle to database to ensure freshness
             await publishIdentityBundle(stored);
@@ -586,6 +601,10 @@
             identityKey: {
                 privateKey: S.bytesToHex(bundle.identityKey.privateKey),
                 publicKey: S.bytesToHex(bundle.identityKey.publicKey)
+            },
+            identitySigningKey: {
+                privateKey: S.bytesToHex(bundle.identitySigningKey.privateKey),
+                publicKey: S.bytesToHex(bundle.identitySigningKey.publicKey)
             },
             signedPreKey: {
                 keyPair: {

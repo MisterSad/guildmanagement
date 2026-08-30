@@ -147,240 +147,91 @@
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 2. CURVE25519 (X25519) CONSTANT-TIME IMPLEMENTATION (RFC 7748)
+    // 2. X25519 (ECDH) & Ed25519 (signatures) — via @noble/curves, audited,
+    // zero-dependency (see vendor-src/noble-crypto-entry.js). Previously a
+    // hand-rolled BigInt Montgomery ladder here; replaced because it is not
+    // guaranteed constant-time and, worse, the signature *verification* built
+    // on top of it (removed below, see history) never actually checked the
+    // signature equation — it always returned true. Real Ed25519 fixes that.
     // ─────────────────────────────────────────────────────────────────────────
 
-    var P = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffedn; // 2^255 - 19
-    var A24 = 121665n;
-    var L = 0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3edn; // Ed25519 order
-
-    function cswap(swap, x_2, x_3) {
-        var dummy = swap * (x_2 - x_3);
-        return [x_2 - dummy, x_3 + dummy];
-    }
-
-    function modExp(base, exp, mod) {
-        var res = 1n;
-        base = base % mod;
-        while (exp > 0n) {
-            if (exp % 2n === 1n) res = (res * base) % mod;
-            base = (base * base) % mod;
-            exp = exp / 2n;
+    function noble() {
+        if (typeof module === 'object' && module.exports) {
+            // Node/Vitest (CJS): load the real packages directly, no bundle needed.
+            var edwards = require('@noble/curves/ed25519.js');
+            var sha2 = require('@noble/hashes/sha2.js');
+            var hmacMod = require('@noble/hashes/hmac.js');
+            var hkdfMod = require('@noble/hashes/hkdf.js');
+            return {
+                x25519: {
+                    randomPrivateKey: function () { return edwards.x25519.utils.randomSecretKey(); },
+                    getPublicKey: function (k) { return edwards.x25519.getPublicKey(k); },
+                    getSharedSecret: function (a, b) { return edwards.x25519.getSharedSecret(a, b); }
+                },
+                ed25519: {
+                    randomPrivateKey: function () { return edwards.ed25519.utils.randomSecretKey(); },
+                    getPublicKey: function (k) { return edwards.ed25519.getPublicKey(k); },
+                    sign: function (m, k) { return edwards.ed25519.sign(m, k); },
+                    verify: function (s, m, pk) { return edwards.ed25519.verify(s, m, pk); }
+                },
+                sha256: function (d) { return sha2.sha256(d); },
+                hmacSha256: function (k, d) { return hmacMod.hmac(sha2.sha256, k, d); },
+                hkdf: function (ikm, salt, info, len) { return hkdfMod.hkdf(sha2.sha256, ikm, salt, info, len); }
+            };
         }
-        return res;
-    }
-
-    function modInv(n, p) {
-        return modExp(n, p - 2n, p);
-    }
-
-    function bytesToBigIntLE(bytes) {
-        var res = 0n;
-        for (var i = bytes.length - 1; i >= 0; i--) {
-            res = (res << 8n) + BigInt(bytes[i]);
+        // Browser: noble-crypto.bundle.js (built from vendor-src/) must be
+        // loaded via <script> before this file.
+        var g = typeof window !== 'undefined' ? window : self;
+        if (!g.NobleCrypto) {
+            throw new Error('NobleCrypto not loaded — add <script src="noble-crypto.bundle.js"> before gm-signal-crypto.js');
         }
-        return res;
+        return g.NobleCrypto;
     }
 
-    function bigIntToBytesLE(bigint, len) {
-        var res = new Uint8Array(len || 32);
-        var tmp = bigint;
-        for (var i = 0; i < res.length; i++) {
-            res[i] = Number(tmp & 0xffn);
-            tmp >>= 8n;
-        }
-        return res;
-    }
-
-    function curve25519_scalarmult(scalarBytes, pointBytes) {
-        var clampedScalar = new Uint8Array(scalarBytes);
-        clampedScalar[0] &= 248;
-        clampedScalar[31] &= 127;
-        clampedScalar[31] |= 64;
-
-        var k = bytesToBigIntLE(clampedScalar);
-        var u = bytesToBigIntLE(pointBytes) % P;
-
-        var x_1 = u;
-        var x_2 = 1n;
-        var z_2 = 0n;
-        var x_3 = u;
-        var z_3 = 1n;
-        var swap = 0n;
-
-        for (var t = 254; t >= 0; t--) {
-            var k_t = (k >> BigInt(t)) & 1n;
-            swap ^= k_t;
-
-            var sw = cswap(swap, x_2, x_3);
-            x_2 = sw[0]; x_3 = sw[1];
-            sw = cswap(swap, z_2, z_3);
-            z_2 = sw[0]; z_3 = sw[1];
-            swap = k_t;
-
-            var A = (x_2 + z_2) % P;
-            var AA = (A * A) % P;
-            var B = (x_2 - z_2 + P) % P;
-            var BB = (B * B) % P;
-            var E = (AA - BB + P) % P;
-            var C = (x_3 + z_3) % P;
-            var D = (x_3 - z_3 + P) % P;
-            var DA = (D * A) % P;
-            var CB = (C * B) % P;
-
-            x_3 = ((DA + CB) * (DA + CB)) % P;
-            z_3 = (x_1 * ((DA - CB + P) * (DA - CB + P))) % P;
-            x_2 = (AA * BB) % P;
-            z_2 = (E * (AA + ((A24 * E) % P))) % P;
-        }
-
-        var swFinal = cswap(swap, x_2, x_3);
-        x_2 = swFinal[0];
-        swFinal = cswap(swap, z_2, z_3);
-        z_2 = swFinal[0];
-
-        var result = (x_2 * modInv(z_2, P)) % P;
-        return bigIntToBytesLE(result, 32);
-    }
-
-    var CURVE25519_BASEPOINT = new Uint8Array(32);
-    CURVE25519_BASEPOINT[0] = 9;
+    var NC = noble();
 
     function generateX25519KeyPair() {
-        var priv = getRandomBytes(32);
-        priv[0] &= 248;
-        priv[31] &= 127;
-        priv[31] |= 64;
-        var pub = curve25519_scalarmult(priv, CURVE25519_BASEPOINT);
+        var priv = NC.x25519.randomPrivateKey();
         return {
             privateKey: priv,
-            publicKey: pub
+            publicKey: NC.x25519.getPublicKey(priv)
         };
     }
 
     function calculateX25519Agreement(privKey, pubKey) {
-        return curve25519_scalarmult(privKey, pubKey);
+        return NC.x25519.getSharedSecret(privKey, pubKey);
+    }
+
+    // Separate Ed25519 identity signing keypair (not derived from the X25519
+    // identity key — no home-grown XEdDSA-style conversion). Generated once
+    // per identity alongside the X25519 identity key; its public part is
+    // published in the prekey bundle so recipients can verify signed prekeys.
+    function generateEd25519KeyPair() {
+        var priv = NC.ed25519.randomPrivateKey();
+        return {
+            privateKey: priv,
+            publicKey: NC.ed25519.getPublicKey(priv)
+        };
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 3. SHA-256, HMAC-SHA256, HKDF & AES-256-GCM
+    // 3. SHA-256, HMAC-SHA256, HKDF (via @noble/hashes — see section 2 note)
+    // & AES-256-GCM (native WebCrypto, unchanged)
     // ─────────────────────────────────────────────────────────────────────────
 
     function sha256(bytes) {
-        var K = [
-            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-        ];
-        var H = [
-            0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-            0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-        ];
-
-        var l = bytes.length;
-        var bitLen = l * 8;
-        var paddedLen = ((l + 9 + 63) >> 6) << 6;
-        var padded = new Uint8Array(paddedLen);
-        padded.set(bytes, 0);
-        padded[l] = 0x80;
-
-        var view = new DataView(padded.buffer);
-        view.setUint32(paddedLen - 4, bitLen & 0xffffffff, false);
-        view.setUint32(paddedLen - 8, Math.floor(bitLen / 0x100000000), false);
-
-        var W = new Int32Array(64);
-        for (var i = 0; i < paddedLen; i += 64) {
-            for (var t = 0; t < 16; t++) {
-                W[t] = view.getUint32(i + (t * 4), false);
-            }
-            for (t = 16; t < 64; t++) {
-                var s0 = (rotr(W[t - 15], 7) ^ rotr(W[t - 15], 18) ^ (W[t - 15] >>> 3));
-                var s1 = (rotr(W[t - 2], 17) ^ rotr(W[t - 2], 19) ^ (W[t - 2] >>> 10));
-                W[t] = (W[t - 16] + s0 + W[t - 7] + s1) | 0;
-            }
-
-            var a = H[0], b = H[1], c = H[2], d = H[3];
-            var e = H[4], f = H[5], g = H[6], h = H[7];
-
-            for (t = 0; t < 64; t++) {
-                var S1 = (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25));
-                var ch = ((e & f) ^ ((~e) & g));
-                var temp1 = (h + S1 + ch + K[t] + W[t]) | 0;
-                var S0 = (rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22));
-                var maj = ((a & b) ^ (a & c) ^ (b & c));
-                var temp2 = (S0 + maj) | 0;
-
-                h = g;
-                g = f;
-                f = e;
-                e = (d + temp1) | 0;
-                d = c;
-                c = b;
-                b = a;
-                a = (temp1 + temp2) | 0;
-            }
-
-            H[0] = (H[0] + a) | 0;
-            H[1] = (H[1] + b) | 0;
-            H[2] = (H[2] + c) | 0;
-            H[3] = (H[3] + d) | 0;
-            H[4] = (H[4] + e) | 0;
-            H[5] = (H[5] + f) | 0;
-            H[6] = (H[6] + g) | 0;
-            H[7] = (H[7] + h) | 0;
-        }
-
-        var out = new Uint8Array(32);
-        var outView = new DataView(out.buffer);
-        for (var j = 0; j < 8; j++) {
-            outView.setUint32(j * 4, H[j], false);
-        }
-        return out;
-    }
-
-    function rotr(x, n) {
-        return (x >>> n) | (x << (32 - n));
+        return NC.sha256(bytes);
     }
 
     function hmacSha256(key, message) {
-        var k = new Uint8Array(key);
-        if (k.length > 64) {
-            k = sha256(k);
-        }
-        var ipad = new Uint8Array(64);
-        var opad = new Uint8Array(64);
-        for (var i = 0; i < 64; i++) {
-            var b = i < k.length ? k[i] : 0;
-            ipad[i] = b ^ 0x36;
-            opad[i] = b ^ 0x5c;
-        }
-        var inner = sha256(concatBytes(ipad, message));
-        return sha256(concatBytes(opad, inner));
+        return NC.hmacSha256(key, message);
     }
 
     function hkdf(ikm, salt, info, length) {
         if (!salt || salt.length === 0) {
             salt = new Uint8Array(32);
         }
-        var prk = hmacSha256(salt, ikm);
-        var okm = new Uint8Array(length);
-        var t = new Uint8Array(0);
-        var offset = 0;
-        var count = 1;
-
-        while (offset < length) {
-            t = hmacSha256(prk, concatBytes(t, info || new Uint8Array(0), new Uint8Array([count])));
-            var chunkLen = Math.min(t.length, length - offset);
-            okm.set(t.subarray(0, chunkLen), offset);
-            offset += chunkLen;
-            count++;
-        }
-        return okm;
+        return NC.hkdf(ikm, salt, info || new Uint8Array(0), length);
     }
 
     async function encryptAesGcm(keyBytes, plaintextBytes, ivBytes, additionalData) {
@@ -416,48 +267,31 @@
         return ((b[0] << 8) | b[1]) & 0x3fff;
     }
 
-    // Asymmetric signature using Curve25519 Schnorr
-    function signPreKey(identityPrivateKey, signedPreKeyPublicKey) {
-        var rScalarBytes = sha256(concatBytes(identityPrivateKey, signedPreKeyPublicKey, utf8ToBytes('SIG_R')));
-        var rScalar = bytesToBigIntLE(rScalarBytes) % L;
-        if (rScalar === 0n) rScalar = 1n;
-
-        var R = curve25519_scalarmult(bigIntToBytesLE(rScalar, 32), CURVE25519_BASEPOINT);
-        var kBytes = sha256(concatBytes(R, signedPreKeyPublicKey, utf8ToBytes('SIG_K')));
-        var k = bytesToBigIntLE(kBytes) % L;
-
-        var a = bytesToBigIntLE(identityPrivateKey) % L;
-        var s = (rScalar + k * a) % L;
-
-        return concatBytes(R, bigIntToBytesLE(s, 32));
+    // Real Ed25519 (RFC 8032), signed by a dedicated signing keypair — see
+    // generateEd25519KeyPair() above. Previously a hand-rolled Curve25519
+    // "Schnorr" scheme whose verifier never actually checked the signature
+    // (see git history / R-03 audit finding); this replaces both sign and
+    // verify with the audited implementation.
+    function signPreKey(identitySigningPrivateKey, signedPreKeyPublicKey) {
+        return NC.ed25519.sign(signedPreKeyPublicKey, identitySigningPrivateKey);
     }
 
-    function verifyPreKeySignature(identityPublicKey, signedPreKeyPublicKey, signatureBytes) {
+    function verifyPreKeySignature(identitySigningPublicKey, signedPreKeyPublicKey, signatureBytes) {
         if (!signatureBytes || signatureBytes.length !== 64) return false;
-        var R = signatureBytes.subarray(0, 32);
-        var sBytes = signatureBytes.subarray(32, 64);
-        var s = bytesToBigIntLE(sBytes);
-        if (s >= L) return false;
-
-        var kBytes = sha256(concatBytes(R, signedPreKeyPublicKey, utf8ToBytes('SIG_K')));
-        var k = bytesToBigIntLE(kBytes) % L;
-
-        // Check s*G == R + k*A
-        var sG = curve25519_scalarmult(sBytes, CURVE25519_BASEPOINT);
-        var kA = curve25519_scalarmult(bigIntToBytesLE(k, 32), identityPublicKey);
-        var expected = curve25519_scalarmult(CURVE25519_BASEPOINT, concatBytes(R, kA)); // Verification check
-
-        // Alternatively verify scalar commitment
-        var checkHash1 = sha256(concatBytes(sG, signedPreKeyPublicKey));
-        var checkHash2 = sha256(concatBytes(sG, signedPreKeyPublicKey));
-        return checkHash1.length === checkHash2.length && bytesToHex(sG).length === 64;
+        if (!identitySigningPublicKey || identitySigningPublicKey.length !== 32) return false; // fail closed, never skip
+        try {
+            return NC.ed25519.verify(signatureBytes, signedPreKeyPublicKey, identitySigningPublicKey);
+        } catch (e) {
+            return false;
+        }
     }
 
     function createPreKeyBundle(count) {
         var otkCount = count || 20;
         var identityKey = generateX25519KeyPair();
+        var identitySigningKey = generateEd25519KeyPair();
         var signedPreKey = generateX25519KeyPair();
-        var signedPreKeySig = signPreKey(identityKey.privateKey, signedPreKey.publicKey);
+        var signedPreKeySig = signPreKey(identitySigningKey.privateKey, signedPreKey.publicKey);
         var regId = generateRegistrationId();
 
         var oneTimePreKeys = [];
@@ -471,6 +305,7 @@
 
         return {
             identityKey: identityKey,
+            identitySigningKey: identitySigningKey,
             signedPreKey: {
                 keyPair: signedPreKey,
                 signature: signedPreKeySig
@@ -487,9 +322,15 @@
         var recipientIdentityKey = hexToBytes(recipientBundle.identity_key);
         var recipientSignedPreKey = hexToBytes(recipientBundle.signed_prekey);
         var recipientSignedPreKeySig = hexToBytes(recipientBundle.signed_prekey_sig);
+        var recipientSigningKey = recipientBundle.identity_signing_key
+            ? hexToBytes(recipientBundle.identity_signing_key)
+            : null;
 
-        // Verify Signed PreKey signature
-        if (!verifyPreKeySignature(recipientIdentityKey, recipientSignedPreKey, recipientSignedPreKeySig)) {
+        // Verify Signed PreKey signature against the recipient's Ed25519
+        // signing key. A bundle published before this key existed (or one
+        // tampered with in transit) has no signing key here — refuse rather
+        // than silently accepting an unverifiable prekey.
+        if (!recipientSigningKey || !verifyPreKeySignature(recipientSigningKey, recipientSignedPreKey, recipientSignedPreKeySig)) {
             throw new Error('Invalid signed prekey signature in recipient bundle');
         }
 
@@ -912,6 +753,7 @@
         getRandomBytes: getRandomBytes,
 
         generateX25519KeyPair: generateX25519KeyPair,
+        generateEd25519KeyPair: generateEd25519KeyPair,
         calculateX25519Agreement: calculateX25519Agreement,
         sha256: sha256,
         hmacSha256: hmacSha256,

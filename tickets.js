@@ -89,8 +89,10 @@
                 '<div class="gm-empty">' +
                     '<i class="ph-duotone ph-warning-circle gm-icon"></i>' +
                     '<div class="gm-empty-title">Could not load tickets</div>' +
-                    '<button class="gm-btn gm-btn-outline" onclick="if(window.GM_TICKETS)window.GM_TICKETS.load()"><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
+                    '<button class="gm-btn gm-btn-outline" data-tickets-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
                 '</div>';
+            var retryBtn = container.querySelector('[data-tickets-retry]');
+            if (retryBtn) retryBtn.addEventListener('click', function () { load(); });
         }
     }
 
@@ -125,7 +127,7 @@
             if (Array.isArray(tk.attachments) && tk.attachments.length > 0) {
                 attachHtml = '<div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.45rem;">';
                 tk.attachments.forEach(function (attUrl) {
-                    attachHtml += '<img src="' + esc(attUrl) + '" class="gm-ticket-thumb" data-full="' + esc(attUrl) + '" style="width:54px; height:42px; object-fit:cover; border-radius:4px; border:1px solid var(--border-soft); cursor:pointer; transition:transform 0.15s;" title="Click to view screenshot" onmouseover="this.style.transform=\'scale(1.08)\'" onmouseout="this.style.transform=\'scale(1)\'">';
+                    attachHtml += '<img src="' + esc(attUrl) + '" class="gm-ticket-thumb" data-full="' + esc(attUrl) + '" style="width:54px; height:42px; object-fit:cover; border-radius:4px; border:1px solid var(--border-soft); cursor:pointer; transition:transform 0.15s;" title="Click to view screenshot">';
                 });
                 attachHtml += '</div>';
             }
@@ -133,7 +135,7 @@
 
             html +=
                 '<tr style="border-bottom:1px solid var(--border-soft); vertical-align:top;">' +
-                    '<td data-label="#" style="padding:0.65rem 0.75rem; font-weight:700; font-variant-numeric:tabular-nums;">#TICKET-' + pad(tk.ticket_number) + '</td>' +
+                    '<td data-label="#" style="padding:0.65rem 0.75rem; font-weight:700; font-variant-numeric:tabular-nums;">#TICKET-' + esc(pad(tk.ticket_number)) + '</td>' +
                     '<td data-label="' + esc(t('tickets_reporter')) + '" style="padding:0.65rem 0.5rem;">' +
                         '<div style="font-weight:600; font-size:0.85rem;">' + esc(tk.reporter_account_id) + '</div>' +
                         '<div style="font-size:0.7rem; color:var(--text-muted);">' + esc(tk.reporter_role) + ' · ' + guildLabel + '</div>' +
@@ -148,7 +150,7 @@
                     '</td>' +
                     '<td data-label="' + esc(t('tickets_date')) + '" style="padding:0.65rem 0.5rem; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">' + esc(dateStr) + '</td>' +
                     '<td data-label="' + esc(t('tickets_set')) + '" style="padding:0.65rem 0.75rem; text-align:center;">' +
-                        '<select class="gm-select gm-select-sm gm-ticket-status" data-id="' + tk.id + '" data-ticket-no="' + tk.ticket_number + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; height:auto; width:auto; min-width:145px; border-radius:4px;">' +
+                        '<select class="gm-select gm-select-sm gm-ticket-status" data-id="' + esc(tk.id) + '" data-ticket-no="' + esc(tk.ticket_number) + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; height:auto; width:auto; min-width:145px; border-radius:4px;">' +
                             '<option value="waiting"' + (curStatus === 'waiting' ? ' selected' : '') + '>⏳ ' + esc(t('tickets_status_waiting')) + '</option>' +
                             '<option value="in_progress"' + (curStatus === 'in_progress' ? ' selected' : '') + '>🔨 ' + esc(t('tickets_status_in_progress')) + '</option>' +
                             '<option value="resolved"' + (curStatus === 'resolved' ? ' selected' : '') + '>✅ ' + esc(t('tickets_status_resolved')) + '</option>' +

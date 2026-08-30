@@ -96,10 +96,16 @@
                     '<div class="gm-empty-title" style="font-size: 1.25rem; font-weight: 700; color: var(--fg); margin-bottom: 0.5rem;">Unable to load your portal</div>' +
                     '<div class="gm-empty-sub" style="color: var(--fg-dim); font-size: 0.95rem; margin: 0 auto 1.5rem auto;">' + esc(displayMsg) + '</div>' +
                     '<div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">' +
-                        '<button class="gm-btn gm-btn-primary" onclick="if(window.GM&&window.GM.logout){window.GM.logout();}else{localStorage.clear();location.reload();}"><i class="ph ph-sign-out"></i> Reconnect / Sign Out</button>' +
-                        '<button class="gm-btn gm-btn-outline" onclick="window.location.reload()"><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
+                        '<button class="gm-btn gm-btn-primary" data-portal-error-signout><i class="ph ph-sign-out"></i> Reconnect / Sign Out</button>' +
+                        '<button class="gm-btn gm-btn-outline" data-portal-error-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
                     '</div>' +
                 '</div>';
+            var signOutBtn = root.querySelector('[data-portal-error-signout]');
+            if (signOutBtn) signOutBtn.addEventListener('click', function () {
+                if (window.GM && window.GM.logout) { window.GM.logout(); } else { localStorage.clear(); location.reload(); }
+            });
+            var retryBtn = root.querySelector('[data-portal-error-retry]');
+            if (retryBtn) retryBtn.addEventListener('click', function () { window.location.reload(); });
             return;
         }
 

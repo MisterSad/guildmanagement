@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { findUserByEmail } from "../_shared/pagination.ts";
 import { canManageAccount, maxAssignableRole, isGuildInScope, Role } from "../_shared/admin-authz.ts";
@@ -8,6 +9,31 @@ import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY      = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+// Per-action body schemas. Field names/shape mirror the manual extraction
+// this replaces exactly — only bounds and type-safety are new, no business
+// logic changes.
+const idField = z.string().trim().min(1).max(128);
+const guildField = z.string().trim().min(1).max(64).nullish();
+const ResetPasswordSchema = z.object({ id: idField });
+const CreateSchema = z.object({
+  id: idField,
+  password: z.string().min(1).max(256),
+  serverNumber: z.string().trim().max(32).nullish(),
+  guild: guildField,
+  role: z.string().trim().max(32).optional(),
+});
+const UpdateRoleSchema = z.object({
+  id: idField,
+  role: z.string().trim().min(1).max(32),
+  serverNumber: z.string().trim().max(32).nullish(),
+  guild: guildField,
+});
+const DeleteSchema = z.object({ id: idField });
+const UpdateGuildSchema = z.object({ id: idField, guild: guildField });
+const SetJoinCodeSchema = z.object({ guild: guildField, code: z.string().trim().min(1).max(64) });
+const GetJoinCodeSchema = z.object({ guild: guildField });
+const ApproveRejectSchema = z.object({ id: idField });
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
@@ -164,8 +190,9 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "reset-password") {
-    const id = (body?.id ?? "").toString().trim();
-    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+    const resetParsed = ResetPasswordSchema.safeParse(body);
+    if (!resetParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const id = resetParsed.data.id;
 
     const { data: targetAcc } = await admin
       .from("accounts")
@@ -224,13 +251,14 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "create") {
-    const id = (body?.id ?? "").toString().trim();
-    const password = (body?.password ?? "").toString();
-    const serverNumber = (body?.serverNumber ?? null) as string | null;
-    if (!id || !password) return json({ ok: false, error: "missing_fields" }, 400);
+    const createParsed = CreateSchema.safeParse(body);
+    if (!createParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const id = createParsed.data.id;
+    const password = createParsed.data.password;
+    const serverNumber = createParsed.data.serverNumber ?? null;
 
     let accRole = "guild_admin";
-    let accGuild = (body?.guild ?? null) as string | null;
+    let accGuild = createParsed.data.guild ?? null;
     let accServerNum = serverNumber;
 
     if (info.role === "guild_admin") {
@@ -240,7 +268,7 @@ Deno.serve(async (req: Request) => {
       accServerNum = info.serverNumber;
     } else if (info.role === "server_admin") {
       // Clamped strictly to maxAssignableRole (guild_admin / member)
-      const requestedRole = (body?.role ?? "guild_admin").toString();
+      const requestedRole = createParsed.data.role ?? "guild_admin";
       accRole = (requestedRole === "member") ? "member" : "guild_admin";
       if (requestedRole !== accRole) {
         logger.warn("Server admin attempted role elevation in account create; clamped to guild_admin", { requestedRole, clampedTo: accRole });
@@ -257,7 +285,7 @@ Deno.serve(async (req: Request) => {
       accServerNum = info.serverNumber;
     } else {
       // Super admin
-      accRole = (body?.role ?? "guild_admin").toString();
+      accRole = createParsed.data.role ?? "guild_admin";
       accGuild = accGuild === "ALL" ? null : accGuild;
       if (accRole === "guild_admin" && (!accGuild || accGuild === "ALL")) {
         return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
@@ -305,12 +333,12 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "update-role") {
-    const id = (body?.id ?? "").toString().trim();
-    const newRole = (body?.role ?? "").toString().trim();
-    const serverNumber = (body?.serverNumber ?? null) as string | null;
-    const guild = (body?.guild ?? undefined) as string | null | undefined;
-
-    if (!id || !newRole) return json({ ok: false, error: "missing_fields" }, 400);
+    const updateRoleParsed = UpdateRoleSchema.safeParse(body);
+    if (!updateRoleParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const id = updateRoleParsed.data.id;
+    const newRole = updateRoleParsed.data.role;
+    const serverNumber = updateRoleParsed.data.serverNumber ?? null;
+    const guild = updateRoleParsed.data.guild;
 
     // Only Super Admin can change account roles
     if (info.role !== "super_admin") {
@@ -369,8 +397,9 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "delete") {
-    const id = (body?.id ?? "").toString().trim();
-    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+    const deleteParsed = DeleteSchema.safeParse(body);
+    if (!deleteParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const id = deleteParsed.data.id;
 
     const { data: targetAcc } = await admin
       .from("accounts")
@@ -401,9 +430,10 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "update-guild") {
-    const id = (body?.id ?? "").toString().trim();
-    const guild = (body?.guild ?? null) as string | null;
-    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+    const updateGuildParsed = UpdateGuildSchema.safeParse(body);
+    if (!updateGuildParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const id = updateGuildParsed.data.id;
+    const guild = updateGuildParsed.data.guild ?? null;
 
     const { data: targetAcc } = await admin
       .from("accounts")
@@ -448,9 +478,10 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "set-join-code") {
-    const guild = (body?.guild ?? null) as string | null;
-    const code = (body?.code ?? "").toString().trim();
-    if (!code) return json({ ok: false, error: "missing_fields" }, 400);
+    const setJoinParsed = SetJoinCodeSchema.safeParse(body);
+    if (!setJoinParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const guild = setJoinParsed.data.guild ?? null;
+    const code = setJoinParsed.data.code;
 
     let targetGuild = guild;
     if (info.role === "guild_admin") {
@@ -477,7 +508,9 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "get-join-code") {
-    const guild = (body?.guild ?? null) as string | null;
+    const getJoinParsed = GetJoinCodeSchema.safeParse(body);
+    if (!getJoinParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const guild = getJoinParsed.data.guild ?? null;
     let targetGuild = guild;
     if (info.role === "guild_admin") {
       if (!callerGuild) return json({ ok: false, error: "forbidden" }, 403);
@@ -502,8 +535,9 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "approve-registration") {
-    const id = (body?.id ?? "").toString().trim();
-    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+    const approveParsed = ApproveRejectSchema.safeParse(body);
+    if (!approveParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const id = approveParsed.data.id;
 
     const { data: targetAcc } = await admin
       .from("accounts")
@@ -556,8 +590,9 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "reject-registration") {
-    const id = (body?.id ?? "").toString().trim();
-    if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+    const rejectParsed = ApproveRejectSchema.safeParse(body);
+    if (!rejectParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const id = rejectParsed.data.id;
 
     const { data: targetAcc } = await admin
       .from("accounts")

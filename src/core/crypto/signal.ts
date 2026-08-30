@@ -10,6 +10,11 @@ export interface KeyPair {
 
 export interface PreKeyBundle {
   identityKey: KeyPair;
+  /** Ed25519 signing keypair — separate from identityKey (X25519, ECDH-only).
+   *  Not derived from it; no XEdDSA-style conversion. Its public half signs
+   *  signedPreKey.keyPair.publicKey (see signPreKey/verifyPreKeySignature in
+   *  gm-signal-crypto.js). */
+  identitySigningKey: KeyPair;
   signedPreKey: {
     keyPair: KeyPair;
     signature: Uint8Array;
@@ -24,6 +29,10 @@ export interface PreKeyBundle {
 export interface PublicPreKeyBundle {
   account_id: string;
   identity_key: string;
+  /** Nullable: rows published before this field existed have none.
+   *  verifyPreKeySignature() must fail closed (refuse) when absent, not
+   *  skip verification. */
+  identity_signing_key: string | null;
   signed_prekey: string;
   signed_prekey_sig: string;
   registration_id: number;

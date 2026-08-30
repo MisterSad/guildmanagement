@@ -194,8 +194,15 @@
                                     '</div>' +
                                     '<h2 style="font-size:1.4rem; font-weight:800; color:var(--fg); margin:0 0 0.5rem 0;">Thank you for your support!</h2>' +
                                     '<p class="gm-dim" style="font-size:.92rem; line-height:1.6; margin:0 0 1.5rem 0;">Your donation helps keep the servers running and the AI scans available for everyone.</p>' +
-                                    '<button class="gm-btn gm-btn-primary" onclick="if(window.GM_PORTAL&&window.GM_PORTAL.renderDashboard){var nav=document.querySelector(\'[data-portal-nav=\\\"donation\\\"]\');if(nav)nav.click();}"><i class="ph ph-arrow-left"></i> Back to Donations</button>' +
+                                    '<button class="gm-btn gm-btn-primary" data-back-to-donations><i class="ph ph-arrow-left"></i> Back to Donations</button>' +
                                 '</div>';
+                            var backBtn = panel.querySelector('[data-back-to-donations]');
+                            if (backBtn) backBtn.addEventListener('click', function () {
+                                if (window.GM_PORTAL && window.GM_PORTAL.renderDashboard) {
+                                    var nav = document.querySelector('[data-portal-nav="donation"]');
+                                    if (nav) nav.click();
+                                }
+                            });
                         }
                     }
                 }, 300);
@@ -3830,8 +3837,8 @@
             if (isIncoming) {
                 // Only the target guild (or super admin) can resolve.
                 actions =
-                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" onclick="window.GM.resolveTransfer(\'' + t.id + '\', \'approve\')" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
-                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" onclick="window.GM.resolveTransfer(\'' + t.id + '\', \'reject\')" title="Reject Transfer"><i class="ph ph-x"></i></button>';
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" data-transfer-action="approve" data-transfer-id="' + esc(t.id) + '" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" data-transfer-action="reject" data-transfer-id="' + esc(t.id) + '" title="Reject Transfer"><i class="ph ph-x"></i></button>';
             } else {
                 // Outgoing: another guild must approve; show a waiting hint.
                 actions = '<span style="font-size:0.72rem; color:var(--text-dim);"><i class="ph ph-hourglass"></i> Awaiting approval from ' + esc(t.target_guild) + '</span>';
@@ -3846,6 +3853,11 @@
             '</tr>';
         });
         list.innerHTML = html;
+        list.querySelectorAll('[data-transfer-action]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                window.GM.resolveTransfer(btn.getAttribute('data-transfer-id'), btn.getAttribute('data-transfer-action'));
+            });
+        });
     }
 
     window.GM = window.GM || {};

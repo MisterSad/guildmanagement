@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "node scripts/build.js",
     "build:pdf": "node scripts/generate-compliance-pdf.js",
+    "build:vendor-crypto": "node scripts/build-noble-crypto.mjs",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
@@ -15,14 +16,17 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
-    "jsdom": "^25.0.1",
-    "serve": "^14.2.6",
-    "typescript": "^7.0.2",
-    "vite": "^8.2.1",
-    "vitest": "^4.1.10"
+    "@playwright/test": "1.62.1",
+    "esbuild": "0.28.2",
+    "jsdom": "25.0.1",
+    "serve": "14.2.6",
+    "typescript": "7.0.2",
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.3"
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "@supabase/supabase-js": "2.112.3"
   }
 }

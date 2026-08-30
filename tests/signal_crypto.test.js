@@ -36,6 +36,7 @@ describe('gm-signal-crypto.js — Signal Protocol Engine', () => {
         const bobPublicBundle = {
             account_id: 'Bob',
             identity_key: GM_SIGNAL.bytesToHex(bobBundle.identityKey.publicKey),
+            identity_signing_key: GM_SIGNAL.bytesToHex(bobBundle.identitySigningKey.publicKey),
             signed_prekey: GM_SIGNAL.bytesToHex(bobBundle.signedPreKey.keyPair.publicKey),
             signed_prekey_sig: GM_SIGNAL.bytesToHex(bobBundle.signedPreKey.signature),
             registration_id: bobBundle.registrationId,
@@ -58,6 +59,86 @@ describe('gm-signal-crypto.js — Signal Protocol Engine', () => {
 
         expect(GM_SIGNAL.bytesToHex(aliceInit.masterKey)).toBe(GM_SIGNAL.bytesToHex(bobReceived.masterKey));
         expect(GM_SIGNAL.bytesToHex(aliceInit.chainKey)).toBe(GM_SIGNAL.bytesToHex(bobReceived.chainKey));
+    });
+
+    // Regression test for the R-03 audit finding: verifyPreKeySignature() used
+    // to compute the real check into an unused variable and return a
+    // tautology (a hash compared to itself), so it accepted every
+    // signature unconditionally. These assert it actually rejects forgeries.
+    describe('verifyPreKeySignature — regression: must actually verify, not always pass', () => {
+        it('accepts a genuine signature', () => {
+            const bundle = GM_SIGNAL.createPreKeyBundle(1);
+            const ok = GM_SIGNAL.verifyPreKeySignature(
+                bundle.identitySigningKey.publicKey,
+                bundle.signedPreKey.keyPair.publicKey,
+                bundle.signedPreKey.signature
+            );
+            expect(ok).toBe(true);
+        });
+
+        it('rejects a tampered signature', () => {
+            const bundle = GM_SIGNAL.createPreKeyBundle(1);
+            const tampered = new Uint8Array(bundle.signedPreKey.signature);
+            tampered[0] ^= 0xff;
+            const ok = GM_SIGNAL.verifyPreKeySignature(
+                bundle.identitySigningKey.publicKey,
+                bundle.signedPreKey.keyPair.publicKey,
+                tampered
+            );
+            expect(ok).toBe(false);
+        });
+
+        it('rejects a genuine signature checked against the wrong signing key', () => {
+            const bundle = GM_SIGNAL.createPreKeyBundle(1);
+            const impostor = GM_SIGNAL.generateEd25519KeyPair();
+            const ok = GM_SIGNAL.verifyPreKeySignature(
+                impostor.publicKey,
+                bundle.signedPreKey.keyPair.publicKey,
+                bundle.signedPreKey.signature
+            );
+            expect(ok).toBe(false);
+        });
+
+        it('rejects a signature over a different signed prekey than was signed', () => {
+            const bundle = GM_SIGNAL.createPreKeyBundle(1);
+            const otherKeyPair = GM_SIGNAL.generateX25519KeyPair();
+            const ok = GM_SIGNAL.verifyPreKeySignature(
+                bundle.identitySigningKey.publicKey,
+                otherKeyPair.publicKey,
+                bundle.signedPreKey.signature
+            );
+            expect(ok).toBe(false);
+        });
+
+        it('x3dhInitiator fails closed when the bundle has no identity_signing_key', () => {
+            const bobBundle = GM_SIGNAL.createPreKeyBundle(1);
+            const bobPublicBundle = {
+                account_id: 'Bob',
+                identity_key: GM_SIGNAL.bytesToHex(bobBundle.identityKey.publicKey),
+                // identity_signing_key intentionally omitted (pre-migration row)
+                signed_prekey: GM_SIGNAL.bytesToHex(bobBundle.signedPreKey.keyPair.publicKey),
+                signed_prekey_sig: GM_SIGNAL.bytesToHex(bobBundle.signedPreKey.signature),
+                registration_id: bobBundle.registrationId
+            };
+            const aliceIdentity = GM_SIGNAL.generateX25519KeyPair();
+            expect(() => GM_SIGNAL.x3dhInitiator(aliceIdentity, bobPublicBundle)).toThrow();
+        });
+
+        it('x3dhInitiator rejects a bundle with a forged signed-prekey signature', () => {
+            const bobBundle = GM_SIGNAL.createPreKeyBundle(1);
+            const forgedSig = new Uint8Array(bobBundle.signedPreKey.signature);
+            forgedSig[0] ^= 0xff;
+            const bobPublicBundle = {
+                account_id: 'Bob',
+                identity_key: GM_SIGNAL.bytesToHex(bobBundle.identityKey.publicKey),
+                identity_signing_key: GM_SIGNAL.bytesToHex(bobBundle.identitySigningKey.publicKey),
+                signed_prekey: GM_SIGNAL.bytesToHex(bobBundle.signedPreKey.keyPair.publicKey),
+                signed_prekey_sig: GM_SIGNAL.bytesToHex(forgedSig),
+                registration_id: bobBundle.registrationId
+            };
+            const aliceIdentity = GM_SIGNAL.generateX25519KeyPair();
+            expect(() => GM_SIGNAL.x3dhInitiator(aliceIdentity, bobPublicBundle)).toThrow();
+        });
     });
 
     it('encrypts and decrypts 1:1 messages using Double Ratchet across multiple rounds', async () => {

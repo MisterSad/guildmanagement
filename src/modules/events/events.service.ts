@@ -38,7 +38,9 @@ export class EventsService {
     if (!supabase) return { ok: false, error: 'no_client' };
 
     const activeSessions = await this.getActiveSessions(guild);
-    const existingIds = activeSessions.map((s) => s.session_id);
+    const existingIds = activeSessions
+      .map((s) => s.session_id)
+      .filter((id): id is string => id !== null);
     const sessionId = buildEventSessionId(eventName, startAt, existingIds);
 
     const { data, error } = await supabase

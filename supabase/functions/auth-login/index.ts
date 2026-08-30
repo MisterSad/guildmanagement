@@ -1,8 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { findUserByEmail } from "../_shared/pagination.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+
+const LoginSchema = z.object({
+  id: z.string().trim().min(1).max(128),
+  password: z.string().min(1).max(256),
+});
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -37,14 +43,15 @@ Deno.serve(async (req: Request) => {
 
   let id = "", password = "";
   try {
-    const body = await req.json();
-    id = (body?.id ?? "").toString().trim();
-    password = (body?.password ?? "").toString();
+    const rawBody = await req.json();
+    const parsed = LoginSchema.safeParse(rawBody);
+    if (!parsed.success) return json({ ok: false, error: "missing_credentials" }, 400);
+    id = parsed.data.id;
+    password = parsed.data.password;
   } catch (err) {
     logger.error("Failed to parse JSON body", err);
     return json({ ok: false, error: "bad_request" }, 400);
   }
-  if (!id || !password) return json({ ok: false, error: "missing_credentials" }, 400);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 

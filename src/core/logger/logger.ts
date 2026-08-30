@@ -30,6 +30,25 @@ const SENSITIVE_KEYS = new Set([
   'p_password'
 ]);
 
+// Key-based redaction (sanitizeClientData) only catches values under a
+// sensitive *key name*. A value interpolated straight into a message string
+// or an error's stack trace bypasses that, so free-text is also scanned for
+// known-shaped secrets before logging.
+const SENSITIVE_TEXT_PATTERNS: RegExp[] = [
+  /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, // JWT
+  /\b(?:sk|rk|pk|whsec)_(?:live|test)_[A-Za-z0-9]{10,}\b/gi, // Stripe keys
+  /\bBearer\s+[A-Za-z0-9._-]{10,}\b/gi,
+  /\b(password|secret|token|api[_-]?key)\s*[:=]\s*\S+/gi,
+];
+
+function redactSensitiveText(text: string): string {
+  let out = text;
+  for (const pattern of SENSITIVE_TEXT_PATTERNS) {
+    out = out.replace(pattern, '[REDACTED]');
+  }
+  return out;
+}
+
 function sanitizeClientData(data: unknown, depth = 0): unknown {
   if (depth > 6) return '[MAX_DEPTH]';
   if (data === null || data === undefined) return data;
@@ -104,7 +123,7 @@ class ClientLogger {
       correlationId: this.correlationId,
       tenantId: this.tenantId || (typeof localStorage !== 'undefined' ? localStorage.getItem('gm_current_guild') : null),
       userId: this.userId || (typeof localStorage !== 'undefined' ? localStorage.getItem('gm_user') : null),
-      message,
+      message: redactSensitiveText(message),
       metadata: meta ? (sanitizeClientData(meta) as Record<string, unknown>) : undefined,
     };
 
@@ -112,12 +131,12 @@ class ClientLogger {
       if (err instanceof Error) {
         entry.error = {
           name: err.name,
-          message: err.message,
-          stack: err.stack,
+          message: redactSensitiveText(err.message),
+          stack: err.stack ? redactSensitiveText(err.stack) : undefined,
         };
       } else {
         entry.error = {
-          message: String(err),
+          message: redactSensitiveText(String(err)),
         };
       }
     }
