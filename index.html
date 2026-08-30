@@ -710,6 +710,37 @@
                         </div>
                     </div>
 
+                    <!-- 2b. Cross-Server Migration Groups -->
+                    <div class="gm-card gm-card-padded gm-section" id="migration-groups-card" style="margin-top: 1.5rem;">
+                        <div class="gm-section-title" style="margin-bottom: 1rem;">
+                            <i class="ph ph-arrows-left-right"></i>
+                            <span>Cross-Server Migration Groups</span> <button class="gm-help-btn" data-help-id="help-migration-groups" aria-label="Help: Migration Groups"><i class="ph ph-info"></i></button>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--text-dim); margin: -0.5rem 0 1rem;">
+                            When the game opens a temporary migration window across a cluster of servers, open a group here linking those server numbers. While open, admins on any linked server can transfer players to guilds on the other linked servers. Close it once the game's window ends.
+                        </p>
+                        <form id="create-migration-group-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap; margin-bottom: 1rem;">
+                            <div class="gm-input-with-icon" style="flex:1.4; min-width: 180px;">
+                                <i class="ph ph-tag gm-icon"></i>
+                                <input type="text" id="migration-group-name" class="gm-input" required placeholder="e.g. Server Merge Wave 12">
+                            </div>
+                            <div class="gm-input-with-icon" style="flex:1.4; min-width: 200px;">
+                                <i class="ph ph-hash gm-icon"></i>
+                                <input type="text" id="migration-group-servers" class="gm-input" required placeholder="Server numbers, comma-separated (e.g. 1058, 1064)">
+                            </div>
+                            <button type="submit" class="gm-btn gm-btn-primary">
+                                <i class="ph ph-plus"></i>
+                                <span>Open Group</span>
+                            </button>
+                        </form>
+                        <div id="migration-groups-list-container">
+                            <div class="gm-empty">
+                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <div class="gm-empty-title">Loading migration groups...</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 3. Create Admin Account for a Given Guild or Server -->
                     <div class="gm-card gm-card-padded gm-section" id="create-admin-account-card" style="margin-top: 1.5rem;">
                         <div class="gm-section-title" style="margin-bottom: 1rem;">

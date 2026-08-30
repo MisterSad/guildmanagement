@@ -650,30 +650,21 @@ Deno.serve(async (req: Request) => {
       const member = await getPlayer(admin, uid, identity.guild);
       if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
-      const { data: sourceGuilds, error: gErr } = await admin
-        .from("guilds")
-        .select("server_number")
-        .eq("id", member.guild)
-        .limit(1);
-
-      const sourceGuild = sourceGuilds?.[0] ?? null;
-
-      if (gErr || !sourceGuild || !sourceGuild.server_number) {
-        return json({ ok: false, error: "server_not_found" }, 200);
-      }
-
-      const { data: guilds, error: guildsErr } = await admin
-        .from("guilds")
-        .select("id")
-        .eq("server_number", sourceGuild.server_number)
-        .neq("id", member.guild);
+      // Same server, or any server sharing a currently-open cross-server
+      // migration group with it — mirrors the admin "Transfer Member"
+      // dialog (gm_list_transfer_eligible_guilds), so a player is never
+      // offered a target the transfer RPC would reject.
+      const { data: guilds, error: guildsErr } = await admin.rpc(
+        "gm_list_transfer_eligible_guilds",
+        { p_guild: member.guild }
+      );
 
       if (guildsErr) {
         logger.error("Failed to fetch transfer guilds", guildsErr);
         return json({ ok: false, error: "db_error" }, 200);
       }
 
-      return json({ ok: true, guilds: guilds });
+      return json({ ok: true, guilds: guilds ?? [] });
     }
 
     if (action === "submit-transfer-request") {

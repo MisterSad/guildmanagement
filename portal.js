@@ -1547,12 +1547,13 @@
                 return;
             }
             if (!res.guilds || res.guilds.length === 0) {
-                transferSelect.innerHTML = '<option value="">No other guilds on this server</option>';
+                transferSelect.innerHTML = '<option value="">No other guild available for transfer right now</option>';
                 return;
             }
             var opts = '<option value="">Select Target Guild...</option>';
             res.guilds.forEach(function (g) {
                 var displayName = g.name ? g.name : g.id;
+                if (g.is_same_server === false) displayName += ' (Server #' + g.server_number + ' — Migration Window)';
                 opts += '<option value="' + esc(g.id) + '">' + esc(displayName) + '</option>';
             });
             transferSelect.innerHTML = opts;

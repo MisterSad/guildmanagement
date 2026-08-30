@@ -44,6 +44,11 @@
             title: 'Global Discord Role Mention',
             body: '<p>Set the Discord Role ID that will be pinged in every event notification. To find it:</p><ol><li>Enable <strong>Developer Mode</strong> in Discord Settings → Advanced.</li><li>Go to your server\'s <strong>Roles</strong> settings.</li><li>Right-click the role → <strong>Copy Role ID</strong>.</li></ol><p>Leave blank to send notifications without any mention.</p>'
         },
+        'help-migration-groups': {
+            icon: 'ph-arrows-left-right',
+            title: 'Cross-Server Migration Groups',
+            body: '<p>When the game opens a temporary migration window grouping several servers together, a super admin opens a group here listing those server numbers.</p><p>While a group is <strong>open</strong>, admins on any linked server can transfer players to a guild on any other linked server, in addition to the usual same-server transfers.</p><p>Close the group once the game\'s migration window ends - this immediately turns off eligibility for further cross-server transfers, and even a transfer request that was made while the group was open cannot be approved after it closes.</p>'
+        },
         'help-webhooks': {
             icon: 'ph-webhook',
             title: 'Notification Webhooks',

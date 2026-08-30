@@ -451,6 +451,7 @@
 
         if (isR5) {
             renderGuildsSubscriptionList();
+            renderMigrationGroupsList();
         }
 
         populateAccountGuildSelect();
@@ -521,6 +522,7 @@
         }
         if (tabId === 'admin-superadmin') {
             renderGuildsSubscriptionList();
+            renderMigrationGroupsList();
             fetchAccounts();
             populateAccountGuildSelect();
         }
@@ -1938,6 +1940,133 @@
                 });
             });
 
+        } catch (err) {
+            container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' + esc(err.message) + '</div></div>';
+        }
+    }
+
+    // ─── Cross-Server Migration Groups (Super Admin) ────────────────────────
+    var migrationGroupsFormWired = false;
+
+    async function renderMigrationGroupsList() {
+        var container = document.getElementById('migration-groups-list-container');
+        if (!container || !supabase) return;
+
+        if (!migrationGroupsFormWired) {
+            migrationGroupsFormWired = true;
+            var form = document.getElementById('create-migration-group-form');
+            if (form) {
+                form.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    var nameInput = document.getElementById('migration-group-name');
+                    var serversInput = document.getElementById('migration-group-servers');
+                    var name = nameInput.value.trim();
+                    var serverNumbers = serversInput.value.split(',')
+                        .map(function (s) { return s.trim(); })
+                        .filter(Boolean);
+                    var uniqueServers = Array.from(new Set(serverNumbers));
+
+                    if (!name || uniqueServers.length < 2) {
+                        showToast('Enter a group name and at least 2 distinct server numbers.', 'error');
+                        return;
+                    }
+
+                    var submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+                    try {
+                        var groupRes = await supabase.from('server_migration_groups')
+                            .insert([{ name: name, status: 'open' }])
+                            .select('id')
+                            .single();
+                        if (groupRes.error) throw new Error(groupRes.error.message);
+
+                        var groupId = groupRes.data.id;
+                        var linkRes = await supabase.from('server_migration_group_servers')
+                            .insert(uniqueServers.map(function (s) { return { group_id: groupId, server_number: s }; }));
+                        if (linkRes.error) throw new Error(linkRes.error.message);
+
+                        showToast('Migration group "' + name + '" opened for servers: ' + uniqueServers.join(', '), 'success');
+                        nameInput.value = '';
+                        serversInput.value = '';
+                        renderMigrationGroupsList();
+                    } catch (err) {
+                        showToast('Error creating migration group: ' + err.message, 'error');
+                    } finally {
+                        submitBtn.disabled = false;
+                    }
+                });
+            }
+        }
+
+        try {
+            var [groupsRes, serversRes] = await Promise.all([
+                supabase.from('server_migration_groups').select('id, name, status').order('created_at', { ascending: false }),
+                supabase.from('server_migration_group_servers').select('group_id, server_number')
+            ]);
+            if (groupsRes.error) throw groupsRes.error;
+
+            var groups = groupsRes.data || [];
+            if (groups.length === 0) {
+                container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">No migration groups yet</div></div>';
+                return;
+            }
+
+            var serversByGroup = {};
+            (serversRes.data || []).forEach(function (r) {
+                if (!serversByGroup[r.group_id]) serversByGroup[r.group_id] = [];
+                serversByGroup[r.group_id].push(r.server_number);
+            });
+
+            var html = '';
+            groups.forEach(function (g) {
+                var isOpen = g.status === 'open';
+                var servers = (serversByGroup[g.id] || []).slice().sort();
+                var serversHtml = servers.map(function (s) {
+                    return '<span class="gm-chip" style="font-size:0.75rem; margin-right:4px;"><i class="ph ph-hard-drives"></i> #' + esc(s) + '</span>';
+                }).join('');
+                var statusBadge = isOpen
+                    ? '<span class="gm-chip gm-chip-success" style="font-weight:700;"><i class="ph ph-lock-open"></i> Open</span>'
+                    : '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-weight:700;"><i class="ph ph-lock"></i> Closed</span>';
+
+                html +=
+                    '<div class="gm-card glass-card" style="margin-bottom:0.75rem; padding:0.9rem 1.1rem;">' +
+                        '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">' +
+                            '<div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">' +
+                                '<strong style="font-size:0.95rem;">' + esc(g.name) + '</strong>' +
+                                statusBadge +
+                            '</div>' +
+                            '<button type="button" class="gm-btn gm-btn-sm ' + (isOpen ? 'gm-btn-danger' : 'gm-btn-success') + '" data-migration-group-id="' + esc(g.id) + '" data-migration-group-action="' + (isOpen ? 'close' : 'reopen') + '">' +
+                                '<i class="ph ' + (isOpen ? 'ph-lock' : 'ph-lock-open') + '"></i> <span>' + (isOpen ? 'Close' : 'Reopen') + '</span>' +
+                            '</button>' +
+                        '</div>' +
+                        '<div style="margin-top:0.5rem;">' + (serversHtml || '<span style="font-size:0.78rem; color:var(--text-dim);">No servers linked</span>') + '</div>' +
+                    '</div>';
+            });
+            container.innerHTML = html;
+
+            container.querySelectorAll('[data-migration-group-action]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var groupId = btn.getAttribute('data-migration-group-id');
+                    var action = btn.getAttribute('data-migration-group-action');
+                    var newStatus = action === 'close' ? 'closed' : 'open';
+                    var confirmMsg = action === 'close'
+                        ? 'Close this migration group? Admins will no longer be able to transfer players between these servers, and any pending request made under it can no longer be approved.'
+                        : 'Reopen this migration group? Admins on these servers will be able to transfer players between them again.';
+                    window.showConfirm(action === 'close' ? 'Close Migration Group' : 'Reopen Migration Group', confirmMsg, async function () {
+                        btn.disabled = true;
+                        try {
+                            var updatePayload = { status: newStatus, closed_at: newStatus === 'closed' ? new Date().toISOString() : null };
+                            var res = await supabase.from('server_migration_groups').update(updatePayload).eq('id', groupId);
+                            if (res.error) throw new Error(res.error.message);
+                            showToast('Migration group ' + (newStatus === 'closed' ? 'closed' : 'reopened') + '.', 'success');
+                            renderMigrationGroupsList();
+                        } catch (err) {
+                            showToast('Error updating migration group: ' + err.message, 'error');
+                            btn.disabled = false;
+                        }
+                    });
+                });
+            });
         } catch (err) {
             container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' + esc(err.message) + '</div></div>';
         }
@@ -5244,7 +5373,7 @@
                     '<i class="ph ph-calendar-blank"></i> <span>' + dateStr + '</span>' +
                 '</div>' +
                 (withActions ? '<div class="gm-member-actions">' +
-                    '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-transfer-btn" data-pseudo="' + esc(m.pseudo) + '" data-uid="' + esc(uidVal) + '" title="Transfer member to another guild on same server" style="color: var(--accent);"><i class="ph ph-arrows-left-right"></i></button>' +
+                    '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-transfer-btn" data-pseudo="' + esc(m.pseudo) + '" data-uid="' + esc(uidVal) + '" title="Transfer member to another eligible guild" style="color: var(--accent);"><i class="ph ph-arrows-left-right"></i></button>' +
                     '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('edit_title') + '"><i class="ph ph-pencil-simple"></i></button>' +
                     '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-delete-btn" data-pseudo="' + esc(m.pseudo) + '" title="' + t('delete_title') + '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
                 '</div>' : '') +
@@ -5394,49 +5523,38 @@
 
         var currentG = window.currentGuildRestriction || window.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
 
-        // Fetch up-to-date guilds list and server numbers
-        // Merge DB data with localStorage fallback (DB may have null if save failed previously)
-        var guildsData = {};
+        // Server-authoritative eligibility: same server, or any server sharing
+        // a currently-open cross-server migration group with it. Computed by
+        // the backend (gm_list_transfer_eligible_guilds) rather than
+        // re-derived client-side, so the UI can never offer an option the
+        // transfer RPC itself would reject.
+        var eligibleGuilds = [];
         try {
-            var res = await supabase.from('guilds').select('id, server_number').order('id');
-            if (res.data && res.data.length > 0) {
-                res.data.forEach(function (g) {
-                    // Prefer DB value, fallback to localStorage, fallback to window.guildsData
-                    var dbVal = g.server_number || '';
-                    var lsVal = localStorage.getItem('gm_server_number_' + g.id) || '';
-                    var memVal = (window.guildsData && window.guildsData[g.id]) ? (window.guildsData[g.id].server_number || '') : '';
-                    guildsData[g.id] = dbVal || lsVal || memVal;
-                });
-            }
+            var eligRes = await supabase.rpc('gm_list_transfer_eligible_guilds', { p_guild: currentG });
+            if (eligRes.error) throw eligRes.error;
+            eligibleGuilds = eligRes.data || [];
         } catch (err) {
-            console.error('Failed to fetch guilds for transfer', err);
+            console.error('Failed to fetch transfer-eligible guilds', err);
         }
 
-        // If guildsData is empty or all blank, fall back entirely to window.guildsData
-        if (Object.keys(guildsData).length === 0 && window.guildsData) {
-            Object.keys(window.guildsData).forEach(function (g) {
-                guildsData[g] = window.guildsData[g].server_number || '';
-            });
-        }
-
-        var currentServer = guildsData[currentG] || null;
-
-        var sisterGuilds = [];
-        if (currentServer) {
-            Object.keys(guildsData).forEach(function (g) {
-                if (g !== currentG && guildsData[g] && guildsData[g] === currentServer) {
-                    sisterGuilds.push(g);
-                }
-            });
-        }
-
-        if (!currentServer || sisterGuilds.length === 0) {
-            showToast('No other guild exists on Server #' + (currentServer || '????') + '. Set a server number in Super Admin > Subscription Management & Server Numbers.', 'warning');
+        if (eligibleGuilds.length === 0) {
+            showToast('No other guild is eligible for transfer right now. Set a server number in Super Admin > Subscription Management & Server Numbers, or ask a super admin to open a cross-server migration window.', 'warning');
             return;
         }
 
-        var optionsHtml = sisterGuilds.map(function (g) {
-            return '<option value="' + esc(g) + '">' + esc(g) + ' (Server #' + esc(currentServer) + ')</option>';
+        var currentServer = null;
+        try {
+            var curRes = await supabase.from('guilds').select('server_number').eq('id', currentG).maybeSingle();
+            currentServer = curRes.data ? curRes.data.server_number : null;
+        } catch (err) {
+            console.warn('Failed to fetch current guild server number', err);
+        }
+
+        var optionsHtml = eligibleGuilds.map(function (g) {
+            var label = g.is_same_server
+                ? (g.id + ' (Server #' + g.server_number + ')')
+                : (g.id + ' (Server #' + g.server_number + ' — Migration Window)');
+            return '<option value="' + esc(g.id) + '" data-server="' + esc(g.server_number) + '">' + esc(label) + '</option>';
         }).join('');
 
         var html =
@@ -5455,7 +5573,7 @@
                             '<div style="font-size: 0.85rem; color: var(--text-dim); margin-top: 0.25rem;">Current Guild: <strong>' + esc(currentG) + '</strong> (Server #' + esc(currentServer) + ')</div>' +
                         '</div>' +
                         '<div class="gm-form-group">' +
-                            '<label class="gm-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild on Server #' + esc(currentServer) + ':</label>' +
+                            '<label class="gm-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild:</label>' +
                             '<select id="transfer-target-guild" class="gm-select gm-input">' +
                                 optionsHtml +
                             '</select>' +
@@ -5514,8 +5632,11 @@
                     throw new Error((data && data.error) ? data.error : 'transfer_failed');
                 }
 
+                var targetOption = targetSelect.options[targetSelect.selectedIndex];
+                var targetServer = targetOption ? targetOption.getAttribute('data-server') : currentServer;
+
                 closeModal();
-                showToast(member.pseudo + ' transferred to ' + targetGuild + ' on Server #' + currentServer + '!', 'success');
+                showToast(member.pseudo + ' transferred to ' + targetGuild + ' on Server #' + targetServer + '!', 'success');
                 await fetchGuildMembers();
             } catch (err) {
                 showToast('Error transferring member: ' + err.message, 'error');

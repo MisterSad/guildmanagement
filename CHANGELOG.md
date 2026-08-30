@@ -2,6 +2,13 @@
 
 ## New
 
+- **Cross-Server Migration Groups**:
+  - New feature: the game periodically opens a limited-time window grouping a cluster of servers together, letting players migrate to any guild within that cluster. Previously every transfer path (`request_guild_transfer`, `gm_transfer_guild_member`, `resolve_guild_transfer`, `gm_admin_request_transfer`) enforced a strict same-`server_number` rule with no way to relax it.
+  - New tables `server_migration_groups` / `server_migration_group_servers` (`supabase/migrations/20260830072000_cross_server_migration_groups.sql`) and a `servers_in_open_migration_group()` helper. Only a `super_admin` can create/open/close a group (RLS: read gated on `gm_can_read_guilds()`, write gated on `is_super_admin()`); the linkage is a time-boxed window (`status: open|closed`), not a permanent list — closing it turns off eligibility immediately, including for a transfer request that was made while the group was open but hasn't been approved yet (re-validated at approval time, not just at request time).
+  - New Super Admin UI card "Cross-Server Migration Groups" (next to Subscription Management & Server Numbers) to create a group (name + server numbers), and open/close existing ones.
+  - New `gm_list_transfer_eligible_guilds(p_guild)` RPC — the single source of truth for "which guilds can this guild transfer players to" (same server, or same open migration group), used by both the admin "Transfer Member" dialog (cross-server options clearly labelled "— Migration Window") and the player portal's self-service transfer request picker, so neither UI can ever offer a target the backend would reject.
+  - **Verification**: full lifecycle (no group → rejected as `different_server`; group opened → transfer succeeds and carries full history; group closed → rejected again, including a pending request that becomes unapprovable) verified live end-to-end against production with a real `guild_admin` account and isolated, cleaned-up test data. **520/520 Vitest unit tests green** (+11 new).
+
 - **Bulk Member Rank Assignment & Leader Hall Display Standardization (V3.7.1)**:
   - **1-Click Multi-Member Rank Updates**: Added full multi-selection capability to the Members tab (`#admin-members`) in both **Roster Cards** and **Military Matrix** view modes with high-contrast glow states.
   - **Floating Bulk Action Dock**: Sleek Material Design 3 dock appearing smoothly on member selection with real-time selection counter, 1-click rank buttons (`🌱 R1`, `👤 R2`, `🛡️ R3`, `⚔️ R4`), and instant deselect controls.
