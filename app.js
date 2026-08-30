@@ -3305,14 +3305,16 @@
                             .eq('guild', currentG)
                             .eq('event_name', 'Shadowfront')
                             .eq('session_id', activeSid)
-                            .eq('pseudo', sp.pseudo);
+                            .eq('pseudo', sp.pseudo)
+                            .select('pseudo');
 
                         if (upRes.data && upRes.data.length === 0) {
                             var insertPayload = Object.assign({
                                 guild: currentG,
                                 event_name: 'Shadowfront',
                                 session_id: activeSid,
-                                pseudo: sp.pseudo
+                                pseudo: sp.pseudo,
+                                week_start: window.GM.getWeekStart(sqRes.data.start_at || new Date())
                             }, updatePayload);
                             await db.from('event_participants').insert([insertPayload]);
                         }
@@ -3345,7 +3347,8 @@
                             .eq('guild', currentG)
                             .eq('event_name', arEvName)
                             .eq('session_id', arSid)
-                            .eq('pseudo', sp.pseudo);
+                            .eq('pseudo', sp.pseudo)
+                            .select('pseudo');
 
                         if (upRes.data && upRes.data.length === 0) {
                             await db.from('event_participants').insert([{
@@ -3353,7 +3356,8 @@
                                 event_name: arEvName,
                                 session_id: arSid,
                                 pseudo: sp.pseudo,
-                                participated: 1
+                                participated: 1,
+                                week_start: window.GM.getWeekStart(arRes.data.start_at || new Date())
                             }]);
                         }
                     }
@@ -3403,14 +3407,16 @@
                             .eq('guild', currentG)
                             .eq('event_name', evName)
                             .eq('session_id', evSid)
-                            .eq('pseudo', sp.pseudo);
+                            .eq('pseudo', sp.pseudo)
+                            .select('pseudo');
 
                         if (upRes.data && upRes.data.length === 0) {
                             var insertPayload = Object.assign({
                                 guild: currentG,
                                 event_name: evName,
                                 session_id: evSid,
-                                pseudo: sp.pseudo
+                                pseudo: sp.pseudo,
+                                week_start: window.GM.getWeekStart(evRes.data.start_at || new Date())
                             }, updatePayload);
                             await db.from('event_participants').insert([insertPayload]);
                         }

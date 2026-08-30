@@ -50,6 +50,14 @@
 
 ## Fixed
 
+- **Event OCR Approval Silently Dropping Participation Data (Shadowfront, Arms Race, DTR/SvS/GvG)**:
+  - **Reported Symptom**: Uploading and approving a Shadowfront pre-event roster or post-event results screenshot via OCR correctly detected participants, but no data ever appeared in the Shadowfront event UI after approval.
+  - **Root Cause 1**: `commitOcrUpdates()` in `app.js` ran `.update(...)` on `event_participants` without chaining `.select()`. With supabase-js v2, an `.update()` call without `.select()` never returns the affected rows — `upRes.data` was always `null`, so the "0 rows matched → insert a new participation row" fallback (`upRes.data && upRes.data.length === 0`) was permanently dead code. Any OCR-detected player without an existing `event_participants` row for that session (e.g. a pre-event roster upload) was silently discarded with no error shown.
+  - **Root Cause 2**: once `.select('pseudo')` was added, the insert fallback itself was still missing `week_start`, a `NOT NULL` column on `event_participants` — every fallback insert would fail with a `23502` constraint violation instead of silently doing nothing.
+  - **Fix**: added `.select('pseudo')` to all three affected `.update()` calls (Shadowfront, Arms Race, DTR/SvS/GvG branches) and populated `week_start` on every insert fallback via `window.GM.getWeekStart(session.start_at)`, matching the pattern used elsewhere in the codebase.
+  - **Scope**: confirmed with the guild leader that event OCR is intentionally limited to marking participation and, where the event requires it, inputting score — it does not establish or modify squad composition/assignment.
+  - **Verification**: root cause and fix both reproduced and confirmed live against the production Supabase backend (RLS + FK constraints) before and after the patch; no test data left behind. **505/505 Vitest unit tests green.**
+
 - **Decommissioned & Cleaned Inactive "System Logs" Tab**:
   - **Reason**: The `#tab-system-logs` panel in Super Admin was obsolete and provided no actionable live data to operators.
   - **Cleanup**: Removed `#nav-tab-system-logs` button and `#tab-system-logs` DOM tree from `index.html`, removed `system-logs` entry from `shell.js` `NAV_ITEMS`, removed `GM_AUDIT` trigger from `app.js`, deleted `AuditView` (`src/modules/audit/audit-view.ts`), cleaned up unused `i18n` keys, and updated architecture guidelines and test suites. Server-side Postgres audit logging remains fully functional.
