@@ -3693,29 +3693,43 @@
         });
     }
 
+    var TRANSFER_ERROR_MESSAGES = {
+        permission_denied: 'You do not have permission to resolve this transfer.',
+        transfer_not_found_or_resolved: 'This transfer was already resolved or no longer exists.',
+        subscription_expired: 'Your guild\'s subscription is not active.',
+        member_no_longer_in_source: 'This player has already left their original guild — the transfer is no longer valid.',
+        uid_already_in_target: 'A member with this UID already exists in your guild.',
+        duplicate_pseudo_in_target: 'A member with this name already exists in your guild.',
+        invalid_action: 'Unrecognized action.'
+    };
+
     window.GM = window.GM || {};
     window.GM.resolveTransfer = async function(transferId, action) {
         if (!supabase) return;
-        var confirmMsg = action === 'approve' ? 'Approve this transfer and add player to your guild?' : 'Reject this transfer request?';
-        if (!confirm(confirmMsg)) return;
+        var title = action === 'approve' ? 'Approve Transfer' : 'Reject Transfer';
+        var message = action === 'approve' ? 'Approve this transfer and add the player to your guild?' : 'Reject this transfer request?';
 
-        try {
-            var { data, error } = await supabase.rpc('resolve_guild_transfer', {
-                p_transfer_id: transferId,
-                p_action: action
-            });
+        window.showConfirm(title, message, async function () {
+            try {
+                var { data, error } = await supabase.rpc('resolve_guild_transfer', {
+                    p_transfer_id: transferId,
+                    p_action: action
+                });
 
-            if (error || !data || !data.ok) {
-                var errStr = (data && data.error) ? data.error : (error ? error.message : 'unknown');
-                showToast('Failed to ' + action + ' transfer: ' + errStr, 'error');
-            } else {
-                showToast('Transfer ' + action + 'd successfully.', 'success');
-                fetchGuildMembers();
+                if (error || !data || !data.ok) {
+                    var errCode = (data && data.error) ? data.error : null;
+                    var errStr = (errCode && TRANSFER_ERROR_MESSAGES[errCode]) || (error ? error.message : 'Unknown error.');
+                    showToast('Failed to ' + action + ' transfer: ' + errStr, 'error');
+                    fetchGuildMembers();
+                } else {
+                    showToast('Transfer ' + action + 'd successfully.', 'success');
+                    fetchGuildMembers();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error processing transfer.', 'error');
             }
-        } catch (err) {
-            console.error(err);
-            showToast('Error processing transfer.', 'error');
-        }
+        });
     };
 
     // ── UID already taken: show where the player lives + transfer request OR update same-guild player ──
