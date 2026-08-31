@@ -578,37 +578,61 @@
         return { ok: true, role: data.role, id: data.id, hasPasskey: !!data.has_passkey };
     }
 
+    // Applies a { ok, role, id, access_token, refresh_token, ... } response
+    // from any passkey/backup-code server round trip to the Supabase client
+    // — the one piece all of loginWithPasskey/loginWithBackupCode/the
+    // conditional-UI listener below share, so the session-establishment
+    // logic (and its error handling) exists exactly once.
+    async function applyPasskeySessionData(data, extraFields) {
+        var c = getClient();
+        if (!c) return { ok: false, error: 'no_client' };
+        if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
+        var s = await c.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token
+        });
+        if (s.error) return { ok: false, error: 'session_set_failed' };
+        var result = { ok: true, role: data.role, id: data.id, hasPasskey: true };
+        if (extraFields) {
+            for (var k in extraFields) result[k] = extraFields[k];
+        }
+        return result;
+    }
+
     // Same contract as login(id, password) above, but via a WebAuthn
     // ceremony instead of a password. The ceremony itself (options ->
     // browser prompt -> verify) lives in gm-webauthn.js; this just applies
     // the resulting tokens to the Supabase client the exact same way.
     async function loginWithPasskey(id) {
-        var c = getClient();
-        if (!c) return { ok: false, error: 'no_client' };
         if (!window.GM || !window.GM.webauthn) return { ok: false, error: 'webauthn_unavailable' };
         var data = await window.GM.webauthn.authenticateWithPasskey(id);
-        if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
-        var s = await c.auth.setSession({
-            access_token: data.access_token,
-            refresh_token: data.refresh_token
-        });
-        if (s.error) return { ok: false, error: 'session_set_failed' };
-        return { ok: true, role: data.role, id: data.id, hasPasskey: true };
+        return applyPasskeySessionData(data);
     }
 
     // Same contract as login(), redeeming a one-time backup code instead.
     async function loginWithBackupCode(id, code) {
-        var c = getClient();
-        if (!c) return { ok: false, error: 'no_client' };
         if (!window.GM || !window.GM.webauthn) return { ok: false, error: 'webauthn_unavailable' };
         var data = await window.GM.webauthn.redeemBackupCode(id, code);
-        if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
-        var s = await c.auth.setSession({
-            access_token: data.access_token,
-            refresh_token: data.refresh_token
-        });
-        if (s.error) return { ok: false, error: 'session_set_failed' };
-        return { ok: true, role: data.role, id: data.id, hasPasskey: true, backupCodesRemaining: data.backup_codes_remaining };
+        return applyPasskeySessionData(data, { backupCodesRemaining: data && data.backup_codes_remaining });
+    }
+
+    // Starts a background conditional/autofill passkey listener (see
+    // gm-webauthn.js's startConditionalAuth for why this exists alongside
+    // the explicit "Sign in with a Passkey" button — some password-manager
+    // extensions only surface saved passkeys this way). Resolves the same
+    // shape as loginWithPasskey() once the user actually picks a suggestion,
+    // or null if conditional UI isn't supported or nothing was picked.
+    async function startConditionalPasskeyLogin() {
+        if (!window.GM || !window.GM.webauthn) return null;
+        var data = await window.GM.webauthn.startConditionalAuth();
+        if (!data) return null;
+        return applyPasskeySessionData(data);
+    }
+
+    function abortConditionalPasskeyLogin() {
+        if (window.GM && window.GM.webauthn && window.GM.webauthn.abortConditionalAuth) {
+            window.GM.webauthn.abortConditionalAuth();
+        }
     }
 
     async function logout() {
@@ -2751,6 +2775,8 @@
         login: login,
         loginWithPasskey: loginWithPasskey,
         loginWithBackupCode: loginWithBackupCode,
+        startConditionalPasskeyLogin: startConditionalPasskeyLogin,
+        abortConditionalPasskeyLogin: abortConditionalPasskeyLogin,
         logout: logout,
         ensureAuthSession: ensureAuthSession,
         adminAccounts: adminAccounts,

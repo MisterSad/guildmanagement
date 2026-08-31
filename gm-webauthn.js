@@ -197,6 +197,75 @@
         return invoke('backup-login', { id: id, code: code });
     }
 
+    // Conditional/autofill WebAuthn ("conditional UI"): unlike the
+    // button-click ceremony above, this shows no browser UI of its own —
+    // the browser instead offers matching passkeys as autofill suggestions
+    // on any focused <input autocomplete="webauthn">, and this promise only
+    // settles once the user actually picks one (or the request is aborted).
+    // This exists specifically because some third-party password-manager
+    // extensions (Proton Pass, Bitwarden, 1Password, ...) only reliably
+    // surface their saved passkeys through this autofill-style flow — their
+    // support for the modal/full-screen picker the button-click ceremony
+    // uses is inconsistent across browsers. The two flows are complementary,
+    // not a replacement for one another.
+    var conditionalAbortController = null;
+
+    async function isConditionalMediationAvailable() {
+        try {
+            return !!(window.PublicKeyCredential &&
+                typeof PublicKeyCredential.isConditionalMediationAvailable === 'function' &&
+                await PublicKeyCredential.isConditionalMediationAvailable());
+        } catch (err) {
+            return false;
+        }
+    }
+
+    // Cancels any in-flight conditional request without starting a new one
+    // — call this once a real sign-in succeeds through any other path, so a
+    // stale listener doesn't linger against now-hidden login fields.
+    function abortConditionalAuth() {
+        if (conditionalAbortController) {
+            conditionalAbortController.abort();
+            conditionalAbortController = null;
+        }
+    }
+
+    // Starts (or restarts, superseding any previous one) a conditional
+    // ceremony. Always discoverable — there's no identifier field this can
+    // be scoped to, since it's not tied to any one input being submitted.
+    // Resolves the same shape as authenticateWithPasskey() once the user
+    // picks a suggestion, or null if conditional UI isn't supported, or the
+    // request was superseded/aborted before anything was picked.
+    async function startConditionalAuth() {
+        if (!isSupported()) return null;
+        var available = await isConditionalMediationAvailable();
+        if (!available) return null;
+
+        abortConditionalAuth();
+        var controller = new AbortController();
+        conditionalAbortController = controller;
+
+        var optionsRes = await invoke('auth-options', { id: '' });
+        if (!optionsRes.ok) return null;
+
+        var credential;
+        try {
+            credential = await navigator.credentials.get({
+                publicKey: authenticationOptionsFromServer(optionsRes.options),
+                mediation: 'conditional',
+                signal: controller.signal
+            });
+        } catch (err) {
+            return null; // aborted (superseded) or dismissed — not an error to surface
+        }
+        if (!credential || controller.signal.aborted) return null;
+
+        return invoke('auth-verify', {
+            id: '',
+            credential: authenticationCredentialToJSON(credential)
+        });
+    }
+
     function listPasskeys() {
         return invoke('list', {});
     }
@@ -518,6 +587,9 @@
         regenerateBackupCodes: regenerateBackupCodes,
         downloadBackupCodes: downloadBackupCodes,
         mountPasskeysPanel: mountPasskeysPanel,
-        adminResetPasskeys: adminResetPasskeys
+        adminResetPasskeys: adminResetPasskeys,
+        isConditionalMediationAvailable: isConditionalMediationAvailable,
+        startConditionalAuth: startConditionalAuth,
+        abortConditionalAuth: abortConditionalAuth
     };
 })();

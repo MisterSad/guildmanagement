@@ -271,6 +271,13 @@
     // produced the session. Extracted so passkey/backup-code sign-in don't
     // duplicate ~70 lines of guild/server-restriction bookkeeping.
     async function handleSuccessfulLogin(resp, typedUser) {
+        // Cancel any still-pending conditional/autofill passkey listener —
+        // harmless no-op if this login itself came from that listener
+        // (its controller is already settled by then), but necessary when
+        // login succeeded via password/button-passkey/backup-code instead,
+        // so a stale listener doesn't linger against now-hidden fields.
+        if (window.GM.abortConditionalPasskeyLogin) window.GM.abortConditionalPasskeyLogin();
+
         var canonicalUser = resp.id || typedUser;
         loginError.classList.add('hidden');
         document.getElementById('password').value = '';
@@ -554,7 +561,26 @@
         dashboardView.classList.remove('active');
         loginView.classList.remove('hidden');
         loginView.classList.add('active');
+        startConditionalPasskeyListener();
     }
+
+    // Arms (or re-arms, superseding any previous one) the conditional/
+    // autofill passkey listener. Silent by design: it shows no UI of its
+    // own until the user actually picks a suggestion from their password
+    // manager, so resolving to null (unsupported browser, nothing picked,
+    // superseded by a fresh call) is the normal, expected outcome, not an
+    // error to report. Also called once, unconditionally, at page load
+    // below — #login-view starts visible in the raw HTML on a fresh load
+    // with no session, so showLogin() itself is never called in that case.
+    function startConditionalPasskeyListener() {
+        if (!window.GM.startConditionalPasskeyLogin) return;
+        window.GM.startConditionalPasskeyLogin().then(function (resp) {
+            if (resp && resp.ok) {
+                handleSuccessfulLogin(resp, resp.id);
+            }
+        }).catch(function () {});
+    }
+    startConditionalPasskeyListener();
 
     function triggerTabDataLoad(tabId) {
         if (!tabId) return;
