@@ -1,6 +1,28 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import LeaderHall from '../gm-leader-hall.js';
+
+describe('Regression: guilds table has no `name` column', () => {
+    // Found during the 2026-09 stabilization sweep: fetchEligibleLeaders()
+    // queried .from('guilds').select('id, name, server_number') — `name`
+    // doesn't exist on public.guilds (only `id`, which already IS the
+    // guild's tag/display value), so every call returned HTTP 400 and
+    // availableGuilds silently stayed []. The real-world impact: the
+    // "Propose Treaty" modal's Target Guild dropdown fell back to its
+    // single hardcoded placeholder option (OMEGA only) for every guild,
+    // regardless of which one they actually wanted to treaty with — nobody
+    // could have proposed a real treaty with any other guild. Confirmed live
+    // via a securitypolicyviolation-style fetch interceptor catching the
+    // actual 400 response, and by inspecting public.guilds' real columns.
+    const src = fs.readFileSync(path.resolve(__dirname, '../gm-leader-hall.js'), 'utf-8');
+
+    it('never re-introduces a select() referencing guilds.name', () => {
+        expect(src).not.toContain("select('id, name, server_number')");
+        expect(src).not.toMatch(/from\(['"]guilds['"]\)\.select\([^)]*\bname\b/);
+    });
+});
 
 describe('Leader Hall Rich Messaging Unit Tests', () => {
     beforeEach(() => {

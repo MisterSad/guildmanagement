@@ -449,7 +449,7 @@
         if (guild && availableGuilds && availableGuilds.length > 0) {
             var gLower = String(guild).trim().toLowerCase();
             var gMatch = availableGuilds.find(function (g) {
-                return (g.id && g.id.toLowerCase() === gLower) || (g.name && g.name.toLowerCase() === gLower);
+                return g.id && g.id.toLowerCase() === gLower;
             });
             if (gMatch && gMatch.server_number) {
                 return String(gMatch.server_number).replace(/^#/, '').replace(/^[sS]/, '');
@@ -1050,7 +1050,7 @@
                 .order('guild', { ascending: true });
             activeAccounts = res.data || [];
 
-            var gRes = await db.from('guilds').select('id, name, server_number').order('id', { ascending: true });
+            var gRes = await db.from('guilds').select('id, server_number').order('id', { ascending: true });
             availableGuilds = gRes.data || [];
 
             return activeAccounts;
@@ -1493,7 +1493,7 @@
         var guildOptions = availableGuilds.filter(function (g) {
             return g.id !== callerGuild;
         }).map(function (g) {
-            return '<option value="' + esc(g.id) + '" data-server="' + esc(g.server_number || callerServer) + '">[' + esc(g.id) + '] ' + esc(g.name || g.id) + ' #' + esc(g.server_number || callerServer) + '</option>';
+            return '<option value="' + esc(g.id) + '" data-server="' + esc(g.server_number || callerServer) + '">[' + esc(g.id) + '] ' + esc(g.id) + ' #' + esc(g.server_number || callerServer) + '</option>';
         }).join('');
 
         var body = document.getElementById('modal-treaty-create-body');
