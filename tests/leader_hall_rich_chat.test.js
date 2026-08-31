@@ -24,6 +24,28 @@ describe('Regression: guilds table has no `name` column', () => {
     });
 });
 
+describe('Regression: eligible-leaders lookup must use the RPC, not a raw accounts select', () => {
+    // Found during the 2026-09 stabilization sweep: fetchEligibleLeaders()
+    // queried .from('accounts').select(...) directly, relying on RLS to scope
+    // the result. accounts' real SELECT policy (gm_can_read_account) only
+    // lets super_admin read every row -- every other admin role (guild_admin,
+    // server_admin, R4, R5) silently got an empty leader list with no error,
+    // so they could never start a new Leader Hall chat/group/treaty, only
+    // reply to ones someone else started. Fixed via a dedicated
+    // SECURITY DEFINER RPC (gm_list_eligible_leaders) rather than loosening
+    // RLS, since accounts also holds password_hash/gotrue_secret_enc/
+    // auth_user_id that a broader SELECT policy would expose.
+    const src = fs.readFileSync(path.resolve(__dirname, '../gm-leader-hall.js'), 'utf-8');
+
+    it('fetchEligibleLeaders calls the gm_list_eligible_leaders RPC', () => {
+        expect(src).toContain("rpc('gm_list_eligible_leaders')");
+    });
+
+    it('never re-introduces a direct accounts select for the leader picker', () => {
+        expect(src).not.toMatch(/from\(['"]accounts['"]\)\.select\(['"]id, guild, role, server_number['"]\)/);
+    });
+});
+
 describe('Leader Hall Rich Messaging Unit Tests', () => {
     beforeEach(() => {
         window.GM = {
