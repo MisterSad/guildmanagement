@@ -2780,7 +2780,19 @@
                 reject(err);
             }
 
-            video.addEventListener('error', function () { fail(new Error('video_unsupported')); });
+            video.addEventListener('error', function () {
+                // Surface the browser's actual MediaError (code + message) instead of
+                // a bare "unsupported" — this is almost always a codec the browser
+                // can't decode (e.g. HEVC/H.265 inside an otherwise valid MP4/MOV
+                // container from an iPhone), not a corrupt or wrongly-named file, so
+                // knowing the exact code matters for diagnosing it correctly.
+                var mediaErr = video.error;
+                var err = new Error('video_unsupported');
+                err.mediaErrorCode = mediaErr ? mediaErr.code : null;
+                err.mediaErrorMessage = mediaErr ? mediaErr.message : null;
+                err.fileType = file.type || null;
+                fail(err);
+            });
 
             video.addEventListener('loadedmetadata', function () {
                 var duration = video.duration;
@@ -2884,11 +2896,28 @@
                     var frameBlobs = await extractFramesFromVideo(videoFiles[v]);
                     imageFiles = imageFiles.concat(frameBlobs);
                 } catch (err) {
-                    console.error('Video frame extraction failed:', err);
+                    console.error('Video frame extraction failed:', err, {
+                        mediaErrorCode: err && err.mediaErrorCode,
+                        mediaErrorMessage: err && err.mediaErrorMessage,
+                        fileType: err && err.fileType
+                    });
                     var msg = 'Could not process the video. Try an MP4/MOV recording, or use screenshots instead.';
-                    if (err && err.message === 'video_too_long') msg = 'Video is too long (max 4 minutes) — trim it or use screenshots instead.';
-                    else if (err && err.message === 'video_unsupported') msg = 'This video format could not be read. Try MP4, or use screenshots instead.';
-                    else if (err && err.message === 'video_no_frames') msg = 'No distinct frames were found in that video.';
+                    if (err && err.message === 'video_too_long') {
+                        msg = 'Video is too long (max 4 minutes) — trim it or use screenshots instead.';
+                    } else if (err && err.message === 'video_unsupported') {
+                        // MediaError 3 (decode) / 4 (src not supported) on an MP4/MOV
+                        // from a phone is almost always the video stream being
+                        // HEVC/H.265 — a codec this browser can't decode — rather
+                        // than a bad file. Name that specifically: it's actionable
+                        // (re-record/re-export as H.264, or try a different browser),
+                        // unlike a generic "format not read" message.
+                        var isLikelyHevc = (err.mediaErrorCode === 3 || err.mediaErrorCode === 4);
+                        msg = isLikelyHevc
+                            ? 'This browser can\'t decode this video\'s codec (likely HEVC/H.265, common on iPhone recordings). Try opening it in Safari on Mac/iPhone, re-export as H.264, or use screenshots instead.'
+                            : 'This video format could not be read. Try MP4, or use screenshots instead.';
+                    } else if (err && err.message === 'video_no_frames') {
+                        msg = 'No distinct frames were found in that video.';
+                    }
                     showToast(msg, 'error');
                     if (loading) loading.style.display = 'none';
                     if (dropzone) dropzone.style.display = 'block';
