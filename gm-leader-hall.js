@@ -1042,12 +1042,15 @@
         var db = getDb();
         if (!db) return [];
         try {
-            var res = await db
-                .from('accounts')
-                .select('id, guild, role, server_number')
-                .eq('status', 'active')
-                .in('role', ['super_admin', 'server_admin', 'guild_admin', 'R5', 'R4', 'admin'])
-                .order('guild', { ascending: true });
+            // A direct .from('accounts').select(...) here relied on RLS to
+            // scope the result — but accounts' SELECT policy only lets
+            // super_admin read every row; every other role can only read
+            // their own. That silently emptied this list for everyone
+            // except the super_admin. gm_list_eligible_leaders() is a
+            // SECURITY DEFINER RPC that exposes just the four safe fields
+            // this picker needs (never password_hash/auth_user_id/etc.),
+            // gated on the caller themselves being an eligible leader.
+            var res = await db.rpc('gm_list_eligible_leaders');
             activeAccounts = res.data || [];
 
             var gRes = await db.from('guilds').select('id, server_number').order('id', { ascending: true });
