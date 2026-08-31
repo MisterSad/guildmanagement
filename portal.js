@@ -1090,6 +1090,7 @@
 
                 '<div class="portal-card">' +
                     '<div class="portal-card-title"><i class="ph ph-bell-ringing"></i> Notifications<button class="gm-help-btn" data-help-id="help-portal-dashboard" aria-label="Help: Notifications"><i class="ph ph-info"></i></button></div>' +
+                    '<div data-gm-notif></div>' +
                     '<div class="portal-notif-hint"><i class="ph ph-info"></i> Choose which web-push reminders you want to receive.</div>' +
                     '<div class="portal-notif-options">' +
                         '<label class="portal-notif-opt"><input type="checkbox" id="portal-notif-events" value="events"><span><strong>Event reminders</strong><small>Starts, reminders and battle openings</small></span></label>' +
@@ -1336,6 +1337,9 @@
         }
 
         // Notifications preferences
+        var notifSlot = document.querySelector('[data-gm-notif]');
+        if (notifSlot && window.GM_PUSH) window.GM_PUSH.mount(notifSlot);
+
         var notifBtn = document.getElementById('portal-notif-btn');
         var notifMsg = document.getElementById('portal-notif-msg');
         var notifBoxes = ['events', 'glory', 'challenges'].map(function (k) {
