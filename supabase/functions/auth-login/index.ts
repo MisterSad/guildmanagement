@@ -43,9 +43,14 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
-  // IP sliding window throttle: 30 attempts per 5 minutes
+  // IP sliding window throttle: 60 attempts per 5 minutes. Shared with
+  // auth-passkey (same login_throttle table, keyed purely by IP) — a
+  // passkey sign-in costs 2 requests (options + verify) instead of 1, and
+  // the conditional/autofill listener adds a background options call on
+  // every page load, so this budget covers both password and passkey
+  // login from the same IP, not just this one endpoint.
   const clientIp = extractClientIp(req.headers);
-  const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 30, windowMs: 300_000 });
+  const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 60, windowMs: 300_000 });
   if (!throttle.allowed) {
     logger.warn("IP rate limit exceeded on login", { ip: clientIp, id });
     return json({ ok: false, error: "too_many_attempts" }, 429);

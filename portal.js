@@ -64,9 +64,15 @@
         return supabase.functions.invoke('member-portal', {
             body: { action: action, payload: payload || {} }
         }).then(function (r) {
-            var data = r && r.data;
-            if (!data) return { ok: false, error: (r && r.error && r.error.message) || 'request_failed' };
-            return data;
+            // parseFunctionsInvokeResult (gm-utils.js) recovers the real
+            // {ok, error} body even when the platform gateway rejected the
+            // request with a non-2xx status (rate limit, ...) — without it,
+            // supabase-js discards that body and every failure here would
+            // collapse into a generic "request_failed".
+            if (window.GM && window.GM.parseFunctionsInvokeResult) {
+                return window.GM.parseFunctionsInvokeResult(r);
+            }
+            return (r && r.data) || { ok: false, error: (r && r.error && r.error.message) || 'request_failed' };
         }).catch(function () {
             return { ok: false, error: 'request_failed' };
         });

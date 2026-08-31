@@ -369,21 +369,29 @@
                 await handleSuccessfulLogin(resp, user);
             } else if (resp.error === 'pending_approval') {
                 loginError.classList.remove('hidden');
-                var pe = loginError.querySelector('span');
+                var pe = loginError.querySelector('span:last-of-type');
                 if (pe) pe.textContent = 'Your account is awaiting approval by a guild admin.';
             } else if (resp && resp.error === 'invalid_credentials') {
                 loginError.classList.remove('hidden');
-                var pe = loginError.querySelector('span');
+                var pe = loginError.querySelector('span:last-of-type');
                 if (pe) pe.textContent = t('login_error');
+            } else if (resp && resp.error === 'too_many_attempts') {
+                loginError.classList.remove('hidden');
+                var pe = loginError.querySelector('span:last-of-type');
+                if (pe) pe.textContent = 'Too many attempts. Please wait a few minutes and try again.';
+            } else if (resp && resp.error === 'account_locked') {
+                loginError.classList.remove('hidden');
+                var pe = loginError.querySelector('span:last-of-type');
+                if (pe) pe.textContent = 'This account is temporarily locked after too many failed attempts.';
             } else {
                 loginError.classList.remove('hidden');
-                var pe = loginError.querySelector('span');
+                var pe = loginError.querySelector('span:last-of-type');
                 if (pe) pe.textContent = (resp && resp.error) ? resp.error : t('login_error');
             }
         } catch (err) {
             console.error('Login error details:', err);
             loginError.classList.remove('hidden');
-            var pe = loginError.querySelector('span');
+            var pe = loginError.querySelector('span:last-of-type');
             if (pe && err && err.message) pe.textContent = err.message;
             var card = document.querySelector('.login-card');
             if (card) {
@@ -453,7 +461,7 @@
                 }[resp.error] || 'Registration failed. Please try again.';
                 if (registerError) {
                     registerError.classList.remove('hidden');
-                    var regMsg = registerError.querySelector('span');
+                    var regMsg = registerError.querySelector('span:last-of-type');
                     if (regMsg) regMsg.textContent = msg;
                 }
             }

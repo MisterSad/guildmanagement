@@ -554,6 +554,27 @@
         });
     }
 
+    // supabase-js's functions.invoke() only populates `.data` for a 2xx
+    // response — when the platform gateway itself rejects the request
+    // (rate limit, disabled function, ...) it returns `{data: null, error:
+    // FunctionsHttpError}` and the actual JSON body the edge function sent
+    // (e.g. {ok:false, error:"too_many_attempts"}) is discarded unless the
+    // caller goes back and reads it out of error.context (the raw Response)
+    // themselves. Every caller of functions.invoke() in this app needs that
+    // real body, not supabase-js's generic "non-2xx status code" message, so
+    // this is the one place that recovers it.
+    async function parseFunctionsInvokeResult(result) {
+        if (result && result.data) return result.data;
+        var ctx = result && result.error && result.error.context;
+        if (ctx && typeof ctx.clone === 'function') {
+            try {
+                var body = await ctx.clone().json();
+                if (body && typeof body === 'object') return body;
+            } catch (e) { /* not JSON, or already consumed — fall through */ }
+        }
+        return { ok: false, error: (result && result.error && result.error.message) || 'request_failed' };
+    }
+
     // ── Auth : login via Edge Function (verify chiffré côté serveur) ─────────
     // Le mot de passe n'est jamais comparé côté client ; la table accounts
     // n'est plus accessible via la clé publique. L'Edge Function renvoie une
@@ -568,7 +589,7 @@
         } catch (e) {
             return { ok: false, error: 'request_failed' };
         }
-        var data = r && r.data;
+        var data = await parseFunctionsInvokeResult(r);
         if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
         var s = await c.auth.setSession({
             access_token: data.access_token,
@@ -2773,6 +2794,7 @@
         db: db,
         t: t,
         login: login,
+        parseFunctionsInvokeResult: parseFunctionsInvokeResult,
         loginWithPasskey: loginWithPasskey,
         loginWithBackupCode: loginWithBackupCode,
         startConditionalPasskeyLogin: startConditionalPasskeyLogin,
