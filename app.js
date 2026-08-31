@@ -508,6 +508,7 @@
             loadGuildSettings();
             populateAccountGuildSelect();
             wireJoinCode();
+            loadMyPasskeysCard();
         }
         if (tabId === 'admin-discord') {
             loadGuildSettings();
@@ -1658,6 +1659,25 @@
                 }
             });
         });
+    }
+
+    // ─── My Passkeys (WebAuthn) — self-service enrollment for the currently
+    // logged-in account. The list/rename/remove/backup-codes UI itself is
+    // shared with the player Portal's own Security section (gm-webauthn.js
+    // mountPasskeysPanel) so that ~250 lines of markup/wiring exist once,
+    // not duplicated per panel. Mounted once here since these buttons are
+    // static index.html elements (unlike the portal, which rebuilds its
+    // whole settings panel on every render); loadMyPasskeysCard() below
+    // triggers the actual data fetch, called on admin-home tab activation.
+    var myPasskeysPanel = window.GM.webauthn ? window.GM.webauthn.mountPasskeysPanel({
+        listEl: document.getElementById('my-passkeys-list'),
+        addBtnEl: document.getElementById('add-passkey-btn'),
+        regenBtnEl: document.getElementById('regen-backup-codes-btn'),
+        regenLabelEl: document.getElementById('backup-codes-btn-label')
+    }) : null;
+
+    function loadMyPasskeysCard() {
+        if (myPasskeysPanel) myPasskeysPanel.reload();
     }
 
     async function renderGuildsSubscriptionList() {

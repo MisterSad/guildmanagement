@@ -329,6 +329,28 @@
                         </div>
                     </header>
 
+                    <div class="gm-card gm-card-padded gm-section" id="my-passkeys-card">
+                        <div class="gm-section-title" style="margin-bottom: 0.25rem;">
+                            <i class="ph ph-fingerprint"></i>
+                            <span>My Passkeys</span> <button class="gm-help-btn" data-help-id="help-my-passkeys" aria-label="Help: My Passkeys"><i class="ph ph-info"></i></button>
+                        </div>
+                        <p class="gm-page-subtitle" style="margin-bottom:1rem;">Sign in to your own account faster, without typing a password, using your device's fingerprint, face, or PIN.</p>
+                        <div id="my-passkeys-list">
+                            <div class="gm-empty">
+                                <i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i>
+                                <div class="gm-empty-title">Loading…</div>
+                            </div>
+                        </div>
+                        <div class="gm-row" style="gap:.75rem; margin-top:1rem; flex-wrap:wrap; align-items:center;">
+                            <button type="button" id="add-passkey-btn" class="gm-btn gm-btn-primary">
+                                <i class="ph ph-plus"></i> Add a Passkey
+                            </button>
+                            <button type="button" id="regen-backup-codes-btn" class="gm-btn gm-btn-ghost hidden">
+                                <i class="ph ph-arrows-clockwise"></i> <span id="backup-codes-btn-label">Regenerate Backup Codes</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="gm-card gm-card-padded gm-section" id="create-account-card">
                         <div class="gm-section-title" style="margin-bottom: 1rem;">
                             <i class="ph ph-key"></i>
@@ -1742,7 +1764,8 @@
     <!-- TODO(phase-3): vendor supabase-js and phosphor-icons via Vite, drop CDN origins from CSP -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>
-    <script src="gm-utils.js?v=48"></script>
+    <script src="gm-utils.js?v=49"></script>
+    <script src="gm-webauthn.js?v=1"></script>
     <script src="noble-crypto.bundle.js?v=1"></script>
     <script src="gm-signal-crypto.js?v=4"></script>
     <script src="push.js?v=5"></script>
@@ -1759,10 +1782,10 @@
     <script src="svs-matchup.js?v=12"></script>
     <script src="gvg-matchup.js?v=11"></script>
     <script src="badges.js?v=6"></script>
-    <script src="portal.js?v=13"></script>
-    <script src="gm-help.js?v=3"></script>
+    <script src="portal.js?v=14"></script>
+    <script src="gm-help.js?v=4"></script>
     <script src="gm-leader-hall.js?v=28"></script>
-    <script src="app.js?v=83"></script>
+    <script src="app.js?v=85"></script>
     <script src="shell.js?v=40"></script>
 </body>
 </html>

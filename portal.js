@@ -1105,6 +1105,23 @@
                     '<div id="portal-transfer-msg" class="portal-msg"></div>' +
                 '</div>' +
 
+                '<div class="portal-card" style="grid-column: 1 / -1;">' +
+                    '<div class="portal-card-title" style="display:flex; justify-content:space-between; align-items:center;">' +
+                        '<span><i class="ph ph-fingerprint"></i> Security — My Passkeys</span>' +
+                        '<button class="gm-help-btn" data-help-id="help-my-passkeys" aria-label="Help: My Passkeys"><i class="ph ph-info"></i></button>' +
+                    '</div>' +
+                    '<div class="portal-settings-sub" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">' +
+                        'Sign in faster, without typing your password, using your device\'s fingerprint, face, or PIN.' +
+                    '</div>' +
+                    '<div id="portal-passkeys-list">' +
+                        '<div class="gm-empty"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading…</div></div>' +
+                    '</div>' +
+                    '<div class="portal-row" style="margin-top:1rem;">' +
+                        '<button type="button" id="portal-add-passkey-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-plus"></i><span>Add a Passkey</span></button>' +
+                        '<button type="button" id="portal-regen-backup-codes-btn" class="gm-btn gm-btn-ghost gm-btn-sm hidden"><i class="ph ph-arrows-clockwise"></i><span id="portal-backup-codes-btn-label">Regenerate Backup Codes</span></button>' +
+                    '</div>' +
+                '</div>' +
+
             '</div>';
 
         // Military Metrics inputs auto-formatter
@@ -1360,6 +1377,21 @@
                     notifBtn.disabled = false;
                 }
             });
+        }
+
+        // Security — My Passkeys. Shares its list/rename/remove/backup-codes
+        // UI with the admin Accounts & Access card (gm-webauthn.js
+        // mountPasskeysPanel) — this panel is rebuilt from scratch on every
+        // renderSettingsPanel() call, so mounting fresh each time (with its
+        // own initial reload()) is correct here, unlike the admin card which
+        // mounts once against static elements.
+        if (window.GM.webauthn) {
+            window.GM.webauthn.mountPasskeysPanel({
+                listEl: document.getElementById('portal-passkeys-list'),
+                addBtnEl: document.getElementById('portal-add-passkey-btn'),
+                regenBtnEl: document.getElementById('portal-regen-backup-codes-btn'),
+                regenLabelEl: document.getElementById('portal-backup-codes-btn-label')
+            }).reload();
         }
     }
 

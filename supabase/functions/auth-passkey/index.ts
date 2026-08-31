@@ -7,9 +7,11 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
-// Phase A scope: register-options + register-verify only. Passkey/backup-code
-// login (auth-options/auth-verify/backup-login) and the admin reset escape
-// hatch are separate, later phases of the same feature.
+// Actions: register-options/register-verify (enroll a new passkey),
+// list/rename/remove (manage existing ones), regenerate-backup-codes.
+// Passkey/backup-code *login* (auth-options/auth-verify/backup-login) and
+// the admin reset escape hatch are separate, later phases of this feature —
+// every action here requires an already-authenticated session.
 //
 // rpID/origin MUST be the real production host — WebAuthn's rpID has to be
 // the exact domain (or a registrable suffix of it) the browser is actually
@@ -35,6 +37,46 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Backup codes: excludes visually-ambiguous characters (0/O, 1/I/L).
+const BACKUP_CODE_COUNT = 10;
+const BACKUP_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+function randomBackupCode(): string {
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
+  let raw = "";
+  for (const b of bytes) raw += BACKUP_CODE_ALPHABET[b % BACKUP_CODE_ALPHABET.length];
+  return raw.slice(0, 5) + "-" + raw.slice(5, 10);
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Replaces an account's entire backup-code set with a fresh one (one shared
+ * set per account — regenerating always invalidates the prior set). Codes
+ * are returned in plaintext exactly once; only their SHA-256 hash is stored.
+ */
+async function issueBackupCodes(
+  admin: ReturnType<typeof createClient>,
+  accountId: string
+): Promise<string[]> {
+  await admin.from("account_backup_codes").delete().eq("account_id", accountId);
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const codes = Array.from({ length: BACKUP_CODE_COUNT }, randomBackupCode);
+    const rows = await Promise.all(
+      codes.map(async (code) => ({ account_id: accountId, code_hash: await sha256Hex(code) }))
+    );
+    const { error } = await admin.from("account_backup_codes").insert(rows);
+    if (!error) return codes;
+    if (error.code !== "23505") throw error; // only retry on a hash collision
+  }
+  throw new Error("backup_code_generation_failed");
 }
 
 interface Identity {
@@ -245,8 +287,104 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, error: "server_error" }, 500);
       }
 
-      logger.info("Passkey registered", { accountId: identity.accountId, passkeyId: inserted.id });
-      return json({ ok: true, passkey: inserted });
+      const { count: totalPasskeys } = await admin
+        .from("account_passkeys")
+        .select("id", { count: "exact", head: true })
+        .eq("account_id", identity.accountId);
+
+      // Backup codes are generated once, at the account's first passkey —
+      // not re-issued for a 2nd/3rd device, since one shared set covers the
+      // whole account. Registration still succeeds even if this fails; the
+      // user can get a set afterward via regenerate-backup-codes.
+      let backupCodes: string[] | undefined;
+      if (totalPasskeys === 1) {
+        try {
+          backupCodes = await issueBackupCodes(admin, identity.accountId);
+        } catch (err) {
+          logger.error("Failed to issue backup codes after first passkey enrollment", err);
+        }
+      }
+
+      logger.info("Passkey registered", {
+        accountId: identity.accountId,
+        passkeyId: inserted.id,
+        firstPasskey: totalPasskeys === 1,
+      });
+      return json({ ok: true, passkey: inserted, backupCodes });
+    }
+
+    if (action === "list") {
+      const { data: passkeys, error: pkErr } = await admin
+        .from("account_passkeys")
+        .select("id, device_label, created_at, last_used_at, transports")
+        .eq("account_id", identity.accountId)
+        .order("created_at", { ascending: true });
+      if (pkErr) {
+        logger.error("Failed to list passkeys", pkErr);
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+
+      const { count: backupCodesRemaining } = await admin
+        .from("account_backup_codes")
+        .select("id", { count: "exact", head: true })
+        .eq("account_id", identity.accountId)
+        .is("used_at", null);
+
+      return json({ ok: true, passkeys: passkeys || [], backupCodesRemaining: backupCodesRemaining ?? 0 });
+    }
+
+    if (action === "rename") {
+      const id = typeof payload?.id === "string" ? payload.id : "";
+      const rawLabel = typeof payload?.device_label === "string" ? payload.device_label.trim() : "";
+      if (!id || !rawLabel) return json({ ok: false, error: "missing_fields" }, 400);
+      const deviceLabel = rawLabel.slice(0, 100);
+
+      const { data: updated, error: updErr } = await admin
+        .from("account_passkeys")
+        .update({ device_label: deviceLabel })
+        .eq("id", id)
+        .eq("account_id", identity.accountId)
+        .select("id, device_label")
+        .maybeSingle();
+      if (updErr) {
+        logger.error("Failed to rename passkey", updErr);
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+      if (!updated) return json({ ok: false, error: "not_found" }, 404);
+
+      return json({ ok: true, passkey: updated });
+    }
+
+    if (action === "remove") {
+      const id = typeof payload?.id === "string" ? payload.id : "";
+      if (!id) return json({ ok: false, error: "missing_fields" }, 400);
+
+      const { data: deleted, error: delErr } = await admin
+        .from("account_passkeys")
+        .delete()
+        .eq("id", id)
+        .eq("account_id", identity.accountId)
+        .select("id")
+        .maybeSingle();
+      if (delErr) {
+        logger.error("Failed to remove passkey", delErr);
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+      if (!deleted) return json({ ok: false, error: "not_found" }, 404);
+
+      logger.info("Passkey removed", { accountId: identity.accountId, passkeyId: id });
+      return json({ ok: true });
+    }
+
+    if (action === "regenerate-backup-codes") {
+      try {
+        const codes = await issueBackupCodes(admin, identity.accountId);
+        logger.info("Backup codes regenerated", { accountId: identity.accountId });
+        return json({ ok: true, backupCodes: codes });
+      } catch (err) {
+        logger.error("Failed to regenerate backup codes", err);
+        return json({ ok: false, error: "server_error" }, 500);
+      }
     }
 
     return json({ ok: false, error: "unknown_action" }, 400);
