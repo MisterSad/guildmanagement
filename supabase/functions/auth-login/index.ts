@@ -1,9 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
-import { findUserByEmail } from "../_shared/pagination.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import { establishShadowSession } from "../_shared/shadow-session.ts";
 
 const LoginSchema = z.object({
   id: z.string().trim().min(1).max(128),
@@ -20,18 +20,6 @@ function makeJson(req: Request) {
       status,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
-}
-
-async function emailFor(id: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id));
-  const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return `gm_${hex}@no-reply.guildmgmt.app`;
-}
-
-function randomSecret(): string {
-  const b = new Uint8Array(48);
-  crypto.getRandomValues(b);
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 Deno.serve(async (req: Request) => {
@@ -91,55 +79,18 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "pending_approval" }, 200);
   }
 
-  const meta = { app_role: role, account_id: canonicalId };
-  const email = await emailFor(canonicalId);
-  const { data: shadow, error: sErr } = await admin.rpc("gm_get_shadow", { p_id: canonicalId });
-  if (sErr) {
-    logger.error("Failed to get shadow user info", sErr, { id: canonicalId });
-    return json({ ok: false, error: "server_error" }, 500);
-  }
-  const row = Array.isArray(shadow) ? shadow[0] : shadow;
-  let secret: string | null = row?.gotrue_secret ?? null;
-
-  if (!row || !row.auth_user_id || !secret) {
-    secret = randomSecret();
-    const { data: created, error: cuErr } = await admin.auth.admin.createUser({
-      email, password: secret, email_confirm: true, app_metadata: meta,
-    });
-    let uid = created?.user?.id;
-    if (cuErr || !uid) {
-      // FIX (SEV-03): Use safe paginated user lookup instead of unpaginated listUsers()
-      const existing = await findUserByEmail(admin, email);
-      if (!existing) {
-        logger.error("Failed to provision shadow user", cuErr, { email, canonicalId });
-        return json({ ok: false, error: "provision_failed" }, 500);
-      }
-      uid = existing.id;
-      await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
-    }
-    const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: canonicalId, p_auth_user_id: uid, p_secret: secret });
-    if (aErr) {
-      logger.error("Failed to attach shadow user", aErr, { canonicalId, uid });
-      return json({ ok: false, error: "server_error" }, 500);
-    }
-  } else {
-    await admin.auth.admin.updateUserById(row.auth_user_id, { app_metadata: meta });
-  }
-
   const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
-  let { data: signIn, error: siErr } = await anon.auth.signInWithPassword({ email, password: secret! });
-  if (siErr && row?.auth_user_id && secret) {
-    // Self-heal: GoTrue shadow user password may have diverged from gotrue_secret. Resync it.
-    logger.warn("Password divergence detected, resyncing shadow password", { canonicalId });
-    await admin.auth.admin.updateUserById(row.auth_user_id, { password: secret });
-    const retry = await anon.auth.signInWithPassword({ email, password: secret });
-    signIn = retry.data;
-    siErr = retry.error;
+  const shadowResult = await establishShadowSession(admin, anon, canonicalId, role, logger);
+  if (!shadowResult.ok) {
+    return json({ ok: false, error: shadowResult.error }, shadowResult.status);
   }
-  if (siErr || !signIn?.session) {
-    logger.error("Failed to establish GoTrue session", siErr, { canonicalId, email });
-    return json({ ok: false, error: "session_failed" }, 500);
-  }
+
+  // Surfaced so the client can offer to enroll a passkey right after a
+  // successful password sign-in when the account doesn't have one yet.
+  const { count: passkeyCount } = await admin
+    .from("account_passkeys")
+    .select("id", { count: "exact", head: true })
+    .eq("account_id", canonicalId);
 
   logger.info("User signed in successfully", { canonicalId, role });
 
@@ -147,8 +98,9 @@ Deno.serve(async (req: Request) => {
     ok: true,
     role,
     id: canonicalId,
-    access_token: signIn.session.access_token,
-    refresh_token: signIn.session.refresh_token,
-    expires_at: signIn.session.expires_at,
+    has_passkey: (passkeyCount ?? 0) > 0,
+    access_token: shadowResult.session.access_token,
+    refresh_token: shadowResult.session.refresh_token,
+    expires_at: shadowResult.session.expires_at,
   });
 });

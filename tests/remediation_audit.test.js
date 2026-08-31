@@ -22,13 +22,20 @@ describe('Audit Remediation Verification Suite', () => {
     expect(content).toContain('forbidden');
   });
 
-  it('SEV-03: verifies pagination helper is utilized in auth-login and admin-accounts', () => {
+  it('SEV-03: verifies pagination helper is utilized in auth-login (via the shared shadow-session bridge) and admin-accounts', () => {
     const paginationHelper = path.resolve(__dirname, '../supabase/functions/_shared/pagination.ts');
     expect(fs.existsSync(paginationHelper)).toBe(true);
 
+    // auth-login's shadow-user bridge (createUser-or-lookup-by-email) was
+    // extracted into _shared/shadow-session.ts so auth-passkey can reuse it;
+    // the paginated lookup guard now lives there, not inline in auth-login.
     const authLoginContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/auth-login/index.ts'), 'utf-8');
-    expect(authLoginContent).toContain('findUserByEmail');
+    expect(authLoginContent).toContain('establishShadowSession');
     expect(authLoginContent).not.toMatch(/admin\.auth\.admin\.listUsers\(\)/);
+
+    const shadowSessionContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/shadow-session.ts'), 'utf-8');
+    expect(shadowSessionContent).toContain('findUserByEmail');
+    expect(shadowSessionContent).not.toMatch(/admin\.auth\.admin\.listUsers\(\)/);
 
     const adminAccountsContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/admin-accounts/index.ts'), 'utf-8');
     expect(adminAccountsContent).toContain('findUserByEmail');
