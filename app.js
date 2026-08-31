@@ -6374,13 +6374,13 @@
             var idInput = document.getElementById(idInputId);
             var id = idInput ? idInput.value.trim() : '';
             var errorEl = errorElId ? document.getElementById(errorElId) : null;
-            if (!id) {
-                if (errorEl) {
-                    errorEl.querySelector('span:last-of-type').textContent = 'Enter your identifier first.';
-                    errorEl.classList.remove('hidden');
-                }
-                return;
-            }
+            // id is optional: leaving the identifier field blank triggers a
+            // fully discoverable ceremony (the browser's native picker shows
+            // every passkey registered for this site across every account —
+            // needed for someone whose passkeys are spread across more than
+            // one account, e.g. a super_admin account and a separate Player
+            // Portal account). Typing an id first still narrows the picker
+            // to just that one account.
 
             btn.disabled = true;
             var icon = btn.querySelector('i');

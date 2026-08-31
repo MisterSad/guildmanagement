@@ -15,6 +15,15 @@ import { canManageAccount, type Role } from "../_shared/admin-authz.ts";
 //  - Unauthenticated (part of the login flow itself, no session yet):
 //    auth-options/auth-verify (passkey login) and backup-login. Handled
 //    before the identity gate below, mirroring auth-login/index.ts.
+//    auth-options/auth-verify support BOTH a scoped ceremony (an id was
+//    typed first — the only path that works for a non-resident/hardware
+//    security key) and a fully discoverable one (no id — the browser's
+//    native picker shows every passkey registered for this site across
+//    every account, and auth-verify resolves which account from the
+//    credential's own userHandle). Without this, someone with passkeys on
+//    more than one account (e.g. a super_admin account and a separate
+//    Player Portal account) would only ever see whichever account's
+//    passkeys matched an id they'd already typed.
 //  - Authenticated (require an already-logged-in session): register-options/
 //    register-verify (enroll a new passkey), list/rename/remove (manage
 //    existing ones), regenerate-backup-codes, and admin-reset-passkeys (the
@@ -206,43 +215,62 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Unauthenticated actions: these ARE the login flow, so there is no
-    // session yet to gate on. Each takes the same free-text `id` the
-    // password login form does.
+    // session yet to gate on.
     if (action === "auth-options") {
-      const acc = await lookupAccountById(admin, payload?.id);
-      if (!acc || acc.status !== "active") {
-        // Same generic error whether the account doesn't exist or just has
-        // no passkeys — avoids using this as an account-enumeration oracle.
-        return json({ ok: false, error: "no_passkeys" }, 200);
-      }
+      const rawId = typeof payload?.id === "string" ? payload.id.trim() : "";
+      // deno-lint-ignore no-explicit-any
+      let allowCredentials: any[] | undefined = undefined;
+      let challengeAccountId: string | null = null;
 
-      const { data: creds, error: credsErr } = await admin
-        .from("account_passkeys")
-        .select("credential_id, transports")
-        .eq("account_id", acc.id);
-      if (credsErr) {
-        logger.error("Failed to load passkeys for auth-options", credsErr);
-        return json({ ok: false, error: "server_error" }, 500);
+      if (rawId) {
+        // Scoped ceremony: caller already typed an id, so only offer that
+        // one account's credentials (also the only path that works for a
+        // non-resident/non-discoverable authenticator, e.g. some hardware
+        // security keys — see the discoverable branch below for why most
+        // platform authenticators don't need this).
+        const acc = await lookupAccountById(admin, rawId);
+        if (!acc || acc.status !== "active") {
+          // Same generic error whether the account doesn't exist or just has
+          // no passkeys — avoids using this as an account-enumeration oracle.
+          return json({ ok: false, error: "no_passkeys" }, 200);
+        }
+        const { data: creds, error: credsErr } = await admin
+          .from("account_passkeys")
+          .select("credential_id, transports")
+          .eq("account_id", acc.id);
+        if (credsErr) {
+          logger.error("Failed to load passkeys for auth-options", credsErr);
+          return json({ ok: false, error: "server_error" }, 500);
+        }
+        if (!creds || creds.length === 0) {
+          return json({ ok: false, error: "no_passkeys" }, 200);
+        }
+        allowCredentials = creds.map((row) => {
+          const transports = Array.isArray(row.transports) && row.transports.length > 0
+            ? row.transports
+            : undefined;
+          return { id: row.credential_id as string, transports };
+        });
+        challengeAccountId = acc.id;
       }
-      if (!creds || creds.length === 0) {
-        return json({ ok: false, error: "no_passkeys" }, 200);
-      }
+      // else: fully discoverable ceremony — no id typed, no allowCredentials
+      // sent, so the browser's native picker shows *every* passkey
+      // registered for this site across every account (platform
+      // authenticators create resident/discoverable credentials by default,
+      // since registration already requests residentKey: "preferred"). The
+      // account is resolved afterward in auth-verify from the credential's
+      // own userHandle, not from anything the client claims here.
 
       purgeExpiredChallenges(admin);
 
       const options = await generateAuthenticationOptions({
         rpID: RP_ID,
         userVerification: "preferred",
-        allowCredentials: creds.map((row) => {
-          const transports = Array.isArray(row.transports) && row.transports.length > 0
-            ? row.transports
-            : undefined;
-          return { id: row.credential_id as string, transports };
-        }),
+        allowCredentials,
       });
 
       const { error: insErr } = await admin.from("webauthn_challenges").insert({
-        account_id: acc.id,
+        account_id: challengeAccountId,
         challenge: options.challenge,
         ceremony_type: "authentication",
       });
@@ -260,21 +288,29 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, error: "missing_credential" }, 400);
       }
 
-      const acc = await lookupAccountById(admin, payload?.id);
-      if (!acc || acc.status !== "active") {
-        return json({ ok: false, error: "invalid_credentials" }, 200);
-      }
-      if (acc.locked_until && new Date(acc.locked_until).getTime() > Date.now()) {
-        logger.warn("Locked account attempted passkey sign-in", { id: acc.id });
-        return json({ ok: false, error: "account_locked" }, 200);
+      // Find the challenge by its own value rather than by account — this
+      // is the one lookup that works identically for both the scoped and
+      // the discoverable ceremony (in the discoverable case there was no
+      // account to scope by yet), and it's more precise than "most recent
+      // challenge for this account" ever was: challenges are single-use
+      // random values, so an exact match is unambiguous.
+      let clientChallenge: string;
+      try {
+        const clientDataJson = JSON.parse(
+          new TextDecoder().decode(base64UrlToBytes(credential?.response?.clientDataJSON || ""))
+        );
+        clientChallenge = clientDataJson.challenge;
+        if (typeof clientChallenge !== "string" || !clientChallenge) throw new Error("no challenge in clientDataJSON");
+      } catch (err) {
+        logger.warn("Could not decode clientDataJSON", { error: String(err) });
+        return json({ ok: false, error: "verification_failed" }, 400);
       }
 
       const { data: challengeRows, error: chErr } = await admin
         .from("webauthn_challenges")
         .select("id, challenge, expires_at")
-        .eq("account_id", acc.id)
+        .eq("challenge", clientChallenge)
         .eq("ceremony_type", "authentication")
-        .order("created_at", { ascending: false })
         .limit(1);
       if (chErr) {
         logger.error("Failed to load authentication challenge", chErr);
@@ -286,6 +322,32 @@ Deno.serve(async (req: Request) => {
       }
       // Single-use, consumed before verifying regardless of outcome.
       await admin.from("webauthn_challenges").delete().eq("id", challengeRow.id);
+
+      // Resolve the account from the credential's own userHandle — every
+      // passkey is registered with userID set to the account id's raw
+      // bytes (see register-options), so this works for the discoverable
+      // ceremony without the client ever claiming an identity. Falls back
+      // to the client-supplied id only for the rare non-resident
+      // credential whose authenticator omitted userHandle.
+      let targetId: string | null = null;
+      const userHandle = credential?.response?.userHandle;
+      if (typeof userHandle === "string" && userHandle) {
+        try {
+          targetId = new TextDecoder().decode(base64UrlToBytes(userHandle));
+        } catch { /* fall through to client-supplied id */ }
+      }
+      if (!targetId) {
+        targetId = typeof payload?.id === "string" ? payload.id.trim() : "";
+      }
+
+      const acc = await lookupAccountById(admin, targetId);
+      if (!acc || acc.status !== "active") {
+        return json({ ok: false, error: "invalid_credentials" }, 200);
+      }
+      if (acc.locked_until && new Date(acc.locked_until).getTime() > Date.now()) {
+        logger.warn("Locked account attempted passkey sign-in", { id: acc.id });
+        return json({ ok: false, error: "account_locked" }, 200);
+      }
 
       const { data: pkRow, error: pkErr } = await admin
         .from("account_passkeys")

@@ -73,3 +73,49 @@ describe('auth-passkey Edge Function — admin-reset-passkeys authorization', ()
     expect(actionBody).toContain('admin.from("webauthn_challenges").delete().eq("account_id", targetAcc.id)');
   });
 });
+
+describe('auth-passkey Edge Function — discoverable passkey sign-in', () => {
+  // Regression guard for a real bug: someone with passkeys on more than one
+  // account (e.g. a super_admin account and a separate Player Portal
+  // account) only ever saw whichever account's passkeys matched an id they
+  // had already typed, because auth-options always scoped allowCredentials
+  // to one account. Fixed by making the id optional: omitting it triggers a
+  // fully discoverable ceremony, and auth-verify resolves the account from
+  // the credential's own userHandle instead of a client-supplied id.
+  const fnPath = path.resolve(__dirname, '../supabase/functions/auth-passkey/index.ts');
+  const fnContent = fs.readFileSync(fnPath, 'utf-8');
+
+  it('auth-options only restricts allowCredentials when an id was actually supplied', () => {
+    const actionBody = fnContent.slice(
+      fnContent.indexOf('if (action === "auth-options")'),
+      fnContent.indexOf('if (action === "auth-verify")')
+    );
+    expect(actionBody).toContain('if (rawId) {');
+    expect(actionBody).toContain('allowCredentials = creds.map(');
+    // The discoverable branch must NOT require an account lookup to succeed.
+    expect(actionBody).toMatch(/allowCredentials,\s*\}\);/);
+  });
+
+  it('auth-verify resolves the account from the credential userHandle, not a client-claimed id', () => {
+    const actionBody = fnContent.slice(
+      fnContent.indexOf('if (action === "auth-verify")'),
+      fnContent.indexOf('if (action === "backup-login")')
+    );
+    expect(actionBody).toContain('credential?.response?.userHandle');
+    expect(actionBody).toContain('new TextDecoder().decode(base64UrlToBytes(userHandle))');
+    // The id fallback must come after the userHandle attempt, not replace it.
+    const userHandleIdx = actionBody.indexOf('const userHandle');
+    const fallbackIdx = actionBody.indexOf('if (!targetId) {');
+    expect(userHandleIdx).toBeGreaterThan(-1);
+    expect(fallbackIdx).toBeGreaterThan(userHandleIdx);
+  });
+
+  it('looks up the pending challenge by its own value, not by account — the one lookup that has to work before the account is known', () => {
+    const actionBody = fnContent.slice(
+      fnContent.indexOf('if (action === "auth-verify")'),
+      fnContent.indexOf('if (action === "backup-login")')
+    );
+    expect(actionBody).toContain('.eq("challenge", clientChallenge)');
+    expect(actionBody).not.toMatch(/webauthn_challenges"\)\s*\.select\([^)]*\)\s*\.eq\("account_id"/);
+  });
+});

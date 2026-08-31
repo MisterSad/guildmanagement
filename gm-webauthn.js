@@ -151,17 +151,26 @@
     }
 
     // Runs a full authentication ceremony (options -> browser prompt ->
-    // verify) for the given account id. Resolves the raw auth-verify
-    // response ({ok, role, id, access_token, refresh_token, expires_at,
-    // has_passkey}) on success — establishing the actual Supabase session
-    // from those tokens is the caller's job, matching how registerPasskey()
-    // leaves DB writes to the server and just returns its response.
-    // window.GM.loginWithPasskey() in gm-utils.js is that caller.
+    // verify). `id` is optional: pass an account id to scope the browser's
+    // picker to just that account's passkeys (also the only path that works
+    // for a non-resident/hardware security key); omit it (or pass '') for a
+    // fully discoverable ceremony where the browser shows every passkey
+    // registered for this site across every account, and the server figures
+    // out which account from the credential itself — this is what makes
+    // "Sign in with a Passkey" work for someone whose passkeys are spread
+    // across more than one account (e.g. a super_admin account and a
+    // separate Player Portal account) without them having to type anything
+    // first. Resolves the raw auth-verify response ({ok, role, id,
+    // access_token, refresh_token, expires_at, has_passkey}) on success —
+    // establishing the actual Supabase session from those tokens is the
+    // caller's job, matching how registerPasskey() leaves DB writes to the
+    // server and just returns its response. window.GM.loginWithPasskey() in
+    // gm-utils.js is that caller.
     async function authenticateWithPasskey(id) {
         if (!isSupported()) return { ok: false, error: 'webauthn_unsupported' };
-        if (!id || !id.trim()) return { ok: false, error: 'missing_id' };
+        var trimmedId = (id && id.trim()) || '';
 
-        var optionsRes = await invoke('auth-options', { id: id.trim() });
+        var optionsRes = await invoke('auth-options', { id: trimmedId });
         if (!optionsRes.ok) return optionsRes;
 
         var credential;
@@ -175,7 +184,7 @@
         if (!credential) return { ok: false, error: 'cancelled' };
 
         return invoke('auth-verify', {
-            id: id.trim(),
+            id: trimmedId,
             credential: authenticationCredentialToJSON(credential)
         });
     }
