@@ -213,6 +213,138 @@
     })();
 
     // ─── Auth ─────────────────────────────────────────────────────────────────
+    // A light nudge after a plain password login for an account with no
+    // passkey yet — never after a passkey/backup-code login (hasPasskey is
+    // already true there), and only once per browser session so it doesn't
+    // nag on every login.
+    function maybeShowSecureAccountPrompt(resp, role) {
+        if (resp.hasPasskey !== false) return;
+        if (sessionStorage.getItem('gm_secure_prompt_dismissed') === '1') return;
+        if (!window.GM.webauthn || !window.GM.webauthn.isSupported()) return;
+
+        var existing = document.getElementById('secure-account-banner');
+        if (existing) existing.remove();
+
+        var isPortal = (role === 'member');
+
+        var banner = document.createElement('div');
+        banner.id = 'secure-account-banner';
+        banner.style.cssText = 'position:fixed; bottom:1rem; right:1rem; z-index:9000; max-width:360px; ' +
+            'background:var(--bg-soft, #1a1a24); border:1px solid rgba(255,255,255,0.1); border-radius:12px; ' +
+            'padding:1rem 1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:.6rem;';
+        banner.innerHTML =
+            '<div style="display:flex; align-items:flex-start; gap:.6rem;">' +
+                '<i class="ph ph-fingerprint" style="font-size:1.4rem; color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
+                '<div>' +
+                    '<div style="font-weight:600; margin-bottom:.15rem;">Secure your account</div>' +
+                    '<div style="font-size:.82rem; color:var(--fg-dim);">Add a passkey to sign in faster next time, without typing your password.</div>' +
+                '</div>' +
+            '</div>' +
+            '<div style="display:flex; gap:.5rem; justify-content:flex-end;">' +
+                '<button type="button" id="secure-prompt-later" class="gm-btn gm-btn-ghost gm-btn-sm">Later</button>' +
+                '<button type="button" id="secure-prompt-setup" class="gm-btn gm-btn-primary gm-btn-sm">Set up now</button>' +
+            '</div>';
+
+        document.body.appendChild(banner);
+
+        function dismiss() {
+            sessionStorage.setItem('gm_secure_prompt_dismissed', '1');
+            banner.remove();
+        }
+
+        document.getElementById('secure-prompt-later').addEventListener('click', dismiss);
+        document.getElementById('secure-prompt-setup').addEventListener('click', function () {
+            dismiss();
+            if (isPortal) {
+                var navBtn = document.querySelector('[data-portal-nav="settings"]');
+                if (navBtn) navBtn.click();
+            } else if (window.GM_SHELL && window.GM_SHELL.gotoItem) {
+                window.GM_SHELL.gotoItem('accounts');
+            }
+        });
+    }
+
+    // Shared post-login success path — role-driven (showAdminDashboard
+    // itself routes 'member' to the Player Portal, everything else to the
+    // admin dashboard), so it works unchanged regardless of which method
+    // (password, passkey, backup code) or which of the two login screens
+    // produced the session. Extracted so passkey/backup-code sign-in don't
+    // duplicate ~70 lines of guild/server-restriction bookkeeping.
+    async function handleSuccessfulLogin(resp, typedUser) {
+        var canonicalUser = resp.id || typedUser;
+        loginError.classList.add('hidden');
+        document.getElementById('password').value = '';
+
+        // Fetch guilds list
+        await fetchGuilds();
+
+        // Fetch restriction for new logins if guild_admin or server_admin
+        var normalizedLoginRole = window.GM.normalizeRole(resp.role);
+        if (normalizedLoginRole === 'guild_admin') {
+            try {
+                var { data } = await supabase.from('accounts').select('guild').ilike('id', canonicalUser).maybeSingle();
+                if (data && data.guild) {
+                    window.currentGuildRestriction = data.guild;
+                    window.currentGuild = data.guild;
+                    localStorage.setItem('gm_current_guild', data.guild);
+                    localStorage.setItem('gm_guild_restriction', data.guild);
+                    localStorage.removeItem('gm_server_restriction');
+                } else {
+                    window.currentGuildRestriction = null;
+                    localStorage.removeItem('gm_guild_restriction');
+                    localStorage.removeItem('gm_server_restriction');
+                }
+            } catch (err) {
+                console.error('Failed to load login guild restriction:', err);
+                window.currentGuildRestriction = null;
+                localStorage.removeItem('gm_guild_restriction');
+                localStorage.removeItem('gm_server_restriction');
+            }
+        } else if (normalizedLoginRole === 'server_admin') {
+            try {
+                var { data } = await supabase.from('accounts').select('guild, server_number').ilike('id', canonicalUser).maybeSingle();
+                var sNum = data && data.server_number;
+                if (!sNum && data && data.guild) {
+                    var { data: g } = await supabase.from('guilds').select('server_number').eq('id', data.guild).maybeSingle();
+                    if (g && g.server_number) sNum = g.server_number;
+                }
+                if (sNum) {
+                    localStorage.setItem('gm_server_restriction', sNum);
+                } else {
+                    localStorage.removeItem('gm_server_restriction');
+                }
+                window.currentGuildRestriction = null;
+                localStorage.removeItem('gm_guild_restriction');
+            } catch (err) {
+                console.error('Failed to load login server restriction:', err);
+                window.currentGuildRestriction = null;
+                localStorage.removeItem('gm_guild_restriction');
+                localStorage.removeItem('gm_server_restriction');
+            }
+        } else {
+            window.currentGuildRestriction = null;
+            localStorage.removeItem('gm_guild_restriction');
+            localStorage.removeItem('gm_server_restriction');
+        }
+
+        var role = window.GM.normalizeRole(resp.role);
+        localStorage.setItem('gm_role', role);
+        localStorage.setItem('gm_user', canonicalUser);
+        // Store in memory for reliable access
+        window.GM.currentAccountId = canonicalUser;
+
+        showAdminDashboard(role);
+        if (role !== 'member' && window.GM_SHELL && window.GM_SHELL.renderShell) {
+            window.GM_SHELL.renderShell();
+        }
+        if (role !== 'member' && window.GM_LEADER_HALL && window.GM_LEADER_HALL.initGlobalUnreadListener) {
+            window.GM_LEADER_HALL.initGlobalUnreadListener();
+        }
+        showToast(role === 'super_admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + typedUser + ' !'), 'success');
+
+        maybeShowSecureAccountPrompt(resp, role);
+    }
+
     loginForm.addEventListener('submit', async function (e) {
         e.preventDefault();
         var user = document.getElementById('username').value.trim();
@@ -227,76 +359,7 @@
             var resp = await window.GM.login(user, pass);
 
             if (resp.ok) {
-                var canonicalUser = resp.id || user;
-                loginError.classList.add('hidden');
-                document.getElementById('password').value = '';
-
-                // Fetch guilds list
-                await fetchGuilds();
-
-                // Fetch restriction for new logins if guild_admin or server_admin
-                var normalizedLoginRole = window.GM.normalizeRole(resp.role);
-                if (normalizedLoginRole === 'guild_admin') {
-                    try {
-                        var { data } = await supabase.from('accounts').select('guild').ilike('id', canonicalUser).maybeSingle();
-                        if (data && data.guild) {
-                            window.currentGuildRestriction = data.guild;
-                            window.currentGuild = data.guild;
-                            localStorage.setItem('gm_current_guild', data.guild);
-                            localStorage.setItem('gm_guild_restriction', data.guild);
-                            localStorage.removeItem('gm_server_restriction');
-                        } else {
-                            window.currentGuildRestriction = null;
-                            localStorage.removeItem('gm_guild_restriction');
-                            localStorage.removeItem('gm_server_restriction');
-                        }
-                    } catch (err) {
-                        console.error('Failed to load login guild restriction:', err);
-                        window.currentGuildRestriction = null;
-                        localStorage.removeItem('gm_guild_restriction');
-                        localStorage.removeItem('gm_server_restriction');
-                    }
-                } else if (normalizedLoginRole === 'server_admin') {
-                    try {
-                        var { data } = await supabase.from('accounts').select('guild, server_number').ilike('id', canonicalUser).maybeSingle();
-                        var sNum = data && data.server_number;
-                        if (!sNum && data && data.guild) {
-                            var { data: g } = await supabase.from('guilds').select('server_number').eq('id', data.guild).maybeSingle();
-                            if (g && g.server_number) sNum = g.server_number;
-                        }
-                        if (sNum) {
-                            localStorage.setItem('gm_server_restriction', sNum);
-                        } else {
-                            localStorage.removeItem('gm_server_restriction');
-                        }
-                        window.currentGuildRestriction = null;
-                        localStorage.removeItem('gm_guild_restriction');
-                    } catch (err) {
-                        console.error('Failed to load login server restriction:', err);
-                        window.currentGuildRestriction = null;
-                        localStorage.removeItem('gm_guild_restriction');
-                        localStorage.removeItem('gm_server_restriction');
-                    }
-                } else {
-                    window.currentGuildRestriction = null;
-                    localStorage.removeItem('gm_guild_restriction');
-                    localStorage.removeItem('gm_server_restriction');
-                }
-
-                var role = window.GM.normalizeRole(resp.role);
-                localStorage.setItem('gm_role', role);
-                localStorage.setItem('gm_user', canonicalUser);
-                // Store in memory for reliable access
-                window.GM.currentAccountId = canonicalUser;
-
-                showAdminDashboard(role);
-                if (role !== 'member' && window.GM_SHELL && window.GM_SHELL.renderShell) {
-                    window.GM_SHELL.renderShell();
-                }
-                if (role !== 'member' && window.GM_LEADER_HALL && window.GM_LEADER_HALL.initGlobalUnreadListener) {
-                    window.GM_LEADER_HALL.initGlobalUnreadListener();
-                }
-                showToast(role === 'super_admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + user + ' !'), 'success');
+                await handleSuccessfulLogin(resp, user);
             } else if (resp.error === 'pending_approval') {
                 loginError.classList.remove('hidden');
                 var pe = loginError.querySelector('span');
@@ -6189,6 +6252,50 @@
         });
     });
 
+    // Shared post-login step for the standalone Player Submission Portal
+    // entry (distinct from handleSuccessfulLogin, which drives the main
+    // #login-form → full admin/portal dashboard). `loginResp` is whatever
+    // window.GM.login()/loginWithPasskey()/loginWithBackupCode() resolved
+    // to — all three share the same {ok, id, hasPasskey, ...} shape.
+    async function handlePortalLookupSuccess(loginResp, typedId) {
+        var id = loginResp.id || typedId;
+
+        // Mark this session as a player-portal session so a page refresh
+        // restores the portal instead of the admin dashboard.
+        localStorage.setItem('gm_portal_session', '1');
+        localStorage.setItem('gm_role', 'member');
+        localStorage.setItem('gm_user', id);
+
+        var { data, error } = await supabase.functions.invoke('member-portal', {
+            body: { action: 'get-active-sessions', payload: {} }
+        });
+
+        if (error || !data || !data.ok) {
+            portalLookupError.querySelector('span').textContent = 'Unable to connect to the portal. Please try again.';
+            portalLookupError.classList.remove('hidden');
+            return;
+        }
+
+        if (data.error === 'player_not_found') {
+            portalLookupError.querySelector('span').textContent = 'Your account is not linked to a guild member.';
+            portalLookupError.classList.remove('hidden');
+            return;
+        }
+
+        // Successfully fetched data
+        portalStepLookup.classList.add('hidden');
+        portalStepForm.classList.remove('hidden');
+        playerPortalView.classList.add('portal-connected');
+        var portalContainer = document.querySelector('.gm-portal-container');
+        if (portalContainer) portalContainer.classList.add('portal-wide');
+        if (window.GM_PORTAL) {
+            window.GM_PORTAL.loadDashboard();
+        } else {
+            portalLookupError.querySelector('span').textContent = 'Portal module not loaded. Please reload the page.';
+            portalLookupError.classList.remove('hidden');
+        }
+    }
+
     portalLookupBtn.addEventListener('click', async function () {
         var id = portalIdInput.value.trim();
         var pass = portalPasswordInput.value;
@@ -6210,41 +6317,7 @@
                 portalLookupError.classList.remove('hidden');
                 return;
             }
-
-            // Mark this session as a player-portal session so a page refresh
-            // restores the portal instead of the admin dashboard.
-            localStorage.setItem('gm_portal_session', '1');
-            localStorage.setItem('gm_role', 'member');
-            localStorage.setItem('gm_user', id);
-
-            var { data, error } = await supabase.functions.invoke('member-portal', {
-                body: { action: 'get-active-sessions', payload: {} }
-            });
-
-            if (error || !data || !data.ok) {
-                portalLookupError.querySelector('span').textContent = 'Unable to connect to the portal. Please try again.';
-                portalLookupError.classList.remove('hidden');
-                return;
-            }
-
-            if (data.error === 'player_not_found') {
-                portalLookupError.querySelector('span').textContent = 'Your account is not linked to a guild member.';
-                portalLookupError.classList.remove('hidden');
-                return;
-            }
-
-            // Successfully fetched data
-            portalStepLookup.classList.add('hidden');
-            portalStepForm.classList.remove('hidden');
-            playerPortalView.classList.add('portal-connected');
-            var portalContainer = document.querySelector('.gm-portal-container');
-            if (portalContainer) portalContainer.classList.add('portal-wide');
-            if (window.GM_PORTAL) {
-                window.GM_PORTAL.loadDashboard();
-            } else {
-                portalLookupError.querySelector('span').textContent = 'Portal module not loaded. Please reload the page.';
-                portalLookupError.classList.remove('hidden');
-            }
+            await handlePortalLookupSuccess(loginResp, id);
         } catch (err) {
             console.error(err);
             portalLookupError.querySelector('span').textContent = 'An error occurred during verification.';
@@ -6254,6 +6327,146 @@
             if (span) span.textContent = origText;
         }
     });
+
+    // ─── Passkey / backup-code sign-in — both login screens ────────────────
+    // Each button below runs a WebAuthn ceremony (or redeems a backup code)
+    // through gm-webauthn.js, then feeds the result into whichever
+    // success-handling path matches the screen it's on.
+    function wirePasskeyLoginButton(btnId, idInputId, errorElId, onSuccess) {
+        var btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (window.GM.webauthn && !window.GM.webauthn.isSupported()) {
+            btn.disabled = true;
+            btn.title = 'Passkeys are not supported in this browser.';
+        }
+        btn.addEventListener('click', async function () {
+            var idInput = document.getElementById(idInputId);
+            var id = idInput ? idInput.value.trim() : '';
+            var errorEl = errorElId ? document.getElementById(errorElId) : null;
+            if (!id) {
+                if (errorEl) {
+                    errorEl.querySelector('span:last-of-type').textContent = 'Enter your identifier first.';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+
+            btn.disabled = true;
+            var icon = btn.querySelector('i');
+            var originalIconClass = icon ? icon.className : '';
+            if (icon) icon.className = 'ph ph-circle-notch ph-spin';
+            try {
+                var resp = await window.GM.loginWithPasskey(id);
+                if (!resp.ok) {
+                    if (resp.error === 'cancelled') {
+                        // User closed the browser's own passkey prompt — not an error.
+                    } else if (errorEl) {
+                        var msg = resp.error === 'no_passkeys'
+                            ? 'No passkey found for this account.'
+                            : resp.error === 'account_locked'
+                                ? 'This account is temporarily locked.'
+                                : 'Passkey sign-in failed.';
+                        errorEl.querySelector('span:last-of-type').textContent = msg;
+                        errorEl.classList.remove('hidden');
+                    }
+                    return;
+                }
+                if (errorEl) errorEl.classList.add('hidden');
+                await onSuccess(resp, id);
+            } finally {
+                btn.disabled = false;
+                if (icon) icon.className = originalIconClass;
+            }
+        });
+    }
+
+    function openBackupCodeDialog(idInputId, onSuccess) {
+        var existing = document.getElementById('backup-code-login-overlay');
+        if (existing) existing.remove();
+
+        var prefilledId = (document.getElementById(idInputId) || {}).value || '';
+
+        var html =
+            '<div id="backup-code-login-overlay" class="gm-modal-overlay">' +
+                '<div class="gm-modal-card" style="max-width: 380px; width: 92%;">' +
+                    '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom: .75rem;">' +
+                        '<i class="ph ph-key" style="font-size: 1.4rem; color: var(--accent);"></i>' +
+                        '<h3 style="margin:0; font-size: 1.1rem;">Use a Backup Code</h3>' +
+                    '</div>' +
+                    '<div class="gm-login-field">' +
+                        '<label for="backup-code-login-id">Identifier</label>' +
+                        '<input type="text" id="backup-code-login-id" class="gm-input" value="' + prefilledId.replace(/"/g, '&quot;') + '" autocomplete="username">' +
+                    '</div>' +
+                    '<div class="gm-login-field" style="margin-top:.6rem;">' +
+                        '<label for="backup-code-login-code">Backup code</label>' +
+                        '<input type="text" id="backup-code-login-code" class="gm-input" placeholder="XXXXX-XXXXX" autocomplete="one-time-code">' +
+                    '</div>' +
+                    '<div id="backup-code-login-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
+                        '<i class="ph ph-warning-circle"></i><span></span>' +
+                    '</div>' +
+                    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
+                        '<button type="button" class="gm-btn gm-btn-ghost" id="backup-code-login-cancel">Cancel</button>' +
+                        '<button type="button" class="gm-btn gm-btn-primary" id="backup-code-login-submit">Sign in</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+        var overlay = document.getElementById('backup-code-login-overlay');
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function closeModal() {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 200);
+        }
+        document.getElementById('backup-code-login-cancel').addEventListener('click', closeModal);
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) closeModal(); });
+
+        document.getElementById('backup-code-login-submit').addEventListener('click', async function () {
+            var id = document.getElementById('backup-code-login-id').value.trim();
+            var code = document.getElementById('backup-code-login-code').value.trim();
+            var errorEl = document.getElementById('backup-code-login-error');
+            if (!id || !code) {
+                errorEl.querySelector('span:last-of-type').textContent = 'Enter both your identifier and a backup code.';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            var submitBtn = this;
+            submitBtn.disabled = true;
+            try {
+                var resp = await window.GM.loginWithBackupCode(id, code);
+                if (!resp.ok) {
+                    var msg = resp.error === 'account_locked'
+                        ? 'This account is temporarily locked.'
+                        : 'Invalid identifier or backup code.';
+                    errorEl.querySelector('span:last-of-type').textContent = msg;
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+                closeModal();
+                await onSuccess(resp, id);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    wirePasskeyLoginButton('login-passkey-btn', 'username', 'login-error', handleSuccessfulLogin);
+    var loginBackupCodeBtn = document.getElementById('login-backup-code-btn');
+    if (loginBackupCodeBtn) {
+        loginBackupCodeBtn.addEventListener('click', function () {
+            openBackupCodeDialog('username', handleSuccessfulLogin);
+        });
+    }
+
+    wirePasskeyLoginButton('portal-passkey-btn', 'portal-id', 'portal-lookup-error', handlePortalLookupSuccess);
+    var portalBackupCodeBtn = document.getElementById('portal-backup-code-btn');
+    if (portalBackupCodeBtn) {
+        portalBackupCodeBtn.addEventListener('click', function () {
+            openBackupCodeDialog('portal-id', handlePortalLookupSuccess);
+        });
+    }
 
     // Admin "Player History" modal — opened from clickable Stats leaderboard
     // rows (stats.js). Combines two sources: gm_get_player_metrics_history

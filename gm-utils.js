@@ -575,7 +575,40 @@
             refresh_token: data.refresh_token
         });
         if (s.error) return { ok: false, error: 'session_set_failed' };
-        return { ok: true, role: data.role, id: data.id };
+        return { ok: true, role: data.role, id: data.id, hasPasskey: !!data.has_passkey };
+    }
+
+    // Same contract as login(id, password) above, but via a WebAuthn
+    // ceremony instead of a password. The ceremony itself (options ->
+    // browser prompt -> verify) lives in gm-webauthn.js; this just applies
+    // the resulting tokens to the Supabase client the exact same way.
+    async function loginWithPasskey(id) {
+        var c = getClient();
+        if (!c) return { ok: false, error: 'no_client' };
+        if (!window.GM || !window.GM.webauthn) return { ok: false, error: 'webauthn_unavailable' };
+        var data = await window.GM.webauthn.authenticateWithPasskey(id);
+        if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
+        var s = await c.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token
+        });
+        if (s.error) return { ok: false, error: 'session_set_failed' };
+        return { ok: true, role: data.role, id: data.id, hasPasskey: true };
+    }
+
+    // Same contract as login(), redeeming a one-time backup code instead.
+    async function loginWithBackupCode(id, code) {
+        var c = getClient();
+        if (!c) return { ok: false, error: 'no_client' };
+        if (!window.GM || !window.GM.webauthn) return { ok: false, error: 'webauthn_unavailable' };
+        var data = await window.GM.webauthn.redeemBackupCode(id, code);
+        if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
+        var s = await c.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token
+        });
+        if (s.error) return { ok: false, error: 'session_set_failed' };
+        return { ok: true, role: data.role, id: data.id, hasPasskey: true, backupCodesRemaining: data.backup_codes_remaining };
     }
 
     async function logout() {
@@ -2580,11 +2613,16 @@
         var userAgent = (typeof ua === 'string' && ua) ? ua : (typeof navigator !== 'undefined' && navigator.userAgent ? navigator.userAgent : '');
         var os = 'Unknown OS';
         if (/iPhone|iPad|iPod/i.test(userAgent)) {
-            var m = userAgent.match(/OS\s+([\d_]+)/i);
-            os = 'iOS' + (m ? ' ' + m[1].replace(/_/g, '.') : '');
+            // Apple freezes/lags the "OS X_Y" token in the UA string for
+            // anti-fingerprinting (confirmed live: iOS 26.6.1 devices still
+            // reporting "18_7" here) — showing it as the real OS version is
+            // actively misleading, so just report the platform, no number.
+            os = 'iOS';
         } else if (/Macintosh|Mac\s+OS\s+X/i.test(userAgent)) {
-            var m = userAgent.match(/Mac\s+OS\s+X\s+([\d_]+)/i);
-            os = 'macOS' + (m ? ' ' + m[1].replace(/_/g, '.') : '');
+            // Same freeze, industry-wide: every browser on macOS has reported
+            // "Mac OS X 10_15_7" in this UA token since ~2019 regardless of
+            // the real installed version (confirmed live on macOS 26.6.2).
+            os = 'macOS';
         } else if (/Android/i.test(userAgent)) {
             var m = userAgent.match(/Android\s+([\d\.]+)/i);
             os = 'Android' + (m ? ' ' + m[1] : '');
@@ -2605,8 +2643,14 @@
             var m = userAgent.match(/Chrome\/([\d\.]+)/i);
             browser = 'Chrome' + (m ? ' ' + m[1].split('.')[0] : '');
         } else if (/Safari\/([\d\.]+)/i.test(userAgent) && !/Chrome|Chromium|Android/i.test(userAgent)) {
+            // Apple aligned Safari's marketing version to the OS's yearly
+            // number (Safari 26 ships with iOS/macOS 26) but the "Version/"
+            // UA token still carries WebKit's own X.Y.Z build number — every
+            // other browser branch here already reduces to the major version
+            // via split('.')[0]; this one was missing it (confirmed live:
+            // "Safari 26.6.1" shown instead of "Safari 26").
             var m = userAgent.match(/Version\/([\d\.]+)/i);
-            browser = 'Safari' + (m ? ' ' + m[1] : '');
+            browser = 'Safari' + (m ? ' ' + m[1].split('.')[0] : '');
         } else if (/Firefox\/([\d\.]+)/i.test(userAgent)) {
             var m = userAgent.match(/Firefox\/([\d\.]+)/i);
             browser = 'Firefox' + (m ? ' ' + m[1].split('.')[0] : '');
@@ -2705,6 +2749,8 @@
         db: db,
         t: t,
         login: login,
+        loginWithPasskey: loginWithPasskey,
+        loginWithBackupCode: loginWithBackupCode,
         logout: logout,
         ensureAuthSession: ensureAuthSession,
         adminAccounts: adminAccounts,

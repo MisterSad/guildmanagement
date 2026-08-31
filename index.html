@@ -90,6 +90,13 @@
                                     <span class="material-symbols-rounded">login</span>
                                     <span data-i18n="login_btn">Sign in</span>
                                 </button>
+                                <button type="button" id="login-passkey-btn" class="gm-btn gm-btn-ghost gm-login-submit" style="margin-top:.5rem;">
+                                    <i class="ph ph-fingerprint"></i>
+                                    <span>Sign in with a Passkey</span>
+                                </button>
+                                <button type="button" id="login-backup-code-btn" style="margin-top:.5rem; background:none; border:none; color:var(--fg-dim); font-size:.8rem; text-decoration:underline; cursor:pointer; width:100%; text-align:center;">
+                                    Use a backup code instead
+                                </button>
                             </div>
                         </form>
 
@@ -220,6 +227,13 @@
                             <button type="button" id="portal-lookup-btn" class="gm-btn gm-btn-primary gm-login-submit">
                                 <i class="ph ph-sign-in"></i>
                                 <span>Access My Guild Events</span>
+                            </button>
+                            <button type="button" id="portal-passkey-btn" class="gm-btn gm-btn-ghost gm-login-submit" style="margin-top:.5rem;">
+                                <i class="ph ph-fingerprint"></i>
+                                <span>Sign in with a Passkey</span>
+                            </button>
+                            <button type="button" id="portal-backup-code-btn" style="margin-top:.5rem; background:none; border:none; color:var(--fg-dim); font-size:.8rem; text-decoration:underline; cursor:pointer; width:100%; text-align:center;">
+                                Use a backup code instead
                             </button>
                             <div class="gm-portal-switch-wrap">
                                 <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%;" id="portal-go-register-btn">
@@ -1764,8 +1778,8 @@
     <!-- TODO(phase-3): vendor supabase-js and phosphor-icons via Vite, drop CDN origins from CSP -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>
-    <script src="gm-utils.js?v=49"></script>
-    <script src="gm-webauthn.js?v=1"></script>
+    <script src="gm-utils.js?v=51"></script>
+    <script src="gm-webauthn.js?v=2"></script>
     <script src="noble-crypto.bundle.js?v=1"></script>
     <script src="gm-signal-crypto.js?v=4"></script>
     <script src="push.js?v=5"></script>
@@ -1785,7 +1799,7 @@
     <script src="portal.js?v=14"></script>
     <script src="gm-help.js?v=4"></script>
     <script src="gm-leader-hall.js?v=28"></script>
-    <script src="app.js?v=85"></script>
+    <script src="app.js?v=86"></script>
     <script src="shell.js?v=40"></script>
 </body>
 </html>

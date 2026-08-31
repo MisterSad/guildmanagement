@@ -2,16 +2,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
 } from "https://esm.sh/@simplewebauthn/server@10.0.1";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import { establishShadowSession } from "../_shared/shadow-session.ts";
 
-// Actions: register-options/register-verify (enroll a new passkey),
-// list/rename/remove (manage existing ones), regenerate-backup-codes.
-// Passkey/backup-code *login* (auth-options/auth-verify/backup-login) and
-// the admin reset escape hatch are separate, later phases of this feature —
-// every action here requires an already-authenticated session.
+// Two groups of actions:
+//  - Unauthenticated (part of the login flow itself, no session yet):
+//    auth-options/auth-verify (passkey login) and backup-login. Handled
+//    before the identity gate below, mirroring auth-login/index.ts.
+//  - Authenticated (require an already-logged-in session): register-options/
+//    register-verify (enroll a new passkey), list/rename/remove (manage
+//    existing ones), regenerate-backup-codes. The admin reset escape hatch
+//    for a fully-locked-out account is a separate, later phase.
 //
 // rpID/origin MUST be the real production host — WebAuthn's rpID has to be
 // the exact domain (or a registrable suffix of it) the browser is actually
@@ -37,6 +43,39 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToBytes(b64url: string): Uint8Array {
+  const padded = b64url.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = (4 - (padded.length % 4)) % 4;
+  const bin = atob(padded + "=".repeat(pad));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+// Case-insensitive lookup matching gm_check_login's own semantics
+// (WHERE LOWER(id) = LOWER(TRIM(p_id))) — needed because the passkey/backup
+// login actions run before any identity is established, so they take the
+// same free-text id the password login form does.
+async function lookupAccountById(admin: ReturnType<typeof createClient>, rawId: unknown) {
+  const trimmed = typeof rawId === "string" ? rawId.trim() : "";
+  if (!trimmed) return null;
+  const { data } = await admin
+    .from("accounts")
+    .select("id, role, guild, status, locked_until")
+    .ilike("id", trimmed)
+    .maybeSingle();
+  return data;
+}
+
+// Accepts the code with or without its "XXXXX-XXXXX" dash, any casing, and
+// stray whitespace — the hash only matches the canonical dashed form it was
+// generated in, so this reconstructs that form before hashing.
+function normalizeBackupCode(raw: string): string {
+  const alnum = (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (alnum.length !== 10) return alnum;
+  return alnum.slice(0, 5) + "-" + alnum.slice(5, 10);
 }
 
 // Backup codes: excludes visually-ambiguous characters (0/O, 1/I/L).
@@ -161,6 +200,226 @@ Deno.serve(async (req: Request) => {
     if (!throttle.allowed) {
       logger.warn("IP rate limit exceeded on auth-passkey", { ip: clientIp, action });
       return json({ ok: false, error: "too_many_attempts" }, 429);
+    }
+
+    // ── Unauthenticated actions: these ARE the login flow, so there is no
+    // session yet to gate on. Each takes the same free-text `id` the
+    // password login form does.
+    if (action === "auth-options") {
+      const acc = await lookupAccountById(admin, payload?.id);
+      if (!acc || acc.status !== "active") {
+        // Same generic error whether the account doesn't exist or just has
+        // no passkeys — avoids using this as an account-enumeration oracle.
+        return json({ ok: false, error: "no_passkeys" }, 200);
+      }
+
+      const { data: creds, error: credsErr } = await admin
+        .from("account_passkeys")
+        .select("credential_id, transports")
+        .eq("account_id", acc.id);
+      if (credsErr) {
+        logger.error("Failed to load passkeys for auth-options", credsErr);
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+      if (!creds || creds.length === 0) {
+        return json({ ok: false, error: "no_passkeys" }, 200);
+      }
+
+      purgeExpiredChallenges(admin);
+
+      const options = await generateAuthenticationOptions({
+        rpID: RP_ID,
+        userVerification: "preferred",
+        allowCredentials: creds.map((row) => {
+          const transports = Array.isArray(row.transports) && row.transports.length > 0
+            ? row.transports
+            : undefined;
+          return { id: row.credential_id as string, transports };
+        }),
+      });
+
+      const { error: insErr } = await admin.from("webauthn_challenges").insert({
+        account_id: acc.id,
+        challenge: options.challenge,
+        ceremony_type: "authentication",
+      });
+      if (insErr) {
+        logger.error("Failed to store authentication challenge", insErr);
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+
+      return json({ ok: true, options });
+    }
+
+    if (action === "auth-verify") {
+      const credential = payload?.credential;
+      if (!credential || typeof credential !== "object") {
+        return json({ ok: false, error: "missing_credential" }, 400);
+      }
+
+      const acc = await lookupAccountById(admin, payload?.id);
+      if (!acc || acc.status !== "active") {
+        return json({ ok: false, error: "invalid_credentials" }, 200);
+      }
+      if (acc.locked_until && new Date(acc.locked_until).getTime() > Date.now()) {
+        logger.warn("Locked account attempted passkey sign-in", { id: acc.id });
+        return json({ ok: false, error: "account_locked" }, 200);
+      }
+
+      const { data: challengeRows, error: chErr } = await admin
+        .from("webauthn_challenges")
+        .select("id, challenge, expires_at")
+        .eq("account_id", acc.id)
+        .eq("ceremony_type", "authentication")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (chErr) {
+        logger.error("Failed to load authentication challenge", chErr);
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+      const challengeRow = challengeRows?.[0];
+      if (!challengeRow || new Date(challengeRow.expires_at).getTime() < Date.now()) {
+        return json({ ok: false, error: "challenge_expired" }, 400);
+      }
+      // Single-use, consumed before verifying regardless of outcome.
+      await admin.from("webauthn_challenges").delete().eq("id", challengeRow.id);
+
+      const { data: pkRow, error: pkErr } = await admin
+        .from("account_passkeys")
+        .select("id, credential_id, public_key, sign_count, transports")
+        .eq("account_id", acc.id)
+        .eq("credential_id", credential.id)
+        .maybeSingle();
+      if (pkErr) {
+        logger.error("Failed to load passkey for verification", pkErr);
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+      if (!pkRow) {
+        return json({ ok: false, error: "invalid_credentials" }, 200);
+      }
+
+      let verification;
+      try {
+        verification = await verifyAuthenticationResponse({
+          response: credential,
+          expectedChallenge: challengeRow.challenge,
+          expectedOrigin: ORIGIN,
+          expectedRPID: RP_ID,
+          authenticator: {
+            credentialID: pkRow.credential_id,
+            credentialPublicKey: base64UrlToBytes(pkRow.public_key),
+            counter: pkRow.sign_count,
+            transports: Array.isArray(pkRow.transports) && pkRow.transports.length > 0
+              ? pkRow.transports
+              : undefined,
+          },
+        });
+      } catch (err) {
+        logger.warn("Authentication verification threw", { error: String(err) });
+        return json({ ok: false, error: "verification_failed" }, 400);
+      }
+
+      if (!verification.verified) {
+        return json({ ok: false, error: "verification_failed" }, 400);
+      }
+
+      // newCounter guards against a cloned/replayed authenticator (the
+      // library itself rejects the response if newCounter <= the stored
+      // counter passed in above); persist it so the next login re-checks
+      // against this one, not the original registration value.
+      await admin
+        .from("account_passkeys")
+        .update({ sign_count: verification.authenticationInfo.newCounter, last_used_at: new Date().toISOString() })
+        .eq("id", pkRow.id);
+
+      // A successful passkey sign-in proves account control just like a
+      // correct password would — reset the same password-lockout state.
+      await admin
+        .from("accounts")
+        .update({ failed_login_count: 0, locked_until: null, last_login_at: new Date().toISOString() })
+        .eq("id", acc.id);
+
+      const anonForVerify = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+      const shadowResult = await establishShadowSession(admin, anonForVerify, acc.id, acc.role || "member", logger);
+      if (!shadowResult.ok) {
+        return json({ ok: false, error: shadowResult.error }, shadowResult.status);
+      }
+
+      logger.info("User signed in via passkey", { accountId: acc.id, role: acc.role });
+
+      return json({
+        ok: true,
+        role: acc.role,
+        id: acc.id,
+        has_passkey: true,
+        access_token: shadowResult.session.access_token,
+        refresh_token: shadowResult.session.refresh_token,
+        expires_at: shadowResult.session.expires_at,
+      });
+    }
+
+    if (action === "backup-login") {
+      const code = normalizeBackupCode(typeof payload?.code === "string" ? payload.code : "");
+      if (!code || code.length !== 11) {
+        return json({ ok: false, error: "invalid_code" }, 200);
+      }
+
+      const acc = await lookupAccountById(admin, payload?.id);
+      if (!acc || acc.status !== "active") {
+        return json({ ok: false, error: "invalid_credentials" }, 200);
+      }
+      if (acc.locked_until && new Date(acc.locked_until).getTime() > Date.now()) {
+        logger.warn("Locked account attempted backup-code sign-in", { id: acc.id });
+        return json({ ok: false, error: "account_locked" }, 200);
+      }
+
+      const codeHash = await sha256Hex(code);
+      const { data: codeRow, error: codeErr } = await admin
+        .from("account_backup_codes")
+        .select("id")
+        .eq("account_id", acc.id)
+        .eq("code_hash", codeHash)
+        .is("used_at", null)
+        .maybeSingle();
+      if (codeErr) {
+        logger.error("Failed to look up backup code", codeErr);
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+      if (!codeRow) {
+        return json({ ok: false, error: "invalid_code" }, 200);
+      }
+
+      // Single-use.
+      await admin.from("account_backup_codes").update({ used_at: new Date().toISOString() }).eq("id", codeRow.id);
+      await admin
+        .from("accounts")
+        .update({ failed_login_count: 0, locked_until: null, last_login_at: new Date().toISOString() })
+        .eq("id", acc.id);
+
+      const { count: remaining } = await admin
+        .from("account_backup_codes")
+        .select("id", { count: "exact", head: true })
+        .eq("account_id", acc.id)
+        .is("used_at", null);
+
+      const anonForBackup = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+      const shadowResult = await establishShadowSession(admin, anonForBackup, acc.id, acc.role || "member", logger);
+      if (!shadowResult.ok) {
+        return json({ ok: false, error: shadowResult.error }, shadowResult.status);
+      }
+
+      logger.info("User signed in via backup code", { accountId: acc.id, role: acc.role, remaining });
+
+      return json({
+        ok: true,
+        role: acc.role,
+        id: acc.id,
+        has_passkey: true,
+        backup_codes_remaining: remaining ?? 0,
+        access_token: shadowResult.session.access_token,
+        refresh_token: shadowResult.session.refresh_token,
+        expires_at: shadowResult.session.expires_at,
+      });
     }
 
     const identity = await getIdentity(req, admin);

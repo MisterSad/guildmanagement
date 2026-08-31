@@ -116,6 +116,78 @@
         });
     }
 
+    // Converts the server's PublicKeyCredentialRequestOptionsJSON into what
+    // navigator.credentials.get() expects (ArrayBuffers, not base64url).
+    function authenticationOptionsFromServer(options) {
+        var publicKey = Object.assign({}, options);
+        publicKey.challenge = base64UrlToBuffer(options.challenge);
+        if (Array.isArray(options.allowCredentials)) {
+            publicKey.allowCredentials = options.allowCredentials.map(function (c) {
+                return Object.assign({}, c, { id: base64UrlToBuffer(c.id) });
+            });
+        }
+        return publicKey;
+    }
+
+    // Converts the browser's PublicKeyCredential (from get()) into the
+    // AuthenticationResponseJSON shape the server's verifyAuthenticationResponse()
+    // expects.
+    function authenticationCredentialToJSON(credential) {
+        var response = credential.response;
+        return {
+            id: credential.id,
+            rawId: bufferToBase64Url(credential.rawId),
+            response: {
+                clientDataJSON: bufferToBase64Url(response.clientDataJSON),
+                authenticatorData: bufferToBase64Url(response.authenticatorData),
+                signature: bufferToBase64Url(response.signature),
+                userHandle: response.userHandle ? bufferToBase64Url(response.userHandle) : undefined
+            },
+            clientExtensionResults: typeof credential.getClientExtensionResults === 'function'
+                ? credential.getClientExtensionResults()
+                : {},
+            type: credential.type
+        };
+    }
+
+    // Runs a full authentication ceremony (options -> browser prompt ->
+    // verify) for the given account id. Resolves the raw auth-verify
+    // response ({ok, role, id, access_token, refresh_token, expires_at,
+    // has_passkey}) on success — establishing the actual Supabase session
+    // from those tokens is the caller's job, matching how registerPasskey()
+    // leaves DB writes to the server and just returns its response.
+    // window.GM.loginWithPasskey() in gm-utils.js is that caller.
+    async function authenticateWithPasskey(id) {
+        if (!isSupported()) return { ok: false, error: 'webauthn_unsupported' };
+        if (!id || !id.trim()) return { ok: false, error: 'missing_id' };
+
+        var optionsRes = await invoke('auth-options', { id: id.trim() });
+        if (!optionsRes.ok) return optionsRes;
+
+        var credential;
+        try {
+            credential = await navigator.credentials.get({
+                publicKey: authenticationOptionsFromServer(optionsRes.options)
+            });
+        } catch (err) {
+            return { ok: false, error: (err && err.name === 'NotAllowedError') ? 'cancelled' : 'get_failed' };
+        }
+        if (!credential) return { ok: false, error: 'cancelled' };
+
+        return invoke('auth-verify', {
+            id: id.trim(),
+            credential: authenticationCredentialToJSON(credential)
+        });
+    }
+
+    // Redeems a one-time backup code for the given account id. Resolves the
+    // same shape as authenticateWithPasskey() on success (plus
+    // backup_codes_remaining) — no browser ceremony involved, this is a
+    // plain server round trip.
+    function redeemBackupCode(id, code) {
+        return invoke('backup-login', { id: id, code: code });
+    }
+
     function listPasskeys() {
         return invoke('list', {});
     }
@@ -420,6 +492,8 @@
     window.GM.webauthn = {
         isSupported: isSupported,
         registerPasskey: registerPasskey,
+        authenticateWithPasskey: authenticateWithPasskey,
+        redeemBackupCode: redeemBackupCode,
         listPasskeys: listPasskeys,
         renamePasskey: renamePasskey,
         removePasskey: removePasskey,

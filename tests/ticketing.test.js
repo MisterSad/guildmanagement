@@ -101,7 +101,12 @@ describe('Bug-report ticketing (V3.5.3)', () => {
 
   it('detectClientEnvironment and formatTicketDescription format the structured schema correctly', () => {
     const env = window.GM.detectClientEnvironment('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
-    expect(env.os).toContain('macOS 10.15.7');
+    // macOS/iOS deliberately report just the platform name, no version: every
+    // browser freezes the "Mac OS X 10_15_7" UA token at that exact value
+    // regardless of the real installed macOS version (confirmed live on
+    // macOS 26.6.2 still reporting 10_15_7) — showing it as real would be
+    // actively misleading, not just imprecise.
+    expect(env.os).toBe('macOS');
     expect(env.browser).toContain('Chrome 128');
     expect(env.appVersion).toBeDefined();
 
@@ -110,8 +115,13 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(winEnv.browser).toContain('Edge 127');
 
     const iosEnv = window.GM.detectClientEnvironment('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
-    expect(iosEnv.os).toContain('iOS 17.5.1');
-    expect(iosEnv.browser).toContain('Safari 17.5');
+    // Same freeze applies to iOS's "OS X_Y" token (confirmed live: a real
+    // iOS 26.6.1 device still reports 18_7 here) — no version shown.
+    expect(iosEnv.os).toBe('iOS');
+    // Safari's marketing version now matches the OS's yearly number (Safari
+    // 26 ships with iOS/macOS 26); only the major version of the "Version/"
+    // UA token is shown, matching every other browser branch's convention.
+    expect(iosEnv.browser).toBe('Safari 17');
 
     const desc = window.GM.formatTicketDescription({
       currentBehavior: 'Something broke',
@@ -127,7 +137,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(desc).toContain('**Additional Context / Information**\nError 500 in console');
     expect(desc).toContain('**Environment**');
     expect(desc).toContain('• FGF Mgmt Tool Version:');
-    expect(desc).toContain('• OS + Version: macOS 10.15.7');
+    expect(desc).toContain('• OS + Version: macOS');
     expect(desc).toContain('• Browser + Version: Chrome 128');
   });
 
