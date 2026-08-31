@@ -2756,7 +2756,7 @@
     function extractFramesFromVideo(file, opts) {
         opts = opts || {};
         var stepMs = opts.stepMs || 200;
-        var maxDurationSec = opts.maxDurationSec || 240;
+        var maxDurationSec = opts.maxDurationSec || 480;
         var maxOutputWidth = opts.maxOutputWidth || 1600;
         var gridSize = OCR_VIDEO_GRID_SIZE;
 
@@ -2918,7 +2918,7 @@
                     });
                     var msg = 'Could not process the video. Try an MP4/MOV recording, or use screenshots instead.';
                     if (err && err.message === 'video_too_long') {
-                        msg = 'Video is too long (max 4 minutes) — trim it or use screenshots instead.';
+                        msg = 'Video is too long (max 8 minutes) — trim it or use screenshots instead.';
                     } else if (err && err.message === 'video_unsupported') {
                         // MediaError 3 (decode) / 4 (src not supported) on an MP4/MOV
                         // from a phone has two realistic causes: an HEVC/H.265
