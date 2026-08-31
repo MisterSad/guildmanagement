@@ -370,6 +370,15 @@ Deno.serve(async (req: Request) => {
           expectedChallenge: challengeRow.challenge,
           expectedOrigin: ORIGIN,
           expectedRPID: RP_ID,
+          // requireUserVerification defaults to true in this library —
+          // registration only ever requests userVerification: "preferred"
+          // (never "required"), so silently enforcing it here would reject
+          // a real, valid sign-in whenever an authenticator honors that
+          // preference by not verifying (e.g. some password-manager
+          // extensions behave differently on a conditional/autofill-
+          // triggered ceremony than on a full one). User *presence* is
+          // still required unconditionally by the library either way.
+          requireUserVerification: false,
           authenticator: {
             credentialID: pkRow.credential_id,
             credentialPublicKey: base64UrlToBytes(pkRow.public_key),
@@ -575,6 +584,9 @@ Deno.serve(async (req: Request) => {
           expectedChallenge: challengeRow.challenge,
           expectedOrigin: ORIGIN,
           expectedRPID: RP_ID,
+          // Same reasoning as auth-verify: registration only ever requests
+          // "preferred", never "required" — don't silently enforce it here.
+          requireUserVerification: false,
         });
       } catch (err) {
         logger.warn("Registration verification threw", { error: String(err) });

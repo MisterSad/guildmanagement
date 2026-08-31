@@ -119,3 +119,31 @@ describe('auth-passkey Edge Function — discoverable passkey sign-in', () => {
     expect(actionBody).not.toMatch(/webauthn_challenges"\)\s*\.select\([^)]*\)\s*\.eq\("account_id"/);
   });
 });
+
+describe('auth-passkey Edge Function — user-verification requirement matches what was actually requested', () => {
+  // Regression guard for a real bug: register-options/auth-options only
+  // ever request userVerification: "preferred" from the authenticator, but
+  // @simplewebauthn/server's verifyRegistrationResponse/
+  // verifyAuthenticationResponse both default requireUserVerification to
+  // true — silently enforcing a stricter bar than was ever requested. This
+  // rejected real, valid sign-ins from authenticators (some password-
+  // manager extensions in particular) that honored "preferred" by not
+  // verifying on a given ceremony. User *presence* is still required
+  // unconditionally by the library regardless of this flag.
+  const fnPath = path.resolve(__dirname, '../supabase/functions/auth-passkey/index.ts');
+  const fnContent = fs.readFileSync(fnPath, 'utf-8');
+
+  it('verifyAuthenticationResponse does not silently upgrade "preferred" to "required"', () => {
+    const callIdx = fnContent.indexOf('await verifyAuthenticationResponse({');
+    const callEnd = fnContent.indexOf('});', callIdx);
+    expect(callIdx).toBeGreaterThan(-1);
+    expect(fnContent.slice(callIdx, callEnd)).toContain('requireUserVerification: false');
+  });
+
+  it('verifyRegistrationResponse does not silently upgrade "preferred" to "required"', () => {
+    const callIdx = fnContent.indexOf('await verifyRegistrationResponse({');
+    const callEnd = fnContent.indexOf('});', callIdx);
+    expect(callIdx).toBeGreaterThan(-1);
+    expect(fnContent.slice(callIdx, callEnd)).toContain('requireUserVerification: false');
+  });
+});
