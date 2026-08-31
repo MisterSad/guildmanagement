@@ -907,9 +907,9 @@
 
         var overlay = document.createElement('div');
         overlay.id = 'evt-start-overlay';
-        overlay.className = 'confirm-overlay';
+        overlay.className = 'gm-modal-overlay';
         overlay.innerHTML =
-            '<div class="confirm-card glass-card">' +
+            '<div class="gm-modal-card" style="max-width: 400px; width: 90%; text-align: center;">' +
                 '<div class="confirm-icon"><i class="ph-fill ph-calendar-plus text-accent"></i></div>' +
                 '<h3>' + t('event_start_when_title') + '</h3>' +
                 '<p>' + (opts.eventLabel ? '<strong>' + escapeHTML(opts.eventLabel) + '</strong> - ' : '') + t('event_start_when_body') + '</p>' +
@@ -924,8 +924,8 @@
                     '</div>' +
                 '</div>' +
                 '<div class="confirm-actions" style="gap:1rem;">' +
-                    '<button id="evt-start-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
-                    '<button id="evt-start-ok" class="primary-btn">' + t('event_start_confirm') + '</button>' +
+                    '<button id="evt-start-cancel" class="gm-btn gm-btn-ghost">' + t('confirm_cancel') + '</button>' +
+                    '<button id="evt-start-ok" class="gm-btn gm-btn-primary">' + t('event_start_confirm') + '</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(overlay);

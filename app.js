@@ -3933,7 +3933,7 @@
 
         var overlay = document.createElement('div');
         overlay.id = 'uid-taken-overlay';
-        overlay.className = 'confirm-overlay';
+        overlay.className = 'gm-modal-overlay';
 
         var titleHtml = '';
         var bodyHtml = '';
@@ -5654,7 +5654,7 @@
 
         var overlay = document.createElement('div');
         overlay.id = 'edit-member-overlay';
-        overlay.className = 'confirm-overlay';
+        overlay.className = 'gm-modal-overlay';
 
         var historyHtml = '';
         if (nameHistory.length > 0) {
@@ -5678,7 +5678,7 @@
             : '';
 
         overlay.innerHTML =
-            '<div class="confirm-card glass-card" style="max-width: 480px; width: 95vw;">' +
+            '<div class="gm-modal-card" style="max-width: 480px; width: 95vw;">' +
                 '<div class="confirm-icon"><i class="ph-fill ph-pencil-simple text-accent"></i></div>' +
                 '<h3>' + t('edit_member_title') + '</h3>' +
                 '<p>' + t('edit_member_body') + '</p>' +
@@ -5748,8 +5748,8 @@
                     '</div>' +
                     historyHtml +
                     '<div class="confirm-actions">' +
-                        '<button type="button" id="edit-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
-                        '<button type="submit" class="primary-btn">' + t('confirm_ok') + '</button>' +
+                        '<button type="button" id="edit-cancel" class="gm-btn gm-btn-ghost">' + t('confirm_cancel') + '</button>' +
+                        '<button type="submit" class="gm-btn gm-btn-primary">' + t('confirm_ok') + '</button>' +
                     '</div>' +
                 '</form>' +
             '</div>';
@@ -5825,15 +5825,15 @@
 
         var overlay = document.createElement('div');
         overlay.id = 'confirm-overlay';
-        overlay.className = 'confirm-overlay';
+        overlay.className = 'gm-modal-overlay';
         overlay.innerHTML =
-            '<div class="confirm-card glass-card">' +
+            '<div class="gm-modal-card" style="max-width: 400px; width: 90%; text-align: center;">' +
                 '<div class="confirm-icon"><i class="ph-fill ph-warning text-error"></i></div>' +
                 '<h3>' + esc(title) + '</h3>' +
                 '<p>' + message + '</p>' +
                 '<div class="confirm-actions">' +
-                    '<button id="confirm-cancel" class="btn-ghost">' + t('confirm_cancel') + '</button>' +
-                    '<button id="confirm-ok" class="btn-danger">' + t('confirm_ok') + '</button>' +
+                    '<button id="confirm-cancel" class="gm-btn gm-btn-ghost">' + t('confirm_cancel') + '</button>' +
+                    '<button id="confirm-ok" class="gm-btn gm-btn-danger">' + t('confirm_ok') + '</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(overlay);
@@ -5893,7 +5893,7 @@
 
         var overlay = document.createElement('div');
         overlay.id = 'custom-msg-modal';
-        overlay.className = 'confirm-overlay';
+        overlay.className = 'gm-modal-overlay';
 
         var reminders = [];
         if (eventPrefix === 'armsrace' || eventPrefix === 'dtr' || eventPrefix === 'shadowfront') {

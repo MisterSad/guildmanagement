@@ -580,7 +580,7 @@
 
         var overlay = document.createElement('div');
         overlay.id = 'gm-clocks-overlay';
-        overlay.className = 'confirm-overlay';
+        overlay.className = 'gm-modal-overlay';
 
         var offsetOptions = '';
         for (var o = -12; o <= 14; o += 0.5) {
@@ -590,7 +590,7 @@
         }
 
         overlay.innerHTML =
-            '<div class="confirm-card glass-card" style="max-width: 450px; width: 95%; text-align: left; padding: 1.5rem;">' +
+            '<div class="gm-modal-card" style="max-width: 450px; width: 95%; text-align: left; padding: 1.5rem;">' +
                 '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: 1.25rem;">' + t('modal_manage_clocks_title') + '</h3>' +
                 '<div id="gm-clocks-list-container" class="gm-col" style="gap: .6rem; max-height: 220px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 4px;"></div>' +
                 '<div style="border-top: 1px solid var(--border-soft); padding-top: 1.2rem;">' +

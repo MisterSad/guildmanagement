@@ -557,9 +557,9 @@
 
         var overlay = document.createElement('div');
         overlay.id = 'history-modal';
-        overlay.className = 'confirm-overlay';
+        overlay.className = 'gm-modal-overlay';
         overlay.innerHTML =
-            '<div class="confirm-card glass-card" style="max-width: 860px; width: 95vw;">' +
+            '<div class="gm-modal-card" style="max-width: 860px; width: 95vw;">' +
                 '<div class="gm-row" style="justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">' +
                     '<div>' +
                         '<h3 style="margin:0;"><i class="ph-fill ' + meta.icon + '" style="color:' + meta.border + ';"></i> ' + esc(meta.label) + '</h3>' +

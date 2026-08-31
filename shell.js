@@ -28,12 +28,20 @@
         { id: 'history',   tabId: 'event-history', m3Icon: 'history', icon: 'ph-clock-counter-clockwise', labelKey: 'gm_nav_history', section: 'play',  panels: ['event-history'] },
         { id: 'stats',     tabId: 'stats-admin', m3Icon: 'leaderboard', icon: 'ph-chart-bar',       labelKey: 'gm_nav_stats',     section: 'play',  panels: ['stats-admin'] },
 
+        // Leader Hall lives in `play`, not `admin`: it's a real-time, daily-use
+        // chat surface (like Events/History), not an occasional configuration
+        // screen — grouping it with Accounts/Banned/Sanctions buried it among
+        // items with a completely different usage pattern (UX audit, 2026-08-31).
+        { id: 'leader-hall', tabId: 'tab-leader-hall', m3Icon: 'forum', icon: 'ph-chat-circle-dots', labelKey: 'nav_leader_hall', section: 'play', panels: ['tab-leader-hall'] },
+
         { id: 'accounts',  tabId: 'admin-home',  m3Icon: 'manage_accounts', icon: 'ph-key',             labelKey: 'gm_nav_accounts',  section: 'admin', panels: ['admin-home'] },
         { id: 'discord',   tabId: 'admin-discord', m3Icon: 'notifications', icon: 'ph-bell-ringing',   labelKey: 'gm_nav_discord',   section: 'admin', panels: ['admin-discord'] },
-        { id: 'leader-hall', tabId: 'tab-leader-hall', m3Icon: 'forum', icon: 'ph-chat-circle-dots', labelKey: 'nav_leader_hall', section: 'admin', panels: ['tab-leader-hall'] },
         { id: 'sanctions', tabId: 'tab-sanctions', m3Icon: 'gavel', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
         { id: 'banned',    tabId: 'admin-banned', m3Icon: 'block', icon: 'ph-prohibit',        labelKey: 'gm_nav_banned',    section: 'admin', panels: ['admin-banned'] },
-        { id: 'subscription', tabId: 'tab-subscription', m3Icon: 'local_cafe', icon: 'ph-coffee', labelKey: 'gm_nav_donate', section: 'admin', adminOnly: true, panels: ['tab-subscription'] },
+        // section:'footer' (not 'admin'): a donation link isn't an admin
+        // configuration screen either — rendered as a lighter-weight link
+        // next to the sidebar's legal footer instead of the main nav list.
+        { id: 'subscription', tabId: 'tab-subscription', m3Icon: 'local_cafe', icon: 'ph-coffee', labelKey: 'gm_nav_donate', section: 'footer', adminOnly: true, panels: ['tab-subscription'] },
 
         { id: 'superadmin-accounts', tabId: 'admin-superadmin', m3Icon: 'admin_panel_settings', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
         { id: 'settings', tabId: 'tab-settings', m3Icon: 'tune', icon: 'ph-note-pencil', labelKey: 'gm_nav_settings', section: 'superadmin', r5Only: true, panels: ['tab-settings'] },
@@ -416,6 +424,7 @@
         var playItems = visible.filter(function (i) { return i.section === 'play'; });
         var adminItems = visible.filter(function (i) { return i.section === 'admin'; });
         var superAdminItems = visible.filter(function (i) { return i.section === 'superadmin'; });
+        var footerItems = visible.filter(function (i) { return i.section === 'footer'; });
 
         var userAvatarInitials = esc(window.GM.avatarInit(getUserName()));
 
@@ -452,6 +461,12 @@
                 navHtml +
             '</nav>' +
             getSubscriptionCardHtml() +
+            footerItems.map(function (item) {
+                return '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-nav-item="' + item.id + '">' +
+                    '<span class="material-symbols-rounded" style="font-size:1.1rem;">' + (item.m3Icon || 'circle') + '</span>' +
+                    '<span>' + t(item.labelKey) + '</span>' +
+                '</button>';
+            }).join('') +
             (canReportBug
                 ? '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-report-bug>' +
                     '<span class="material-symbols-rounded" style="font-size:1.1rem;">bug_report</span>' +

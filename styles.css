@@ -1078,8 +1078,7 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 }
 .score-input:focus, .sf-score-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
 /* Numeric display cells share the same tabular-nums alignment */
-.glory-prev-val, .glory-curr-val, .total-glory-val,
-.score-badge, .leaderboard-table td.center {
+.glory-prev-val, .glory-curr-val, .total-glory-val {
     font-variant-numeric: tabular-nums;
 }
 
@@ -1286,12 +1285,6 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .rank-2 .podium-bar-fill { background: linear-gradient(180deg, #94a3b8, #64748b); }
 .rank-3 .podium-bar-fill { background: linear-gradient(180deg, #cd7c3e, #a36032); }
 
-/* ─── Leaderboard Table ──────────────────────────────────────────────────── */
-.leaderboard-wrap { overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--card-border); }
-.leaderboard-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.leaderboard-table thead th { padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--card-border); }
-.leaderboard-table thead th.center { text-align: center; }
-
 /* ─── Event Search Bar ───────────────────────────────────────────────────── */
 .event-search-bar {
     margin-bottom: 1rem;
@@ -1314,22 +1307,6 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     border-color: var(--primary);
     background: rgba(0, 0, 0, 0.3);
 }
-.leaderboard-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: var(--transition); }
-.leaderboard-table tbody tr:last-child { border-bottom: none; }
-.leaderboard-table tbody tr:hover { background: rgba(255,255,255,0.03); }
-.rank-cell { padding: 0.75rem 1rem; font-size: 1rem; text-align: center; width: 48px; }
-.week-cell { padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--text-muted); }
-
-/* Score badge colours */
-.score-badge { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.8rem; font-weight: 700; }
-.score-high { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
-.score-mid  { background: rgba(251,191,36,0.12); color: #fbbf24;       border: 1px solid rgba(251,191,36,0.3); }
-.score-low  { background: rgba(239,68,68,0.1);   color: var(--error);  border: 1px solid rgba(239,68,68,0.2);  }
-.score-event { background: rgba(139, 92, 246, 0.15); color: var(--accent); border: 1px solid rgba(139, 92, 246, 0.3); }
-
-/* Profile button in table */
-.profile-btn { width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.3); background: rgba(99,102,241,0.1); color: #a5b4fc; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: var(--transition); }
-.profile-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
 /* ─── Profile Modal ──────────────────────────────────────────────────────── */
 .profile-card { padding: 2rem; max-width: 860px; width: 95vw; max-height: none; height: auto; overflow: visible; display: flex; flex-direction: column; gap: 1.25rem; }
@@ -2026,7 +2003,7 @@ body.guild-read-only .gm-content .score-cell {
     align-items: stretch;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .gm-leader-hall-layout {
         display: flex !important;
         flex-direction: column !important;
@@ -2150,7 +2127,7 @@ body.guild-read-only .gm-content .score-cell {
     display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .gm-chat-back-btn {
         display: inline-flex !important;
         align-items: center !important;

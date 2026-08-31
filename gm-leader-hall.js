@@ -1920,7 +1920,7 @@
             markConversationRead(id);
         }
 
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth <= 900) {
             document.body.classList.add('gm-mobile-chat-open');
         }
 
@@ -2860,7 +2860,7 @@
         await fetchEligibleLeaders();
         await fetchConversations();
         initGlobalUnreadListener();
-        var isMobile = window.innerWidth <= 768;
+        var isMobile = window.innerWidth <= 900;
         if (!currentConversation) {
             if (!isMobile) {
                 selectConversation(GLOBAL_CHANNELS[0].id);

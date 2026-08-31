@@ -100,8 +100,17 @@ if (typeof window !== 'undefined') {
   };
 
   (window as any).GM_CROSSRANK = CrossRankView;
-  (window as any).GM_SVS_MATCHUP = SvSMatchupView;
-  (window as any).GM_GVG_MATCHUP = GvGMatchupView;
+  // GM_SVS_MATCHUP / GM_GVG_MATCHUP are deliberately NOT bridged here: these
+  // /src ports (svs-matchup.ts / gvg-matchup.ts) are 50-line stubs — a fixed
+  // hardcoded RPC call with no real table render — while the legacy
+  // svs-matchup.js / gvg-matchup.js (700+ lines: side-by-side rosters,
+  // combined dangerosity leaderboard, sorting) are the complete, real
+  // implementations. Since this module now actually executes in production
+  // (build pipeline fix, 2026-08-30) and both write into the same
+  // #svs-matchup-container / #gvg-matchup-container, bridging these here
+  // would silently overwrite the working legacy tool with the stub on every
+  // load. Re-bridge only once svs-matchup.ts/gvg-matchup.ts are genuinely
+  // feature-complete.
   // window.GM_SUBSCRIPTION is self-registered by importing SubscriptionView
   // above (see subscription-view.ts) — replaces legacy subscription.js.
 

@@ -188,34 +188,6 @@
   --card-border: var(--md-sys-color-outline-variant);
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   10. LIGHT THEME (Google Light Theme Standards)
-   ════════════════════════════════════════════════════════════════════════════ */
-[data-theme="light"] {
-  --md-sys-color-surface:                   #f8f9fa;
-  --md-sys-color-surface-dim:               #dededf;
-  --md-sys-color-surface-bright:            #ffffff;
-  --md-sys-color-surface-container-lowest:  #ffffff;
-  --md-sys-color-surface-container-low:     #f2f3f4;
-  --md-sys-color-surface-container:         #eaebec;
-  --md-sys-color-surface-container-high:    #e4e5e7;
-  --md-sys-color-surface-container-highest: #dcdddf;
-
-  --md-sys-color-on-surface:                #1f1f1f;
-  --md-sys-color-on-surface-variant:        #444746;
-  --md-sys-color-on-surface-dim:            #747775;
-  --md-sys-color-outline:                   #747775;
-  --md-sys-color-outline-variant:           rgba(0, 0, 0, 0.10);
-
-  --md-sys-color-primary:                   #0b57d0;
-  --md-sys-color-on-primary:                #ffffff;
-  --md-sys-color-primary-container:         #d3e3fd;
-  --md-sys-color-on-primary-container:      #041e49;
-
-  --card-bg:     rgba(234, 235, 236, 0.90);
-  --card-border: var(--md-sys-color-outline-variant);
-}
-
 /* ─── Global Scrollbars Modernization ─── */
 ::-webkit-scrollbar {
   width: 6px;
