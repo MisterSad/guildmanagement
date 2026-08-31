@@ -775,16 +775,18 @@
                 approveAllBtnEl.textContent = 'Approving...';
                 var pendingPseudos = state[tabKey].participants.filter(function (p) { return p.is_pending; }).map(function (p) { return p.pseudo; });
                 try {
-                    // Approve every pending player via the SECURITY DEFINER RPC.
-                    for (var pi = 0; pi < pendingPseudos.length; pi++) {
+                    // Approve every pending player via the SECURITY DEFINER RPC,
+                    // in parallel batches instead of one request at a time.
+                    var activeGuildForApproval = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+                    await window.GM.runInChunks(pendingPseudos, 10, async function (pseudo) {
                         var rpcRes = await db.rpc('gm_approve_participant_submission', {
-                            p_guild: window.GM ? window.GM.getActiveGuild() : 'ALPHA',
+                            p_guild: activeGuildForApproval,
                             p_event_name: s.activeEventName,
                             p_session_id: s.sessionId,
-                            p_pseudo: pendingPseudos[pi]
+                            p_pseudo: pseudo
                         });
                         if (rpcRes.error) throw rpcRes.error;
-                    }
+                    });
                     state[tabKey].participants.forEach(function (p) {
                         if (p.is_pending) p.is_pending = false;
                     });

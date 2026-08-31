@@ -141,6 +141,10 @@ beforeEach(() => {
     db = buildDb();
     window.GM.db = db;
     window.GM.ensureAuthSession = async () => null;
+    // Each test expects GM_STATS.load() to actually re-fetch against its own
+    // mock DB; the TTL freshness cache (gm-utils.js) is a same-session
+    // optimization and must not carry over between tests.
+    if (window.GM.cache) window.GM.cache.invalidate();
 });
 
 afterEach(() => {

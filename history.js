@@ -65,11 +65,22 @@
 
     window.GM_HISTORY = { load: loadHistory };
 
+    var HISTORY_CACHE_TTL_MS = 15000;
+    var historyLoading = false;
+
     async function loadHistory() {
         var db = getDb();
         if (!db) return;
+
+        var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
+        var cacheKey = 'history:' + currentG;
+        if (window.GM && window.GM.cache && window.GM.cache.isFresh(cacheKey, HISTORY_CACHE_TTL_MS)) {
+            return;
+        }
+        if (historyLoading) return;
+        historyLoading = true;
+
         try {
-            var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
             var res = await db.rpc('gm_list_event_sessions', { p_guild: currentG });
             if (res.error) {
                 console.error('gm_list_event_sessions', res.error);
@@ -125,10 +136,13 @@
                 return timeB - timeA;
             });
 
+            if (window.GM && window.GM.cache) window.GM.cache.markFresh(cacheKey);
             renderHistory();
         } catch (err) {
             console.error('loadHistory', err);
             renderHistory();
+        } finally {
+            historyLoading = false;
         }
     }
 

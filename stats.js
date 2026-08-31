@@ -204,8 +204,20 @@
     };
 
     // ── Initialisation et Chargement ─────────────────────────────────────────────
+    // How long a completed load is considered fresh enough to skip a
+    // redundant re-fetch when the tab is simply revisited (see
+    // window.GM.cache in gm-utils.js — invalidated explicitly after any
+    // mutation the Stats page cares about, this TTL is only the safety net).
+    var STATS_CACHE_TTL_MS = 15000;
+
     async function initAndLoad() {
         if (state.isLoading) return;
+
+        var cacheKey = 'stats:' + ((window.GM ? window.GM.getActiveGuild() : 'ALPHA'));
+        if (window.GM && window.GM.cache && window.GM.cache.isFresh(cacheKey, STATS_CACHE_TTL_MS)) {
+            return;
+        }
+
         state.isLoading = true;
 
         var db = getDb();
@@ -250,6 +262,7 @@
             } else {
                 await fetchAndComputeLeaderboard();
             }
+            if (window.GM && window.GM.cache) window.GM.cache.markFresh(cacheKey);
         } catch (err) {
             console.error('[GM_STATS] load error', err);
         } finally {

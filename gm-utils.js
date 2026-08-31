@@ -270,6 +270,52 @@
         };
     }
 
+    // Runs `worker` (an async function taking one item) over `items` in
+    // parallel batches of `chunkSize` instead of one request at a time —
+    // used for per-row Supabase calls (OCR commit, bulk approve) that used
+    // to await sequentially, turning e.g. 60 round trips into 6 batches of
+    // 10 concurrent ones. Batches (not one big Promise.all) to stay under
+    // Supabase's per-connection concurrency limits on large selections.
+    async function runInChunks(items, chunkSize, worker) {
+        var results = [];
+        for (var i = 0; i < items.length; i += chunkSize) {
+            var chunk = items.slice(i, i + chunkSize);
+            var chunkResults = await Promise.all(chunk.map(worker));
+            results = results.concat(chunkResults);
+        }
+        return results;
+    }
+
+    // Tiny in-memory freshness tracker for per-tab data loads (Stats,
+    // History, ...). Switching tabs re-triggers a full fetch every time
+    // with no way to know the data underneath hasn't changed — this lets a
+    // tab's own .load() skip a redundant reload when it was already
+    // fetched a few seconds ago, while still re-fetching immediately after
+    // any mutation that calls invalidate() (member add/edit/delete, OCR
+    // commit, transfer resolution, ...). The short TTL is a safety net in
+    // case an invalidation call site is ever missed — worst case, data is
+    // stale for a few seconds, never indefinitely. Lives only in memory
+    // (module-level object, not localStorage): a full page reload always
+    // starts cold, which is the correct/safe default.
+    var gmCacheTimestamps = {};
+
+    function cacheIsFresh(key, ttlMs) {
+        var t = gmCacheTimestamps[key];
+        return !!t && (Date.now() - t) < ttlMs;
+    }
+
+    function cacheMarkFresh(key) {
+        gmCacheTimestamps[key] = Date.now();
+    }
+
+    function cacheInvalidate(key) {
+        if (key) {
+            delete gmCacheTimestamps[key];
+        } else {
+            gmCacheTimestamps = {};
+        }
+    }
+
     // La semaine commence à 00:00 UTC le lundi (rollover dimanche → lundi en UTC).
     function getWeekStart(date) {
         var d = date ? new Date(date) : new Date();
@@ -2680,6 +2726,12 @@
         ensureGuildRestriction: ensureGuildRestriction,
         escapeHTML: escapeHTML,
         debounce: debounce,
+        runInChunks: runInChunks,
+        cache: {
+            isFresh: cacheIsFresh,
+            markFresh: cacheMarkFresh,
+            invalidate: cacheInvalidate
+        },
         getWeekStart: getWeekStart,
         getPrevWeekStart: getPrevWeekStart,
         formatWeek: formatWeek,

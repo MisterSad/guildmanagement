@@ -3238,8 +3238,7 @@
                     var assignMap = {};
                     sfAssignments.forEach(function (a) { assignMap[a.pseudo.toLowerCase()] = a.role; });
 
-                    for (var i = 0; i < selectedPlayers.length; i++) {
-                        var sp = selectedPlayers[i];
+                    await window.GM.runInChunks(selectedPlayers, 10, async function (sp) {
                         var role = assignMap[sp.pseudo.toLowerCase()];
                         var updatePayload = {
                             participated: 1
@@ -3266,7 +3265,7 @@
                             }, updatePayload);
                             await db.from('event_participants').insert([insertPayload]);
                         }
-                    }
+                    });
 
                     if (window.GM_SHADOWFRONT && window.GM_SHADOWFRONT.load) {
                         await window.GM_SHADOWFRONT.load();
@@ -3288,8 +3287,7 @@
 
                     var arSid = arRes.data.session_id;
 
-                    for (var i = 0; i < selectedPlayers.length; i++) {
-                        var sp = selectedPlayers[i];
+                    await window.GM.runInChunks(selectedPlayers, 10, async function (sp) {
                         var upRes = await db.from('event_participants')
                             .update({ participated: 1 })
                             .eq('guild', currentG)
@@ -3308,7 +3306,7 @@
                                 week_start: window.GM.getWeekStart(arRes.data.start_at || new Date())
                             }]);
                         }
-                    }
+                    });
 
                     if (window.GM_ARMSRACE && window.GM_ARMSRACE.load) {
                         await window.GM_ARMSRACE.load();
@@ -3330,8 +3328,7 @@
 
                     var evSid = evRes.data.session_id;
 
-                    for (var i = 0; i < selectedPlayers.length; i++) {
-                        var sp = selectedPlayers[i];
+                    await window.GM.runInChunks(selectedPlayers, 10, async function (sp) {
                         var scoreVal = sp.score != null ? sp.score : 0;
                         var updatePayload = {};
 
@@ -3368,7 +3365,7 @@
                             }, updatePayload);
                             await db.from('event_participants').insert([insertPayload]);
                         }
-                    }
+                    });
 
                     if (window.GM_EVENTS && window.GM_EVENTS.loadEvent) {
                         await window.GM_EVENTS.loadEvent(evName);
@@ -3376,6 +3373,7 @@
                 }
 
                 showToast(selectedPlayers.length + ' participant(s) updated for ' + meta.header + '!', 'success');
+                if (window.GM && window.GM.cache) window.GM.cache.invalidate();
                 var modal = document.getElementById('ocr-modal-overlay');
                 if (modal) {
                     modal.classList.remove('visible');
@@ -3546,8 +3544,7 @@
                 var currentG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
 
                 // 1. Apply existing member updates
-                for (var i = 0; i < selectedExisting.length; i++) {
-                    var sp = selectedExisting[i];
+                await window.GM.runInChunks(selectedExisting, 10, async function (sp) {
                     var scoreVal = sp.score != null ? sp.score : (sp.overall_power || 0);
                     var existing = guildMembers.find(function (m) { return m.pseudo.toLowerCase() === sp.pseudo.toLowerCase(); });
 
@@ -3568,7 +3565,7 @@
                             if (glRes.error || !glRow || !glRow.ok) {
                                 failedCount++;
                                 console.error('Failed to update glory for ' + existing.pseudo + ':', glRes.error || (glRow && glRow.error));
-                                continue;
+                                return;
                             }
                             existing.glory_score = scoreVal;
                             existing.metrics_updated_at = new Date().toISOString();
@@ -3589,7 +3586,7 @@
                             if (upRes.error) {
                                 failedCount++;
                                 console.error('Failed to update member ' + existing.pseudo + ':', upRes.error);
-                                continue;
+                                return;
                             }
 
                             existing[targetField] = scoreVal;
@@ -3614,11 +3611,10 @@
                             }
                         }
                     }
-                }
+                });
 
                 // 2. Apply new member inserts
-                for (var j = 0; j < selectedNew.length; j++) {
-                    var np = selectedNew[j];
+                await window.GM.runInChunks(selectedNew, 10, async function (np) {
                     var nScore = np.score != null ? np.score : (np.overall_power || 0);
                     var assignedUid = (np.uid && String(np.uid).trim()) ? String(np.uid).trim() : ('TEMP-' + Math.random().toString(36).substring(2, 10));
 
@@ -3640,7 +3636,7 @@
                     if (insRes.error) {
                         failedCount++;
                         console.error('Failed to insert member ' + newMember.pseudo + ':', insRes.error);
-                        continue;
+                        return;
                     }
 
                     guildMembers.push(newMember);
@@ -3682,7 +3678,7 @@
                             console.warn('Failed to snapshot new member metrics history:', histErr);
                         }
                     }
-                }
+                });
 
                 // 3. Apply removals (hard delete with cascade)
                 if (checkedRemovalPseudos.length > 0) {
@@ -3724,6 +3720,7 @@
                 }
                 if (failedCount > 0) summaryMsg += ' · Failed ' + failedCount;
                 showToast(summaryMsg, failedCount > 0 ? 'warning' : 'success');
+                if (window.GM && window.GM.cache) window.GM.cache.invalidate();
             } catch (err) {
                 console.error('Commit OCR error:', err);
                 showToast('Failed to save OCR updates: ' + (err.message || err), 'error');
@@ -3893,6 +3890,7 @@
                 } else {
                     showToast('Transfer ' + action + 'd successfully.', 'success');
                     fetchGuildMembers();
+                    if (window.GM && window.GM.cache) window.GM.cache.invalidate();
                 }
             } catch (err) {
                 console.error(err);
@@ -4298,6 +4296,7 @@
 
             renderGuildMembers();
             showToast(pseudo + ' ' + t('toast_member_added'), 'success');
+            if (window.GM && window.GM.cache) window.GM.cache.invalidate();
 
             var addedEvents = 0;
             var activeG = window.GM ? window.GM.getActiveGuild() : 'ALPHA';
@@ -4378,6 +4377,7 @@
             guildMembers = guildMembers.filter(function (m) { return m.pseudo !== pseudo; });
             renderGuildMembers();
             showToast(t('toast_member_removed'), 'success');
+            if (window.GM && window.GM.cache) window.GM.cache.invalidate();
 
             if (window.GM_EVENTS && window.GM_EVENTS.removeMemberFromActiveEvents) {
                 window.GM_EVENTS.removeMemberFromActiveEvents(pseudo);
@@ -4646,6 +4646,7 @@
 
             await fetchGuildMembers();
             showToast(t('toast_member_updated'), 'success');
+            if (window.GM && window.GM.cache) window.GM.cache.invalidate();
             return true;
         } catch (err) {
             showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -5509,9 +5510,18 @@
         // the backend (gm_list_transfer_eligible_guilds) rather than
         // re-derived client-side, so the UI can never offer an option the
         // transfer RPC itself would reject.
+        //
+        // Both queries below are independent (neither reads the other's
+        // result) so they're kicked off together here and awaited
+        // separately, each keeping its own try/catch — a failure fetching
+        // the current guild's server number is non-fatal and must not
+        // block the dialog from opening.
+        var eligPromise = supabase.rpc('gm_list_transfer_eligible_guilds', { p_guild: currentG });
+        var curPromise = supabase.from('guilds').select('server_number').eq('id', currentG).maybeSingle();
+
         var eligibleGuilds = [];
         try {
-            var eligRes = await supabase.rpc('gm_list_transfer_eligible_guilds', { p_guild: currentG });
+            var eligRes = await eligPromise;
             if (eligRes.error) throw eligRes.error;
             eligibleGuilds = eligRes.data || [];
         } catch (err) {
@@ -5525,7 +5535,7 @@
 
         var currentServer = null;
         try {
-            var curRes = await supabase.from('guilds').select('server_number').eq('id', currentG).maybeSingle();
+            var curRes = await curPromise;
             currentServer = curRes.data ? curRes.data.server_number : null;
         } catch (err) {
             console.warn('Failed to fetch current guild server number', err);
@@ -5618,6 +5628,7 @@
 
                 closeModal();
                 showToast(member.pseudo + ' transferred to ' + targetGuild + ' on Server #' + targetServer + '!', 'success');
+                if (window.GM && window.GM.cache) window.GM.cache.invalidate();
                 await fetchGuildMembers();
             } catch (err) {
                 showToast('Error transferring member: ' + err.message, 'error');
