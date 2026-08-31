@@ -2764,7 +2764,14 @@
             var video = document.createElement('video');
             video.muted = true;
             video.playsInline = true;
-            video.preload = 'auto';
+            // 'metadata' (not 'auto'): all we need up front is duration/
+            // dimensions — frames are pulled on demand by seeking, not by
+            // sequential playback, so there's no reason to make the browser
+            // eagerly buffer the entire file. On mobile Safari in particular,
+            // 'auto' on a large (high-res, 30-60fps) iPhone screen recording
+            // can hit a decode/memory ceiling and fail with a MediaError that
+            // looks identical to a genuinely unsupported codec.
+            video.preload = 'metadata';
             var url = URL.createObjectURL(file);
             var settled = false;
 
@@ -2906,14 +2913,14 @@
                         msg = 'Video is too long (max 4 minutes) — trim it or use screenshots instead.';
                     } else if (err && err.message === 'video_unsupported') {
                         // MediaError 3 (decode) / 4 (src not supported) on an MP4/MOV
-                        // from a phone is almost always the video stream being
-                        // HEVC/H.265 — a codec this browser can't decode — rather
-                        // than a bad file. Name that specifically: it's actionable
-                        // (re-record/re-export as H.264, or try a different browser),
-                        // unlike a generic "format not read" message.
-                        var isLikelyHevc = (err.mediaErrorCode === 3 || err.mediaErrorCode === 4);
-                        msg = isLikelyHevc
-                            ? 'This browser can\'t decode this video\'s codec (likely HEVC/H.265, common on iPhone recordings). Try opening it in Safari on Mac/iPhone, re-export as H.264, or use screenshots instead.'
+                        // from a phone has two realistic causes: an HEVC/H.265
+                        // video stream the browser can't decode, or the browser
+                        // (mobile Safari especially) hitting a decode/memory
+                        // ceiling on a large, high-resolution recording. Name
+                        // both — each has a different fix — rather than guessing.
+                        var isDecodeFailure = (err.mediaErrorCode === 3 || err.mediaErrorCode === 4);
+                        msg = isDecodeFailure
+                            ? 'This browser couldn\'t decode the video — either its codec (e.g. HEVC/H.265) isn\'t supported, or it\'s too large/high-resolution to process. Try a shorter recording, re-export as H.264, or use screenshots instead.'
                             : 'This video format could not be read. Try MP4, or use screenshots instead.';
                     } else if (err && err.message === 'video_no_frames') {
                         msg = 'No distinct frames were found in that video.';
