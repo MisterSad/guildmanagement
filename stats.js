@@ -974,10 +974,17 @@
 
             var byMember = {};
             var squadCounts = {};
+            var participantCounts = {};
+            var reserveCounts = {};
             if (eventName === 'Shadowfront') {
                 allSquads.forEach(function (sq) {
                     var norm = normalizePseudo(sq.pseudo);
                     squadCounts[norm] = (squadCounts[norm] || 0) + 1;
+                    if ((sq.role || '').toLowerCase() === 'reserve') {
+                        reserveCounts[norm] = (reserveCounts[norm] || 0) + 1;
+                    } else {
+                        participantCounts[norm] = (participantCounts[norm] || 0) + 1;
+                    }
                 });
             }
 
@@ -1060,6 +1067,8 @@
                     events_total: m.events_total,
                     sub_count: m.sub_count,
                     assigned_count: assignedCount,
+                    participant_count: participantCounts[norm] || 0,
+                    reserve_count: reserveCounts[norm] || 0,
                     ara_count: m.ara_count,
                     arb_count: m.arb_count,
                     attendance_rate: rate,
@@ -1245,16 +1254,22 @@
                     var ratePct = Math.round((m.attendance_rate || 0) * 100);
                     var rateBadge = ratePct >= 80 ? '<span style="color:#34d399; font-weight:700;">' + ratePct + '%</span>' : (ratePct >= 50 ? '<span style="color:#fbbf24; font-weight:700;">' + ratePct + '%</span>' : '<span style="color:var(--fg-dim);">' + ratePct + '%</span>');
 
+                    var squadBreakdown = m.assigned_count > 0
+                        ? (m.assigned_count + ' squad' + (m.assigned_count > 1 ? 's' : '') +
+                           '<div style="font-size:.75rem; font-weight:400; color:var(--fg-dim);">' +
+                           m.participant_count + ' titulaire' + (m.participant_count !== 1 ? 's' : '') +
+                           ' · ' + m.reserve_count + ' réserve' + (m.reserve_count !== 1 ? 's' : '') + '</div>')
+                        : '-';
                     rowCells +=
-                        '<td data-label="Squads" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.assigned_count > 0 ? (m.assigned_count + ' squads') : '-') + '</td>' +
+                        '<td data-label="Squads" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + squadBreakdown + '</td>' +
                         '<td data-label="Done" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.events_done > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.events_done + '</span>') : '<span style="color:var(--fg-dim);">0</span>') + '</td>' +
                         '<td data-label="Subs" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.sub_count > 0 ? ('<span style="color:#fbbf24; font-weight:700;">🔁 ' + m.sub_count + '</span>') : '-') + '</td>' +
                         '<td data-label="Rate" class="gm-center" style="font-family:var(--font-display);">' + rateBadge + '</td>' +
                         '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else if (isArmsRaceMode) {
                     rowCells +=
-                        '<td data-label="Stage A" class="gm-center">' + (m.ara_count > 0 ? '✅' : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
-                        '<td data-label="Stage B" class="gm-center">' + (m.arb_count > 0 ? '✅' : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
+                        '<td data-label="Stage A" class="gm-center">' + (m.ara_count > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.ara_count + '</span>') : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
+                        '<td data-label="Stage B" class="gm-center">' + (m.arb_count > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.arb_count + '</span>') : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
                         '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
                         '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else if (isBattleEventMode) {

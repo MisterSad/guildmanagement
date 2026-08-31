@@ -31,7 +31,7 @@
             nav_logout_title:      'Logout',
 
             /* ── Admin home ────────────────────── */
-            admin_title:           'Command Center',
+            admin_title:           'Accounts & Access',
             admin_subtitle:        'Manage access and accounts for the guild',
             card_create_account:   'Create Account',
             label_account_id:      'Account Identifier',
@@ -373,7 +373,7 @@
             gm_nav_overview:       'Overview',
             gm_nav_accounts:       'Accounts & access',
             gm_nav_discord:        'Discord notifications',
-            gm_nav_superadmin_accounts: 'Accounts & access',
+            gm_nav_superadmin_accounts: 'Super Admin Accounts',
             gm_nav_config:         'Configuration',
             gm_nav_members:        'Members',
             gm_nav_events:         'Events',

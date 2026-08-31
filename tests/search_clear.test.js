@@ -10,7 +10,6 @@ describe('Search Input Clear Button Feature', () => {
     const html = read('index.html');
     expect(html).toContain('id="member-search-admin"');
     expect(html).toContain('id="banned-search"');
-    expect(html).toContain('id="member-search-member"');
     expect(html).toContain('id="ocr-filter-search"');
     
     // Check that member-search-admin has a clear button inside its wrapper

@@ -27,13 +27,7 @@
     var CLOCK_MEMBERS = [];
 
     function getDefaultClocks() {
-        return [
-            { name: 'Natalie', offset: 7, color: 'danger' },
-            { name: 'HawkTuah', offset: 2, color: 'accent' },
-            { name: 'Phantom', offset: 2, color: 'info' },
-            { name: 'Vaylah', offset: -4, color: 'success' },
-            { name: 'BroKen', offset: -7, color: 'warning' }
-        ];
+        return [];
     }
 
     window.GM_OVERVIEW = { load: loadOverview };
@@ -48,8 +42,11 @@
             if (clocksStr) {
                 CLOCK_MEMBERS = JSON.parse(clocksStr);
             } else {
+                // No saved config yet for this guild: show an empty widget
+                // rather than persisting a placeholder default. Nothing is
+                // written to config until the admin explicitly adds a clock
+                // via "Manage Clocks" (see add/remove handlers below).
                 CLOCK_MEMBERS = getDefaultClocks();
-                await window.GM.config.set('timezone_clocks', JSON.stringify(CLOCK_MEMBERS));
             }
         } catch (e) {
             console.error('Failed to load timezone clocks', e);
@@ -228,6 +225,16 @@
         var container = panel.querySelector('#gm-overview-clocks');
         if (!container) return;
 
+        if (!CLOCK_MEMBERS.length) {
+            container.innerHTML =
+                '<div class="gm-empty">' +
+                    '<i class="ph-duotone ph-clock gm-icon"></i>' +
+                    '<div class="gm-empty-title">No timezone clocks yet</div>' +
+                    '<div class="gm-empty-hint">Add an officer\'s timezone with "' + esc(t('manage_clocks')) + '" above.</div>' +
+                '</div>';
+            return;
+        }
+
         var html = '';
         CLOCK_MEMBERS.forEach(function (m) {
             var initials = window.GM.avatarInit(m.name);
@@ -288,6 +295,7 @@
         var panel = document.getElementById('gm-overview');
         if (!panel || !panel.querySelector('#gm-overview-clocks')) return;
         timezoneClockTimer = setInterval(function () {
+            if (document.hidden) return;
             var container = document.getElementById('gm-overview-clocks');
             if (!container) { clearInterval(timezoneClockTimer); timezoneClockTimer = null; return; }
             if (panel.classList.contains('active')) {
@@ -445,6 +453,7 @@
         var panel = document.getElementById('gm-overview');
         if (!panel || !panel.querySelector('.gm-countdown')) return;
         countdownTimer = setInterval(function () {
+            if (document.hidden) return;
             var els = document.querySelectorAll('#gm-overview .gm-countdown');
             if (!els.length) { clearInterval(countdownTimer); countdownTimer = null; return; }
             els.forEach(function (el) {

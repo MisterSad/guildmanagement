@@ -257,6 +257,19 @@
 
     function pad2(n) { return String(n).padStart(2, '0'); }
 
+    // Delays invoking fn until `wait` ms have passed since the last call —
+    // used on input listeners that trigger a full re-render (search boxes)
+    // so a burst of keystrokes collapses into a single render.
+    function debounce(fn, wait) {
+        var timer = null;
+        return function () {
+            var args = arguments;
+            var ctx = this;
+            clearTimeout(timer);
+            timer = setTimeout(function () { fn.apply(ctx, args); }, wait);
+        };
+    }
+
     // La semaine commence à 00:00 UTC le lundi (rollover dimanche → lundi en UTC).
     function getWeekStart(date) {
         var d = date ? new Date(date) : new Date();
@@ -2383,6 +2396,7 @@
         canWriteGuild: canWriteGuild,
         ensureGuildRestriction: ensureGuildRestriction,
         escapeHTML: escapeHTML,
+        debounce: debounce,
         getWeekStart: getWeekStart,
         getPrevWeekStart: getPrevWeekStart,
         formatWeek: formatWeek,

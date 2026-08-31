@@ -978,8 +978,8 @@
                             });
                             notif.onclick = function () {
                                 window.focus();
-                                if (typeof window !== 'undefined' && window.GM && window.GM.shell && window.GM.shell.gotoItem) {
-                                    window.GM.shell.gotoItem('leader-hall');
+                                if (typeof window !== 'undefined' && window.GM_SHELL && window.GM_SHELL.gotoItem) {
+                                    window.GM_SHELL.gotoItem('leader-hall');
                                 }
                                 selectConversation(msg.conversation_id);
                             };

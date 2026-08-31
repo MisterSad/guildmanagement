@@ -12,7 +12,6 @@
     // ─── DOM References ───────────────────────────────────────────────────────
     var loginView         = document.getElementById('login-view');
     var dashboardView     = document.getElementById('dashboard-view');
-    var memberView        = document.getElementById('member-view');
     var loginForm         = document.getElementById('login-form');
     var loginError        = document.getElementById('login-error');
     var registerForm      = document.getElementById('register-form');
@@ -26,9 +25,6 @@
     var addMemberForm     = document.getElementById('add-member-form');
     var guildMemberList   = document.getElementById('guild-member-list');
     var guildMemberCount  = document.getElementById('guild-member-count');
-    var addMemberFormM    = document.getElementById('add-member-form-member');
-    var guildMemberListM  = document.getElementById('guild-member-list-m');
-    var guildMemberCountM = document.getElementById('guild-member-count-m');
     var addBannedForm     = document.getElementById('add-banned-form');
     var bannedListContainer = document.getElementById('banned-list-container');
     var bannedCount       = document.getElementById('banned-count');
@@ -81,7 +77,6 @@
             localStorage.removeItem('gm_guild_restriction');
 
             loginView.classList.add('hidden');
-            if (memberView) memberView.classList.add('hidden');
             dashboardView.classList.add('hidden');
             dashboardView.classList.remove('active');
             playerPortalView.classList.remove('hidden');
@@ -425,7 +420,6 @@
         if (role === 'member') {
             dashboardView.classList.add('hidden');
             dashboardView.classList.remove('active');
-            if (memberView) memberView.classList.add('hidden');
             localStorage.setItem('gm_portal_session', '1');
             playerPortalView.classList.remove('hidden');
             portalStepLookup.classList.add('hidden');
@@ -439,7 +433,6 @@
             return;
         }
 
-        if (memberView) memberView.classList.add('hidden');
         dashboardView.classList.remove('hidden');
         dashboardView.classList.add('active');
 
@@ -496,7 +489,6 @@
     function showLogin() {
         dashboardView.classList.add('hidden');
         dashboardView.classList.remove('active');
-        if (memberView) { memberView.classList.add('hidden'); memberView.classList.remove('active'); }
         loginView.classList.remove('hidden');
         loginView.classList.add('active');
     }
@@ -4354,25 +4346,26 @@
     }
 
     if (addMemberForm)  addMemberForm.addEventListener('submit', function (e)  { e.preventDefault(); handleAddMember('member-pseudo', 'member-uid', 'member-power', 'member-role'); });
-    if (addMemberFormM) addMemberFormM.addEventListener('submit', function (e) { e.preventDefault(); handleAddMember('member-pseudo-m', 'member-uid-m', 'member-power-m', 'member-role-m'); });
     if (addBannedForm) {
         addBannedForm.addEventListener('submit', function (e) { e.preventDefault(); handleAddBannedPlayer(); });
     }
 
+    // Search boxes re-render the whole roster on every keystroke; debounce so
+    // a burst of typing collapses into a single render instead of one per
+    // character. Filter/sort renders skip the unrelated absence/timezone
+    // subpanels (renderGuildMembers(true)) since neither depends on them.
+    var gmDebounce = (window.GM && window.GM.debounce) ? window.GM.debounce : function (fn) { return fn; };
+    var debouncedMemberSearch = gmDebounce(function () { renderGuildMembers(true); }, 200);
+    var handleRosterFilterChange = function () { renderGuildMembers(true); };
+
     var searchAdmin = document.getElementById('member-search-admin');
-    if (searchAdmin) searchAdmin.addEventListener('input', renderGuildMembers);
-    var searchMember = document.getElementById('member-search-member');
-    if (searchMember) searchMember.addEventListener('input', renderGuildMembers);
+    if (searchAdmin) searchAdmin.addEventListener('input', debouncedMemberSearch);
     var tierAdminSelect = document.getElementById('member-tier-filter-admin');
-    if (tierAdminSelect) tierAdminSelect.addEventListener('change', renderGuildMembers);
-    var tierMemberSelect = document.getElementById('member-tier-filter-member');
-    if (tierMemberSelect) tierMemberSelect.addEventListener('change', renderGuildMembers);
+    if (tierAdminSelect) tierAdminSelect.addEventListener('change', handleRosterFilterChange);
     var sortAdminSelect = document.getElementById('member-sort-admin');
-    if (sortAdminSelect) sortAdminSelect.addEventListener('change', renderGuildMembers);
-    var sortMemberSelect = document.getElementById('member-sort-member');
-    if (sortMemberSelect) sortMemberSelect.addEventListener('change', renderGuildMembers);
+    if (sortAdminSelect) sortAdminSelect.addEventListener('change', handleRosterFilterChange);
     if (bannedSearch) {
-        bannedSearch.addEventListener('input', renderBannedPlayers);
+        bannedSearch.addEventListener('input', gmDebounce(renderBannedPlayers, 200));
     }
 
     async function deleteGuildMember(pseudo) {
@@ -4660,24 +4653,23 @@
         }
     }
 
-    function renderGuildMembers() {
+    function renderGuildMembers(skipSubpanels) {
         var qAdminInput  = document.getElementById('member-search-admin');
-        var qMemberInput = document.getElementById('member-search-member');
         var qAdmin  = qAdminInput  ? qAdminInput.value.toLowerCase()  : '';
-        var qMember = qMemberInput ? qMemberInput.value.toLowerCase() : '';
 
         var tierAdminFilter  = document.getElementById('member-tier-filter-admin');
-        var tierMemberFilter = document.getElementById('member-tier-filter-member');
         var tAdmin  = tierAdminFilter  ? tierAdminFilter.value  : 'ALL';
-        var tMember = tierMemberFilter ? tierMemberFilter.value : 'ALL';
 
         var sortAdminSelect  = document.getElementById('member-sort-admin');
-        var sortMemberSelect = document.getElementById('member-sort-member');
         var sortAdmin  = sortAdminSelect  ? sortAdminSelect.value  : 'power_desc';
-        var sortMember = sortMemberSelect ? sortMemberSelect.value : 'power_desc';
 
-        renderAbsenceSummary();
-        renderTimezoneCoverage();
+        // Search/filter/sort re-renders (skipSubpanels=true) don't change
+        // absence or timezone data, so there's no need to rebuild those two
+        // panels on every keystroke — only data-changing callers do.
+        if (!skipSubpanels) {
+            renderAbsenceSummary();
+            renderTimezoneCoverage();
+        }
 
         var powers = guildMembers.map(function (m) { return parseInt(m.overall_power) || 0; });
         var maxPower = powers.length ? Math.max.apply(null, powers) : 0;
@@ -4706,13 +4698,6 @@
             } else {
                 matchTier = (window.GM.getPowerTier(m.overall_power, maxPower) === tAdmin);
             }
-            return matchGuild && matchSearch && matchTier;
-        });
-        var filteredMember = guildMembers.filter(function (m) {
-            var memberG = m.guild || 'ALPHA';
-            var matchGuild = (memberG === currentG);
-            var matchSearch = (m.pseudo.toLowerCase() + ' ' + (m.uid || '').toLowerCase()).indexOf(qMember) !== -1;
-            var matchTier = (tMember === 'ALL') || (window.GM.getPowerTier(m.overall_power, maxPower) === tMember);
             return matchGuild && matchSearch && matchTier;
         });
 
@@ -5013,7 +4998,6 @@
         }
 
         if (guildMemberCount)  guildMemberCount.textContent  = filteredAdmin.length;
-        if (guildMemberCountM) guildMemberCountM.textContent = filteredMember.length;
 
         // Count members with temporary or invalid UIDs in current active guild
         var tempUidCount = 0;
@@ -5055,9 +5039,6 @@
             } else {
                 guildMemberList.innerHTML = buildGroupedListHtml(filteredAdmin, sortAdmin, true, portalUids);
             }
-        }
-        if (guildMemberListM) {
-            guildMemberListM.innerHTML = buildGroupedListHtml(filteredMember, sortMember, false, portalUids);
         }
 
         // Update Bulk Action Bar

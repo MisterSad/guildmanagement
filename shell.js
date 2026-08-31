@@ -1016,6 +1016,7 @@
 
     // Update countdown periodically every 30 seconds to keep remaining time fresh
     setInterval(function () {
+        if (document.hidden) return;
         if (state.active) {
             renderSidebar();
             renderTopbar();
