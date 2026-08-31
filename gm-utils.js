@@ -1729,6 +1729,289 @@
         return String(num);
     }
 
+    // Formats a session/week identifier (ISO week, YYYYMMDD, YYYY-MM-DD, or
+    // a raw JS-parseable date) as DD/MM/AA — shared by the portal trend
+    // chart and the admin Player History chart so both read the same dates
+    // the same way. Extracted from portal.js's formatPortalDateDDMMAA.
+    function formatChartDate(h) {
+        if (!h) return '';
+        var raw = typeof h === 'string' ? h : (h.week_start || h.battle_date || h.start_at || h.date || h.session_id || '');
+        if (!raw) return '';
+
+        // 1. Direct YYYY-MM-DD pattern (e.g. 2026-08-10 or 2026-08-10T...)
+        var ymdMatch = String(raw).match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (ymdMatch) {
+            var y = ymdMatch[1].slice(-2);
+            var m = ymdMatch[2];
+            var d = ymdMatch[3];
+            return d + '/' + m + '/' + y;
+        }
+
+        // 2. YYYYMMDD compact pattern (e.g. ARA-20260815, SF-20260815, DTR-20260815)
+        var compactMatch = String(raw).match(/(\d{4})(\d{2})(\d{2})/);
+        if (compactMatch) {
+            var cy = compactMatch[1].slice(-2);
+            var cm = compactMatch[2];
+            var cd = compactMatch[3];
+            return cd + '/' + cm + '/' + cy;
+        }
+
+        // 3. ISO Week pattern (e.g. SVS-2026-W33, GVG-2026-W33, 2026-W33)
+        var weekMatch = String(raw).match(/(\d{4})-W(\d{2})/i);
+        if (weekMatch) {
+            var yr = parseInt(weekMatch[1], 10);
+            var wk = parseInt(weekMatch[2], 10);
+            var simple = new Date(Date.UTC(yr, 0, 1 + (wk - 1) * 7));
+            var dayOfWeek = simple.getUTCDay();
+            var isoMonday = new Date(simple);
+            if (dayOfWeek <= 4) {
+                isoMonday.setUTCDate(simple.getUTCDate() - simple.getUTCDay() + 1);
+            } else {
+                isoMonday.setUTCDate(simple.getUTCDate() + 8 - simple.getUTCDay());
+            }
+            var padW = function (n) { return n < 10 ? '0' + n : String(n); };
+            return padW(isoMonday.getUTCDate()) + '/' + padW(isoMonday.getUTCMonth() + 1) + '/' + String(isoMonday.getUTCFullYear()).slice(-2);
+        }
+
+        // 4. Fallback: try JS Date parsing
+        var dt = new Date(raw);
+        if (!isNaN(dt.getTime())) {
+            var padD = function (n) { return n < 10 ? '0' + n : String(n); };
+            return padD(dt.getUTCDate()) + '/' + padD(dt.getUTCMonth() + 1) + '/' + String(dt.getUTCFullYear()).slice(-2);
+        }
+
+        return String(raw);
+    }
+
+    // Dual-series (player score vs guild average) canvas line chart, DPR-aware,
+    // with a gradient area fill under the player's curve and floating value
+    // badges. Extracted from portal.js's drawChart() so both the player
+    // Portal dashboard and the admin Player History view render trends the
+    // same way instead of maintaining two implementations. `history` is an
+    // array of {score, guild_avg_score, week_start|session_id|...}, most
+    // recent first (this function reverses it internally to draw oldest-first).
+    function drawScoreTrendChart(canvas, history) {
+        if (!canvas) return;
+
+        var cssW = Math.max(280, (canvas.getBoundingClientRect().width || canvas.width || 1200));
+        var dpr = Math.max(1, window.devicePixelRatio || 1);
+        var cssH = Math.max(190, Math.min(300, Math.round(cssW * 0.30)));
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        canvas.style.height = cssH + 'px';
+
+        var ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var w = cssW, h = cssH;
+        ctx.clearRect(0, 0, w, h);
+
+        var list = (history || []).slice(0, 30).slice().reverse();
+
+        if (list.length === 0) {
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.font = '500 13px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('No data available', w / 2, h / 2);
+            return;
+        }
+
+        var padL = 40, padR = 40, padT = 32, padB = 36;
+        var chartW = w - padL - padR;
+        var chartH = h - padT - padB;
+        var baseY = padT + chartH;
+
+        var points = list.map(function (pt, i) {
+            return {
+                x: i,
+                score: Number(pt.score) || 0,
+                avg: Number(pt.guild_avg_score) || 0,
+                label: formatChartDate(pt)
+            };
+        });
+
+        var maxVal = 1;
+        points.forEach(function (p) {
+            if (p.score > maxVal) maxVal = p.score;
+            if (p.avg > maxVal) maxVal = p.avg;
+        });
+        maxVal = Math.round(maxVal * 1.25);
+
+        for (var g = 1; g <= 3; g++) {
+            var gy = padT + chartH - (chartH * g / 4);
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(padL, gy + 0.5);
+            ctx.lineTo(w - padR, gy + 0.5);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padL, baseY + 0.5);
+        ctx.lineTo(w - padR, baseY + 0.5);
+        ctx.stroke();
+
+        var scoredPoints = points.filter(function (p) { return p.score > 0; });
+        var avgPoints = points.filter(function (p) { return p.avg > 0; });
+
+        if (scoredPoints.length === 0 && avgPoints.length === 0) {
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.font = '700 13px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('No scores recorded in this period', w / 2, padT + chartH / 2 - 6);
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.font = '11px Inter, sans-serif';
+            ctx.fillText('Scores will appear once submitted and validated', w / 2, padT + chartH / 2 + 14);
+
+            list.forEach(function (pt, i) {
+                var x = padL + (chartW * i / Math.max(1, list.length - 1));
+                var label = formatChartDate(pt);
+                ctx.fillStyle = 'rgba(255,255,255,0.65)';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, x, baseY + 20);
+            });
+            return;
+        }
+
+        var xFor = function (i) { return padL + (chartW * i / Math.max(1, list.length - 1)); };
+        var yFor = function (val) { return baseY - (chartH * (val / maxVal)); };
+
+        if (avgPoints.length > 0) {
+            ctx.save();
+            ctx.setLineDash([8, 6]);
+            ctx.strokeStyle = '#ffe088';
+            ctx.lineWidth = 2.2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+
+            ctx.beginPath();
+            avgPoints.forEach(function (p, i) {
+                var x = xFor(p.x), y = yFor(p.avg);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            ctx.restore();
+
+            avgPoints.forEach(function (p, idx) {
+                var x = xFor(p.x), y = yFor(p.avg);
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#1e1f20';
+                ctx.fill();
+                ctx.strokeStyle = '#ffe088';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                if (idx === avgPoints.length - 1 || avgPoints.length === 1) {
+                    var badgeText = 'Avg ' + formatPower(p.avg);
+                    ctx.font = '700 10px Inter, sans-serif';
+                    var textWidth = ctx.measureText(badgeText).width;
+                    var badgeW = textWidth + 14;
+                    var badgeH = 18;
+                    var badgeX = Math.min(w - padR - badgeW, x - badgeW / 2);
+                    var badgeY = y - 22;
+                    if (badgeY < padT) badgeY = y + 8;
+
+                    ctx.fillStyle = '#2c2514';
+                    ctx.strokeStyle = 'rgba(255, 224, 136, 0.4)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 9);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffe088';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + 12.5);
+                }
+            });
+        }
+
+        if (scoredPoints.length > 0) {
+            var grad = ctx.createLinearGradient(0, padT, 0, baseY);
+            grad.addColorStop(0, 'rgba(109,213,140,0.24)');
+            grad.addColorStop(1, 'rgba(109,213,140,0.01)');
+
+            ctx.beginPath();
+            scoredPoints.forEach(function (p, i) {
+                var x = xFor(p.x), y = yFor(p.score);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            if (scoredPoints.length > 1) {
+                ctx.lineTo(xFor(scoredPoints[scoredPoints.length - 1].x), baseY);
+                ctx.lineTo(xFor(scoredPoints[0].x), baseY);
+                ctx.closePath();
+                ctx.fillStyle = grad;
+                ctx.fill();
+            }
+
+            ctx.beginPath();
+            scoredPoints.forEach(function (p, i) {
+                var x = xFor(p.x), y = yFor(p.score);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.strokeStyle = '#6dd58c';
+            ctx.lineWidth = 3.0;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            scoredPoints.forEach(function (p) {
+                var x = xFor(p.x), y = yFor(p.score);
+
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(109,213,140,0.35)';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#6dd58c';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+
+                var scoreFormatted = formatPower(p.score);
+                ctx.font = '800 11px Inter, sans-serif';
+                var sWidth = ctx.measureText(scoreFormatted).width;
+                var sPillW = sWidth + 10;
+                var sPillH = 17;
+                var sPillX = x - sPillW / 2;
+                var sPillY = y - 22;
+                if (sPillY < padT) sPillY = y + 8;
+
+                ctx.fillStyle = 'rgba(17, 17, 20, 0.85)';
+                ctx.strokeStyle = 'rgba(109, 213, 140, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(sPillX, sPillY, sPillW, sPillH, 4);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#e3e3e3';
+                ctx.textAlign = 'center';
+                ctx.fillText(scoreFormatted, x, sPillY + 12);
+            });
+        }
+
+        list.forEach(function (pt, i) {
+            var x = xFor(i);
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.font = '600 11px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(formatChartDate(pt), x, baseY + 20);
+        });
+    }
+
     function getPowerTier(power, maxPower) {
         if (!power) return 'D';
         var p = parseInt(power) || 0;
@@ -2420,6 +2703,8 @@
         avatarInit: avatarInit,
         MAX_NUMERIC: MAX_NUMERIC,
         formatPower: formatPower,
+        formatChartDate: formatChartDate,
+        drawScoreTrendChart: drawScoreTrendChart,
         getPowerTier: getPowerTier,
         getPowerTierMeta: getPowerTierMeta,
         calculateCombatDensity: calculateCombatDensity,

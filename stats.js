@@ -323,7 +323,8 @@
                     { key: 'GvG',         label: '🚩 GvG War' },
                     { key: 'Shadowfront', label: '🌌 Shadowfront (Squads & Attendance)' },
                     { key: 'Arms Race',   label: '🚀 Arms Race (Stage A & B)' },
-                    { key: 'DTR',         label: '🛡️ DTR (Defend Route)' }
+                    { key: 'DTR',         label: '🛡️ DTR (Defend Route)' },
+                    { key: 'Glory',       label: '✨ Glory' }
                 ];
                 eventPickerHtml = '<select class="gm-select event-select" style="width:auto; min-width:180px; font-weight:700;">' +
                     eventsList.map(function (ev) {
@@ -958,7 +959,36 @@
             var allParts = (raw && raw.participants) || [];
             var allSquads = (raw && raw.squads) || [];
 
-            var rows = allParts.filter(function (r) { return matchesEventName(r.event_name, eventName); });
+            state.uidMap = state.uidMap || {};
+            ((raw && raw.members) || []).forEach(function (m) { if (m.pseudo) state.uidMap[m.pseudo] = m.uid || ''; });
+
+            // Glory lives in a separate raw.glory array (gm_stats_data excludes it
+            // from raw.participants) with its own shape ({pseudo, score, week_start},
+            // no session concept, no prep/pvp split) — normalize it to look like a
+            // participant row so the rest of this function's aggregation/rendering
+            // pipeline (already generic) doesn't need a parallel implementation.
+            var rows;
+            if (eventName === 'Glory') {
+                rows = ((raw && raw.glory) || []).map(function (g) {
+                    return {
+                        pseudo: g.pseudo,
+                        event_name: 'Glory',
+                        week_start: g.week_start,
+                        session_id: null,
+                        participated: (g.score > 0) ? 1 : 0,
+                        score: g.score || 0,
+                        score_prep: 0,
+                        score_pvp: 0,
+                        is_pending: false,
+                        sub_present: false,
+                        late: false,
+                        excused: false,
+                        appointed: false
+                    };
+                });
+            } else {
+                rows = allParts.filter(function (r) { return matchesEventName(r.event_name, eventName); });
+            }
             rows = keepOnlyPastOrCurrent(rows);
 
             if (!isAllTime && weeksToLoad && weeksToLoad.length > 0) {
@@ -976,6 +1006,9 @@
             var squadCounts = {};
             var participantCounts = {};
             var reserveCounts = {};
+            var squad1Counts = {};
+            var squad2Counts = {};
+            var commanderCounts = {};
             if (eventName === 'Shadowfront') {
                 allSquads.forEach(function (sq) {
                     var norm = normalizePseudo(sq.pseudo);
@@ -984,6 +1017,14 @@
                         reserveCounts[norm] = (reserveCounts[norm] || 0) + 1;
                     } else {
                         participantCounts[norm] = (participantCounts[norm] || 0) + 1;
+                    }
+                    if (sq.squad === 'squad1') {
+                        squad1Counts[norm] = (squad1Counts[norm] || 0) + 1;
+                    } else if (sq.squad === 'squad2') {
+                        squad2Counts[norm] = (squad2Counts[norm] || 0) + 1;
+                    }
+                    if (sq.is_commander) {
+                        commanderCounts[norm] = (commanderCounts[norm] || 0) + 1;
                     }
                 });
             }
@@ -1000,7 +1041,9 @@
                         events_total: 0,
                         sub_count: 0,
                         ara_count: 0,
-                        arb_count: 0
+                        arb_count: 0,
+                        late_count: 0,
+                        excused_count: 0
                     };
                 }
                 var prep = r.score_prep || 0;
@@ -1017,6 +1060,12 @@
                 }
                 if (r.sub_present === true) {
                     byMember[norm].sub_count += 1;
+                }
+                if (r.late === true) {
+                    byMember[norm].late_count += 1;
+                }
+                if (r.excused === true) {
+                    byMember[norm].excused_count += 1;
                 }
 
                 var evLower = (r.event_name || '').toLowerCase();
@@ -1043,7 +1092,9 @@
                         events_total: 0,
                         sub_count: 0,
                         ara_count: 0,
-                        arb_count: 0
+                        arb_count: 0,
+                        late_count: 0,
+                        excused_count: 0
                     };
                 }
             });
@@ -1069,8 +1120,13 @@
                     assigned_count: assignedCount,
                     participant_count: participantCounts[norm] || 0,
                     reserve_count: reserveCounts[norm] || 0,
+                    squad1_count: squad1Counts[norm] || 0,
+                    squad2_count: squad2Counts[norm] || 0,
+                    commander_count: commanderCounts[norm] || 0,
                     ara_count: m.ara_count,
                     arb_count: m.arb_count,
+                    late_count: m.late_count,
+                    excused_count: m.excused_count,
                     attendance_rate: rate,
                     glory_delta: 0,
                     glory_bonus: 0,
@@ -1098,6 +1154,9 @@
             var dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
             var raw = dataRes.data || null;
             var partRes = { data: (raw && raw.participants) || [] };
+
+            state.uidMap = state.uidMap || {};
+            ((raw && raw.members) || []).forEach(function (m) { if (m.pseudo) state.uidMap[m.pseudo] = m.uid || ''; });
 
             var memberSet = new Set();
             (memRes.data || []).forEach(function (m) { if (m.pseudo) memberSet.add(m.pseudo); });
@@ -1207,25 +1266,36 @@
             var theadCols = '<th class="gm-center" style="width:65px;">#</th>' +
                             '<th>' + (t('col_member') || 'Member') + '</th>';
 
+            // Only shown in Event Deep-Dive: late_count/excused_count are computed by
+            // loadSingleEventMode() and aren't populated by the Leaderboard's
+            // loadGlobalMode()/loadParticipationMode(), which share this same
+            // generic render path for non-battle/Shadowfront/Arms-Race event types.
+            var showLateExcused = (state.primaryView === 'events');
+            var lateExcusedHeader = showLateExcused ? '<th class="gm-center">Late / Excused</th>' : '';
+
             if (isShadowfrontMode) {
                 theadCols += '<th class="gm-center">Squad Assigned</th>' +
                              '<th class="gm-center">Present (Attended)</th>' +
                              '<th class="gm-center">Substitute</th>' +
                              '<th class="gm-center">Attendance Rate</th>' +
+                             lateExcusedHeader +
                              '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
             } else if (isArmsRaceMode) {
                 theadCols += '<th class="gm-center">Stage A</th>' +
                              '<th class="gm-center">Stage B</th>' +
                              '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
+                             lateExcusedHeader +
                              '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
             } else if (isBattleEventMode) {
                 theadCols += '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
                              '<th class="gm-center">' + (t('col_score_prep') || 'Day 1 to 5 score') + '</th>' +
                              '<th class="gm-center">' + (t('col_score_pvp') || 'Day 6 score') + '</th>' +
+                             lateExcusedHeader +
                              '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
             } else {
                 theadCols += '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
                              (showGloryCol ? '<th class="gm-center">' + (t('stats_glory_delta') || 'Glory Δ') + '</th>' : '') +
+                             lateExcusedHeader +
                              '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
             }
 
@@ -1250,12 +1320,25 @@
                         '</div>' +
                     '</td>';
 
+                var lateExcusedCell = !showLateExcused ? '' : (
+                    '<td data-label="Late/Excused" class="gm-center" style="font-size:.8rem; color:var(--fg-dim);">' +
+                    (m.late_count > 0 ? ('<span style="color:#fbbf24;">⏰ ' + m.late_count + '</span>') : '') +
+                    (m.late_count > 0 && m.excused_count > 0 ? ' · ' : '') +
+                    (m.excused_count > 0 ? ('<span>✅ ' + m.excused_count + ' exc.</span>') : '') +
+                    ((m.late_count > 0 || m.excused_count > 0) ? '' : '-') +
+                    '</td>'
+                );
+
                 if (isShadowfrontMode) {
                     var ratePct = Math.round((m.attendance_rate || 0) * 100);
                     var rateBadge = ratePct >= 80 ? '<span style="color:#34d399; font-weight:700;">' + ratePct + '%</span>' : (ratePct >= 50 ? '<span style="color:#fbbf24; font-weight:700;">' + ratePct + '%</span>' : '<span style="color:var(--fg-dim);">' + ratePct + '%</span>');
 
                     var squadBreakdown = m.assigned_count > 0
                         ? (m.assigned_count + ' squad' + (m.assigned_count > 1 ? 's' : '') +
+                           (m.commander_count > 0 ? ' <span title="Commander">👑</span>' : '') +
+                           '<div style="font-size:.75rem; font-weight:400; color:var(--fg-dim);">' +
+                           'S1: ' + m.squad1_count + ' · S2: ' + m.squad2_count +
+                           '</div>' +
                            '<div style="font-size:.75rem; font-weight:400; color:var(--fg-dim);">' +
                            m.participant_count + ' titulaire' + (m.participant_count !== 1 ? 's' : '') +
                            ' · ' + m.reserve_count + ' réserve' + (m.reserve_count !== 1 ? 's' : '') + '</div>')
@@ -1265,33 +1348,51 @@
                         '<td data-label="Done" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.events_done > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.events_done + '</span>') : '<span style="color:var(--fg-dim);">0</span>') + '</td>' +
                         '<td data-label="Subs" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.sub_count > 0 ? ('<span style="color:#fbbf24; font-weight:700;">🔁 ' + m.sub_count + '</span>') : '-') + '</td>' +
                         '<td data-label="Rate" class="gm-center" style="font-family:var(--font-display);">' + rateBadge + '</td>' +
+                        lateExcusedCell +
                         '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else if (isArmsRaceMode) {
                     rowCells +=
                         '<td data-label="Stage A" class="gm-center">' + (m.ara_count > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.ara_count + '</span>') : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
                         '<td data-label="Stage B" class="gm-center">' + (m.arb_count > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.arb_count + '</span>') : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
                         '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
+                        lateExcusedCell +
                         '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else if (isBattleEventMode) {
                     rowCells +=
                         '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
                         '<td data-label="Day 1-5" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
                         '<td data-label="Day 6" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' +
+                        lateExcusedCell +
                         '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else {
                     rowCells +=
                         '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
                         (showGloryCol ? '<td data-label="Glory Δ" class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '-') + '</td>' : '') +
+                        lateExcusedCell +
                         '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 }
 
-                tableHtml += '<tr style="border-bottom:1px solid var(--border-soft);">' + rowCells + '</tr>';
+                var rowUid = (state.uidMap && state.uidMap[m.pseudo]) || '';
+                tableHtml += '<tr class="gm-stats-row-clickable" style="border-bottom:1px solid var(--border-soft); cursor:pointer;" data-player-uid="' + esc(rowUid) + '" data-player-pseudo="' + esc(m.pseudo) + '" title="View player history">' + rowCells + '</tr>';
             });
 
             tableHtml += '</tbody></table></div></div>';
 
             container.innerHTML = tabsHtml + podHtml + tableHtml;
             wireModeTabs(container);
+
+            var tbody = container.querySelector('table tbody');
+            if (tbody) {
+                tbody.addEventListener('click', function (ev) {
+                    var row = ev.target.closest('.gm-stats-row-clickable');
+                    if (!row) return;
+                    var uid = row.getAttribute('data-player-uid');
+                    var pseudo = row.getAttribute('data-player-pseudo');
+                    if (uid && window.GM_APP && window.GM_APP.showPlayerHistory) {
+                        window.GM_APP.showPlayerHistory(uid, pseudo);
+                    }
+                });
+            }
         });
     }
 

@@ -2,6 +2,8 @@
 
 ## New
 
+- **Admin Player History**: Stats leaderboard rows are now clickable and open a per-player history modal — a power/glory trend chart and a per-event-type attendance summary, for any player in the admin's scope. Built on `gm_get_player_metrics_history` (an RPC deployed and authorized for exactly this since 20260823, but never called from anywhere in the app until now) plus a new `gm_get_player_event_history` RPC (same "self OR in-scope admin" authorization model, query logic mirrors the player Portal's own `get-history` action) for the event side. The chart itself reuses the player Portal's own canvas renderer (extracted to `gm-utils.js` as `drawScoreTrendChart`/`formatChartDate`) instead of a third implementation.
+
 - **Cross-Server Migration Groups**:
   - New feature: the game periodically opens a limited-time window grouping a cluster of servers together, letting players migrate to any guild within that cluster. Previously every transfer path (`request_guild_transfer`, `gm_transfer_guild_member`, `resolve_guild_transfer`, `gm_admin_request_transfer`) enforced a strict same-`server_number` rule with no way to relax it.
   - New tables `server_migration_groups` / `server_migration_group_servers` (`supabase/migrations/20260830072000_cross_server_migration_groups.sql`) and a `servers_in_open_migration_group()` helper. Only a `super_admin` can create/open/close a group (RLS: read gated on `gm_can_read_guilds()`, write gated on `is_super_admin()`); the linkage is a time-boxed window (`status: open|closed`), not a permanent list — closing it turns off eligibility immediately, including for a transfer request that was made while the group was open but hasn't been approved yet (re-validated at approval time, not just at request time).
@@ -56,6 +58,13 @@
   - **Quality Gate**: **447/447 Vitest unit tests green** (+status change and Discord notification test assertions), 0 TypeScript errors, clean build.
 
 ## Fixed
+
+- **UX Audit Follow-Up, Phase B: Statistics Granularity**:
+  - **`gm_stats_data` promoted to canonical migrations and extended**: like 4 other event RPCs found and fixed earlier this session, `gm_stats_data` — arguably the most important RPC for the entire Stats page — existed only in the pre-consolidation migration archive, not in `supabase/migrations/`. Promoted, and extended its projection with `shadowfront_squads.squad`/`.session_id`/`.is_commander` and `event_participants.late`/`.excused`/`.appointed` — all already written by the admin UI, just previously dropped before reaching the Stats page.
+  - **Shadowfront granularity**: Event Deep-Dive now shows Squad 1 vs Squad 2 assignment counts and a Commander badge per player, on top of the existing titulaire/réserve split shipped in Phase A.
+  - **Late / Excused column**: added to Event Deep-Dive (Shadowfront, Arms Race, SvS/GvG, DTR) — data History already tracked per-session but Stats had no aggregated view of it. Deliberately not shown on the Leaderboard views (Global Score / Attendance Rate), which don't compute these fields and would otherwise show a permanently empty column.
+  - **Glory added to Event Deep-Dive**: previously absent from the event picker entirely, even though its data (`raw.glory`) was already being fetched for the Global leaderboard's bonus calculation. Glory has a different shape than participant rows (no session concept, no prep/pvp split) so it gets its own normalization branch in `loadSingleEventMode()` rather than being forced through the participant-shaped aggregation path.
+  - **Verification**: migration applied and queried live against production (`gm_get_player_event_history` exercised end-to-end for a real DEMO player, returning correct per-session score/guild-average/guild-max across all 7 event types present in the data); all Stats changes exercised live as `DemoAdmin` with real data (Shadowfront squad/commander breakdown, Arms Race counts, Glory tab, Player History modal chart + event list); the player Portal's own chart re-verified unaffected by the `drawChart()` extraction (3 canvases, all still rendering real content). **536/536 Vitest unit tests green** (+16 new).
 
 - **UX Audit Follow-Up, Phase A: Navigation Bugs, Dead View, Onboarding Data Leak, Search Reactivity, Stats Display**:
   - **Notification click didn't navigate**: clicking a Leader Hall native/PWA notification from another tab called `window.GM.shell.gotoItem`, which never existed (`window.GM.shell` is never assigned — the real bridge is `window.GM_SHELL`). Fixed silently-failing navigation in `gm-leader-hall.js`.

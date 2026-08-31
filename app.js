@@ -6224,8 +6224,118 @@
         }
     });
 
+    // Admin "Player History" modal — opened from clickable Stats leaderboard
+    // rows (stats.js). Combines two sources: gm_get_player_metrics_history
+    // (power/glory snapshots, already deployed and authorized for admin
+    // callers, previously never called from anywhere) and
+    // gm_get_player_event_history (event attendance/score, new). Reuses the
+    // same canvas chart the player Portal draws its own trend with
+    // (window.GM.drawScoreTrendChart) instead of a third implementation.
+    async function showPlayerHistoryDialog(uid, pseudo) {
+        var existing = document.getElementById('player-history-overlay');
+        if (existing) existing.remove();
+
+        var html =
+            '<div id="player-history-overlay" class="gm-modal-overlay">' +
+                '<div class="gm-modal-card" style="max-width: 640px; width: 92%; position: relative;">' +
+                    '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
+                        '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                            '<i class="ph ph-chart-line-up" style="font-size: 1.5rem; color: var(--accent);"></i>' +
+                            '<h3 style="margin:0; font-size: 1.2rem;">' + esc(pseudo) + ' — Player History</h3>' +
+                        '</div>' +
+                        '<button type="button" class="gm-mini-btn gm-close-modal"><i class="ph ph-x"></i></button>' +
+                    '</div>' +
+                    '<div class="gm-modal-body" id="player-history-body" style="display:flex; flex-direction:column; gap:1.25rem; max-height:70vh; overflow-y:auto;">' +
+                        '<div class="gm-empty" style="padding:2rem;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading history...</div></div>' +
+                    '</div>' +
+                    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top: 1.5rem;">' +
+                        '<button type="button" class="gm-btn gm-btn-ghost gm-close-modal">Close</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+        var overlay = document.getElementById('player-history-overlay');
+        requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+        function closeModal() {
+            overlay.classList.remove('visible');
+            setTimeout(function () { overlay.remove(); }, 200);
+        }
+        overlay.querySelectorAll('.gm-close-modal').forEach(function (btn) { btn.addEventListener('click', closeModal); });
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) closeModal(); });
+
+        var body = document.getElementById('player-history-body');
+        if (!uid) {
+            body.innerHTML = '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">No UID on file for this player.</div></div>';
+            return;
+        }
+
+        try {
+            var [metricsRes, eventRes] = await Promise.all([
+                supabase.rpc('gm_get_player_metrics_history', { p_uid: uid, p_limit: 12 }),
+                supabase.rpc('gm_get_player_event_history', { p_uid: uid, p_limit: 60 })
+            ]);
+
+            var metrics = (metricsRes.data && metricsRes.data.ok) ? metricsRes.data : null;
+            var eventData = (eventRes.data && eventRes.data.ok) ? eventRes.data : null;
+            var powerHistory = (metrics && metrics.history) ? metrics.history : [];
+
+            var sections = '';
+
+            if (powerHistory.length > 0) {
+                sections += '<div>' +
+                    '<h4 style="margin:0 0 .5rem; font-size:.95rem; color:var(--fg-dim); font-weight:600;">Power trend (last ' + powerHistory.length + ' weeks)</h4>' +
+                    '<canvas id="player-history-power-canvas" style="width:100%; display:block;"></canvas>' +
+                '</div>';
+            }
+
+            var eventKeys = eventData && eventData.events ? Object.keys(eventData.events) : [];
+            if (eventKeys.length > 0) {
+                sections += '<div>' +
+                    '<h4 style="margin:0 0 .5rem; font-size:.95rem; color:var(--fg-dim); font-weight:600;">Event participation</h4>' +
+                    '<div style="display:flex; flex-direction:column; gap:.5rem;">' +
+                        eventKeys.sort().map(function (evKey) {
+                            var ev = eventData.events[evKey];
+                            var rateColor = ev.rate >= 80 ? '#34d399' : (ev.rate >= 50 ? '#fbbf24' : 'var(--fg-dim)');
+                            return '<div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">' +
+                                '<span style="font-weight:600;">' + esc(evKey) + '</span>' +
+                                '<span style="font-size:.85rem; color:' + rateColor + '; font-weight:700;">' + ev.attended + '/' + ev.count + ' attended (' + ev.rate + '%)</span>' +
+                            '</div>';
+                        }).join('') +
+                    '</div>' +
+                '</div>';
+            }
+
+            if (!sections) {
+                body.innerHTML = '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">No history available for this player.</div></div>';
+                return;
+            }
+
+            body.innerHTML = sections;
+
+            if (powerHistory.length > 0 && window.GM && window.GM.drawScoreTrendChart) {
+                var canvas = document.getElementById('player-history-power-canvas');
+                if (canvas) {
+                    // gm_get_player_metrics_history returns week_start DESC
+                    // (most recent first), matching what drawScoreTrendChart
+                    // expects — no guild-average power metric exists here,
+                    // so guild_avg_score stays 0 and only the player curve draws.
+                    var chartHistory = powerHistory.map(function (h) {
+                        return { score: h.total_power, guild_avg_score: 0, week_start: h.week_start };
+                    });
+                    window.GM.drawScoreTrendChart(canvas, chartHistory);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load player history', err);
+            body.innerHTML = '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">Failed to load player history.</div></div>';
+        }
+    }
+
     window.GM_APP = window.GM_APP || {};
     window.GM_APP.showToast = showToast;
     window.GM_APP.reloadActiveView = reloadActiveView;
+    window.GM_APP.showPlayerHistory = showPlayerHistoryDialog;
 
 })();

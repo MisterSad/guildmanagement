@@ -78,7 +78,13 @@ describe('Mobile UX regression guards (v128.0)', () => {
 
   it('portal charts are DPR-aware and redraw on resize', () => {
     const portal = read('portal.js');
-    expect(portal).toContain('devicePixelRatio');
+    const utils = read('gm-utils.js');
+    // DPR sizing lives in the shared chart renderer (gm-utils.js) since
+    // both the portal dashboard and the admin Player History view draw
+    // through it now; portal.js keeps the resize-driven redraw wiring.
+    expect(utils).toContain('devicePixelRatio');
+    expect(utils).toContain('function drawScoreTrendChart');
+    expect(portal).toContain('window.GM.drawScoreTrendChart');
     expect(portal).toContain('chartRegistry');
     expect(portal).toMatch(/addEventListener\('resize'/);
   });
