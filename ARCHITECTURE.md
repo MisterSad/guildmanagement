@@ -20,7 +20,10 @@
 │  │ ├─ Admin Tactical Command Center: `app.js`, `events.js`, `history.js`, `stats.js` │  │
 │  │ ├─ Player Self-Service Portal: `portal.js`, `push.js`                             │  │
 │  │ ├─ Tactical Matchups & Rankings: `svs-matchup.js`, `gvg-matchup.js`, `cross-rank.js`│
-│  │ ├─ Roster OCR Three-Section Review & Cascade Confirm: `app.js`, `gm-utils.js`     │  │
+│  │ ├─ Roster OCR (screenshots or video) + Rank Detection: `app.js`, `gm-utils.js`    │  │
+│  │ ├─ Identity: `gm-webauthn.js` (Passkeys client, no `@simplewebauthn/browser` dep)  │  │
+│  │ ├─ Leader Hall E2EE (Signal Protocol 1:1 + groups): `gm-signal-crypto.js`,        │  │
+│  │ │   `gm-leader-hall.js`, `noble-crypto.bundle.js` (vendored `@noble/*` build)     │  │
 │  │ └─ Design System: Material Design 3.0 Tokens (`tokens.css`) + Apple Cozy Neutral  │  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────┬──────────────────────────────────────────────┘
@@ -29,20 +32,28 @@
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   EDGE & SECURITY LAYER                                 │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
-│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`)                   │  │
+│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 13 live         │  │
 │  │ ├─ Public (`verify_jwt = false`):                                                 │  │
 │  │ │   ├─ `auth-login`: Bcrypt dual-read, lockout, IP rate limit, JWT issuer         │  │
+│  │ │   ├─ `auth-passkey`: Passkeys/WebAuthn — register, sign in (scoped or fully    │  │
+│  │ │   │   discoverable across accounts), backup codes, admin reset escape hatch    │  │
 │  │ │   ├─ `player-register`: Self-service member registration                        │  │
-│  │ │   ├─ `event-reminders`: Cron-secret gated notification dispatcher (Vault)       │  │
-│  │ │   └─ `gm-stripe-webhook`: Stripe webhook signature verification                 │  │
+│  │ │   ├─ `event-reminders`: Cron-secret gated notification dispatcher (Vault),      │  │
+│  │ │   │   fans out to both Discord webhooks and Web Push subscribers                │  │
+│  │ │   ├─ `gm-stripe-webhook`: Stripe webhook signature verification                 │  │
+│  │ │   └─ `gm-revolut-webhook`: Revolut webhook signature verification               │  │
 │  │ ├─ JWT-Gated (`verify_jwt = true`):                                               │  │
 │  │ │   ├─ `member-portal`: Cryptographically resolved player portal backend          │  │
 │  │ │   ├─ `admin-accounts`: Centralized admin role provisioner (`admin-authz.ts`)    │  │
-│  │ │   ├─ `ocr-guild-members`: Gemini vision multimodal OCR parser                   │  │
+│  │ │   ├─ `ocr-guild-members`: Gemini vision multimodal OCR parser — screenshots OR  │  │
+│  │ │   │   a screen-recording video (client extracts frames first); Members scans   │  │
+│  │ │   │   also detect R1-R4 rank from the roster's section headers                 │  │
 │  │ │   ├─ `discord-webhook-proxy`: Whitelisted Discord webhook proxy (SSRF safe)     │  │
 │  │ │   ├─ `gm-create-order`: Stripe subscription checkout session initializer        │  │
-│  │ │   └─ `gm-order-status`: Order status reader and verification                    │  │
-│  │ └─ Shared Modules: `_shared/auth.ts`, `_shared/logger.ts`, `_shared/rate-limit.ts`│  │
+│  │ │   ├─ `gm-order-status`: Order status reader and verification                    │  │
+│  │ │   └─ `tickets`: Bug-report ticketing console backend                            │  │
+│  │ └─ Shared Modules: `_shared/auth.ts`, `_shared/logger.ts`, `_shared/rate-limit.ts`,│  │
+│  │     `_shared/admin-authz.ts`, `_shared/shadow-session.ts`, `_shared/cors.ts`      │  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────┬──────────────────────────────────────────────┘
                                            │ Postgres Wire Protocol / RLS
@@ -51,7 +62,7 @@
 │                                   DATABASE LAYER (Postgres 17)                          │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ Supabase Postgres 17 (Multi-Tenant Schema with Zero-Trust Row Level Security)       │  │
-│  │ ├─ 21 Relational Tables with Full RLS Enforcement                                 │  │
+│  │ ├─ 33 Relational Tables with Full RLS Enforcement                                 │  │
 │  │ ├─ Security Definer Access Helpers with `SET search_path TO ''`                   │  │
 │  │ ├─ Deterministic Event Session Generator: `public.gm_event_session_id()`           │  │
 │  │ ├─ Distributed Audit Ledger: `public.system_audit_logs` (service_role only)       │  │
@@ -96,6 +107,14 @@ Authentication operates on an **accounts-table-only** role resolution model. `us
 3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Write operations require active SaaS subscription (`public.is_subscription_active()`).
 4. **`member`**: **Zero direct database table access**. Communicates exclusively through the `member-portal` Edge Function.
 
+#### 2.1 Passkeys / WebAuthn (Alternate Sign-In, added 2026-09)
+Any account (admin or portal) can additionally register a Passkey per device instead of typing a password every time. Backed by `@simplewebauthn/server@10.0.1` (server-side crypto only — no `@simplewebauthn/browser` client dependency; `gm-webauthn.js` hand-rolls the base64url/ArrayBuffer marshalling to avoid adding a new CDN origin).
+- **Registration**: `auth-passkey` `register-options`/`register-verify` (JWT-authenticated). First passkey on an account also issues 10 one-time backup codes (SHA-256 hashed, shown once).
+- **Sign-in**: `auth-options`/`auth-verify` (unauthenticated — this *is* the login flow). Supports both a **scoped** ceremony (an id was typed, narrows the browser's picker to that account) and a **fully discoverable** one (no id — the picker shows every passkey registered for the site across every account; the credential's own `userHandle` resolves which account server-side, never anything the client claims). Conditional UI (`mediation: 'conditional'`, tied to `autocomplete="webauthn"` fields) runs in parallel so password-manager extensions (Proton Pass, Bitwarden, 1Password) that don't reliably support the modal picker still work via autofill-style suggestions.
+- **iOS constraint**: `PushManager`/full WebAuthn UX is materially better inside an installed PWA — see §6 for the same "must be installed" constraint on push notifications.
+- **Admin escape hatch**: `admin-reset-passkeys` action revokes every passkey + backup code for a target account (lost every device and the codes), gated by the same `canManageAccount`/`admin-authz.ts` matrix as the manual password-reset flow. R5 is not specially protected here (unlike the rank-assignment matrix) — the existing role hierarchy check already prevents managing an equal-or-higher role.
+- **Rate limiting**: `auth-passkey` and `auth-login` share one IP budget (`login_throttle`, keyed purely by IP, not by which function calls it) — a passkey sign-in costs 2 requests (options + verify), and the conditional/autofill listener adds a background options call on every page load. Widen this budget (not the per-function limit) if login attempts start getting throttled after adding another auth-adjacent feature.
+
 ---
 
 ### 3. Member Portal Server-Side Identity Pipeline
@@ -120,10 +139,16 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 
 ### 4. Database Topology & Access Helpers
 
-#### 4.1 The 21 Database Tables:
-- **Core Tenant Tables**: `guilds`, `guild_members`, `event_status`, `event_participants`, `glory_events`, `sanctions`, `guild_webhooks`, `guild_transfers`, `guild_subscriptions`, `guild_orders`.
-- **Player Portal Tables**: `accounts`, `player_daily_challenges`, `player_event_scores`, `player_season_scores`, `player_badges`, `player_absence_requests`, `player_push_subscriptions`.
-- **Security & Observability Tables**: `system_audit_logs`, `guild_audit_logs`, `login_throttle`, `event_reminders_log`.
+#### 4.1 The 33 Database Tables (verified live via `list_tables`, all RLS-enabled):
+- **Core Tenant / Roster**: `guilds` (13 rows, 1 is `DEMO`), `guild_members` (~1,540 rows), `event_status`, `event_participants` (~33k rows — the permanent attendance ledger), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `diplomatic_treaties`, `server_migration_groups`, `server_migration_group_servers`.
+- **Accounts & Identity**: `accounts` (custom bcrypt credential store, source of truth — see §2), `login_throttle` (shared IP rate limit for `auth-login` + `auth-passkey`), `webauthn_challenges`, `account_passkeys`, `account_backup_codes` (Passkeys/WebAuthn, added 2026-09).
+- **Player Portal**: `player_absences`, `player_push_prefs` (per-player Web Push type opt-outs).
+- **Notifications**: `push_subscriptions` (Web Push endpoints; `event-reminders` fans out to both this and Discord webhooks).
+- **Leader Hall E2EE (Signal Protocol)**: `e2ee_prekey_bundles`, `e2ee_one_time_prekeys`, `e2ee_conversations`, `e2ee_conversation_members`, `e2ee_messages`, `e2ee_blocked_accounts`, `e2ee_message_reactions`.
+- **Billing & Support**: `gm_payments`, `tickets` (in-app bug-report console).
+- **Observability**: `system_audit_logs` (service_role-only INSERT).
+
+> ⚠️ **Note on `shadowfront_squads` completeness**: a long-tenured player can show more attended Shadowfront weeks (`event_participants`) than surviving squad-assignment rows (`shadowfront_squads`), because the latter doesn't reliably retain every past week once a later session overwrites it. The Stats attendance-rate calculation (`gm-utils.js:computeShadowfrontAttendanceRate`) floors its denominator at the attended count to stay mathematically capped at 100%, but the underlying gap in `shadowfront_squads` itself is unresolved — any *new* feature reading that table should not assume it is a complete historical ledger.
 
 #### 4.2 Centralized SQL Access Helpers (`SECURITY DEFINER`, `STABLE`, `SET search_path TO ''`):
 - `public.gm_can_read_guild_data(p_guild text)` — Permissive SELECT filter for tenant tables.
@@ -143,13 +168,30 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 ### 5. AI Roster OCR Pipeline
 
 ```
-[ Guild Admin Uploads Full Roster Screenshots ]
+[ Guild Admin Uploads Screenshots OR a Screen-Recording Video ]
                        │
+                       ├─ Video path (client-side, before any upload):
+                       │    `app.js:extractFramesFromVideo` samples the video
+                       │    continuously but KEEPS a frame only where the visible
+                       │    content changed since the last kept frame (12x12
+                       │    luminance-grid diff) — avoids wasting the batch on
+                       │    near-duplicates during a slow scroll, avoids missing
+                       │    rows during a fast one. Kept frames are downsampled
+                       │    to <=25 (`GM.ocrDownsampleEvenly`, spread evenly
+                       │    across the whole recording, not just its start) and
+                       │    folded in as if they were additional screenshots —
+                       │    everything downstream is unchanged.
                        ▼
-          [ POST /functions/v1/ocr-guild-members ]
+          [ POST /functions/v1/ocr-guild-members ] (chunks of <=4 images/call)
                        │
                        ├─► Multimodal Gemini Vision Extraction
-                       └─► Returns Parsed Raw Roster JSON: [{ pseudo, overall_power, role, uid? }]
+                       │    Members scans ALSO detect R4/R3/R2/R1 rank from the
+                       │    roster's section headers ("Executive Manager" / "Rank
+                       │    3/2/1 Members"). A `rankHint`/`endingRank` round trip
+                       │    carries the active rank section across sequential
+                       │    batches, since a header can scroll out of view
+                       │    partway through a recording.
+                       └─► Returns Parsed Roster JSON: [{ pseudo, overall_power, uid?, rank? }]
                                │
                                ▼
         [ Client-Side Categorization: `gm-utils.js:categorizeOcrDiff` ]
@@ -157,11 +199,15 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
          ┌─────────────┼─────────────┐
          ▼             ▼             ▼
   [ Existing ]      [ New ]      [ Removed ]
-  (Power Updates)  (New Recruits) (Missing from OCR)
+  (Power + Rank    (New Recruits, (Missing from OCR)
+   Updates)         Rank if detected)
                        │             │
                        ├─ Enter UID  ├─ Proposed Remove by Default
                        │  (No TEMP)  └─ Per-Row Keep/Remove Toggle
-                       │
+                       ├─ Rank is an editable dropdown (defaults to detected
+                       │  value; R5 is never assignable here — same
+                       │  `isRoleAllowedForBulk` gate the manual bulk rank
+                       │  buttons use)
                        ▼
           [ Live Counter: Roster N → M ]
                        │
@@ -169,25 +215,37 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
           [ Commit Roster Changes ]
                        │
                        ├─ IF removals present: Show Confirmation Dialog listing every deleted pseudo
-                       └─ Upsert/Delete records with transactional integrity
+                       └─ Upsert/Delete records (incl. `role` when a rank was assigned) with transactional integrity
 ```
 
 ---
 
-### 6. Deployment & Infrastructure Topology
+### 6. Web Push Notifications
+Anonymous, per-device opt-in (`push.js` + `sw.js`, VAPID keys in Supabase secrets). The opt-in control (`window.GM_PUSH.mount(container)`) is mounted in **both** the admin Overview screen and the Portal's Notifications card — a player-facing gap (portal preferences existed with no way to actually subscribe) was found and fixed 2026-08-31; if a future notification surface is added, mount the control there too rather than assuming one mount point covers every audience.
+- **Send path**: `event-reminders`' `sendWebPush()` fans out to `push_subscriptions` (filtered by `player_push_prefs` per-type opt-outs) alongside the existing Discord webhook dispatch, on the same cron tick.
+- **iOS constraint**: `PushManager` only exists inside an **installed** PWA on iOS Safari (16.4+) — a plain Safari tab shows an "Add to Home Screen" hint instead. Desktop/Android need no install step.
+- **CSP dependency**: the uploaded-file `<video>` blob and any future blob-backed media element depend on `media-src` explicitly including `blob:` in `vercel.json` — `default-src 'self'` does **not** cover it by CSP-spec fallback, and this silently blocks the resource identically on every browser (not a codec/compat issue) if ever dropped. Confirmed live via `document.addEventListener('securitypolicyviolation', ...)` when this shipped without it.
+
+### 7. Leader Hall — End-to-End Encrypted Messaging
+1:1 and group messaging between guild leadership, encrypted client-side via the Signal Protocol (`gm-signal-crypto.js`, `noble-crypto.bundle.js` — a vendored build of `@noble/curves`/`@noble/hashes`, not a CDN dependency). Server-side tables (`e2ee_prekey_bundles`, `e2ee_one_time_prekeys`, `e2ee_conversations`, `e2ee_conversation_members`, `e2ee_messages`, `e2ee_blocked_accounts`, `e2ee_message_reactions`) store only ciphertext and protocol metadata — the server never has plaintext access. UI lives in `gm-leader-hall.js`.
+
+---
+
+### 8. Deployment & Infrastructure Topology
 
 - **Production Frontend**: Hosted on Vercel at `https://guildmanagement.vercel.app` (branch `main`).
-- **Content Security Policy (CSP)**: Hardened policy with `frame-ancestors 'none'`, `object-src 'none'`, and SRI-pinned CDN resources (`https://cdn.jsdelivr.net`, `https://unpkg.com`).
+- **Content Security Policy (CSP)**: Hardened policy with `frame-ancestors 'none'`, `object-src 'none'`, `media-src 'self' blob:` (see §6 — omitting this blocks any blob-backed `<video>`/`<audio>` identically on every browser), and SRI-pinned CDN resources (`https://cdn.jsdelivr.net`, `https://unpkg.com`).
 - **CORS Allowlist**: Strictly locked to `https://guildmanagement.vercel.app`, `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:3000`, and authorized `https://*.vercel.app` preview environments.
 
 ---
 
 ## PART 2 — MODERNIZATION TARGET (`/src` ARCHITECTURE)
 
-The `/src` directory houses the modernized ES Module codebase targeted for subsequent incremental migration:
+`/src` houses the modernized ES Module codebase — **`src/main.ts` has run live in production since the 2026-08-30 build-pipeline fix** (it is a real `<script type="module">` in `index.html`, not a dev/test-only entrypoint as previously documented here). Migration is genuinely incremental and partial: some ports are feature-complete and bridged onto `window.GM.*` (the subscription/donation view fully replaced its legacy `subscription.js`); others are not, and per the incident below, an unfinished port must **never** be bridged onto a `window.GM_*` global a legacy script also owns.
 - **Reactive State Store** (`src/core/store/store.ts`): Centralized Pub/Sub state store with subscription disposers.
 - **Web Worker Engine** (`src/workers/matchup.worker.ts`): Offloaded combinatorial computation for GvG/SvS dangerosity and draft mercato simulations.
 - **BaseComponent Framework** (`src/components/ui/BaseComponent.ts`): Encapsulated UI component lifecycle with automatic listener cleanup.
-- **Modern Entrypoint** (`src/main.ts`): Bundled via Vite for dev server and testing environments.
+- **i18n**: `src/core/i18n/i18n.ts` exists but is intentionally **not** the active dictionary — `main.ts` prefers the legacy `i18n.js`'s `GM_I18N.t`, since the `/src` dictionary only covers strings authored so far and would silently blank out every string outside it. Migrating i18n itself is unstarted.
+- **Incident, resolved 2026-08-31**: `svs-matchup.ts`/`gvg-matchup.ts` existed as 50-line stubs (hardcoded fake server/guild IDs, no real table render) that risked silently shadowing the complete legacy `svs-matchup.js`/`gvg-matchup.js` (700+ lines each) the moment `main.ts` started executing in production, since both write into the same DOM containers. They were **deleted** rather than left half-finished — `tests/ux_audit_phase_d.test.js` guards against either file reappearing or being re-bridged. A real `/src` port of SvS/GvG matchup is a from-scratch task, not a resume.
 
-> **Operational Invariant**: Until `/src` components are fully linked and verified in the production entrypoint, **Part 1 remains the authoritative source of truth for live runtime behavior**.
+> **Operational Invariant**: For any given feature, whichever of legacy (`app.js` et al.) or `/src` is *actually bridged and complete* is the source of truth — check `main.ts`'s bridge section, don't assume by directory. An unfinished `/src` port must stay unbridged (or be deleted, per the incident above) until it matches or exceeds the legacy feature it would replace.

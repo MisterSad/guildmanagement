@@ -29,12 +29,13 @@ Every autonomous AI agent interacting with this codebase must embody four operat
 ### 🏛️ Technology Stack:
 - **Language Standard**: **100% English strictly required** across code, comments, UI strings, test suites, commit messages, and changelogs.
 - **Production Frontend**: Classic vanilla JS root scripts (`app.js`, `gm-utils.js`, `portal.js`, etc.) loaded by `index.html` with cache busters (`?v=XX`), styled with Material Design 3.0 tokens and Apple cozy neutral aesthetics (`#141416`–`#303036`), Material Symbols Rounded icons, and SRI-pinned CDNs.
-- **Modernization Target (`/src`)**: TypeScript ES modules, reactive Store (`src/core/store/store.ts`), Web Workers (`src/workers/matchup.worker.ts`), and Vite bundler (`src/main.ts` dev target).
+- **Modernization Target (`/src`)**: TypeScript ES modules, reactive Store (`src/core/store/store.ts`), Web Workers (`src/workers/matchup.worker.ts`), Vite bundler (`src/main.ts`) — **live in production since 2026-08-30** (not dev-only), bridging a growing subset of `window.GM.*` (subscription/donation view is the first fully-migrated feature). Never bridge a `/src` port that isn't feature-complete: an incomplete port silently overwriting a working legacy `window.GM_*` global on the same container is a real regression class this repo has hit (see `tests/ux_audit_phase_d.test.js`) — finish the port or don't bridge it, never leave it half-wired.
 - **Backend**: Supabase (Postgres 17 + Row Level Security + `SECURITY DEFINER` functions with `SET search_path TO ''`, Deno TypeScript Edge Functions).
-- **10 Edge Functions & JWT Matrix (Codified in `supabase/config.toml`)**:
-  - *Public (`verify_jwt = false`)*: `auth-login`, `player-register`, `event-reminders` (Vault cron-secret gated), `gm-stripe-webhook` (Stripe signature gated).
-  - *JWT-Gated (`verify_jwt = true`)*: `member-portal`, `admin-accounts`, `gm-create-order`, `gm-order-status`, `discord-webhook-proxy`, `ocr-guild-members`.
-- **Quality Gate**: Vitest + jsdom test battery (**444/444 tests green**), TypeScript (`tsc --noEmit`), root syntax validation (`node --check`).
+- **13 Edge Functions & JWT Matrix** (`supabase/config.toml`; confirmed live via `list_edge_functions` — this list, not any older doc snapshot, is authoritative):
+  - *Public (`verify_jwt = false`)*: `auth-login`, `auth-passkey` (Passkeys/WebAuthn — options/verify actions are unauthenticated by nature, part of the login flow itself), `player-register`, `event-reminders` (Vault cron-secret gated), `gm-stripe-webhook` (Stripe signature gated), `gm-revolut-webhook` (Revolut signature gated).
+  - *JWT-Gated (`verify_jwt = true`)*: `member-portal`, `admin-accounts`, `gm-create-order`, `gm-order-status`, `discord-webhook-proxy`, `ocr-guild-members` (Gemini vision OCR — screenshots and screen-recording video, both roster+rank and per-metric scans), `tickets` (bug-report console backend).
+  - *Diagnostic spike, not a real feature — flagged for manual deletion*: `webauthn-spike` (Phase A's one-off "does `@simplewebauthn/server` run on this Deno runtime" probe; served its purpose, never used again, not worth a place in this list going forward. No MCP tool deletes Edge Functions — remove it from the Supabase dashboard when convenient).
+- **Quality Gate**: Vitest + jsdom test battery (**593/593 tests green**), TypeScript (`tsc --noEmit`), root syntax validation (`node --check`).
 - **Production Hosting**: Vercel automated deployment from branch `main` at `https://guildmanagement.vercel.app` (canonical CORS/CSP origin).
 
 ---
@@ -64,7 +65,8 @@ Access control is strictly partitioned into four roles. **Role resolution is acc
 This is a multi-tenant SaaS. **Every feature, migration, RPC, Edge Function, or bugfix must apply to ALL tenants uniformly.** Never write per-tenant conditionals (e.g. `if (guild === 'ALPHA')`).
 
 ### 🏰 Authoritative Live Tenants:
-`ALPHA`, `BABE`, `CLAW`, `DEMO`, `FED`, `IMK`, `OMEGA`, `SEN`, `YARR`.
+This list grows via organic guild signups — treat any snapshot (including this one) as a point-in-time count, not a hardcoded set to branch on; query `public.guilds` for the current truth rather than trusting this line indefinitely.
+`ALPHA`, `BABE`, `CLAW`, `DEMO`, `EXPO`, `FED`, `GRIM`, `IMK`, `OMEGA`, `SEN`, `UDT`, `YARR`, `YHG` (13 tenants incl. `DEMO`; ~1,500 real tracked players across the 12 non-`DEMO` guilds as of 2026-08-31, spanning 8 distinct game servers — several sharing a server, e.g. `ALPHA`/`OMEGA`/`IMK` on 1058).
 
 ### 📅 Deterministic Event Session IDs:
 Event sessions carry deterministic, sortable IDs synced across `src/core/config/events.ts`, SQL `public.gm_event_session_id()`, and `window.GM.buildEventSessionId()`:

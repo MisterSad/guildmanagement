@@ -146,8 +146,16 @@ describe('CRITICAL: src/main.ts no longer shadows the real SvS/GvG matchup tool 
     expect(mainTs).toContain('(window as any).GM_CROSSRANK = CrossRankView;');
   });
 
-  it('the stub files themselves are still imported (kept in window.GM.components for future use) but not global-bridged', () => {
-    expect(mainTs).toContain("import { SvSMatchupView } from './modules/matchup/svs-matchup';");
-    expect(mainTs).toContain('SvSMatchupView,');
+  it('the stub files were removed entirely (tech-debt cleanup) rather than kept unfinished', () => {
+    // Sitting unbridged "for future use" for multiple sessions without ever
+    // being finished was itself the risk this locks in: an accidental future
+    // re-bridge (e.g. a careless refactor restoring the old
+    // window.GM_SVS_MATCHUP = SvSMatchupView; line) would silently
+    // reintroduce the exact regression the first assertion guards against.
+    // Removing the source is a stronger guarantee than "don't bridge it".
+    expect(mainTs).not.toContain('SvSMatchupView');
+    expect(mainTs).not.toContain('GvGMatchupView');
+    expect(fs.existsSync(path.resolve(root, 'src/modules/matchup/svs-matchup.ts'))).toBe(false);
+    expect(fs.existsSync(path.resolve(root, 'src/modules/matchup/gvg-matchup.ts'))).toBe(false);
   });
 });

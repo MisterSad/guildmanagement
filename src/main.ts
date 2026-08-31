@@ -32,8 +32,6 @@ import { OverviewView } from './modules/overview/views/OverviewView';
 import { HistoryView } from './modules/history/views/HistoryView';
 import { SanctionsView } from './modules/sanctions/views/SanctionsView';
 import { CrossRankView } from './modules/matchup/cross-rank';
-import { SvSMatchupView } from './modules/matchup/svs-matchup';
-import { GvGMatchupView } from './modules/matchup/gvg-matchup';
 import { ArmsRaceView } from './modules/armsrace/armsrace-view';
 import { GloryView } from './modules/glory/glory-view';
 import { SubscriptionView } from './modules/subscription/subscription-view';
@@ -86,8 +84,6 @@ if (typeof window !== 'undefined') {
     HistoryView,
     SanctionsView,
     CrossRankView,
-    SvSMatchupView,
-    GvGMatchupView,
     ArmsRaceView,
     GloryView,
     SubscriptionView,
@@ -100,17 +96,13 @@ if (typeof window !== 'undefined') {
   };
 
   (window as any).GM_CROSSRANK = CrossRankView;
-  // GM_SVS_MATCHUP / GM_GVG_MATCHUP are deliberately NOT bridged here: these
-  // /src ports (svs-matchup.ts / gvg-matchup.ts) are 50-line stubs — a fixed
-  // hardcoded RPC call with no real table render — while the legacy
-  // svs-matchup.js / gvg-matchup.js (700+ lines: side-by-side rosters,
-  // combined dangerosity leaderboard, sorting) are the complete, real
-  // implementations. Since this module now actually executes in production
-  // (build pipeline fix, 2026-08-30) and both write into the same
-  // #svs-matchup-container / #gvg-matchup-container, bridging these here
-  // would silently overwrite the working legacy tool with the stub on every
-  // load. Re-bridge only once svs-matchup.ts/gvg-matchup.ts are genuinely
-  // feature-complete.
+  // SvS/GvG matchup have no /src port: svs-matchup.ts/gvg-matchup.ts existed
+  // only as 50-line stubs (a fixed hardcoded RPC call, no real table render)
+  // that risked silently shadowing the complete legacy implementations
+  // (svs-matchup.js / gvg-matchup.js — side-by-side rosters, combined
+  // dangerosity leaderboard, sorting) once this module started executing in
+  // production (build pipeline fix, 2026-08-30). Removed rather than kept
+  // around unfinished; a real port is a from-scratch task, not a resume.
   // window.GM_SUBSCRIPTION is self-registered by importing SubscriptionView
   // above (see subscription-view.ts) — replaces legacy subscription.js.
 
