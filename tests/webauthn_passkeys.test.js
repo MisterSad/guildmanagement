@@ -45,3 +45,31 @@ describe('WebAuthn passkeys migration', () => {
     expect(content.trim().endsWith("NOTIFY pgrst, 'reload schema';")).toBe(true);
   });
 });
+
+describe('auth-passkey Edge Function — admin-reset-passkeys authorization', () => {
+  const fnPath = path.resolve(__dirname, '../supabase/functions/auth-passkey/index.ts');
+  const fnContent = fs.readFileSync(fnPath, 'utf-8');
+
+  it('requires an authenticated identity before admin-reset-passkeys is reachable', () => {
+    // The action must be defined after the `const identity = await getIdentity(...)`
+    // gate, not among the unauthenticated login-flow actions above it.
+    const identityGateIdx = fnContent.indexOf('const identity = await getIdentity(req, admin);');
+    const actionIdx = fnContent.indexOf('if (action === "admin-reset-passkeys")');
+    expect(identityGateIdx).toBeGreaterThan(-1);
+    expect(actionIdx).toBeGreaterThan(identityGateIdx);
+  });
+
+  it('gates the reset on the same canManageAccount matrix reset-password uses, not a looser check', () => {
+    expect(fnContent).toContain('import { canManageAccount, type Role } from "../_shared/admin-authz.ts"');
+    const actionBody = fnContent.slice(fnContent.indexOf('if (action === "admin-reset-passkeys")'));
+    expect(actionBody).toContain('canManageAccount(callerCtx, targetCtx)');
+    expect(actionBody).toMatch(/if \(!canManageAccount\(callerCtx, targetCtx\)\) \{\s*[\s\S]*?return json\(\{ ok: false, error: "forbidden" \}, 403\);/);
+  });
+
+  it('revokes passkeys, backup codes, and pending challenges together, not just one table', () => {
+    const actionBody = fnContent.slice(fnContent.indexOf('if (action === "admin-reset-passkeys")'));
+    expect(actionBody).toContain('admin.from("account_passkeys").delete().eq("account_id", targetAcc.id)');
+    expect(actionBody).toContain('admin.from("account_backup_codes").delete().eq("account_id", targetAcc.id)');
+    expect(actionBody).toContain('admin.from("webauthn_challenges").delete().eq("account_id", targetAcc.id)');
+  });
+});

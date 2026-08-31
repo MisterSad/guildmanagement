@@ -204,6 +204,15 @@
         return invoke('regenerate-backup-codes', {});
     }
 
+    // Admin escape hatch: revokes every passkey + backup code for the given
+    // target account id. Server-side authorization mirrors admin-accounts'
+    // reset-password exactly (a guild_admin can only reach their own
+    // guild's accounts, a server_admin only their own server, super_admin
+    // anyone) — this call is just the transport, not the security boundary.
+    function adminResetPasskeys(id) {
+        return invoke('admin-reset-passkeys', { id: id });
+    }
+
     // Triggers a browser download of the backup codes as a plain-text file.
     // Codes only ever exist in memory client-side for the duration of this
     // call — they're never persisted anywhere except as a hash server-side.
@@ -499,6 +508,7 @@
         removePasskey: removePasskey,
         regenerateBackupCodes: regenerateBackupCodes,
         downloadBackupCodes: downloadBackupCodes,
-        mountPasskeysPanel: mountPasskeysPanel
+        mountPasskeysPanel: mountPasskeysPanel,
+        adminResetPasskeys: adminResetPasskeys
     };
 })();

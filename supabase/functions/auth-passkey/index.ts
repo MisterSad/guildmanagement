@@ -9,6 +9,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { establishShadowSession } from "../_shared/shadow-session.ts";
+import { canManageAccount, type Role } from "../_shared/admin-authz.ts";
 
 // Two groups of actions:
 //  - Unauthenticated (part of the login flow itself, no session yet):
@@ -16,8 +17,10 @@ import { establishShadowSession } from "../_shared/shadow-session.ts";
 //    before the identity gate below, mirroring auth-login/index.ts.
 //  - Authenticated (require an already-logged-in session): register-options/
 //    register-verify (enroll a new passkey), list/rename/remove (manage
-//    existing ones), regenerate-backup-codes. The admin reset escape hatch
-//    for a fully-locked-out account is a separate, later phase.
+//    existing ones), regenerate-backup-codes, and admin-reset-passkeys (the
+//    admin escape hatch for an account that's lost every device and its
+//    backup codes — same canManageAccount authorization matrix as
+//    admin-accounts' reset-password).
 //
 // rpID/origin MUST be the real production host — WebAuthn's rpID has to be
 // the exact domain (or a registrable suffix of it) the browser is actually
@@ -644,6 +647,68 @@ Deno.serve(async (req: Request) => {
         logger.error("Failed to regenerate backup codes", err);
         return json({ ok: false, error: "server_error" }, 500);
       }
+    }
+
+    // Admin escape hatch for a fully-locked-out account (lost every device
+    // and the backup codes): revokes every passkey/backup code so the
+    // account falls back to password-only, exactly the same authorization
+    // bar as admin-accounts' reset-password (same canManageAccount matrix:
+    // a guild_admin can only reach accounts in their own guild, a
+    // server_admin only their own server, super_admin can reach anyone —
+    // never the other way up the hierarchy).
+    if (action === "admin-reset-passkeys") {
+      const targetId = typeof payload?.id === "string" ? payload.id.trim() : "";
+      if (!targetId) return json({ ok: false, error: "missing_fields" }, 400);
+
+      const { data: targetAcc } = await admin
+        .from("accounts")
+        .select("id, role, guild, server_number")
+        .ilike("id", targetId)
+        .maybeSingle();
+      if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+
+      const { data: callerAcc } = await admin
+        .from("accounts")
+        .select("server_number")
+        .eq("id", identity.accountId)
+        .maybeSingle();
+      let callerServerNumber = callerAcc?.server_number ?? null;
+      if (!callerServerNumber && identity.guild) {
+        const { data: g } = await admin.from("guilds").select("server_number").eq("id", identity.guild).maybeSingle();
+        if (g?.server_number) callerServerNumber = g.server_number;
+      }
+
+      let targetServerNumber = targetAcc.server_number ?? null;
+      if (!targetServerNumber && targetAcc.guild) {
+        const { data: g } = await admin.from("guilds").select("server_number").eq("id", targetAcc.guild).maybeSingle();
+        if (g?.server_number) targetServerNumber = g.server_number;
+      }
+
+      const callerCtx = { role: identity.role as Role, guild: identity.guild, serverNumber: callerServerNumber };
+      const targetCtx = { role: (targetAcc.role || "member") as Role, guild: targetAcc.guild, serverNumber: targetServerNumber };
+
+      if (!canManageAccount(callerCtx, targetCtx)) {
+        logger.warn("Forbidden attempt to reset target account passkeys", {
+          callerId: identity.accountId,
+          callerRole: identity.role,
+          targetId: targetAcc.id,
+        });
+        return json({ ok: false, error: "forbidden" }, 403);
+      }
+
+      const [pkRes, bcRes, chRes] = await Promise.all([
+        admin.from("account_passkeys").delete().eq("account_id", targetAcc.id),
+        admin.from("account_backup_codes").delete().eq("account_id", targetAcc.id),
+        admin.from("webauthn_challenges").delete().eq("account_id", targetAcc.id),
+      ]);
+      const failure = pkRes.error || bcRes.error || chRes.error;
+      if (failure) {
+        logger.error("Failed to reset target account passkeys", failure, { targetId: targetAcc.id });
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+
+      logger.info("Admin reset target account passkeys", { callerId: identity.accountId, targetId: targetAcc.id });
+      return json({ ok: true });
     }
 
     return json({ ok: false, error: "unknown_action" }, 400);

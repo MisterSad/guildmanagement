@@ -1546,6 +1546,7 @@
                                '<span class="gm-pwd-text">••••••••••••</span>' +
                                '<button class="gm-mini-btn gm-cred-reset" title="Renew Password"><i class="ph ph-arrows-clockwise"></i></button>' +
                                '<button class="gm-mini-btn gm-cred-copy hidden" title="Copy Password"><i class="ph ph-copy"></i></button>' +
+                               '<button class="gm-mini-btn gm-cred-reset-passkeys" title="Reset Passkeys (revoke all passkeys + backup codes)"><i class="ph ph-fingerprint"></i></button>' +
                            '</div>';
             } else {
                 passHtml = '<div class="gm-cred-pass gm-masked" style="opacity: 0.6; cursor: not-allowed;" title="Protected Super Admin Account">' +
@@ -1639,6 +1640,36 @@
                     btn.disabled = false;
                     if (icon) icon.className = 'ph ph-arrows-clockwise';
                 }
+            });
+        });
+
+        // Admin escape hatch: revoke all passkeys + backup codes for an
+        // account that's lost every device (same authorization boundary as
+        // reset-password, enforced server-side — this button is just UX).
+        container.querySelectorAll('.gm-cred-reset-passkeys').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var wrap = btn.closest('.gm-cred-pass');
+                var accId = wrap.getAttribute('data-acc-id');
+                showConfirm(
+                    'Reset Passkeys',
+                    'This revokes <strong>all</strong> passkeys and backup codes for <strong>' + esc(accId) + '</strong>. They will need to sign in with their password and set up passkeys again. Continue?',
+                    async function () {
+                        var icon = btn.querySelector('i');
+                        var originalClass = icon ? icon.className : '';
+                        btn.disabled = true;
+                        if (icon) icon.className = 'ph ph-circle-notch ph-spin';
+                        try {
+                            var res = await window.GM.webauthn.adminResetPasskeys(accId);
+                            if (!res.ok) throw new Error(res.error || 'reset_failed');
+                            showToast('Passkeys reset for ' + accId + '.', 'success');
+                        } catch (err) {
+                            showToast('Could not reset passkeys: ' + err.message, 'error');
+                        } finally {
+                            btn.disabled = false;
+                            if (icon) icon.className = originalClass;
+                        }
+                    }
+                );
             });
         });
 
