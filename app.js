@@ -2617,6 +2617,7 @@
         ocrModuleInitialized = true;
 
         var closeBtn = document.getElementById('ocr-modal-close');
+        var cancelBtn = document.getElementById('ocr-modal-cancel');
         var fileInput = document.getElementById('ocr-file-input');
         var dropzone = document.getElementById('ocr-dropzone');
         var btnReset = document.getElementById('ocr-reset-btn');
@@ -2659,6 +2660,9 @@
 
         if (closeBtn) {
             closeBtn.addEventListener('click', closeOcrModal);
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeOcrModal);
         }
 
         var overlay = document.getElementById('ocr-modal-overlay');
