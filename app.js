@@ -2767,11 +2767,18 @@
             // 'metadata' (not 'auto'): all we need up front is duration/
             // dimensions — frames are pulled on demand by seeking, not by
             // sequential playback, so there's no reason to make the browser
-            // eagerly buffer the entire file. On mobile Safari in particular,
-            // 'auto' on a large (high-res, 30-60fps) iPhone screen recording
-            // can hit a decode/memory ceiling and fail with a MediaError that
-            // looks identical to a genuinely unsupported codec.
+            // eagerly buffer the entire file.
             video.preload = 'metadata';
+            // Safari and Firefox are known to load/decode a video element
+            // unreliably (or not at all) while it's fully detached from the
+            // document — Chromium is lenient about this, which is why this
+            // worked in testing but failed for real users on Safari/Firefox/
+            // iOS regardless of the file's actual codec. Attach it off-screen
+            // (not display:none, which some engines also deprioritize) so
+            // every browser treats it as a normal, decodable element.
+            video.style.cssText = 'position:fixed; left:-9999px; top:0; width:2px; height:2px; opacity:0.01; pointer-events:none;';
+            video.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(video);
             var url = URL.createObjectURL(file);
             var settled = false;
 
@@ -2779,6 +2786,7 @@
                 URL.revokeObjectURL(url);
                 video.removeAttribute('src');
                 video.load();
+                if (video.parentNode) video.parentNode.removeChild(video);
             }
             function fail(err) {
                 if (settled) return;
