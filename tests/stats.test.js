@@ -154,6 +154,35 @@ afterEach(() => {
     localStorage.removeItem('gm_stats_mode');
 });
 
+describe('computeShadowfrontAttendanceRate (regression: rate exceeding 100%)', () => {
+    it('matches the normal case where assigned squads cover every attended week', () => {
+        expect(window.GM.computeShadowfrontAttendanceRate(4, 5)).toBeCloseTo(0.8);
+        expect(window.GM.computeShadowfrontAttendanceRate(5, 5)).toBe(1);
+        expect(window.GM.computeShadowfrontAttendanceRate(0, 5)).toBe(0);
+    });
+
+    it('caps at 100% instead of exceeding it when attendance history has more weeks than squad-assignment rows still on file', () => {
+        // Real production case: a player attended 8 Shadowfront weeks but
+        // shadowfront_squads only has 6 assignment rows left (2 older ones
+        // were overwritten by a later session) — this used to render as
+        // Math.round(8/6*100) = 133%.
+        expect(window.GM.computeShadowfrontAttendanceRate(8, 6)).toBe(1);
+        // Never exceed 1 (100%) regardless of how far apart the two counts are.
+        expect(window.GM.computeShadowfrontAttendanceRate(8, 4)).toBe(1);
+        expect(window.GM.computeShadowfrontAttendanceRate(20, 1)).toBe(1);
+    });
+
+    it('still reports 100% for a player with attendance but zero squad-assignment rows on file', () => {
+        expect(window.GM.computeShadowfrontAttendanceRate(3, 0)).toBe(1);
+    });
+
+    it('returns 0 for a player with neither attendance nor assignments, without dividing by zero', () => {
+        expect(window.GM.computeShadowfrontAttendanceRate(0, 0)).toBe(0);
+        expect(window.GM.computeShadowfrontAttendanceRate(null, null)).toBe(0);
+        expect(window.GM.computeShadowfrontAttendanceRate(undefined, undefined)).toBe(0);
+    });
+});
+
 describe('GM_STATS global mode', () => {
     it('computes weighted scores with glory deltas and consistency bonus by default for 1w (current week)', async () => {
         await window.GM_STATS.load();

@@ -1117,7 +1117,7 @@
                 var assignedCount = squadCounts[norm] || 0;
                 var rate = 0;
                 if (eventName === 'Shadowfront') {
-                    rate = assignedCount > 0 ? (m.events_done / assignedCount) : (m.events_done > 0 ? 1 : 0);
+                    rate = window.GM.computeShadowfrontAttendanceRate(m.events_done, assignedCount);
                 } else {
                     rate = m.events_total > 0 ? (m.events_done / m.events_total) : 0;
                 }

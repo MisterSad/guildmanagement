@@ -2351,6 +2351,22 @@
         return result;
     }
 
+    // Shadowfront attendance rate for the Stats Event Deep-Dive table.
+    // shadowfront_squads doesn't reliably retain every past week's squad
+    // assignment (a later session can overwrite/drop older rows), while
+    // event_participants' attendance history never does — so a long-
+    // tenured player can have more attended weeks on record than squad-
+    // assignment rows still on file, which would otherwise push
+    // eventsDone/assignedCount past 100%. Flooring the denominator at
+    // eventsDone keeps the rate mathematically capped at 1 (100%) without
+    // needing to touch or "fix" that separate squad-history gap.
+    function computeShadowfrontAttendanceRate(eventsDone, assignedCount) {
+        eventsDone = eventsDone || 0;
+        assignedCount = assignedCount || 0;
+        var opportunities = Math.max(assignedCount, eventsDone);
+        return opportunities > 0 ? (eventsDone / opportunities) : 0;
+    }
+
     var GVG_DAILY_TASKS = {
         1: {
             dayNumber: 1,
@@ -2885,6 +2901,7 @@
         parseGeminiJson: parseGeminiJson,
         ocrGridDiffRatio: ocrGridDiffRatio,
         ocrDownsampleEvenly: ocrDownsampleEvenly,
+        computeShadowfrontAttendanceRate: computeShadowfrontAttendanceRate,
         attachNumberFormatter: attachNumberFormatter,
         avatarInit: avatarInit,
         MAX_NUMERIC: MAX_NUMERIC,
