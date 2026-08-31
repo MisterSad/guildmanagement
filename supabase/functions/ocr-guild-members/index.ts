@@ -50,6 +50,9 @@ Deno.serve(async (req: Request) => {
   let imagesArray: Array<{ base64Data: string; mimeType: string }> = [];
   let metricType = "power";
   let guildTag = "";
+  let rankHint: string | null = null;
+
+  const VALID_RANKS = new Set(["R4", "R3", "R2", "R1"]);
 
   try {
     const body = await req.json();
@@ -58,6 +61,10 @@ Deno.serve(async (req: Request) => {
     }
     if (body?.guildTag && typeof body.guildTag === "string") {
       guildTag = body.guildTag.trim();
+    }
+    if (body?.rankHint && typeof body.rankHint === "string") {
+      const rh = body.rankHint.trim().toUpperCase();
+      if (VALID_RANKS.has(rh)) rankHint = rh;
     }
     if (Array.isArray(body?.images) && body.images.length > 0) {
       if (body.images.length > 5) {
@@ -89,7 +96,7 @@ Deno.serve(async (req: Request) => {
   const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp"].includes(metricType);
 
   const metricInstructions: Record<string, string> = {
-    members: `Full Guild Roster / Liste des Membres. Extract player pseudo, player UID if visible, and total overall power converted into pure numerical integer. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
+    members: `Full Guild Roster / Liste des Membres. Extract player pseudo, player UID if visible, in-game rank section (see rank instructions below), and total overall power converted into pure numerical integer. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
     power: `Overall Total Power / Puissance Totale. Extract player pseudo and total numerical power. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
     fleet: `Strongest Fleet Rating / Plus Forte Flotte (March 1 / Première Marche). Multi-guild server ranking. Extract player pseudo and fleet rating numerical power. Convert strings like "2.16M" -> 2160000, "1,850,000" -> 1850000, "2.26M" -> 2260000.`,
     tech: `Technology Power / Puissance Technologique (Alliance / Research Tech). Extract player pseudo and technology power integer. Convert strings like "15.4M" -> 15400000, "18,200,000" -> 18200000.`,
@@ -109,6 +116,7 @@ Deno.serve(async (req: Request) => {
   };
 
   const targetMetricDesc = metricInstructions[metricType] || metricInstructions.power;
+  const isMembersRoster = metricType === "members";
 
   let multiGuildNote = "";
   if (isMultiGuild) {
@@ -118,14 +126,39 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // The in-game roster groups members under rank section headers as the
+  // player scrolls. These images may be consecutive frames of ONE continuous
+  // scroll (e.g. sampled from a screen recording), so a header seen only in
+  // an earlier image can still apply to players in a later one — and a
+  // header may not appear at all in this particular batch if it was already
+  // scrolled past before this set of frames started (that's what rankHint
+  // carries forward from the previous batch).
+  let rankSectionNote = "";
+  if (isMembersRoster) {
+    rankSectionNote = `
+RANK DETECTION: The roster is grouped into sections by a header row, top to bottom, in this fixed order:
+  - "Executive Manager" section header -> rank "R4"
+  - "Rank 3 Members" section header -> rank "R3"
+  - "Rank 2 Members" section header -> rank "R2"
+  - "Rank 1 Members" section header -> rank "R1"
+Every player belongs to the rank of the most recent section header that appears above them (scanning top to bottom across all the image(s) provided, in order). If these images are consecutive frames of one continuous scroll and a player appears before ANY section header is visible in this batch, use the incoming rank context: ${rankHint ? `"${rankHint}" (carried over from just before these frames)` : "none — assume these are the very start of the roster, above any section header, so their rank is unknown (null) unless a header actually appears"}.
+Also report "endingRank": the rank section still in effect at the BOTTOM of the last image (i.e. the section a scroll would continue into next) — this gets carried into the next batch of frames. Use null only if no rank section header was ever visible in this batch and no rankHint was provided.`;
+  }
+
+  const rankFieldInstruction = isMembersRoster
+    ? `\n5. "rank": The player's rank section per the RANK DETECTION rules above — one of "R4", "R3", "R2", "R1", or null if genuinely undeterminable.`
+    : "";
+  const rankSchemaField = isMembersRoster ? `,\n      "rank": "R4" | "R3" | "R2" | "R1" | null` : "";
+  const endingRankSchemaField = isMembersRoster ? `,\n  "endingRank": "R4" | "R3" | "R2" | "R1" | null` : "";
+
   const systemInstruction = `You are an OCR expert specializing in gaming leaderboards and guild roster screenshots for Foundation Galactic Frontier (FGF).
-Your task is to analyze the image(s) and extract all players visible in the roster or leaderboard table for the metric: ${metricType.toUpperCase()} (${targetMetricDesc}).${multiGuildNote}
+Your task is to analyze the image(s) and extract all players visible in the roster or leaderboard table for the metric: ${metricType.toUpperCase()} (${targetMetricDesc}).${multiGuildNote}${rankSectionNote}
 
 For each player detected, extract:
 1. "pseudo": The player's clean in-game username/name (remove any leading guild tag prefix like "${guildTag || '[TAG]'}" or brackets).
 2. "guild_tag": Guild tag if visible (e.g. "${guildTag || 'PR1M'}" or null).
 3. "score": The numerical value of ${metricType.toUpperCase()} converted into a pure integer (e.g. "145.2M" -> 145200000, "2.16M" -> 2160000, "12,400,000" -> 12400000, "500K" -> 500000).
-4. "uid": Player UID if visible on screen (string of digits), otherwise null.
+4. "uid": Player UID if visible on screen (string of digits), otherwise null.${rankFieldInstruction}
 
 Return ONLY a JSON object matching this schema:
 {
@@ -136,9 +169,9 @@ Return ONLY a JSON object matching this schema:
       "pseudo": "string",
       "guild_tag": "string or null",
       "score": number,
-      "uid": "string or null"
+      "uid": "string or null"${rankSchemaField}
     }
-  ]
+  ]${endingRankSchemaField}
 }`;
 
   const parts: any[] = [{ text: systemInstruction }];
@@ -264,12 +297,23 @@ Return ONLY a JSON object matching this schema:
           val = parseInt(rawClean, 10) || 0;
         }
         const uid = p.uid ? String(p.uid).trim() : null;
-        return { pseudo, score: Math.max(0, val), overall_power: Math.max(0, val), uid };
+        const result: Record<string, unknown> = { pseudo, score: Math.max(0, val), overall_power: Math.max(0, val), uid };
+        if (isMembersRoster) {
+          const rawRank = typeof p.rank === "string" ? p.rank.trim().toUpperCase() : null;
+          result.rank = rawRank && VALID_RANKS.has(rawRank) ? rawRank : null;
+        }
+        return result;
       })
       .filter((p: any) => p.pseudo.length > 0 && p.score >= 0);
 
-    logger.info("OCR Extraction completed", { detectedCount: players.length, metricType });
-    return json({ ok: true, metricType, players, count: players.length });
+    let endingRank: string | null = null;
+    if (isMembersRoster) {
+      const rawEnding = typeof parsed?.endingRank === "string" ? parsed.endingRank.trim().toUpperCase() : null;
+      endingRank = rawEnding && VALID_RANKS.has(rawEnding) ? rawEnding : null;
+    }
+
+    logger.info("OCR Extraction completed", { detectedCount: players.length, metricType, endingRank });
+    return json({ ok: true, metricType, players, count: players.length, endingRank });
   } catch (e: any) {
     logger.error("Failed to parse Gemini OCR JSON response", e, { raw: geminiResultRaw });
     return json(

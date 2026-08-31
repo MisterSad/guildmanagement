@@ -1600,8 +1600,8 @@
                 <div id="ocr-dropzone" style="border: 2px dashed rgba(99, 102, 241, 0.4); border-radius: 12px; padding: 2rem 1rem; text-align: center; background: rgba(99, 102, 241, 0.03); cursor: pointer; transition: all 0.2s ease;">
                     <i class="ph ph-cloud-arrow-up" style="font-size: 2.8rem; color: var(--accent); margin-bottom: 0.5rem; display: inline-block;"></i>
                     <h4 id="ocr-dropzone-title" style="margin: 0 0 0.4rem 0; font-size: 1rem;">Drop your Overall Power screenshots here or click to browse</h4>
-                    <p id="ocr-dropzone-desc" style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Supported formats: PNG, JPG, WEBP (Up to 25 screenshots per batch / 200+ players)</p>
-                    <input type="file" id="ocr-file-input" accept="image/*" multiple style="display: none;">
+                    <p id="ocr-dropzone-desc" style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Screenshots (PNG/JPG/WEBP) or a scroll-recording video (MP4/MOV) — up to 25 images per batch / 200+ players</p>
+                    <input type="file" id="ocr-file-input" accept="image/*,video/*" multiple style="display: none;">
                 </div>
 
                 <!-- Processing Spinner -->
@@ -1644,6 +1644,7 @@
                                     <th class="ocr-col-cb" style="width: 38px; text-align: center;"><input type="checkbox" id="ocr-toggle-all-cb" checked></th>
                                     <th class="ocr-col-pseudo">Player Username</th>
                                     <th class="ocr-col-uid" id="ocr-uid-header">UID</th>
+                                    <th class="ocr-col-rank" id="ocr-rank-header" style="display:none;">Rank</th>
                                     <th class="ocr-col-metric" id="ocr-metric-header">Extracted Score</th>
                                     <th class="ocr-col-status">Roster Status</th>
                                 </tr>
@@ -1778,7 +1779,7 @@
     <!-- TODO(phase-3): vendor supabase-js and phosphor-icons via Vite, drop CDN origins from CSP -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>
-    <script src="gm-utils.js?v=54"></script>
+    <script src="gm-utils.js?v=56"></script>
     <script src="gm-webauthn.js?v=6"></script>
     <script src="noble-crypto.bundle.js?v=1"></script>
     <script src="gm-signal-crypto.js?v=4"></script>
@@ -1799,7 +1800,7 @@
     <script src="portal.js?v=16"></script>
     <script src="gm-help.js?v=4"></script>
     <script src="gm-leader-hall.js?v=28"></script>
-    <script src="app.js?v=90"></script>
+    <script src="app.js?v=92"></script>
     <script src="shell.js?v=40"></script>
 </body>
 </html>

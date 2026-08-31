@@ -196,3 +196,56 @@ describe('9 Dedicated AI Event OCR Schemas & Evaluation Logic', () => {
     });
 });
 
+describe('Video OCR frame selection (ocrGridDiffRatio / ocrDownsampleEvenly)', () => {
+    it('reports zero difference for identical grids and full difference for opposite ones', () => {
+        const a = [0.1, 0.2, 0.3, 0.4];
+        expect(GM.ocrGridDiffRatio(a, a.slice())).toBe(0);
+
+        const opposite = [0.9, 0.8, 0.7, 0.6];
+        expect(GM.ocrGridDiffRatio(a, opposite)).toBe(1);
+    });
+
+    it('reports a partial ratio when only some cells changed enough to matter', () => {
+        // 4 cells, 2 changed by more than the 0.08 threshold, 2 unchanged.
+        const before = [0.10, 0.50, 0.90, 0.20];
+        const after = [0.30, 0.50, 0.55, 0.21]; // cell 0 and 2 cross the threshold, cell 3 barely doesn't
+        expect(GM.ocrGridDiffRatio(before, after)).toBe(0.5);
+    });
+
+    it('treats mismatched, empty, or missing grids as fully different (always keep the frame)', () => {
+        expect(GM.ocrGridDiffRatio([0.1, 0.2], [0.1])).toBe(1);
+        expect(GM.ocrGridDiffRatio([], [])).toBe(1);
+        expect(GM.ocrGridDiffRatio(null, [0.1])).toBe(1);
+        expect(GM.ocrGridDiffRatio([0.1], undefined)).toBe(1);
+    });
+
+    it('leaves a list under or at the cap untouched (as a copy, not the same reference)', () => {
+        const items = ['a', 'b', 'c'];
+        const result = GM.ocrDownsampleEvenly(items, 5);
+        expect(result).toEqual(['a', 'b', 'c']);
+        expect(result).not.toBe(items);
+    });
+
+    it('evenly downsamples an over-cap list instead of truncating the tail', () => {
+        const items = Array.from({ length: 100 }, (_, i) => i); // 0..99, simulating 100 kept video frames
+        const result = GM.ocrDownsampleEvenly(items, 25);
+
+        expect(result.length).toBe(25);
+        // Must always keep the very first and very last frame of the scroll.
+        expect(result[0]).toBe(0);
+        expect(result[result.length - 1]).toBe(99);
+        // Must span the whole recording, not just its beginning (unlike slice(0, 25)).
+        expect(Math.max(...result)).toBeGreaterThan(50);
+        // Strictly increasing (no reordering) and no duplicate frames.
+        for (let i = 1; i < result.length; i++) {
+            expect(result[i]).toBeGreaterThan(result[i - 1]);
+        }
+    });
+
+    it('handles the single-item cap and empty-input edge cases', () => {
+        expect(GM.ocrDownsampleEvenly([1, 2, 3], 1)).toEqual([1]);
+        expect(GM.ocrDownsampleEvenly([], 25)).toEqual([]);
+        expect(GM.ocrDownsampleEvenly(null, 25)).toEqual([]);
+    });
+});
+

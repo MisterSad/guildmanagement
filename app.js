@@ -2260,9 +2260,9 @@
     var OCR_METRICS_META = {
         members: {
             title: '1. Members OCR — Full Roster Management',
-            subtitle: 'Upload full guild roster screenshots to add recruits (with real UID validation), update power, and detect removed members',
+            subtitle: 'Upload full guild roster screenshots to add recruits (with real UID validation), update power, assign R1-R4 rank from the roster\'s section headers, and detect removed members',
             dropTitle: 'Drop full guild roster screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Full Roster: adds, updates, and detects departures)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Full Roster: adds, updates, assigns rank, and detects departures)',
             header: 'Members',
             field: 'overall_power',
             color: '#10b981',
@@ -2274,7 +2274,7 @@
             title: '2. Power OCR — Overall Total Power',
             subtitle: 'Upload guild roster screenshots to update overall power levels (update-only for existing members)',
             dropTitle: 'Drop Overall Power screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: updates existing roster members)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Intra-Guild: updates existing roster members)',
             header: 'Extracted Power',
             field: 'overall_power',
             color: '#818cf8',
@@ -2285,7 +2285,7 @@
             title: '3. Fleet OCR — Strongest Fleet Rating (Server Leaderboard)',
             subtitle: 'Upload Strongest Fleet / March 1 leaderboards to update strike ratings and rally capabilities',
             dropTitle: 'Drop Strongest Fleet leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Server Leaderboard: filters by your Guild Tag)',
             header: 'Extracted Fleet Rating',
             field: 'fleet_rating',
             color: '#60a5fa',
@@ -2296,7 +2296,7 @@
             title: '4. Tech OCR — Technology Power',
             subtitle: 'Upload Technology Power leaderboards to track research advancement across members',
             dropTitle: 'Drop Technology Power leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: extracts Alliance/Individual Tech values)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Intra-Guild: extracts Alliance/Individual Tech values)',
             header: 'Extracted Tech Power',
             field: 'tech_power',
             color: '#a78bfa',
@@ -2307,7 +2307,7 @@
             title: '5. Flagship OCR — Flagship Power (Server Leaderboard)',
             subtitle: 'Upload Flagship power leaderboards to track capital ship strength and hulls',
             dropTitle: 'Drop Flagship Power leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Server Leaderboard: filters by your Guild Tag)',
             header: 'Extracted Flagship Power',
             field: 'flagship_power',
             color: '#fbbf24',
@@ -2318,7 +2318,7 @@
             title: '6. Champs OCR — Champions Total Power (Server Leaderboard)',
             subtitle: 'Upload Champion Total Power leaderboards to track hero collections and ranks',
             dropTitle: 'Drop Champions Total Power leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Server Leaderboard: filters by your Guild Tag)',
             header: 'Extracted Champions Power',
             field: 'champion_power',
             color: '#f472b6',
@@ -2329,7 +2329,7 @@
             title: '7. Crew OCR — Crew Total Power (Server Leaderboard)',
             subtitle: 'Upload Crew Total Power leaderboards to evaluate Foundation officer development',
             dropTitle: 'Drop Crew Total Power leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Server Leaderboard: filters by your Guild Tag)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Server Leaderboard: filters by your Guild Tag)',
             header: 'Extracted Crew Power',
             field: 'crew_power',
             color: '#38bdf8',
@@ -2340,7 +2340,7 @@
             title: '8. Glory OCR — Weekly Glory Score',
             subtitle: 'Upload Glory rankings to track weekly battle points and PvP contribution',
             dropTitle: 'Drop Glory Ranking leaderboard screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Intra-Guild: extracts Glory score points)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Intra-Guild: extracts Glory score points)',
             header: 'Extracted Glory Score',
             field: 'glory_score',
             color: '#34d399',
@@ -2351,7 +2351,7 @@
             title: 'SvS Day 1 to 5 OCR — Preparation Stage',
             subtitle: 'Upload SvS Day 1-5 screenshots to import prep scores and validate participation for your guild',
             dropTitle: 'Drop SvS Day 1 to 5 screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Targets members with your Guild Tag)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)',
             header: 'SvS Prep Score',
             field: 'score_prep',
             color: '#f59e0b',
@@ -2365,7 +2365,7 @@
             title: 'SvS Day 6 OCR — PvP Battle Day',
             subtitle: 'Upload SvS Day 6 PvP screenshots to import battle scores and validate participation for your guild',
             dropTitle: 'Drop SvS Day 6 PvP screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Targets members with your Guild Tag)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)',
             header: 'SvS PvP Score',
             field: 'score_pvp',
             color: '#f97316',
@@ -2379,7 +2379,7 @@
             title: 'GvG Day 1 to 5 OCR — Preparation Stage',
             subtitle: 'Upload GvG Day 1-5 screenshots to import prep scores and validate participation for your guild',
             dropTitle: 'Drop GvG Day 1 to 5 screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Targets members with your Guild Tag)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)',
             header: 'GvG Prep Score',
             field: 'score_prep',
             color: '#60a5fa',
@@ -2393,7 +2393,7 @@
             title: 'GvG Day 6 OCR — PvP Battle Day',
             subtitle: 'Upload GvG Day 6 PvP screenshots to import battle scores and validate participation for your guild',
             dropTitle: 'Drop GvG Day 6 PvP screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Targets members with your Guild Tag)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)',
             header: 'GvG PvP Score',
             field: 'score_pvp',
             color: '#38bdf8',
@@ -2407,7 +2407,7 @@
             title: 'Shadowfront S1 OCR — Squad 1 Battle & Roster',
             subtitle: 'Upload Shadowfront Squad 1 screenshots to validate Main squad (Participated) and Substitutes (Sub Present + Participated)',
             dropTitle: 'Drop Shadowfront Squad 1 screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Detects Squad 1 Main & Reserve members)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Detects Squad 1 Main & Reserve members)',
             header: 'Squad 1 Status',
             field: 'participated',
             color: '#a855f7',
@@ -2421,7 +2421,7 @@
             title: 'Shadowfront S2 OCR — Squad 2 Battle & Roster',
             subtitle: 'Upload Shadowfront Squad 2 screenshots to validate Main squad (Participated) and Substitutes (Sub Present + Participated)',
             dropTitle: 'Drop Shadowfront Squad 2 screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Detects Squad 2 Main & Reserve members)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Detects Squad 2 Main & Reserve members)',
             header: 'Squad 2 Status',
             field: 'participated',
             color: '#d946ef',
@@ -2435,7 +2435,7 @@
             title: 'DTR OCR — Defend Trade Route',
             subtitle: 'Upload DTR screenshots to validate Participated (>0 pts) or Appointed + Participated (=0 pts)',
             dropTitle: 'Drop Defend Trade Route screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Auto-determines Participated vs Appointed)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Auto-determines Participated vs Appointed)',
             header: 'DTR Status',
             field: 'participated',
             color: '#10b981',
@@ -2449,7 +2449,7 @@
             title: 'Arms Race SA OCR — Stage A Participation',
             subtitle: 'Upload Stage A screenshots to validate member participation',
             dropTitle: 'Drop Arms Race Stage A screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Validates Stage A Participated)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Validates Stage A Participated)',
             header: 'Stage A Status',
             field: 'participated',
             color: '#f43f5e',
@@ -2463,7 +2463,7 @@
             title: 'Arms Race SB OCR — Stage B Participation',
             subtitle: 'Upload Stage B screenshots to validate member participation',
             dropTitle: 'Drop Arms Race Stage B screenshots here or click to browse',
-            dropDesc: 'Supported formats: PNG, JPG, WEBP (Validates Stage B Participated)',
+            dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Validates Stage B Participated)',
             header: 'Stage B Status',
             field: 'participated',
             color: '#ef4444',
@@ -2497,12 +2497,14 @@
         var dropTitle = document.getElementById('ocr-dropzone-title');
         var dropDesc = document.getElementById('ocr-dropzone-desc');
         var metricHeader = document.getElementById('ocr-metric-header');
+        var rankHeader = document.getElementById('ocr-rank-header');
 
         if (titleEl) titleEl.textContent = meta.title;
         if (subEl) subEl.textContent = meta.subtitle;
         if (dropTitle) dropTitle.textContent = meta.dropTitle;
         if (dropDesc) dropDesc.textContent = meta.dropDesc;
         if (metricHeader) metricHeader.textContent = meta.header;
+        if (rankHeader) rankHeader.style.display = (metric === 'members') ? '' : 'none';
 
         // Update Guild Tag Banner
         var scopeBadge = document.getElementById('ocr-scope-badge');
@@ -2724,6 +2726,131 @@
         }
     }
 
+    // --- Video -> frames -------------------------------------------------
+    // Lets someone record a single scroll through a leaderboard instead of
+    // taking 25 individual screenshots. Frames are sampled finely (every
+    // stepMs) but only KEPT when the visible content actually changed since
+    // the last kept frame, via a cheap 12x12 luminance-grid diff — no ML,
+    // just enough to tell "new rows scrolled into view" from "same screen,
+    // mid-scroll blur, or a pause". This adapts to any scroll speed without
+    // a fixed frame-count guess, and kept frames feed into the exact same
+    // per-image OCR pipeline screenshots already use.
+    // The pure diff/downsampling math lives in gm-utils.js (window.GM.ocr*)
+    // so it can be unit tested without a real <video>/<canvas>.
+    var OCR_VIDEO_GRID_SIZE = 12;
+    var OCR_VIDEO_FRAME_DIFF_RATIO = 0.06; // fraction of changed cells needed to keep a frame
+
+    function ocrCaptureLuminanceGrid(gridCtx, video, gridSize) {
+        gridCtx.drawImage(video, 0, 0, gridSize, gridSize);
+        var data = gridCtx.getImageData(0, 0, gridSize, gridSize).data;
+        var out = new Array(gridSize * gridSize);
+        for (var i = 0, p = 0; i < data.length; i += 4, p++) {
+            out[p] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
+        }
+        return out;
+    }
+
+    // Resolves to an array of JPEG Blobs (kept frames, in chronological
+    // order). Rejects with Error.message one of: video_unsupported,
+    // video_invalid, video_too_long, video_no_frames.
+    function extractFramesFromVideo(file, opts) {
+        opts = opts || {};
+        var stepMs = opts.stepMs || 200;
+        var maxDurationSec = opts.maxDurationSec || 240;
+        var maxOutputWidth = opts.maxOutputWidth || 1600;
+        var gridSize = OCR_VIDEO_GRID_SIZE;
+
+        return new Promise(function (resolve, reject) {
+            var video = document.createElement('video');
+            video.muted = true;
+            video.playsInline = true;
+            video.preload = 'auto';
+            var url = URL.createObjectURL(file);
+            var settled = false;
+
+            function cleanup() {
+                URL.revokeObjectURL(url);
+                video.removeAttribute('src');
+                video.load();
+            }
+            function fail(err) {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                reject(err);
+            }
+
+            video.addEventListener('error', function () { fail(new Error('video_unsupported')); });
+
+            video.addEventListener('loadedmetadata', function () {
+                var duration = video.duration;
+                if (!isFinite(duration) || duration <= 0) { fail(new Error('video_invalid')); return; }
+                if (duration > maxDurationSec) { fail(new Error('video_too_long')); return; }
+
+                var vw = video.videoWidth, vh = video.videoHeight;
+                if (!vw || !vh) { fail(new Error('video_invalid')); return; }
+
+                var scale = Math.min(1, maxOutputWidth / vw);
+                var outW = Math.max(1, Math.round(vw * scale));
+                var outH = Math.max(1, Math.round(vh * scale));
+
+                var canvas = document.createElement('canvas');
+                canvas.width = outW; canvas.height = outH;
+                var ctx = canvas.getContext('2d');
+
+                var gridCanvas = document.createElement('canvas');
+                gridCanvas.width = gridSize; gridCanvas.height = gridSize;
+                var gridCtx = gridCanvas.getContext('2d', { willReadFrequently: true });
+
+                function seekTo(t) {
+                    return new Promise(function (res) {
+                        function onSeeked() {
+                            video.removeEventListener('seeked', onSeeked);
+                            res();
+                        }
+                        video.addEventListener('seeked', onSeeked);
+                        video.currentTime = t;
+                    });
+                }
+
+                (async function walk() {
+                    try {
+                        var kept = [];
+                        var lastGrid = null;
+                        var steps = Math.max(1, Math.ceil((duration * 1000) / stepMs));
+
+                        for (var s = 0; s <= steps; s++) {
+                            var t = Math.min(duration, (s * stepMs) / 1000);
+                            await seekTo(t);
+                            var grid = ocrCaptureLuminanceGrid(gridCtx, video, gridSize);
+                            var isEdge = (s === 0) || (t >= duration - 0.05);
+                            var ratio = lastGrid ? window.GM.ocrGridDiffRatio(grid, lastGrid) : 1;
+                            if (isEdge || ratio >= OCR_VIDEO_FRAME_DIFF_RATIO) {
+                                ctx.drawImage(video, 0, 0, outW, outH);
+                                var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/jpeg', 0.85); });
+                                if (blob) kept.push(blob);
+                                lastGrid = grid;
+                            }
+                            if (t >= duration) break;
+                        }
+
+                        if (settled) return;
+                        settled = true;
+                        cleanup();
+
+                        if (kept.length === 0) { reject(new Error('video_no_frames')); return; }
+                        resolve(kept);
+                    } catch (err) {
+                        fail(err);
+                    }
+                })();
+            });
+
+            video.src = url;
+            video.load();
+        });
+    }
+
     async function handleOcrFiles(files) {
         var dropzone = document.getElementById('ocr-dropzone');
         var loading = document.getElementById('ocr-loading');
@@ -2731,20 +2858,49 @@
         var loadingH4 = loading ? loading.querySelector('h4') : null;
         var loadingP = loading ? loading.querySelector('p') : null;
 
-        var imageFiles = files.filter(function (f) { return f.type.startsWith('image/'); });
-        if (imageFiles.length === 0) {
-            showToast('Please select a valid image file (PNG, JPG, WEBP).', 'error');
+        var videoFiles = files.filter(function (f) { return f.type.indexOf('video/') === 0; });
+        var imageFiles = files.filter(function (f) { return f.type.indexOf('image/') === 0; });
+        if (imageFiles.length === 0 && videoFiles.length === 0) {
+            showToast('Please select a valid image (PNG, JPG, WEBP) or video (MP4, MOV) file.', 'error');
             return;
-        }
-
-        if (imageFiles.length > 25) {
-            showToast('Processing maximum 25 screenshots per batch (200+ players).', 'info');
-            imageFiles = imageFiles.slice(0, 25);
         }
 
         if (dropzone) dropzone.style.display = 'none';
         if (loading) loading.style.display = 'block';
         if (resultsContainer) resultsContainer.style.display = 'none';
+
+        // Turn each video into a set of frames (only where content actually
+        // changed since the last kept one), then fold them in as if they
+        // were additional screenshots — everything downstream is unchanged.
+        if (videoFiles.length > 0) {
+            if (loadingH4) loadingH4.textContent = 'Scanning video for new content...';
+            for (var v = 0; v < videoFiles.length; v++) {
+                if (loadingP) {
+                    loadingP.textContent = videoFiles.length > 1
+                        ? 'Extracting frames from video ' + (v + 1) + ' of ' + videoFiles.length + '...'
+                        : 'Extracting frames from your video — this can take a moment...';
+                }
+                try {
+                    var frameBlobs = await extractFramesFromVideo(videoFiles[v]);
+                    imageFiles = imageFiles.concat(frameBlobs);
+                } catch (err) {
+                    console.error('Video frame extraction failed:', err);
+                    var msg = 'Could not process the video. Try an MP4/MOV recording, or use screenshots instead.';
+                    if (err && err.message === 'video_too_long') msg = 'Video is too long (max 4 minutes) — trim it or use screenshots instead.';
+                    else if (err && err.message === 'video_unsupported') msg = 'This video format could not be read. Try MP4, or use screenshots instead.';
+                    else if (err && err.message === 'video_no_frames') msg = 'No distinct frames were found in that video.';
+                    showToast(msg, 'error');
+                    if (loading) loading.style.display = 'none';
+                    if (dropzone) dropzone.style.display = 'block';
+                    return;
+                }
+            }
+        }
+
+        if (imageFiles.length > 25) {
+            showToast('Processing maximum 25 images per batch (200+ players).', 'info');
+            imageFiles = window.GM.ocrDownsampleEvenly(imageFiles, 25);
+        }
 
         var meta = OCR_METRICS_META[currentOcrMetric] || OCR_METRICS_META.power;
         var tagInput = document.getElementById('ocr-guild-tag-input');
@@ -2767,17 +2923,23 @@
                 chunks.push(imageItems.slice(c, c + chunkSize));
             }
 
+            // Rank context (R4/R3/R2/R1) carried from one batch into the next —
+            // only meaningful for the Members metric; every other metric's
+            // response simply never sets endingRank, so this stays null.
+            var carryRank = null;
+
             for (var b = 0; b < chunks.length; b++) {
                 var currentChunk = chunks[b];
                 if (loadingP) {
                     loadingP.textContent = 'Processing screenshots batch ' + (b + 1) + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
                 }
 
-                var extracted = await callGeminiOcrBatchApi(currentChunk, currentOcrMetric, activeGuildTag, function (statusMsg) {
+                var batchResult = await callGeminiOcrBatchApi(currentChunk, currentOcrMetric, activeGuildTag, carryRank, function (statusMsg) {
                     if (loadingP) loadingP.textContent = statusMsg;
                 });
 
-                allPlayers = allPlayers.concat(extracted);
+                allPlayers = allPlayers.concat(batchResult.players);
+                if (batchResult.endingRank) carryRank = batchResult.endingRank;
 
                 if (b < chunks.length - 1) {
                     await new Promise(function (r) { setTimeout(r, 1200); });
@@ -2790,14 +2952,20 @@
                 var cleanPseudo = (window.GM && window.GM.cleanPlayerPseudo) ? window.GM.cleanPlayerPseudo(p.pseudo, activeGuildTag) : p.pseudo.trim();
                 var key = cleanPseudo.toLowerCase();
                 var pScore = p.score != null ? p.score : (p.overall_power || 0);
-                if (!uniqueMap[key] || (pScore && pScore > (uniqueMap[key].score || 0))) {
+                var prior = uniqueMap[key];
+                if (!prior || (pScore && pScore > (prior.score || 0))) {
                     uniqueMap[key] = {
                         pseudo: cleanPseudo,
                         raw_pseudo: p.pseudo,
                         guild_tag: p.guild_tag || null,
                         score: pScore,
                         overall_power: pScore,
-                        uid: p.uid || null
+                        uid: p.uid || null,
+                        // Keep whichever rank is known between the old and new
+                        // sighting of this pseudo — a later duplicate frame
+                        // without clear header context shouldn't erase a rank
+                        // an earlier frame already established.
+                        rank: p.rank || (prior && prior.rank) || null
                     };
                 }
             });
@@ -2821,10 +2989,21 @@
         });
     }
 
-    async function callGeminiOcrBatchApi(batchImageItems, metricType, guildTag, updateStatusCallback) {
+    // rankHint carries the rank section (R4/R3/R2/R1) still in effect at the
+    // end of the PREVIOUS batch, for the Members metric only — a rank header
+    // ("Executive Manager", "Rank 3 Members", ...) can scroll out of view
+    // partway through a recording, so without this hint the batch that
+    // follows would have no way to know which section its players are still
+    // under. Returns { players, endingRank } so the caller can chain it into
+    // the next batch; endingRank is null/undefined for every other metric.
+    async function callGeminiOcrBatchApi(batchImageItems, metricType, guildTag, rankHint, updateStatusCallback) {
         if (typeof guildTag === 'function') {
             updateStatusCallback = guildTag;
+            rankHint = null;
             guildTag = '';
+        } else if (typeof rankHint === 'function') {
+            updateStatusCallback = rankHint;
+            rankHint = null;
         }
         metricType = metricType || 'power';
         guildTag = guildTag || '';
@@ -2836,11 +3015,11 @@
 
         if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR (' + metricType.toUpperCase() + (guildTag ? ' ' + guildTag : '') + ')...');
         var res = await db.functions.invoke('ocr-guild-members', {
-            body: { images: batchImageItems, metricType: metricType, guildTag: guildTag }
+            body: { images: batchImageItems, metricType: metricType, guildTag: guildTag, rankHint: rankHint || null }
         });
 
         if (res.data && res.data.ok && Array.isArray(res.data.players)) {
-            return res.data.players;
+            return { players: res.data.players, endingRank: res.data.endingRank || null };
         }
 
         var errMsg = (res.data && res.data.error) || (res.error && res.error.message) || 'OCR analysis failed. Please try again.';
@@ -2852,6 +3031,27 @@
     var findBestMatchingMember = (window.GM && window.GM.findBestMatchingMember) ? window.GM.findBestMatchingMember : function () { return null; };
     var categorizeOcrDiff = (window.GM && window.GM.categorizeOcrDiff) ? window.GM.categorizeOcrDiff : function () { return { existing: [], new: [], removed: [] }; };
     var computeOcrRosterDelta = (window.GM && window.GM.computeOcrRosterDelta) ? window.GM.computeOcrRosterDelta : function (b, a, r) { return { before: b, after: b + a - r, added: a, removed: r }; };
+
+    // Renders the Members-metric "Rank" cell: an editable R4/R3/R2/R1 select
+    // pre-filled with the OCR-detected rank (defaulting to "keep the current
+    // role" for an existing member, or "R1" for a brand new one, matching
+    // commitOcrUpdates' own fallback so an untouched dropdown changes
+    // nothing beyond what already happens today). R5 is never editable here
+    // — same protection the manual bulk rank-assignment buttons already
+    // enforce, since a scrolled roster shouldn't be able to touch the
+    // guild leader's rank.
+    function renderOcrRankCell(idx, detectedRank, currentRole) {
+        var esc2 = (window.GM && window.GM.escapeHTML) ? window.GM.escapeHTML : function (s) { return String(s || ''); };
+        if (currentRole === 'R5') {
+            return '<td class="ocr-cell-rank"><span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-size:0.72rem; white-space:nowrap;" title="R5 Leader is protected from bulk rank changes"><i class="ph ph-shield-star"></i> R5</span></td>';
+        }
+        var noChangeLabel = currentRole ? ('Keep (' + currentRole + ')') : 'R1 (default)';
+        var opts = '<option value="">' + esc2(noChangeLabel) + '</option>';
+        ['R4', 'R3', 'R2', 'R1'].forEach(function (r) {
+            opts += '<option value="' + r + '"' + (detectedRank === r ? ' selected' : '') + '>' + r + '</option>';
+        });
+        return '<td class="ocr-cell-rank"><select class="ocr-edit-rank gm-input" data-index="' + idx + '" style="padding:0.2rem 0.35rem; font-size:0.78rem; font-weight:600; width:100%; max-width:118px;">' + opts + '</select></td>';
+    }
 
     function renderOcrResults(players) {
         var loading = document.getElementById('ocr-loading');
@@ -3003,7 +3203,7 @@
             // 1. Existing Members Section
             var existingHtml = '';
             if (diff.existing.length > 0) {
-                existingHtml += '<tr class="ocr-section-header ocr-section-header--existing"><td colspan="5"><div class="ocr-section-title"><i class="ph ph-users"></i> Existing Members <span class="gm-badge">' + diff.existing.length + '</span></div></td></tr>';
+                existingHtml += '<tr class="ocr-section-header ocr-section-header--existing"><td colspan="' + (isMembersMode ? 6 : 5) + '"><div class="ocr-section-title"><i class="ph ph-users"></i> Existing Members <span class="gm-badge">' + diff.existing.length + '</span></div></td></tr>';
                 diff.existing.forEach(function (item) {
                     var idx = item.index;
                     var effPseudo = item.effectivePseudo;
@@ -3024,6 +3224,7 @@
                         '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="existing" checked></td>' +
                         '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
                         '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' + esc(uid || '—') + '</span></td>' +
+                        (isMembersMode ? renderOcrRankCell(idx, item.ocrPlayer && item.ocrPlayer.rank, item.member && item.member.role) : '') +
                         '<td class="ocr-cell-metric">' +
                             '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
                             '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
@@ -3038,7 +3239,7 @@
             var newHtml = '';
             if (isMembersMode) {
                 if (diff.new.length > 0) {
-                    newHtml += '<tr class="ocr-section-header ocr-section-header--new"><td colspan="5"><div class="ocr-section-title"><i class="ph ph-user-plus"></i> New Members <span class="gm-badge">' + diff.new.length + '</span></div></td></tr>';
+                    newHtml += '<tr class="ocr-section-header ocr-section-header--new"><td colspan="6"><div class="ocr-section-title"><i class="ph ph-user-plus"></i> New Members <span class="gm-badge">' + diff.new.length + '</span></div></td></tr>';
                     diff.new.forEach(function (item) {
                         var idx = item.index;
                         var effPseudo = item.effectivePseudo;
@@ -3059,6 +3260,7 @@
                             '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="new" ' + (isChecked ? 'checked' : '') + '></td>' +
                             '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
                             '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' + idx + '" value="' + esc(uid) + '" placeholder="TEMP (auto)" style="' + uidInputStyle + '"></td>' +
+                            renderOcrRankCell(idx, item.ocrPlayer && item.ocrPlayer.rank, null) +
                             '<td class="ocr-cell-metric">' +
                                 '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
                                 '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
@@ -3158,6 +3360,15 @@
                         var val = parseInt(input.value, 10) || 0;
                         ocrExtractedPlayers[idx].score = val;
                         ocrExtractedPlayers[idx].overall_power = val;
+                    }
+                });
+            });
+
+            resultsContainer.querySelectorAll('.ocr-edit-rank').forEach(function (select) {
+                select.addEventListener('change', function () {
+                    var idx = parseInt(select.getAttribute('data-index'), 10);
+                    if (ocrExtractedPlayers[idx]) {
+                        ocrExtractedPlayers[idx].rank = select.value || null;
                     }
                 });
             });
@@ -3686,6 +3897,7 @@
             var addedCount = 0;
             var removedCount = 0;
             var failedCount = 0;
+            var rankAssignedCount = 0;
 
             try {
                 var db = (window.GM && window.GM.db) ? window.GM.db : supabase;
@@ -3726,6 +3938,18 @@
                                 updatePayload.power_updated_at = new Date().toISOString();
                             }
 
+                            // Members OCR can also carry a rank detected from the
+                            // roster's section headers (Executive Manager / Rank 3 /
+                            // Rank 2 / Rank 1 Members) — apply it via the same
+                            // bulk-assignment eligibility check the manual R1-R4
+                            // buttons already enforce, so R5 stays protected and
+                            // only ever-valid targets get through.
+                            var rankChanged = false;
+                            if (currentOcrMetric === 'members' && sp.rank && window.GM && window.GM.isRoleAllowedForBulk && window.GM.isRoleAllowedForBulk(sp.rank) && existing.role !== 'R5') {
+                                updatePayload.role = sp.rank;
+                                rankChanged = sp.rank !== existing.role;
+                            }
+
                             var upRes = await db.from('guild_members')
                                 .update(updatePayload)
                                 .eq('guild', currentG)
@@ -3739,6 +3963,8 @@
 
                             existing[targetField] = scoreVal;
                             existing.metrics_updated_at = updatePayload.metrics_updated_at;
+                            if (updatePayload.role) existing.role = updatePayload.role;
+                            if (rankChanged) rankAssignedCount++;
                             updatedCount++;
                         }
 
@@ -3777,8 +4003,13 @@
                         crew_power: targetField === 'crew_power' ? nScore : 0,
                         glory_score: targetField === 'glory_score' ? nScore : 0,
                         guild: currentG,
-                        role: 'R1'
+                        // Use the rank detected from (or corrected on) the roster's
+                        // section headers when it's a valid assignable target;
+                        // otherwise keep the long-standing R1 default for a
+                        // brand-new member.
+                        role: (window.GM && window.GM.isRoleAllowedForBulk && window.GM.isRoleAllowedForBulk(np.rank)) ? np.rank : 'R1'
                     };
+                    if (newMember.role !== 'R1') rankAssignedCount++;
 
                     var insRes = await db.from('guild_members').insert([newMember]);
                     if (insRes.error) {
@@ -3860,6 +4091,7 @@
                 var summaryMsg = '';
                 if (currentOcrMetric === 'members') {
                     summaryMsg = 'Updated ' + updatedCount + ' · Added ' + addedCount + ' · Removed ' + removedCount;
+                    if (rankAssignedCount > 0) summaryMsg += ' · Ranks assigned ' + rankAssignedCount;
                 } else {
                     var activeTag = (document.getElementById('ocr-guild-tag-input') && document.getElementById('ocr-guild-tag-input').value.trim()) ? document.getElementById('ocr-guild-tag-input').value.trim() : '';
                     var curDiff = categorizeOcrDiff(ocrExtractedPlayers, guildMembers, activeTag, targetField, meta.isMultiGuild, 'metric');

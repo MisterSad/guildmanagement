@@ -317,4 +317,28 @@ describe('categorizeOcrDiff Mode Semantics (v126.0 Members OCR vs Metric Scanner
         const diff = GM.categorizeOcrDiff([], sampleRoster, '', 'overall_power', false, 'metric');
         expect(diff).toEqual({ existing: [], new: [], removed: [], unknown: [] });
     });
+
+    it('carries a Members-OCR-detected rank through on both existing and new members (Video OCR rank assignment)', () => {
+        const ocrPlayers = [
+            { pseudo: 'HawkEye', score: 160000000, rank: 'R3' }, // detected rank differs from current R5 — commit-time logic must ignore this, protection is enforced by the caller, not this function
+            { pseudo: 'StarWarrior', score: 120000000, rank: 'R4' },
+            { pseudo: 'FreshRecruit', score: 20000000, rank: 'R2' },
+            { pseudo: 'NoHeaderSeenYet', score: 5000000, rank: null },
+        ];
+        const diff = GM.categorizeOcrDiff(ocrPlayers, sampleRoster, '', 'overall_power', false, 'members');
+
+        const hawkEye = diff.existing.find(e => e.effectivePseudo === 'HawkEye');
+        expect(hawkEye.ocrPlayer.rank).toBe('R3');
+        expect(hawkEye.member.role).toBe('R5'); // caller must check this before ever applying rank
+
+        const starWarrior = diff.existing.find(e => e.effectivePseudo === 'StarWarrior');
+        expect(starWarrior.ocrPlayer.rank).toBe('R4');
+        expect(starWarrior.member.role).toBe('R4');
+
+        const freshRecruit = diff.new.find(n => n.effectivePseudo === 'FreshRecruit');
+        expect(freshRecruit.ocrPlayer.rank).toBe('R2');
+
+        const noHeader = diff.new.find(n => n.effectivePseudo === 'NoHeaderSeenYet');
+        expect(noHeader.ocrPlayer.rank).toBeNull();
+    });
 });

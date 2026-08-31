@@ -1,18 +1,18 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.11**
+📢 **FGF Guild Management Tool Update — CHANG_V3.12**
 
-Hey everyone! Big one this time: **Passkeys** have landed. Sign in with your fingerprint, face, or PIN — no more typing a password every time. 🔑✨
+Hey everyone! This one's for the officers doing roster scans: record a video instead of screenshotting forever, and let the scanner sort out everyone's rank for you. Plus a notifications fix for players. 🎥🔑
 
-### 🔑 New: Sign in with a Passkey
-- Add a Passkey from **Accounts & Access** (admin) or **My Info → Security** (Player Portal), and sign in afterward with your device's fingerprint, face, or PIN — no password typing required.
-- Register one Passkey **per device** (phone, laptop, etc.), each with its own editable label so you can tell them apart later.
-- **10 one-time backup codes** are generated the moment you add your first Passkey — download them and keep them somewhere safe. Lost every device? A backup code gets you back in. You can regenerate a fresh set anytime from the same screen.
-- Your password still works exactly as before — a Passkey is an extra way in, never a replacement. After a normal password sign-in, you'll see a one-time "Secure your account" prompt suggesting you set one up if you haven't yet.
-- Locked out of both your devices *and* your backup codes? A guild/server admin (within their own scope) can reset your Passkeys from your account card, same safety net as the existing password reset.
+### 🎥 New: Scan the roster with a video instead of 25 screenshots
+- The AI OCR scanner (Members, Power, Fleet, Glory, SvS, GvG, Shadowfront, DTR, Arms Race — all of it) now accepts a screen recording, right in the same upload box as screenshots.
+- Just hit record, scroll once through the roster or leaderboard, and drop the video in — no more stopping every screen to snap a picture. The scanner picks out only the moments where the list actually changed, so a slow scroll doesn't waste time and a fast one doesn't skip anyone.
+- Screenshots still work exactly like before — this is an extra option, not a replacement.
 
-### 🛠️ Fixed along the way
-- Passkey sign-in now correctly recognizes **every account** you've registered one on — previously, if you had Passkeys on two different accounts (say, an admin account and a separate Player Portal account), only one of them would show up at sign-in time.
-- Passkeys saved in a browser extension (Proton Pass, Bitwarden, 1Password...) now show up as a suggestion right in the sign-in field, and actually complete sign-in when picked — both were broken for extension users specifically.
-- Fixed a rare case where heavy back-and-forth sign-ins could make password login briefly show "Invalid credentials." even with the right password — the login screen now always shows the real reason (like "too many attempts, please wait a moment") instead of a generic error.
-- Bug-report tickets and Passkey device labels now show your **real OS/browser version** again — Apple devices were showing a frozen, incorrect version number due to how iOS/macOS report themselves.
+### 🏅 New: Members OCR now assigns rank too
+- Scanning the full roster (screenshot or video) now also reads the rank section headers — Executive Manager, Rank 3 Members, Rank 2 Members, Rank 1 Members — and pre-fills each member's rank alongside their power, right in the review screen before you confirm anything.
+- Every detected rank is editable — review it, fix it, or leave it, same as the username and power fields already work.
+- The guild leader's rank is never touched by this, same protection as the manual rank buttons.
+
+### 🔔 Fixed: Players couldn't actually turn on notifications
+- The Notifications section in My Info let you pick which reminders you wanted, but there was never an actual way to switch notifications on in the first place — that button only existed on the admin side. Fixed: players can now enable push reminders straight from My Info, on both phone and desktop.
 
 *As always, thanks for the reports and feedback — keep them coming via the Report a Bug button!* 🚀🛡️

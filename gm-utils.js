@@ -24,7 +24,7 @@
     // navigation bar. Bumped on every release alongside the Discord changelog
     // version (see AGENTS.md §6: the version is chosen by the owner and must be
     // reflected here AND in DISCORD_CHANGELOG.md systematically).
-    var APP_VERSION = 'V3.11';
+    var APP_VERSION = 'V3.12';
 
     var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
     var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
@@ -2313,6 +2313,44 @@
         }
     }
 
+    // Video-OCR frame selection (pure helpers; the actual <video>/<canvas>
+    // orchestration lives in app.js's extractFramesFromVideo). Recording a
+    // scroll through a leaderboard and sampling it densely would otherwise
+    // waste the OCR batch's frame budget on near-duplicate frames while
+    // paused, or miss rows during a fast scroll — these two functions are
+    // how app.js decides which sampled frames are worth keeping, and how it
+    // caps the kept set without biasing toward the start of the recording.
+
+    var OCR_VIDEO_CELL_DIFF_THRESHOLD = 0.08; // per-cell luminance delta considered "changed"
+
+    // Fraction (0..1) of grid cells whose luminance differs from the last
+    // kept frame's by more than OCR_VIDEO_CELL_DIFF_THRESHOLD. Mismatched or
+    // missing grids count as fully different (1) so the frame is kept.
+    function ocrGridDiffRatio(a, b) {
+        if (!a || !b || a.length !== b.length || a.length === 0) return 1;
+        var changed = 0;
+        for (var i = 0; i < a.length; i++) {
+            if (Math.abs(a[i] - b[i]) > OCR_VIDEO_CELL_DIFF_THRESHOLD) changed++;
+        }
+        return changed / a.length;
+    }
+
+    // Evenly downsamples an ordered list to at most maxCount items instead
+    // of truncating the tail — a plain slice(0, N) on a scrolled video's
+    // frames would silently drop everything captured after the cap, biasing
+    // toward the start of the roster instead of covering the whole scroll.
+    function ocrDownsampleEvenly(items, maxCount) {
+        if (!Array.isArray(items) || items.length <= maxCount) return items ? items.slice() : [];
+        if (maxCount <= 1) return items.length ? [items[0]] : [];
+        var result = [];
+        var seen = {};
+        for (var i = 0; i < maxCount; i++) {
+            var idx = Math.round(i * (items.length - 1) / (maxCount - 1));
+            if (!seen[idx]) { seen[idx] = true; result.push(items[idx]); }
+        }
+        return result;
+    }
+
     var GVG_DAILY_TASKS = {
         1: {
             dayNumber: 1,
@@ -2845,6 +2883,8 @@
         formatNumber: formatNumber,
         parseNumber: parseNumber,
         parseGeminiJson: parseGeminiJson,
+        ocrGridDiffRatio: ocrGridDiffRatio,
+        ocrDownsampleEvenly: ocrDownsampleEvenly,
         attachNumberFormatter: attachNumberFormatter,
         avatarInit: avatarInit,
         MAX_NUMERIC: MAX_NUMERIC,
