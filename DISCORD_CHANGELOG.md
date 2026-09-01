@@ -1,18 +1,24 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.12**
+📢 **FGF Guild Management Tool Update — CHANG_V3.13**
 
-Hey everyone! This one's for the officers doing roster scans: record a video instead of screenshotting forever, and let the scanner sort out everyone's rank for you. Plus a notifications fix for players. 🎥🔑
+Big one this time: your guild can now request its own space without going through Discord first, and Leader Hall's "New Chat" was silently broken for almost every officer — that's fixed. Plus a real fix for the video-upload error some of you hit, and a couple of smaller stats/UI cleanups. 🏰🔧
 
-### 🎥 New: Scan the roster with a video instead of 25 screenshots
-- The AI OCR scanner (Members, Power, Fleet, Glory, SvS, GvG, Shadowfront, DTR, Arms Race — all of it) now accepts a screen recording, right in the same upload box as screenshots.
-- Just hit record, scroll once through the roster or leaderboard, and drop the video in — no more stopping every screen to snap a picture. The scanner picks out only the moments where the list actually changed, so a slow scroll doesn't waste time and a fast one doesn't skip anyone.
-- Screenshots still work exactly like before — this is an extra option, not a replacement.
+### 🏰 New: Request a Guild — no Discord DM required
+- The login page now has a **"Request a Guild"** tab, right next to Sign In and Register Player. Fill in your guild tag, server number, the admin login you want, and your Discord handle — that's it.
+- A super admin reviews every request by hand before anything is created — this stays 100% free, always has been, always will be. No payment, no auto-approval.
+- Once approved, you get your admin account and credentials relayed straight to you on Discord, ready to sign in.
 
-### 🏅 New: Members OCR now assigns rank too
-- Scanning the full roster (screenshot or video) now also reads the rank section headers — Executive Manager, Rank 3 Members, Rank 2 Members, Rank 1 Members — and pre-fills each member's rank alongside their power, right in the review screen before you confirm anything.
-- Every detected rank is editable — review it, fix it, or leave it, same as the username and power fields already work.
-- The guild leader's rank is never touched by this, same protection as the manual rank buttons.
+### 💬 Fixed: "New Chat" in Leader Hall was empty for almost everyone
+- If you're a Guild Master or Officer and the leader list in "New Chat" / "New Group" / "Propose Treaty" only ever showed one name (or none), this was it: a permissions gap meant only the very top admin account could ever see other leaders to start a conversation with. Everyone else could only reply to chats someone else started.
+- Fixed — every eligible leader now shows up correctly, for every guild.
+- Same root cause was also why the Treaty target-guild dropdown only ever offered one option — fixed too, every guild now shows up as a real target.
 
-### 🔔 Fixed: Players couldn't actually turn on notifications
-- The Notifications section in My Info let you pick which reminders you wanted, but there was never an actual way to switch notifications on in the first place — that button only existed on the admin side. Fixed: players can now enable push reminders straight from My Info, on both phone and desktop.
+### 🎥 Fixed: video upload failing for OCR scanning
+- Some of you hit "This video format could not be read" or a codec error on every browser, even Safari — not a codec problem after all, a server configuration gap that blocked the browser from reading the recording at all. Fixed, and the max recording length is now **8 minutes** (up from 4).
+
+### 📊 Fixed: Shadowfront attendance rate showing over 100%
+- A stats display bug could show attendance rates like 130-200% for long-tenured players. Now correctly capped at 100%.
+
+### 🖱️ Fixed: OCR scan window's Cancel button
+- Cancel now actually closes the OCR upload window, same as the X in the corner.
 
 *As always, thanks for the reports and feedback — keep them coming via the Report a Bug button!* 🚀🛡️

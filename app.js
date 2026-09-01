@@ -1171,6 +1171,29 @@
         guildRequestsRefreshBtn.addEventListener('click', function () { fetchGuildRequests(); });
     }
 
+    var guildRequestsClearHistoryBtn = document.getElementById('guild-requests-clear-history-btn');
+    if (guildRequestsClearHistoryBtn) {
+        guildRequestsClearHistoryBtn.addEventListener('click', function () {
+            showConfirm(
+                'Clear Guild Request History',
+                'Remove every already-approved or already-rejected guild request from this list? Pending requests are never affected. This cannot be undone.',
+                async function () {
+                    guildRequestsClearHistoryBtn.disabled = true;
+                    try {
+                        var res = await window.GM.adminAccounts('clear-resolved-guild-requests', {});
+                        if (!res.ok) throw new Error(res.error || 'clear_failed');
+                        showToast(res.count > 0 ? ('Cleared ' + res.count + ' resolved request(s).') : 'No resolved requests to clear.', 'success');
+                        await fetchGuildRequests();
+                    } catch (err) {
+                        showToast('Could not clear history: ' + err.message, 'error');
+                    } finally {
+                        guildRequestsClearHistoryBtn.disabled = false;
+                    }
+                }
+            );
+        });
+    }
+
     async function loadGuildSettings() {
         var form = document.getElementById('guild-settings-form');
         if (!form) return;

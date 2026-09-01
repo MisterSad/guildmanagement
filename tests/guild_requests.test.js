@@ -35,4 +35,24 @@ describe('Guild Requests: eligible-leaders-style RPC usage for approve/reject', 
         expect(src).toContain("window.GM.adminAccounts('reject-guild-request'");
         expect(src).not.toMatch(/from\(['"]guild_creation_requests['"]\)\.update/);
     });
+
+    it('clear-history button goes through admin-accounts too, and asks for confirmation first', () => {
+        expect(src).toContain("window.GM.adminAccounts('clear-resolved-guild-requests'");
+        expect(src).toMatch(/showConfirm\(\s*['"]Clear Guild Request History['"][\s\S]{0,400}clear-resolved-guild-requests/);
+    });
+});
+
+describe('Guild Requests: clearing history never touches pending requests', () => {
+    // The whole point of "Clear History" is to sweep away resolved rows an
+    // admin no longer needs to see -- it must never be able to silently
+    // delete a request someone hasn't reviewed yet.
+    const src = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/admin-accounts/index.ts'), 'utf-8');
+
+    it('clear-resolved-guild-requests is gated to super_admin and filters out pending rows', () => {
+        const idx = src.indexOf('"clear-resolved-guild-requests"');
+        expect(idx).toBeGreaterThan(-1);
+        const block = src.slice(idx, idx + 800);
+        expect(block).toContain('info.role !== "super_admin"');
+        expect(block).toMatch(/\.neq\(\s*["']status["'],\s*["']pending["']\s*\)/);
+    });
 });

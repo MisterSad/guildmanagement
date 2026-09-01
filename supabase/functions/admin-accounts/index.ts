@@ -660,6 +660,27 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, requests: data ?? [] });
   }
 
+  if (action === "clear-resolved-guild-requests") {
+    if (info.role !== "super_admin") return json({ ok: false, error: "forbidden" }, 403);
+
+    // Only ever removes already-resolved rows (approved/rejected/expired) --
+    // pending requests are never touched by this, so nothing awaiting review
+    // can silently disappear.
+    const { data, error } = await admin
+      .from("guild_creation_requests")
+      .delete()
+      .neq("status", "pending")
+      .select("id");
+
+    if (error) {
+      logger.error("Failed to clear resolved guild requests", error);
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+
+    logger.info("Cleared resolved guild requests", { count: (data ?? []).length, clearedBy: info.accountId });
+    return json({ ok: true, count: (data ?? []).length });
+  }
+
   if (action === "approve-guild-request") {
     if (info.role !== "super_admin") return json({ ok: false, error: "forbidden" }, 403);
 
