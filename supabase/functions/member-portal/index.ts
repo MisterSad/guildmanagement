@@ -4,6 +4,20 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { createDonationCheckoutSession, stripeSecretKey } from "../_shared/stripe.ts";
 import { getPlayer } from "../_shared/member-lookup.ts";
+import {
+  MAX_ALLOWED_POWER,
+  parseSafeScore,
+  getWeekStartIso,
+  eventScoringKey,
+  logPlayerAction,
+  updatePlayerPower,
+  updatePlayerGlory,
+  updatePlayerTimezone,
+  getPlayerChallenges,
+  listPlayerAbsences,
+  setPlayerAbsence,
+  deletePlayerAbsence,
+} from "../_shared/player-actions.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY     = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -15,17 +29,6 @@ function makeJson(req: Request) {
       status,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
-}
-
-// Bounding constants
-const MAX_ALLOWED_POWER = 5_000_000_000;
-const MAX_ALLOWED_EVENT_SCORE = 500_000_000;
-
-function parseSafeScore(val: unknown): number | null {
-  if (val === undefined || val === null || val === "") return null;
-  const num = typeof val === "number" ? val : parseInt(String(val).replace(/[^0-9]/g, ""), 10);
-  if (isNaN(num) || num < 0) return null;
-  return Math.min(Math.round(num), MAX_ALLOWED_EVENT_SCORE);
 }
 
 function buildReturnUrls(baseUrl?: string) {
@@ -152,68 +155,6 @@ async function getGuildAverages(
   } catch (_) {
     return { attendance_rate: 0, avg_power: 0, member_count: 0 };
   }
-}
-
-interface AuditLogEntry {
-  action_type: string;
-  pseudo: string;
-  uid: string;
-  guild: string;
-  message: string;
-  metadata?: Record<string, unknown>;
-}
-
-async function logPlayerAction(
-  admin: ReturnType<typeof createClient>,
-  entry: AuditLogEntry
-): Promise<void> {
-  try {
-    const { data: g } = await admin
-      .from("guilds")
-      .select("server_number")
-      .eq("id", entry.guild)
-      .maybeSingle();
-
-    const serverNumber = g?.server_number || null;
-
-    await admin.rpc("gm_log_player_audit", {
-      p_action_type: entry.action_type,
-      p_pseudo: entry.pseudo,
-      p_uid: entry.uid,
-      p_guild: entry.guild,
-      p_server_number: serverNumber,
-      p_message: entry.message,
-      p_metadata: entry.metadata || {}
-    });
-  } catch (_) {
-    // Non-blocking logging
-  }
-}
-
-function getWeekStartIso(date: Date): string {
-  const d = new Date(date);
-  const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`;
-}
-
-function getPrevWeekStartIso(weekStart: string): string {
-  const d = new Date(weekStart + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() - 7);
-  return getWeekStartIso(d);
-}
-
-function eventScoringKey(eventName: string, sessionId: string | null, weekStart: string | null): string {
-  const up = (eventName || "").toUpperCase();
-  const ws = weekStart || "";
-  if (up.indexOf("ARMS RACE") !== -1) return "Arms Race|" + (sessionId || ws);
-  if (up === "SHADOWFRONT") return "Shadowfront|" + ws;
-  if (up === "SVS") return "SvS|" + ws;
-  if (up === "GVG") return "GvG|" + ws;
-  if (up === "DEFEND TRADE ROUTE") return "DTR|" + (sessionId || ws);
-  return (eventName || "") + "|" + (sessionId || ws);
 }
 
 Deno.serve(async (req: Request) => {
@@ -451,49 +392,14 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "update-power") {
-      if (payload?.power === undefined || payload?.power === null || typeof payload.power === "boolean") {
-        return json({ ok: false, error: "invalid_power" }, 400);
+      const res = await updatePlayerPower(admin, uid, identity.guild, payload?.power);
+      if (!res.ok) {
+        const status = res.error === "invalid_power" ? 400 : 200;
+        logger.error("Failed to update player power", res.error, { uid });
+        return json(res, status);
       }
-      const rawPower = Number(payload.power);
-      if (!Number.isFinite(rawPower) || rawPower < 0) {
-        return json({ ok: false, error: "invalid_power" }, 400);
-      }
-      const power = Math.min(Math.floor(rawPower), MAX_ALLOWED_POWER);
-
-      const member = await getPlayer(admin, uid, identity.guild);
-      if (!member) return json({ ok: false, error: "player_not_found" }, 200);
-
-      const { data: rpcRes, error: rpcErr } = await admin.rpc("gm_upsert_player_metrics", {
-        p_guild: member.guild,
-        p_pseudo: member.pseudo,
-        p_total_power: power
-      });
-
-      if (rpcErr) {
-        logger.error("Failed to update player power via rpc", rpcErr, { uid, power });
-        const { error: uErr } = await admin
-          .from("guild_members")
-          .update({ overall_power: power, power_updated_at: new Date().toISOString() })
-          .eq("guild", member.guild)
-          .eq("uid", uid);
-        if (uErr) return json({ ok: false, error: "update_failed" }, 200);
-      }
-
-      await logPlayerAction(admin, {
-        action_type: "power_update",
-        pseudo: member.pseudo,
-        uid,
-        guild: member.guild,
-        message: `Updated overall power: ${Number(member.overall_power || 0).toLocaleString()} -> ${Number(power).toLocaleString()}`,
-        metadata: {
-          previous_power: member.overall_power,
-          new_power: power,
-          rpc_result: rpcRes
-        }
-      });
-
-      logger.info("Player updated power", { uid, pseudo: member.pseudo, power });
-      return json({ ok: true, power });
+      logger.info("Player updated power", { uid, power: res.power });
+      return json(res);
     }
 
     if (action === "update-metrics") {
@@ -588,43 +494,14 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "update-glory") {
-      const rawGlory = parseSafeScore(payload?.glory);
-      if (rawGlory === null) {
-        return json({ ok: false, error: "invalid_glory" }, 400);
+      const res = await updatePlayerGlory(admin, uid, identity.guild, payload?.glory);
+      if (!res.ok) {
+        const status = res.error === "invalid_glory" ? 400 : (res.error === "player_not_found" ? 400 : 200);
+        logger.error("Failed to update player glory", res.error, { uid });
+        return json(res, status);
       }
-
-      const member = await getPlayer(admin, uid, identity.guild);
-      if (!member) return json({ ok: false, error: "player_not_found" }, 400);
-
-      const week = getWeekStartIso(new Date());
-      const { data, error: rErr } = await admin.rpc("gm_upsert_player_glory", {
-        p_guild: member.guild,
-        p_pseudo: member.pseudo,
-        p_week_start: week,
-        p_glory: rawGlory,
-      });
-      if (rErr) {
-        logger.error("Failed gm_upsert_player_glory", rErr, { week, rawGlory });
-        return json({ ok: false, error: "update_failed" }, 200);
-      }
-      const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
-      if (!row || !row.ok) return json({ ok: false, error: row?.error || "save_failed" }, 200);
-
-      await logPlayerAction(admin, {
-        action_type: "glory_update",
-        pseudo: member.pseudo,
-        uid,
-        guild: member.guild,
-        message: `Submitted Glory weekly score for week ${week}: ${Number(rawGlory).toLocaleString()}`,
-        metadata: {
-          week_start: week,
-          glory_score: rawGlory,
-          previous_glory: member.glory_score
-        }
-      });
-
-      logger.info("Player updated weekly glory", { pseudo: member.pseudo, week, glory: rawGlory });
-      return json({ ok: true, week, glory: rawGlory });
+      logger.info("Player updated weekly glory", { uid, week: res.week, glory: res.glory });
+      return json(res);
     }
 
     if (action === "get-transfer-guilds") {
@@ -772,12 +649,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "get-absences") {
-      const { data, error } = await admin.rpc("gm_get_player_absences", { p_uid: uid });
-      if (error) {
-        logger.error("Failed gm_get_player_absences", error, { uid });
-        return json({ ok: false, error: "db_error" }, 200);
+      const res = await listPlayerAbsences(admin, uid);
+      if (!res.ok) {
+        logger.error("Failed to list player absences", res.error, { uid });
+        return json(res, 200);
       }
-      return json({ ok: true, absences: data ?? [] });
+      return json(res);
     }
 
     if (action === "set-absence") {
@@ -787,76 +664,24 @@ Deno.serve(async (req: Request) => {
       const note = (payload?.note ?? "").toString().trim();
       const absenceId = payload?.id ? (payload.id).toString().trim() : null;
 
-      if (!startDate || !endDate) return json({ ok: false, error: "missing_dates" }, 400);
-      if (kind !== "full" && kind !== "reduced") return json({ ok: false, error: "invalid_kind" }, 400);
-
-      const member = await getPlayer(admin, uid, identity.guild);
-      if (!member) return json({ ok: false, error: "player_not_found" }, 400);
-
-      const { data, error } = await admin.rpc("gm_upsert_player_absence", {
-        p_guild: member.guild,
-        p_pseudo: member.pseudo,
-        p_uid: uid,
-        p_id: absenceId,
-        p_start_date: startDate,
-        p_end_date: endDate,
-        p_kind: kind,
-        p_note: note || null,
-      });
-      if (error) {
-        logger.error("Failed gm_upsert_player_absence", error, { uid, startDate, endDate });
-        return json({ ok: false, error: "db_error" }, 200);
+      const res = await setPlayerAbsence(admin, uid, identity.guild, { startDate, endDate, kind, note, id: absenceId });
+      if (!res.ok) {
+        const status = (res.error === "missing_dates" || res.error === "invalid_kind") ? 400 : (res.error === "player_not_found" ? 400 : 200);
+        logger.error("Failed to set player absence", res.error, { uid });
+        return json(res, status);
       }
-      const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
-      if (!row || !row.ok) return json({ ok: false, error: row?.error || "save_failed" }, 200);
-
-      await logPlayerAction(admin, {
-        action_type: "absence_set",
-        pseudo: member.pseudo,
-        uid,
-        guild: member.guild,
-        message: `Declared ${kind} absence from ${startDate} to ${endDate}${note ? `: "${note}"` : ""}`,
-        metadata: {
-          start_date: startDate,
-          end_date: endDate,
-          kind,
-          note: note || null,
-          absence_id: absenceId
-        }
-      });
-
-      return json({ ok: true });
+      return json(res);
     }
 
     if (action === "delete-absence") {
       const absenceId = (payload?.id ?? "").toString().trim();
-      if (!absenceId) return json({ ok: false, error: "missing_id" }, 400);
-
-      const member = await getPlayer(admin, uid, identity.guild);
-
-      const { data, error } = await admin.rpc("gm_delete_player_absence", {
-        p_id: absenceId,
-        p_uid: uid,
-      });
-      if (error) {
-        logger.error("Failed gm_delete_player_absence", error, { uid, absenceId });
-        return json({ ok: false, error: "db_error" }, 200);
+      const res = await deletePlayerAbsence(admin, uid, identity.guild, absenceId);
+      if (!res.ok) {
+        const status = res.error === "missing_id" ? 400 : 200;
+        logger.error("Failed to delete player absence", res.error, { uid, absenceId });
+        return json(res, status);
       }
-      const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
-      if (!row || !row.ok) return json({ ok: false, error: row?.error || "delete_failed" }, 200);
-
-      await logPlayerAction(admin, {
-        action_type: "absence_delete",
-        pseudo: member?.pseudo || uid,
-        uid,
-        guild: member?.guild || identity.guild || "UNKNOWN",
-        message: `Cancelled absence declaration (ID: ${absenceId})`,
-        metadata: {
-          absence_id: absenceId
-        }
-      });
-
-      return json({ ok: true });
+      return json(res);
     }
 
     if (action === "get-badges") {
@@ -919,73 +744,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "get-weekly-challenges") {
-      const member = await getPlayer(admin, uid, identity.guild);
-      if (!member) return json({ ok: false, error: "player_not_found" }, 200);
-
-      const week = getWeekStartIso(new Date());
-      const prevWeek = getPrevWeekStartIso(week);
-      const prevPrev = getPrevWeekStartIso(prevWeek);
-      const prev3 = getPrevWeekStartIso(prevPrev);
-
-      const { data: partRows, error: pErr } = await admin
-        .from("event_participants")
-        .select("event_name, session_id, week_start")
-        .eq("guild", member.guild)
-        .eq("pseudo", member.pseudo)
-        .neq("event_name", "Glory")
-        .or(`participated.gt.0,sub_present.eq.true`);
-      if (pErr) {
-        logger.error("Failed to fetch challenge participant rows", pErr);
-        return json({ ok: false, error: "db_error" }, 200);
+      const res = await getPlayerChallenges(admin, uid, identity.guild);
+      if (!res.ok) {
+        logger.error("Failed to fetch weekly challenges", res.error, { uid });
+        return json(res, 200);
       }
-
-      const attended = new Set<string>();
-      const seasonAttended = new Set<string>();
-      for (const r of partRows ?? []) {
-        const key = eventScoringKey(r.event_name, r.session_id, r.week_start);
-        if (!key) continue;
-        if (r.week_start === week) attended.add(key);
-        if (r.week_start >= prev3 && r.week_start <= week) seasonAttended.add(key);
-      }
-
-      const { data: gloryThisWeek, error: gwErr } = await admin
-        .from("event_participants")
-        .select("score")
-        .eq("guild", member.guild)
-        .eq("pseudo", member.pseudo)
-        .eq("event_name", "Glory")
-        .eq("week_start", week)
-        .gt("score", 0)
-        .limit(1);
-      if (gwErr) {
-        logger.error("Failed to fetch weekly glory", gwErr);
-        return json({ ok: false, error: "db_error" }, 200);
-      }
-      const gloryDone = (gloryThisWeek ?? []).length > 0;
-
-      const powerDone = !!member.power_updated_at &&
-        new Date(member.power_updated_at).getTime() >= new Date(week + "T00:00:00Z").getTime();
-
-      const eventsCount = attended.size;
-      const challenges = [
-        { id: "events1", label: "Attend 1 event this week", icon: "ph-calendar-check", done: eventsCount >= 1, progress: Math.min(eventsCount, 1), target: 1 },
-        { id: "events3", label: "Attend 3 events this week", icon: "ph-lightning", done: eventsCount >= 3, progress: Math.min(eventsCount, 3), target: 3 },
-        { id: "events5", label: "Attend 5 events this week", icon: "ph-star", done: eventsCount >= 5, progress: Math.min(eventsCount, 5), target: 5 },
-        { id: "glory", label: "Submit your Glory score", icon: "ph-trophy", done: gloryDone, progress: gloryDone ? 1 : 0, target: 1 },
-        { id: "power", label: "Refresh your power", icon: "ph-gauge", done: powerDone, progress: powerDone ? 1 : 0, target: 1 }
-      ];
-
-      const seasonScore = seasonAttended.size;
-      const level = seasonScore >= 15 ? "Gold" : seasonScore >= 8 ? "Silver" : seasonScore >= 3 ? "Bronze" : "None";
-
-      return json({
-        ok: true,
-        week,
-        challenges,
-        completed: challenges.filter((c) => c.done).length,
-        total: challenges.length,
-        season: { level, events: seasonScore }
-      });
+      return json(res);
     }
 
     if (action === "get-personal-kpis") {
@@ -1007,35 +771,13 @@ Deno.serve(async (req: Request) => {
 
     if (action === "update-timezone") {
       const offset = parseInt(payload?.offset, 10);
-      if (isNaN(offset) || offset < -12 || offset > 14) {
-        return json({ ok: false, error: "invalid_offset" }, 400);
+      const res = await updatePlayerTimezone(admin, uid, identity.guild, offset);
+      if (!res.ok) {
+        const status = res.error === "invalid_offset" ? 400 : 200;
+        logger.error("Failed to update player timezone", res.error, { uid, offset });
+        return json(res, status);
       }
-
-      const member = await getPlayer(admin, uid, identity.guild);
-
-      const { data, error } = await admin.rpc("gm_update_player_timezone", {
-        p_uid: uid,
-        p_offset: offset,
-      });
-      if (error) {
-        logger.error("Failed gm_update_player_timezone", error, { uid, offset });
-        return json({ ok: false, error: "db_error" }, 200);
-      }
-      const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
-      if (!row || !row.ok) return json({ ok: false, error: row?.error || "update_failed" }, 200);
-
-      await logPlayerAction(admin, {
-        action_type: "timezone_update",
-        pseudo: member?.pseudo || uid,
-        uid,
-        guild: member?.guild || identity.guild || "UNKNOWN",
-        message: `Updated timezone offset to UTC${offset >= 0 ? "+" : ""}${offset}`,
-        metadata: {
-          offset
-        }
-      });
-
-      return json({ ok: true });
+      return json(res);
     }
 
     if (action === "confirm-discord-link") {

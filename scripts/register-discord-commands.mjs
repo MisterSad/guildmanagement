@@ -1,22 +1,24 @@
 #!/usr/bin/env node
 /**
- * Registers (or updates) the bot's global slash commands with Discord.
+ * Registers (or updates) the bot's slash commands with Discord.
  * Run manually, once per command-set change -- not part of any build step.
  *
  * Requires two environment variables (never commit these):
  *   DISCORD_APPLICATION_ID
  *   DISCORD_BOT_TOKEN
  *
- * Usage:
- *   DISCORD_APPLICATION_ID=... DISCORD_BOT_TOKEN=... node scripts/register-discord-commands.mjs
+ * Optional third: DISCORD_GUILD_ID -- when set, registers to that one
+ * server instead of globally. Guild-scoped commands propagate instantly;
+ * global commands can take up to ~1 hour the first time. Use this while
+ * testing, drop it once ready to go global.
  *
- * Global commands can take up to ~1 hour to propagate to all servers the
- * first time. For faster iteration during development, register against a
- * single test guild instead (see the commented alternative endpoint below).
+ * Usage:
+ *   DISCORD_APPLICATION_ID=... DISCORD_BOT_TOKEN=... [DISCORD_GUILD_ID=...] node scripts/register-discord-commands.mjs
  */
 
 const APP_ID = process.env.DISCORD_APPLICATION_ID;
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+const GUILD_ID = process.env.DISCORD_GUILD_ID;
 
 if (!APP_ID || !BOT_TOKEN) {
   console.error("Missing DISCORD_APPLICATION_ID or DISCORD_BOT_TOKEN in the environment.");
@@ -34,12 +36,72 @@ const COMMANDS = [
     description: "Show your linked player stats (power, glory, role, timezone)",
     type: 1,
   },
+  {
+    name: "power",
+    description: "Update your overall power",
+    type: 1,
+    options: [
+      { type: 4, name: "value", description: "Your current overall power (e.g. 1500000000)", required: true, min_value: 0 },
+    ],
+  },
+  {
+    name: "glory",
+    description: "Submit your weekly Glory score",
+    type: 1,
+    options: [
+      { type: 4, name: "value", description: "Your Glory score for this week", required: true, min_value: 0 },
+    ],
+  },
+  {
+    name: "timezone",
+    description: "Set your timezone (UTC offset)",
+    type: 1,
+    options: [
+      { type: 4, name: "offset", description: "UTC offset in hours (e.g. -5, 0, 8)", required: true, min_value: -12, max_value: 14 },
+    ],
+  },
+  {
+    name: "challenges",
+    description: "Show your weekly challenges progress",
+    type: 1,
+  },
+  {
+    name: "absence",
+    description: "Manage your absence declarations",
+    type: 1,
+    options: [
+      {
+        type: 1,
+        name: "set",
+        description: "Declare an absence period",
+        options: [
+          { type: 3, name: "start_date", description: "Start date (YYYY-MM-DD)", required: true },
+          { type: 3, name: "end_date", description: "End date (YYYY-MM-DD)", required: true },
+          { type: 3, name: "note", description: "Optional reason", required: false },
+        ],
+      },
+      {
+        type: 1,
+        name: "list",
+        description: "List your current absences",
+      },
+      {
+        type: 1,
+        name: "cancel",
+        description: "Cancel a declared absence",
+        options: [
+          { type: 3, name: "id", description: "Absence ID (from /absence list)", required: true },
+        ],
+      },
+    ],
+  },
 ];
 
-// Global registration (propagates to every server the bot is in).
-const url = `https://discord.com/api/v10/applications/${APP_ID}/commands`;
-// For instant propagation during development, register to one test guild
-// instead: `https://discord.com/api/v10/applications/${APP_ID}/guilds/${GUILD_ID}/commands`
+const url = GUILD_ID
+  ? `https://discord.com/api/v10/applications/${APP_ID}/guilds/${GUILD_ID}/commands`
+  : `https://discord.com/api/v10/applications/${APP_ID}/commands`;
+
+console.log(GUILD_ID ? `Registering to guild ${GUILD_ID} (instant)...` : "Registering globally (may take up to ~1h to propagate)...");
 
 const res = await fetch(url, {
   method: "PUT",

@@ -44,11 +44,18 @@ describe('Audit Remediation Verification Suite', () => {
   it('SEV-05: verifies member-portal contains defensive score bounding parser', () => {
     const portalPath = path.resolve(__dirname, '../supabase/functions/member-portal/index.ts');
     const content = fs.readFileSync(portalPath, 'utf-8');
-    expect(content).toContain('MAX_ALLOWED_EVENT_SCORE = 500_000_000');
-    expect(content).toContain('function parseSafeScore');
     expect(content).toContain('parseSafeScore(payload.score)');
     expect(content).toContain('parseSafeScore(payload.score_prep)');
     expect(content).toContain('parseSafeScore(payload.score_pvp)');
+
+    // parseSafeScore/MAX_ALLOWED_EVENT_SCORE moved to _shared/player-actions.ts
+    // (Discord bot Phase 2) so discord-bot-interactions can reuse the same
+    // bounds -- member-portal now imports it rather than redefining it.
+    const playerActionsContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/player-actions.ts'), 'utf-8');
+    expect(playerActionsContent).toContain('MAX_ALLOWED_EVENT_SCORE = 500_000_000');
+    expect(playerActionsContent).toContain('function parseSafeScore');
+    expect(content).toContain('parseSafeScore,');
+    expect(content).toContain('} from "../_shared/player-actions.ts"');
   });
 
   it('SEV-07: verifies EventsService and PortalService schema and action alignment', () => {
@@ -149,9 +156,13 @@ describe('Audit Remediation Verification Suite', () => {
     expect(content).not.toContain('update.appointed = !!payload.appointed');
 
     // 3. update-power validates numeric input and scopes fallback by guild
+    // (logic now lives in _shared/player-actions.ts::updatePlayerPower,
+    // reused by both member-portal and the Discord bot -- Phase 2)
     expect(content).not.toContain('parseInt(payload?.power) || 0');
-    expect(content).toContain('error: "invalid_power"');
     expect(content).toContain('.eq("guild", member.guild)');
+    const playerActionsContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/player-actions.ts'), 'utf-8');
+    expect(playerActionsContent).toContain('error: "invalid_power"');
+    expect(playerActionsContent).toContain('.eq("guild", member.guild)');
 
     // 4. Top-level try-catch wraps dispatch
     expect(content).toContain('catch (unhandledErr)');

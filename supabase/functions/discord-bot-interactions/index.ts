@@ -15,10 +15,25 @@
  *   /myinfo  -- reads the caller's own stats via the same guild_members
  *               lookup member-portal uses (_shared/member-lookup.ts),
  *               once their Discord account is linked.
+ *
+ * Phase 2 commands (all require a linked account, same resolution as
+ * /myinfo): /power, /glory, /timezone, /challenges, /absence (set/list/
+ * cancel). Every write goes through _shared/player-actions.ts -- the exact
+ * same validated, audited code path member-portal uses, not a
+ * reimplementation.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getPlayer } from "../_shared/member-lookup.ts";
+import {
+  updatePlayerPower,
+  updatePlayerGlory,
+  updatePlayerTimezone,
+  getPlayerChallenges,
+  listPlayerAbsences,
+  setPlayerAbsence,
+  deletePlayerAbsence,
+} from "../_shared/player-actions.ts";
 import {
   verifyDiscordSignature,
   discordPublicKeyHex,
@@ -44,6 +59,34 @@ function randomLinkCode(): string {
   const bytes = new Uint8Array(6);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+}
+
+const NOT_LINKED_MSG = "Your Discord account isn't linked yet. Run `/link` first, then confirm the code in the Player Portal (My Info -> Link Discord).";
+const NO_UID_MSG = "Your linked account doesn't have an in-game UID on file. Contact your guild admin.";
+
+async function resolveLinkedAccount(
+  admin: ReturnType<typeof createClient>,
+  discordUserId: string
+): Promise<{ ok: true; uid: string; guild: string } | { ok: false; message: string }> {
+  const { data: link } = await admin
+    .from("discord_account_links")
+    .select("account_id")
+    .eq("discord_user_id", discordUserId)
+    .maybeSingle();
+  if (!link) return { ok: false, message: NOT_LINKED_MSG };
+
+  const { data: account } = await admin
+    .from("accounts")
+    .select("uid, guild")
+    .eq("id", link.account_id)
+    .maybeSingle();
+  if (!account?.uid) return { ok: false, message: NO_UID_MSG };
+
+  return { ok: true, uid: account.uid, guild: account.guild };
+}
+
+function getOptionValue(options: any[] | undefined, name: string): any {
+  return options?.find((o: any) => o.name === name)?.value;
 }
 
 Deno.serve(async (req: Request) => {
@@ -117,27 +160,10 @@ Deno.serve(async (req: Request) => {
   }
 
   if (commandName === "myinfo") {
-    const { data: link } = await admin
-      .from("discord_account_links")
-      .select("account_id")
-      .eq("discord_user_id", discordUserId)
-      .maybeSingle();
+    const resolved = await resolveLinkedAccount(admin, discordUserId);
+    if (!resolved.ok) return ephemeral(resolved.message);
 
-    if (!link) {
-      return ephemeral("Your Discord account isn't linked yet. Run `/link` first, then confirm the code in the Player Portal (My Info -> Link Discord).");
-    }
-
-    const { data: account } = await admin
-      .from("accounts")
-      .select("uid, guild")
-      .eq("id", link.account_id)
-      .maybeSingle();
-
-    if (!account?.uid) {
-      return ephemeral("Your linked account doesn't have an in-game UID on file. Contact your guild admin.");
-    }
-
-    const member = await getPlayer(admin, account.uid, account.guild);
+    const member = await getPlayer(admin, resolved.uid, resolved.guild);
     if (!member) {
       return ephemeral("Couldn't find your roster entry. Your admin may need to re-scan the roster.");
     }
@@ -155,6 +181,122 @@ Deno.serve(async (req: Request) => {
       ],
     };
     return ephemeral("", [embed]);
+  }
+
+  if (commandName === "power") {
+    const resolved = await resolveLinkedAccount(admin, discordUserId);
+    if (!resolved.ok) return ephemeral(resolved.message);
+
+    const value = getOptionValue(interaction.data?.options, "value");
+    const res = await updatePlayerPower(admin, resolved.uid, resolved.guild, value);
+    if (!res.ok) {
+      const msg = res.error === "invalid_power"
+        ? "That doesn't look like a valid power value."
+        : "Couldn't update your power. Please try again later.";
+      return ephemeral(msg);
+    }
+    logger.info("Player updated power via Discord", { power: res.power });
+    return ephemeral(`Power updated to **${res.power!.toLocaleString("en-US")}**.`);
+  }
+
+  if (commandName === "glory") {
+    const resolved = await resolveLinkedAccount(admin, discordUserId);
+    if (!resolved.ok) return ephemeral(resolved.message);
+
+    const value = getOptionValue(interaction.data?.options, "value");
+    const res = await updatePlayerGlory(admin, resolved.uid, resolved.guild, value);
+    if (!res.ok) {
+      const msg = res.error === "invalid_glory"
+        ? "That doesn't look like a valid Glory value."
+        : "Couldn't submit your Glory score. Please try again later.";
+      return ephemeral(msg);
+    }
+    logger.info("Player updated glory via Discord", { week: res.week, glory: res.glory });
+    return ephemeral(`Glory score for week ${res.week} submitted: **${res.glory!.toLocaleString("en-US")}**.`);
+  }
+
+  if (commandName === "timezone") {
+    const resolved = await resolveLinkedAccount(admin, discordUserId);
+    if (!resolved.ok) return ephemeral(resolved.message);
+
+    const offset = Number(getOptionValue(interaction.data?.options, "offset"));
+    const res = await updatePlayerTimezone(admin, resolved.uid, resolved.guild, offset);
+    if (!res.ok) return ephemeral("Couldn't update your timezone. Please try again later.");
+    logger.info("Player updated timezone via Discord", { offset });
+    return ephemeral(`Timezone set to **UTC${offset >= 0 ? "+" : ""}${offset}**.`);
+  }
+
+  if (commandName === "challenges") {
+    const resolved = await resolveLinkedAccount(admin, discordUserId);
+    if (!resolved.ok) return ephemeral(resolved.message);
+
+    const res = await getPlayerChallenges(admin, resolved.uid, resolved.guild);
+    if (!res.ok) return ephemeral("Couldn't load your weekly challenges. Please try again later.");
+
+    const embed = {
+      title: `Weekly Challenges — ${res.week}`,
+      color: 0x6366f1,
+      description: `Season level: **${res.season!.level}** (${res.season!.events} events)`,
+      fields: (res.challenges || []).map((c) => ({
+        name: `${c.done ? "✅" : "⬜"} ${c.label}`,
+        value: `${c.progress}/${c.target}`,
+        inline: true,
+      })),
+    };
+    return ephemeral("", [embed]);
+  }
+
+  if (commandName === "absence") {
+    const resolved = await resolveLinkedAccount(admin, discordUserId);
+    if (!resolved.ok) return ephemeral(resolved.message);
+
+    const sub = interaction.data?.options?.[0];
+    const subName: string = sub?.name || "";
+    const subOptions = sub?.options;
+
+    if (subName === "set") {
+      const startDate = getOptionValue(subOptions, "start_date");
+      const endDate = getOptionValue(subOptions, "end_date");
+      const note = getOptionValue(subOptions, "note");
+      const res = await setPlayerAbsence(admin, resolved.uid, resolved.guild, {
+        startDate,
+        endDate,
+        kind: "full",
+        note: note || null,
+      });
+      if (!res.ok) {
+        const msg = res.error === "missing_dates"
+          ? "You need to provide both a start and end date."
+          : "Couldn't save your absence. Make sure the dates are valid (YYYY-MM-DD, end date on or after start date) and try again.";
+        return ephemeral(msg);
+      }
+      return ephemeral(`Absence declared from **${startDate}** to **${endDate}**.`);
+    }
+
+    if (subName === "list") {
+      const res = await listPlayerAbsences(admin, resolved.uid);
+      if (!res.ok) return ephemeral("Couldn't load your absences. Please try again later.");
+      const absences = res.absences || [];
+      if (absences.length === 0) return ephemeral("You have no declared absences.");
+      const lines = absences.map(
+        (a: any) => `\`${a.id}\` — ${a.start_date} to ${a.end_date}${a.note ? ` (${a.note})` : ""}`
+      );
+      return ephemeral(`Your absences:\n${lines.join("\n")}\n\nUse \`/absence cancel\` with the ID to remove one.`);
+    }
+
+    if (subName === "cancel") {
+      const id = getOptionValue(subOptions, "id");
+      const res = await deletePlayerAbsence(admin, resolved.uid, resolved.guild, id);
+      if (!res.ok) {
+        const msg = res.error === "missing_id"
+          ? "You need to provide the absence ID (see `/absence list`)."
+          : "Couldn't cancel that absence. Check the ID and try again.";
+        return ephemeral(msg);
+      }
+      return ephemeral("Absence cancelled.");
+    }
+
+    return ephemeral("Unknown /absence subcommand.");
   }
 
   return ephemeral("Unknown command.");
