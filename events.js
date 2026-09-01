@@ -573,7 +573,7 @@
 
         var pendingCount = participants.reduce(function (a, p) { return a + (p.is_pending ? 1 : 0); }, 0);
         var approveAllBtn = pendingCount > 0
-            ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success approve-all-btn" style="margin-left: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> Approve All (' + pendingCount + ')</button>'
+            ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success approve-all-btn" style="margin-left: auto; font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> Approve All (' + pendingCount + ')</button>'
             : '';
 
         var html =
@@ -613,7 +613,7 @@
             var rowStyle = p.is_pending ? 'background: rgba(245, 158, 11, 0.05); border-left: 3px solid var(--warning);' : '';
 
             var actionBtn = p.is_pending
-                ? '<button type="button" class="gm-btn gm-btn-success approve-single-btn" data-pseudo="' + esc(p.pseudo) + '" style="font-size:0.75rem; padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-check"></i> Approve</button>'
+                ? '<button type="button" class="gm-btn gm-btn-success approve-single-btn" data-pseudo="' + esc(p.pseudo) + '" style="font-size: var(--fs-sm); padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-check"></i> Approve</button>'
                 : '';
 
             html +=
@@ -623,7 +623,7 @@
                             '<div class="gm-avatar">' + esc(initial) + '</div>' +
                             '<strong style="display:inline-flex; align-items:center; gap:0.4rem;">' + 
                                 esc(p.pseudo) + 
-                                (p.is_pending ? '<span class="gm-chip" style="font-size:0.65rem; padding:0.05rem 0.25rem; background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending</span>' : '') +
+                                (p.is_pending ? '<span class="gm-chip" style="font-size: var(--fs-2xs); padding:0.05rem 0.25rem; background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending</span>' : '') +
                             '</strong>' +
                         '</div>' +
                     '</td>' +

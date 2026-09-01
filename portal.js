@@ -98,9 +98,9 @@
             }
             root.innerHTML =
                 '<div class="gm-empty" style="padding: 3rem 1.5rem; text-align: center; max-width: 480px; margin: 2rem auto; background: var(--bg-1); border-radius: var(--radius-xl); border: 1px solid var(--border-soft);">' +
-                    '<i class="ph ph-warning-circle gm-icon" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem; display: block;"></i>' +
-                    '<div class="gm-empty-title" style="font-size: 1.25rem; font-weight: 700; color: var(--fg); margin-bottom: 0.5rem;">Unable to load your portal</div>' +
-                    '<div class="gm-empty-sub" style="color: var(--fg-dim); font-size: 0.95rem; margin: 0 auto 1.5rem auto;">' + esc(displayMsg) + '</div>' +
+                    '<i class="ph ph-warning-circle gm-icon" style="font-size: var(--fs-5xl); color: #ef4444; margin-bottom: 1rem; display: block;"></i>' +
+                    '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight: 700; color: var(--fg); margin-bottom: 0.5rem;">Unable to load your portal</div>' +
+                    '<div class="gm-empty-sub" style="color: var(--fg-dim); font-size: var(--fs-md); margin: 0 auto 1.5rem auto;">' + esc(displayMsg) + '</div>' +
                     '<div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">' +
                         '<button class="gm-btn gm-btn-primary" data-portal-error-signout><i class="ph ph-sign-out"></i> Reconnect / Sign Out</button>' +
                         '<button class="gm-btn gm-btn-outline" data-portal-error-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
@@ -191,8 +191,8 @@
                     '</nav>' +
                     '<div class="gm-sidebar-sub-card">' +
                         '<div class="gm-sub-card-badge-avatar"><i class="ph ph-crosshair"></i></div>' +
-                        '<div style="font-size:.8rem; font-weight:700; color:var(--fg);">' + esc(p.guild) + '</div>' +
-                        '<div style="font-size:.68rem; color:var(--fg-dim); margin-top:.25rem;">Foundation Galactic Frontier</div>' +
+                        '<div style="font-size: var(--fs-sm); font-weight:700; color:var(--fg);">' + esc(p.guild) + '</div>' +
+                        '<div style="font-size: var(--fs-xs); color:var(--fg-dim); margin-top:.25rem;">Foundation Galactic Frontier</div>' +
                     '</div>' +
                 '</aside>' +
 
@@ -485,9 +485,9 @@
             if (aVal > 0 && pVal > 0) {
                 var diffPct = Math.round(((pVal - aVal) / aVal) * 1000) / 10;
                 if (diffPct >= 0) {
-                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.38rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">+' + diffPct + '%</span>';
+                    deltaHtml = '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.38rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">+' + diffPct + '%</span>';
                 } else {
-                    deltaHtml = '<span class="gm-chip" style="font-size:0.68rem; padding:0.1rem 0.38rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">' + diffPct + '%</span>';
+                    deltaHtml = '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.38rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">' + diffPct + '%</span>';
                 }
             }
             var avgFormatted = aVal > 0 ? window.GM.formatPower(aVal) : (pVal > 0 ? window.GM.formatPower(pVal) : '0');
@@ -512,13 +512,13 @@
             '<div class="portal-card" style="margin-bottom: 1.25rem; background: var(--md-sys-color-surface-container, #1e1f20); border: 1px solid var(--md-sys-color-outline-variant, rgba(255, 255, 255, 0.08)); border-radius: var(--md-sys-shape-corner-large, 16px); padding: 1.35rem; box-shadow: var(--md-sys-elevation-level1, 0 1px 3px rgba(0,0,0,0.2));">' +
                 '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.15rem; flex-wrap:wrap; gap:0.6rem;">' +
                     '<div style="display:flex; align-items:center; gap:0.55rem;">' +
-                        '<span class="material-symbols-rounded" style="color:var(--md-sys-color-primary, #a8c7fa); font-size:1.5rem;">swords</span>' +
-                        '<span style="font-weight:800; font-size:1.1rem; color:var(--md-sys-color-on-surface, #e3e3e3);">Military Force Breakdown &amp; Guild Benchmarks</span>' +
+                        '<span class="material-symbols-rounded" style="color:var(--md-sys-color-primary, #a8c7fa); font-size: var(--fs-3xl);">swords</span>' +
+                        '<span style="font-weight:800; font-size: var(--fs-xl); color:var(--md-sys-color-on-surface, #e3e3e3);">Military Force Breakdown &amp; Guild Benchmarks</span>' +
                     '</div>' +
                     '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
-                        '<span class="gm-chip" style="font-size:0.75rem; font-weight:700; color:#a8c7fa; background:rgba(168,199,250,0.12); border:1px solid rgba(168,199,250,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-shield-check"></i> Density: ' + Math.min(100, Math.round(density)) + '%</span>' +
-                        '<span class="gm-chip" style="font-size:0.75rem; font-weight:700; color:#6dd58c; background:rgba(109,213,140,0.12); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-crosshair"></i> Combativity: ' + combativity + 'x</span>' +
-                        '<span class="gm-chip" style="font-size:0.75rem; font-weight:700; color:#ffe088; background:rgba(255,224,136,0.12); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-barricade"></i> Volatile: ' + esc(window.GM.formatPower(residual)) + '</span>' +
+                        '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#a8c7fa; background:rgba(168,199,250,0.12); border:1px solid rgba(168,199,250,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-shield-check"></i> Density: ' + Math.min(100, Math.round(density)) + '%</span>' +
+                        '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#6dd58c; background:rgba(109,213,140,0.12); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-crosshair"></i> Combativity: ' + combativity + 'x</span>' +
+                        '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#ffe088; background:rgba(255,224,136,0.12); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-barricade"></i> Volatile: ' + esc(window.GM.formatPower(residual)) + '</span>' +
                     '</div>' +
                 '</div>' +
                 '<div class="portal-military-grid">' +
@@ -1037,43 +1037,43 @@
                         '<span><i class="ph ph-shield-chevron"></i> My Military Force Metrics</span>' +
                         '<button class="gm-help-btn" data-help-id="help-portal-power" aria-label="Help: My Military Metrics"><i class="ph ph-info"></i></button>' +
                     '</div>' +
-                    '<div class="portal-settings-sub" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">' +
+                    '<div class="portal-settings-sub" style="font-size: var(--fs-base); color:var(--text-muted); margin-bottom:1rem;">' +
                         'Keep your combat metrics up to date to help your officers build optimal squads for SvS, GvG, and Shadowfront.' +
                     '</div>' +
                     '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">' +
                         '<div class="portal-field">' +
-                            '<label for="portal-user-power" style="font-size:0.8rem; font-weight:600; color:var(--fg); margin-bottom:0.25rem; display:block;">Overall Total Power</label>' +
+                            '<label for="portal-user-power" style="font-size: var(--fs-sm); font-weight:600; color:var(--fg); margin-bottom:0.25rem; display:block;">Overall Total Power</label>' +
                             '<input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 100000000" value="' + esc(portalState.player.overall_power || '') + '">' +
                         '</div>' +
                         '<div class="portal-field">' +
-                            '<label for="portal-user-fleet" style="font-size:0.8rem; font-weight:600; color:#60a5fa; margin-bottom:0.25rem; display:block;">⚔️ Fleet Rating (March 1)</label>' +
+                            '<label for="portal-user-fleet" style="font-size: var(--fs-sm); font-weight:600; color:#60a5fa; margin-bottom:0.25rem; display:block;">⚔️ Fleet Rating (March 1)</label>' +
                             '<input type="text" id="portal-user-fleet" class="gm-input" placeholder="e.g. 2000000" value="' + esc(portalState.player.fleet_rating || '') + '">' +
                         '</div>' +
                         '<div class="portal-field">' +
-                            '<label for="portal-user-tech" style="font-size:0.8rem; font-weight:600; color:#a78bfa; margin-bottom:0.25rem; display:block;">🔬 Technology Power</label>' +
+                            '<label for="portal-user-tech" style="font-size: var(--fs-sm); font-weight:600; color:#a78bfa; margin-bottom:0.25rem; display:block;">🔬 Technology Power</label>' +
                             '<input type="text" id="portal-user-tech" class="gm-input" placeholder="e.g. 15000000" value="' + esc(portalState.player.tech_power || '') + '">' +
                         '</div>' +
                         '<div class="portal-field">' +
-                            '<label for="portal-user-flagship" style="font-size:0.8rem; font-weight:600; color:#fbbf24; margin-bottom:0.25rem; display:block;">🚀 Flagship Power</label>' +
+                            '<label for="portal-user-flagship" style="font-size: var(--fs-sm); font-weight:600; color:#fbbf24; margin-bottom:0.25rem; display:block;">🚀 Flagship Power</label>' +
                             '<input type="text" id="portal-user-flagship" class="gm-input" placeholder="e.g. 10000000" value="' + esc(portalState.player.flagship_power || '') + '">' +
                         '</div>' +
                         '<div class="portal-field">' +
-                            '<label for="portal-user-champion" style="font-size:0.8rem; font-weight:600; color:#f472b6; margin-bottom:0.25rem; display:block;">👑 Champions Total Power</label>' +
+                            '<label for="portal-user-champion" style="font-size: var(--fs-sm); font-weight:600; color:#f472b6; margin-bottom:0.25rem; display:block;">👑 Champions Total Power</label>' +
                             '<input type="text" id="portal-user-champion" class="gm-input" placeholder="e.g. 30000000" value="' + esc(portalState.player.champion_power || '') + '">' +
                         '</div>' +
                         '<div class="portal-field">' +
-                            '<label for="portal-user-crew" style="font-size:0.8rem; font-weight:600; color:#38bdf8; margin-bottom:0.25rem; display:block;">👥 Crew Total Power</label>' +
+                            '<label for="portal-user-crew" style="font-size: var(--fs-sm); font-weight:600; color:#38bdf8; margin-bottom:0.25rem; display:block;">👥 Crew Total Power</label>' +
                             '<input type="text" id="portal-user-crew" class="gm-input" placeholder="e.g. 5000000" value="' + esc(portalState.player.crew_power || '') + '">' +
                         '</div>' +
                         '<div class="portal-field">' +
-                            '<label for="portal-user-glory" style="font-size:0.8rem; font-weight:600; color:#34d399; margin-bottom:0.25rem; display:block;">🏆 Glory Score</label>' +
+                            '<label for="portal-user-glory" style="font-size: var(--fs-sm); font-weight:600; color:#34d399; margin-bottom:0.25rem; display:block;">🏆 Glory Score</label>' +
                             '<input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000000" value="' + esc(portalState.player.glory_score || portalState.player.glory || '') + '">' +
                         '</div>' +
                     '</div>' +
                     '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">' +
                         '<div id="portal-metrics-summary" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
-                            '<span class="gm-chip" id="portal-density-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size:0.75rem;"><i class="ph ph-shield-check"></i> Density: ' + (window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(portalState.player) : 0) + '%</span>' +
-                            '<span class="gm-chip" id="portal-combativity-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size:0.75rem;"><i class="ph ph-crosshair"></i> Combativity: ' + (window.GM.calculateCombativity ? window.GM.calculateCombativity(portalState.player) : 0) + 'x</span>' +
+                            '<span class="gm-chip" id="portal-density-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size: var(--fs-sm);"><i class="ph ph-shield-check"></i> Density: ' + (window.GM.calculateCombatDensity ? window.GM.calculateCombatDensity(portalState.player) : 0) + '%</span>' +
+                            '<span class="gm-chip" id="portal-combativity-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm);"><i class="ph ph-crosshair"></i> Combativity: ' + (window.GM.calculateCombativity ? window.GM.calculateCombativity(portalState.player) : 0) + 'x</span>' +
                         '</div>' +
                         '<button type="button" id="portal-update-metrics-btn" class="gm-btn gm-btn-primary"><i class="ph ph-floppy-disk"></i><span>Save Military Metrics</span></button>' +
                     '</div>' +
@@ -1119,7 +1119,7 @@
                         '<span><i class="ph ph-fingerprint"></i> Security — My Passkeys</span>' +
                         '<button class="gm-help-btn" data-help-id="help-my-passkeys" aria-label="Help: My Passkeys"><i class="ph ph-info"></i></button>' +
                     '</div>' +
-                    '<div class="portal-settings-sub" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">' +
+                    '<div class="portal-settings-sub" style="font-size: var(--fs-base); color:var(--text-muted); margin-bottom:1rem;">' +
                         'Sign in faster, without typing your password, using your device\'s fingerprint, face, or PIN.' +
                     '</div>' +
                     '<div id="portal-passkeys-list">' +
@@ -1582,7 +1582,7 @@
             '<div id="portal-donation-body" style="display:flex; flex-direction:column; gap:1.25rem;">' +
                 // 1. Tiers grid
                 '<div class="portal-card">' +
-                    '<div class="gm-dim" style="font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:.75rem;">Support the Project</div>' +
+                    '<div class="gm-dim" style="font-size: var(--fs-sm); font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:.75rem;">Support the Project</div>' +
                     '<div class="gm-sub-plans-grid">' +
                         PORTAL_DONATION_TIERS.map(function (tier) {
                             var featured = tier.tag ? ' gm-sub-plan-featured' : '';
@@ -1601,8 +1601,8 @@
 
                 // 2. Custom amount card
                 '<div class="portal-card">' +
-                    '<div style="font-size:.95rem; font-weight:700; color:var(--fg); margin-bottom:.5rem;">Custom amount</div>' +
-                    '<div class="gm-dim" style="font-size:.82rem; margin-bottom:.75rem;">Enter any voluntary donation amount between €2 and €100.</div>' +
+                    '<div style="font-size: var(--fs-md); font-weight:700; color:var(--fg); margin-bottom:.5rem;">Custom amount</div>' +
+                    '<div class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:.75rem;">Enter any voluntary donation amount between €2 and €100.</div>' +
                     '<div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; max-width:460px;">' +
                         '<div style="position:relative; flex:1; min-width:140px;">' +
                             '<span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); font-weight:700; color:var(--fg-dim);">€</span>' +
@@ -1612,16 +1612,16 @@
                             '<i class="ph ph-coffee"></i> Donate' +
                         '</button>' +
                     '</div>' +
-                    '<div id="portal-donation-custom-error" class="gm-dim" style="color:#ef4444; font-size:.8rem; margin-top:.5rem; display:none;">Please enter a valid amount between 2 and 100 EUR.</div>' +
+                    '<div id="portal-donation-custom-error" class="gm-dim" style="color:#ef4444; font-size: var(--fs-sm); margin-top:.5rem; display:none;">Please enter a valid amount between 2 and 100 EUR.</div>' +
                 '</div>' +
 
                 // 3. Transparency card
                 '<div class="portal-card">' +
-                    '<div style="font-size:1rem; font-weight:700; color:var(--fg); margin-bottom:.75rem; display:flex; align-items:center; gap:0.5rem;">' +
+                    '<div style="font-size: var(--fs-lg); font-weight:700; color:var(--fg); margin-bottom:.75rem; display:flex; align-items:center; gap:0.5rem;">' +
                         '<i class="ph ph-heart" style="color:var(--accent);"></i>' +
                         '<span>Why your support matters</span>' +
                     '</div>' +
-                    '<div style="font-size:.875rem; line-height:1.6; color:var(--fg-dim);">' +
+                    '<div style="font-size: var(--fs-base); line-height:1.6; color:var(--fg-dim);">' +
                         '<p style="margin:0 0 .75rem 0;">This app is free, and it stays free. But it is not free to run:</p>' +
                         '<ul style="margin:0 0 .75rem 1.25rem; padding:0; display:flex; flex-direction:column; gap:0.4rem;">' +
                             '<li><strong>Hosting &amp; infrastructure:</strong> roughly EUR 45-100 every month, rain or shine.</li>' +
@@ -1634,8 +1634,8 @@
 
                 // 4. Accepted payments
                 '<div class="portal-card">' +
-                    '<div class="gm-dim" style="font-size:.82rem; display:flex; align-items:center; gap:0.4rem;">' +
-                        '<i class="ph ph-shield-check" style="color:var(--accent); font-size:1.1rem;"></i>' +
+                    '<div class="gm-dim" style="font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;">' +
+                        '<i class="ph ph-shield-check" style="color:var(--accent); font-size: var(--fs-xl);"></i>' +
                         '<span>All payments are securely processed and managed by Stripe. • <a href="terms.html" style="color:var(--text-muted); text-decoration:underline;">Terms &amp; Conditions</a></span>' +
                     '</div>' +
                 '</div>' +
@@ -1675,9 +1675,9 @@
                     panel.innerHTML =
                         '<header class="gm-page-header"><div><h1 class="gm-page-title">Buy Me a Coffee</h1></div></header>' +
                         '<div class="gm-empty" style="padding:3rem 1.5rem; text-align:center; max-width:480px; margin:2rem auto; background:var(--bg-1); border-radius:var(--radius-xl); border:1px solid var(--border-soft);">' +
-                            '<i class="ph-duotone ph-coffee gm-icon" style="font-size:3rem; color:var(--accent); margin-bottom:1rem; display:block;"></i>' +
-                            '<div class="gm-empty-title" style="font-size:1.25rem; font-weight:700; color:var(--fg); margin-bottom:0.5rem;">Donations are disabled</div>' +
-                            '<div class="gm-empty-sub" style="color:var(--fg-dim); font-size:0.95rem;">Donations are disabled on the demonstration server.</div>' +
+                            '<i class="ph-duotone ph-coffee gm-icon" style="font-size: var(--fs-5xl); color:var(--accent); margin-bottom:1rem; display:block;"></i>' +
+                            '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg); margin-bottom:0.5rem;">Donations are disabled</div>' +
+                            '<div class="gm-empty-sub" style="color:var(--fg-dim); font-size: var(--fs-md);">Donations are disabled on the demonstration server.</div>' +
                         '</div>';
                 } else if (errCode === 'invalid_amount') {
                     window.GM.showToast('Please enter a valid amount between 2 and 100 EUR.', 'error');

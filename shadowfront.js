@@ -59,7 +59,7 @@
         var rateText = h.assigned > 0 ? Math.round((h.participated / h.assigned) * 100) + '%' : 'N/A';
         var cat = categorise(pseudo);
         var meta = categoryMeta(cat);
-        return '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; border-radius: 4px; font-weight: 600;">' + rateText + '</span>';
+        return '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: var(--fs-xs); padding: 0.1rem 0.35rem; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; border-radius: 4px; font-weight: 600;">' + rateText + '</span>';
     }
     function sortSquadList(list) {
         return list.slice().sort(function (a, b) {
@@ -747,12 +747,12 @@
         html +=
             '<div class="gm-event-banner" style="display: flex; margin-bottom: 1.5rem; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); padding: 1rem 1.5rem; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">' +
                 '<div class="gm-event-meta" style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 250px;">' +
-                    '<div class="gm-event-icon" style="width: 48px; height: 48px; border-radius: 50%; background: ' + (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') + '; color: ' + (isActive ? 'var(--primary)' : 'var(--text-muted)') + '; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;"><i class="ph ph-ghost"></i></div>' +
+                    '<div class="gm-event-icon" style="width: 48px; height: 48px; border-radius: 50%; background: ' + (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') + '; color: ' + (isActive ? 'var(--primary)' : 'var(--text-muted)') + '; display: flex; align-items: center; justify-content: center; font-size: var(--fs-3xl);"><i class="ph ph-ghost"></i></div>' +
                     '<div class="gm-grow" style="display: flex; flex-direction: column; gap: 0.25rem;">' +
-                        '<div class="gm-event-name" style="font-size: 1.2rem; font-weight: 700; font-family: var(--font-family-title);">' + esc(sqLabel) + '</div>' +
+                        '<div class="gm-event-name" style="font-size: var(--fs-xl); font-weight: 700; font-family: var(--font-family-title);">' + esc(sqLabel) + '</div>' +
                         '<div class="gm-event-status-line" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">' +
-                            '<span class="event-status-badge gm-chip ' + statusBadgeClass + '" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem;"><span class="gm-dot" style="background: ' + dotColor + '; width: 8px; height: 8px; border-radius: 50%;"></span> ' + statusText + '</span>' +
-                            '<span class="gm-dim" style="font-size: 0.8rem; color: var(--text-muted);">' + esc(subText) + '</span>' +
+                            '<span class="event-status-badge gm-chip ' + statusBadgeClass + '" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--fs-sm);"><span class="gm-dot" style="background: ' + dotColor + '; width: 8px; height: 8px; border-radius: 50%;"></span> ' + statusText + '</span>' +
+                            '<span class="gm-dim" style="font-size: var(--fs-sm); color: var(--text-muted);">' + esc(subText) + '</span>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -914,7 +914,7 @@
                     var formattedPower = powerVal > 0 ? window.GM.formatPower(powerVal) : '';
 
                     var powerBadge = powerVal > 0
-                        ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-left:0.25rem;"><span style="font-size:0.75rem;">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
+                        ? '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-left:0.25rem;"><span style="font-size: var(--fs-sm);">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
                         : '';
 
                     var btns =
@@ -926,8 +926,8 @@
                     html +=
                         '<div class="sf-member-row sf-member-' + cat + '" style="border-left: 3px solid ' + (cat === 'excellent' ? 'var(--success)' : cat === 'good' ? '#60a5fa' : cat === 'average' ? '#fb923c' : cat === 'poor' ? 'var(--error)' : 'var(--text-muted)') + ';">' +
                             '<div class="sf-member-info" style="display: flex; align-items: center; gap: 0.4rem; min-width: 0; overflow: hidden; flex: 1;">' +
-                                '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">' + rateText + '</span>' +
-                                '<span class="sf-pseudo" title="' + esc(tooltipText) + '" style="margin-left: 0.2rem; font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(pseudo) + '</span>' +
+                                '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: var(--fs-xs); padding: 0.15rem 0.45rem;">' + rateText + '</span>' +
+                                '<span class="sf-pseudo" title="' + esc(tooltipText) + '" style="margin-left: 0.2rem; font-size: var(--fs-base); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(pseudo) + '</span>' +
                                 powerBadge +
                                 stats +
                             '</div>' +
@@ -1040,7 +1040,7 @@
             var iconClass = isCommander ? 'ph-fill ph-star' : 'ph ph-star';
             var starColor = isCommander ? 'color: #eab308; cursor: pointer;' : 'color: var(--fg-dim); cursor: pointer;';
             cmdBtn = '<button class="sf-commander-btn" data-pseudo="' + esc(pseudo) + '" title="Toggle Commander" style="background: none; border: none; padding: 0.2rem; margin-right: 0.25rem;' + starColor + '">' +
-                '<i class="' + iconClass + '" style="font-size: 1.1rem;"></i>' +
+                '<i class="' + iconClass + '" style="font-size: var(--fs-xl);"></i>' +
             '</button>';
         }
 
@@ -1050,14 +1050,14 @@
         var pMeta = window.GM.getPowerTierMeta(pTier);
         var formattedPower = powerVal > 0 ? window.GM.formatPower(powerVal) : '';
         var powerBadge = powerVal > 0
-            ? '<span class="gm-chip" style="font-size:0.68rem; padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-right: 0.25rem;"><span style="font-size:0.75rem;">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
+            ? '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-right: 0.25rem;"><span style="font-size: var(--fs-sm);">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
             : '';
 
-        var rowStyle = 'display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem; border-radius: 6px; background: rgba(0,0,0,0.15); border: 1px solid transparent; gap: 0.4rem; font-size: 0.85rem;';
+        var rowStyle = 'display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem; border-radius: 6px; background: rgba(0,0,0,0.15); border: 1px solid transparent; gap: 0.4rem; font-size: var(--fs-base);';
 
         return '<div class="sf-assigned-row" style="' + rowStyle + '">' +
-            '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; margin-right: 0.25rem;">' + rateText + '</span>' +
-            '<span class="sf-pseudo" title="' + esc(tooltipText) + '" style="font-weight: 500; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.25rem;">' + 
+            '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: var(--fs-xs); padding: 0.1rem 0.35rem; margin-right: 0.25rem;">' + rateText + '</span>' +
+            '<span class="sf-pseudo" title="' + esc(tooltipText) + '" style="font-weight: 500; font-size: var(--fs-base); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.25rem;">' + 
                 esc(pseudo) +
             '</span>' +
             powerBadge +
@@ -1079,9 +1079,9 @@
                 '<div class="event-stats" style="margin-bottom: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">' +
                     '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
                     '<span class="stat-chip success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
-                    '<button type="button" class="gm-btn gm-btn-sm sf-all-present-btn" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> ' + t('sf_all_present') + '</button>' +
-                    '<button type="button" class="gm-btn gm-btn-sm sf-all-absent-btn" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;"><i class="ph ph-square"></i> ' + t('sf_all_absent') + '</button>' +
-                    '<span class="sf-saved-flash" style="opacity:0; transition: opacity 0.3s; font-size:0.78rem; color:var(--success);"></span>' +
+                    '<button type="button" class="gm-btn gm-btn-sm sf-all-present-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> ' + t('sf_all_present') + '</button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm sf-all-absent-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-square"></i> ' + t('sf_all_absent') + '</button>' +
+                    '<span class="sf-saved-flash" style="opacity:0; transition: opacity 0.3s; font-size: var(--fs-sm); color:var(--success);"></span>' +
                 '</div>' +
                 '<div class="participants-table-wrap"><table class="participants-table"><thead><tr>' +
                     '<th>' + t('col_member') + '</th>' +
@@ -1115,8 +1115,8 @@
             html +=
                 '<tr class="' + rowClass + '">' +
                     '<td class="pseudo-cell" style="display: flex; align-items: center; gap: 0.5rem;">' +
-                        '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: 0.7rem; padding: 0.1rem 0.35rem;">' + rateText + '</span>' +
-                        '<strong style="font-size: 0.88rem;">' + esc(p.pseudo) + '</strong>' +
+                        '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: var(--fs-xs); padding: 0.1rem 0.35rem;">' + rateText + '</span>' +
+                        '<strong style="font-size: var(--fs-base);">' + esc(p.pseudo) + '</strong>' +
                     '</td>' +
                     '<td><span class="squad-chip ' + (assignment ? assignment.squad : '') + '">' + squadLbl + '</span></td>' +
                     '<td class="check-cell">' +

@@ -203,7 +203,7 @@
                     '</div>' +
                 '</header>' +
                 '<div class="gm-section-head" style="margin-bottom: 0.75rem; align-items: center;">' +
-                    '<h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;"><i class="ph ph-clock"></i> Clocks</h3>' +
+                    '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;"><i class="ph ph-clock"></i> Clocks</h3>' +
                     '<button class="gm-mini-btn" id="gm-manage-clocks-btn"><i class="ph ph-gear"></i> ' + t('manage_clocks') + '</button>' +
                 '</div>' +
                 '<div class="gm-overview-clocks" id="gm-overview-clocks" style="margin-bottom: 2rem;"></div>' +
@@ -398,7 +398,7 @@
                 '<div class="gm-timeline-item">' +
                     '<div class="gm-timeline-time-col">' +
                         '<div>' + esc(timeStr) + '</div>' +
-                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7;">UTC</div>' +
+                        '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
                     '</div>' +
                     '<div class="gm-timeline-line-col">' +
                         '<div class="gm-timeline-dot"></div>' +
@@ -518,7 +518,7 @@
                 '<div class="gm-timeline-item">' +
                     '<div class="gm-timeline-time-col">' +
                         '<div>' + esc(timeStr) + '</div>' +
-                        '<div style="font-size:0.7rem; font-weight:500; opacity:0.7;">UTC</div>' +
+                        '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
                     '</div>' +
                     '<div class="gm-timeline-line-col">' +
                         '<div class="gm-timeline-dot"></div>' +
@@ -591,10 +591,10 @@
 
         overlay.innerHTML =
             '<div class="gm-modal-card" style="max-width: 450px; width: 95%; text-align: left; padding: 1.5rem;">' +
-                '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: 1.25rem;">' + t('modal_manage_clocks_title') + '</h3>' +
+                '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: var(--fs-xl);">' + t('modal_manage_clocks_title') + '</h3>' +
                 '<div id="gm-clocks-list-container" class="gm-col" style="gap: .6rem; max-height: 220px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 4px;"></div>' +
                 '<div style="border-top: 1px solid var(--border-soft); padding-top: 1.2rem;">' +
-                    '<h4 style="font-size: 0.85rem; font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' + t('modal_add_clock_section') + '</h4>' +
+                    '<h4 style="font-size: var(--fs-base); font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' + t('modal_add_clock_section') + '</h4>' +
                     '<div class="gm-col" style="gap: 0.6rem;">' +
                         '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' + t('modal_add_clock_name_placeholder') + '" maxlength="20">' +
                         '<div style="display: flex; gap: 0.5rem;">' +
@@ -628,7 +628,7 @@
             if (!listContainer) return;
 
             if (CLOCK_MEMBERS.length === 0) {
-                listContainer.innerHTML = '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: 1.8rem; margin-bottom: 0.4rem;"></i><div class="gm-empty-title" style="font-size: 0.85rem;">No clocks configured</div></div>';
+                listContainer.innerHTML = '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: var(--fs-3xl); margin-bottom: 0.4rem;"></i><div class="gm-empty-title" style="font-size: var(--fs-base);">No clocks configured</div></div>';
                 return;
             }
 
@@ -641,8 +641,8 @@
                         '<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">' +
                             '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '" style="flex-shrink:0;">' + esc(initials) + '</div>' +
                             '<div style="min-width: 0;">' +
-                                '<div style="font-weight: 600; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + esc(m.name) + '</div>' +
-                                '<div style="font-size: 0.72rem; color: var(--fg-dim);">' + offsetText + '</div>' +
+                                '<div style="font-weight: 600; font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + esc(m.name) + '</div>' +
+                                '<div style="font-size: var(--fs-xs); color: var(--fg-dim);">' + offsetText + '</div>' +
                             '</div>' +
                         '</div>' +
                         '<button class="gm-mini-btn gm-danger delete-clock-btn" data-index="' + idx + '" title="Delete" style="flex-shrink:0;"><i class="ph ph-trash"></i></button>' +

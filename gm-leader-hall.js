@@ -261,7 +261,7 @@
             var gTag = c.guild ? '[' + esc(c.guild) + '] ' : '';
             return '<div class="gm-mention-item ' + (isSel ? 'is-selected' : '') + '" data-index="' + idx + '" data-id="' + esc(c.id) + '">' +
                 '<div style="display:flex; align-items:center; gap:0.4rem;">' +
-                    '<span class="gm-sender-guild" style="font-size:0.75rem; font-weight:700;">' + gTag + '</span>' +
+                    '<span class="gm-sender-guild" style="font-size: var(--fs-sm); font-weight:700;">' + gTag + '</span>' +
                     '<span class="gm-mention-item-name">' + esc(c.id) + '</span>' +
                 '</div>' +
                 '<span class="gm-mention-item-server">#' + esc(sNum) + '</span>' +
@@ -1343,9 +1343,9 @@
         if (filtered.length === 0) {
             cardsHtml =
                 '<div class="gm-empty" style="padding:3rem 1rem; border:1px dashed var(--border-soft); border-radius:var(--radius-md);">' +
-                    '<i class="ph ph-scroll gm-icon" style="color:var(--primary); font-size:2.2rem;"></i>' +
+                    '<i class="ph ph-scroll gm-icon" style="color:var(--primary); font-size: var(--fs-4xl);"></i>' +
                     '<div class="gm-empty-title" style="margin-top:0.5rem;">No treaties found</div>' +
-                    '<p style="color:var(--text-muted); font-size:0.85rem; max-width:380px; margin:0.35rem auto 1rem;">Establish non-aggression pacts (N.A.P.), warfare coalitions, or mutual defense treaties with other guilds.</p>' +
+                    '<p style="color:var(--text-muted); font-size: var(--fs-base); max-width:380px; margin:0.35rem auto 1rem;">Establish non-aggression pacts (N.A.P.), warfare coalitions, or mutual defense treaties with other guilds.</p>' +
                     '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="btn-empty-propose-treaty"><i class="ph ph-pen-nib"></i> Propose a Treaty</button>' +
                 '</div>';
         } else {
@@ -1503,14 +1503,14 @@
         if (body) {
             body.innerHTML =
                 '<div class="gm-login-field">' +
-                    '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Signatory Parties</label>' +
+                    '<label style="display:block; margin-bottom:0.25rem; font-size: var(--fs-base); color:var(--text-muted);">Signatory Parties</label>' +
                     '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">' +
                         '<div style="background:rgba(255,255,255,0.04); padding:0.65rem; border-radius:var(--radius-sm); border:1px solid var(--border-soft);">' +
-                            '<div style="font-size:0.75rem; color:var(--text-muted);">Proposing Party (Party A)</div>' +
-                            '<div style="font-weight:700; color:var(--text-main); font-size:0.95rem; margin-top:2px;">[' + esc(callerGuild) + '] #' + esc(callerServer) + '</div>' +
+                            '<div style="font-size: var(--fs-sm); color:var(--text-muted);">Proposing Party (Party A)</div>' +
+                            '<div style="font-weight:700; color:var(--text-main); font-size: var(--fs-md); margin-top:2px;">[' + esc(callerGuild) + '] #' + esc(callerServer) + '</div>' +
                         '</div>' +
                         '<div>' +
-                            '<div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">Target Guild (Party B)</div>' +
+                            '<div style="font-size: var(--fs-sm); color:var(--text-muted); margin-bottom:2px;">Target Guild (Party B)</div>' +
                             '<select id="input-treaty-guild-b" class="gm-input" style="width:100%;">' +
                                 (guildOptions || '<option value="OMEGA">[OMEGA] OMEGA #1058</option>') +
                             '</select>' +
@@ -1519,7 +1519,7 @@
                 '</div>' +
                 '<div style="display:grid; grid-template-columns:1.5fr 1fr; gap:0.75rem;">' +
                     '<div class="gm-login-field">' +
-                        '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Treaty Category</label>' +
+                        '<label style="display:block; margin-bottom:0.25rem; font-size: var(--fs-base); color:var(--text-muted);">Treaty Category</label>' +
                         '<select id="input-treaty-type" class="gm-input" style="width:100%;">' +
                             '<option value="nap">🛡️ Non-Aggression Pact (N.A.P.)</option>' +
                             '<option value="mutual_defense">⚔️ Mutual Defense Alliance</option>' +
@@ -1529,7 +1529,7 @@
                         '</select>' +
                     '</div>' +
                     '<div class="gm-login-field">' +
-                        '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Validity Duration</label>' +
+                        '<label style="display:block; margin-bottom:0.25rem; font-size: var(--fs-base); color:var(--text-muted);">Validity Duration</label>' +
                         '<select id="input-treaty-expires" class="gm-input" style="width:100%;">' +
                             '<option value="30">30 Days</option>' +
                             '<option value="7">7 Days (SvS Cycle)</option>' +
@@ -1541,13 +1541,13 @@
                 '</div>' +
                 '<div class="gm-login-field">' +
                     '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">' +
-                        '<label style="font-size:0.85rem; color:var(--text-muted);">Treaty Clauses & Articles</label>' +
-                        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-xs" id="btn-fill-nap-template" style="font-size:0.75rem; color:var(--primary);"><i class="ph ph-magic-wand"></i> Insert Standard N.A.P. Clauses</button>' +
+                        '<label style="font-size: var(--fs-base); color:var(--text-muted);">Treaty Clauses & Articles</label>' +
+                        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-xs" id="btn-fill-nap-template" style="font-size: var(--fs-sm); color:var(--primary);"><i class="ph ph-magic-wand"></i> Insert Standard N.A.P. Clauses</button>' +
                     '</div>' +
-                    '<textarea id="input-treaty-terms" class="gm-input" rows="6" style="width:100%; font-family:inherit; font-size:0.85rem; line-height:1.45; resize:vertical;" placeholder="Specify the terms, non-aggression clauses, resource tile rules, SvS assistance commitments..."></textarea>' +
+                    '<textarea id="input-treaty-terms" class="gm-input" rows="6" style="width:100%; font-family:inherit; font-size: var(--fs-base); line-height:1.45; resize:vertical;" placeholder="Specify the terms, non-aggression clauses, resource tile rules, SvS assistance commitments..."></textarea>' +
                 '</div>' +
-                '<div style="background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); border-radius:var(--radius-sm); padding:0.65rem; font-size:0.78rem; color:var(--text-muted); display:flex; gap:0.5rem; align-items:center;">' +
-                    '<i class="ph ph-info" style="color:var(--primary); font-size:1.2rem; flex-shrink:0;"></i>' +
+                '<div style="background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); border-radius:var(--radius-sm); padding:0.65rem; font-size: var(--fs-sm); color:var(--text-muted); display:flex; gap:0.5rem; align-items:center;">' +
+                    '<i class="ph ph-info" style="color:var(--primary); font-size: var(--fs-xl); flex-shrink:0;"></i>' +
                     '<span>By proposing this treaty, your signature as <strong>' + esc(acc ? acc.id : 'Leader') + '</strong> for <strong>[' + esc(callerGuild) + ']</strong> will be appended automatically. The treaty will be publicly ratified as soon as the leader of Party B signs it.</span>' +
                 '</div>';
 
@@ -1673,7 +1673,7 @@
                         '<div>' +
                             '<div style="display:flex; align-items:center; gap:0.5rem;">' +
                                 '<h1 class="gm-page-title" data-i18n="leader_hall_title">' + esc(t('leader_hall_title') || 'Guild Leader Hall') + '</h1>' +
-                                '<span class="gm-chip" style="background:rgba(52,211,153,0.12); color:#34d399; border:1px solid rgba(52,211,153,0.3); font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:9999px;">' +
+                                '<span class="gm-chip" style="background:rgba(52,211,153,0.12); color:#34d399; border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm); font-weight:700; padding:2px 8px; border-radius:9999px;">' +
                                     '<i class="ph ph-shield-check"></i> Signal Protocol E2EE' +
                                 '</span>' +
                             '</div>' +
@@ -1996,7 +1996,7 @@
         var titleHtml = isGroup ?
             '<h2 class="gm-chat-title" id="active-chat-title" style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer;" title="Click to rename group">' +
                 '<span>' + esc(title) + '</span>' +
-                '<i class="ph ph-pencil-simple" style="font-size:0.85rem; color:var(--text-muted); opacity:0.75;"></i>' +
+                '<i class="ph ph-pencil-simple" style="font-size: var(--fs-base); color:var(--text-muted); opacity:0.75;"></i>' +
             '</h2>' :
             '<h2 class="gm-chat-title">' + esc(title) + '</h2>';
 
@@ -2115,14 +2115,14 @@
             var sNum = resolveLeaderServer(m.account_id, m.guild, m.server_number);
 
             var badgeRole = isThisCreator ?
-                '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; font-size:0.72rem; padding:1px 6px;">👑 Creator</span>' :
-                '<span class="gm-chip" style="font-size:0.72rem; padding:1px 6px;">Member</span>';
+                '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; font-size: var(--fs-xs); padding:1px 6px;">👑 Creator</span>' :
+                '<span class="gm-chip" style="font-size: var(--fs-xs); padding:1px 6px;">Member</span>';
 
             return '<div class="gm-direct-leader-row" style="padding:0.45rem 0.5rem; background:rgba(255,255,255,0.02); margin-bottom:4px; border-radius:var(--radius-sm);">' +
                 '<div style="display:flex; align-items:center; gap:0.5rem;">' +
                     '<span class="gm-picker-guild">[' + esc(m.guild || 'FGF') + ']</span>' +
                     '<span style="font-weight:700; color:var(--text-main);">' + esc(m.account_id) + '</span>' +
-                    '<span class="gm-picker-server" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">#' + esc(sNum) + '</span>' +
+                    '<span class="gm-picker-server" style="font-size: var(--fs-sm); color:var(--text-muted); font-weight:500;">#' + esc(sNum) + '</span>' +
                     badgeRole +
                 '</div>' +
                 '<div>' +
@@ -2141,7 +2141,7 @@
         if (body) {
             body.innerHTML =
                 '<div style="background:rgba(56,189,248,0.04); border:1px solid rgba(56,189,248,0.15); border-radius:var(--radius-md); padding:0.75rem;">' +
-                    '<label style="display:block; font-size:0.8rem; font-weight:700; color:var(--text-main); margin-bottom:0.35rem;">Add Leader to Group</label>' +
+                    '<label style="display:block; font-size: var(--fs-sm); font-weight:700; color:var(--text-main); margin-bottom:0.35rem;">Add Leader to Group</label>' +
                     (candidateLeaders.length > 0 ?
                         '<div style="display:flex; gap:0.5rem;">' +
                             '<select id="select-add-member-id" class="gm-input" style="flex:1;">' +
@@ -2151,11 +2151,11 @@
                                 '<i class="ph ph-user-plus"></i> Add' +
                             '</button>' +
                         '</div>' :
-                        '<div style="font-size:0.8rem; color:var(--text-muted);">All eligible leaders are already in this group.</div>'
+                        '<div style="font-size: var(--fs-sm); color:var(--text-muted);">All eligible leaders are already in this group.</div>'
                     ) +
                 '</div>' +
                 '<div>' +
-                    '<div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-bottom:0.4rem;">Current Participants (' + members.length + ')</div>' +
+                    '<div style="font-size: var(--fs-sm); font-weight:700; color:var(--text-muted); margin-bottom:0.4rem;">Current Participants (' + members.length + ')</div>' +
                     '<div style="max-height:240px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.35rem;">' +
                         (membersListHtml || '<div class="gm-empty" style="padding:1rem;">No members found</div>') +
                     '</div>' +
@@ -2402,9 +2402,9 @@
             if (messages.length === 0) {
                 container.innerHTML =
                     '<div class="gm-empty" style="padding:3rem 1rem;">' +
-                        '<i class="ph ph-shield-check gm-icon" style="color:var(--primary, #38bdf8); font-size:2rem;"></i>' +
+                        '<i class="ph ph-shield-check gm-icon" style="color:var(--primary, #38bdf8); font-size: var(--fs-4xl);"></i>' +
                         '<div class="gm-empty-title" style="margin-top:0.5rem;">' + (currentConversation.type === 'global' ? 'Welcome to ' + currentConversation.title : 'End-to-End Encrypted Session Established') + '</div>' +
-                        '<p style="color:var(--text-muted); font-size:0.85rem; max-width:400px; margin:0.5rem auto;">' +
+                        '<p style="color:var(--text-muted); font-size: var(--fs-base); max-width:400px; margin:0.5rem auto;">' +
                             (currentConversation.type === 'global' ? currentConversation.subtitle : 'Messages in this private discussion are protected by the Signal Protocol.') +
                         '</p>' +
                     '</div>';
@@ -2487,7 +2487,7 @@
                             '<div class="gm-message-body">' + formattedBody + '</div>' +
                             '<div class="gm-message-meta">' +
                                 '<span>' + esc(timeStr) + '</span>' +
-                                '<i class="ph ph-lock-key" style="font-size:0.75rem; margin-left:4px;" title="Signal E2EE Encrypted"></i>' +
+                                '<i class="ph ph-lock-key" style="font-size: var(--fs-sm); margin-left:4px;" title="Signal E2EE Encrypted"></i>' +
                             '</div>' +
                             reactionsHtml +
                         '</div>' +
@@ -2637,7 +2637,7 @@
                 '<div style="display:flex; align-items:center; gap:0.5rem;">' +
                     '<span class="gm-chip" style="font-weight:700;">[' + esc(a.guild || 'FGF') + ']</span>' +
                     '<span style="font-weight:600; color:var(--text-main);">' + esc(a.id) + '</span>' +
-                    '<span class="gm-sender-server" style="font-size:0.8rem; font-weight:500;">#' + esc(sNum) + '</span>' +
+                    '<span class="gm-sender-server" style="font-size: var(--fs-sm); font-weight:500;">#' + esc(sNum) + '</span>' +
                 '</div>' +
                 '<button type="button" class="gm-btn gm-btn-primary gm-btn-xs btn-start-direct-chat" data-account-id="' + esc(a.id) + '">' +
                     '<i class="ph ph-chat-circle"></i> Chat' +
@@ -2651,7 +2651,7 @@
                 '<input type="checkbox" name="leader_member" value="' + esc(a.id) + '" data-role="' + esc(a.role) + '">' +
                 '<span class="gm-picker-guild">[' + esc(a.guild || 'FGF') + ']</span>' +
                 '<span class="gm-picker-name" style="font-weight:600;">' + esc(a.id) + '</span>' +
-                '<span class="gm-picker-server" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">#' + esc(sNum) + '</span>' +
+                '<span class="gm-picker-server" style="font-size: var(--fs-sm); color:var(--text-muted); font-weight:500;">#' + esc(sNum) + '</span>' +
             '</label>';
         }).join('');
 
@@ -2676,7 +2676,7 @@
                 '</div>' +
                 '<div id="panel-create-group" class="' + (preselectType !== 'group' && preselectType !== 'r5' ? 'hidden' : '') + '">' +
                     '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
-                        '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Group Title</label>' +
+                        '<label style="display:block; margin-bottom:0.25rem; font-size: var(--fs-base); color:var(--text-muted);">Group Title</label>' +
                         '<input type="text" id="input-group-title" class="gm-input" placeholder="' + (preselectType === 'r5' ? 'e.g. S1058 Executive R5 Summit' : 'e.g. SvS Northern Sector Coalition') + '" style="width:100%;">' +
                     '</div>' +
                     '<div class="gm-login-field" style="margin-bottom:0.75rem;">' +
@@ -2686,7 +2686,7 @@
                         '</label>' +
                     '</div>' +
                     '<div class="gm-login-field">' +
-                        '<label style="display:block; margin-bottom:0.25rem; font-size:0.85rem; color:var(--text-muted);">Select Participants</label>' +
+                        '<label style="display:block; margin-bottom:0.25rem; font-size: var(--fs-base); color:var(--text-muted);">Select Participants</label>' +
                         '<div class="gm-leader-picker-list" style="max-height:180px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.35rem;">' +
                             (groupLeadersHtml || '<div class="gm-empty" style="padding:1rem;">No other leaders found</div>') +
                         '</div>' +
@@ -2853,7 +2853,7 @@
         if (!isLeader()) {
             var container = document.getElementById('tab-leader-hall');
             if (container) {
-                container.innerHTML = '<div class="gm-empty" style="padding:4rem 1rem;"><i class="ph ph-shield-slash gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Guild Leaders (R5/R4) Only</div><p style="color:var(--text-muted); font-size:0.9rem;">The Guild Leader Hall is strictly reserved for Guild Masters and Officers.</p></div>';
+                container.innerHTML = '<div class="gm-empty" style="padding:4rem 1rem;"><i class="ph ph-shield-slash gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Guild Leaders (R5/R4) Only</div><p style="color:var(--text-muted); font-size: var(--fs-md);">The Guild Leader Hall is strictly reserved for Guild Masters and Officers.</p></div>';
             }
             return;
         }

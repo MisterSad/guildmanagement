@@ -425,8 +425,8 @@
         var html = '<div class="gm-tabs-pill" style="margin-bottom:1.25rem; display:flex; gap:.5rem; flex-wrap:wrap;">' +
             views.map(function (v) {
                 var isActive = (state.primaryView === v.key);
-                return '<button class="gm-tab-pill' + (isActive ? ' gm-active' : '') + '" data-gm-view="' + v.key + '" style="padding:.65rem 1.15rem; font-size:.9rem; font-weight:700;">' +
-                    '<i class="ph ' + v.icon + '" style="font-size:1.15rem;"></i> ' + esc(v.label) + '</button>';
+                return '<button class="gm-tab-pill' + (isActive ? ' gm-active' : '') + '" data-gm-view="' + v.key + '" style="padding:.65rem 1.15rem; font-size: var(--fs-md); font-weight:700;">' +
+                    '<i class="ph ' + v.icon + '" style="font-size: var(--fs-xl);"></i> ' + esc(v.label) + '</button>';
             }).join('') +
             // Invisible test button proxies
             testAliases.map(function (alias) {
@@ -651,12 +651,12 @@
                 var pctRate = d.rate;
                 var barColor = pctRate >= 70 ? '#34d399' : (pctRate >= 40 ? '#a78bfa' : '#f87171');
                 return '<div class="gm-kpi-row" style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">' +
-                    '<span class="gm-kpi-label" style="min-width:90px; font-weight:600; font-size:0.83rem; color:var(--fg);">' + esc(weekLabel) + '</span>' +
+                    '<span class="gm-kpi-label" style="min-width:90px; font-weight:600; font-size: var(--fs-sm); color:var(--fg);">' + esc(weekLabel) + '</span>' +
                     '<div class="gm-kpi-bar-track" style="flex:1; height:22px; background:var(--bg-3); border-radius:6px; overflow:hidden; position:relative;">' +
                     '<div class="gm-kpi-bar" style="width:' + pctRate + '%; height:100%; background:' + barColor + '; border-radius:6px; transition:width .4s ease;"></div>' +
                     '</div>' +
-                    '<span class="gm-kpi-value" style="min-width:120px; text-align:right; font-weight:700; font-size:0.85rem; font-family:var(--font-display); color:var(--fg);">' +
-                        pctRate + '% <span style="font-size:0.75rem; font-weight:500; color:var(--fg-dim);">(' + d.present + '/' + d.memberCount + ')</span>' +
+                    '<span class="gm-kpi-value" style="min-width:120px; text-align:right; font-weight:700; font-size: var(--fs-base); font-family:var(--font-display); color:var(--fg);">' +
+                        pctRate + '% <span style="font-size: var(--fs-sm); font-weight:500; color:var(--fg-dim);">(' + d.present + '/' + d.memberCount + ')</span>' +
                     '</span>' +
                 '</div>';
             }).join('');
@@ -677,9 +677,9 @@
             // Inactive HTML Cards
             var inactiveHtml = inactive.length === 0
                 ? '<div class="gm-empty" style="padding:2.5rem 1.5rem; text-align:center;">' +
-                    '<i class="ph-duotone ph-check-circle gm-icon" style="font-size:2.4rem; color:var(--accent-mint); margin-bottom:.5rem; display:block;"></i>' +
-                    '<div class="gm-empty-title" style="font-size:1.1rem; font-weight:700; color:var(--fg);">Every member participated in the last 2 weeks</div>' +
-                    '<div style="font-size:0.85rem; color:var(--fg-dim); margin-top:0.25rem;">No inactive members detected on the roster.</div>' +
+                    '<i class="ph-duotone ph-check-circle gm-icon" style="font-size: var(--fs-4xl); color:var(--accent-mint); margin-bottom:.5rem; display:block;"></i>' +
+                    '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg);">Every member participated in the last 2 weeks</div>' +
+                    '<div style="font-size: var(--fs-base); color:var(--fg-dim); margin-top:0.25rem;">No inactive members detected on the roster.</div>' +
                   '</div>'
                 : '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:0.85rem; margin-top:0.5rem;">' +
                     inactive.slice(0, 12).map(function (m) {
@@ -689,23 +689,23 @@
 
                         return '<div style="background:var(--bg-2); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.85rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">' +
                             '<div style="display:flex; align-items:center; gap:0.85rem; min-width:0; flex:1;">' +
-                                '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size:.95rem; font-weight:700; background:oklch(0.25 0.08 20); color:#f87171; flex-shrink:0;">' + esc(initial) + '</div>' +
+                                '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size: var(--fs-md); font-weight:700; background:oklch(0.25 0.08 20); color:#f87171; flex-shrink:0;">' + esc(initial) + '</div>' +
                                 '<div style="min-width:0; flex:1;">' +
-                                    '<div style="font-weight:700; color:var(--fg); font-size:0.95rem; word-break:break-word;">' + esc(m.pseudo) + '</div>' +
-                                    '<div style="font-size:0.78rem; color:var(--fg-dim); display:flex; align-items:center; gap:0.35rem; margin-top:2px;">' +
+                                    '<div style="font-weight:700; color:var(--fg); font-size: var(--fs-md); word-break:break-word;">' + esc(m.pseudo) + '</div>' +
+                                    '<div style="font-size: var(--fs-sm); color:var(--fg-dim); display:flex; align-items:center; gap:0.35rem; margin-top:2px;">' +
                                         '<i class="ph ph-lightning" style="color:var(--accent-amber);"></i> ' + esc(pwr) +
                                     '</div>' +
                                 '</div>' +
                             '</div>' +
                             '<div style="flex-shrink:0;">' +
-                                '<span style="font-size:0.75rem; font-weight:600; padding:3px 8px; border-radius:99px; background:oklch(0.25 0.08 20); color:#f87171; border:1px solid oklch(0.45 0.15 20 / 0.4); display:inline-flex; align-items:center; gap:0.35rem; white-space:nowrap;">' +
+                                '<span style="font-size: var(--fs-sm); font-weight:600; padding:3px 8px; border-radius:99px; background:oklch(0.25 0.08 20); color:#f87171; border:1px solid oklch(0.45 0.15 20 / 0.4); display:inline-flex; align-items:center; gap:0.35rem; white-space:nowrap;">' +
                                     '<i class="ph ph-warning-circle"></i> ' + esc(seenText) +
                                 '</span>' +
                             '</div>' +
                         '</div>';
                     }).join('') +
                   '</div>' +
-                  (inactive.length > 12 ? '<div style="margin-top:0.75rem; text-align:center; font-size:0.8rem; color:var(--fg-dim); font-weight:600;">+ ' + (inactive.length - 12) + ' more inactive members</div>' : '');
+                  (inactive.length > 12 ? '<div style="margin-top:0.75rem; text-align:center; font-size: var(--fs-sm); color:var(--fg-dim); font-weight:600;">+ ' + (inactive.length - 12) + ' more inactive members</div>' : '');
 
             // Operations List
             var pendingHtml = pending.length === 0
@@ -754,7 +754,7 @@
                             '<div class="gm-kpi-inline" style="margin-bottom:.85rem;">' +
                                 kpiMini('Members', members.length) + kpiMini('With power', activeWithPower.length) + kpiMini('No power (0)', members.length - activeWithPower.length) +
                             '</div>' +
-                            '<div style="font-weight:700; font-size:.8rem; margin-bottom:.35rem; color:var(--fg-dim);">Role structure</div>' +
+                            '<div style="font-weight:700; font-size: var(--fs-sm); margin-bottom:.35rem; color:var(--fg-dim);">Role structure</div>' +
                             roleBars +
                         '</div>' +
                     '</div>' +
@@ -763,9 +763,9 @@
                 // Row 4: Pending Operations
                 '<div class="gm-kpi-card" style="margin-top:.85rem;"><div class="gm-kpi-card-title"><i class="ph ph-hourglass"></i> Pending Operations</div>' +
                     '<div class="gm-kpi-card-body">' +
-                        '<div style="font-weight:700; font-size:.8rem; margin-bottom:.35rem; color:var(--fg-dim);">Pending score approvals (' + pending.length + ')</div>' +
+                        '<div style="font-weight:700; font-size: var(--fs-sm); margin-bottom:.35rem; color:var(--fg-dim);">Pending score approvals (' + pending.length + ')</div>' +
                         pendingHtml +
-                        '<div style="font-weight:700; font-size:.8rem; margin-top:.75rem; margin-bottom:.35rem; color:var(--fg-dim);">Pending transfer requests (' + pendingTransfers.length + ')</div>' +
+                        '<div style="font-weight:700; font-size: var(--fs-sm); margin-top:.75rem; margin-bottom:.35rem; color:var(--fg-dim);">Pending transfer requests (' + pendingTransfers.length + ')</div>' +
                         transHtml +
                     '</div>' +
                 '</div>';
@@ -1237,8 +1237,8 @@
             if (!state.leaderboardData || !state.leaderboardData.length) {
                 container.innerHTML = tabsHtml +
                     '<div class="gm-empty" style="padding:3.5rem 1.5rem; text-align:center; background:var(--bg-1); border-radius:var(--radius-xl); border:1px dashed var(--border-soft); margin-top:1rem;">' +
-                        '<i class="ph-duotone ph-chart-bar gm-icon" style="font-size:2.8rem; color:var(--fg-dim); margin-bottom:.5rem; display:block;"></i>' +
-                        '<div class="gm-empty-title" style="font-size:1.15rem; font-weight:700; color:var(--fg);">' + (t('stats_no_data') || 'No statistics available for this selection.') + '</div>' +
+                        '<i class="ph-duotone ph-chart-bar gm-icon" style="font-size: var(--fs-5xl); color:var(--fg-dim); margin-bottom:.5rem; display:block;"></i>' +
+                        '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg);">' + (t('stats_no_data') || 'No statistics available for this selection.') + '</div>' +
                     '</div>';
                 wireModeTabs(container);
                 return;
@@ -1328,13 +1328,13 @@
                 var rowCells = '<td class="gm-center" style="font-weight:700;">' + rankBadge + '</td>' +
                     '<td data-label="Player">' +
                         '<div class="gm-member-id" style="display:flex; align-items:center; gap:.75rem;">' +
-                            '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size:1rem; font-weight:700;">' + esc(initial) + '</div>' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size: var(--fs-lg); font-weight:700;">' + esc(initial) + '</div>' +
                             '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' + esc(m.pseudo) + '</strong>' +
                         '</div>' +
                     '</td>';
 
                 var lateExcusedCell = !showLateExcused ? '' : (
-                    '<td data-label="Late/Excused" class="gm-center" style="font-size:.8rem; color:var(--fg-dim);">' +
+                    '<td data-label="Late/Excused" class="gm-center" style="font-size: var(--fs-sm); color:var(--fg-dim);">' +
                     (m.late_count > 0 ? ('<span style="color:#fbbf24;">⏰ ' + m.late_count + '</span>') : '') +
                     (m.late_count > 0 && m.excused_count > 0 ? ' · ' : '') +
                     (m.excused_count > 0 ? ('<span>✅ ' + m.excused_count + ' exc.</span>') : '') +
@@ -1349,10 +1349,10 @@
                     var squadBreakdown = m.assigned_count > 0
                         ? (m.assigned_count + ' squad' + (m.assigned_count > 1 ? 's' : '') +
                            (m.commander_count > 0 ? ' <span title="Commander">👑</span>' : '') +
-                           '<div style="font-size:.75rem; font-weight:400; color:var(--fg-dim);">' +
+                           '<div style="font-size: var(--fs-sm); font-weight:400; color:var(--fg-dim);">' +
                            'S1: ' + m.squad1_count + ' · S2: ' + m.squad2_count +
                            '</div>' +
-                           '<div style="font-size:.75rem; font-weight:400; color:var(--fg-dim);">' +
+                           '<div style="font-size: var(--fs-sm); font-weight:400; color:var(--fg-dim);">' +
                            m.participant_count + ' titulaire' + (m.participant_count !== 1 ? 's' : '') +
                            ' · ' + m.reserve_count + ' réserve' + (m.reserve_count !== 1 ? 's' : '') + '</div>')
                         : '-';
@@ -1362,27 +1362,27 @@
                         '<td data-label="Subs" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.sub_count > 0 ? ('<span style="color:#fbbf24; font-weight:700;">🔁 ' + m.sub_count + '</span>') : '-') + '</td>' +
                         '<td data-label="Rate" class="gm-center" style="font-family:var(--font-display);">' + rateBadge + '</td>' +
                         lateExcusedCell +
-                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else if (isArmsRaceMode) {
                     rowCells +=
                         '<td data-label="Stage A" class="gm-center">' + (m.ara_count > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.ara_count + '</span>') : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
                         '<td data-label="Stage B" class="gm-center">' + (m.arb_count > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.arb_count + '</span>') : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
                         '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
                         lateExcusedCell +
-                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else if (isBattleEventMode) {
                     rowCells +=
                         '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
                         '<td data-label="Day 1-5" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
                         '<td data-label="Day 6" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' +
                         lateExcusedCell +
-                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 } else {
                     rowCells +=
                         '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
                         (showGloryCol ? '<td data-label="Glory Δ" class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '-') + '</td>' : '') +
                         lateExcusedCell +
-                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size:1.05rem;"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+                        '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
                 }
 
                 var rowUid = (state.uidMap && state.uidMap[m.pseudo]) || '';

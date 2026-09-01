@@ -186,7 +186,7 @@
 
         var cls = pct > 0 ? 'gm-chip-success' : pct < 0 ? 'gm-chip-danger' : '';
         var sign = pct > 0 ? '+' : '';
-        return '<span class="gm-chip ' + cls + '" style="font-family: var(--font-display); font-weight: 700; font-size: 0.82rem; padding: 2px 10px; border-radius: var(--radius-pill);">' + sign + pct.toFixed(1) + '%</span>';
+        return '<span class="gm-chip ' + cls + '" style="font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); padding: 2px 10px; border-radius: var(--radius-pill);">' + sign + pct.toFixed(1) + '%</span>';
     }
 
     function updateTotal(area) {

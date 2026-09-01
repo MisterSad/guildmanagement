@@ -104,7 +104,7 @@
             EVENT_TABS.forEach(function (e) {
                 var active = e.id === ownerId;
                 var m3Icon = e.m3Icon || 'swords';
-                var iconStyle = active ? ('style="color:' + e.colorVar + '; font-size:1.15rem; margin-right:0.35rem; vertical-align:middle;"') : 'style="font-size:1.15rem; margin-right:0.35rem; vertical-align:middle;"';
+                var iconStyle = active ? ('style="color:' + e.colorVar + '; font-size: var(--fs-xl); margin-right:0.35rem; vertical-align:middle;"') : 'style="font-size: var(--fs-xl); margin-right:0.35rem; vertical-align:middle;"';
                 html += '<button class="gm-tab-pill' + (active ? ' gm-active' : '') + '" data-gm-event-tab="' + e.id + '">' +
                     '<span class="material-symbols-rounded gm-icon" ' + iconStyle + '>' + m3Icon + '</span> ' + e.label +
                 '</button>';
@@ -470,13 +470,13 @@
             footerItems.map(function (item) {
                 var donateCls = (item.id === 'subscription') ? ' gm-donate-nav-item' : '';
                 return '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug' + donateCls + '" data-gm-nav-item="' + item.id + '">' +
-                    '<span class="material-symbols-rounded" style="font-size:1.1rem;">' + (item.m3Icon || 'circle') + '</span>' +
+                    '<span class="material-symbols-rounded" style="font-size: var(--fs-xl);">' + (item.m3Icon || 'circle') + '</span>' +
                     '<span>' + t(item.labelKey) + '</span>' +
                 '</button>';
             }).join('') +
             (canReportBug
                 ? '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-report-bug>' +
-                    '<span class="material-symbols-rounded" style="font-size:1.1rem;">bug_report</span>' +
+                    '<span class="material-symbols-rounded" style="font-size: var(--fs-xl);">bug_report</span>' +
                     '<span>' + t('ticket_report_bug') + '</span>' +
                   '</button>'
                 : '') +
@@ -567,8 +567,8 @@
         }).join('');
 
         var selectStyle = (isSuperAdmin || (isServerAdmin && guilds.length > 1))
-            ? 'padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
-            : 'display: none; padding: 0.35rem 0.8rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
+            ? 'padding: 0.35rem 0.8rem; font-size: var(--fs-base); font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
+            : 'display: none; padding: 0.35rem 0.8rem; font-size: var(--fs-base); font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
 
         var canReportBug = window.GM.isGuildAdmin ? window.GM.isGuildAdmin() : false;
 
@@ -579,8 +579,8 @@
                 '</select>' +
                 (canReportBug
                     ? '<button class="gm-btn gm-btn-ghost gm-btn-sm" data-gm-report-bug title="' + t('ticket_report_bug') + '" style="gap:0.3rem;">' +
-                        '<span class="material-symbols-rounded" style="font-size:1.05rem;">bug_report</span>' +
-                        '<span class="gm-report-bug-label" style="font-size:0.78rem; font-weight:600;">' + t('ticket_report_bug') + '</span>' +
+                        '<span class="material-symbols-rounded" style="font-size: var(--fs-lg);">bug_report</span>' +
+                        '<span class="gm-report-bug-label" style="font-size: var(--fs-sm); font-weight:600;">' + t('ticket_report_bug') + '</span>' +
                       '</button>'
                     : '') +
                 '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + t('nav_logout_title') + '">' +
@@ -636,8 +636,8 @@
             '<div class="gm-modal-card" style="max-width:580px; width:94%; max-height:90vh; overflow-y:auto; text-align:left;">' +
                 '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.9rem; position:sticky; top:0; background:var(--bg-card); z-index:2; padding-bottom:0.4rem; border-bottom:1px solid var(--border-soft);">' +
                     '<div style="display:flex; align-items:center; gap:0.55rem;">' +
-                        '<span class="material-symbols-rounded" style="color:var(--accent); font-size:1.3rem;">bug_report</span>' +
-                        '<strong style="font-size:1.1rem;">' + t_('ticket_report_bug') + '</strong>' +
+                        '<span class="material-symbols-rounded" style="color:var(--accent); font-size: var(--fs-2xl);">bug_report</span>' +
+                        '<strong style="font-size: var(--fs-xl);">' + t_('ticket_report_bug') + '</strong>' +
                     '</div>' +
                     '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm bug-report-close" title="Close"><span class="material-symbols-rounded">close</span></button>' +
                 '</div>' +
@@ -684,29 +684,29 @@
                     '<div class="gm-form-group">' +
                         '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.25rem;">' +
                             '<label class="gm-label" style="margin:0;">' + esc(t_('ticket_screenshots_title')) + '</label>' +
-                            '<span style="font-size:0.72rem; color:var(--text-muted);"><span id="ticket-screenshots-count">0</span>/3</span>' +
+                            '<span style="font-size: var(--fs-xs); color:var(--text-muted);"><span id="ticket-screenshots-count">0</span>/3</span>' +
                         '</div>' +
                         '<div id="ticket-dropzone" style="border:1px dashed var(--border-soft); border-radius:var(--radius-sm); padding:0.75rem; text-align:center; cursor:pointer; background:rgba(255,255,255,0.02); transition:border-color 0.2s, background 0.2s;">' +
                             '<input type="file" id="ticket-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display:none;">' +
-                            '<div style="display:flex; align-items:center; justify-content:center; gap:0.4rem; color:var(--text-muted); font-size:0.78rem;">' +
-                                '<span class="material-symbols-rounded" style="font-size:1.15rem; color:var(--accent);">add_photo_alternate</span>' +
+                            '<div style="display:flex; align-items:center; justify-content:center; gap:0.4rem; color:var(--text-muted); font-size: var(--fs-sm);">' +
+                                '<span class="material-symbols-rounded" style="font-size: var(--fs-xl); color:var(--accent);">add_photo_alternate</span>' +
                                 '<span>' + esc(t_('ticket_screenshots_hint')) + '</span>' +
                             '</div>' +
                         '</div>' +
                         '<div id="ticket-screenshots-preview" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;"></div>' +
                     '</div>' +
-                    '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:var(--radius-sm); padding:0.55rem 0.75rem; font-size:0.78rem;">' +
-                        '<div style="font-weight:700; color:var(--text-muted); text-transform:uppercase; font-size:0.68rem; letter-spacing:0.05em; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.3rem;">' +
-                            '<span class="material-symbols-rounded" style="font-size:0.95rem;">devices</span> ' + esc(t_('ticket_env_title')) +
+                    '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:var(--radius-sm); padding:0.55rem 0.75rem; font-size: var(--fs-sm);">' +
+                        '<div style="font-weight:700; color:var(--text-muted); text-transform:uppercase; font-size: var(--fs-xs); letter-spacing:0.05em; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.3rem;">' +
+                            '<span class="material-symbols-rounded" style="font-size: var(--fs-md);">devices</span> ' + esc(t_('ticket_env_title')) +
                         '</div>' +
                         '<div style="display:flex; flex-wrap:wrap; gap:0.4rem;">' +
-                            '<span class="gm-chip" style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">FGF: <strong style="color:var(--fg);">' + esc(env.appVersion) + '</strong></span>' +
-                            '<span class="gm-chip" style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">OS: <strong style="color:var(--fg);">' + esc(env.os) + '</strong></span>' +
-                            '<span class="gm-chip" style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">Browser: <strong style="color:var(--fg);">' + esc(env.browser) + '</strong></span>' +
+                            '<span class="gm-chip" style="font-size: var(--fs-xs); padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">FGF: <strong style="color:var(--fg);">' + esc(env.appVersion) + '</strong></span>' +
+                            '<span class="gm-chip" style="font-size: var(--fs-xs); padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">OS: <strong style="color:var(--fg);">' + esc(env.os) + '</strong></span>' +
+                            '<span class="gm-chip" style="font-size: var(--fs-xs); padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">Browser: <strong style="color:var(--fg);">' + esc(env.browser) + '</strong></span>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
-                '<div id="bug-report-msg" class="gm-dim" style="min-height:1rem; margin-top:0.6rem; font-size:0.8rem;"></div>' +
+                '<div id="bug-report-msg" class="gm-dim" style="min-height:1rem; margin-top:0.6rem; font-size: var(--fs-sm);"></div>' +
                 '<div style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:1rem; position:sticky; bottom:0; background:var(--bg-card); z-index:2; padding-top:0.4rem; border-top:1px solid var(--border-soft);">' +
                     '<button type="button" class="gm-btn gm-btn-ghost bug-report-close">' + t_('cancel') + '</button>' +
                     '<button type="button" class="gm-btn gm-btn-primary" id="bug-report-submit">' + t_('ticket_submit') + '</button>' +
@@ -728,7 +728,7 @@
                 item.style.cssText = 'position:relative; width:80px; height:60px; border-radius:6px; overflow:hidden; border:1px solid var(--border-soft); background:#000; display:inline-block;';
                 item.innerHTML =
                     '<img src="' + dataUrl + '" style="width:100%; height:100%; object-fit:cover;">' +
-                    '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" data-remove="' + idx + '" style="position:absolute; top:2px; right:2px; width:20px; height:20px; min-width:20px; background:rgba(0,0,0,0.7); border-radius:999px; color:#fff; padding:0; line-height:1; font-size:12px;" title="Remove">×</button>';
+                    '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" data-remove="' + idx + '" style="position:absolute; top:2px; right:2px; width:20px; height:20px; min-width:20px; background:rgba(0,0,0,0.7); border-radius:999px; color:#fff; padding:0; line-height:1; font-size: var(--fs-sm);" title="Remove">×</button>';
                 item.querySelector('[data-remove]').addEventListener('click', function (e) {
                     e.stopPropagation();
                     attachedScreenshots.splice(idx, 1);
@@ -838,7 +838,7 @@
                 : (currentBehavior + '\n\n' + expectedBehavior);
 
             submit.disabled = true;
-            submit.innerHTML = '<span class="material-symbols-rounded" style="font-size:1rem;">sync</span> ' + t_('ticket_submitting');
+            submit.innerHTML = '<span class="material-symbols-rounded" style="font-size: var(--fs-lg);">sync</span> ' + t_('ticket_submitting');
             msgEl.textContent = '';
             try {
                 var db = (window.GM && window.GM.db) ? window.GM.db : null;

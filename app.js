@@ -184,11 +184,11 @@
                         if (panel) {
                             panel.innerHTML =
                                 '<div class="portal-card" style="text-align:center; padding:3rem 1.5rem; max-width:540px; margin:2rem auto;">' +
-                                    '<div style="width:64px; height:64px; border-radius:50%; background:var(--accent-soft, rgba(99,102,241,0.15)); color:var(--accent, #6366f1); display:flex; align-items:center; justify-content:center; font-size:2rem; margin:0 auto 1.25rem auto;">' +
+                                    '<div style="width:64px; height:64px; border-radius:50%; background:var(--accent-soft, rgba(99,102,241,0.15)); color:var(--accent, #6366f1); display:flex; align-items:center; justify-content:center; font-size: var(--fs-4xl); margin:0 auto 1.25rem auto;">' +
                                         '<i class="ph-fill ph-coffee"></i>' +
                                     '</div>' +
-                                    '<h2 style="font-size:1.4rem; font-weight:800; color:var(--fg); margin:0 0 0.5rem 0;">Thank you for your support!</h2>' +
-                                    '<p class="gm-dim" style="font-size:.92rem; line-height:1.6; margin:0 0 1.5rem 0;">Your donation helps keep the servers running and the AI scans available for everyone.</p>' +
+                                    '<h2 style="font-size: var(--fs-2xl); font-weight:800; color:var(--fg); margin:0 0 0.5rem 0;">Thank you for your support!</h2>' +
+                                    '<p class="gm-dim" style="font-size: var(--fs-md); line-height:1.6; margin:0 0 1.5rem 0;">Your donation helps keep the servers running and the AI scans available for everyone.</p>' +
                                     '<button class="gm-btn gm-btn-primary" data-back-to-donations><i class="ph ph-arrow-left"></i> Back to Donations</button>' +
                                 '</div>';
                             var backBtn = panel.querySelector('[data-back-to-donations]');
@@ -234,10 +234,10 @@
             'padding:1rem 1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:.6rem;';
         banner.innerHTML =
             '<div style="display:flex; align-items:flex-start; gap:.6rem;">' +
-                '<i class="ph ph-fingerprint" style="font-size:1.4rem; color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
+                '<i class="ph ph-fingerprint" style="font-size: var(--fs-2xl); color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
                 '<div>' +
                     '<div style="font-weight:600; margin-bottom:.15rem;">Secure your account</div>' +
-                    '<div style="font-size:.82rem; color:var(--fg-dim);">Add a passkey to sign in faster next time, without typing your password.</div>' +
+                    '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">Add a passkey to sign in faster next time, without typing your password.</div>' +
                 '</div>' +
             '</div>' +
             '<div style="display:flex; gap:.5rem; justify-content:flex-end;">' +
@@ -300,10 +300,10 @@
             'padding:1rem 1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:.6rem;';
         banner.innerHTML =
             '<div style="display:flex; align-items:flex-start; gap:.6rem;">' +
-                '<i class="ph ph-arrows-clockwise" style="font-size:1.4rem; color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
+                '<i class="ph ph-arrows-clockwise" style="font-size: var(--fs-2xl); color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
                 '<div>' +
                     '<div style="font-weight:600; margin-bottom:.15rem;">Update available (' + esc(newVersion) + ')</div>' +
-                    '<div style="font-size:.82rem; color:var(--fg-dim);">This tab is running an older version. Refresh to get the latest fixes.</div>' +
+                    '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">This tab is running an older version. Refresh to get the latest fixes.</div>' +
                 '</div>' +
             '</div>' +
             '<div style="display:flex; gap:.5rem; justify-content:flex-end;">' +
@@ -1126,7 +1126,7 @@
         var html = requests.map(function (r) {
             var meta = GUILD_REQUEST_STATUS_META[r.status] || { label: r.status, cls: '' };
             var dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
-            var noteHtml = r.note ? '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:.25rem;">' + esc(r.note) + '</div>' : '';
+            var noteHtml = r.note ? '<div style="color:var(--text-muted); font-size: var(--fs-sm); margin-top:.25rem;">' + esc(r.note) + '</div>' : '';
             var actionsHtml = '';
             if (r.status === 'pending') {
                 actionsHtml =
@@ -1137,7 +1137,7 @@
                         '<i class="ph ph-x"></i><span>Reject</span>' +
                     '</button>';
             } else if (r.reject_reason) {
-                actionsHtml = '<span style="color:var(--text-muted); font-size:0.8rem;">' + esc(r.reject_reason) + '</span>';
+                actionsHtml = '<span style="color:var(--text-muted); font-size: var(--fs-sm);">' + esc(r.reject_reason) + '</span>';
             }
 
             return (
@@ -1146,10 +1146,10 @@
                         '<div>' +
                             '<div class="gm-row" style="gap:.5rem; align-items:center;">' +
                                 '<strong>' + esc(r.guild_tag) + '</strong>' +
-                                '<span style="color:var(--text-muted); font-size:0.85rem;">#' + esc(r.server_number) + '</span>' +
+                                '<span style="color:var(--text-muted); font-size: var(--fs-base);">#' + esc(r.server_number) + '</span>' +
                                 '<span class="gm-chip ' + meta.cls + '">' + esc(meta.label) + '</span>' +
                             '</div>' +
-                            '<div style="color:var(--text-muted); font-size:0.85rem; margin-top:.25rem;">' +
+                            '<div style="color:var(--text-muted); font-size: var(--fs-base); margin-top:.25rem;">' +
                                 'Admin login: <strong>' + esc(r.admin_id) + '</strong> &middot; Discord: ' + esc(r.discord_handle) + ' &middot; ' + dateStr +
                             '</div>' +
                             noteHtml +
@@ -1557,7 +1557,7 @@
                         '<div class="gm-cred-name" style="font-weight:700; color:var(--fg);">' + esc(acc.id) + '</div>' +
                         '<span class="gm-chip gm-chip-warning">Pending</span>' +
                     '</div>' +
-                    '<div class="gm-row gm-dim" style="font-size:.75rem; gap: 0.75rem;">' +
+                    '<div class="gm-row gm-dim" style="font-size: var(--fs-sm); gap: 0.75rem;">' +
                         '<span><i class="ph ph-identification-badge"></i> UID ' + esc(acc.uid || '?') + '</span>' +
                         '<span><i class="ph ph-calendar-blank"></i> ' + dateStr + '</span>' +
                     '</div>' +
@@ -1796,13 +1796,13 @@
                 '<div class="gm-card glass-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">' +
                     '<div class="gm-accordion-header" style="padding:0.9rem 1.2rem; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); transition:background 0.2s ease;">' +
                         '<div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">' +
-                            '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size:0.85rem; font-family:var(--font-display);">' +
+                            '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size: var(--fs-base); font-family:var(--font-display);">' +
                                 '<i class="ph ph-hard-drives" style="margin-right:4px;"></i>' + esc(sKey) +
                             '</span>' +
-                            '<span style="font-weight:700; color:var(--fg); font-size:0.9rem;">' + esc(guildsList || 'All Tenants') + '</span>' +
-                            '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:0.75rem;">' + accCount + ' admin' + (accCount > 1 ? 's' : '') + '</span>' +
+                            '<span style="font-weight:700; color:var(--fg); font-size: var(--fs-md);">' + esc(guildsList || 'All Tenants') + '</span>' +
+                            '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size: var(--fs-sm);">' + accCount + ' admin' + (accCount > 1 ? 's' : '') + '</span>' +
                         '</div>' +
-                        '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size:1.2rem; color:var(--fg-dim); transition:transform 0.25s ease;' + (isFirst ? ' transform:rotate(180deg);' : '') + '"></i>' +
+                        '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size: var(--fs-xl); color:var(--fg-dim); transition:transform 0.25s ease;' + (isFirst ? ' transform:rotate(180deg);' : '') + '"></i>' +
                     '</div>' +
                     '<div class="gm-accordion-body" style="padding:1rem 1.25rem;' + (isFirst ? ' display:block;' : ' display:none;') + '">' +
                         '<div id="acc-grid-' + index + '" class="gm-account-grid"></div>' +
@@ -1899,7 +1899,7 @@
             var roleSelectHtml = '';
             var guildSelectHtml = '';
             if (isSuperAdminUser) {
-                roleSelectHtml = '<select class="gm-select gm-select-sm gm-account-role-select" data-id="' + esc(acc.id) + '" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 105px; border-radius: 4px; line-height: 1.2; font-weight: 600;">' +
+                roleSelectHtml = '<select class="gm-select gm-select-sm gm-account-role-select" data-id="' + esc(acc.id) + '" style="font-size: var(--fs-sm); padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 105px; border-radius: 4px; line-height: 1.2; font-weight: 600;">' +
                                      '<option value="guild_admin"' + (role === 'guild_admin' ? ' selected' : '') + '>Guild Admin</option>' +
                                      '<option value="server_admin"' + (role === 'server_admin' ? ' selected' : '') + '>Server Admin</option>' +
                                      '<option value="super_admin"' + (role === 'super_admin' ? ' selected' : '') + '>Super Admin</option>' +
@@ -1910,12 +1910,12 @@
                 (window.guildsList || []).forEach(function (g) {
                     options += '<option value="' + esc(g) + '"' + (acc.guild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
                 });
-                guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
+                guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" style="font-size: var(--fs-sm); padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
                                       options +
                                   '</select>';
             } else {
                 roleSelectHtml = '<span class="gm-chip ' + chipCls + '">' + esc(roleLabel) + '</span>';
-                guildSelectHtml = '<span class="gm-chip ' + guildCls + '" style="font-size: 0.7rem;">' + esc(guildLabel) + '</span>';
+                guildSelectHtml = '<span class="gm-chip ' + guildCls + '" style="font-size: var(--fs-xs);">' + esc(guildLabel) + '</span>';
             }
 
             html +=
@@ -1928,7 +1928,7 @@
                         '</div>' +
                     '</div>' +
                     passHtml +
-                    '<div class="gm-row gm-dim" style="font-size:.75rem;">' +
+                    '<div class="gm-row gm-dim" style="font-size: var(--fs-sm);">' +
                         '<i class="ph ph-calendar-blank"></i>' +
                         '<span>' + t('cred_created') + ' ' + dateStr + '</span>' +
                         deleteHtml +
@@ -2157,13 +2157,13 @@
                     '<div class="gm-card glass-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">' +
                         '<div class="gm-accordion-header" style="padding:0.9rem 1.2rem; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); transition:background 0.2s ease;">' +
                             '<div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">' +
-                                '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size:0.85rem; font-family:var(--font-display);">' +
+                                '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size: var(--fs-base); font-family:var(--font-display);">' +
                                     '<i class="ph ph-hard-drives" style="margin-right:4px;"></i>' + esc(sKey) +
                                 '</span>' +
-                                '<span style="font-weight:700; color:var(--fg); font-size:0.9rem;">' + esc(guildsListStr) + '</span>' +
-                                '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:0.75rem;">' + gCount + ' guild' + (gCount > 1 ? 's' : '') + '</span>' +
+                                '<span style="font-weight:700; color:var(--fg); font-size: var(--fs-md);">' + esc(guildsListStr) + '</span>' +
+                                '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size: var(--fs-sm);">' + gCount + ' guild' + (gCount > 1 ? 's' : '') + '</span>' +
                             '</div>' +
-                            '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size:1.2rem; color:var(--fg-dim); transition:transform 0.25s ease;' + (isFirst ? ' transform:rotate(180deg);' : '') + '"></i>' +
+                            '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size: var(--fs-xl); color:var(--fg-dim); transition:transform 0.25s ease;' + (isFirst ? ' transform:rotate(180deg);' : '') + '"></i>' +
                         '</div>' +
                         '<div class="gm-accordion-body" style="padding:1rem 1.25rem;' + (isFirst ? ' display:block;' : ' display:none;') + '">' +
                             '<div class="gm-cred-grid">';
@@ -2179,16 +2179,16 @@
                     // Calculate countdown html
                     var countdownHtml = '';
                     if (type === 'Unlimited') {
-                        countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Unlimited</span>';
+                        countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: var(--fs-sm); font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Unlimited</span>';
                     } else if (type === 'Lifetime') {
-                        countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Lifetime</span>';
+                        countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: var(--fs-sm); font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Lifetime</span>';
                     } else {
                         if (end) {
                             var endMs = new Date(end).getTime();
                             var nowMs = Date.now();
                             var diff = endMs - nowMs;
                             if (diff <= 0) {
-                                countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-lock-keyhole"></i> Expired</span>';
+                                countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: var(--fs-sm); font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-lock-keyhole"></i> Expired</span>';
                             } else {
                                 var secs = Math.floor(diff / 1000);
                                 var mins = Math.floor(secs / 60);
@@ -2203,44 +2203,44 @@
                                 } else {
                                     timeStr = mins + 'm';
                                 }
-                                countdownHtml = '<span class="gm-chip gm-chip-warning" style="font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ' + timeStr + ' remaining</span>';
+                                countdownHtml = '<span class="gm-chip gm-chip-warning" style="font-size: var(--fs-sm); font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ' + timeStr + ' remaining</span>';
                             }
                         } else {
-                            countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: 0.75rem; font-weight: 700;">No date (Expired)</span>';
+                            countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: var(--fs-sm); font-weight: 700;">No date (Expired)</span>';
                         }
                     }
 
-                    var serverTag = serverNum ? ' <span style="font-size:0.8rem; font-weight:500; color:var(--fg-dim);">(Server #' + esc(serverNum) + ')</span>' : '';
+                    var serverTag = serverNum ? ' <span style="font-size: var(--fs-sm); font-weight:500; color:var(--fg-dim);">(Server #' + esc(serverNum) + ')</span>' : '';
 
                     html +=
                         '<div class="gm-cred-card" data-guild-id="' + esc(guildId) + '">' +
                             '<div class="gm-row" style="justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">' +
-                                '<div class="gm-cred-name" style="font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
+                                '<div class="gm-cred-name" style="font-size: var(--fs-xl); display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
                                     '<i class="ph ph-shield"></i> ' + esc(guildId) + serverTag +
                                 '</div>' +
                                 '<div class="countdown-badge-wrapper">' + countdownHtml + '</div>' +
                             '</div>' +
                             '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
                                 '<div class="gm-col" style="flex: 1; gap: 0.25rem; min-width:100px;">' +
-                                    '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Server #</label>' +
-                                    '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' + esc(guildId) + '" value="' + esc(serverNum) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;" placeholder="e.g. 1089">' +
+                                    '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">Server #</label>' +
+                                    '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' + esc(guildId) + '" value="' + esc(serverNum) + '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;" placeholder="e.g. 1089">' +
                                 '</div>' +
                                 '<div class="gm-col" style="flex: 1.2; gap: 0.25rem; min-width:110px;">' +
-                                    '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">Type</label>' +
-                                    '<select class="gm-select gm-select-sm guild-sub-type" data-guild="' + esc(guildId) + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
+                                    '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">Type</label>' +
+                                    '<select class="gm-select gm-select-sm guild-sub-type" data-guild="' + esc(guildId) + '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;">' +
                                         '<option value="Unlimited"' + (type === 'Unlimited' ? ' selected' : '') + '>Unlimited</option>' +
                                         '<option value="Premium"' + (type === 'Premium' ? ' selected' : '') + '>Premium</option>' +
                                         '<option value="Lifetime"' + (type === 'Lifetime' ? ' selected' : '') + '>Lifetime</option>' +
                                     '</select>' +
                                 '</div>' +
                                 '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:110px; ' + (type !== 'Premium' ? 'display: none;' : '') + '">' +
-                                    '<label class="gm-dim" style="font-size: 0.75rem; margin-bottom:0;">End Date</label>' +
-                                    '<input type="date" class="gm-input gm-input-sm guild-sub-end" data-guild="' + esc(guildId) + '" value="' + dateVal + '" style="padding: 0.25rem 0.5rem; font-size:0.8rem; height: auto;">' +
+                                    '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">End Date</label>' +
+                                    '<input type="date" class="gm-input gm-input-sm guild-sub-end" data-guild="' + esc(guildId) + '" value="' + dateVal + '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;">' +
                                 '</div>' +
-                                '<button class="gm-btn gm-btn-primary save-guild-sub-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+                                '<button class="gm-btn gm-btn-primary save-guild-sub-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
                                     '<i class="ph ph-floppy-disk"></i> Save' +
                                 '</button>' +
-                                '<button class="gm-btn gm-btn-danger-ghost delete-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+                                '<button class="gm-btn gm-btn-danger-ghost delete-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
                                     '<i class="ph ph-trash"></i> Delete' +
                                 '</button>' +
                             '</div>' +
@@ -2463,7 +2463,7 @@
                 var isOpen = g.status === 'open';
                 var servers = (serversByGroup[g.id] || []).slice().sort();
                 var serversHtml = servers.map(function (s) {
-                    return '<span class="gm-chip" style="font-size:0.75rem; margin-right:4px;"><i class="ph ph-hard-drives"></i> #' + esc(s) + '</span>';
+                    return '<span class="gm-chip" style="font-size: var(--fs-sm); margin-right:4px;"><i class="ph ph-hard-drives"></i> #' + esc(s) + '</span>';
                 }).join('');
                 var statusBadge = isOpen
                     ? '<span class="gm-chip gm-chip-success" style="font-weight:700;"><i class="ph ph-lock-open"></i> Open</span>'
@@ -2473,14 +2473,14 @@
                     '<div class="gm-card glass-card" style="margin-bottom:0.75rem; padding:0.9rem 1.1rem;">' +
                         '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">' +
                             '<div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">' +
-                                '<strong style="font-size:0.95rem;">' + esc(g.name) + '</strong>' +
+                                '<strong style="font-size: var(--fs-md);">' + esc(g.name) + '</strong>' +
                                 statusBadge +
                             '</div>' +
                             '<button type="button" class="gm-btn gm-btn-sm ' + (isOpen ? 'gm-btn-danger' : 'gm-btn-success') + '" data-migration-group-id="' + esc(g.id) + '" data-migration-group-action="' + (isOpen ? 'close' : 'reopen') + '">' +
                                 '<i class="ph ' + (isOpen ? 'ph-lock' : 'ph-lock-open') + '"></i> <span>' + (isOpen ? 'Close' : 'Reopen') + '</span>' +
                             '</button>' +
                         '</div>' +
-                        '<div style="margin-top:0.5rem;">' + (serversHtml || '<span style="font-size:0.78rem; color:var(--text-dim);">No servers linked</span>') + '</div>' +
+                        '<div style="margin-top:0.5rem;">' + (serversHtml || '<span style="font-size: var(--fs-sm); color:var(--text-dim);">No servers linked</span>') + '</div>' +
                     '</div>';
             });
             container.innerHTML = html;
@@ -3392,14 +3392,14 @@
     function renderOcrRankCell(idx, detectedRank, currentRole) {
         var esc2 = (window.GM && window.GM.escapeHTML) ? window.GM.escapeHTML : function (s) { return String(s || ''); };
         if (currentRole === 'R5') {
-            return '<td class="ocr-cell-rank"><span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-size:0.72rem; white-space:nowrap;" title="R5 Leader is protected from bulk rank changes"><i class="ph ph-shield-star"></i> R5</span></td>';
+            return '<td class="ocr-cell-rank"><span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-size: var(--fs-xs); white-space:nowrap;" title="R5 Leader is protected from bulk rank changes"><i class="ph ph-shield-star"></i> R5</span></td>';
         }
         var noChangeLabel = currentRole ? ('Keep (' + currentRole + ')') : 'R1 (default)';
         var opts = '<option value="">' + esc2(noChangeLabel) + '</option>';
         ['R4', 'R3', 'R2', 'R1'].forEach(function (r) {
             opts += '<option value="' + r + '"' + (detectedRank === r ? ' selected' : '') + '>' + r + '</option>';
         });
-        return '<td class="ocr-cell-rank"><select class="ocr-edit-rank gm-input" data-index="' + idx + '" style="padding:0.2rem 0.35rem; font-size:0.78rem; font-weight:600; width:100%; max-width:118px;">' + opts + '</select></td>';
+        return '<td class="ocr-cell-rank"><select class="ocr-edit-rank gm-input" data-index="' + idx + '" style="padding:0.2rem 0.35rem; font-size: var(--fs-sm); font-weight:600; width:100%; max-width:118px;">' + opts + '</select></td>';
     }
 
     function renderOcrResults(players) {
@@ -3435,7 +3435,7 @@
         if (!players || players.length === 0) {
             if (tbody) {
                 var cs = meta.isEvent ? 4 : 5;
-                tbody.innerHTML = '<tr><td colspan="' + cs + '" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="ph ph-warning-circle" style="font-size:1.5rem; display:block; margin-bottom:0.5rem; color:#facc15;"></i>No player usernames or ' + meta.header + ' values were detected in the uploaded image(s). Please try clearer screenshots.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="' + cs + '" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="ph ph-warning-circle" style="font-size: var(--fs-3xl); display:block; margin-bottom:0.5rem; color:#facc15;"></i>No player usernames or ' + meta.header + ' values were detected in the uploaded image(s). Please try clearer screenshots.</td></tr>';
             }
             if (tbodyNew) tbodyNew.innerHTML = '';
             if (tbodyRemoved) tbodyRemoved.innerHTML = '';
@@ -3521,10 +3521,10 @@
                 var metricLabel = meta.header || 'Score';
                 html += '<tr class="ocr-row" data-pseudo="' + esc(effectivePseudo.toLowerCase()) + '">' +
                     '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" ' + (isChecked ? 'checked' : '') + '></td>' +
-                    '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                    '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
                     '<td class="ocr-cell-metric">' +
                         '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
-                        '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
+                        '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
                     '</td>' +
                     '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
                 '</tr>';
@@ -3571,12 +3571,12 @@
 
                     existingHtml += '<tr class="ocr-row ocr-row--existing" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
                         '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="existing" checked></td>' +
-                        '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                        '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
                         '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' + esc(uid || '—') + '</span></td>' +
                         (isMembersMode ? renderOcrRankCell(idx, item.ocrPlayer && item.ocrPlayer.rank, item.member && item.member.role) : '') +
                         '<td class="ocr-cell-metric">' +
                             '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
-                            '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
+                            '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
                         '</td>' +
                         '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
                     '</tr>';
@@ -3598,8 +3598,8 @@
                         var isChecked = !isOtherGuild;
                         var uidStat = window.GM && window.GM.getUidStatus ? window.GM.getUidStatus(uid) : { valid: true };
                         var uidInputStyle = !uidStat.valid
-                            ? 'padding:0.25rem 0.5rem; font-size:0.8rem; width:100%; max-width:120px; border-color:rgba(239,68,68,0.7); background:rgba(239,68,68,0.06);'
-                            : 'padding:0.25rem 0.5rem; font-size:0.8rem; width:100%; max-width:120px;';
+                            ? 'padding:0.25rem 0.5rem; font-size: var(--fs-sm); width:100%; max-width:120px; border-color:rgba(239,68,68,0.7); background:rgba(239,68,68,0.06);'
+                            : 'padding:0.25rem 0.5rem; font-size: var(--fs-sm); width:100%; max-width:120px;';
 
                         var badgeHtml = isOtherGuild
                             ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild (Unchecked)</span>'
@@ -3607,12 +3607,12 @@
 
                         newHtml += '<tr class="ocr-row ocr-row--new" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
                             '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="new" ' + (isChecked ? 'checked' : '') + '></td>' +
-                            '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; width:100%; max-width:180px;"></td>' +
+                            '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
                             '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' + idx + '" value="' + esc(uid) + '" placeholder="TEMP (auto)" style="' + uidInputStyle + '"></td>' +
                             renderOcrRankCell(idx, item.ocrPlayer && item.ocrPlayer.rank, null) +
                             '<td class="ocr-cell-metric">' +
                                 '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
-                                '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size:0.85rem; font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
+                                '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' + meta.color + '; width:100%; max-width:140px;">' +
                             '</td>' +
                             '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
                         '</tr>';
@@ -3632,7 +3632,7 @@
                             '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">—</span></td>' +
                             '<td class="ocr-cell-metric">' +
                                 '<span class="ocr-metric-label"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
-                                '<span style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">' + fmtNum(pScore) + '</span>' +
+                                '<span style="font-size: var(--fs-base); font-weight:600; color:var(--text-muted);">' + fmtNum(pScore) + '</span>' +
                             '</td>' +
                             '<td class="ocr-cell-status"><span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-warning"></i> Use Members OCR to add</span></td>' +
                         '</tr>';
@@ -3645,9 +3645,9 @@
             var removedHtml = '';
             if (isMembersMode && diff.removed.length > 0) {
                 if (guildMembers.length > 0 && diff.removed.length > guildMembers.length * 0.5) {
-                    removedHtml += '<tr class="ocr-warning-row"><td colspan="5"><div class="ocr-removed-warning" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; padding:0.5rem 0.75rem; border-radius:6px; margin:0.35rem 0; font-size:0.78rem; display:flex; align-items:center; gap:0.4rem;"><i class="ph ph-warning" style="font-size:1.1rem; flex-shrink:0;"></i><span>More than half your roster would be removed. If this screenshot is partial, uncheck the members to keep.</span></div></td></tr>';
+                    removedHtml += '<tr class="ocr-warning-row"><td colspan="5"><div class="ocr-removed-warning" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; padding:0.5rem 0.75rem; border-radius:6px; margin:0.35rem 0; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;"><i class="ph ph-warning" style="font-size: var(--fs-xl); flex-shrink:0;"></i><span>More than half your roster would be removed. If this screenshot is partial, uncheck the members to keep.</span></div></td></tr>';
                 }
-                removedHtml += '<tr class="ocr-section-header ocr-section-header--removed"><td colspan="5"><div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><div class="ocr-section-title"><i class="ph ph-user-minus"></i> Removed Members <span class="gm-badge gm-badge--danger">' + diff.removed.length + '</span></div><div style="font-size:0.75rem; color:var(--text-muted);"><button type="button" class="gm-btn-text" id="ocr-btn-keep-all" style="font-size:0.75rem; color:var(--accent); cursor:pointer; background:none; border:none; padding:0 0.4rem;">Keep All</button> | <button type="button" class="gm-btn-text" id="ocr-btn-remove-all" style="font-size:0.75rem; color:#f87171; cursor:pointer; background:none; border:none; padding:0 0.4rem;">Remove All</button></div></div></td></tr>';
+                removedHtml += '<tr class="ocr-section-header ocr-section-header--removed"><td colspan="5"><div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><div class="ocr-section-title"><i class="ph ph-user-minus"></i> Removed Members <span class="gm-badge gm-badge--danger">' + diff.removed.length + '</span></div><div style="font-size: var(--fs-sm); color:var(--text-muted);"><button type="button" class="gm-btn-text" id="ocr-btn-keep-all" style="font-size: var(--fs-sm); color:var(--accent); cursor:pointer; background:none; border:none; padding:0 0.4rem;">Keep All</button> | <button type="button" class="gm-btn-text" id="ocr-btn-remove-all" style="font-size: var(--fs-sm); color:#f87171; cursor:pointer; background:none; border:none; padding:0 0.4rem;">Remove All</button></div></div></td></tr>';
 
                 diff.removed.forEach(function (item) {
                     var m = item.member;
@@ -3658,9 +3658,9 @@
 
                     removedHtml += '<tr class="ocr-row ocr-row--removed" data-pseudo="' + esc(pseudo.toLowerCase()) + '" data-removal-pseudo="' + esc(pseudo) + '">' +
                         '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' + esc(pseudo) + '" data-section="removed" checked></td>' +
-                        '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' + esc(pseudo) + '</span> <span class="gm-role-badge" style="font-size:0.7rem; padding:0.1rem 0.3rem;">' + esc(role) + '</span></td>' +
+                        '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' + esc(pseudo) + '</span> <span class="gm-role-badge" style="font-size: var(--fs-xs); padding:0.1rem 0.3rem;">' + esc(role) + '</span></td>' +
                         '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' + esc(uid || '—') + '</span></td>' +
-                        '<td class="ocr-cell-metric"><span style="color:var(--text-muted); font-size:0.85rem;"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + fmtNum(power) + '</span></td>' +
+                        '<td class="ocr-cell-metric"><span style="color:var(--text-muted); font-size: var(--fs-base);"><i class="ph ' + (meta.icon || 'ph-hash') + '"></i> ' + fmtNum(power) + '</span></td>' +
                         '<td class="ocr-cell-status"><span class="ocr-removal-status-wrap"><span class="gm-chip ocr-chip-removal" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> To Remove</span></span></td>' +
                     '</tr>';
                 });
@@ -4463,7 +4463,7 @@
         // Check if removal confirmation dialog is required
         if (checkedRemovalPseudos.length > 0) {
             var listPreview = checkedRemovalPseudos.slice(0, 8).map(function (p) { return esc(p); }).join(', ') + (checkedRemovalPseudos.length > 8 ? ' and ' + (checkedRemovalPseudos.length - 8) + ' more' : '');
-            var confirmMsg = 'Are you sure you want to permanently remove <strong>' + checkedRemovalPseudos.length + ' member(s)</strong> (' + listPreview + ')?<br><br><span style="color:#f87171; font-size:0.85rem;">This permanently deletes the member and their event participations, shadowfront squads, weekly scores and sanctions.</span>';
+            var confirmMsg = 'Are you sure you want to permanently remove <strong>' + checkedRemovalPseudos.length + ' member(s)</strong> (' + listPreview + ')?<br><br><span style="color:#f87171; font-size: var(--fs-base);">This permanently deletes the member and their event participations, shadowfront squads, weekly scores and sanctions.</span>';
 
             if (typeof showConfirm === 'function') {
                 showConfirm('Confirm Roster Removals', confirmMsg, function () {
@@ -4558,8 +4558,8 @@
             // Direction from the current admin's point of view.
             var isIncoming = t.target_guild === currentG;
             var directionBadge = isIncoming
-                ? '<span class="gm-chip gm-chip-success" style="font-size:0.68rem;"><i class="ph ph-arrow-down-left"></i> IN</span>'
-                : '<span class="gm-chip" style="font-size:0.68rem; background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.3);"><i class="ph ph-arrow-up-right"></i> OUT</span>';
+                ? '<span class="gm-chip gm-chip-success" style="font-size: var(--fs-xs);"><i class="ph ph-arrow-down-left"></i> IN</span>'
+                : '<span class="gm-chip" style="font-size: var(--fs-xs); background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.3);"><i class="ph ph-arrow-up-right"></i> OUT</span>';
 
             var actions = '';
             if (isIncoming) {
@@ -4569,7 +4569,7 @@
                     '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" data-transfer-action="reject" data-transfer-id="' + esc(t.id) + '" title="Reject Transfer"><i class="ph ph-x"></i></button>';
             } else {
                 // Outgoing: another guild must approve; show a waiting hint.
-                actions = '<span style="font-size:0.72rem; color:var(--text-dim);"><i class="ph ph-hourglass"></i> Awaiting approval from ' + esc(t.target_guild) + '</span>';
+                actions = '<span style="font-size: var(--fs-xs); color:var(--text-dim);"><i class="ph ph-hourglass"></i> Awaiting approval from ' + esc(t.target_guild) + '</span>';
             }
 
             html += '<tr>' +
@@ -4647,15 +4647,15 @@
         var history = info.name_history || [];
         if (history.length > 0) {
             var items = history.slice(0, 5).map(function (h) {
-                return '<div style="font-size:0.8rem; color:var(--text-dim);">' +
+                return '<div style="font-size: var(--fs-sm); color:var(--text-dim);">' +
                     '<span style="color:var(--text-muted); text-decoration:line-through;">' + esc(h.old_pseudo) + '</span>' +
                     ' &rarr; <span style="color:var(--accent); font-weight:600;">' + esc(h.new_pseudo) + '</span>' +
-                    '<span style="margin-left:0.5rem; font-size:0.7rem;">(' + esc(String(h.changed_at || '').slice(0, 10)) + ')</span>' +
+                    '<span style="margin-left:0.5rem; font-size: var(--fs-xs);">(' + esc(String(h.changed_at || '').slice(0, 10)) + ')</span>' +
                 '</div>';
             }).join('');
             historyHtml =
                 '<div style="margin-top:0.75rem; border-top:1px solid var(--border-soft); padding-top:0.65rem;">' +
-                    '<div style="font-size:0.72rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.35rem;">Name history</div>' +
+                    '<div style="font-size: var(--fs-xs); font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.35rem;">Name history</div>' +
                     '<div style="display:flex; flex-direction:column; gap:0.2rem;">' + items + '</div>' +
                 '</div>';
         }
@@ -4677,8 +4677,8 @@
 
             titleHtml =
                 '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-                    '<i class="ph ph-user-switch" style="font-size:1.5rem; color:var(--accent);"></i>' +
-                    '<h3 style="margin:0; font-size:1.2rem;">Player Already in Guild</h3>' +
+                    '<i class="ph ph-user-switch" style="font-size: var(--fs-3xl); color:var(--accent);"></i>' +
+                    '<h3 style="margin:0; font-size: var(--fs-xl);">Player Already in Guild</h3>' +
                 '</div>';
 
             bodyHtml =
@@ -4694,7 +4694,7 @@
                 '</div>';
 
             noticeHtml =
-                '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; border:1px solid var(--info-soft); font-size:0.8rem; line-height:1.45; margin-top:0.85rem;">' +
+                '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; border:1px solid var(--info-soft); font-size: var(--fs-sm); line-height:1.45; margin-top:0.85rem;">' +
                     '<i class="ph ph-info" style="margin-right:4px;"></i>' +
                     'This player (<strong>' + esc(existingPseudo) + '</strong>) already belongs to <strong>' + esc(p.guild || currentG) + '</strong>. Would you like to update their name to <strong>' + esc(typedPseudo) + '</strong>?' +
                 '</div>';
@@ -4709,8 +4709,8 @@
         } else {
             titleHtml =
                 '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-                    '<i class="ph ph-user-circle-gear" style="font-size:1.5rem; color:var(--accent);"></i>' +
-                    '<h3 style="margin:0; font-size:1.2rem;">Player ID already exists</h3>' +
+                    '<i class="ph ph-user-circle-gear" style="font-size: var(--fs-3xl); color:var(--accent);"></i>' +
+                    '<h3 style="margin:0; font-size: var(--fs-xl);">Player ID already exists</h3>' +
                 '</div>';
 
             bodyHtml =
@@ -4724,11 +4724,11 @@
                 '</div>';
 
             noticeHtml =
-                '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; border:1px solid var(--info-soft); font-size:0.8rem; line-height:1.45; margin-top:0.85rem;">' +
+                '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; border:1px solid var(--info-soft); font-size: var(--fs-sm); line-height:1.45; margin-top:0.85rem;">' +
                     '<i class="ph ph-info" style="margin-right:4px;"></i>' +
                     'This player already belongs to <strong>' + esc(p.guild || 'another guild') + '</strong>. You cannot add them directly here. You can send a transfer request so an admin approves moving them to <strong>' + esc(currentG) + '</strong>.' +
                 '</div>' +
-                '<label style="display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.85rem; cursor:pointer; font-size:0.82rem; color:var(--text-muted);">' +
+                '<label style="display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.85rem; cursor:pointer; font-size: var(--fs-sm); color:var(--text-muted);">' +
                     '<input type="checkbox" id="uid-taken-confirm" style="margin-top:2px; accent-color: var(--accent);">' +
                     '<span>I understand this process cannot be undone without reporting an issue or bug, and that the transfer must be approved by an admin.</span>' +
                 '</label>';
@@ -5172,11 +5172,11 @@
                 '<div class="gm-member-id">' +
                     '<div class="gm-avatar" style="background: var(--danger-soft); color: var(--danger); border-color: var(--danger-soft);">' + esc(initial) + '</div>' +
                     '<div class="gm-grow gm-truncate">' +
-                        '<div class="gm-mono gm-truncate" style="color: var(--danger); font-weight: 700; font-size: 1.25rem;">' + esc(uidPrefix) + ' ' + esc(bp.uid) + '</div>' +
-                        '<div class="gm-member-pseudo gm-dim gm-truncate" style="font-weight: 500; font-size: 0.85rem; margin-top: 2px;">' + esc(pseudoVal) + '</div>' +
+                        '<div class="gm-mono gm-truncate" style="color: var(--danger); font-weight: 700; font-size: var(--fs-xl);">' + esc(uidPrefix) + ' ' + esc(bp.uid) + '</div>' +
+                        '<div class="gm-member-pseudo gm-dim gm-truncate" style="font-weight: 500; font-size: var(--fs-base); margin-top: 2px;">' + esc(pseudoVal) + '</div>' +
                     '</div>' +
                 '</div>' +
-                '<div class="gm-col gm-dim" style="gap:.2rem; font-size:.8rem; flex: 1.5; min-width: 150px;">' +
+                '<div class="gm-col gm-dim" style="gap:.2rem; font-size: var(--fs-sm); flex: 1.5; min-width: 150px;">' +
                     '<span><strong>' + esc(reasonLabel) + '</strong> ' + esc(reasonVal) + '</span>' +
                     '<span>' + esc(byLabel) + ' <strong>' + esc(author) + '</strong> ' + esc(onLabel) + ' ' + dateStr + '</span>' +
                 '</div>' +
@@ -5531,9 +5531,9 @@
             if (!hasAnyMembers) {
                 if (guildMembers.length === 0) {
                     return '<div class="gm-empty gm-empty--coldstart" style="padding:3rem 1rem; text-align:center;">' +
-                        '<i class="ph-duotone ph-scan gm-icon" style="font-size:3rem; color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
-                        '<div class="gm-empty-title" style="font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;">' + t('empty_members_roster_title') + '</div>' +
-                        '<div class="gm-empty-desc" style="color:var(--text-muted); font-size:0.88rem; max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' + t('empty_members_roster_desc') + '</div>' +
+                        '<i class="ph-duotone ph-scan gm-icon" style="font-size: var(--fs-5xl); color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
+                        '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; margin-bottom:0.5rem;">' + t('empty_members_roster_title') + '</div>' +
+                        '<div class="gm-empty-desc" style="color:var(--text-muted); font-size: var(--fs-base); max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' + t('empty_members_roster_desc') + '</div>' +
                         '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="members"><i class="ph ph-scan"></i> ' + t('empty_members_roster_cta') + '</button>' +
                     '</div>';
                 }
@@ -5548,9 +5548,9 @@
             if (sorted.length === 0) {
                 if (guildMembers.length === 0) {
                     return '<div class="gm-empty gm-empty--coldstart" style="padding:3rem 1rem; text-align:center;">' +
-                        '<i class="ph-duotone ph-scan gm-icon" style="font-size:3rem; color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
-                        '<div class="gm-empty-title" style="font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;">' + t('empty_members_roster_title') + '</div>' +
-                        '<div class="gm-empty-desc" style="color:var(--text-muted); font-size:0.88rem; max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' + t('empty_members_roster_desc') + '</div>' +
+                        '<i class="ph-duotone ph-scan gm-icon" style="font-size: var(--fs-5xl); color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
+                        '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; margin-bottom:0.5rem;">' + t('empty_members_roster_title') + '</div>' +
+                        '<div class="gm-empty-desc" style="color:var(--text-muted); font-size: var(--fs-base); max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' + t('empty_members_roster_desc') + '</div>' +
                         '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="members"><i class="ph ph-scan"></i> ' + t('empty_members_roster_cta') + '</button>' +
                     '</div>';
                 }
@@ -5608,15 +5608,15 @@
 
             var headerSummary =
                 '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding:0.85rem 1rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg);">' +
-                    '<div style="font-weight:700; font-size:0.95rem; color:var(--fg); display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
+                    '<div style="font-weight:700; font-size: var(--fs-md); color:var(--fg); display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
                         '<span class="material-symbols-rounded" style="color:var(--accent);">shield</span> Tactical Force Matrix (' + sorted.length + ' players)' +
-                        '<span class="gm-chip" style="color:#facc15; background:rgba(234,179,8,0.12); border:1px solid rgba(234,179,8,0.3); font-size:0.72rem; margin-left:0.35rem;" title="16 Top Rally Leaders automatically assigned"><i class="ph ph-crown-simple"></i> ' + leaderCount + ' Rally Leaders</span>' +
-                        '<span class="gm-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size:0.72rem;"><i class="ph ph-lightning"></i> Sorted by Rally Power</span>' +
+                        '<span class="gm-chip" style="color:#facc15; background:rgba(234,179,8,0.12); border:1px solid rgba(234,179,8,0.3); font-size: var(--fs-xs); margin-left:0.35rem;" title="16 Top Rally Leaders automatically assigned"><i class="ph ph-crown-simple"></i> ' + leaderCount + ' Rally Leaders</span>' +
+                        '<span class="gm-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size: var(--fs-xs);"><i class="ph ph-lightning"></i> Sorted by Rally Power</span>' +
                     '</div>' +
                     '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">' +
-                        '<span class="gm-chip" style="color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); font-size:0.75rem;"><i class="ph ph-swords"></i> Guild Fleet: ' + window.GM.formatPower(totalFleet) + '</span>' +
-                        '<span class="gm-chip" style="color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); font-size:0.75rem;"><i class="ph ph-atom"></i> Guild Tech: ' + window.GM.formatPower(totalTech) + '</span>' +
-                        '<span class="gm-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size:0.75rem;" title="Sum of latest recorded Sunday Glory across active roster"><i class="ph ph-trophy"></i> Total Glory: ' + window.GM.formatPower(totalGlory) + '</span>' +
+                        '<span class="gm-chip" style="color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); font-size: var(--fs-sm);"><i class="ph ph-swords"></i> Guild Fleet: ' + window.GM.formatPower(totalFleet) + '</span>' +
+                        '<span class="gm-chip" style="color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); font-size: var(--fs-sm);"><i class="ph ph-atom"></i> Guild Tech: ' + window.GM.formatPower(totalTech) + '</span>' +
+                        '<span class="gm-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm);" title="Sum of latest recorded Sunday Glory across active roster"><i class="ph ph-trophy"></i> Total Glory: ' + window.GM.formatPower(totalGlory) + '</span>' +
                     '</div>' +
                 '</div>';
 
@@ -5639,20 +5639,20 @@
 
                 if (rallyInfo.isLeader) {
                     if (rallyInfo.rank <= 4) {
-                        rallyRoleChip = '<span class="gm-chip" style="background:rgba(234,179,8,0.18); color:#facc15; font-size:0.72rem; font-weight:700; border:1px solid rgba(234,179,8,0.35); padding:0.12rem 0.5rem; gap:0.25rem;" title="Top Tier Rally Leader #' + rallyInfo.rank + '"><i class="ph ph-crown-simple"></i> Leader #' + rallyInfo.rank + '</span>';
+                        rallyRoleChip = '<span class="gm-chip" style="background:rgba(234,179,8,0.18); color:#facc15; font-size: var(--fs-xs); font-weight:700; border:1px solid rgba(234,179,8,0.35); padding:0.12rem 0.5rem; gap:0.25rem;" title="Top Tier Rally Leader #' + rallyInfo.rank + '"><i class="ph ph-crown-simple"></i> Leader #' + rallyInfo.rank + '</span>';
                     } else if (rallyInfo.rank <= 8) {
-                        rallyRoleChip = '<span class="gm-chip" style="background:rgba(168,85,247,0.18); color:#c084fc; font-size:0.72rem; font-weight:700; border:1px solid rgba(168,85,247,0.35); padding:0.12rem 0.5rem; gap:0.25rem;" title="Elite Rally Leader #' + rallyInfo.rank + '"><i class="ph ph-shield-star"></i> Leader #' + rallyInfo.rank + '</span>';
+                        rallyRoleChip = '<span class="gm-chip" style="background:rgba(168,85,247,0.18); color:#c084fc; font-size: var(--fs-xs); font-weight:700; border:1px solid rgba(168,85,247,0.35); padding:0.12rem 0.5rem; gap:0.25rem;" title="Elite Rally Leader #' + rallyInfo.rank + '"><i class="ph ph-shield-star"></i> Leader #' + rallyInfo.rank + '</span>';
                     } else {
-                        rallyRoleChip = '<span class="gm-chip" style="background:rgba(59,130,246,0.18); color:#60a5fa; font-size:0.72rem; font-weight:700; border:1px solid rgba(59,130,246,0.35); padding:0.12rem 0.5rem; gap:0.25rem;" title="Rally Leader #' + rallyInfo.rank + '"><i class="ph ph-target"></i> Leader #' + rallyInfo.rank + '</span>';
+                        rallyRoleChip = '<span class="gm-chip" style="background:rgba(59,130,246,0.18); color:#60a5fa; font-size: var(--fs-xs); font-weight:700; border:1px solid rgba(59,130,246,0.35); padding:0.12rem 0.5rem; gap:0.25rem;" title="Rally Leader #' + rallyInfo.rank + '"><i class="ph ph-target"></i> Leader #' + rallyInfo.rank + '</span>';
                     }
                 } else {
-                    rallyRoleChip = '<span class="gm-chip" style="background:rgba(148,163,184,0.12); color:var(--text-muted); font-size:0.7rem; border:1px solid var(--border-soft); padding:0.1rem 0.45rem; gap:0.25rem;" title="Rally Reinforcement / Joiner"><i class="ph ph-users"></i> Rally Joiner</span>';
+                    rallyRoleChip = '<span class="gm-chip" style="background:rgba(148,163,184,0.12); color:var(--text-muted); font-size: var(--fs-xs); border:1px solid var(--border-soft); padding:0.1rem 0.45rem; gap:0.25rem;" title="Rally Reinforcement / Joiner"><i class="ph ph-users"></i> Rally Joiner</span>';
                 }
 
                 var mUidStatus = window.GM && window.GM.getUidStatus ? window.GM.getUidStatus(m.uid) : { valid: true };
                 var mUidHtml = !mUidStatus.valid
-                    ? '<div style="font-size:0.7rem; margin-top:2px;" class="gm-mono gm-uid-invalid" title="' + esc(mUidStatus.label + ' — ' + (mUidStatus.reason || 'Click Edit to set real game UID')) + '"><i class="ph-bold ph-warning-circle"></i> UID ' + esc(uidVal) + '</div>'
-                    : '<div style="font-size:0.7rem; color:var(--text-muted);" class="gm-mono">UID ' + esc(uidVal) + '</div>';
+                    ? '<div style="font-size: var(--fs-xs); margin-top:2px;" class="gm-mono gm-uid-invalid" title="' + esc(mUidStatus.label + ' — ' + (mUidStatus.reason || 'Click Edit to set real game UID')) + '"><i class="ph-bold ph-warning-circle"></i> UID ' + esc(uidVal) + '</div>'
+                    : '<div style="font-size: var(--fs-xs); color:var(--text-muted);" class="gm-mono">UID ' + esc(uidVal) + '</div>';
 
                 var isR5 = (roleVal === 'R5');
                 var isSelected = withActions && window.adminSelectedMembers && window.adminSelectedMembers.has(m.pseudo);
@@ -5668,30 +5668,30 @@
                     '<td style="padding:0.65rem 0.75rem;">' +
                         '<div style="display:flex; align-items:center; gap:0.5rem;">' +
                             chkHtml +
-                            '<div class="gm-avatar gm-avatar-squircle" style="width:28px; height:28px; font-size:0.75rem;">' + esc(initial) + '</div>' +
+                            '<div class="gm-avatar gm-avatar-squircle" style="width:28px; height:28px; font-size: var(--fs-sm);">' + esc(initial) + '</div>' +
                             '<div>' +
-                                '<div style="font-weight:600; font-size:0.88rem; color:var(--fg);">' + esc(m.pseudo) + '</div>' +
+                                '<div style="font-weight:600; font-size: var(--fs-base); color:var(--fg);">' + esc(m.pseudo) + '</div>' +
                                 mUidHtml +
                             '</div>' +
                         '</div>' +
                     '</td>' +
                     '<td data-label="Rally" style="padding:0.65rem 0.5rem; text-align:center;">' + rallyRoleChip + '</td>' +
-                    '<td data-label="Role" style="padding:0.65rem 0.5rem; text-align:center;"><span class="gm-role-chip" style="font-size:0.7rem; padding:0.1rem 0.35rem;">' + esc(roleVal) + '</span></td>' +
-                    '<td data-label="Power" style="padding:0.65rem 0.5rem; text-align:right; font-weight:600; font-size:0.85rem;">' + window.GM.formatPower(powerVal) + '</td>' +
-                    '<td data-label="Fleet" style="padding:0.65rem 0.5rem; text-align:right; color:#60a5fa; font-weight:600; font-size:0.85rem;">' + (m.fleet_rating ? window.GM.formatPower(m.fleet_rating) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td data-label="Tech" style="padding:0.65rem 0.5rem; text-align:right; color:#a78bfa; font-weight:600; font-size:0.85rem;">' + (m.tech_power ? window.GM.formatPower(m.tech_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td data-label="Flagship" style="padding:0.65rem 0.5rem; text-align:right; color:#fbbf24; font-weight:600; font-size:0.85rem;">' + (m.flagship_power ? window.GM.formatPower(m.flagship_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td data-label="Champs" style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6; font-weight:600; font-size:0.85rem;">' + (m.champion_power ? window.GM.formatPower(m.champion_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td data-label="Crew" style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8; font-weight:600; font-size:0.85rem;">' + (m.crew_power ? window.GM.formatPower(m.crew_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
-                    '<td data-label="Glory" style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size:0.85rem;" title="Latest Recorded Sunday Glory: ' + (m.glory_score ? window.GM.formatNumber(m.glory_score) : '0') + '">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Role" style="padding:0.65rem 0.5rem; text-align:center;"><span class="gm-role-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.35rem;">' + esc(roleVal) + '</span></td>' +
+                    '<td data-label="Power" style="padding:0.65rem 0.5rem; text-align:right; font-weight:600; font-size: var(--fs-base);">' + window.GM.formatPower(powerVal) + '</td>' +
+                    '<td data-label="Fleet" style="padding:0.65rem 0.5rem; text-align:right; color:#60a5fa; font-weight:600; font-size: var(--fs-base);">' + (m.fleet_rating ? window.GM.formatPower(m.fleet_rating) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Tech" style="padding:0.65rem 0.5rem; text-align:right; color:#a78bfa; font-weight:600; font-size: var(--fs-base);">' + (m.tech_power ? window.GM.formatPower(m.tech_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Flagship" style="padding:0.65rem 0.5rem; text-align:right; color:#fbbf24; font-weight:600; font-size: var(--fs-base);">' + (m.flagship_power ? window.GM.formatPower(m.flagship_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Champs" style="padding:0.65rem 0.5rem; text-align:right; color:#f472b6; font-weight:600; font-size: var(--fs-base);">' + (m.champion_power ? window.GM.formatPower(m.champion_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Crew" style="padding:0.65rem 0.5rem; text-align:right; color:#38bdf8; font-weight:600; font-size: var(--fs-base);">' + (m.crew_power ? window.GM.formatPower(m.crew_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
+                    '<td data-label="Glory" style="padding:0.65rem 0.5rem; text-align:right; color:#34d399; font-weight:600; font-size: var(--fs-base);" title="Latest Recorded Sunday Glory: ' + (m.glory_score ? window.GM.formatNumber(m.glory_score) : '0') + '">' + (m.glory_score ? window.GM.formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') + '</td>' +
                     '<td data-label="Rally Score" style="padding:0.65rem 0.5rem; text-align:center;">' +
                         (rallyScore > 0
-                            ? '<span class="gm-chip" style="font-weight:700; font-size:0.8rem; color:#818cf8; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.32); padding:0.15rem 0.5rem; gap:0.25rem;" title="Rally Grade: ' + rallyGrade + '/100 (' + window.GM.formatPower(rallyScore) + ')"><i class="ph ph-lightning"></i> ' + rallyGrade + '/100</span>'
+                            ? '<span class="gm-chip" style="font-weight:700; font-size: var(--fs-sm); color:#818cf8; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.32); padding:0.15rem 0.5rem; gap:0.25rem;" title="Rally Grade: ' + rallyGrade + '/100 (' + window.GM.formatPower(rallyScore) + ')"><i class="ph ph-lightning"></i> ' + rallyGrade + '/100</span>'
                             : '<span style="color:var(--text-muted); opacity:0.4;">—</span>'
                         ) +
                     '</td>' +
                     '<td data-label="Action" style="padding:0.65rem 0.75rem; text-align:center;">' +
-                        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="Edit Player Military Metrics" style="padding:0.25rem 0.5rem; font-size:0.75rem; gap:0.25rem;"><i class="ph ph-pencil-simple"></i> Edit</button>' +
+                        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" title="Edit Player Military Metrics" style="padding:0.25rem 0.5rem; font-size: var(--fs-sm); gap:0.25rem;"><i class="ph ph-pencil-simple"></i> Edit</button>' +
                     '</td>' +
                 '</tr>';
             }).join('');
@@ -5700,7 +5700,7 @@
                 '<div class="gm-table-wrap" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow-x:auto;">' +
                     '<table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:850px;">' +
                         '<thead>' +
-                            '<tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">' +
+                            '<tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size: var(--fs-xs); text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">' +
                                 '<th style="padding:0.65rem 0.75rem; text-align:left;">' +
                                     '<div style="display:flex; align-items:center; gap:0.4rem;">' +
                                         (withActions ? '<label class="gm-member-select-chk-wrap" title="' + (t('bulk_select_all') || 'Select All') + '"><input type="checkbox" class="gm-member-select-chk admin-matrix-select-all-chk"' + (allMatrixSelected ? ' checked' : '') + '></label>' : '') +
@@ -6031,27 +6031,27 @@
 
         var hasPortal = portalUids && uidVal !== '-' && !!portalUids[String(uidVal)];
         var portalBadge = hasPortal
-            ? '<span class="gm-portal-chip" title="Player Portal account (validated)" style="color:#34d399; border:1px solid rgba(52,211,153,0.35); background:rgba(52,211,153,0.10); border-radius:999px; padding:0.05rem 0.35rem; font-size:0.68rem; display:inline-flex; align-items:center; gap:0.2rem;"><i class="ph ph-user-check"></i> Portal</span>'
+            ? '<span class="gm-portal-chip" title="Player Portal account (validated)" style="color:#34d399; border:1px solid rgba(52,211,153,0.35); background:rgba(52,211,153,0.10); border-radius:999px; padding:0.05rem 0.35rem; font-size: var(--fs-xs); display:inline-flex; align-items:center; gap:0.2rem;"><i class="ph ph-user-check"></i> Portal</span>'
             : '';
 
         var tacticalChips = [];
         if (m.fleet_rating) {
-            tacticalChips.push('<span class="gm-chip" style="font-size:0.68rem; color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Fleet Rating: ' + window.GM.formatNumber(m.fleet_rating) + '">⚔️ ' + window.GM.formatPower(m.fleet_rating) + '</span>');
+            tacticalChips.push('<span class="gm-chip" style="font-size: var(--fs-xs); color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Fleet Rating: ' + window.GM.formatNumber(m.fleet_rating) + '">⚔️ ' + window.GM.formatPower(m.fleet_rating) + '</span>');
         }
         if (m.tech_power) {
-            tacticalChips.push('<span class="gm-chip" style="font-size:0.68rem; color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Tech Power: ' + window.GM.formatNumber(m.tech_power) + '">🔬 ' + window.GM.formatPower(m.tech_power) + '</span>');
+            tacticalChips.push('<span class="gm-chip" style="font-size: var(--fs-xs); color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Tech Power: ' + window.GM.formatNumber(m.tech_power) + '">🔬 ' + window.GM.formatPower(m.tech_power) + '</span>');
         }
         if (m.flagship_power) {
-            tacticalChips.push('<span class="gm-chip" style="font-size:0.68rem; color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Flagship Power: ' + window.GM.formatNumber(m.flagship_power) + '">🚀 ' + window.GM.formatPower(m.flagship_power) + '</span>');
+            tacticalChips.push('<span class="gm-chip" style="font-size: var(--fs-xs); color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Flagship Power: ' + window.GM.formatNumber(m.flagship_power) + '">🚀 ' + window.GM.formatPower(m.flagship_power) + '</span>');
         }
         if (m.glory_score) {
-            tacticalChips.push('<span class="gm-chip" style="font-size:0.68rem; color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Glory Score: ' + window.GM.formatNumber(m.glory_score) + '">🏆 ' + window.GM.formatPower(m.glory_score) + '</span>');
+            tacticalChips.push('<span class="gm-chip" style="font-size: var(--fs-xs); color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Glory Score: ' + window.GM.formatNumber(m.glory_score) + '">🏆 ' + window.GM.formatPower(m.glory_score) + '</span>');
         }
 
         var tacticalHtml = tacticalChips.length
             ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;">' + tacticalChips.join('') + '</div>'
             : (withActions
-                ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;"><button type="button" class="guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" style="font-size:0.68rem; color:var(--accent); background:rgba(99,102,241,0.08); border:1px dashed rgba(99,102,241,0.3); border-radius:4px; padding:0.05rem 0.4rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-plus-circle"></i> + Declare Military Stats</button></div>'
+                ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;"><button type="button" class="guild-edit-btn" data-pseudo="' + esc(m.pseudo) + '" style="font-size: var(--fs-xs); color:var(--accent); background:rgba(99,102,241,0.08); border:1px dashed rgba(99,102,241,0.3); border-radius:4px; padding:0.05rem 0.4rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-plus-circle"></i> + Declare Military Stats</button></div>'
                 : '');
 
         var uidStatus = window.GM && window.GM.getUidStatus ? window.GM.getUidStatus(m.uid) : { valid: true };
@@ -6282,23 +6282,23 @@
                 '<div class="gm-modal-card" style="max-width: 480px; width: 90%; position: relative;">' +
                     '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
                         '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-                            '<i class="ph ph-arrows-left-right" style="font-size: 1.5rem; color: var(--accent);"></i>' +
-                            '<h3 style="margin:0; font-size: 1.2rem;">Transfer Member</h3>' +
+                            '<i class="ph ph-arrows-left-right" style="font-size: var(--fs-3xl); color: var(--accent);"></i>' +
+                            '<h3 style="margin:0; font-size: var(--fs-xl);">Transfer Member</h3>' +
                         '</div>' +
                         '<button type="button" class="gm-mini-btn gm-close-modal"><i class="ph ph-x"></i></button>' +
                     '</div>' +
                     '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:1rem;">' +
                         '<div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">' +
                             '<div><strong>Player:</strong> <span style="color: var(--accent); font-weight: 700;">' + esc(member.pseudo) + '</span> (UID: ' + esc(member.uid) + ')</div>' +
-                            '<div style="font-size: 0.85rem; color: var(--text-dim); margin-top: 0.25rem;">Current Guild: <strong>' + esc(currentG) + '</strong> (Server #' + esc(currentServer) + ')</div>' +
+                            '<div style="font-size: var(--fs-base); color: var(--text-dim); margin-top: 0.25rem;">Current Guild: <strong>' + esc(currentG) + '</strong> (Server #' + esc(currentServer) + ')</div>' +
                         '</div>' +
                         '<div class="gm-form-group">' +
-                            '<label class="gm-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild:</label>' +
+                            '<label class="gm-label" style="font-size: var(--fs-base); font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild:</label>' +
                             '<select id="transfer-target-guild" class="gm-select gm-input">' +
                                 optionsHtml +
                             '</select>' +
                         '</div>' +
-                        '<div style="background: var(--info-soft); color: var(--info); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--info-soft); font-size: 0.8rem; line-height: 1.4;">' +
+                        '<div style="background: var(--info-soft); color: var(--info); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--info-soft); font-size: var(--fs-sm); line-height: 1.4;">' +
                             '<i class="ph ph-info" style="margin-right: 4px;"></i>' +
                             'This player will disappear from ' + esc(currentG) + ' and join the target guild. All historical point logs, event records, and sanctions are kept for past activity tracking.' +
                         '</div>' +
@@ -6388,12 +6388,12 @@
         var historyHtml = '';
         if (nameHistory.length > 0) {
             historyHtml = '<div style="margin-top: 1rem; border-top: 1px solid var(--border-soft); padding-top: 1rem; text-align: left;">' +
-                '<h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;"><i class="ph ph-clock-counter-clockwise"></i> ' + t('Name History') + '</h4>' +
+                '<h4 style="margin: 0 0 0.5rem 0; font-size: var(--fs-md); color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;"><i class="ph ph-clock-counter-clockwise"></i> ' + t('Name History') + '</h4>' +
                 '<div style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem;">' +
                 nameHistory.map(function (h) {
                     var date = new Date(h.changed_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                    return '<div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm);">' +
-                        '<span><strong>' + esc(h.old_pseudo) + '</strong> ➔ <strong>' + esc(h.new_pseudo) + '</strong> <span class="gm-dim" style="font-size:0.75rem;">(' + date + ' by ' + esc(h.changed_by) + ')</span></span>' +
+                    return '<div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-sm); background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm);">' +
+                        '<span><strong>' + esc(h.old_pseudo) + '</strong> ➔ <strong>' + esc(h.new_pseudo) + '</strong> <span class="gm-dim" style="font-size: var(--fs-sm);">(' + date + ' by ' + esc(h.changed_by) + ')</span></span>' +
                         '<button type="button" class="delete-history-btn" data-id="' + h.id + '" style="background: none; border: none; color: var(--error); cursor: pointer; padding: 2px;"><i class="ph ph-trash"></i></button>' +
                         '</div>';
                 }).join('') +
@@ -6403,7 +6403,7 @@
         var uidStat = window.GM && window.GM.getUidStatus ? window.GM.getUidStatus(member.uid) : { valid: true };
         var isTempUid = !uidStat.valid;
         var uidHelperHtml = isTempUid
-            ? '<div id="edit-uid-helper" style="font-size:0.75rem; color:#f87171; margin-top:0.35rem; display:flex; align-items:center; gap:0.25rem;"><i class="ph ph-warning"></i> ' + esc(uidStat.label) + ' (' + esc(uidStat.reason || 'Enter real 6-10 digit game UID') + ')</div>'
+            ? '<div id="edit-uid-helper" style="font-size: var(--fs-sm); color:#f87171; margin-top:0.35rem; display:flex; align-items:center; gap:0.25rem;"><i class="ph ph-warning"></i> ' + esc(uidStat.label) + ' (' + esc(uidStat.reason || 'Enter real 6-10 digit game UID') + ')</div>'
             : '';
 
         overlay.innerHTML =
@@ -6437,7 +6437,7 @@
                         '</div>' +
                         '<div class="input-group" style="flex: 1;">' +
                             '<label for="edit-role"><i class="ph ph-crown" style="vertical-align:middle;margin-right:0.3rem"></i>Role</label>' +
-                            '<select id="edit-role" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); font-family: var(--font-family-body); font-size: 0.88rem; width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
+                            '<select id="edit-role" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); font-family: var(--font-family-body); font-size: var(--fs-base); width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
                                 '<option value="R1"' + (member.role === 'R1' ? ' selected' : '') + '>R1</option>' +
                                 '<option value="R2"' + (member.role === 'R2' ? ' selected' : '') + '>R2</option>' +
                                 '<option value="R3"' + (member.role === 'R3' ? ' selected' : '') + '>R3</option>' +
@@ -6447,31 +6447,31 @@
                         '</div>' +
                     '</div>' +
                     '<div style="background: var(--bg-dim); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">' +
-                        '<div style="font-size: 0.8rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 0.35rem;"><i class="ph ph-crosshair"></i> Tactical Military Scores</div>' +
+                        '<div style="font-size: var(--fs-sm); font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 0.35rem;"><i class="ph ph-crosshair"></i> Tactical Military Scores</div>' +
                         '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem;">' +
                             '<div class="input-group">' +
-                                '<label for="edit-fleet" style="font-size:0.75rem;">⚔️ Fleet Rating</label>' +
-                                '<input type="number" id="edit-fleet" class="gm-input" value="' + esc(member.fleet_rating || '') + '" placeholder="e.g. 2000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                                '<label for="edit-fleet" style="font-size: var(--fs-sm);">⚔️ Fleet Rating</label>' +
+                                '<input type="number" id="edit-fleet" class="gm-input" value="' + esc(member.fleet_rating || '') + '" placeholder="e.g. 2000000" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);">' +
                             '</div>' +
                             '<div class="input-group">' +
-                                '<label for="edit-tech" style="font-size:0.75rem;">🔬 Tech Power</label>' +
-                                '<input type="number" id="edit-tech" class="gm-input" value="' + esc(member.tech_power || '') + '" placeholder="e.g. 15000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                                '<label for="edit-tech" style="font-size: var(--fs-sm);">🔬 Tech Power</label>' +
+                                '<input type="number" id="edit-tech" class="gm-input" value="' + esc(member.tech_power || '') + '" placeholder="e.g. 15000000" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);">' +
                             '</div>' +
                             '<div class="input-group">' +
-                                '<label for="edit-flagship" style="font-size:0.75rem;">🚀 Flagship Power</label>' +
-                                '<input type="number" id="edit-flagship" class="gm-input" value="' + esc(member.flagship_power || '') + '" placeholder="e.g. 10000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                                '<label for="edit-flagship" style="font-size: var(--fs-sm);">🚀 Flagship Power</label>' +
+                                '<input type="number" id="edit-flagship" class="gm-input" value="' + esc(member.flagship_power || '') + '" placeholder="e.g. 10000000" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);">' +
                             '</div>' +
                             '<div class="input-group">' +
-                                '<label for="edit-champ" style="font-size:0.75rem;">👑 Champions Power</label>' +
-                                '<input type="number" id="edit-champ" class="gm-input" value="' + esc(member.champion_power || '') + '" placeholder="e.g. 30000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                                '<label for="edit-champ" style="font-size: var(--fs-sm);">👑 Champions Power</label>' +
+                                '<input type="number" id="edit-champ" class="gm-input" value="' + esc(member.champion_power || '') + '" placeholder="e.g. 30000000" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);">' +
                             '</div>' +
                             '<div class="input-group">' +
-                                '<label for="edit-crew" style="font-size:0.75rem;">👥 Crew Power</label>' +
-                                '<input type="number" id="edit-crew" class="gm-input" value="' + esc(member.crew_power || '') + '" placeholder="e.g. 5000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                                '<label for="edit-crew" style="font-size: var(--fs-sm);">👥 Crew Power</label>' +
+                                '<input type="number" id="edit-crew" class="gm-input" value="' + esc(member.crew_power || '') + '" placeholder="e.g. 5000000" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);">' +
                             '</div>' +
                             '<div class="input-group">' +
-                                '<label for="edit-glory" style="font-size:0.75rem;">🏆 Glory Score</label>' +
-                                '<input type="number" id="edit-glory" class="gm-input" value="' + esc(member.glory_score || '') + '" placeholder="e.g. 50000000" style="padding:0.35rem 0.5rem; font-size:0.82rem;">' +
+                                '<label for="edit-glory" style="font-size: var(--fs-sm);">🏆 Glory Score</label>' +
+                                '<input type="number" id="edit-glory" class="gm-input" value="' + esc(member.glory_score || '') + '" placeholder="e.g. 50000000" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);">' +
                             '</div>' +
                         '</div>' +
                     '</div>' +
@@ -6738,15 +6738,15 @@
         var html = 
             '<div class="gm-profile-card" style="max-width: 600px; gap: 1.25rem; align-items: stretch; text-align: left;">' +
                 '<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.75rem;">' +
-                    '<h3 style="font-family: var(--font-display); font-size: 1.2rem; margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
+                    '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
                         '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personalization - ' + titleMap[eventPrefix] +
                     '</h3>' +
                     '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" style="padding: 0.25rem;"><i class="ph ph-x"></i></button>' +
                 '</div>' +
-                '<div style="font-size: 0.82rem; color: var(--fg-dim); background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 6px; padding: 0.65rem 0.8rem; line-height: 1.4;">' +
+                '<div style="font-size: var(--fs-sm); color: var(--fg-dim); background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 6px; padding: 0.65rem 0.8rem; line-height: 1.4;">' +
                     '<strong>Available variables:</strong> <code>{event_name}</code>, <code>{date}</code>, <code>{guild_tag}</code>' +
                     (eventPrefix === 'calamity' ? ', <code>{round}</code>' : '') +
-                    '<br><span style="font-size: 0.75rem;">Leave blank to use the default message template.</span>' +
+                    '<br><span style="font-size: var(--fs-sm);">Leave blank to use the default message template.</span>' +
                 '</div>' +
                 '<div style="display: flex; flex-direction: column; gap: 1.5rem; max-height: 50vh; overflow-y: auto; padding-right: 0.25rem;">';
 
@@ -6762,18 +6762,18 @@
 
             html += 
                 '<div style="display: flex; flex-direction: column; gap: 0.75rem; border-bottom: 1px dashed var(--border-soft); padding-bottom: 1.25rem;">' +
-                    '<div style="font-size: 0.85rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em;">' + r.label + '</div>' +
+                    '<div style="font-size: var(--fs-base); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em;">' + r.label + '</div>' +
                     '<div class="gm-col" style="gap: 0.35rem;">' +
-                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Discord Message (ping / main text):</label>' +
-                        '<input type="text" id="tpl-' + r.key + '-content" class="gm-input gm-input-sm" style="font-size: 0.8rem;" placeholder="' + esc(defContent) + '" value="' + esc(valContent) + '">' +
+                        '<label style="font-size: var(--fs-sm); color: var(--fg-dim);">Discord Message (ping / main text):</label>' +
+                        '<input type="text" id="tpl-' + r.key + '-content" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' + esc(defContent) + '" value="' + esc(valContent) + '">' +
                     '</div>' +
                     '<div class="gm-col" style="gap: 0.35rem;">' +
-                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Embed Title:</label>' +
-                        '<input type="text" id="tpl-' + r.key + '-title" class="gm-input gm-input-sm" style="font-size: 0.8rem;" placeholder="' + esc(defTitle) + '" value="' + esc(valTitle) + '">' +
+                        '<label style="font-size: var(--fs-sm); color: var(--fg-dim);">Embed Title:</label>' +
+                        '<input type="text" id="tpl-' + r.key + '-title" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' + esc(defTitle) + '" value="' + esc(valTitle) + '">' +
                     '</div>' +
                     '<div class="gm-col" style="gap: 0.35rem;">' +
-                        '<label style="font-size: 0.78rem; color: var(--fg-dim);">Embed Description:</label>' +
-                        '<textarea id="tpl-' + r.key + '-desc" class="gm-input" style="font-size: 0.8rem; height: 60px; resize: vertical;" placeholder="' + esc(defDesc) + '">' + valDesc + '</textarea>' +
+                        '<label style="font-size: var(--fs-sm); color: var(--fg-dim);">Embed Description:</label>' +
+                        '<textarea id="tpl-' + r.key + '-desc" class="gm-input" style="font-size: var(--fs-sm); height: 60px; resize: vertical;" placeholder="' + esc(defDesc) + '">' + valDesc + '</textarea>' +
                     '</div>' +
                 '</div>';
         }
@@ -7036,8 +7036,8 @@
             '<div id="backup-code-login-overlay" class="gm-modal-overlay">' +
                 '<div class="gm-modal-card" style="max-width: 380px; width: 92%;">' +
                     '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom: .75rem;">' +
-                        '<i class="ph ph-key" style="font-size: 1.4rem; color: var(--accent);"></i>' +
-                        '<h3 style="margin:0; font-size: 1.1rem;">Use a Backup Code</h3>' +
+                        '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--accent);"></i>' +
+                        '<h3 style="margin:0; font-size: var(--fs-xl);">Use a Backup Code</h3>' +
                     '</div>' +
                     '<div class="gm-login-field">' +
                         '<label for="backup-code-login-id">Identifier</label>' +
@@ -7130,8 +7130,8 @@
                 '<div class="gm-modal-card" style="max-width: 640px; width: 92%; position: relative;">' +
                     '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
                         '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-                            '<i class="ph ph-chart-line-up" style="font-size: 1.5rem; color: var(--accent);"></i>' +
-                            '<h3 style="margin:0; font-size: 1.2rem;">' + esc(pseudo) + ' — Player History</h3>' +
+                            '<i class="ph ph-chart-line-up" style="font-size: var(--fs-3xl); color: var(--accent);"></i>' +
+                            '<h3 style="margin:0; font-size: var(--fs-xl);">' + esc(pseudo) + ' — Player History</h3>' +
                         '</div>' +
                         '<button type="button" class="gm-mini-btn gm-close-modal"><i class="ph ph-x"></i></button>' +
                     '</div>' +
@@ -7175,7 +7175,7 @@
 
             if (powerHistory.length > 0) {
                 sections += '<div>' +
-                    '<h4 style="margin:0 0 .5rem; font-size:.95rem; color:var(--fg-dim); font-weight:600;">Power trend (last ' + powerHistory.length + ' weeks)</h4>' +
+                    '<h4 style="margin:0 0 .5rem; font-size: var(--fs-md); color:var(--fg-dim); font-weight:600;">Power trend (last ' + powerHistory.length + ' weeks)</h4>' +
                     '<canvas id="player-history-power-canvas" style="width:100%; display:block;"></canvas>' +
                 '</div>';
             }
@@ -7183,14 +7183,14 @@
             var eventKeys = eventData && eventData.events ? Object.keys(eventData.events) : [];
             if (eventKeys.length > 0) {
                 sections += '<div>' +
-                    '<h4 style="margin:0 0 .5rem; font-size:.95rem; color:var(--fg-dim); font-weight:600;">Event participation</h4>' +
+                    '<h4 style="margin:0 0 .5rem; font-size: var(--fs-md); color:var(--fg-dim); font-weight:600;">Event participation</h4>' +
                     '<div style="display:flex; flex-direction:column; gap:.5rem;">' +
                         eventKeys.sort().map(function (evKey) {
                             var ev = eventData.events[evKey];
                             var rateColor = ev.rate >= 80 ? '#34d399' : (ev.rate >= 50 ? '#fbbf24' : 'var(--fg-dim)');
                             return '<div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">' +
                                 '<span style="font-weight:600;">' + esc(evKey) + '</span>' +
-                                '<span style="font-size:.85rem; color:' + rateColor + '; font-weight:700;">' + ev.attended + '/' + ev.count + ' attended (' + ev.rate + '%)</span>' +
+                                '<span style="font-size: var(--fs-base); color:' + rateColor + '; font-weight:700;">' + ev.attended + '/' + ev.count + ' attended (' + ev.rate + '%)</span>' +
                             '</div>';
                         }).join('') +
                     '</div>' +
