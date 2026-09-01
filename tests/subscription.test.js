@@ -121,6 +121,18 @@ describe('GM_SUBSCRIPTION voluntary donations ("Buy Me a Coffee")', () => {
         expect(container().textContent).toContain('Admins only');
     });
 
+    it('regression: server_admin is not denied (was silently excluded by an allowlist of just super_admin/guild_admin)', async () => {
+        // Reported live via a screenshot: a real server_admin clicked the
+        // "Buy Me a Coffee" link (correctly visible after the shell.js nav
+        // fix) and landed on this exact "Admins only" denial -- this module
+        // has its own separate role gate that had the identical bug,
+        // independently, since it never imported/reused shell.js's check.
+        localStorage.setItem('gm_role', 'server_admin');
+        await SUB.load();
+        expect(container().textContent).not.toContain('Admins only');
+        expect(planKeys()).toEqual(['donation_2', 'donation_5', 'donation_10']);
+    });
+
     it('shows a donations-disabled state when the guild flag is set', async () => {
         window.guildsData.ALPHA = { type: 'Unlimited', end: null, server_number: '1089', paymentsDisabled: true };
         await SUB.load();

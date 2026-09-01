@@ -2,7 +2,7 @@
  * src/modules/subscription/subscription-view.ts
  *
  * TypeScript port of subscription.js — "Buy Me a Coffee" voluntary
- * donations panel (Command Center, guild_admin / super_admin).
+ * donations panel (Command Center, any admin-side role).
  *
  * 1:1 port: same markup, same DOM ids/classes, same behavior. Still reads
  * window.GM.* for pieces owned by the legacy scripts (db, active guild,
@@ -63,8 +63,14 @@ function getGuildId(): string {
 }
 
 function isAdminRole(): boolean {
+  // Any admin-side role sees this, not an allowlist of specific ones --
+  // the exact same bug already fixed once in shell.js's visibleNavItems()
+  // (server_admin silently excluded by an allowlist of just
+  // super_admin/guild_admin) existed here too, independently, since this
+  // module has its own separate gate. Excluding by role instead of
+  // allowlisting means a future admin sub-role can't hit it again either.
   const role = gm().roleFromStorage ? gm().roleFromStorage() : null;
-  return role === 'super_admin' || role === 'guild_admin';
+  return !!role && role !== 'member';
 }
 
 export class SubscriptionView {
