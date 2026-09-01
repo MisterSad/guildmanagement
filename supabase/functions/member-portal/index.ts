@@ -3,6 +3,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { createDonationCheckoutSession, stripeSecretKey } from "../_shared/stripe.ts";
+import { getPlayer } from "../_shared/member-lookup.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY     = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -96,26 +97,6 @@ async function getIdentity(
     guild,
     uid: playerUid,
   };
-}
-
-async function getPlayer(
-  admin: ReturnType<typeof createClient>,
-  uid: string,
-  guildContext: string | null
-): Promise<{ pseudo: string; guild: string; overall_power?: number; power_updated_at?: string; metrics_updated_at?: string; tech_power?: number; champion_power?: number; crew_power?: number; flagship_power?: number; fleet_rating?: number; glory_score?: number; role?: string; timezone_offset?: number | null } | null> {
-  let query = admin
-    .from("guild_members")
-    .select("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset")
-    .eq("uid", uid);
-
-  if (guildContext) {
-    query = query.eq("guild", guildContext);
-  }
-
-  const { data: rows, error } = await query.limit(1);
-
-  if (error || !rows || rows.length === 0) return null;
-  return rows[0];
 }
 
 async function getGuildAverages(
@@ -1055,6 +1036,45 @@ Deno.serve(async (req: Request) => {
       });
 
       return json({ ok: true });
+    }
+
+    if (action === "confirm-discord-link") {
+      // Never trust a self-typed Discord user id: the code was generated
+      // by the /link Discord command and shown only to that Discord user;
+      // confirming it here (from an already-authenticated web session) is
+      // what actually proves ownership, not the code by itself.
+      const code = (payload?.code ?? "").toString().trim().toUpperCase();
+      if (!code) return json({ ok: false, error: "missing_code" }, 400);
+
+      const { data: linkCode } = await admin
+        .from("discord_link_codes")
+        .select("code, discord_user_id, discord_username, expires_at")
+        .eq("code", code)
+        .maybeSingle();
+
+      if (!linkCode) return json({ ok: false, error: "invalid_code" }, 200);
+      if (new Date(linkCode.expires_at).getTime() < Date.now()) {
+        await admin.from("discord_link_codes").delete().eq("code", code);
+        return json({ ok: false, error: "code_expired" }, 200);
+      }
+
+      const { error: insertErr } = await admin
+        .from("discord_account_links")
+        .insert({ discord_user_id: linkCode.discord_user_id, account_id: identity.accountId });
+
+      if (insertErr) {
+        if (insertErr.code === "23505") {
+          // Either this Discord account or this FGF account is already linked.
+          return json({ ok: false, error: "already_linked" }, 200);
+        }
+        logger.error("Failed to write discord_account_links", insertErr, { accountId: identity.accountId });
+        return json({ ok: false, error: "server_error" }, 500);
+      }
+
+      await admin.from("discord_link_codes").delete().eq("code", code);
+
+      logger.info("Discord account linked", { accountId: identity.accountId, discordUserId: linkCode.discord_user_id });
+      return json({ ok: true, discord_username: linkCode.discord_username || null });
     }
 
     if (action === "get-push-prefs") {

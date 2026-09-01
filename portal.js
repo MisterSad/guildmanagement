@@ -1091,6 +1091,16 @@
                 '</div>' +
 
                 '<div class="portal-card">' +
+                    '<div class="portal-card-title"><i class="ph ph-discord-logo"></i> Link Discord<button class="gm-help-btn" data-help-id="help-portal-discord-link" aria-label="Help: Link Discord"><i class="ph ph-info"></i></button></div>' +
+                    '<div class="portal-row">' +
+                        '<input type="text" id="portal-discord-code-input" class="gm-input" maxlength="6" placeholder="Code from /link in Discord" autocomplete="off" style="text-transform:uppercase;">' +
+                        '<button type="button" id="portal-discord-link-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-link"></i><span>Confirm</span></button>' +
+                    '</div>' +
+                    '<div class="portal-msg" id="portal-discord-link-msg"></div>' +
+                    '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Run <code>/link</code> in Discord first, then paste the code here to enable player commands like <code>/myinfo</code>.</div>' +
+                '</div>' +
+
+                '<div class="portal-card">' +
                     '<div class="portal-card-title"><i class="ph ph-bell-ringing"></i> Notifications<button class="gm-help-btn" data-help-id="help-portal-dashboard" aria-label="Help: Notifications"><i class="ph ph-info"></i></button></div>' +
                     '<div data-gm-notif></div>' +
                     '<div class="portal-notif-hint"><i class="ph ph-info"></i> Choose which web-push reminders you want to receive.</div>' +
@@ -1270,6 +1280,45 @@
                     }
                 } finally {
                     tzBtn.disabled = false;
+                    if (span) span.textContent = origText;
+                }
+            });
+        }
+
+        // Link Discord
+        var discordCodeInput = document.getElementById('portal-discord-code-input');
+        var discordLinkBtn = document.getElementById('portal-discord-link-btn');
+        var discordLinkMsg = document.getElementById('portal-discord-link-msg');
+        if (discordLinkBtn && discordCodeInput) {
+            discordLinkBtn.addEventListener('click', async function () {
+                var code = discordCodeInput.value.trim().toUpperCase();
+                if (!code) return;
+                discordLinkBtn.disabled = true;
+                var span = discordLinkBtn.querySelector('span');
+                var origText = span ? span.textContent : '';
+                if (span) span.textContent = 'Linking...';
+                try {
+                    var res = await invoke('confirm-discord-link', { code: code });
+                    if (!res.ok) throw new Error({
+                        invalid_code: 'That code is invalid or already used.',
+                        code_expired: 'That code has expired — run /link in Discord again.',
+                        already_linked: 'This Discord account or player account is already linked.'
+                    }[res.error] || res.error || 'link_failed');
+                    discordCodeInput.value = '';
+                    if (discordLinkMsg) {
+                        discordLinkMsg.textContent = 'Discord account linked! Player commands like /myinfo are now available.';
+                        discordLinkMsg.style.color = 'var(--success)';
+                        discordLinkMsg.style.display = 'block';
+                    }
+                    window.GM.showToast('Discord linked!', 'success');
+                } catch (err) {
+                    if (discordLinkMsg) {
+                        discordLinkMsg.textContent = err.message;
+                        discordLinkMsg.style.color = 'var(--danger)';
+                        discordLinkMsg.style.display = 'block';
+                    }
+                } finally {
+                    discordLinkBtn.disabled = false;
                     if (span) span.textContent = origText;
                 }
             });

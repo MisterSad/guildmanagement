@@ -8,12 +8,22 @@ import fs from 'fs';
 import path from 'path';
 
 const portalPath = path.resolve(__dirname, '../supabase/functions/member-portal/index.ts');
+const memberLookupPath = path.resolve(__dirname, '../supabase/functions/_shared/member-lookup.ts');
 
 describe('Player Portal military metrics response (v127.1)', () => {
   it('getPlayer selects the full military metric set including timezone and metrics timestamp', () => {
-    const content = fs.readFileSync(portalPath, 'utf-8');
+    // getPlayer moved to _shared/member-lookup.ts (2026-09, Discord bot Phase
+    // 1) so discord-bot-interactions can reuse the exact same query for
+    // /myinfo instead of duplicating it -- member-portal now imports it.
+    const content = fs.readFileSync(memberLookupPath, 'utf-8');
     const selectMatch = content.match(/\.select\("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset"\)/);
     expect(selectMatch).not.toBeNull();
+  });
+
+  it('member-portal imports getPlayer from the shared module instead of redefining it', () => {
+    const content = fs.readFileSync(portalPath, 'utf-8');
+    expect(content).toContain('import { getPlayer } from "../_shared/member-lookup.ts"');
+    expect(content).not.toMatch(/async function getPlayer\(/);
   });
 
   it('get-active-sessions response carries every metric field the portal tiles render', () => {

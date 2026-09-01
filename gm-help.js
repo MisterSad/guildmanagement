@@ -174,6 +174,11 @@
             title: 'Your Timezone',
             body: '<p>Set your UTC timezone offset so your guild admin knows what time events fall in your local time.</p><p>For example: UTC+2 → enter <strong>+2</strong>. UTC-5 → enter <strong>-5</strong>.</p>'
         },
+        'help-portal-discord-link': {
+            icon: 'ph-discord-logo',
+            title: 'Link Discord',
+            body: '<p>Type <code>/link</code> in Discord to get a one-time code, then paste it here to confirm. Confirming here — while you\'re already signed in — is what proves the Discord account is really yours.</p><p>Once linked, player commands like <code>/myinfo</code> work in Discord for your account.</p>'
+        },
         'help-portal-transfer': {
             icon: 'ph-arrows-left-right',
             title: 'Request a Guild Transfer',
