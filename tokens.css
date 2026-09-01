@@ -8,6 +8,28 @@
 
 :root {
   /* ════════════════════════════════════════════════════════════════════════════
+     0. TYPE SCALE — 12 steps, each centered on the most frequent font-size
+     value already found at that weight class across the app (2026-09 audit:
+     ~150 CSS declarations + 461 inline JS usages, ~100 distinct raw values,
+     zero shared scale). Consolidates near-duplicate drift (e.g. 0.75rem /
+     .75rem / 0.74rem / 0.76rem / 0.78rem all meaning "small text") into one
+     named value per weight class — not a redesign, existing sizes just
+     snapped to their nearest neighbor.
+     ════════════════════════════════════════════════════════════════════════════ */
+  --fs-2xs:  0.65rem;  /* 10.4px  — micro/meta text (timestamps, tiny badges) */
+  --fs-xs:   0.72rem;  /* 11.5px  — small labels */
+  --fs-sm:   0.8rem;   /* 12.8px  — small body text */
+  --fs-base: 0.875rem; /* 14px    — default body text */
+  --fs-md:   0.95rem;  /* 15.2px  — emphasized body text */
+  --fs-lg:   1.05rem;  /* 16.8px  — small headings / card titles */
+  --fs-xl:   1.2rem;   /* 19.2px  — headings */
+  --fs-2xl:  1.4rem;   /* 22.4px  — larger headings */
+  --fs-3xl:  1.75rem;  /* 28px    — section titles */
+  --fs-4xl:  2.25rem;  /* 36px    — page titles */
+  --fs-5xl:  3rem;     /* 48px    — display numbers */
+  --fs-6xl:  4.5rem;   /* 72px    — hero display numbers */
+
+  /* ════════════════════════════════════════════════════════════════════════════
      1. GOOGLE MATERIAL DESIGN 3.0 SURFACE HIERARCHY (Google Dark Theme)
      ════════════════════════════════════════════════════════════════════════════ */
   --md-sys-color-surface:                   #131314; /* Google Dark Base Canvas */
