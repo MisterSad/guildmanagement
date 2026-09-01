@@ -54,7 +54,13 @@
         var paymentsDisabled = window.GM.isPaymentsDisabled();
         NAV_ITEMS.forEach(function (i) {
             if (i.r5Only && role !== 'super_admin') return;
-            if (i.adminOnly && role !== 'super_admin' && role !== 'guild_admin') return;
+            // adminOnly means "any admin-side role, not a member" -- an
+            // allowlist of just super_admin/guild_admin silently excluded
+            // server_admin (reported live: server_admin couldn't see the
+            // Buy Me a Coffee link at all). Exclude by role instead of
+            // allowlisting roles, so this can't happen again for a future
+            // admin sub-role either.
+            if (i.adminOnly && role === 'member') return;
             if (i.id === 'subscription' && paymentsDisabled) return;
             items.push(Object.assign({}, i));
         });
@@ -462,7 +468,8 @@
             '</nav>' +
             getSubscriptionCardHtml() +
             footerItems.map(function (item) {
-                return '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-nav-item="' + item.id + '">' +
+                var donateCls = (item.id === 'subscription') ? ' gm-donate-nav-item' : '';
+                return '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug' + donateCls + '" data-gm-nav-item="' + item.id + '">' +
                     '<span class="material-symbols-rounded" style="font-size:1.1rem;">' + (item.m3Icon || 'circle') + '</span>' +
                     '<span>' + t(item.labelKey) + '</span>' +
                 '</button>';
@@ -918,8 +925,9 @@
             var label = t(item.labelKey);
             var m3Icon = item.m3Icon || 'circle';
             var badgeHtml = (item.id === 'leader-hall') ? '<span class="gm-drawer-unread-badge hidden" id="drawer-badge-leader-hall">0</span>' : '';
+            var donateCls = (item.id === 'subscription') ? ' gm-donate-nav-item' : '';
 
-            html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
+            html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + donateCls + '" data-gm-nav-item="' + item.id + '">' +
                         badgeHtml +
                         '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
                         '<span>' + label + '</span>' +

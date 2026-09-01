@@ -264,6 +264,71 @@
         });
     }
 
+    // ─── New-version detection ───────────────────────────────────────────────
+    // A tab that's already loaded never re-fetches its own JS on its own --
+    // reported live: a user saw a different app version depending on which
+    // guild tab/session they had open, because one tab had simply been open
+    // since before the latest deploy (a PWA install or a long-lived tab left
+    // open for days is the common case). That tab isn't just showing a stale
+    // version number, it's silently running every bug it ever had, missing
+    // every fix shipped since. Poll a tiny unminified marker file (written by
+    // scripts/build.js from the same APP_VERSION gm-utils.js exposes) and
+    // prompt a reload when it doesn't match what's actually running here.
+    var CURRENT_APP_VERSION = window.GM && window.GM.appVersion;
+    var newVersionBannerShown = false;
+
+    function checkForNewVersion() {
+        if (!CURRENT_APP_VERSION || newVersionBannerShown) return;
+        fetch('/version.json', { cache: 'no-store' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (data && data.version && data.version !== CURRENT_APP_VERSION) {
+                    showNewVersionBanner(data.version);
+                }
+            })
+            .catch(function () { /* offline or transient network error: next scheduled check retries */ });
+    }
+
+    function showNewVersionBanner(newVersion) {
+        if (newVersionBannerShown || document.getElementById('new-version-banner')) return;
+        newVersionBannerShown = true;
+
+        var banner = document.createElement('div');
+        banner.id = 'new-version-banner';
+        banner.style.cssText = 'position:fixed; bottom:1rem; right:1rem; z-index:9500; max-width:360px; ' +
+            'background:var(--bg-soft, #1a1a24); border:1px solid rgba(99,102,241,0.4); border-radius:12px; ' +
+            'padding:1rem 1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:.6rem;';
+        banner.innerHTML =
+            '<div style="display:flex; align-items:flex-start; gap:.6rem;">' +
+                '<i class="ph ph-arrows-clockwise" style="font-size:1.4rem; color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
+                '<div>' +
+                    '<div style="font-weight:600; margin-bottom:.15rem;">Update available (' + esc(newVersion) + ')</div>' +
+                    '<div style="font-size:.82rem; color:var(--fg-dim);">This tab is running an older version. Refresh to get the latest fixes.</div>' +
+                '</div>' +
+            '</div>' +
+            '<div style="display:flex; gap:.5rem; justify-content:flex-end;">' +
+                '<button type="button" id="new-version-later" class="gm-btn gm-btn-ghost gm-btn-sm">Later</button>' +
+                '<button type="button" id="new-version-refresh" class="gm-btn gm-btn-primary gm-btn-sm">Refresh</button>' +
+            '</div>';
+
+        document.body.appendChild(banner);
+
+        document.getElementById('new-version-later').addEventListener('click', function () {
+            banner.remove();
+        });
+        document.getElementById('new-version-refresh').addEventListener('click', function () {
+            window.location.reload();
+        });
+    }
+
+    // Fallback for a tab that just stays open and foregrounded for hours.
+    setInterval(checkForNewVersion, 15 * 60 * 1000);
+    // The case that actually motivated this: catches a deploy that shipped
+    // while this tab was backgrounded, the moment the user comes back to it.
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') checkForNewVersion();
+    });
+
     // Shared post-login success path — role-driven (showAdminDashboard
     // itself routes 'member' to the Player Portal, everything else to the
     // admin dashboard), so it works unchanged regardless of which method

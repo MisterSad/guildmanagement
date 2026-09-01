@@ -159,7 +159,8 @@
 
         var navHtml = navItems.map(function (item) {
             var isActive = portalState.activeTab === item.id;
-            return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
+            var donateCls = (item.id === 'donation') ? ' gm-donate-nav-item' : '';
+            return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + donateCls + '" data-portal-nav="' + item.id + '">' +
                         '<i class="ph ' + item.icon + '"></i>' +
                         '<span>' + esc(item.label) + '</span>' +
                     '</button>';
@@ -248,7 +249,8 @@
                             var item = navItems.find(function (n) { return n.id === id; });
                             if (!item) return '';
                             var isActive = portalState.activeTab === item.id;
-                            return '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
+                            var donateCls = (item.id === 'donation') ? ' gm-donate-nav-item' : '';
+                            return '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + donateCls + '" data-portal-nav="' + item.id + '">' +
                                         '<i class="ph ' + item.icon + ' gm-icon"></i>' +
                                         '<span>' + esc(item.label) + '</span>' +
                                     '</button>';

@@ -91,4 +91,23 @@ if (minifiedCount > 0) {
   console.log(`Minified ${minifiedCount} JS/CSS files: ${originalBytes} -> ${minifiedBytes} bytes (-${savedPct}%).`);
 }
 
+// version.json: a tiny, unminified marker the client polls (see app.js
+// checkForNewVersion()) to detect a stale long-lived tab -- a full reload
+// re-fetches this deploy's actual gm-utils.js/app.js, so a stale tab never
+// silently keeps running old code (and missing bugfixes) indefinitely.
+// Generated from gm-utils.js's APP_VERSION so there is exactly one source
+// of truth; this file is never hand-edited.
+{
+  const utilsSrc = fs.readFileSync(path.join(rootDir, 'gm-utils.js'), 'utf8');
+  const m = utilsSrc.match(/var APP_VERSION = '([^']+)'/);
+  if (!m) {
+    throw new Error('build.js: could not find APP_VERSION in gm-utils.js -- version.json would be stale.');
+  }
+  fs.writeFileSync(
+    path.join(distDir, 'version.json'),
+    JSON.stringify({ version: m[1], builtAt: new Date().toISOString() })
+  );
+  console.log(`Wrote version.json (${m[1]}).`);
+}
+
 console.log('Build complete! All root scripts & assets copied to dist/.');

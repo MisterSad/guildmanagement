@@ -365,6 +365,39 @@
     flex-shrink: 0 !important;
 }
 
+/* ─── "Buy Me a Coffee" nav entry: warm coffee-brown + a gentle steam-like
+   pulse on the icon, so it reads as an invitation rather than another grey
+   admin link. Used in the sidebar footer, the mobile drawer, and the Player
+   Portal's own nav (which uses Phosphor <i> icons instead of Material
+   Symbols <span> ones, hence covering both selectors). ─── */
+.gm-donate-nav-item {
+    --coffee-brown: #c68e5a;
+    --coffee-brown-glow: #e0ab78;
+    color: var(--coffee-brown) !important;
+    border-color: rgba(198, 142, 90, 0.35) !important;
+    background: rgba(198, 142, 90, 0.08) !important;
+}
+.gm-donate-nav-item:hover {
+    color: var(--coffee-brown-glow) !important;
+    border-color: rgba(198, 142, 90, 0.55) !important;
+    background: rgba(198, 142, 90, 0.14) !important;
+}
+.gm-donate-nav-item .material-symbols-rounded,
+.gm-donate-nav-item .ph, .gm-donate-nav-item .ph-fill {
+    color: var(--coffee-brown);
+    animation: gm-donate-steam 2.6s ease-in-out infinite;
+}
+@keyframes gm-donate-steam {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.85; }
+    50% { transform: translateY(-1.5px) scale(1.08); opacity: 1; text-shadow: 0 0 6px var(--coffee-brown-glow); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .gm-donate-nav-item .material-symbols-rounded,
+    .gm-donate-nav-item .ph, .gm-donate-nav-item .ph-fill {
+        animation: none;
+    }
+}
+
 .gm-sub-card-pill.gm-sub-expired {
     background: var(--danger);
     color: white;
