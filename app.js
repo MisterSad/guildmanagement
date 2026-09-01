@@ -407,26 +407,92 @@
 
     if (logoutBtn)       logoutBtn.addEventListener('click', doLogout);
 
-    // ─── Player self-registration & M3 Segmented Switcher ───────────────────
+    // ─── Player self-registration, guild requests & M3 Segmented Switcher ──
     var goToRegisterBtn = document.getElementById('go-to-register-btn');
     var registerBackBtn = document.getElementById('register-back-btn');
     var authTabSignin   = document.getElementById('auth-tab-signin');
     var authTabRegister = document.getElementById('auth-tab-register');
+    var authTabGuildRequest = document.getElementById('auth-tab-guild-request');
+    var guildRequestForm = document.getElementById('guild-request-form');
+    var guildRequestError = document.getElementById('guild-request-error');
+    var guildRequestSuccess = document.getElementById('guild-request-success');
+    var guildRequestBackBtn = document.getElementById('guild-request-back-btn');
     var loginCard       = document.querySelector('#login-form');
     var loginHero       = document.querySelector('.gm-login-hero-tag');
 
-    function showRegisterForm(show) {
-        if (registerForm) registerForm.classList.toggle('hidden', !show);
-        if (loginForm) loginForm.classList.toggle('hidden', show);
+    // tab: 'signin' | 'register' | 'guild-request'
+    function showAuthTab(tab) {
+        if (loginForm) loginForm.classList.toggle('hidden', tab !== 'signin');
+        if (registerForm) registerForm.classList.toggle('hidden', tab !== 'register');
+        if (guildRequestForm) guildRequestForm.classList.toggle('hidden', tab !== 'guild-request');
         if (registerError) registerError.classList.add('hidden');
-        if (authTabSignin) authTabSignin.classList.toggle('active', !show);
-        if (authTabRegister) authTabRegister.classList.toggle('active', !!show);
+        if (guildRequestError) guildRequestError.classList.add('hidden');
+        if (guildRequestSuccess) guildRequestSuccess.classList.add('hidden');
+        if (authTabSignin) authTabSignin.classList.toggle('active', tab === 'signin');
+        if (authTabRegister) authTabRegister.classList.toggle('active', tab === 'register');
+        if (authTabGuildRequest) authTabGuildRequest.classList.toggle('active', tab === 'guild-request');
     }
 
-    if (authTabSignin) authTabSignin.addEventListener('click', function () { showRegisterForm(false); });
-    if (authTabRegister) authTabRegister.addEventListener('click', function () { showRegisterForm(true); });
-    if (goToRegisterBtn) goToRegisterBtn.addEventListener('click', function () { showRegisterForm(true); });
-    if (registerBackBtn) registerBackBtn.addEventListener('click', function () { showRegisterForm(false); });
+    // Boolean-compatible wrapper -- kept for existing call sites.
+    function showRegisterForm(show) { showAuthTab(show ? 'register' : 'signin'); }
+
+    if (authTabSignin) authTabSignin.addEventListener('click', function () { showAuthTab('signin'); });
+    if (authTabRegister) authTabRegister.addEventListener('click', function () { showAuthTab('register'); });
+    if (authTabGuildRequest) authTabGuildRequest.addEventListener('click', function () { showAuthTab('guild-request'); });
+    if (goToRegisterBtn) goToRegisterBtn.addEventListener('click', function () { showAuthTab('register'); });
+    if (registerBackBtn) registerBackBtn.addEventListener('click', function () { showAuthTab('signin'); });
+    if (guildRequestBackBtn) guildRequestBackBtn.addEventListener('click', function () { showAuthTab('signin'); });
+
+    if (guildRequestForm) guildRequestForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var tag = document.getElementById('guild-request-tag').value.trim();
+        var server = document.getElementById('guild-request-server').value.trim();
+        var adminId = document.getElementById('guild-request-admin-id').value.trim();
+        var discord = document.getElementById('guild-request-discord').value.trim();
+        var note = document.getElementById('guild-request-note').value.trim();
+
+        if (guildRequestError) guildRequestError.classList.add('hidden');
+        if (guildRequestSuccess) guildRequestSuccess.classList.add('hidden');
+
+        var btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        var span = btn.querySelector('span:last-of-type');
+        var origText = span ? span.textContent : '';
+        if (span) span.textContent = 'Submitting...';
+
+        try {
+            var resp = await window.GM.submitGuildRequest(tag, server, adminId, discord, note);
+            if (resp.ok) {
+                guildRequestForm.reset();
+                if (guildRequestSuccess) guildRequestSuccess.classList.remove('hidden');
+            } else {
+                var msg = {
+                    invalid_guild_tag: 'Guild tag must be 2-12 letters, numbers or underscores.',
+                    invalid_server_number: 'Server number must be exactly 4 digits.',
+                    invalid_admin_id: 'Admin login must be 3 to 32 characters.',
+                    invalid_discord_handle: 'Please enter a valid Discord handle.',
+                    note_too_long: 'Note is too long (max 500 characters).',
+                    tag_taken: 'This guild tag is already taken or has a pending request.',
+                    admin_id_taken: 'This admin login is already taken or has a pending request.',
+                    too_many_pending_requests: 'Too many pending requests right now. Please try again later.',
+                    too_many_attempts: 'Too many attempts. Please wait a few minutes and try again.',
+                    missing_fields: 'Please fill in all required fields.',
+                    request_failed: 'Network error. Please try again.'
+                }[resp.error] || 'Request failed. Please try again.';
+                if (guildRequestError) {
+                    guildRequestError.classList.remove('hidden');
+                    var errMsg = guildRequestError.querySelector('span:last-of-type');
+                    if (errMsg) errMsg.textContent = msg;
+                }
+            }
+        } catch (err) {
+            console.error('Guild request error details:', err);
+            if (guildRequestError) guildRequestError.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+            if (span) span.textContent = origText;
+        }
+    });
 
     if (registerForm) registerForm.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -615,6 +681,7 @@
             renderMigrationGroupsList();
             fetchAccounts();
             populateAccountGuildSelect();
+            fetchGuildRequests();
         }
         if (tabId === 'admin-banned') {
             fetchBannedPlayers();
@@ -956,6 +1023,152 @@
                 if (span) span.textContent = origText;
             }
         });
+    }
+
+    // ─── Self-service Guild Requests (Super Admin review) ───────────────────
+    var GUILD_REQUEST_STATUS_META = {
+        pending: { label: 'Pending', cls: 'gm-chip-warning' },
+        approved: { label: 'Approved', cls: 'gm-chip-success' },
+        rejected: { label: 'Rejected', cls: 'gm-chip-danger' },
+        expired: { label: 'Expired', cls: '' }
+    };
+
+    async function fetchGuildRequests() {
+        var listEl = document.getElementById('guild-requests-list');
+        var countEl = document.getElementById('guild-requests-pending-count');
+        if (!listEl) return;
+        try {
+            var res = await window.GM.adminAccounts('list-guild-requests', {});
+            if (!res.ok) throw new Error(res.error || 'server_error');
+            var requests = res.requests || [];
+            var pendingCount = requests.filter(function (r) { return r.status === 'pending'; }).length;
+            if (countEl) countEl.textContent = String(pendingCount);
+            renderGuildRequestsList(requests);
+        } catch (err) {
+            listEl.innerHTML = '<div class="gm-empty" style="padding:2rem 1rem;"><p style="color:var(--text-muted);">Failed to load guild requests.</p></div>';
+        }
+    }
+
+    function renderGuildRequestsList(requests) {
+        var listEl = document.getElementById('guild-requests-list');
+        if (!listEl) return;
+
+        if (!requests.length) {
+            listEl.innerHTML = '<div class="gm-empty" style="padding:2rem 1rem;"><i class="ph ph-tray gm-icon"></i><div class="gm-empty-title">No guild requests yet</div></div>';
+            return;
+        }
+
+        var html = requests.map(function (r) {
+            var meta = GUILD_REQUEST_STATUS_META[r.status] || { label: r.status, cls: '' };
+            var dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+            var noteHtml = r.note ? '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:.25rem;">' + esc(r.note) + '</div>' : '';
+            var actionsHtml = '';
+            if (r.status === 'pending') {
+                actionsHtml =
+                    '<button class="gm-btn gm-btn-primary gm-btn-sm gm-guild-req-approve" data-id="' + esc(r.id) + '">' +
+                        '<i class="ph ph-check"></i><span>Approve</span>' +
+                    '</button>' +
+                    '<button class="gm-btn gm-btn-ghost gm-btn-sm gm-guild-req-reject" data-id="' + esc(r.id) + '">' +
+                        '<i class="ph ph-x"></i><span>Reject</span>' +
+                    '</button>';
+            } else if (r.reject_reason) {
+                actionsHtml = '<span style="color:var(--text-muted); font-size:0.8rem;">' + esc(r.reject_reason) + '</span>';
+            }
+
+            return (
+                '<div class="gm-card gm-card-padded" style="margin-bottom:.75rem;" data-request-id="' + esc(r.id) + '">' +
+                    '<div class="gm-row" style="justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:.5rem;">' +
+                        '<div>' +
+                            '<div class="gm-row" style="gap:.5rem; align-items:center;">' +
+                                '<strong>' + esc(r.guild_tag) + '</strong>' +
+                                '<span style="color:var(--text-muted); font-size:0.85rem;">#' + esc(r.server_number) + '</span>' +
+                                '<span class="gm-chip ' + meta.cls + '">' + esc(meta.label) + '</span>' +
+                            '</div>' +
+                            '<div style="color:var(--text-muted); font-size:0.85rem; margin-top:.25rem;">' +
+                                'Admin login: <strong>' + esc(r.admin_id) + '</strong> &middot; Discord: ' + esc(r.discord_handle) + ' &middot; ' + dateStr +
+                            '</div>' +
+                            noteHtml +
+                            '<div class="gm-guild-req-result" style="margin-top:.5rem;"></div>' +
+                        '</div>' +
+                        '<div class="gm-row" style="gap:.5rem;">' + actionsHtml + '</div>' +
+                    '</div>' +
+                '</div>'
+            );
+        }).join('');
+
+        listEl.innerHTML = html;
+        wireGuildRequestListeners(listEl);
+    }
+
+    function wireGuildRequestListeners(container) {
+        container.querySelectorAll('.gm-guild-req-approve').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-id');
+                var card = btn.closest('[data-request-id]');
+                var tag = card ? card.querySelector('strong').textContent : 'this guild';
+                showConfirm(
+                    'Approve Guild Request',
+                    'Create guild <strong>' + esc(tag) + '</strong> and its first guild_admin account? A password will be generated for you to relay via Discord.',
+                    async function () {
+                        btn.disabled = true;
+                        try {
+                            var res = await window.GM.adminAccounts('approve-guild-request', { id: id });
+                            if (!res.ok) throw new Error(res.error || 'approve_failed');
+                            var resultEl = card ? card.querySelector('.gm-guild-req-result') : null;
+                            if (resultEl) {
+                                resultEl.innerHTML =
+                                    '<div class="gm-cred-pass" style="display:inline-flex;">' +
+                                        '<span class="gm-pwd-text">' + esc(res.password) + '</span>' +
+                                        '<button class="gm-mini-btn gm-guild-req-copy" data-pass="' + esc(res.password) + '" title="Copy Password"><i class="ph ph-copy"></i></button>' +
+                                    '</div>';
+                                var copyBtn = resultEl.querySelector('.gm-guild-req-copy');
+                                if (copyBtn) copyBtn.addEventListener('click', function () {
+                                    if (navigator.clipboard) navigator.clipboard.writeText(res.password).then(function () {
+                                        showToast('Password copied to clipboard.', 'success');
+                                    });
+                                });
+                            }
+                            if (navigator.clipboard) navigator.clipboard.writeText(res.password).catch(function () {});
+                            showToast('Guild ' + res.guild + ' created. Admin ' + res.id + ' — password copied to clipboard, relay it via Discord.', 'success');
+                            await fetchGuilds();
+                            await fetchGuildRequests();
+                        } catch (err) {
+                            showToast('Could not approve request: ' + err.message, 'error');
+                            btn.disabled = false;
+                        }
+                    }
+                );
+            });
+        });
+
+        container.querySelectorAll('.gm-guild-req-reject').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-id');
+                var card = btn.closest('[data-request-id]');
+                var tag = card ? card.querySelector('strong').textContent : 'this request';
+                showConfirm(
+                    'Reject Guild Request',
+                    'Reject the request for <strong>' + esc(tag) + '</strong>? The tag and admin login will become available again.',
+                    async function () {
+                        btn.disabled = true;
+                        try {
+                            var res = await window.GM.adminAccounts('reject-guild-request', { id: id });
+                            if (!res.ok) throw new Error(res.error || 'reject_failed');
+                            showToast('Guild request rejected.', 'success');
+                            await fetchGuildRequests();
+                        } catch (err) {
+                            showToast('Could not reject request: ' + err.message, 'error');
+                            btn.disabled = false;
+                        }
+                    }
+                );
+            });
+        });
+    }
+
+    var guildRequestsRefreshBtn = document.getElementById('guild-requests-refresh-btn');
+    if (guildRequestsRefreshBtn) {
+        guildRequestsRefreshBtn.addEventListener('click', function () { fetchGuildRequests(); });
     }
 
     async function loadGuildSettings() {

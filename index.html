@@ -48,6 +48,10 @@
                                 <span class="material-symbols-rounded">person_add</span>
                                 <span>Register Player</span>
                             </button>
+                            <button type="button" class="gm-auth-segment-btn" id="auth-tab-guild-request" data-auth-tab="guild-request">
+                                <span class="material-symbols-rounded">shield_person</span>
+                                <span>Request a Guild</span>
+                            </button>
                         </div>
 
                         <!-- ─── Unified Sign In Form ─────────────────────── -->
@@ -157,6 +161,79 @@
                                     <span>Create account</span>
                                 </button>
                                 <button type="button" id="register-back-btn" class="gm-btn gm-btn-ghost" style="margin-top: 0.5rem; width: 100%;">
+                                    <span class="material-symbols-rounded">arrow_back</span>
+                                    <span>Back to Sign In</span>
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- ─── Self-Service Guild Request Form ──────────── -->
+                        <form id="guild-request-form" class="gm-login-card login-card hidden">
+                            <div class="gm-login-brand-row">
+                                <div class="gm-login-avatar-3d">FGF</div>
+                                <div class="gm-login-title">REQUEST A GUILD</div>
+                                <div class="gm-login-sub">Free forever, no payment required. A super admin reviews every request manually.</div>
+                            </div>
+
+                            <div class="gm-login-form">
+                                <div class="gm-login-field">
+                                    <label for="guild-request-tag">Guild Tag</label>
+                                    <div class="gm-input-with-icon">
+                                        <span class="material-symbols-rounded gm-icon">shield</span>
+                                        <input type="text" id="guild-request-tag" class="gm-input" required
+                                            maxlength="12" placeholder="e.g. SIGMA" autocomplete="off">
+                                        <span class="gm-input-focus-line"></span>
+                                    </div>
+                                </div>
+                                <div class="gm-login-field">
+                                    <label for="guild-request-server">Server Number</label>
+                                    <div class="gm-input-with-icon">
+                                        <span class="material-symbols-rounded gm-icon">tag</span>
+                                        <input type="text" id="guild-request-server" class="gm-input" required
+                                            maxlength="4" pattern="\d{4}" inputmode="numeric" placeholder="e.g. 1089" autocomplete="off">
+                                        <span class="gm-input-focus-line"></span>
+                                    </div>
+                                </div>
+                                <div class="gm-login-field">
+                                    <label for="guild-request-admin-id">Your Desired Admin Login</label>
+                                    <div class="gm-input-with-icon">
+                                        <span class="material-symbols-rounded gm-icon">badge</span>
+                                        <input type="text" id="guild-request-admin-id" class="gm-input" required
+                                            placeholder="Identifier you'll sign in with" autocomplete="off">
+                                        <span class="gm-input-focus-line"></span>
+                                    </div>
+                                </div>
+                                <div class="gm-login-field">
+                                    <label for="guild-request-discord">Your Discord Handle</label>
+                                    <div class="gm-input-with-icon">
+                                        <i class="ph ph-discord-logo gm-icon"></i>
+                                        <input type="text" id="guild-request-discord" class="gm-input" required
+                                            maxlength="40" placeholder="How we'll reach you" autocomplete="off">
+                                        <span class="gm-input-focus-line"></span>
+                                    </div>
+                                </div>
+                                <div class="gm-login-field">
+                                    <label for="guild-request-note">Note (optional)</label>
+                                    <div class="gm-input-with-icon">
+                                        <span class="material-symbols-rounded gm-icon">edit_note</span>
+                                        <input type="text" id="guild-request-note" class="gm-input"
+                                            maxlength="500" placeholder="Anything else we should know?" autocomplete="off">
+                                        <span class="gm-input-focus-line"></span>
+                                    </div>
+                                </div>
+                                <div id="guild-request-error" class="gm-login-error hidden">
+                                    <span class="material-symbols-rounded">error</span>
+                                    <span>Request failed.</span>
+                                </div>
+                                <div id="guild-request-success" class="gm-login-error hidden" style="background:rgba(34,197,94,0.12); border-color:rgba(34,197,94,0.4); color:#4ade80;">
+                                    <span class="material-symbols-rounded">check_circle</span>
+                                    <span>Request submitted! A super admin will review it and reach out on Discord.</span>
+                                </div>
+                                <button type="submit" id="guild-request-btn" class="gm-btn gm-btn-primary gm-login-submit">
+                                    <span class="material-symbols-rounded">send</span>
+                                    <span>Submit Request</span>
+                                </button>
+                                <button type="button" id="guild-request-back-btn" class="gm-btn gm-btn-ghost" style="margin-top: 0.5rem; width: 100%;">
                                     <span class="material-symbols-rounded">arrow_back</span>
                                     <span>Back to Sign In</span>
                                 </button>
@@ -728,6 +805,23 @@
                                 <span>Create Guild</span>
                             </button>
                         </form>
+                    </div>
+
+                    <!-- 1.5 Guild Creation Requests (self-service, Phase 1: manual review) -->
+                    <div class="gm-card gm-card-padded gm-section" id="guild-requests-card" style="margin-top: 1.5rem;">
+                        <div class="gm-section-head">
+                            <div class="gm-section-title">
+                                <i class="ph ph-tray"></i>
+                                <span>Guild Requests</span>
+                                <span class="gm-count" id="guild-requests-pending-count">0</span>
+                            </div>
+                            <button type="button" id="guild-requests-refresh-btn" class="gm-btn gm-btn-ghost">
+                                <i class="ph ph-arrow-clockwise"></i>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin: 0 0 1rem;">Submitted from the login page's "Request a Guild" tab. Approving creates the guild and its first guild_admin account with a freshly generated password, shown once here for you to relay via Discord.</p>
+                        <div id="guild-requests-list"></div>
                     </div>
 
                     <!-- 2. Subscription Management -->
@@ -1779,7 +1873,7 @@
     <!-- TODO(phase-3): vendor supabase-js and phosphor-icons via Vite, drop CDN origins from CSP -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>
-    <script src="gm-utils.js?v=57"></script>
+    <script src="gm-utils.js?v=58"></script>
     <script src="gm-webauthn.js?v=6"></script>
     <script src="noble-crypto.bundle.js?v=1"></script>
     <script src="gm-signal-crypto.js?v=4"></script>
@@ -1800,7 +1894,7 @@
     <script src="portal.js?v=16"></script>
     <script src="gm-help.js?v=4"></script>
     <script src="gm-leader-hall.js?v=30"></script>
-    <script src="app.js?v=97"></script>
+    <script src="app.js?v=98"></script>
     <script src="shell.js?v=40"></script>
 </body>
 </html>

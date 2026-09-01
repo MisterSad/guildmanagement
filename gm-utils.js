@@ -836,6 +836,33 @@
         return { ok: true, status: data.status || 'pending' };
     }
 
+    // Self-service guild creation request. Public, no login required -- a
+    // super_admin reviews every request manually before anything is
+    // provisioned. Uses parseFunctionsInvokeResult so a 429 (rate limit) or
+    // 400 (bad request) still surfaces its real error code instead of a
+    // generic failure -- supabase-js discards the response body on non-2xx.
+    async function submitGuildRequest(guildTag, serverNumber, adminId, discordHandle, note) {
+        var c = getClient();
+        if (!c) return { ok: false, error: 'no_client' };
+        var r;
+        try {
+            r = await c.functions.invoke('guild-request', {
+                body: {
+                    guildTag: (guildTag || '').trim().toUpperCase(),
+                    serverNumber: (serverNumber || '').trim(),
+                    adminId: (adminId || '').trim(),
+                    discordHandle: (discordHandle || '').trim(),
+                    note: (note || '').trim()
+                }
+            });
+        } catch (e) {
+            return { ok: false, error: 'request_failed' };
+        }
+        var data = await parseFunctionsInvokeResult(r);
+        if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'request_failed' };
+        return { ok: true };
+    }
+
     // Generate a tenant join code client-side (e.g. "FGF-7K2M-X9Q4").
     // The plain code is sent to the edge function which stores only its SHA-256.
     function generateJoinCode(prefix) {
@@ -2849,6 +2876,7 @@
         t: t,
         login: login,
         parseFunctionsInvokeResult: parseFunctionsInvokeResult,
+        submitGuildRequest: submitGuildRequest,
         loginWithPasskey: loginWithPasskey,
         loginWithBackupCode: loginWithBackupCode,
         startConditionalPasskeyLogin: startConditionalPasskeyLogin,
