@@ -34,6 +34,8 @@ const UpdateGuildSchema = z.object({ id: idField, guild: guildField });
 const SetJoinCodeSchema = z.object({ guild: guildField, code: z.string().trim().min(1).max(64) });
 const GetJoinCodeSchema = z.object({ guild: guildField });
 const ApproveRejectSchema = z.object({ id: idField });
+const GuildRequestIdSchema = z.object({ id: z.string().trim().uuid() });
+const RejectGuildRequestSchema = z.object({ id: z.string().trim().uuid(), reason: z.string().trim().max(500).nullish() });
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
@@ -130,6 +132,23 @@ function randomSecret(): string {
   const b = new Uint8Array(48);
   crypto.getRandomValues(b);
   return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Same alphabet/rejection-sampling shape as the client's generatePassword()
+// in app.js -- used here because approve-guild-request generates the login
+// credential server-side (the requester never chooses it themselves).
+function generatePassword(length: number): string {
+  const chars = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ!@#$%";
+  const limit = 256 - (256 % chars.length);
+  let result = "";
+  while (result.length < length) {
+    const values = new Uint8Array(length * 2);
+    crypto.getRandomValues(values);
+    for (let i = 0; i < values.length && result.length < length; i++) {
+      if (values[i] < limit) result += chars[values[i] % chars.length];
+    }
+  }
+  return result;
 }
 
 Deno.serve(async (req: Request) => {
@@ -617,6 +636,116 @@ Deno.serve(async (req: Request) => {
 
     logger.info("Player registration rejected", { id, guild: targetAcc.guild });
     return json(data);
+  }
+
+  // ==========================================================================
+  // Self-service guild creation (Phase 1: request + manual validation).
+  // Reserved to super_admin -- a brand-new guild has no existing scope for a
+  // server_admin/guild_admin to be "in scope" of yet.
+  // ==========================================================================
+
+  if (action === "list-guild-requests") {
+    if (info.role !== "super_admin") return json({ ok: false, error: "forbidden" }, 403);
+
+    const { data, error } = await admin
+      .from("guild_creation_requests")
+      .select("id, guild_tag, server_number, admin_id, discord_handle, note, status, reject_reason, created_at, reviewed_at")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      logger.error("Failed to list guild creation requests", error);
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+    return json({ ok: true, requests: data ?? [] });
+  }
+
+  if (action === "approve-guild-request") {
+    if (info.role !== "super_admin") return json({ ok: false, error: "forbidden" }, 403);
+
+    const parsed = GuildRequestIdSchema.safeParse(body);
+    if (!parsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+
+    const { data: approveData, error: approveErr } = await admin.rpc("gm_approve_guild_request", {
+      p_request_id: parsed.data.id,
+    });
+    if (approveErr) {
+      logger.error("Failed gm_approve_guild_request", approveErr, { requestId: parsed.data.id });
+      return json({ ok: false, error: "server_error", message: approveErr.message }, 500);
+    }
+    const approveRow = (Array.isArray(approveData) ? approveData[0] : approveData) as
+      | { ok?: boolean; error?: string; guild_tag?: string; admin_id?: string; server_number?: string }
+      | null;
+    if (!approveRow || !approveRow.ok) {
+      return json({ ok: false, error: approveRow?.error || "approve_failed" }, 200);
+    }
+
+    const newAdminId = approveRow.admin_id!;
+    const newGuildTag = approveRow.guild_tag!;
+    const newPassword = generatePassword(12);
+
+    const email = await emailFor(newAdminId);
+    const secret = randomSecret();
+    const meta = { app_role: "guild_admin", account_id: newAdminId };
+    const { data: created, error: cuErr } = await admin.auth.admin.createUser({
+      email, password: secret, email_confirm: true, app_metadata: meta,
+    });
+    let uid = created?.user?.id;
+    if (cuErr || !uid) {
+      const ex = await findUserByEmail(admin, email);
+      if (!ex) {
+        logger.error("Failed to create shadow user for approved guild request", cuErr, { email, newAdminId });
+        return json({ ok: false, error: "provision_failed" }, 500);
+      }
+      uid = ex.id;
+      await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
+    }
+
+    const { error: uErr } = await admin.rpc("gm_admin_upsert", {
+      p_id: newAdminId, p_password: newPassword, p_role: "guild_admin", p_guild: newGuildTag,
+    });
+    if (uErr) {
+      logger.error("Failed gm_admin_upsert on guild request approval", uErr, { newAdminId, newGuildTag });
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+
+    const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: newAdminId, p_auth_user_id: uid, p_secret: secret });
+    if (aErr) {
+      logger.error("Failed gm_attach_shadow on guild request approval", aErr, { newAdminId, uid });
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+
+    await admin
+      .from("guild_creation_requests")
+      .update({ reviewed_by: info.accountId })
+      .eq("id", parsed.data.id);
+
+    logger.info("Guild creation request approved", { requestId: parsed.data.id, guildTag: newGuildTag, adminId: newAdminId, reviewedBy: info.accountId });
+    return json({ ok: true, guild: newGuildTag, id: newAdminId, password: newPassword });
+  }
+
+  if (action === "reject-guild-request") {
+    if (info.role !== "super_admin") return json({ ok: false, error: "forbidden" }, 403);
+
+    const parsed = RejectGuildRequestSchema.safeParse(body);
+    if (!parsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+
+    const { data: rejectData, error: rejectErr } = await admin.rpc("gm_reject_guild_request", {
+      p_request_id: parsed.data.id,
+      p_reason: parsed.data.reason ?? null,
+    });
+    if (rejectErr) {
+      logger.error("Failed gm_reject_guild_request", rejectErr, { requestId: parsed.data.id });
+      return json({ ok: false, error: "server_error", message: rejectErr.message }, 500);
+    }
+
+    await admin
+      .from("guild_creation_requests")
+      .update({ reviewed_by: info.accountId })
+      .eq("id", parsed.data.id);
+
+    logger.info("Guild creation request rejected", { requestId: parsed.data.id, reviewedBy: info.accountId });
+    return json(rejectData);
   }
 
   return json({ ok: false, error: "unknown_action" }, 400);
