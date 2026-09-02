@@ -32,6 +32,14 @@ export function getCorsHeaders(req?: Request): Record<string, string> {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-correlation-id, x-cron-secret",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    // Content-Disposition isn't in the default CORS-safelisted response
+    // headers, so a cross-origin fetch() can't read it (res.headers.get()
+    // silently returns null) unless it's explicitly exposed here -- needed
+    // by any function that hands back a downloadable file (e.g.
+    // guild-data-export) so the browser can recover the real filename
+    // instead of falling back to a generic one. Harmless to expose broadly:
+    // it's just a filename hint, never sensitive data.
+    "Access-Control-Expose-Headers": "Content-Disposition",
     "Vary": "Origin",
   };
 }

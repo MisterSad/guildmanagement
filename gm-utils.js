@@ -24,7 +24,7 @@
     // navigation bar. Bumped on every release alongside the Discord changelog
     // version (see AGENTS.md §6: the version is chosen by the owner and must be
     // reflected here AND in DISCORD_CHANGELOG.md systematically).
-    var APP_VERSION = 'V3.15';
+    var APP_VERSION = 'V3.16';
 
     var SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
     var SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
@@ -2871,6 +2871,54 @@
         });
     }
 
+    // Downloads the caller's guild data as a single .xlsx workbook
+    // (Edge Function guild-data-export). Plain fetch() rather than
+    // functions.invoke() -- the response is a binary file, not JSON.
+    async function exportGuildData(guild) {
+        var c = getClient();
+        if (!c) return { ok: false, error: 'no_client' };
+        var sessionRes;
+        try { sessionRes = await c.auth.getSession(); } catch (_) { return { ok: false, error: 'no_session' }; }
+        var session = sessionRes && sessionRes.data && sessionRes.data.session;
+        if (!session || !session.access_token) return { ok: false, error: 'no_session' };
+
+        var res;
+        try {
+            res = await fetch(SUPABASE_URL + '/functions/v1/guild-data-export', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + session.access_token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(guild ? { guild: guild } : {})
+            });
+        } catch (err) {
+            return { ok: false, error: 'network_error', message: err.message };
+        }
+
+        if (!res.ok) {
+            var errBody = null;
+            try { errBody = await res.json(); } catch (_) {}
+            return { ok: false, error: (errBody && errBody.error) || 'export_failed' };
+        }
+
+        var blob = await res.blob();
+        var disposition = res.headers.get('Content-Disposition') || '';
+        var match = disposition.match(/filename="([^"]+)"/);
+        var filename = match ? match[1] : 'guild_export.xlsx';
+
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        return { ok: true, filename: filename };
+    }
+
     var gmExports = {
         db: db,
         t: t,
@@ -2884,6 +2932,7 @@
         logout: logout,
         ensureAuthSession: ensureAuthSession,
         adminAccounts: adminAccounts,
+        exportGuildData: exportGuildData,
         registerPlayer: registerPlayer,
         generateJoinCode: generateJoinCode,
         sessionInfo: sessionInfo,

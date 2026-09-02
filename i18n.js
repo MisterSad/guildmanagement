@@ -480,6 +480,7 @@
             gm_overview_title:     'Overview',
             gm_overview_sub:       'Foundation Galactic Frontier',
             gm_overview_sub_real:  'Foundation Galactic Frontier - guild status',
+            overview_export_guild_data: 'Export Guild Data (.xlsx)',
             manage_clocks:                    'Manage Clocks',
             modal_manage_clocks_title:        'Clocks Configuration',
             modal_add_clock_section:          'Add a Clock',

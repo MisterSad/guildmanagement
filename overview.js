@@ -201,6 +201,9 @@
                         '<h1 class="gm-page-title">' + t('gm_overview_title') + '</h1>' +
                         '<p class="gm-page-subtitle">' + t('gm_overview_sub_real') + '</p>' +
                     '</div>' +
+                    '<button type="button" class="gm-btn gm-btn-ghost" id="gm-export-guild-data-btn">' +
+                        '<i class="ph ph-download-simple"></i> <span>' + t('overview_export_guild_data') + '</span>' +
+                    '</button>' +
                 '</header>' +
                 '<div class="gm-section-head" style="margin-bottom: 0.75rem; align-items: center;">' +
                     '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;"><i class="ph ph-clock"></i> Clocks</h3>' +
@@ -217,6 +220,24 @@
         if (manageBtn) {
             manageBtn.addEventListener('click', function () {
                 openManageClocksModal(panel);
+            });
+        }
+
+        var exportBtn = panel.querySelector('#gm-export-guild-data-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', async function () {
+                exportBtn.disabled = true;
+                var icon = exportBtn.querySelector('i');
+                if (icon) icon.className = 'ph ph-circle-notch ph-spin';
+                try {
+                    var res = await window.GM.exportGuildData();
+                    if (!res.ok) throw new Error(res.error || 'export_failed');
+                } catch (err) {
+                    window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+                } finally {
+                    exportBtn.disabled = false;
+                    if (icon) icon.className = 'ph ph-download-simple';
+                }
             });
         }
     }

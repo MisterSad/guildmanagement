@@ -1,8 +1,10 @@
 /**
  * supabase/functions/_shared/pagination.ts
  *
- * Safe paginated user lookup helper for Supabase GoTrue admin client.
- * Replaces unpaginated listUsers() which only returned page 1 (50 users).
+ * Safe pagination helpers -- both the GoTrue admin user lookup below, and a
+ * generic Postgres table pager for tables that can grow past PostgREST's
+ * default row cap (event_participants and player_metrics_history in
+ * particular are unbounded, append-only ledgers for a real guild).
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -49,4 +51,32 @@ export async function findUserByEmail(
   }
 
   return null;
+}
+
+const TABLE_PAGE_SIZE = 1000;
+
+/**
+ * Fetches every row of a table matching a filter, paging through in blocks
+ * of 1000 regardless of table size -- cheap for a small table, and the
+ * only thing that prevents a silent truncation on a large one (PostgREST's
+ * default row cap otherwise applies transparently to a plain .select()).
+ */
+export async function fetchAllRows(
+  admin: ReturnType<typeof createClient>,
+  table: string,
+  columns: string,
+  applyFilter: (query: any) => any
+): Promise<Record<string, unknown>[]> {
+  let all: Record<string, unknown>[] = [];
+  let from = 0;
+  while (true) {
+    const query = applyFilter(admin.from(table).select(columns)).range(from, from + TABLE_PAGE_SIZE - 1);
+    const { data, error } = await query;
+    if (error) throw new Error(`Failed to fetch ${table}: ${error.message}`);
+    const rows = (data as Record<string, unknown>[]) || [];
+    all = all.concat(rows);
+    if (rows.length < TABLE_PAGE_SIZE) break;
+    from += TABLE_PAGE_SIZE;
+  }
+  return all;
 }

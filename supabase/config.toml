@@ -442,6 +442,9 @@ verify_jwt = true
 [functions.admin-accounts]
 verify_jwt = true
 
+[functions.guild-data-export]
+verify_jwt = true
+
 [functions.gm-create-order]
 verify_jwt = true
 
