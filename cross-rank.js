@@ -2,12 +2,21 @@
  * cross-rank.js — Cross-Guild Draft Ranking & Mercato ("Draft" tab, superadmin).
  * Inter-Server Migration Scouting & Combat Scoring Engine.
  * All scoring metrics normalized on a clean 0 to 100 scale:
- * - Draft Score (0-100%): Master composite index synthesized from all component scores.
- * - Day 6 PvP (0-100%): Combat battle rating based on SvS/GvG Day 6 battle points (2x doubled factor) and battle presence.
+ * - Draft Score (0-100%): Master composite index synthesized from all component
+ *   scores, weighted toward active PvP/Shadowfront participation over raw
+ *   performance (28% Shadowfront, 25% Day 6 PvP, 14% SvS, 14% GvG, 10% Combat
+ *   Density, 6% Glory, 3% Other).
+ * - Day 6 PvP (0-100%): Combat battle rating based on SvS/GvG Day 6 battle
+ *   presence (65%) and battle points (35%).
  * - Shadowfront (0-100%): Priority 20v20 guild coordination attendance rate.
+ * - Combat Density (0-100%): How battle-optimized a player's power composition
+ *   is (fleet/flagship/crew/tech vs raw power), from the same formula as the
+ *   Tactical Force Matrix (gm-utils.js calculateCombatDensity).
  * - Glory (0-100%): Glory score based on accumulated points and weekly consistency.
  * - SvS & GvG (0-100%): Attendance rates across active campaigns.
- * - Server Filtering: Fast target-server isolation for migration events.
+ * - Server Filtering: Multi-select target-server isolation for migration events.
+ * Response is paginated in blocks of 1000 (PostgREST max_rows) to avoid
+ * silently truncating the candidate pool.
  * Source: RPC gm_cross_guild_ranking() (SECURITY DEFINER, superadmin only).
  * Loaded on demand by app.js via window.GM_SETTINGS.load().
  */
@@ -27,9 +36,11 @@
         sortDesc: true,
         query: '',
         guild: 'ALL',
-        server: 'ALL',
+        servers: [],
         preset: 'ALL'
     };
+
+    var RANK_PAGE_SIZE = 1000;
 
     function getDb() {
         return (window.GM && window.GM.db) ? window.GM.db : null;
@@ -62,14 +73,24 @@
         var attRate = (svsRate + gvgRate) / 2;
         var rawPvp = (r.day6_pvp_score != null) ? r.day6_pvp_score : ((r.svs_avg_pvp || 0) * 2 + (r.gvg_avg_pvp || 0) * 2);
         if (rawPvp > 0) {
-            // Benchmark curve: 20M raw pvp gives full points on combat portion
+            // Benchmark curve: 20M raw pvp gives full points on combat portion.
+            // Attendance is weighted higher than raw combat points: a player who
+            // shows up to every Day 6 battle should outrank one who skips days
+            // but posts big numbers when they do attend.
             var pvpPct = Math.min(100, (rawPvp / 20000000) * 100);
-            return Math.round((attRate * 0.4 + pvpPct * 0.6) * 10) / 10;
+            return Math.round((attRate * 0.65 + pvpPct * 0.35) * 10) / 10;
         }
         if (attRate > 0) {
-            return Math.round((attRate * 0.5) * 10) / 10;
+            return Math.round((attRate * 0.65) * 10) / 10;
         }
         return (r.svs_total || r.gvg_total) ? 0 : null;
+    }
+
+    function getCombatDensityScore(r) {
+        if (r.combat_density_score !== null && r.combat_density_score !== undefined) {
+            return r.combat_density_score;
+        }
+        return null;
     }
 
     function getGloryScore(r) {
@@ -96,6 +117,7 @@
         var d6 = getDay6Score(r);
         var svs = r.svs_rate != null ? r.svs_rate : null;
         var gvg = r.gvg_rate != null ? r.gvg_rate : null;
+        var cd = getCombatDensityScore(r);
         var gl = getGloryScore(r);
         var glob = r.global_rate != null ? r.global_rate : null;
 
@@ -106,11 +128,14 @@
         var d6Val = d6 || 0;
         var svsVal = svs || 0;
         var gvgVal = gvg || 0;
+        var cdVal = cd || 0;
         var glVal = gl || 0;
         var globVal = glob || 0;
 
-        // Master Composite Draft Score: 30% Shadowfront, 25% Day 6 PvP, 15% SvS, 15% GvG, 10% Glory, 5% Global
-        var score = (sfVal * 0.30) + (d6Val * 0.25) + (svsVal * 0.15) + (gvgVal * 0.15) + (glVal * 0.10) + (globVal * 0.05);
+        // Master Composite Draft Score: 28% Shadowfront, 25% Day 6 PvP, 14% SvS,
+        // 14% GvG, 10% Combat Density, 6% Glory, 3% Global -- weighted toward
+        // active PvP/Shadowfront participation over raw performance.
+        var score = (sfVal * 0.28) + (d6Val * 0.25) + (svsVal * 0.14) + (gvgVal * 0.14) + (cdVal * 0.10) + (glVal * 0.06) + (globVal * 0.03);
         return Math.round(score * 10) / 10;
     }
 
@@ -121,7 +146,7 @@
 
         state.query = '';
         state.guild = 'ALL';
-        state.server = 'ALL';
+        state.servers = [];
         state.preset = 'ALL';
         state.sortKey = 'draft_score';
         state.sortDesc = true;
@@ -144,17 +169,25 @@
         container.innerHTML = loadingHtml();
 
         try {
-            var query = db.rpc('gm_cross_guild_ranking');
-            if (query && typeof query.range === 'function') {
-                query = query.range(0, 99999);
+            var all = [];
+            var from = 0;
+            while (true) {
+                var query = db.rpc('gm_cross_guild_ranking');
+                if (query && typeof query.range === 'function') {
+                    query = query.range(from, from + RANK_PAGE_SIZE - 1);
+                }
+                var res = await query;
+                if (res && res.error) {
+                    container.innerHTML = errorHtml((res.error.message || 'RPC failed'));
+                    wireRetry(container);
+                    return;
+                }
+                var page = (res && res.data) || [];
+                all = all.concat(page);
+                if (page.length < RANK_PAGE_SIZE) break;
+                from += RANK_PAGE_SIZE;
             }
-            var res = await query;
-            if (res && res.error) {
-                container.innerHTML = errorHtml((res.error.message || 'RPC failed'));
-                wireRetry(container);
-                return;
-            }
-            state.rows = ((res && res.data) || []).filter(function (r) {
+            state.rows = all.filter(function (r) {
                 return r.guild !== 'DEMO';
             });
             render(container);
@@ -176,15 +209,17 @@
             if (r.guild === 'DEMO') return false;
             if (state.guild !== 'ALL' && r.guild !== state.guild) return false;
             var sVal = r.server_number != null ? String(r.server_number) : '';
-            if (state.server !== 'ALL' && sVal !== state.server) return false;
+            if (state.servers.length > 0 && state.servers.indexOf(sVal) === -1) return false;
 
             var d6 = getDay6Score(r);
             var gl = getGloryScore(r);
             var ds = getDraftScore(r);
+            var cd = getCombatDensityScore(r);
 
             if (state.preset === 'DAY6' && (d6 == null || d6 < 40)) return false;
             if (state.preset === 'SHADOW' && (r.shadow_rate == null || r.shadow_rate < 50)) return false;
             if (state.preset === 'GLORY' && (gl == null || gl < 40)) return false;
+            if (state.preset === 'DENSITY' && (cd == null || cd < 50)) return false;
             if (state.preset === 'ELITE' && (ds == null || ds < 75)) return false;
 
             if (!q) return true;
@@ -230,6 +265,9 @@
             } else if (state.sortKey === 'glory' || state.sortKey === 'glory_score' || state.sortKey === 'glory_total') {
                 av = getGloryScore(a);
                 bv = getGloryScore(b);
+            } else if (state.sortKey === 'density' || state.sortKey === 'combat_density_score') {
+                av = getCombatDensityScore(a);
+                bv = getCombatDensityScore(b);
             } else if (state.sortKey === 'shadow' || state.sortKey === 'shadow_rate') {
                 av = a.shadow_rate;
                 bv = b.shadow_rate;
@@ -303,7 +341,7 @@
 
     function rowsHtml(rows) {
         if (rows.length === 0) {
-            return '<tr><td colspan="11" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">' +
+            return '<tr><td colspan="12" class="gm-center" style="padding:2.5rem; color:var(--fg-dim);">' +
                 '<i class="ph ph-user-minus" style="font-size: var(--fs-4xl); color:var(--fg-dim); margin-bottom:.5rem; display:block;"></i>' +
                 'No candidate players match your migration server or guild filter.' +
             '</td></tr>';
@@ -331,6 +369,9 @@
 
             var gloryScore = getGloryScore(r);
             var gloryStr = gloryScore != null ? Math.round(gloryScore) + '%' : '-';
+
+            var densityScore = getCombatDensityScore(r);
+            var densityStr = densityScore != null ? Math.round(densityScore) + '%' : '-';
 
             var powerVal = getPlayerPower(r);
             var powerStr = fmtPower(powerVal);
@@ -363,6 +404,9 @@
                         '<span style="background:var(--accent-soft); color:var(--accent); border-radius:6px; padding:2px 7px; font-weight:700; font-size: var(--fs-xs); letter-spacing:.03em;">' + esc(r.guild) + '</span>' +
                     '</td>' +
                     '<td data-label="Power" data-sort="power" class="gm-right" style="font-weight:700; font-variant-numeric:tabular-nums;">' + powerStr + '</td>' +
+                    '<td class="gm-center" data-label="Density" data-sort="density">' +
+                        '<div style="font-weight:700; color:' + rateColor(densityScore) + '; font-variant-numeric:tabular-nums;">' + densityStr + '</div>' +
+                    '</td>' +
                     '<td class="gm-center" data-label="Draft" data-sort="draft_score">' +
                         '<div style="font-weight:800; font-size: var(--fs-md); color:' + rateColor(draftScore) + '; font-variant-numeric:tabular-nums;">' + draftScoreStr + '</div>' +
                     '</td>' +
@@ -394,7 +438,7 @@
         var guilds = guildList();
         var servers = serverList();
 
-        var isFiltered = (state.guild !== 'ALL' || state.server !== 'ALL' || state.preset !== 'ALL' || !!state.query.trim());
+        var isFiltered = (state.guild !== 'ALL' || state.servers.length > 0 || state.preset !== 'ALL' || !!state.query.trim());
         var countText = isFiltered
             ? rows.length + ' of ' + state.rows.length + ' candidates'
             : state.rows.length + ' candidates';
@@ -407,13 +451,6 @@
                         '<input type="text" id="cross-rank-search" class="gm-input" value="' + esc(state.query) + '" placeholder="Search candidate, server #, or guild...">' +
                         '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><span class="material-symbols-rounded">cancel</span></button>' +
                     '</div>' +
-                    '<select id="cross-rank-server" class="gm-input" style="width:auto; min-width:140px;">' +
-                        '<option value="ALL">All Migration Servers</option>' +
-                        servers.map(function (s) {
-                            var label = formatServerDisplay(s);
-                            return '<option value="' + esc(s) + '"' + (state.server === s ? ' selected' : '') + '>Server ' + esc(label) + '</option>';
-                        }).join('') +
-                    '</select>' +
                     '<select id="cross-rank-guild" class="gm-input" style="width:auto; min-width:130px;">' +
                         '<option value="ALL">All Guilds</option>' +
                         guilds.map(function (g) {
@@ -422,12 +459,22 @@
                     '</select>' +
                     '<span class="gm-dim" style="margin-left:auto; font-weight:600; font-size: var(--fs-base);">' + esc(countText) + '</span>' +
                 '</div>' +
+                '<div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; margin-bottom:.6rem;">' +
+                    '<span class="gm-dim" style="font-size: var(--fs-sm); font-weight:700; text-transform:uppercase; margin-right:4px;">Migration Servers:</span>' +
+                    '<button type="button" class="gm-btn gm-btn-sm ' + (state.servers.length === 0 ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-server-chip="ALL">All Servers</button>' +
+                    servers.map(function (s) {
+                        var label = formatServerDisplay(s);
+                        var active = state.servers.indexOf(s) !== -1;
+                        return '<button type="button" class="gm-btn gm-btn-sm ' + (active ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-server-chip="' + esc(s) + '">' + esc(label) + '</button>';
+                    }).join('') +
+                '</div>' +
                 '<div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">' +
                     '<span class="gm-dim" style="font-size: var(--fs-sm); font-weight:700; text-transform:uppercase; margin-right:4px;">Scouting Presets:</span>' +
                     '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'ALL' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="ALL">All</button>' +
                     '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'DAY6' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="DAY6">⚔️ Day 6 PvP (≥40%)</button>' +
                     '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'SHADOW' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="SHADOW">👻 Shadowfront (≥50%)</button>' +
                     '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'GLORY' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="GLORY">🏆 Glory (≥40%)</button>' +
+                    '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'DENSITY' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="DENSITY">🛡️ Combat Density (≥50%)</button>' +
                     '<button type="button" class="gm-btn gm-btn-sm ' + (state.preset === 'ELITE' ? 'gm-btn-primary' : 'gm-btn-ghost') + '" data-preset="ELITE">👑 Elite (≥75%)</button>' +
                 '</div>' +
             '</div>';
@@ -435,15 +482,16 @@
         var tableHtml =
             '<div class="gm-card glass-card" style="padding:1rem 0.75rem;">' +
                 '<div class="gm-table-wrapper gm-table-scroll" style="overflow-x:auto; width:100%; -webkit-overflow-scrolling:touch; border-radius:var(--radius-md);">' +
-                    '<table class="gm-table gm-draft-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:820px;">' +
+                    '<table class="gm-table gm-draft-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:900px;">' +
                         '<thead><tr>' +
                             '<th class="gm-center" style="width:40px;">#</th>' +
                             headerCell('pseudo', t('col_member') || 'Candidate') +
                             headerCell('server', 'Server', 'text-align:center;') +
                             headerCell('guild', 'Guild', 'text-align:center;') +
                             headerCell('power', 'Power', 'text-align:right;') +
-                            headerCell('draft_score', '<i class="ph ph-chart-polar"></i> Draft Score', 'text-align:center;', 'Global composite score (30% Shadowfront, 25% Day 6 PvP, 15% SvS, 15% GvG, 10% Glory, 5% Other)') +
-                            headerCell('day6', '<i class="ph ph-sword"></i> Day 6 (x2)', 'text-align:center;', 'SvS & GvG Day 6 battle score with 2x doubled factor (0-100%)') +
+                            headerCell('density', '<i class="ph ph-shield-star"></i> Density', 'text-align:center;', 'Combat Density: how much of a player\'s power is battle-optimized fleet/flagship/crew/tech composition vs raw power (0-100%)') +
+                            headerCell('draft_score', '<i class="ph ph-chart-polar"></i> Draft Score', 'text-align:center;', 'Global composite score (28% Shadowfront, 25% Day 6 PvP, 14% SvS, 14% GvG, 10% Combat Density, 6% Glory, 3% Other)') +
+                            headerCell('day6', '<i class="ph ph-sword"></i> Day 6 (x2)', 'text-align:center;', 'SvS & GvG Day 6 battle score, weighted 65% attendance / 35% raw combat points (0-100%)') +
                             headerCell('shadow', '<i class="ph ph-ghost"></i> Shadowfront', 'text-align:center;', 'Priority 20v20 Shadowfront attendance (0-100%)') +
                             headerCell('glory', '<i class="ph ph-trophy"></i> Glory', 'text-align:center;', 'Glory performance & consistency score (0-100%)') +
                             headerCell('svs', '<i class="ph ph-sword"></i> SvS', 'text-align:center;') +
@@ -470,13 +518,22 @@
                 }
             });
         }
-        var serverSel = document.getElementById('cross-rank-server');
-        if (serverSel) {
-            serverSel.addEventListener('change', function () {
-                state.server = serverSel.value;
+        container.querySelectorAll('button[data-server-chip]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var s = btn.getAttribute('data-server-chip');
+                if (s === 'ALL') {
+                    state.servers = [];
+                } else {
+                    var idx = state.servers.indexOf(s);
+                    if (idx === -1) {
+                        state.servers.push(s);
+                    } else {
+                        state.servers.splice(idx, 1);
+                    }
+                }
                 render(container);
             });
-        }
+        });
         var guildSel = document.getElementById('cross-rank-guild');
         if (guildSel) {
             guildSel.addEventListener('change', function () {
