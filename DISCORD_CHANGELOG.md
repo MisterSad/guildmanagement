@@ -1,41 +1,43 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.14**
+📢 **FGF Guild Management Tool Update: CHANG_V3.15**
 
-Big one: I built a full Discord bot for the tool, so you can now update your stats and check your info straight from Discord — no need to open the web app for the everyday stuff. Full guide below. 🤖⚡
+New this time: the Discord bot can now verify players automatically from a screenshot. Post a picture of your in-game profile in the right channel and the bot handles your role, your nickname, and your roster entry on its own. Full explanation below, plus a couple of fixes since the last update.
 
-### 🤖 New: the FGF Guild Management Discord bot
+### 🔍 New: automatic verification from a screenshot
 
-**1. Add the bot to your server**
-Any guild leader/officer can install it — click here: https://discord.com/oauth2/authorize?client_id=1544404813926768740
+**How it works, step by step**
 
-**2. Link your Discord account (one-time, do this first)**
-- Run **`/link`** anywhere in the server. I'll DM-style reply (only you can see it) with a short 6-character code, valid for 10 minutes.
-- Go to the web app → **Player Portal → My Info → "Link Discord"**, sign in if needed, and enter that code.
-- That's it — your Discord account is now tied to your in-game account, for good. Every command below reads/writes that same account.
+1. Open your in-game profile screen, the one showing your pseudo, your guild tag, your Power, your Glory, and your UID.
+2. Take a screenshot of it.
+3. Post that screenshot in the server's designated verification channel.
+4. The bot reads the screenshot with an AI vision model and replies in the channel within a few seconds to tell you what it did.
 
-Every command's reply is **only visible to you** (nobody else in the channel sees it), so feel free to run these anywhere, even in a busy channel.
+**What happens once the bot reads your screenshot**
 
-**3. The commands**
+If your guild tag matches the guild this channel is set up for, and a Discord role named after that tag already exists on the server, you get:
+- That role, assigned automatically.
+- Your Discord nickname set to your tag, your pseudo, and your server number. For example, `[PR1M] HawkEye #1058`.
+- Your roster entry created if you're new to the guild, or updated with your current Power and Glory if you're already on the roster.
 
-- **`/myinfo`** — Your current stats at a glance: Overall Power, Glory, Role, Fleet Rating, Tech Power, and your saved timezone.
+If your tag doesn't match this channel's guild, or the matching role hasn't been created yet, you get a **Visitor** role instead and nothing changes on the roster. If the bot can still tell which guild you actually belong to, it still sets your nickname the same way. It just won't touch anyone's roster data unless it's fully sure who you are.
 
-- **`/power <value>`** — Update your overall power. Same number, same place as the "Update Power" button in the web Portal — updating it here updates it there too, instantly.
+**A few practical notes**
 
-- **`/glory <value>`** — Submit your Glory score for the current week. One submission per week, same as the Portal.
+- The bot only reads what's actually visible on the screenshot. Make sure your pseudo, your guild tag, your Power, your Glory, and your UID aren't cropped out or covered by another window.
+- There's a limit on how many attempts you can make in a short window, so don't spam it if the first try doesn't work. Wait a few minutes and post a clearer picture.
+- You don't need to have linked your account with `/link` first. The screenshot itself is treated as proof of who you are.
 
-- **`/timezone <offset>`** — Set your timezone as a UTC offset (anywhere from **-12** to **+14**). Discord shows you the valid range right in the command, so you can't mistype it.
+### 🤖 Reminder: the rest of the bot
 
-- **`/challenges`** — Your weekly challenge checklist: attend 1/3/5 events this week, submit your Glory, refresh your power — plus your season level (Bronze/Silver/Gold, based on your last 4 weeks of event attendance).
+If you haven't set it up yet, add the bot here: https://discord.com/oauth2/authorize?client_id=1544404813926768740, then run `/link` once to connect your Discord account to your in-game account. After that:
 
-- **`/absence`** — declare when you're away, in three parts:
-  - **`/absence set <start_date> <end_date> [note]`** — dates in `YYYY-MM-DD` format (e.g. `2026-09-10`). The note is optional.
-  - **`/absence list`** — shows every absence you've currently got declared, each with a short ID.
-  - **`/absence cancel <id>`** — cancels one, using the ID from `/absence list`.
-
-**Heads up**: linking is per Discord account, not per server — if you're active in multiple FGF Discords, you only ever need to run `/link` once, and it'll work from any of them.
+- `/myinfo` shows your stats.
+- `/power <value>` and `/glory <value>` update your numbers.
+- `/timezone <offset>` sets your timezone.
+- `/challenges` shows your weekly checklist and season level.
+- `/absence set/list/cancel` handles your absence declarations.
 
 ### Also in this update
-- 📖 Text sizes across the whole app are now fully consistent — a handful of near-duplicate font sizes have been unified into one clean scale, mostly invisible but a bit easier on the eyes.
-- 🖱️ Fixed the sidebar footer (subscription badge, Buy Me a Coffee, Report a Bug, version info) feeling cramped on smaller desktop windows — more breathing room now.
-- ☕ Fixed "Buy Me a Coffee" not showing up at all for some admins, and fixed a follow-up bug where it showed but the page behind it wrongly said "Admins only."
+- Fixed a bug where the daily GvG task reminder could go out several times in a row on the same day instead of once.
+- Fixed Web Push notifications (the browser kind, not Discord) failing every single time they were sent, for everyone. They now work correctly.
 
-*As always, thanks for the reports and feedback — keep them coming via the Report a Bug button!* 🚀🛡️
+*As always, thanks for the reports and feedback, keep them coming via the Report a Bug button!* 🚀🛡️
