@@ -73,11 +73,12 @@ async function sendWebPush(supabase: any, title: string, body: string, guild: st
           }
         };
 
-        await sendNotification({
-          subscription,
-          payload: JSON.stringify(payload),
-          vapidDetails
-        });
+        // web-push-neo's sendNotification takes 3 positional args, NOT a
+        // single {subscription, payload, vapidDetails} object -- passing an
+        // object here made every subscription (including well-formed ones)
+        // fail with "You must pass in a subscription with at least an
+        // endpoint", since the library was validating the wrapper object.
+        await sendNotification(subscription, JSON.stringify(payload), { vapidDetails });
         logger.info(`Web Push sent successfully to sub ID: ${sub.id} (Guild: ${guild})`);
       } catch (err: any) {
         logger.error(`Failed to send Web Push to sub ID ${sub.id}`, err);
@@ -422,10 +423,14 @@ serve(async (req) => {
                 .eq('key', lockKey);
             }
 
-            // Acquire lock
+            // Acquire lock. Must be a plain insert (not upsert) so a genuine
+            // PK conflict -- guild_config's real (guild, key) primary key --
+            // raises an error we can treat as "already claimed": upsert
+            // silently overwrites on conflict instead, which let overlapping
+            // invocations (see below) both believe they held the lock.
             const { error: lockErr } = await supabase
               .from('guild_config')
-              .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+              .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
             if (lockErr) {
               logger.info(`[${guild}] Lock already exists for standard event ${event.event_name} (${reminderType}), skipping`);
@@ -588,11 +593,14 @@ serve(async (req) => {
             }
 
             if (shouldProceed) {
+              // Plain insert, not upsert -- see the standard-events lock above.
               const { error: lockErr } = await supabase
                 .from('guild_config')
-                .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+                .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
-              if (!lockErr) {
+              if (lockErr) {
+                logger.info(`[${guild}] Lock already exists for GvG Daily Tasks Day ${curDay}, skipping`);
+              } else {
                 try {
                   const roleMention = formatDiscordRoleMention(discordRoleId);
                   const body = buildGvgDailyTaskEmbed(curDay, roleMention);
@@ -683,10 +691,10 @@ serve(async (req) => {
                 .eq('key', lockKey);
             }
 
-            // Acquire lock
+            // Acquire lock (plain insert, not upsert -- see standard-events lock above)
             const { error: lockErr } = await supabase
               .from('guild_config')
-              .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+              .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
             if (lockErr) {
               logger.info(`[${guild}] Lock already exists for GvG ${slot.label} (${slot.type}), skipping`);
@@ -901,10 +909,10 @@ serve(async (req) => {
               .eq('key', lockKey);
           }
 
-          // Acquire lock
+          // Acquire lock (plain insert, not upsert -- see standard-events lock above)
           const { error: lockErr } = await supabase
             .from('guild_config')
-            .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+            .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
           if (lockErr) {
             logger.info(`[${guild}] Lock already exists for SvS ${slot.label} (${slot.type}), skipping`);
@@ -1149,10 +1157,10 @@ serve(async (req) => {
               .eq('key', lockKey);
           }
 
-          // Acquire lock
+          // Acquire lock (plain insert, not upsert -- see standard-events lock above)
           const { error: lockErr } = await supabase
             .from('guild_config')
-            .upsert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
+            .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
 
           if (lockErr) {
             logger.info(`[${guild}] Lock already exists for Calamity Round ${slot.round}, skipping`);
