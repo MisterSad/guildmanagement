@@ -230,7 +230,7 @@
                 var icon = exportBtn.querySelector('i');
                 if (icon) icon.className = 'ph ph-circle-notch ph-spin';
                 try {
-                    var res = await window.GM.exportGuildData();
+                    var res = await window.GM.exportGuildData(window.GM.getActiveGuild());
                     if (!res.ok) throw new Error(res.error || 'export_failed');
                 } catch (err) {
                     window.GM.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
