@@ -12,6 +12,7 @@
  * no direct database writes beyond reading the channel->guild map, and no
  * Discord REST actions belong here.
  */
+import { createServer } from "node:http";
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 import { createClient } from "@supabase/supabase-js";
 
@@ -65,6 +66,19 @@ async function refreshChannelMap() {
   console.log(`Verification channel map refreshed: ${channelToGuild.size} guild(s) configured.`);
 }
 
+// Render creates this as a Web Service (the MCP tool used to provision it
+// has no "background worker" type) -- that expects an HTTP port bound for
+// health checks, even though the actual job here is a Gateway connection,
+// not serving requests. This listener exists ONLY to satisfy that check;
+// it carries no business logic and nothing ever calls it on purpose.
+let discordReady = false;
+createServer((_req, res) => {
+  res.writeHead(discordReady ? 200 : 503, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ ok: discordReady }));
+}).listen(process.env.PORT || 3000, () => {
+  console.log(`Health check listener up on port ${process.env.PORT || 3000}`);
+});
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -76,6 +90,7 @@ const client = new Client({
 
 client.once("ready", async () => {
   console.log(`discord-verification-worker logged in as ${client.user.tag}`);
+  discordReady = true;
   await refreshChannelMap();
   setInterval(refreshChannelMap, 5 * 60 * 1000);
 });
