@@ -70,6 +70,77 @@ export function shouldThrottle(options: {
 
 // In-isolate throttling cache & DB sync helper
 let lastPurgeTime = 0;
+let lastDiscordPurgeTime = 0;
+
+// Same sliding-window logic as checkAndRecordIpAttempt, but keyed by a
+// Discord user id against discord_verification_throttle instead of an IP
+// against login_throttle -- needed because the profile-verification
+// endpoint is reachable by any Discord user posting in a monitored channel,
+// not gated behind a login, and each attempt calls a metered AI vision API.
+export async function checkAndRecordDiscordAttempt(
+  admin: any,
+  discordUserId: string,
+  options: { limit: number; windowMs: number }
+): Promise<{ allowed: boolean; remaining: number }> {
+  const now = Date.now();
+  const { limit, windowMs } = options;
+  const windowStartIso = new Date(Math.floor(now / 60000) * 60000).toISOString();
+  const cutoffIso = new Date(now - windowMs).toISOString();
+
+  try {
+    const { data: rows, error: fetchErr } = await admin
+      .from("discord_verification_throttle")
+      .select("window_start, attempts")
+      .eq("discord_user_id", discordUserId)
+      .gte("window_start", cutoffIso);
+
+    if (fetchErr) {
+      return { allowed: true, remaining: 1 };
+    }
+
+    const records: ThrottleRecord[] = rows || [];
+    const isThrottled = shouldThrottle({ recentWindows: records, limit, windowMs, now });
+    let currentTotal = records.reduce((sum, r) => sum + (Number(r.attempts) || 0), 0);
+
+    if (isThrottled) {
+      return { allowed: false, remaining: 0 };
+    }
+
+    const { data: existingBucket } = await admin
+      .from("discord_verification_throttle")
+      .select("attempts")
+      .eq("discord_user_id", discordUserId)
+      .eq("window_start", windowStartIso)
+      .maybeSingle();
+
+    if (existingBucket) {
+      await admin
+        .from("discord_verification_throttle")
+        .update({ attempts: (existingBucket.attempts || 0) + 1 })
+        .eq("discord_user_id", discordUserId)
+        .eq("window_start", windowStartIso);
+    } else {
+      await admin
+        .from("discord_verification_throttle")
+        .insert({ discord_user_id: discordUserId, window_start: windowStartIso, attempts: 1 });
+    }
+
+    if (now - lastDiscordPurgeTime > 600000) {
+      lastDiscordPurgeTime = now;
+      const purgeCutoff = new Date(now - 86400000).toISOString();
+      admin
+        .from("discord_verification_throttle")
+        .delete()
+        .lt("window_start", purgeCutoff)
+        .then(() => {})
+        .catch(() => {});
+    }
+
+    return { allowed: true, remaining: Math.max(0, limit - (currentTotal + 1)) };
+  } catch {
+    return { allowed: true, remaining: 1 };
+  }
+}
 
 export async function checkAndRecordIpAttempt(
   admin: any,

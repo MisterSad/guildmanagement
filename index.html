@@ -587,6 +587,21 @@
                             </div>
                         </div>
 
+                        <!-- Card 2.5: Discord Profile Verification -->
+                        <div class="gm-card gm-card-padded gm-section">
+                            <div class="gm-section-title" style="margin-bottom: 1rem;">
+                                <i class="ph ph-shield-check"></i>
+                                <span data-i18n="label_discord_verification_config">Player Verification (Screenshot OCR)</span>
+                            </div>
+                            <div class="gm-row" style="gap: 1.5rem; flex-wrap: wrap;">
+                                <div class="gm-col" style="gap: 0.5rem; flex: 1; min-width: 260px;">
+                                    <label class="gm-dim" style="font-size: 0.85rem; font-weight: 500;" for="discord-verification-channel-id" data-i18n="label_discord_verification_channel_id">Verification Channel ID</label>
+                                    <input type="text" id="discord-verification-channel-id" class="gm-input" style="font-family:var(--font-mono, monospace);" placeholder="e.g. 1487153638580289701">
+                                </div>
+                            </div>
+                            <span style="font-size: 0.78rem; color: var(--fg-dim); margin-top: 0.5rem; display: block;" data-i18n="label_discord_verification_hint">Leave the channel ID empty to disable. When set, players posting a profile screenshot in that channel are matched against your server's existing Discord roles: if a role named after their bracketed guild tag already exists (e.g. "[PR1M]"), it's assigned automatically and their roster entry is created or updated; otherwise they get the "[VISITOR]" role and no roster entry is touched. Their nickname is also set to "[TAG] Pseudo #Server" when a matching role is found. Role names must always use the bracketed "[TAG]" format. The bot needs Manage Roles and Manage Nicknames permissions, with its own role positioned above every role it assigns (including "[VISITOR]").</span>
+                        </div>
+
                         <!-- Card 3: Notification Webhooks & Event Channels Grid -->
                         <div class="gm-card gm-card-padded gm-section">
                             <div class="gm-section-title" style="margin-bottom: 1.25rem;">
@@ -1875,7 +1890,7 @@
     <script type="module" src="/src/main.ts"></script>
 
     <!-- Scripts: i18n first, then Supabase, icons, utils, modules, then app.js & shell.js -->
-    <script src="i18n.js?v=47"></script>
+    <script src="i18n.js?v=50"></script>
     <!-- TODO(phase-3): vendor supabase-js and phosphor-icons via Vite, drop CDN origins from CSP -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>
@@ -1900,7 +1915,7 @@
     <script src="portal.js?v=19"></script>
     <script src="gm-help.js?v=5"></script>
     <script src="gm-leader-hall.js?v=31"></script>
-    <script src="app.js?v=101"></script>
+    <script src="app.js?v=103"></script>
     <script src="shell.js?v=42"></script>
 </body>
 </html>

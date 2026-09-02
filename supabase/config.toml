@@ -424,6 +424,18 @@ verify_jwt = false
 [functions.gm-stripe-webhook]
 verify_jwt = false
 
+# Was missing entirely (Discord bot Phase 1) -- authenticated by Ed25519
+# signature instead of a Supabase JWT; a future deploy with no per-function
+# flag override would otherwise silently default to verify_jwt = true and
+# break every slash command.
+[functions.discord-bot-interactions]
+verify_jwt = false
+
+# Authenticated by a shared secret from the verification worker, not a
+# Supabase JWT (no logged-in user exists for this call).
+[functions.discord-profile-verification]
+verify_jwt = false
+
 [functions.member-portal]
 verify_jwt = true
 
