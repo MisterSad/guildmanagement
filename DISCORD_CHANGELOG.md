@@ -4,7 +4,21 @@ New this time: the Discord bot can now verify players automatically from a scree
 
 ### 🔍 New: automatic verification from a screenshot
 
-**How it works, step by step**
+**For guild leaders and officers: one-time setup**
+
+This needs a bit of setup before your members can use it. A leader or officer has to do this once, on your own Discord server:
+
+1. Make sure the bot has the `Manage Roles` and `Manage Nicknames` permissions. If you added the bot a while ago, you likely need to re-invite it with these permissions, since Discord never adds new permissions to a bot that's already in your server.
+2. In Server Settings > Roles, drag the bot's own role above any role it will need to assign.
+3. Create a role named exactly after your guild's tag, with brackets. For example `[PR1M]`.
+4. Create a role named exactly `[VISITOR]`.
+5. Create or pick the channel where members will post their screenshots. For example `🔐・verification`.
+6. Turn on Developer Mode in your Discord settings (User Settings > Advanced), then right-click that channel and choose "Copy Channel ID."
+7. In the web app, go to Admin > Discord Notifications > Player Verification (Screenshot OCR), paste that ID into "Verification Channel ID," and save.
+
+Once that's saved, the feature is live for your guild.
+
+**For everyone: how to use it**
 
 1. Open your in-game profile screen, the one showing your pseudo, your guild tag, your Power, your Glory, and your UID.
 2. Take a screenshot of it.
@@ -18,7 +32,7 @@ If your guild tag matches the guild this channel is set up for, and a Discord ro
 - Your Discord nickname set to your tag, your pseudo, and your server number. For example, `[PR1M] HawkEye #1058`.
 - Your roster entry created if you're new to the guild, or updated with your current Power and Glory if you're already on the roster.
 
-If your tag doesn't match this channel's guild, or the matching role hasn't been created yet, you get a **Visitor** role instead and nothing changes on the roster. If the bot can still tell which guild you actually belong to, it still sets your nickname the same way. It just won't touch anyone's roster data unless it's fully sure who you are.
+If your tag doesn't match this channel's guild, or the matching role hasn't been created yet, you get the **[VISITOR]** role instead and nothing changes on the roster. If the bot can still tell which guild you actually belong to, it still sets your nickname the same way. It just won't touch anyone's roster data unless it's fully sure who you are.
 
 **A few practical notes**
 
