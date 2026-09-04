@@ -1,39 +1,21 @@
-📢 **FGF Guild Management Tool Update: CHANG_V3.16**
+📢 **FGF Guild Management Tool Update: CHANG_V3.16.1**
 
-New this time: guild leaders and officers can now export their entire guild's data to a single Excel file, one click, no setup needed. Full explanation below.
+This update fixes Discord event notification pings, introduces dedicated role alerts for Shadowfront squads, and cleans up event schedules. Full breakdown below.
 
-### 📊 New: Export Guild Data (.xlsx)
+### 🔔 Fixed: Discord Notification Pings & Sound Alerts
+- **What happened**: Several guild leaders reported that Discord event reminders were arriving silently — the message appeared in the channel, but members didn't get an actual ping, bell notification, or push alert.
+- **The fix**: Discord webhooks suppress mentions unless explicitly commanded to parse them. I've updated all notification payloads so that `@everyone`, `@here`, and custom role mentions (`<@&role_id>`) now properly trigger notifications and ping your members every time.
 
-**Where to find it**
+### 🛡️ Separate Discord Roles for Shadowfront Squad 1 & Squad 2
+- You can now assign **dedicated Discord Role IDs** for **Squad 1** and **Squad 2** independently in **Guild Settings**!
+- If your guild splits players into two squads with different Discord roles, each squad reminder will ping only its respective members.
+- If you prefer a single role for both squads, you can continue using the default Shadowfront role ID as before.
 
-Go to the **Overview** tab. There's a new "Export Guild Data (.xlsx)" button right under the page title. Click it and the file downloads straight away.
+### ⏰ Cleaner Event Schedules & Stale Session Auto-Expiry
+- Fixed an issue where events that weren't manually marked as ended could linger as "Active" in the background across weeks while disappearing from the Upcoming Events overview.
+- Stale event sessions now automatically expire, ensuring your event dashboard and squad rosters are always up to date and ready for the next battle.
 
-**What's inside**
+### 🏰 SvS Garrison Defense Reminder Tagging
+- The SvS base defense reminder now properly tags your guild's configured role instead of an unconfigurable default tag.
 
-One Excel file, split into several sheets (tabs at the bottom of the file), one per category:
-
-- **Roster**: every member's stats. Power, Tech, Champion, Crew, Flagship, Fleet Rating, Glory, timezone.
-- **Participation**: every event your members have taken part in, week by week.
-- **Events**: your guild's event schedule and status.
-- **Weekly Scores**: each player's weekly attendance score.
-- **Power History**: how each player's power has changed over time.
-- **Sanctions**: every sanction issued, and who issued it.
-- **Absences**: every absence declared, past and current.
-- **Banned Players**: anyone banned from the roster, and why.
-- **Name History**: every pseudo change on record.
-- **Shadowfront Squads** and **Signups**: the latest squad composition and availability.
-- **Transfers**: guild transfer requests involving your guild.
-- **Settings**: your guild's configuration. Coefficients, join code, notification toggles.
-
-**Format**
-
-Each sheet is a real Excel table, not just a plain list of values: bold header row, filter buttons on every column, sized so the data is readable straight away. Opens cleanly in Excel, Numbers, and Google Sheets.
-
-**Who can use it**
-
-Any guild admin, server admin, or super admin, for their own guild's data only.
-
-### Also in this update
-- People trying out the free public demo tenant can now make a donation too, the same way real guild members can.
-
-*As always, thanks for the reports and feedback, keep them coming via the Report a Bug button!* 🚀🛡️
+*As always, thank you for reporting issues and sharing feedback! Keep it coming via the Report a Bug button.* 🚀⚔️
