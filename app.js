@@ -1516,17 +1516,22 @@
     }
 
     async function renderPendingRegistrations(activeG) {
-        var container = document.getElementById('pending-account-list');
-        var countEl = document.getElementById('pending-account-count');
-        if (!container) return;
+        var overviewContainer = document.getElementById('pending-account-list');
+        var overviewCount = document.getElementById('pending-account-count');
+        var adminContainer = document.getElementById('admin-pending-account-list');
+        var adminCount = document.getElementById('admin-pending-account-count');
+
+        if (!overviewContainer && !adminContainer) return;
 
         activeG = activeG || (window.GM ? window.GM.getActiveGuild() : 'ALPHA');
+        var activeGUpper = String(activeG || '').trim().toUpperCase();
 
         var pending = [];
         if (accounts && accounts.length > 0) {
             pending = accounts.filter(function (acc) {
+                var accGuildUpper = String(acc.guild || 'ALPHA').trim().toUpperCase();
                 return acc.status === 'pending' && acc.role === 'member' &&
-                       (acc.guild || 'ALPHA') === activeG;
+                       accGuildUpper === activeGUpper;
             });
         } else {
             var db = (window.GM && window.GM.db) ? window.GM.db : null;
@@ -1536,7 +1541,7 @@
                         .select('id, uid, status, role, guild, created_at')
                         .eq('status', 'pending')
                         .eq('role', 'member')
-                        .eq('guild', activeG);
+                        .ilike('guild', activeG);
                     pending = res.data || [];
                 } catch (e) {
                     console.warn('[GM] Error loading pending accounts:', e);
@@ -1544,45 +1549,54 @@
             }
         }
 
-        if (countEl) countEl.textContent = pending.length;
+        if (overviewCount) overviewCount.textContent = pending.length;
+        if (adminCount) adminCount.textContent = pending.length;
 
-        if (pending.length === 0) {
-            container.innerHTML = '<div class="gm-empty" style="padding:1.5rem;"><i class="ph-duotone ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
-            return;
-        }
+        var emptyHtml = '<div class="gm-empty" style="padding:1.25rem;"><i class="ph-duotone ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
 
-        var html = '<div class="gm-cred-grid">';
-        pending.forEach(function (acc) {
-            var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
-            html +=
-                '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
-                    '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
-                        '<div class="gm-cred-name" style="font-weight:700; color:var(--fg);">' + esc(acc.id) + '</div>' +
-                        '<span class="gm-chip gm-chip-warning">Pending</span>' +
-                    '</div>' +
-                    '<div class="gm-row gm-dim" style="font-size: var(--fs-sm); gap: 0.75rem;">' +
-                        '<span><i class="ph ph-identification-badge"></i> UID ' + esc(acc.uid || '?') + '</span>' +
-                        '<span><i class="ph ph-calendar-blank"></i> ' + dateStr + '</span>' +
-                    '</div>' +
-                    '<div class="gm-row" style="gap: 0.5rem; margin-top: 0.6rem;">' +
-                        '<button class="gm-btn gm-btn-sm gm-btn-success gm-pending-approve" data-id="' + esc(acc.id) + '">' +
-                            '<i class="ph ph-check"></i><span>Approve</span>' +
-                        '</button>' +
-                        '<button class="gm-btn gm-btn-sm gm-btn-danger-ghost gm-pending-reject" data-id="' + esc(acc.id) + '">' +
-                            '<i class="ph ph-x"></i><span>Reject</span>' +
-                        '</button>' +
-                    '</div>' +
-                '</div>';
-        });
-        html += '</div>';
-        container.innerHTML = html;
+        var renderListTo = function (container) {
+            if (!container) return;
+            if (pending.length === 0) {
+                container.innerHTML = emptyHtml;
+                return;
+            }
 
-        container.querySelectorAll('.gm-pending-approve').forEach(function (btn) {
-            btn.addEventListener('click', function () { resolveRegistration(btn.getAttribute('data-id'), 'approve'); });
-        });
-        container.querySelectorAll('.gm-pending-reject').forEach(function (btn) {
-            btn.addEventListener('click', function () { resolveRegistration(btn.getAttribute('data-id'), 'reject'); });
-        });
+            var html = '<div class="gm-cred-grid">';
+            pending.forEach(function (acc) {
+                var dateStr = acc.created_at ? new Date(acc.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+                html +=
+                    '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
+                        '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
+                            '<div class="gm-cred-name" style="font-weight:700; color:var(--fg);">' + esc(acc.id) + '</div>' +
+                            '<span class="gm-chip gm-chip-warning">Pending</span>' +
+                        '</div>' +
+                        '<div class="gm-row gm-dim" style="font-size: var(--fs-sm); gap: 0.75rem;">' +
+                            '<span><i class="ph ph-identification-badge"></i> UID ' + esc(acc.uid || '?') + '</span>' +
+                            '<span><i class="ph ph-calendar-blank"></i> ' + dateStr + '</span>' +
+                        '</div>' +
+                        '<div class="gm-row" style="gap: 0.5rem; margin-top: 0.6rem;">' +
+                            '<button class="gm-btn gm-btn-sm gm-btn-success gm-pending-approve" data-id="' + esc(acc.id) + '">' +
+                                '<i class="ph ph-check"></i><span>Approve</span>' +
+                            '</button>' +
+                            '<button class="gm-btn gm-btn-sm gm-btn-danger-ghost gm-pending-reject" data-id="' + esc(acc.id) + '">' +
+                                '<i class="ph ph-x"></i><span>Reject</span>' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+
+            container.querySelectorAll('.gm-pending-approve').forEach(function (btn) {
+                btn.addEventListener('click', function () { resolveRegistration(btn.getAttribute('data-id'), 'approve'); });
+            });
+            container.querySelectorAll('.gm-pending-reject').forEach(function (btn) {
+                btn.addEventListener('click', function () { resolveRegistration(btn.getAttribute('data-id'), 'reject'); });
+            });
+        };
+
+        renderListTo(overviewContainer);
+        renderListTo(adminContainer);
     }
 
     if (window.GM) {
@@ -1594,7 +1608,7 @@
             var res = await window.GM.adminAccounts(action === 'approve' ? 'approve-registration' : 'reject-registration', { id: id });
             if (!res.ok) throw new Error(res.error || (action + '_failed'));
             accounts = accounts.filter(function (a) { return a.id !== id; });
-            renderAccounts();
+            await fetchAccounts();
             if (window.GM_OVERVIEW && window.GM_OVERVIEW.load) {
                 window.GM_OVERVIEW.load();
             } else {
@@ -1693,6 +1707,7 @@
 
     function renderAccounts() {
         var activeG = window.currentGuild || 'ALPHA';
+        var activeGUpper = String(activeG || '').trim().toUpperCase();
         var isSuperAdminUser = window.GM.roleFromStorage() === 'super_admin';
 
         // Target 0: Pending player registrations (role member, status pending)
@@ -1704,7 +1719,7 @@
             var accGuild = acc.guild || 'ALPHA';
             var isR5 = (acc.role === 'super_admin');
             if (isR5) return true;
-            return accGuild === activeG;
+            return String(accGuild).trim().toUpperCase() === activeGUpper;
         });
 
         // 1. Admin Accounts (super_admin & guild_admin)

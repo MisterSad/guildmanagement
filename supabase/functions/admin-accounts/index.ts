@@ -193,15 +193,18 @@ Deno.serve(async (req: Request) => {
 
     let accountsList = data ?? [];
     if (info.role === "guild_admin") {
-      accountsList = accountsList.filter((acc: any) => acc.guild === callerGuild);
+      const callerGuildNorm = callerGuild ? String(callerGuild).trim().toUpperCase() : "";
+      accountsList = accountsList.filter((acc: any) =>
+        acc.guild && callerGuildNorm && String(acc.guild).trim().toUpperCase() === callerGuildNorm
+      );
     } else if (info.role === "server_admin") {
       const { data: guildsOnServer } = await admin
         .from("guilds")
         .select("id")
         .eq("server_number", info.serverNumber || "");
-      const allowedGuildIds = new Set((guildsOnServer || []).map((g: any) => g.id));
+      const allowedGuildIds = new Set((guildsOnServer || []).map((g: any) => String(g.id).trim().toUpperCase()));
       accountsList = accountsList.filter((acc: any) =>
-        (acc.guild && allowedGuildIds.has(acc.guild)) ||
+        (acc.guild && allowedGuildIds.has(String(acc.guild).trim().toUpperCase())) ||
         (acc.server_number && String(acc.server_number) === String(info.serverNumber))
       );
     }

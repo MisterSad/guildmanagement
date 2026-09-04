@@ -21,6 +21,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FGF GM">
     <link rel="apple-touch-icon" href="apple-touch-icon.png?v=3">
+    <meta name="probely-verification" content="5cfe8670-1755-4446-9a21-c7928a9bb92c" />
 </head>
 <body>
     <div id="app">
@@ -465,6 +466,22 @@
                                 <span data-i18n="btn_generate">Generate Access</span>
                             </button>
                         </form>
+                    </div>
+
+                    <div class="gm-section" id="pending-accounts-card-admin">
+                        <div class="gm-section-head">
+                            <div class="gm-section-title" style="color:var(--accent-amber); font-weight:700;">
+                                <i class="ph ph-user-plus"></i>
+                                <span>Pending Account Validations (Player Portal)</span>
+                                <span class="gm-count" id="admin-pending-account-count">0</span>
+                            </div>
+                        </div>
+                        <div id="admin-pending-account-list">
+                            <div class="gm-empty" style="padding:1.25rem;">
+                                <i class="ph-duotone ph-hourglass gm-icon"></i>
+                                <div class="gm-empty-title">No pending registrations</div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="gm-section" id="active-accounts-card">
@@ -1916,7 +1933,7 @@
     <script src="portal.js?v=19"></script>
     <script src="gm-help.js?v=5"></script>
     <script src="gm-leader-hall.js?v=31"></script>
-    <script src="app.js?v=103"></script>
+    <script src="app.js?v=104"></script>
     <script src="shell.js?v=42"></script>
 </body>
 </html>
