@@ -1288,6 +1288,7 @@
         var discordRoleIdArmsrace = await window.GM.config.get('discord_role_id_armsrace');
         var discordRoleIdDtr = await window.GM.config.get('discord_role_id_dtr');
         var discordRoleIdShadowfront = await window.GM.config.get('discord_role_id_shadowfront');
+        var discordRoleIdShadowfrontSquad2 = await window.GM.config.get('discord_role_id_shadowfront_squad2');
         var discordRoleIdCalamity = await window.GM.config.get('discord_role_id_calamity');
         var discordRoleIdGvg = await window.GM.config.get('discord_role_id_gvg');
         var discordRoleIdSvs = await window.GM.config.get('discord_role_id_svs');
@@ -1346,6 +1347,9 @@
         document.getElementById('discord-role-id-armsrace').value = discordRoleIdArmsrace || '';
         document.getElementById('discord-role-id-dtr').value = discordRoleIdDtr || '';
         document.getElementById('discord-role-id-shadowfront').value = discordRoleIdShadowfront || '';
+        if (document.getElementById('discord-role-id-shadowfront-squad2')) {
+            document.getElementById('discord-role-id-shadowfront-squad2').value = discordRoleIdShadowfrontSquad2 || '';
+        }
         document.getElementById('discord-role-id-calamity').value = discordRoleIdCalamity || '';
         document.getElementById('discord-role-id-gvg').value = discordRoleIdGvg || '';
         document.getElementById('discord-role-id-svs').value = discordRoleIdSvs || '';
@@ -1433,6 +1437,7 @@
                     window.GM.config.set('discord_role_id_armsrace', document.getElementById('discord-role-id-armsrace').value.trim()),
                     window.GM.config.set('discord_role_id_dtr', document.getElementById('discord-role-id-dtr').value.trim()),
                     window.GM.config.set('discord_role_id_shadowfront', document.getElementById('discord-role-id-shadowfront').value.trim()),
+                    window.GM.config.set('discord_role_id_shadowfront_squad2', document.getElementById('discord-role-id-shadowfront-squad2') ? document.getElementById('discord-role-id-shadowfront-squad2').value.trim() : ''),
                     window.GM.config.set('discord_role_id_calamity', showCalamityGvgSvs ? document.getElementById('discord-role-id-calamity').value.trim() : ''),
                     window.GM.config.set('discord_role_id_gvg', showCalamityGvgSvs ? document.getElementById('discord-role-id-gvg').value.trim() : ''),
                     window.GM.config.set('discord_role_id_svs', showCalamityGvgSvs ? document.getElementById('discord-role-id-svs').value.trim() : ''),

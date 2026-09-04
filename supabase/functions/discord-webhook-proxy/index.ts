@@ -160,6 +160,10 @@ serve(async (req: Request) => {
       embedsCount: Array.isArray(payload?.embeds) ? payload.embeds.length : 0,
     });
 
+    if (payload && typeof payload === "object" && !payload.allowed_mentions) {
+      payload.allowed_mentions = { parse: ["roles", "users", "everyone"] };
+    }
+
     const discordRes = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

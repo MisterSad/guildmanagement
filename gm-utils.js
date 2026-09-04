@@ -1541,6 +1541,8 @@
             console.log("Embeds[0] fields:", body.embeds[0].fields);
         }
 
+        body.allowed_mentions = body.allowed_mentions || { parse: ['roles', 'users', 'everyone'] };
+
         // Attempt 1: Invoke Edge Function Proxy (bypasses browser CORS & adblocker restrictions)
         // Passes guild and eventPrefix so server-side proxy can resolve webhook if client-side is null/empty
         var client = getClient();
@@ -1794,7 +1796,14 @@
               }) + ' UTC'
             : String(eventStart);
 
-        var eventSpecificRoleId = eventPrefix ? await getGuildConfig('discord_role_id_' + eventPrefix) : null;
+        var eventSpecificRoleId = null;
+        if (eventName === 'Shadowfront Squad 1') {
+            eventSpecificRoleId = await getGuildConfig('discord_role_id_shadowfront_squad1') || await getGuildConfig('discord_role_id_shadowfront');
+        } else if (eventName === 'Shadowfront Squad 2') {
+            eventSpecificRoleId = await getGuildConfig('discord_role_id_shadowfront_squad2') || await getGuildConfig('discord_role_id_shadowfront');
+        } else if (eventPrefix) {
+            eventSpecificRoleId = await getGuildConfig('discord_role_id_' + eventPrefix);
+        }
         var globalRoleId = await getGuildConfig('discord_role_id');
         var discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '') 
             ? eventSpecificRoleId 
@@ -1856,6 +1865,7 @@
 
         var body = {
             content: content,
+            allowed_mentions: { parse: ['roles', 'users', 'everyone'] },
             embeds: [{
                 title: embedTitle,
                 description: embedDesc,

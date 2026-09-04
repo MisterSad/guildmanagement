@@ -483,7 +483,8 @@
         var squadKey = sfActiveSquad === 'squad2' ? 'squad2' : 'squad1';
         var squad = squadField(squadKey);
 
-        var roleId = await window.GM.config.get('discord_role_id_shadowfront') || await window.GM.config.get('discord_role_id');
+        var squadRoleKey = squadKey === 'squad2' ? 'discord_role_id_shadowfront_squad2' : 'discord_role_id_shadowfront_squad1';
+        var roleId = await window.GM.config.get(squadRoleKey) || await window.GM.config.get('discord_role_id_shadowfront') || await window.GM.config.get('discord_role_id');
         var roleMention = '';
         if (roleId) {
             if (typeof window.GM.formatDiscordRoleMention === 'function') {
@@ -499,6 +500,7 @@
 
         var body = {
             content: content,
+            allowed_mentions: { parse: ['roles', 'users', 'everyone'] },
             embeds: [
                 {
                     title: squadLabel(squadKey),

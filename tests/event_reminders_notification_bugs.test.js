@@ -51,3 +51,60 @@ describe('event-reminders: reminder locks are atomic (insert, not upsert)', () =
     expect(before).toContain('if (lockErr) {');
   });
 });
+
+describe('event-reminders: Discord webhook allowed_mentions and role handling', () => {
+  it('includes allowed_mentions: { parse: [\'roles\', \'users\', \'everyone\'] } on all webhook payloads in event-reminders', () => {
+    const allowedMentionsMatches = content.match(/allowed_mentions:\s*\{\s*parse:\s*\[\s*['"]roles['"],\s*['"]users['"],\s*['"]everyone['"]\s*\]\s*\}/g) || [];
+    // Standard events, GvG daily tasks, GvG Saturday War, SvS, Calamity (5 payloads)
+    expect(allowedMentionsMatches.length).toBe(5);
+  });
+
+  it('supports dedicated role IDs for Shadowfront Squad 1 and Squad 2 with fallback', () => {
+    expect(content).toContain("event.event_name === 'Shadowfront Squad 1' && config['discord_role_id_shadowfront_squad1']?.trim()");
+    expect(content).toContain("event.event_name === 'Shadowfront Squad 2' && config['discord_role_id_shadowfront_squad2']?.trim()");
+    expect(content).toContain("eventSpecificRoleId = config[`discord_role_id_${eventPrefix}`] || null;");
+  });
+
+  it('uses svsGuildTag for SvS garrison reminder instead of hardcoded @everyone', () => {
+    expect(content).toContain('${svsGuildTag || \'@everyone\'}');
+    expect(content).not.toMatch(/content:\s*`🏰\s*\*\*SvS Battle Day - Base Defense Alert!\*\*\s*@everyone`/);
+  });
+
+  it('auto-expires stale events older than 24 hours in event-reminders', () => {
+    expect(content).toContain('(now - startMs) > 24 * 60 * 60 * 1000');
+    expect(content).toContain("is_active: false");
+  });
+});
+
+describe('discord-webhook-proxy: allowed_mentions defaults', () => {
+  const proxyFilePath = path.resolve(__dirname, '../supabase/functions/discord-webhook-proxy/index.ts');
+  const proxyContent = fs.readFileSync(proxyFilePath, 'utf-8');
+
+  it('ensures payload.allowed_mentions defaults to parsing roles, users, and everyone', () => {
+    expect(proxyContent).toContain('!payload.allowed_mentions');
+    expect(proxyContent).toContain('payload.allowed_mentions = { parse: ["roles", "users", "everyone"] };');
+  });
+});
+
+describe('frontend: allowed_mentions and squad 2 role support', () => {
+  const gmUtilsPath = path.resolve(__dirname, '../gm-utils.js');
+  const gmUtilsContent = fs.readFileSync(gmUtilsPath, 'utf-8');
+  const shadowfrontPath = path.resolve(__dirname, '../shadowfront.js');
+  const shadowfrontContent = fs.readFileSync(shadowfrontPath, 'utf-8');
+
+  it('gm-utils sendDiscordWebhookDetailed guarantees allowed_mentions', () => {
+    expect(gmUtilsContent).toContain("body.allowed_mentions = body.allowed_mentions || { parse: ['roles', 'users', 'everyone'] };");
+  });
+
+  it('gm-utils notifyDiscordEvent handles Squad 1 and Squad 2 role configs', () => {
+    expect(gmUtilsContent).toContain("eventName === 'Shadowfront Squad 1'");
+    expect(gmUtilsContent).toContain("getGuildConfig('discord_role_id_shadowfront_squad1')");
+    expect(gmUtilsContent).toContain("eventName === 'Shadowfront Squad 2'");
+    expect(gmUtilsContent).toContain("getGuildConfig('discord_role_id_shadowfront_squad2')");
+  });
+
+  it('shadowfront.js shareSquadOnDiscord uses squad 1 / squad 2 roles and allowed_mentions', () => {
+    expect(shadowfrontContent).toContain("squadKey === 'squad2' ? 'discord_role_id_shadowfront_squad2' : 'discord_role_id_shadowfront_squad1'");
+    expect(shadowfrontContent).toContain("allowed_mentions: { parse: ['roles', 'users', 'everyone'] }");
+  });
+});

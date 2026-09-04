@@ -346,6 +346,20 @@ serve(async (req) => {
                                 event.event_name === 'Shadowfront Squad 2';
         if (!isStandardEvent) continue;
 
+        const startMs = new Date(event.start_at).getTime();
+
+        // Auto-expire stale standard events whose start_at is older than 24 hours
+        if (!isNaN(startMs) && (now - startMs) > 24 * 60 * 60 * 1000) {
+          logger.info(`[${guild}] Auto-expiring stale event ${event.event_name} (session: ${event.session_id}, started: ${event.start_at})`);
+          await supabase
+            .from('event_status')
+            .update({ is_active: false, updated_at: new Date().toISOString() })
+            .eq('guild', guild)
+            .eq('event_name', event.event_name)
+            .eq('session_id', event.session_id);
+          continue;
+        }
+
         // FIX (A11): formatDiscordRoleMention moved outside the loop — was being redefined on every iteration.
         let eventPrefix = '';
         const nameUpper = (event.event_name || '').toUpperCase();
@@ -356,14 +370,21 @@ serve(async (req) => {
         else if (nameUpper.includes('GVG')) eventPrefix = 'gvg';
         else if (nameUpper.includes('SVS')) eventPrefix = 'svs';
 
-        const eventSpecificRoleId = eventPrefix ? config[`discord_role_id_${eventPrefix}`] : null;
+        let eventSpecificRoleId: string | null = null;
+        if (event.event_name === 'Shadowfront Squad 1' && config['discord_role_id_shadowfront_squad1']?.trim()) {
+          eventSpecificRoleId = config['discord_role_id_shadowfront_squad1'];
+        } else if (event.event_name === 'Shadowfront Squad 2' && config['discord_role_id_shadowfront_squad2']?.trim()) {
+          eventSpecificRoleId = config['discord_role_id_shadowfront_squad2'];
+        } else if (eventPrefix) {
+          eventSpecificRoleId = config[`discord_role_id_${eventPrefix}`] || null;
+        }
+
         const globalRoleId = config['discord_role_id'];
         const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
           ? eventSpecificRoleId
           : globalRoleId;
         const eventGuildTag = formatDiscordRoleMention(discordRoleId);
 
-        const startMs = new Date(event.start_at).getTime();
         const diffMs = startMs - now;
         const diffMins = diffMs / 60000;
         const roundedMins = Math.round(diffMins);
@@ -509,7 +530,8 @@ serve(async (req) => {
                 fields: fields,
                 timestamp: new Date().toISOString(),
                 footer: { text: 'FGF Guild Management Tool' }
-              }]
+              }],
+              allowed_mentions: { parse: ['roles', 'users', 'everyone'] }
             };
 
             if (webhookUrl && webhookUrl.trim() !== '') {
@@ -603,7 +625,11 @@ serve(async (req) => {
               } else {
                 try {
                   const roleMention = formatDiscordRoleMention(discordRoleId);
-                  const body = buildGvgDailyTaskEmbed(curDay, roleMention);
+                  const baseBody = buildGvgDailyTaskEmbed(curDay, roleMention);
+                  const body = {
+                    ...baseBody,
+                    allowed_mentions: { parse: ['roles', 'users', 'everyone'] }
+                  };
                   const sentSuccess = await sendDiscordWebhookWithRetry(webhookUrlGvg, body);
 
                   if (sentSuccess) {
@@ -778,7 +804,8 @@ serve(async (req) => {
                   fields: fields,
                   timestamp: new Date().toISOString(),
                   footer: { text: 'FGF Guild Management Tool' }
-                }]
+                }],
+                allowed_mentions: { parse: ['roles', 'users', 'everyone'] }
               };
 
               const webhookUrl = webhookUrlGvgSat;
@@ -928,7 +955,7 @@ serve(async (req) => {
             let fields: any[] = [];
 
             if (slot.type === 'garrison') {
-              content = `🛡️ **SvS: Garrison Reminder** - Don't forget to put your ships in garrison to avoid being attacked while offline! @everyone`;
+              content = `🛡️ **SvS: Garrison Reminder** - Don't forget to put your ships in garrison to avoid being attacked while offline! ${svsGuildTag || '@everyone'}`;
               embedTitle = `🛡️ SvS: Garrison Reminder`;
               embedDesc = `Protect your ships before going offline.`;
               color = 3447003;
@@ -1049,7 +1076,8 @@ serve(async (req) => {
                 fields: fields,
                 timestamp: new Date().toISOString(),
                 footer: { text: 'FGF Guild Management Tool' }
-              }]
+              }],
+              allowed_mentions: { parse: ['roles', 'users', 'everyone'] }
             };
 
             const webhookUrl = resolveGuildWebhook(config, 'svs');
@@ -1217,7 +1245,8 @@ serve(async (req) => {
                 fields: fields,
                 timestamp: new Date().toISOString(),
                 footer: { text: 'FGF Guild Management Tool' }
-              }]
+              }],
+              allowed_mentions: { parse: ['roles', 'users', 'everyone'] }
             };
 
             const webhookUrl = resolveGuildWebhook(config, 'calamity');
