@@ -49,7 +49,7 @@ let minifiedBytes = 0;
 for (const file of files) {
   if (file === 'node_modules' || file === 'dist' || file.startsWith('.') || EXCLUDED_FILES.includes(file)) continue;
   const ext = path.extname(file).toLowerCase();
-  if (!['.js', '.css', '.webmanifest', '.png', '.json', '.html'].includes(ext)) continue;
+  if (!['.js', '.css', '.webmanifest', '.png', '.json', '.html', '.ico'].includes(ext)) continue;
 
   const srcPath = path.join(rootDir, file);
   const destPath = path.join(distDir, file);
