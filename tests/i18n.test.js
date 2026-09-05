@@ -27,10 +27,12 @@ describe('i18n dictionary (English)', () => {
         // the full sweep is covered by the app-level checklist.
         const samples = [
             'nav_dashboard', 'nav_members', 'login_subtitle', 'admin_title',
-            'card_guild_settings', 'members_title', 'member_home_title'
+            'card_guild_settings', 'members_title', 'member_home_title',
+            'ar_subtitle'
         ];
         samples.forEach((k) => {
             expect(I18N.t(k)).toBeTruthy();
         });
+        expect(I18N.t('ar_subtitle')).toBe('Track and manage Arms Race stages & scores');
     });
 });

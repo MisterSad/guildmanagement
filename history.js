@@ -565,10 +565,7 @@
                         '<h3 style="margin:0;"><i class="ph-fill ' + meta.icon + '" style="color:' + meta.border + ';"></i> ' + esc(meta.label) + '</h3>' +
                         '<div class="gm-dim" style="margin-top:.25rem; font-size:.85rem;">' + esc(when) + ' · ' + esc(window.GM.formatWeek(weekStart)) + '</div>' +
                     '</div>' +
-                    '<div class="gm-row" style="gap:.5rem; margin-left:auto;">' +
-                        deleteBtnHtml +
-                        '<button class="gm-btn gm-btn-ghost gm-btn-icon" id="history-modal-close" title="' + t('close_title') + '"><i class="ph ph-x"></i></button>' +
-                    '</div>' +
+                    '<button class="gm-btn gm-btn-ghost gm-btn-icon" id="history-modal-close" title="' + t('close_title') + '"><i class="ph ph-x"></i></button>' +
                 '</div>' +
                 '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;">' +
                     '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + sorted.length + '</span>' +
@@ -583,6 +580,14 @@
                             '<tbody>' + rowsHtml + '</tbody>' +
                             '</table>' +
                       '</div></div>') +
+                '<div class="gm-modal-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border-soft);">' +
+                    '<div id="history-modal-footer-left">' +
+                        (isAdmin ? deleteBtnHtml : '') +
+                    '</div>' +
+                    '<div style="display:flex; gap:0.5rem; align-items:center;">' +
+                        '<button type="button" class="gm-btn gm-btn-ghost" id="history-modal-footer-close">' + t('close_title') + '</button>' +
+                    '</div>' +
+                '</div>' +
             '</div>';
         document.body.appendChild(overlay);
         requestAnimationFrame(function () { overlay.classList.add('visible'); });
@@ -614,12 +619,23 @@
             overlay.classList.remove('visible');
             setTimeout(function () { overlay.remove(); }, 300);
         }
-        document.getElementById('history-modal-close').addEventListener('click', close);
+        var closeBtn = document.getElementById('history-modal-close');
+        if (closeBtn) closeBtn.addEventListener('click', close);
+        var footerCloseBtn = document.getElementById('history-modal-footer-close');
+        if (footerCloseBtn) footerCloseBtn.addEventListener('click', close);
 
         var deleteBtn = document.getElementById('history-modal-delete');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', function () {
-                window.showConfirm(
+                var confirmFn = (typeof window.showConfirm === 'function')
+                    ? window.showConfirm
+                    : function (title, msg, onConfirm) {
+                        if (window.confirm(title + '\n\n' + msg.replace(/<[^>]+>/g, ''))) {
+                            onConfirm();
+                        }
+                    };
+
+                confirmFn(
                     t('confirm_delete_session_title'),
                     '<strong>' + esc(meta.label) + '</strong><br>' + t('confirm_delete_session_body'),
                     async function () {

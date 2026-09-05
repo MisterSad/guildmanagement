@@ -42,6 +42,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     label_coeff_shadowfront: 'Shadowfront Coeff',
     label_coeff_dtr: 'DTR Coeff',
     label_coeff_armsrace: 'Arms Race Coeff',
+    ar_subtitle: 'Track and manage Arms Race stages & scores',
     label_discord_webhook: 'Discord Webhook URL',
     notify_gvg_daily_tasks_desc: 'Daily Tasks breakdown',
     btn_send_gvg_tasks_now: 'Send Today\'s GvG Tasks Now',
