@@ -1,3 +1,4 @@
+import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -7,6 +8,65 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
+export const GUILD_TAG_REGEX = /^[A-Za-z0-9_-]{1,10}$/;
+
+export const VALID_METRICS = [
+  "members",
+  "power",
+  "fleet",
+  "tech",
+  "flagship",
+  "champs",
+  "crew",
+  "glory",
+  "svs_prep",
+  "svs_pvp",
+  "gvg_prep",
+  "gvg_pvp",
+  "shadowfront_s1",
+  "shadowfront_s2",
+  "dtr",
+  "armsrace_sa",
+  "armsrace_sb",
+] as const;
+
+export const VALID_RANKS = ["R4", "R3", "R2", "R1"] as const;
+
+export const ImageItemSchema = z
+  .object({
+    base64Data: z.string().min(1),
+    mimeType: z.string().optional().default("image/png"),
+  })
+  .strict();
+
+export const GuildTagSchema = z
+  .string()
+  .trim()
+  .transform((val) => val.replace(/^\[|\]$/g, "").trim())
+  .pipe(z.string().regex(GUILD_TAG_REGEX).or(z.literal("")))
+  .optional()
+  .nullable();
+
+// Strictly typed metadata schema
+export const MetadataSchema = z
+  .object({
+    metricType: z.enum(VALID_METRICS).optional(),
+    guildTag: GuildTagSchema,
+    rankHint: z.enum(VALID_RANKS).optional().nullable(),
+  })
+  .strict();
+
+// Request schema
+export const OcrRequestSchema = z.object({
+  images: z.array(ImageItemSchema).max(5).optional(),
+  imageBase64: z.string().optional(),
+  mimeType: z.string().optional(),
+  metricType: z.string().trim().toLowerCase().optional(),
+  guildTag: GuildTagSchema,
+  rankHint: z.enum(VALID_RANKS).optional().nullable(),
+  metadata: MetadataSchema.optional(),
+});
+
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
     new Response(JSON.stringify(body), {
@@ -14,6 +74,27 @@ function makeJson(req: Request) {
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
 }
+
+const SYSTEM_INSTRUCTION = `You are an OCR expert specializing in gaming leaderboards and guild roster screenshots for Foundation Galactic Frontier (FGF).
+Analyze the provided screenshot image(s) and extract leaderboard or roster data strictly according to the task metadata and response schema.
+
+Core Guidelines:
+1. Extraction:
+   - "pseudo": Clean in-game player username. Strip any leading guild tag prefix (e.g. "[TAG]") and brackets so "pseudo" contains only the player name.
+   - "guild_tag": Guild tag if visible, otherwise null.
+   - "score": Numerical value converted to an integer (e.g. "145.2M" -> 145200000, "2.16M" -> 2160000, "12,400,000" -> 12400000, "500K" -> 500000).
+   - "uid": Player UID if visible on screen (string of digits), otherwise null.
+   - "rank": The player's rank section ("R4", "R3", "R2", "R1", or null if not applicable/undeterminable).
+2. Rank Section Detection (Roster Mode):
+   - "Executive Manager" header -> rank "R4"
+   - "Rank 3 Members" header -> rank "R3"
+   - "Rank 2 Members" header -> rank "R2"
+   - "Rank 1 Members" header -> rank "R1"
+   Players belong to the most recent section header above them across consecutive images. If players appear before any visible header, use the incoming rank_hint from the extraction task metadata. Report "endingRank" as the active rank section at the bottom of the last image.
+3. Multi-guild Leaderboards:
+   If a target guild_tag is specified in task metadata, target guild members with that tag and clean any tag prefix from the pseudo.
+4. Output format:
+   Return ONLY a valid JSON object strictly conforming to the requested schema. Never output explanations or markdown outside the JSON.`;
 
 Deno.serve(async (req: Request) => {
   const json = makeJson(req);
@@ -45,40 +126,39 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "not_configured" }, 500);
   }
 
-  let imageBase64 = "";
-  let mimeType = "image/png";
-  let imagesArray: Array<{ base64Data: string; mimeType: string }> = [];
-  let metricType = "power";
-  let guildTag = "";
-  let rankHint: string | null = null;
-
-  const VALID_RANKS = new Set(["R4", "R3", "R2", "R1"]);
-
+  let rawBody: any;
   try {
-    const body = await req.json();
-    if (body?.metricType && typeof body.metricType === "string") {
-      metricType = body.metricType.toLowerCase().trim();
-    }
-    if (body?.guildTag && typeof body.guildTag === "string") {
-      guildTag = body.guildTag.trim();
-    }
-    if (body?.rankHint && typeof body.rankHint === "string") {
-      const rh = body.rankHint.trim().toUpperCase();
-      if (VALID_RANKS.has(rh)) rankHint = rh;
-    }
-    if (Array.isArray(body?.images) && body.images.length > 0) {
-      if (body.images.length > 5) {
-        return json({ ok: false, error: "too_many_images" }, 400);
-      }
-      imagesArray = body.images;
-    } else {
-      imageBase64 = body?.imageBase64 || "";
-      if (body?.mimeType) mimeType = body.mimeType;
-    }
+    rawBody = await req.json();
   } catch (err) {
     logger.error("Failed to parse OCR request body", err);
     return json({ ok: false, error: "bad_request" }, 400);
   }
+
+  // Enforce image count cap before full processing
+  const body = rawBody;
+  if (Array.isArray(body?.images) && body.images.length > 5) {
+    return json({ ok: false, error: "too_many_images" }, 400);
+  }
+
+  const parseResult = OcrRequestSchema.safeParse(rawBody);
+  if (!parseResult.success) {
+    logger.warn("OCR payload validation failed", { errors: parseResult.error.issues });
+    return json({ ok: false, error: "invalid_payload", details: parseResult.error.issues }, 400);
+  }
+
+  const { images, imageBase64: rawBase64, mimeType: rawMime, metadata } = parseResult.data;
+
+  // Resolve metadata: prioritize metadata object if provided, otherwise top-level parameters
+  let metricType = (metadata?.metricType || parseResult.data.metricType || "power").toLowerCase().trim();
+  if (!VALID_METRICS.includes(metricType as any)) {
+    metricType = "power";
+  }
+
+  const guildTag = (metadata?.guildTag ?? parseResult.data.guildTag ?? "").trim();
+  const rankHint = metadata?.rankHint ?? parseResult.data.rankHint ?? null;
+  const imagesArray = images || [];
+  let imageBase64 = rawBase64 || "";
+  let mimeType = rawMime || "image/png";
 
   // Validate parsed payload total size
   let totalDataLength = imageBase64.length;
@@ -94,6 +174,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp"].includes(metricType);
+  const isMembersRoster = metricType === "members";
 
   const metricInstructions: Record<string, string> = {
     members: `Full Guild Roster / Liste des Membres. Extract player pseudo, player UID if visible, in-game rank section (see rank instructions below), and total overall power converted into pure numerical integer. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
@@ -116,65 +197,21 @@ Deno.serve(async (req: Request) => {
   };
 
   const targetMetricDesc = metricInstructions[metricType] || metricInstructions.power;
-  const isMembersRoster = metricType === "members";
 
-  let multiGuildNote = "";
-  if (isMultiGuild) {
-    multiGuildNote = `\nNOTE: This is a SERVER-WIDE multi-guild leaderboard containing players from various guilds across the server.`;
-    if (guildTag) {
-      multiGuildNote += ` Target guild tag is "${guildTag}". Clean any leading guild tag brackets from the extracted pseudo so "pseudo" contains the pure player name, and optionally output "guild_tag" if visible.`;
-    }
-  }
+  const taskMetadata = {
+    metric: metricType,
+    metric_description: targetMetricDesc,
+    guild_tag: guildTag || null,
+    rank_hint: rankHint || null,
+    is_multi_guild: isMultiGuild,
+    is_members_roster: isMembersRoster,
+  };
 
-  // The in-game roster groups members under rank section headers as the
-  // player scrolls. These images may be consecutive frames of ONE continuous
-  // scroll (e.g. sampled from a screen recording), so a header seen only in
-  // an earlier image can still apply to players in a later one — and a
-  // header may not appear at all in this particular batch if it was already
-  // scrolled past before this set of frames started (that's what rankHint
-  // carries forward from the previous batch).
-  let rankSectionNote = "";
-  if (isMembersRoster) {
-    rankSectionNote = `
-RANK DETECTION: The roster is grouped into sections by a header row, top to bottom, in this fixed order:
-  - "Executive Manager" section header -> rank "R4"
-  - "Rank 3 Members" section header -> rank "R3"
-  - "Rank 2 Members" section header -> rank "R2"
-  - "Rank 1 Members" section header -> rank "R1"
-Every player belongs to the rank of the most recent section header that appears above them (scanning top to bottom across all the image(s) provided, in order). If these images are consecutive frames of one continuous scroll and a player appears before ANY section header is visible in this batch, use the incoming rank context: ${rankHint ? `"${rankHint}" (carried over from just before these frames)` : "none — assume these are the very start of the roster, above any section header, so their rank is unknown (null) unless a header actually appears"}.
-Also report "endingRank": the rank section still in effect at the BOTTOM of the last image (i.e. the section a scroll would continue into next) — this gets carried into the next batch of frames. Use null only if no rank section header was ever visible in this batch and no rankHint was provided.`;
-  }
-
-  const rankFieldInstruction = isMembersRoster
-    ? `\n5. "rank": The player's rank section per the RANK DETECTION rules above — one of "R4", "R3", "R2", "R1", or null if genuinely undeterminable.`
-    : "";
-  const rankSchemaField = isMembersRoster ? `,\n      "rank": "R4" | "R3" | "R2" | "R1" | null` : "";
-  const endingRankSchemaField = isMembersRoster ? `,\n  "endingRank": "R4" | "R3" | "R2" | "R1" | null` : "";
-
-  const systemInstruction = `You are an OCR expert specializing in gaming leaderboards and guild roster screenshots for Foundation Galactic Frontier (FGF).
-Your task is to analyze the image(s) and extract all players visible in the roster or leaderboard table for the metric: ${metricType.toUpperCase()} (${targetMetricDesc}).${multiGuildNote}${rankSectionNote}
-
-For each player detected, extract:
-1. "pseudo": The player's clean in-game username/name (remove any leading guild tag prefix like "${guildTag || '[TAG]'}" or brackets).
-2. "guild_tag": Guild tag if visible (e.g. "${guildTag || 'PR1M'}" or null).
-3. "score": The numerical value of ${metricType.toUpperCase()} converted into a pure integer (e.g. "145.2M" -> 145200000, "2.16M" -> 2160000, "12,400,000" -> 12400000, "500K" -> 500000).
-4. "uid": Player UID if visible on screen (string of digits), otherwise null.${rankFieldInstruction}
-
-Return ONLY a JSON object matching this schema:
-{
-  "metric": "${metricType}",
-  "guild_tag": "${guildTag || ''}",
-  "players": [
+  const parts: any[] = [
     {
-      "pseudo": "string",
-      "guild_tag": "string or null",
-      "score": number,
-      "uid": "string or null"${rankSchemaField}
-    }
-  ]${endingRankSchemaField}
-}`;
-
-  const parts: any[] = [{ text: systemInstruction }];
+      text: `[EXTRACTION TASK METADATA - ISOLATED INPUT]\n${JSON.stringify(taskMetadata, null, 2)}\n\nExtract all visible player rows for this metric from the following image(s).`,
+    },
+  ];
 
   if (imagesArray.length > 0) {
     for (const item of imagesArray) {
@@ -215,10 +252,38 @@ Return ONLY a JSON object matching this schema:
     });
   }
 
+  const responseSchema = {
+    type: "OBJECT",
+    properties: {
+      metric: { type: "STRING" },
+      guild_tag: { type: "STRING", nullable: true },
+      players: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            pseudo: { type: "STRING" },
+            guild_tag: { type: "STRING", nullable: true },
+            score: { type: "NUMBER" },
+            uid: { type: "STRING", nullable: true },
+            rank: { type: "STRING", nullable: true },
+          },
+          required: ["pseudo", "score"],
+        },
+      },
+      endingRank: { type: "STRING", nullable: true },
+    },
+    required: ["metric", "players"],
+  };
+
   const promptPayload = {
+    system_instruction: {
+      parts: [{ text: SYSTEM_INSTRUCTION }],
+    },
     contents: [{ parts }],
     generationConfig: {
       response_mime_type: "application/json",
+      response_schema: responseSchema,
       temperature: 0.1,
     },
   };
