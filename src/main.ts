@@ -16,6 +16,39 @@ import {
 } from './core/config/events';
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from './core/config/gvg-tasks';
 import { normalizeRole, roleFromStorage, isSuperAdmin, isServerAdmin, isGuildAdmin } from './core/auth/roles';
+import {
+  calculateCombatDensity,
+  calculateRallyScore,
+  calculateRallyGrade,
+  calculateResidualPower,
+  calculateCombativity,
+  calculateWarScore,
+  getRallyRoleMeta,
+  getPowerTier,
+  getPowerTierMeta,
+  parseSafeMetric,
+  COMBAT_WEIGHTS
+} from './core/scoring/combat';
+import {
+  pad2,
+  getWeekStart,
+  getPrevWeekStart,
+  formatWeek,
+  newSessionId,
+  formatChartDate
+} from './core/utils/date';
+import {
+  formatNumber,
+  parseNumber,
+  formatPower,
+  avatarInit,
+  cleanPlayerPseudo,
+  levenshteinDistance,
+  calculateStringSimilarity,
+  findBestMatchingMember,
+  parseGeminiJson,
+  MAX_NUMERIC
+} from './core/utils/text';
 import { appStore } from './core/store/store';
 import { calculateMatchupData, calculateMatchupAsync } from './workers/matchup.worker';
 import { EventsService } from './modules/events/events.service';
@@ -62,6 +95,39 @@ if (typeof window !== 'undefined') {
     GVG_DAILY_TASKS,
     buildGvgDailyTaskEmbed
   };
+
+  // Tactical scoring & military metrics
+  (window as any).GM.calculateCombatDensity = calculateCombatDensity;
+  (window as any).GM.calculateRallyScore = calculateRallyScore;
+  (window as any).GM.calculateRallyGrade = calculateRallyGrade;
+  (window as any).GM.calculateResidualPower = calculateResidualPower;
+  (window as any).GM.calculateCombativity = calculateCombativity;
+  (window as any).GM.calculateWarScore = calculateWarScore;
+  (window as any).GM.getRallyRoleMeta = getRallyRoleMeta;
+  (window as any).GM.getPowerTier = getPowerTier;
+  (window as any).GM.getPowerTierMeta = getPowerTierMeta;
+  (window as any).GM.parseSafeMetric = parseSafeMetric;
+  (window as any).GM.COMBAT_WEIGHTS = COMBAT_WEIGHTS;
+
+  // Date utilities
+  (window as any).GM.pad2 = pad2;
+  (window as any).GM.getWeekStart = getWeekStart;
+  (window as any).GM.getPrevWeekStart = getPrevWeekStart;
+  (window as any).GM.formatWeek = formatWeek;
+  (window as any).GM.newSessionId = newSessionId;
+  (window as any).GM.formatChartDate = formatChartDate;
+
+  // Text, Number & Fuzzy utilities
+  (window as any).GM.formatNumber = formatNumber;
+  (window as any).GM.parseNumber = parseNumber;
+  (window as any).GM.formatPower = formatPower;
+  (window as any).GM.avatarInit = avatarInit;
+  (window as any).GM.cleanPlayerPseudo = cleanPlayerPseudo;
+  (window as any).GM.levenshteinDistance = levenshteinDistance;
+  (window as any).GM.calculateStringSimilarity = calculateStringSimilarity;
+  (window as any).GM.findBestMatchingMember = findBestMatchingMember;
+  (window as any).GM.parseGeminiJson = parseGeminiJson;
+  (window as any).GM.MAX_NUMERIC = MAX_NUMERIC;
 
   // Store, Worker & Services bridge
   (window as any).GM.store = appStore;

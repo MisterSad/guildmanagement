@@ -3036,7 +3036,14 @@
         filterBulkEligibleMembers: filterBulkEligibleMembers
     };
 
-    window.GM = Object.assign(window.GM || {}, gmExports);
+    window.GM = window.GM || {};
+    for (var gmKey in gmExports) {
+        if (Object.prototype.hasOwnProperty.call(gmExports, gmKey)) {
+            if (window.GM[gmKey] === undefined) {
+                window.GM[gmKey] = gmExports[gmKey];
+            }
+        }
+    }
     window.GM_GVG_TASKS = {
         GVG_DAILY_TASKS: GVG_DAILY_TASKS,
         buildGvgDailyTaskEmbed: buildGvgDailyTaskEmbed
