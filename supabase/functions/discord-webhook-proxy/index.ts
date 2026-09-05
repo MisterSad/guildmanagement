@@ -16,6 +16,17 @@ function makeJson(req: Request) {
     });
 }
 
+const ALLOWED_DISCORD_HOSTS = new Set([
+  "discord.com",
+  "discordapp.com",
+  "ptb.discord.com",
+  "canary.discord.com",
+  "ptb.discordapp.com",
+  "canary.discordapp.com",
+]);
+
+const DISCORD_WEBHOOK_PATH_REGEX = /^\/api(?:\/v\d+)?\/webhooks\/\d+\/[A-Za-z0-9_-]+$/;
+
 function isValidDiscordWebhook(url: string): boolean {
   if (!url || typeof url !== "string") return false;
   const clean = url.replace(/^[<"'\s]+|[>'"\s]+$/g, "").trim();
@@ -23,11 +34,11 @@ function isValidDiscordWebhook(url: string): boolean {
     const u = new URL(clean.startsWith("http") ? clean : "https://" + clean);
     return (
       u.protocol === "https:" &&
-      (u.hostname === "discord.com" ||
-        u.hostname === "discordapp.com" ||
-        u.hostname.endsWith(".discord.com") ||
-        u.hostname.endsWith(".discordapp.com")) &&
-      u.pathname.includes("/webhooks/")
+      !u.username &&
+      !u.password &&
+      (!u.port || u.port === "443") &&
+      ALLOWED_DISCORD_HOSTS.has(u.hostname.toLowerCase()) &&
+      DISCORD_WEBHOOK_PATH_REGEX.test(u.pathname)
     );
   } catch {
     return false;
@@ -62,6 +73,7 @@ serve(async (req: Request) => {
   let webhookUrl = "";
   let payload: any = null;
   let requestedGuild = "";
+  let hasExplicitEveryonePermission = false;
 
   try {
     const rawBody = await req.json();
@@ -70,7 +82,7 @@ serve(async (req: Request) => {
         ? rawBody.body
         : rawBody;
 
-    webhookUrl = (body?.webhookUrl ?? body?.url ?? "").toString().trim();
+    const rawClientWebhook = (body?.webhookUrl ?? body?.url ?? "").toString().trim();
     requestedGuild = (body?.guild ?? "").toString().trim();
     const eventPrefix = (body?.eventPrefix ?? "").toString().trim();
 
@@ -79,6 +91,14 @@ serve(async (req: Request) => {
     } else {
       const { webhookUrl: _w, url: _u, guild: _g, eventPrefix: _ep, ...rest } = body;
       payload = rest;
+    }
+
+    // 1. Interdire formellement les URLs Discord webhook fournies par le client pour les guild_admins
+    if (caller.role === "guild_admin" && rawClientWebhook) {
+      logger.warn("Guild admin attempted to provide client-supplied webhook URL", {
+        callerGuild: caller.guild,
+      });
+      return json({ ok: false, error: "forbidden_client_webhook_url" }, 403);
     }
 
     // Guild Admins are strictly scoped to their own guild
@@ -92,6 +112,12 @@ serve(async (req: Request) => {
       }
       requestedGuild = caller.guild || requestedGuild;
     } else if (caller.role === "server_admin") {
+      if (rawClientWebhook) {
+        logger.warn("Server admin attempted to provide client-supplied webhook URL", {
+          callerServer: caller.serverNumber,
+        });
+        return json({ ok: false, error: "forbidden_client_webhook_url" }, 403);
+      }
       if (requestedGuild && caller.serverNumber) {
         const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
         const { data: g } = await adminClient.from("guilds").select("server_number").eq("id", requestedGuild).maybeSingle();
@@ -105,7 +131,24 @@ serve(async (req: Request) => {
       }
     }
 
-    // Server-side fallback resolution if webhookUrl is empty
+    // 2. Si le rôle est 'super_admin', ignorer body.webhookUrl fourni par le client et forcer la résolution serveur de l'URL depuis guild_config.
+    // Pour tous les rôles admis (super_admin, server_admin, guild_admin), webhookUrl est résolu côté serveur depuis guild_config.
+    webhookUrl = "";
+
+    // 3. Permission explicite et validée pour @everyone / @here
+    const explicitEveryoneRequested = Boolean(
+      body?.allowEveryoneMention === true ||
+      body?.allow_everyone_mention === true ||
+      body?.allowEveryone === true ||
+      payload?.allowEveryoneMention === true ||
+      payload?.allow_everyone_mention === true ||
+      payload?.allowEveryone === true
+    );
+    hasExplicitEveryonePermission =
+      explicitEveryoneRequested &&
+      (caller.role === "super_admin" || caller.role === "guild_admin" || caller.role === "server_admin");
+
+    // Server-side resolution from guild_config
     if (!webhookUrl && requestedGuild) {
       const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
       const { data: rows } = await adminClient
@@ -132,7 +175,7 @@ serve(async (req: Request) => {
         }
       }
       if (resolved && resolved.trim()) {
-        webhookUrl = resolved.trim();
+        webhookUrl = resolved.replace(/^[<"'\s]+|[>'"\s]+$/g, "").trim();
       }
     }
   } catch (err) {
@@ -160,8 +203,20 @@ serve(async (req: Request) => {
       embedsCount: Array.isArray(payload?.embeds) ? payload.embeds.length : 0,
     });
 
-    if (payload && typeof payload === "object" && !payload.allowed_mentions) {
-      payload.allowed_mentions = { parse: ["roles", "users", "everyone"] };
+    // 3. Supprimer systématiquement "@everyone" et "@here" de allowed_mentions par défaut, sauf permission explicite et validée
+    if (payload && typeof payload === "object") {
+      if (!payload.allowed_mentions) {
+        payload.allowed_mentions = { parse: ["roles", "users"] };
+        if (hasExplicitEveryonePermission) {
+          payload.allowed_mentions = { parse: ["roles", "users", "everyone"] };
+        }
+      } else if (typeof payload.allowed_mentions === "object" && Array.isArray(payload.allowed_mentions.parse)) {
+        if (!hasExplicitEveryonePermission) {
+          payload.allowed_mentions.parse = payload.allowed_mentions.parse.filter(
+            (p: unknown) => typeof p === "string" && p !== "everyone" && p !== "here"
+          );
+        }
+      }
     }
 
     const discordRes = await fetch(webhookUrl, {
