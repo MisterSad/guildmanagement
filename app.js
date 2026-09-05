@@ -2924,10 +2924,93 @@
     window.GM.bulkUpdateMemberRoles = bulkUpdateMemberRoles;
     window.GM.setGuildMembersForTest = function (list) { guildMembers = list; };
 
+    function initOcrDropdown() {
+        var trigger = document.getElementById('ocr-dropdown-trigger');
+        var menu = document.getElementById('ocr-dropdown-menu');
+        var container = document.getElementById('ocr-scanners-dropdown') || (trigger ? trigger.parentElement : null);
+        if (!trigger || !menu) return;
+
+        if (trigger.dataset.dropdownInitialized === 'true') return;
+        trigger.dataset.dropdownInitialized = 'true';
+
+        function closeMenu() {
+            menu.style.display = 'none';
+            menu.classList.remove('show');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        function openMenu() {
+            menu.style.display = 'flex';
+            menu.classList.add('show');
+            trigger.setAttribute('aria-expanded', 'true');
+        }
+
+        function toggleMenu() {
+            var isOpen = menu.classList.contains('show') || menu.style.display === 'flex';
+            if (isOpen) {
+                closeMenu();
+            } else {
+                openMenu();
+            }
+        }
+
+        trigger.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleMenu();
+        });
+
+        // Close when clicking any option inside the menu
+        menu.addEventListener('click', function (e) {
+            var item = e.target.closest('.btn-ocr-trigger');
+            if (item) {
+                closeMenu();
+            }
+        });
+
+        // Close on outside click
+        document.addEventListener('click', function (e) {
+            if (container && !container.contains(e.target)) {
+                closeMenu();
+            }
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                closeMenu();
+            }
+        });
+
+        return {
+            open: openMenu,
+            close: closeMenu,
+            toggle: toggleMenu,
+            isOpen: function () { return menu.classList.contains('show') || menu.style.display === 'flex'; }
+        };
+    }
+
+    window.GM.initOcrDropdown = initOcrDropdown;
+
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initOcrDropdown);
+        } else {
+            initOcrDropdown();
+        }
+    }
+
     // Document-level event delegation for OCR trigger buttons
     document.addEventListener('click', function (e) {
         var btn = e.target.closest('#btn-ocr-import, #btn-ocr-import-member, .btn-ocr-trigger');
         if (btn) {
+            var ocrMenu = document.getElementById('ocr-dropdown-menu');
+            var trigger = document.getElementById('ocr-dropdown-trigger');
+            if (ocrMenu && ocrMenu.contains(btn)) {
+                ocrMenu.style.display = 'none';
+                ocrMenu.classList.remove('show');
+                if (trigger) trigger.setAttribute('aria-expanded', 'false');
+            }
             e.preventDefault();
             e.stopPropagation();
             var metric = btn.getAttribute('data-metric') || 'power';
@@ -2937,6 +3020,7 @@
 
     var ocrModuleInitialized = false;
     function initOcrGeminiModule() {
+        initOcrDropdown();
         if (ocrModuleInitialized) return;
         ocrModuleInitialized = true;
 
