@@ -46,6 +46,8 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     stats_no_event_data_title: 'No event data for this period',
     stats_no_event_data_desc: 'No scores recorded for this event in the selected week. Try selecting another week or trigger an OCR scan.',
     ocr_ai_metric_scanners: 'AI Metric Scanners',
+    timezone_expand: 'Expand',
+    timezone_collapse: 'Collapse',
     label_discord_webhook: 'Discord Webhook URL',
     notify_gvg_daily_tasks_desc: 'Daily Tasks breakdown',
     btn_send_gvg_tasks_now: 'Send Today\'s GvG Tasks Now',

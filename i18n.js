@@ -70,6 +70,8 @@
             empty_members_roster_desc:  'Import all members in one step: upload a guild roster screenshot and let AI OCR extract every username and power.',
             empty_members_roster_cta:   'Members OCR',
             ocr_ai_metric_scanners:     'AI Metric Scanners',
+            timezone_expand:            'Expand',
+            timezone_collapse:          'Collapse',
             empty_sanctions:       'No sanctions recorded',
             loading:               'Loading...',
             search_placeholder:    'Search by username or UID...',

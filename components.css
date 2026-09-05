@@ -16,6 +16,11 @@
 .gm-num { font-variant-numeric: tabular-nums; }
 .gm-center { text-align: center; }
 .gm-right { text-align: right; }
+.tabular-nums,
+.gm-matrix-num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
 
 /* ─── Buttons (M3 & Apple Cozy Styling) ─── */
 .gm-btn {
@@ -870,6 +875,27 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
 .gm-role-group.is-collapsed .gm-role-group-header { border-bottom: none; }
 .gm-role-group.is-collapsed .gm-role-group-caret { transform: rotate(-90deg); }
 .gm-role-group-caret { transition: transform 0.2s ease; }
+
+/* ─── Collapsible Sections (Timezone, etc.) ─── */
+.gm-collapsible-head {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+.gm-collapsible-head:hover {
+    filter: brightness(1.04);
+}
+.gm-collapsible-head:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.gm-collapse-icon {
+    display: inline-block;
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+.gm-collapsible-head[aria-expanded="true"] .gm-collapse-icon {
+    transform: rotate(180deg);
+}
 
 .gm-member-list {
     display: flex;

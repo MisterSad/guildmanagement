@@ -1097,16 +1097,22 @@
                         <div id="admin-absences-list"></div>
                     </div>
 
-                    <div class="gm-section" id="admin-timezone-section" style="display: none;">
-                        <div class="gm-section-head">
+                    <div class="gm-section gm-collapsible-section" id="admin-timezone-section" style="display: none;">
+                        <div class="gm-section-head gm-collapsible-head" id="admin-timezone-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="admin-timezone-body" style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between;">
                             <div class="gm-section-title">
                                 <i class="ph ph-clock"></i>
-                                <span>Timezone Coverage</span> <button class="gm-help-btn" data-help-id="help-timezones" aria-label="Help: Timezones"><i class="ph ph-info"></i></button>
+                                <span>Timezone Coverage</span> <button type="button" class="gm-help-btn" data-help-id="help-timezones" aria-label="Help: Timezones"><i class="ph ph-info"></i></button>
                                 <span class="gm-count" id="admin-timezone-count">0</span>
                             </div>
+                            <div class="gm-collapsible-indicator" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted);">
+                                <span id="admin-timezone-toggle-label" data-i18n="timezone_expand">Expand</span>
+                                <i class="ph ph-caret-down gm-collapse-icon" id="admin-timezone-toggle-icon"></i>
+                            </div>
                         </div>
-                        <div class="gm-section-sub" style="margin-bottom: 0.75rem;">Local hour of each player right now, based on their declared UTC offset. Use it to pick event times when most players are available.</div>
-                        <div id="admin-timezone-list"></div>
+                        <div id="admin-timezone-body" class="gm-collapsible-body" style="display: none;">
+                            <div class="gm-section-sub" style="margin-bottom: 0.75rem;">Local hour of each player right now, based on their declared UTC offset. Use it to pick event times when most players are available.</div>
+                            <div id="admin-timezone-list"></div>
+                        </div>
                     </div>
 
                     <div class="gm-section">
