@@ -8,15 +8,17 @@ export const ALLOWED_ORIGINS = [
   "https://guildmanagement.vercel.app",
 ];
 
-// OWNER DECISION: any https://*.vercel.app origin is accepted (Vercel preview deployments).
-// Residual risk accepted: any Vercel project's page may call these APIs from a browser.
-// Mitigation: every sensitive function requires a valid JWT; CORS only gates browser-side
-// response readability, not the auth itself.
+// Strict official project Vercel deployments & previews (no open *.vercel.app relay)
+const VERCEL_OFFICIAL_REGEX =
+  /^https:\/\/(?:[a-zA-Z0-9_-]+\.)?(?:fgf-guild-management|guildmanagement)(?:-[a-zA-Z0-9_-]+)?\.vercel\.app$/i;
+
+const GUILDMGMT_DOMAIN_REGEX = /^https:\/\/[a-z0-9-]+\.guildmgmt\.app$/i;
+
 export function isAllowedOrigin(origin: string): boolean {
   if (!origin || typeof origin !== "string") return false;
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-  if (/^https:\/\/[a-z0-9][a-z0-9-]*\.vercel\.app$/i.test(origin)) return true;
-  return /^https:\/\/[a-z0-9-]+\.guildmgmt\.app$/i.test(origin);
+  if (VERCEL_OFFICIAL_REGEX.test(origin)) return true;
+  return GUILDMGMT_DOMAIN_REGEX.test(origin);
 }
 
 export function getCorsHeaders(req?: Request): Record<string, string> {

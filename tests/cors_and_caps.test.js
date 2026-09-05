@@ -12,15 +12,21 @@ describe('CORS Origin Matching & Security Caps (GAP 4)', () => {
     expect(isAllowedOrigin('http://127.0.0.1:3000')).toBe(true);
     expect(isAllowedOrigin('https://fgf-guild-management.vercel.app')).toBe(true);
 
-    // 2. Vercel preview deployments (anchored https://*.vercel.app)
-    expect(isAllowedOrigin('https://foo-bar.vercel.app')).toBe(true);
-    expect(isAllowedOrigin('https://preview-123.vercel.app')).toBe(true);
+    // 2. Official project Vercel preview deployments
+    expect(isAllowedOrigin('https://guildmanagement-preview-123.vercel.app')).toBe(true);
+    expect(isAllowedOrigin('https://guildmanagement-git-feature.vercel.app')).toBe(true);
+    expect(isAllowedOrigin('https://guildmanagement-mistersads-projects.vercel.app')).toBe(true);
+    expect(isAllowedOrigin('https://preview.guildmanagement.vercel.app')).toBe(true);
 
     // 3. Exact custom subdomains (anchored https://*.guildmgmt.app)
     expect(isAllowedOrigin('https://app.guildmgmt.app')).toBe(true);
     expect(isAllowedOrigin('https://api.guildmgmt.app')).toBe(true);
 
-    // 4. Malicious bypass attempts - MUST BE DENIED
+    // 4. Malicious bypass attempts & arbitrary third-party Vercel apps - MUST BE DENIED
+    expect(isAllowedOrigin('https://malicious-project.vercel.app')).toBe(false);
+    expect(isAllowedOrigin('https://foo-bar.vercel.app')).toBe(false);
+    expect(isAllowedOrigin('https://preview-123.vercel.app')).toBe(false);
+    expect(isAllowedOrigin('https://evil-project.vercel.app')).toBe(false);
     expect(isAllowedOrigin('https://evil-guildmgmt.app.attacker.com')).toBe(false);
     expect(isAllowedOrigin('https://guildmgmt.app.attacker.com')).toBe(false);
     expect(isAllowedOrigin('http://guildmgmt.app')).toBe(false); // Insecure HTTP
@@ -34,14 +40,14 @@ describe('CORS Origin Matching & Security Caps (GAP 4)', () => {
 
   it('getCorsHeaders returns Vary: Origin and appropriate Allow-Origin', () => {
     const validReq = new Request('https://api.test', {
-      headers: { Origin: 'https://foo-bar.vercel.app' }
+      headers: { Origin: 'https://guildmanagement-preview-123.vercel.app' }
     });
     const headers = getCorsHeaders(validReq);
-    expect(headers['Access-Control-Allow-Origin']).toBe('https://foo-bar.vercel.app');
+    expect(headers['Access-Control-Allow-Origin']).toBe('https://guildmanagement-preview-123.vercel.app');
     expect(headers['Vary']).toBe('Origin');
 
     const invalidReq = new Request('https://api.test', {
-      headers: { Origin: 'https://evil.attacker.com' }
+      headers: { Origin: 'https://malicious-project.vercel.app' }
     });
     const invalidHeaders = getCorsHeaders(invalidReq);
     expect(invalidHeaders['Access-Control-Allow-Origin']).toBe('http://localhost:5173');
