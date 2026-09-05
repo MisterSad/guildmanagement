@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -13,22 +14,22 @@ function makeJson(req: Request) {
     });
 }
 
-// In-memory sliding window rate limiter
-const attemptLog = new Map<string, number[]>();
-const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 60_000;
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const windowStart = now - WINDOW_MS;
-  const hits = (attemptLog.get(ip) || []).filter((t) => t > windowStart);
-  if (hits.length >= MAX_ATTEMPTS) {
-    attemptLog.set(ip, hits);
-    return true;
+function getDbErrorStatus(errCode: string): number {
+  switch (errCode) {
+    case "invalid_code":
+    case "missing_fields":
+      return 400;
+    case "identifier_taken":
+    case "uid_already_claimed":
+      return 409;
+    case "invalid_identifier":
+    case "weak_password":
+    case "invalid_uid":
+    case "uid_not_in_guild":
+      return 422;
+    default:
+      return 422;
   }
-  hits.push(now);
-  attemptLog.set(ip, hits);
-  return false;
 }
 
 Deno.serve(async (req: Request) => {
@@ -38,15 +39,13 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  // FIX (SEV-09): Extract the leftmost IP (the actual client IP) from X-Forwarded-For
-  const forwarded = req.headers.get("x-forwarded-for");
-  const ip =
-    req.headers.get("cf-connecting-ip") ||
-    req.headers.get("x-real-ip") ||
-    (forwarded ? forwarded.split(",")[0].trim() : "unknown");
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
-  if (rateLimited(ip)) {
-    logger.warn("Rate limit exceeded on player registration", { ip });
+  // Safe client IP extraction via _shared/rate-limit.ts (prioritizes cf-connecting-ip, nearest hop, x-real-ip)
+  const clientIp = extractClientIp(req.headers);
+  const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 5, windowMs: 60_000 });
+  if (!throttle.allowed) {
+    logger.warn("IP rate limit exceeded on player registration", { ip: clientIp });
     return json({ ok: false, error: "too_many_attempts" }, 429);
   }
 
@@ -65,14 +64,13 @@ Deno.serve(async (req: Request) => {
   if (!id || !password || !uid || !code) {
     return json({ ok: false, error: "missing_fields" }, 400);
   }
-  if (id.length < 3 || id.length > 32) return json({ ok: false, error: "invalid_identifier" }, 200);
-  if (password.length < 8) return json({ ok: false, error: "weak_password" }, 200);
-  if (!/^[0-9]{1,20}$/.test(uid)) return json({ ok: false, error: "invalid_uid" }, 200);
+  if (id.length < 3 || id.length > 32) return json({ ok: false, error: "invalid_identifier" }, 422);
+  if (password.length < 8) return json({ ok: false, error: "weak_password" }, 422);
+  if (!/^[0-9]{1,20}$/.test(uid)) return json({ ok: false, error: "invalid_uid" }, 422);
 
   logger.setContext({ userId: id });
   logger.info("Processing player registration request", { id, uid, codeLength: code.length });
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
   const { data, error } = await admin.rpc("gm_register_player", {
     p_id: id,
     p_password: password,
@@ -87,8 +85,9 @@ Deno.serve(async (req: Request) => {
 
   const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string; status?: string } | null;
   if (!row || !row.ok) {
-    logger.warn("Player registration rejected by DB", { id, error: row?.error });
-    return json({ ok: false, error: row?.error || "registration_failed" }, 200);
+    const errCode = row?.error || "registration_failed";
+    logger.warn("Player registration rejected by DB", { id, error: errCode });
+    return json({ ok: false, error: errCode }, getDbErrorStatus(errCode));
   }
 
   logger.info("Player registered successfully", { id, uid, status: row.status });
