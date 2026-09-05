@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
@@ -6,6 +7,7 @@ import { createDonationCheckoutSession, stripeSecretKey } from "../_shared/strip
 import { getPlayer } from "../_shared/member-lookup.ts";
 import {
   MAX_ALLOWED_POWER,
+  MAX_ALLOWED_EVENT_SCORE,
   parseSafeScore,
   getWeekStartIso,
   eventScoringKey,
@@ -19,9 +21,160 @@ import {
   deletePlayerAbsence,
 } from "../_shared/player-actions.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const ANON_KEY     = Deno.env.get("SUPABASE_ANON_KEY")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = typeof Deno !== "undefined" && Deno.env ? (Deno.env.get("SUPABASE_URL") || "") : "";
+const ANON_KEY     = typeof Deno !== "undefined" && Deno.env ? (Deno.env.get("SUPABASE_ANON_KEY") || "") : "";
+const SERVICE_ROLE = typeof Deno !== "undefined" && Deno.env ? (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "") : "";
+
+// --- Zod Request and Action Payload Schemas ---
+
+export const RequestBodySchema = z.object({
+  action: z.string().trim().min(1, "action is required"),
+  payload: z.unknown().optional(),
+});
+
+export const SubmitScoresSchema = z.object({
+  event_name: z.string().trim().min(1, "event_name is required").max(64),
+  session_id: z.string().trim().min(1, "session_id is required").max(64),
+  participated: z.union([z.boolean(), z.number()]).optional(),
+  score: z.union([
+    z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
+    z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/).refine((val) => {
+      const parsed = parseSafeScore(val);
+      return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
+    }, { message: `Score must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` })
+  ]).optional(),
+  score_prep: z.union([
+    z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
+    z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/).refine((val) => {
+      const parsed = parseSafeScore(val);
+      return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
+    }, { message: `Score prep must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` })
+  ]).optional(),
+  score_pvp: z.union([
+    z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
+    z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/).refine((val) => {
+      const parsed = parseSafeScore(val);
+      return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
+    }, { message: `Score pvp must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` })
+  ]).optional(),
+  late: z.union([z.boolean(), z.number()]).optional(),
+}).passthrough();
+
+export const UpdatePowerSchema = z.object({
+  power: z.union([
+    z.number().min(0).max(MAX_ALLOWED_POWER),
+    z.string().regex(/^\s*\d+\s*$/)
+  ]).refine((val) => {
+    const n = Number(val);
+    return Number.isFinite(n) && n >= 0 && n <= MAX_ALLOWED_POWER;
+  }, { message: `Power must be between 0 and ${MAX_ALLOWED_POWER}` })
+}).passthrough();
+
+const metricPowerField = z.union([
+  z.number().min(0).max(MAX_ALLOWED_POWER),
+  z.string().regex(/^\s*\d+\s*$/)
+]).refine((val) => {
+  const n = Number(val);
+  return Number.isFinite(n) && n >= 0 && n <= MAX_ALLOWED_POWER;
+}, { message: `Power metric must be between 0 and ${MAX_ALLOWED_POWER}` }).optional();
+
+const metricGloryField = z.union([
+  z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
+  z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/)
+]).refine((val) => {
+  const parsed = parseSafeScore(val);
+  return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
+}, { message: `Glory metric must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` }).optional();
+
+export const UpdateMetricsSchema = z.object({
+  total_power: metricPowerField,
+  power: metricPowerField,
+  tech_power: metricPowerField,
+  champion_power: metricPowerField,
+  crew_power: metricPowerField,
+  flagship_power: metricPowerField,
+  fleet_rating: metricPowerField,
+  glory_score: metricGloryField,
+}).passthrough();
+
+export const GetMetricsHistorySchema = z.object({
+  limit: z.union([
+    z.number().int().min(1).max(100),
+    z.string().regex(/^\d+$/).transform(v => parseInt(v, 10))
+  ]).optional(),
+}).passthrough();
+
+export const UpdateGlorySchema = z.object({
+  glory: z.union([
+    z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
+    z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/)
+  ]).refine((val) => {
+    const parsed = parseSafeScore(val);
+    return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
+  }, { message: `Glory score must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` })
+}).passthrough();
+
+export const SubmitTransferRequestSchema = z.object({
+  targetGuild: z.string().trim().min(1, "targetGuild is required").max(32)
+}).passthrough();
+
+export const SetAbsenceSchema = z.object({
+  start_date: z.string().trim().min(1, "start_date is required").max(32),
+  end_date: z.string().trim().min(1, "end_date is required").max(32),
+  kind: z.enum(["full", "partial", "war", "prep", "svs"]).optional().default("full"),
+  note: z.string().trim().max(500).optional().default(""),
+  id: z.string().trim().max(64).nullish(),
+}).passthrough();
+
+export const DeleteAbsenceSchema = z.object({
+  id: z.string().trim().min(1, "id is required").max(64)
+}).passthrough();
+
+export const UpdateTimezoneSchema = z.object({
+  offset: z.union([
+    z.number().int().min(-12).max(14),
+    z.string().regex(/^-?\d+$/).transform(v => parseInt(v, 10))
+      .refine(v => v >= -12 && v <= 14, { message: "Offset must be between -12 and 14" })
+  ])
+}).passthrough();
+
+export const ConfirmDiscordLinkSchema = z.object({
+  code: z.string().trim().min(1, "code is required").max(64)
+}).passthrough();
+
+export const SetPushPrefsSchema = z.object({
+  event_types: z.array(z.string().trim().min(1).max(64)).min(1, "event_types cannot be empty")
+}).passthrough();
+
+export const CreateDonationSchema = z.object({
+  plan: z.string().trim().min(1, "plan is required").max(64),
+  amountCents: z.union([
+    z.number().int(),
+    z.string().regex(/^\d+$/).transform(v => parseInt(v, 10))
+  ]).optional(),
+  guildId: z.string().trim().max(64).optional(),
+  returnUrl: z.string().trim().max(512).optional(),
+}).passthrough().refine((data) => {
+  if (data.plan === "donation_custom") {
+    return typeof data.amountCents === "number" && data.amountCents >= 200 && data.amountCents <= 10000;
+  }
+  return true;
+}, { message: "amountCents must be an integer between 200 and 10000 for donation_custom" });
+
+export const ActionPayloadSchemas: Record<string, z.ZodType<any>> = {
+  "submit-scores": SubmitScoresSchema,
+  "update-power": UpdatePowerSchema,
+  "update-metrics": UpdateMetricsSchema,
+  "get-metrics-history": GetMetricsHistorySchema,
+  "update-glory": UpdateGlorySchema,
+  "submit-transfer-request": SubmitTransferRequestSchema,
+  "set-absence": SetAbsenceSchema,
+  "delete-absence": DeleteAbsenceSchema,
+  "update-timezone": UpdateTimezoneSchema,
+  "confirm-discord-link": ConfirmDiscordLinkSchema,
+  "set-push-prefs": SetPushPrefsSchema,
+  "create-donation": CreateDonationSchema,
+};
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
@@ -157,7 +310,7 @@ async function getGuildAverages(
   }
 }
 
-Deno.serve(async (req: Request) => {
+export async function handleRequest(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("member-portal", req);
 
@@ -165,18 +318,36 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   try {
-    let action = "";
-    let payload: any = {};
+    let rawBody: unknown;
     try {
-      const body = await req.json();
-      action = (body?.action ?? "").toString();
-      payload = body?.payload ?? {};
+      rawBody = await req.json();
     } catch (err) {
       logger.error("Failed to parse request JSON", err);
       return json({ ok: false, error: "bad_request" }, 400);
     }
 
-    if (!action) return json({ ok: false, error: "missing_action" }, 400);
+    const bodyParsed = RequestBodySchema.safeParse(rawBody);
+    if (!bodyParsed.success) {
+      const hasAction = typeof (rawBody as any)?.action === "string" && (rawBody as any).action.trim().length > 0;
+      return json({ ok: false, error: hasAction ? "bad_request" : "missing_action", issues: bodyParsed.error.issues }, 400);
+    }
+
+    const action = bodyParsed.data.action;
+    let payload: any = (bodyParsed.data.payload && typeof bodyParsed.data.payload === "object") ? bodyParsed.data.payload : {};
+
+    const schema = ActionPayloadSchemas[action];
+    if (schema) {
+      const payloadParsed = schema.safeParse(payload);
+      if (!payloadParsed.success) {
+        logger.warn("Payload validation failed for action", { action, issues: payloadParsed.error.issues });
+        return json({
+          ok: false,
+          error: "invalid_payload",
+          issues: payloadParsed.error.issues
+        }, 422);
+      }
+      payload = payloadParsed.data;
+    }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
@@ -1013,4 +1184,8 @@ Deno.serve(async (req: Request) => {
     logger.error("Unhandled member-portal error", unhandledErr);
     return json({ ok: false, error: "internal_error" }, 500);
   }
-});
+}
+
+if (typeof Deno !== "undefined" && typeof (Deno as any).serve === "function") {
+  (Deno as any).serve(handleRequest);
+}
