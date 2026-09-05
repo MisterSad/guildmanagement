@@ -37,7 +37,7 @@
     var localIdentity = null;
     var activeAccounts = [];
     var availableGuilds = [];
-    var decryptedCache = {}; // messageId -> plaintext
+    var decryptedCache = new Map(); // messageId -> plaintext (in-memory ephemeral session only)
     var unreadCounts = {}; // convId -> number of unread messages
     var lastReadMessageIds = {}; // convId -> highest message id read
     var globalUnreadChannel = null;
@@ -1173,25 +1173,33 @@
         return newKey;
     }
 
-    function getCachedDecrypted(msgId) {
-        if (!msgId) return null;
-        if (decryptedCache[msgId]) return decryptedCache[msgId];
+    function purgeLegacyE2EECache() {
         try {
-            var raw = localStorage.getItem('gm_e2ee_cache_' + msgId);
-            if (raw) {
-                decryptedCache[msgId] = raw;
-                return raw;
+            if (typeof localStorage === 'undefined' || !localStorage) return;
+            var keysToRemove = [];
+            for (var i = 0; i < localStorage.length; i++) {
+                var key = localStorage.key(i);
+                if (key && key.indexOf('gm_e2ee_cache_') === 0) {
+                    keysToRemove.push(key);
+                }
+            }
+            for (var j = 0; j < keysToRemove.length; j++) {
+                localStorage.removeItem(keysToRemove[j]);
             }
         } catch (e) {}
-        return null;
+    }
+
+    // Privacy by Design (Ticket 1.3): Immediately purge residual plaintext E2EE keys from localStorage
+    purgeLegacyE2EECache();
+
+    function getCachedDecrypted(msgId) {
+        if (!msgId) return null;
+        return decryptedCache.get(msgId) || null;
     }
 
     function setCachedDecrypted(msgId, text) {
         if (!msgId || !text) return;
-        decryptedCache[msgId] = text;
-        try {
-            localStorage.setItem('gm_e2ee_cache_' + msgId, text);
-        } catch (e) {}
+        decryptedCache.set(msgId, text);
     }
 
     async function sendMessage(text) {
@@ -2848,6 +2856,7 @@
     // ─────────────────────────────────────────────────────────────────────────
 
     async function load() {
+        purgeLegacyE2EECache();
         ensureLayoutRendered();
 
         if (!isLeader()) {
@@ -3111,6 +3120,9 @@
 
     return {
         load: load,
+        purgeLegacyE2EECache: purgeLegacyE2EECache,
+        getCachedDecrypted: getCachedDecrypted,
+        setCachedDecrypted: setCachedDecrypted,
         initSignalIdentity: initSignalIdentity,
         fetchConversations: fetchConversations,
         fetchTreaties: fetchTreaties,
