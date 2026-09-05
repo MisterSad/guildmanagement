@@ -6,10 +6,27 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
-
 let client: SupabaseClient | null = null;
+
+export function getSupabaseConfig(): { url: string; key: string } {
+  const url = (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_URL : undefined) || '';
+  const key = (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined) || '';
+  return { url, key };
+}
+
+export function validateSupabaseEnv(): { url: string; anonKey: string } {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) {
+    throw new Error(
+      'Supabase initialization error: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variable.'
+    );
+  }
+  return { url, anonKey: key };
+}
+
+export function resetSupabaseClient(): void {
+  client = null;
+}
 
 export function getSupabaseClient(): SupabaseClient | null {
   if (client) return client;
@@ -19,12 +36,21 @@ export function getSupabaseClient(): SupabaseClient | null {
     return client;
   }
 
+  const { url, key } = getSupabaseConfig();
+
+  if (!url || !key) {
+    console.error(
+      '[Supabase] Configuration error: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables.'
+    );
+    return null;
+  }
+
   try {
     if (typeof window !== 'undefined' && (window as any).supabase?.createClient) {
-      client = (window as any).supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      client = (window as any).supabase.createClient(url, key);
       return client;
     }
-    client = createClient(SUPABASE_URL, SUPABASE_KEY);
+    client = createClient(url, key);
     return client;
   } catch (e) {
     console.error('Supabase init error:', e);
