@@ -200,7 +200,10 @@
     window.GM_STATS = {
         load: function () {
             return initAndLoad();
-        }
+        },
+        loadSingleEvent: loadSingleEventMode,
+        renderLeaderboard: renderLeaderboard,
+        getState: function () { return state; }
     };
 
     // ── Initialisation et Chargement ─────────────────────────────────────────────
@@ -1234,11 +1237,26 @@
         var tabsHtml = getTabsHtml(state.currentMode);
 
         containers.forEach(function (container) {
-            if (!state.leaderboardData || !state.leaderboardData.length) {
+            var hasData = state.leaderboardData && state.leaderboardData.length > 0;
+            var hasScores = hasData && state.leaderboardData.some(function (m) {
+                return (m.score > 0) || (m.score_prep > 0) || (m.score_pvp > 0) || (m.events_done > 0);
+            });
+
+            if (!hasData || !hasScores) {
+                var titleKey = 'stats_no_event_data_title';
+                var emptyTitle = (window.GM_I18N && window.GM_I18N.t && window.GM_I18N.t(titleKey) !== titleKey)
+                    ? window.GM_I18N.t(titleKey)
+                    : 'No event data for this period';
+                var descKey = 'stats_no_event_data_desc';
+                var emptyDesc = (window.GM_I18N && window.GM_I18N.t && window.GM_I18N.t(descKey) !== descKey)
+                    ? window.GM_I18N.t(descKey)
+                    : 'No scores recorded for this event in the selected week. Try selecting another week or trigger an OCR scan.';
+
                 container.innerHTML = tabsHtml +
-                    '<div class="gm-empty" style="padding:3.5rem 1.5rem; text-align:center; background:var(--bg-1); border-radius:var(--radius-xl); border:1px dashed var(--border-soft); margin-top:1rem;">' +
-                        '<i class="ph-duotone ph-chart-bar gm-icon" style="font-size: var(--fs-5xl); color:var(--fg-dim); margin-bottom:.5rem; display:block;"></i>' +
-                        '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg);">' + (t('stats_no_data') || 'No statistics available for this selection.') + '</div>' +
+                    '<div class="gm-empty gm-leaderboard-empty" style="padding:3.5rem 1.5rem; text-align:center; background:var(--bg-1); border-radius:var(--radius-xl); border:1px dashed var(--border-soft); margin-top:1rem;">' +
+                        '<i class="ph-duotone ph-trophy gm-icon" style="font-size: var(--fs-5xl); color:var(--fg-dim); margin-bottom:.75rem; display:block; opacity:0.6;"></i>' +
+                        '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg); margin-bottom:.5rem;">' + esc(emptyTitle) + '</div>' +
+                        '<div class="gm-empty-hint" style="font-size: var(--fs-sm); color:var(--fg-dim); max-width:480px; margin:0 auto; line-height:1.5;">' + esc(emptyDesc) + '</div>' +
                     '</div>';
                 wireModeTabs(container);
                 return;

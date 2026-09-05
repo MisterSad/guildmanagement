@@ -606,6 +606,31 @@ describe('GM_STATS KPI tabs', () => {
     });
 
     it('renders Shadowfront, Arms Race, and DTR event leaderboards', async () => {
+        const EVENT_PARTS = PARTS.concat([
+            { pseudo: 'AlphaPrime', event_name: 'Shadowfront', session_id: 'sf1', week_start: W2, participated: 1, score: 50, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
+            { pseudo: 'AlphaPrime', event_name: 'Arms Race', session_id: 'ar1', week_start: W2, participated: 1, score: 40, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
+            { pseudo: 'AlphaPrime', event_name: 'Defend Trade Route', session_id: 'd1', week_start: W2, participated: 1, score: 30, score_prep: 0, score_pvp: 0, is_pending: false, guild: G }
+        ]);
+        window.GM.db = makeDb({
+            rpc: {
+                list_event_weeks: () => ({ data: [{ week_start: W2 }, { week_start: W1 }], error: null }),
+                gm_stats_data: () => ({
+                    data: {
+                        guild: G,
+                        members: MEMBERS,
+                        participants: EVENT_PARTS,
+                        glory: GLORY,
+                        squads: SQUADS
+                    },
+                    error: null
+                })
+            },
+            from: {
+                guild_members: () => new MockBuilder(MEMBERS),
+                event_participants: () => new MockBuilder(EVENT_PARTS.concat(GLORY)),
+                shadowfront_squads: () => new MockBuilder(SQUADS)
+            }
+        });
         await window.GM_STATS.load();
 
         const sfBtn = document.querySelector('button[data-gm-mode="Shadowfront"]');

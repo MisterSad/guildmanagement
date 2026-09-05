@@ -268,6 +268,8 @@
             stats_subtitle:        'Rankings and member evolution',
             stats_compute:         'Recompute',
             stats_no_data:         'No data available for this week.',
+            stats_no_event_data_title: 'No event data for this period',
+            stats_no_event_data_desc:  'No scores recorded for this event in the selected week. Try selecting another week or trigger an OCR scan.',
             stats_period_1w:       '1 Week',
             stats_period_2w:       '2 Weeks',
             stats_period_4w:       '4 Weeks',

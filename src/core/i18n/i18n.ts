@@ -43,6 +43,8 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     label_coeff_dtr: 'DTR Coeff',
     label_coeff_armsrace: 'Arms Race Coeff',
     ar_subtitle: 'Track and manage Arms Race stages & scores',
+    stats_no_event_data_title: 'No event data for this period',
+    stats_no_event_data_desc: 'No scores recorded for this event in the selected week. Try selecting another week or trigger an OCR scan.',
     label_discord_webhook: 'Discord Webhook URL',
     notify_gvg_daily_tasks_desc: 'Daily Tasks breakdown',
     btn_send_gvg_tasks_now: 'Send Today\'s GvG Tasks Now',
