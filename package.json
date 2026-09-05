@@ -27,6 +27,7 @@
   "dependencies": {
     "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
-    "@supabase/supabase-js": "2.112.3"
+    "@supabase/supabase-js": "2.112.3",
+    "zod": "^3.23.8"
   }
 }

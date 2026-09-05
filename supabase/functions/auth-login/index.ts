@@ -4,15 +4,17 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { establishShadowSession } from "../_shared/shadow-session.ts";
+import { getValidatedEnv } from "../_shared/env.ts";
 
 const LoginSchema = z.object({
   id: z.string().trim().min(1).max(128),
   password: z.string().min(1).max(256),
 });
 
-const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY      = Deno.env.get("SUPABASE_ANON_KEY")!;
+const env = getValidatedEnv();
+const SUPABASE_URL  = env.SUPABASE_URL;
+const SERVICE_ROLE  = env.SUPABASE_SERVICE_ROLE_KEY;
+const ANON_KEY      = env.SUPABASE_ANON_KEY;
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>

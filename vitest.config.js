@@ -8,5 +8,14 @@ export default defineConfig({
     },
     setupFiles: ['tests/setup.js'],
     include: ['tests/**/*.test.js']
+  },
+  resolve: {
+    alias: [
+      {
+        find: /^https:\/\/esm\.sh\/zod(?:@[\d.]+)?$/,
+        replacement: 'zod'
+      }
+    ]
   }
 });
+

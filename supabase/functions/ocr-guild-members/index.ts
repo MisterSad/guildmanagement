@@ -2,11 +2,13 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { getValidatedEnv } from "../_shared/env.ts";
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const env = getValidatedEnv();
+const GEMINI_API_KEY = env.GEMINI_API_KEY || "";
+const SUPABASE_URL = env.SUPABASE_URL;
+const SERVICE_ROLE = env.SUPABASE_SERVICE_ROLE_KEY;
+const ANON_KEY = env.SUPABASE_ANON_KEY;
 
 export const GUILD_TAG_REGEX = /^[A-Za-z0-9_-]{1,10}$/;
 
