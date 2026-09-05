@@ -61,7 +61,27 @@
     }
 
     function loadingHtml() {
-        return '<div class="gm-empty" style="padding:2.5rem 1rem;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading tickets...</div></div>';
+        var cards = '';
+        for (var i = 0; i < 4; i++) {
+            cards +=
+                '<div class="gm-card gm-card-padded gm-skeleton-card" style="margin-bottom:0.75rem;">' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; margin-bottom:0.4rem;">' +
+                        '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                            '<div class="gm-skeleton gm-skeleton-text" style="width:85px; height:1rem;"></div>' +
+                            '<div class="gm-skeleton gm-skeleton-badge" style="width:70px; height:1.25rem;"></div>' +
+                            '<div class="gm-skeleton gm-skeleton-badge" style="width:65px; height:1.25rem;"></div>' +
+                        '</div>' +
+                        '<div class="gm-skeleton gm-skeleton-text" style="width:110px; height:0.8rem;"></div>' +
+                    '</div>' +
+                    '<div class="gm-skeleton gm-skeleton-title" style="width:' + (50 + (i % 3) * 18) + '%; height:1.25rem; margin-bottom:0.4rem;"></div>' +
+                    '<div class="gm-skeleton gm-skeleton-text" style="width:' + (75 + (i % 2) * 20) + '%; height:0.85rem; margin-bottom:0.4rem;"></div>' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; padding-top:0.4rem; border-top:1px solid var(--border-soft);">' +
+                        '<div class="gm-skeleton gm-skeleton-text" style="width:130px; height:0.8rem;"></div>' +
+                        '<div class="gm-skeleton gm-skeleton-btn" style="width:90px; height:1.85rem; border-radius:6px;"></div>' +
+                    '</div>' +
+                '</div>';
+        }
+        return '<div class="gm-tickets-skeleton-list" aria-busy="true" aria-label="Loading tickets">' + cards + '</div>';
     }
 
     async function load() {
@@ -211,6 +231,6 @@
         }
     }
 
-    window.GM_TICKETS = { load: load };
+    window.GM_TICKETS = { load: load, loadingHtml: loadingHtml };
 
 })();

@@ -134,11 +134,7 @@ export class CrossRankView {
     this.state.sortKey = 'draft_score';
     this.state.sortDesc = true;
 
-    container.innerHTML = `
-      <div class="gm-empty" style="padding:2.5rem;">
-        <i class="ph-duotone ph-arrows-clockwise gm-icon" style="animation: spin 1s linear infinite;"></i>
-        <div class="gm-empty-title">Loading cross-guild migration scouting data...</div>
-      </div>`;
+    container.innerHTML = CrossRankView.loadingHtml();
 
     const supabase = getSupabaseClient();
     if (!supabase) return;
@@ -427,5 +423,70 @@ export class CrossRankView {
         this.render();
       });
     });
+  }
+
+  public static loadingHtml(): string {
+    let rows = '';
+    for (let i = 0; i < 5; i++) {
+      rows += `
+        <tr style="border-bottom:1px solid var(--border-soft);">
+          <td style="padding:0.65rem 0.5rem;"><div class="gm-skeleton gm-skeleton-badge" style="width:36px; height:1.2rem;"></div></td>
+          <td style="padding:0.65rem 0.75rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <div class="gm-skeleton gm-skeleton-avatar" style="width:28px; height:28px; border-radius:6px;"></div>
+              <div>
+                <div class="gm-skeleton gm-skeleton-text" style="width:${90 + (i % 3) * 25}px; height:0.9rem; margin-bottom:0.25rem;"></div>
+                <div class="gm-skeleton gm-skeleton-text" style="width:55px; height:0.75rem;"></div>
+              </div>
+            </div>
+          </td>
+          <td style="padding:0.65rem 0.5rem;"><div class="gm-skeleton gm-skeleton-badge" style="width:50px; height:1.2rem;"></div></td>
+          <td style="padding:0.65rem 0.5rem;"><div class="gm-skeleton gm-skeleton-badge" style="width:50px; height:1.2rem;"></div></td>
+          <td style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-text" style="width:70px; height:0.95rem;"></div></td>
+          <td style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-text" style="width:65px; height:0.95rem;"></div></td>
+          <td style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-text" style="width:65px; height:0.95rem;"></div></td>
+          <td style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-badge" style="width:60px; height:1.2rem;"></div></td>
+          <td style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-badge" style="width:75px; height:1.35rem;"></div></td>
+        </tr>`;
+    }
+
+    return `
+      <div class="gm-cross-rank-skeleton" aria-busy="true" aria-label="Loading draft ranking">
+        <div class="gm-card glass-card gm-section" style="padding:1.25rem; margin-bottom:1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <div class="gm-skeleton gm-skeleton-title" style="width:220px; height:1.4rem; margin-bottom:0.4rem;"></div>
+              <div class="gm-skeleton gm-skeleton-text" style="width:340px; max-width:100%; height:0.85rem;"></div>
+            </div>
+            <div class="gm-skeleton gm-skeleton-btn" style="width:120px; height:2.2rem;"></div>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+            <div class="gm-skeleton" style="flex:1; min-width:160px; height:2.4rem; border-radius:var(--radius-md);"></div>
+            <div class="gm-skeleton" style="width:110px; height:2.4rem; border-radius:var(--radius-md);"></div>
+            <div class="gm-skeleton" style="width:110px; height:2.4rem; border-radius:var(--radius-md);"></div>
+            <div class="gm-skeleton" style="width:120px; height:2.4rem; border-radius:var(--radius-md);"></div>
+          </div>
+        </div>
+        <div class="gm-table-wrap" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow-x:auto;">
+          <table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:760px;">
+            <thead>
+              <tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size:0.75rem;">
+                <th style="padding:0.65rem 0.5rem;"><div class="gm-skeleton gm-skeleton-text" style="width:30px; height:0.75rem;"></div></th>
+                <th style="padding:0.65rem 0.75rem;"><div class="gm-skeleton gm-skeleton-text" style="width:80px; height:0.75rem;"></div></th>
+                <th style="padding:0.65rem 0.5rem;"><div class="gm-skeleton gm-skeleton-text" style="width:50px; height:0.75rem;"></div></th>
+                <th style="padding:0.65rem 0.5rem;"><div class="gm-skeleton gm-skeleton-text" style="width:50px; height:0.75rem;"></div></th>
+                <th style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-text" style="width:60px; height:0.75rem;"></div></th>
+                <th style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-text" style="width:55px; height:0.75rem;"></div></th>
+                <th style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-text" style="width:55px; height:0.75rem;"></div></th>
+                <th style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-text" style="width:60px; height:0.75rem;"></div></th>
+                <th style="padding:0.65rem 0.5rem; text-align:right;"><div class="gm-skeleton gm-skeleton-text" style="width:70px; height:0.75rem;"></div></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
   }
 }

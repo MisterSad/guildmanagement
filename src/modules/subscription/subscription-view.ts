@@ -348,8 +348,42 @@ export class SubscriptionView {
     }
   }
 
-  private static loadingHtml(): string {
-    return '<div class="gm-empty"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">' + (t('loading') || 'Loading') + '…</div></div>';
+  public static loadingHtml(): string {
+    return (
+      '<div class="gm-subscription-skeleton" aria-busy="true" aria-label="Loading donation options">' +
+        '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1.25rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">' +
+          '<div class="gm-skeleton" style="width:48px; height:48px; border-radius:12px; flex-shrink:0;"></div>' +
+          '<div style="flex:1; min-width:200px;">' +
+            '<div class="gm-skeleton gm-skeleton-title" style="width:180px; height:1.2rem; margin-bottom:0.4rem;"></div>' +
+            '<div class="gm-skeleton gm-skeleton-text" style="width:340px; max-width:100%; height:0.85rem;"></div>' +
+          '</div>' +
+          '<div class="gm-skeleton gm-skeleton-badge" style="width:85px; height:1.6rem;"></div>' +
+        '</div>' +
+        '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1.25rem;">' +
+          '<div class="gm-skeleton gm-skeleton-text" style="width:140px; height:0.9rem; margin-bottom:1rem;"></div>' +
+          '<div class="gm-sub-plans-grid">' +
+            [1, 2, 3].map(() =>
+              '<div class="gm-card gm-skeleton-card" style="padding:1.25rem; min-height:160px; justify-content:space-between;">' +
+                '<div>' +
+                  '<div class="gm-skeleton" style="width:36px; height:36px; border-radius:8px; margin-bottom:0.6rem;"></div>' +
+                  '<div class="gm-skeleton gm-skeleton-title" style="width:90px; height:1.1rem; margin-bottom:0.4rem;"></div>' +
+                  '<div class="gm-skeleton gm-skeleton-text" style="width:120px; height:0.8rem;"></div>' +
+                '</div>' +
+                '<div class="gm-skeleton gm-skeleton-btn" style="width:100%; height:2.2rem; margin-top:1rem;"></div>' +
+              '</div>'
+            ).join('') +
+          '</div>' +
+        '</div>' +
+        '<div class="gm-card gm-card-padded gm-section" style="margin-bottom:1.25rem;">' +
+          '<div class="gm-skeleton gm-skeleton-title" style="width:130px; height:1.1rem; margin-bottom:0.5rem;"></div>' +
+          '<div class="gm-skeleton gm-skeleton-text" style="width:260px; height:0.85rem; margin-bottom:0.85rem;"></div>' +
+          '<div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; max-width:460px;">' +
+            '<div class="gm-skeleton" style="flex:1; min-width:140px; height:2.5rem; border-radius:var(--radius-md);"></div>' +
+            '<div class="gm-skeleton gm-skeleton-btn" style="width:110px; height:2.5rem; border-radius:var(--radius-md);"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
   }
 
   private static errorHtml(msg: string): string {

@@ -678,7 +678,69 @@
     }
 
     function loadingHtml() {
-        return '<div class="gm-empty"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">' + (t('loading') || 'Loading') + '…</div></div>';
+        var rosterRows = '';
+        for (var i = 0; i < 5; i++) {
+            rosterRows +=
+                '<div style="display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.75rem; border-bottom:1px solid var(--border-soft);">' +
+                    '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                        '<div class="gm-skeleton gm-skeleton-avatar" style="width:28px; height:28px; border-radius:6px;"></div>' +
+                        '<div>' +
+                            '<div class="gm-skeleton gm-skeleton-text" style="width:' + (90 + (i % 3) * 20) + 'px; height:0.9rem; margin-bottom:0.25rem;"></div>' +
+                            '<div class="gm-skeleton gm-skeleton-text" style="width:60px; height:0.75rem;"></div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="text-align:right;">' +
+                        '<div class="gm-skeleton gm-skeleton-text" style="width:70px; height:0.95rem; margin-bottom:0.25rem;"></div>' +
+                        '<div class="gm-skeleton gm-skeleton-badge" style="width:50px; height:1rem;"></div>' +
+                    '</div>' +
+                '</div>';
+        }
+
+        return (
+            '<div class="gm-matchup-skeleton" aria-busy="true" aria-label="Loading GvG matchup">' +
+                '<div class="gm-card glass-card gm-section" style="padding:1.25rem; margin-bottom:1.25rem;">' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem;">' +
+                        '<div>' +
+                            '<div class="gm-skeleton gm-skeleton-title" style="width:240px; height:1.4rem; margin-bottom:0.4rem;"></div>' +
+                            '<div class="gm-skeleton gm-skeleton-text" style="width:380px; max-width:100%; height:0.85rem;"></div>' +
+                        '</div>' +
+                        '<div style="display:flex; gap:0.5rem;">' +
+                            '<div class="gm-skeleton gm-skeleton-btn" style="width:110px; height:2rem;"></div>' +
+                            '<div class="gm-skeleton gm-skeleton-btn" style="width:130px; height:2rem;"></div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="gm-matchup-2col" style="position:relative; align-items:center;">' +
+                        '<div style="background:rgba(59, 130, 246, 0.05); border:1px solid rgba(59, 130, 246, 0.2); border-radius:12px; padding:0.75rem 1rem;">' +
+                            '<div class="gm-skeleton gm-skeleton-text" style="width:160px; height:0.85rem; margin-bottom:0.5rem;"></div>' +
+                            '<div class="gm-skeleton" style="width:100%; height:2.3rem; border-radius:var(--radius-md);"></div>' +
+                        '</div>' +
+                        '<div style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); z-index:5; pointer-events:none;">' +
+                            '<div class="gm-skeleton" style="width:38px; height:38px; border-radius:50%;"></div>' +
+                        '</div>' +
+                        '<div style="background:rgba(239, 68, 68, 0.05); border:1px solid rgba(239, 68, 68, 0.2); border-radius:12px; padding:0.75rem 1rem;">' +
+                            '<div class="gm-skeleton gm-skeleton-text" style="width:160px; height:0.85rem; margin-bottom:0.5rem;"></div>' +
+                            '<div class="gm-skeleton" style="width:100%; height:2.3rem; border-radius:var(--radius-md);"></div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="gm-matchup-2col" style="margin-bottom:1.25rem;">' +
+                    '<div class="gm-card glass-card gm-skeleton-card" style="padding:0; overflow:hidden; border-left:4px solid #3b82f6;">' +
+                        '<div style="padding:1rem; border-bottom:1px solid var(--border-soft); display:flex; justify-content:space-between; align-items:center;">' +
+                            '<div class="gm-skeleton gm-skeleton-title" style="width:140px; height:1.2rem;"></div>' +
+                            '<div class="gm-skeleton gm-skeleton-badge" style="width:80px; height:1.4rem;"></div>' +
+                        '</div>' +
+                        rosterRows +
+                    '</div>' +
+                    '<div class="gm-card glass-card gm-skeleton-card" style="padding:0; overflow:hidden; border-left:4px solid #ef4444;">' +
+                        '<div style="padding:1rem; border-bottom:1px solid var(--border-soft); display:flex; justify-content:space-between; align-items:center;">' +
+                            '<div class="gm-skeleton gm-skeleton-title" style="width:140px; height:1.2rem;"></div>' +
+                            '<div class="gm-skeleton gm-skeleton-badge" style="width:80px; height:1.4rem;"></div>' +
+                        '</div>' +
+                        rosterRows +
+                    '</div>' +
+                '</div>' +
+            '</div>'
+        );
     }
 
     function errorHtml(msg) {
@@ -691,7 +753,8 @@
     }
 
     window.GM_GVG_MATCHUP = {
-        load: load
+        load: load,
+        loadingHtml: loadingHtml
     };
 
 })();

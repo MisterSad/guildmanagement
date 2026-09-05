@@ -1,4 +1,4 @@
-📢 **FGF Guild Management Tool Update: CHANG_V3.16.1**
+📢 **FGF Guild Management Tool Update: CHANG_V3.17.0**
 
 This update fixes Discord event notification pings, introduces dedicated role alerts for Shadowfront squads, and cleans up event schedules. Full breakdown below.
 

@@ -897,6 +897,76 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     transform: rotate(180deg);
 }
 
+/* ─── Skeleton Loaders ─── */
+@keyframes gm-skeleton-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
+
+@keyframes gm-skeleton-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.gm-skeleton {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.09) 37%, rgba(255, 255, 255, 0.04) 63%);
+    background-size: 400% 100%;
+    animation: gm-skeleton-shimmer 1.6s ease infinite, gm-skeleton-pulse 2s ease-in-out infinite;
+    border-radius: var(--radius-md, 6px);
+    display: inline-block;
+    pointer-events: none;
+    user-select: none;
+}
+
+.gm-skeleton-text {
+    height: 0.9rem;
+    width: 100%;
+    border-radius: 4px;
+}
+
+.gm-skeleton-title {
+    height: 1.4rem;
+    width: 60%;
+    border-radius: 4px;
+}
+
+.gm-skeleton-badge {
+    height: 1.35rem;
+    width: 4.5rem;
+    border-radius: 9999px;
+}
+
+.gm-skeleton-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.gm-skeleton-btn {
+    height: 2.25rem;
+    width: 7rem;
+    border-radius: var(--radius-md, 6px);
+}
+
+.gm-skeleton-card {
+    background: var(--bg-1, rgba(255, 255, 255, 0.02));
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+    border-radius: var(--radius-lg, 12px);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
 .gm-member-list {
     display: flex;
     flex-direction: column;
