@@ -18,6 +18,7 @@ import {
   listPlayerAbsences,
   setPlayerAbsence,
   deletePlayerAbsence,
+  getWeekStartIso,
 } from '../supabase/functions/_shared/player-actions.ts';
 
 const MEMBER_ROW = {
@@ -226,11 +227,12 @@ describe('getPlayerChallenges', () => {
   });
 
   it('computes challenge progress from attendance and glory rows', async () => {
+    const currentWeek = getWeekStartIso(new Date());
     const admin = makeFakeAdmin({
       tableResponses: {
         'guild_members:select': { data: [MEMBER_ROW], error: null },
         'event_participants:select': [
-          { data: [{ event_name: 'SvS', session_id: null, week_start: '2026-08-31' }], error: null }, // participation rows
+          { data: [{ event_name: 'SvS', session_id: null, week_start: currentWeek }], error: null }, // participation rows
           { data: [{ score: 100 }], error: null }, // glory-this-week rows
         ],
       },

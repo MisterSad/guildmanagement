@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  },
   "description": "FGF Guild Management Tool — client-side app (vanilla JS + Supabase)",
   "scripts": {
     "dev": "vite",
@@ -22,7 +25,7 @@
     "serve": "14.2.6",
     "typescript": "7.0.2",
     "vite": "8.2.1",
-    "vitest": "4.1.10"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@noble/curves": "2.4.0",
