@@ -13,3 +13,6 @@ playwright-report/
 deploy_backup_*.json
 deploy_backup_*.sql*
 .claude/
+.vercel
+.env*
+.mcp.json
