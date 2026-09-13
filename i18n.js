@@ -388,12 +388,6 @@
             gm_nav_stats:          'Stats',
             gm_nav_sanctions:      'Sanctions',
             gm_nav_banned:         'Banned players',
-            gm_nav_settings:       'Settings',
-            gm_settings_tab_draft: 'Draft',
-            gm_nav_svs_matchup:    'SvS',
-            gm_svs_matchup_sub:    'Server vs Server Matchup & Dangerosity Ranking',
-            gm_nav_gvg_matchup:    'GvG',
-            gm_gvg_matchup_sub:    'Server vs Server Guild Matchup & Dangerosity Ranking',
             /* ── Bug-report ticketing ── */
             gm_nav_tickets:        'Tickets',
             /* ── Guild Leader Hall ── */
@@ -478,10 +472,6 @@
             gm_sub_disabled_hint:  'Donations are disabled on the demonstration server.',
             gm_sub_methods:        'All payments are securely processed and managed by Stripe.',
             gm_sub_security:       'All payments are securely processed and managed by Stripe.',
-            gm_settings_sub:       'Super Admin configuration and inter-server tools',
-            gm_settings_load_error: 'Could not load the ranking',
-            gm_settings_retry:     'Retry',
-            gm_settings_denied:    'Super admin only',
             gm_nav_more:           'More',
             gm_overview_title:     'Overview',
             gm_overview_sub:       'Foundation Galactic Frontier',

@@ -1423,26 +1423,6 @@
                 </div>
             </main>
 
-            <!-- ─ Tab: Settings (cross-guild ranking, super admin only) ─── -->
-            <main class="dashboard-content tab-panel" id="tab-settings">
-                <div class="gm-page">
-                    <header class="gm-page-header">
-                        <div>
-                            <h1 class="gm-page-title" data-i18n="gm_nav_settings">Settings</h1>
-                            <p class="gm-page-subtitle" data-i18n="gm_settings_sub">Super Admin configuration and inter-server tools</p>
-                        </div>
-                    </header>
-                    <div class="gm-settings-subtabs" id="settings-subtabs" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1.25rem;">
-                        <button type="button" class="gm-seg-btn gm-settings-tab active" data-settings-tab="draft" style="padding:0.4rem 0.8rem; border-radius:6px; font-size:0.8rem; font-weight:600; cursor:pointer; border:none; background:var(--accent); color:#fff; display:inline-flex; align-items:center; gap:0.3rem;"><i class="ph ph-chart-polar"></i> <span data-i18n="gm_settings_tab_draft">Draft</span></button>
-                        <button type="button" class="gm-seg-btn gm-settings-tab" data-settings-tab="svs" style="padding:0.4rem 0.8rem; border-radius:6px; font-size:0.8rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.3rem;"><i class="ph ph-rocket-launch"></i> <span data-i18n="gm_nav_svs_matchup">SvS</span></button>
-                        <button type="button" class="gm-seg-btn gm-settings-tab" data-settings-tab="gvg" style="padding:0.4rem 0.8rem; border-radius:6px; font-size:0.8rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.3rem;"><i class="ph ph-flag-banner"></i> <span data-i18n="gm_nav_gvg_matchup">GvG</span></button>
-                    </div>
-                    <div id="cross-rank-container" data-settings-panel="draft"></div>
-                    <div id="svs-matchup-container" data-settings-panel="svs" class="hidden"></div>
-                    <div id="gvg-matchup-container" data-settings-panel="gvg" class="hidden"></div>
-                </div>
-            </main>
-
             <!-- ─ Event tab: SvS ─────────────────────────────────── -->
             <main class="dashboard-content tab-panel" id="event-svs">
                 <div class="gm-page">
@@ -1937,10 +1917,7 @@
     <script src="history.js?v=26"></script>
     <script src="sanctions.js?v=14"></script>
     <script src="overview.js?v=21"></script>
-    <script src="cross-rank.js?v=9"></script>
     <script src="tickets.js?v=2"></script>
-    <script src="svs-matchup.js?v=13"></script>
-    <script src="gvg-matchup.js?v=12"></script>
     <script src="badges.js?v=6"></script>
     <script src="gm-help.js?v=5"></script>
     <script src="gm-leader-hall.js?v=31"></script>

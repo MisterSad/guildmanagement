@@ -51,26 +51,12 @@ describe('Mobile UX regression guards (v128.0)', () => {
     expect(modalCardBody).toContain('margin: auto');
   });
 
-  it('svs/gvg matchup grids use the collapsible class instead of inline 2-col templates', () => {
-    for (const f of ['svs-matchup.js', 'gvg-matchup.js']) {
-      const src = read(f);
-      expect(src, f + ' must not contain inline 2-col grid templates').not.toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)/);
-      expect(src, f + ' must use gm-matchup-2col').toContain('gm-matchup-2col');
-    }
-    const css = read('components.css');
-    const gridBlock = css.slice(css.indexOf('.gm-matchup-2col'), css.indexOf('.gm-matchup-2col') + 400);
-    expect(gridBlock).toContain('minmax(0, 1fr) minmax(0, 1fr)');
-    expect(gridBlock).toMatch(/@media \(max-width: 640px\)[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/);
-  });
-
   it('wide admin tables degrade to cards on mobile (gm-resp-table + data labels + no forced min-width)', () => {
     const css = read('components.css');
     expect(css).toMatch(/\.gm-resp-table \{ min-width: 0 !important; \}/);
     const app = read('app.js');
     expect(app).toContain('gm-table gm-resp-table');
     expect(app).toContain('data-label="Rally Score"');
-    const crossRank = read('cross-rank.js');
-    expect(crossRank).toContain('gm-draft-table gm-resp-table');
     const stats = read('src/modules/stats/views/StatsView.ts');
     expect(stats).toContain('gm-table gm-resp-table');
     expect(stats).toContain('data-label="Score"');

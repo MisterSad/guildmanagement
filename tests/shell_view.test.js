@@ -19,16 +19,6 @@ const FIXTURE = `
     <div class="dashboard-content tab-panel" id="event-svs"></div>
     <div class="dashboard-content tab-panel" id="event-gvg"></div>
     <div class="dashboard-content tab-panel" id="stats-admin"></div>
-    <div class="dashboard-content tab-panel" id="tab-settings">
-      <div id="settings-subtabs">
-        <button class="gm-settings-tab" data-settings-tab="draft">Draft</button>
-        <button class="gm-settings-tab" data-settings-tab="svs">SvS</button>
-        <button class="gm-settings-tab" data-settings-tab="gvg">GvG</button>
-      </div>
-      <div data-settings-panel="draft"></div>
-      <div data-settings-panel="svs" class="hidden"></div>
-      <div data-settings-panel="gvg" class="hidden"></div>
-    </div>
   </div>`;
 
 let views = [];
@@ -61,9 +51,6 @@ function installGM(role, paymentsDisabled) {
   window.GM_OVERVIEW = { load: vi.fn() };
   window.GM_SHADOWFRONT = { load: vi.fn() };
   window.GM_ARMSRACE = { load: vi.fn() };
-  window.GM_SETTINGS = { load: vi.fn() };
-  window.GM_SVS_MATCHUP = { load: vi.fn() };
-  window.GM_GVG_MATCHUP = { load: vi.fn() };
   window.guildsList = ['ALPHA', 'BETA'];
   window.guildsData = {
     ALPHA: { type: 'Unlimited', server_number: 1 },
@@ -101,9 +88,6 @@ afterEach(() => {
   delete window.GM_OVERVIEW;
   delete window.GM_SHADOWFRONT;
   delete window.GM_ARMSRACE;
-  delete window.GM_SETTINGS;
-  delete window.GM_SVS_MATCHUP;
-  delete window.GM_GVG_MATCHUP;
   delete window.guildsList;
   delete window.guildsData;
   delete window.currentGuild;
@@ -116,7 +100,6 @@ describe('ShellView — structure & constants', () => {
   it('keeps the key constants (BREAKPOINT_MOBILE = 900, NAV_ITEMS) and does not write window.GM_SHELL', () => {
     expect(BREAKPOINT_MOBILE).toBe(900);
     expect(NAV_ITEMS.find((i) => i.id === 'subscription').adminOnly).toBe(true);
-    expect(NAV_ITEMS.find((i) => i.id === 'settings').r5Only).toBe(true);
     expect(NAV_ITEMS.find((i) => i.id === 'leader-hall').section).toBe('play');
     expect(NAV_ITEMS.find((i) => i.id === 'subscription').section).toBe('footer');
 
@@ -154,23 +137,6 @@ describe('ShellView — renderShell()', () => {
     expect(footer).toBeTruthy();
     expect(footer.querySelector('.gm-app-version').textContent).toBe('V-test');
     expect(footer.querySelector('.gm-sidebar-legal-link')).toBeTruthy();
-  });
-
-  it('wires settings sub-tabs to the lazy loaders (GM_SETTINGS / GM_SVS_MATCHUP / GM_GVG_MATCHUP)', () => {
-    const { view } = boot('super_admin');
-    view.init();
-
-    document.querySelector('[data-settings-tab="draft"]').click();
-    expect(window.GM_SETTINGS.load).toHaveBeenCalledTimes(1);
-    expect(window.GM_SVS_MATCHUP.load).not.toHaveBeenCalled();
-    expect(document.querySelector('[data-settings-panel="draft"]').classList.contains('hidden')).toBe(false);
-
-    document.querySelector('[data-settings-tab="svs"]').click();
-    expect(window.GM_SVS_MATCHUP.load).toHaveBeenCalledTimes(1);
-
-    document.querySelector('[data-settings-tab="gvg"]').click();
-    expect(window.GM_GVG_MATCHUP.load).toHaveBeenCalledTimes(1);
-    expect(document.querySelector('[data-settings-panel="svs"]').classList.contains('hidden')).toBe(true);
   });
 });
 
@@ -241,7 +207,7 @@ describe('ShellView — nav visibility matrix', () => {
     view.init();
     const ids = sidebarIds();
     expect(ids).toEqual(expect.arrayContaining([
-      'superadmin-accounts', 'settings', 'tickets', 'subscription', 'leader-hall'
+      'superadmin-accounts', 'tickets', 'subscription', 'leader-hall'
     ]));
   });
 
@@ -251,7 +217,7 @@ describe('ShellView — nav visibility matrix', () => {
     const ids = sidebarIds();
     expect(ids).not.toContain('subscription');
     // The rest still renders.
-    expect(ids).toContain('settings');
+    expect(ids).toContain('tickets');
   });
 });
 

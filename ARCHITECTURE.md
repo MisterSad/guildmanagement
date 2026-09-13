@@ -18,8 +18,7 @@
 │  │ Classic Vanilla JS Runtime Shell (`index.html` + Cache Busters `?v=XX`)           │  │
 │  │ ├─ Core Utilities & Business Logic: `gm-utils.js`, `i18n.js`                     │  │
 │  │ ├─ Admin Command Center: `app.js`, `events.js`, `history.js`, StatsView (`/src`)  │  │
-│  │ ├─ Player Self-Service Portal: `portal.js`, `push.js`                             │  │
-│  │ ├─ Tactical Matchups & Rankings: `svs-matchup.js`, `gvg-matchup.js`, `cross-rank.js`│
+│  │ ├─ Player Self-Service Portal: PortalView (`/src`), `push.js`                     │  │
 │  │ ├─ Roster OCR (screenshots or video) + Rank Detection: `app.js`, `gm-utils.js`    │  │
 │  │ ├─ Identity: `gm-webauthn.js` (Passkeys client, no `@simplewebauthn/browser` dep)  │  │
 │  │ ├─ Leader Hall E2EE (Signal Protocol 1:1 + groups): `gm-signal-crypto.js`,        │  │
@@ -111,7 +110,7 @@ Authentication operates on an **accounts-table-only** role resolution model. `us
 ```
 
 #### The Four Access Roles:
-1. **`super_admin`**: Single global master account (`HawkEye`). Bypasses tenant RLS qualifiers. Accesses full Command Center, Draft Mercato, Server Matchups, and `#tab-tickets`.
+1. **`super_admin`**: Single global master account (`HawkEye`). Bypasses tenant RLS qualifiers. Accesses full Command Center and `#tab-tickets`.
 2. **`server_admin`**: Reads and writes all tenant guilds sharing their assigned `server_number`. Uses server-scoped Guild Switcher.
 3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Write operations require active SaaS subscription (`public.is_subscription_active()`).
 4. **`member`**: **Zero direct database table access**. Communicates exclusively through the `member-portal` Edge Function.
@@ -258,6 +257,6 @@ Anonymous, per-device opt-in (`push.js` + `sw.js`, VAPID keys in Supabase secret
 - **Web Worker Engine** (`src/workers/matchup.worker.ts`): Offloaded combinatorial computation for GvG/SvS dangerosity and draft mercato simulations.
 - **BaseComponent Framework** (`src/components/ui/BaseComponent.ts`): Encapsulated UI component lifecycle with automatic listener cleanup.
 - **i18n**: `src/core/i18n/i18n.ts` exists but is intentionally **not** the active dictionary — `main.ts` prefers the legacy `i18n.js`'s `GM_I18N.t`, since the `/src` dictionary only covers strings authored so far and would silently blank out every string outside it. Migrating i18n itself is unstarted.
-- **Incident, resolved 2026-08-31**: `svs-matchup.ts`/`gvg-matchup.ts` existed as 50-line stubs (hardcoded fake server/guild IDs, no real table render) that risked silently shadowing the complete legacy `svs-matchup.js`/`gvg-matchup.js` (700+ lines each) the moment `main.ts` started executing in production, since both write into the same DOM containers. They were **deleted** rather than left half-finished — `tests/ux_audit_phase_d.test.js` guards against either file reappearing or being re-bridged. A real `/src` port of SvS/GvG matchup is a from-scratch task, not a resume.
+- **Incident, resolved 2026-08-31 / feature removed 2026-09**: `svs-matchup.ts`/`gvg-matchup.ts` existed as 50-line stubs (hardcoded fake server/guild IDs, no real table render) that risked silently shadowing the complete legacy `svs-matchup.js`/`gvg-matchup.js` (700+ lines each) the moment `main.ts` started executing in production, since both write into the same DOM containers. The stubs were deleted first, then the whole Settings tab (Draft Mercato / SvS / GvG matchup) was removed entirely, so `svs-matchup.js`, `gvg-matchup.js`, `cross-rank.js` and `#tab-settings` no longer exist.
 
 > **Operational Invariant**: For any given feature, whichever of legacy (`app.js` et al.) or `/src` is *actually bridged and complete* is the source of truth — check `main.ts`'s bridge section, don't assume by directory. An unfinished `/src` port must stay unbridged (or be deleted, per the incident above) until it matches or exceeds the legacy feature it would replace.

@@ -754,11 +754,6 @@
         if (tabId === 'tab-subscription' && window.GM_SUBSCRIPTION) {
             window.GM_SUBSCRIPTION.load();
         }
-        if (tabId === 'tab-settings' && window.GM_SETTINGS) {
-            // Draft is the default sub-tab; SvS/GvG are switched via the
-            // settings sub-tab bar (wired in shell.js).
-            window.GM_SETTINGS.load();
-        }
         if (tabId === 'tab-tickets' && window.GM_TICKETS) {
             window.GM_TICKETS.load();
         }

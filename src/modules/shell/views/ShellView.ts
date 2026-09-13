@@ -10,8 +10,8 @@
  *   - All `window.GM.*`, `window.currentGuild`, `window.guildsList`,
  *     `window.guildsData`, `window.GM_APP.*` reads happen at call time through
  *     an internal typed adapter (no capture at module load).
- *   - The 7 sibling modules driven lazily (GM_OVERVIEW, GM_SHADOWFRONT,
- *     GM_ARMSRACE, GM_SETTINGS, GM_SVS_MATCHUP, GM_GVG_MATCHUP, GM_LEADER_HALL)
+ *   - The sibling modules driven lazily (GM_OVERVIEW, GM_SHADOWFRONT,
+ *     GM_ARMSRACE, GM_LEADER_HALL)
  *     are resolved through a lazy registry, at call time, behind the same
  *     `if (module && module.load)` guards — none of them is imported or
  *     required to migrate.
@@ -67,7 +67,6 @@ export const NAV_ITEMS: ShellNavItem[] = [
   { id: 'subscription', tabId: 'tab-subscription', m3Icon: 'local_cafe', icon: 'ph-coffee', labelKey: 'gm_nav_donate', section: 'footer', adminOnly: true, panels: ['tab-subscription'] },
 
   { id: 'superadmin-accounts', tabId: 'admin-superadmin', m3Icon: 'admin_panel_settings', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
-  { id: 'settings', tabId: 'tab-settings', m3Icon: 'tune', icon: 'ph-note-pencil', labelKey: 'gm_nav_settings', section: 'superadmin', r5Only: true, panels: ['tab-settings'] },
   { id: 'tickets', tabId: 'tab-tickets', m3Icon: 'confirmation_number', icon: 'ph-ticket', labelKey: 'gm_nav_tickets', section: 'superadmin', r5Only: true, panels: ['tab-tickets'] }
 ];
 
@@ -198,9 +197,6 @@ export const lazyModules = {
   overview(): any { return winAny().GM_OVERVIEW; },
   shadowfront(): any { return winAny().GM_SHADOWFRONT; },
   armsrace(): any { return winAny().GM_ARMSRACE; },
-  settings(): any { return winAny().GM_SETTINGS; },
-  svsMatchup(): any { return winAny().GM_SVS_MATCHUP; },
-  gvgMatchup(): any { return winAny().GM_GVG_MATCHUP; },
   leaderHall(): any { return winAny().GM_LEADER_HALL; }
 };
 
@@ -227,7 +223,6 @@ function createState(): ShellState {
 export class ShellView {
   private state: ShellState = createState();
   private initialized = false;
-  private settingsSubtabsWired = false;
   private observer?: MutationObserver;
   private mediaQuery?: any;
   private mediaQueryHandler?: (e: any) => void;
@@ -280,7 +275,6 @@ export class ShellView {
       this.intervalId = undefined;
     }
     this.initialized = false;
-    this.settingsSubtabsWired = false;
   }
 
   // ── Visibility ────────────────────────────────────────────────────────────
@@ -464,38 +458,6 @@ export class ShellView {
     this.renderTopbar();
     this.renderBottomNav();
     this.renderDrawer();
-    this.wireSettingsSubtabs();
-  }
-
-  // ── Settings sub-tabs ─────────────────────────────────────────────────────
-  private wireSettingsSubtabs(): void {
-    if (this.settingsSubtabsWired) return;
-    const bar = document.getElementById('settings-subtabs');
-    if (!bar) return;
-    this.settingsSubtabsWired = true;
-
-    const PANEL_TO_LOADER: Record<string, () => void> = {
-      draft: () => callLoad(lazyModules.settings()),
-      svs: () => callLoad(lazyModules.svsMatchup()),
-      gvg: () => callLoad(lazyModules.gvgMatchup())
-    };
-
-    bar.querySelectorAll('.gm-settings-tab').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const key = btn.getAttribute('data-settings-tab') || '';
-        bar.querySelectorAll('.gm-settings-tab').forEach((b) => {
-          const active = b.getAttribute('data-settings-tab') === key;
-          b.classList.toggle('active', active);
-          (b as HTMLElement).style.background = active ? 'var(--accent)' : 'transparent';
-          (b as HTMLElement).style.color = active ? '#fff' : 'var(--text-muted)';
-        });
-        document.querySelectorAll('#tab-settings [data-settings-panel]').forEach((panel) => {
-          panel.classList.toggle('hidden', panel.getAttribute('data-settings-panel') !== key);
-        });
-        const loader = PANEL_TO_LOADER[key];
-        if (loader) loader();
-      });
-    });
   }
 
   // ── User helpers ──────────────────────────────────────────────────────────

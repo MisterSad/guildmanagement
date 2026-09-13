@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { JSDOM } from 'jsdom';
 import { SubscriptionView } from '../src/modules/subscription/subscription-view.ts';
-import { CrossRankView } from '../src/modules/matchup/cross-rank.ts';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -122,93 +121,4 @@ describe('Ticket 3.1 — Skeleton Loaders UX Enhancement', () => {
         });
     });
 
-    describe('4. Settings Matchup Views (svs-matchup.js, gvg-matchup.js, cross-rank)', () => {
-
-        describe('SvS Matchup (svs-matchup.js)', () => {
-            const svsCode = read('svs-matchup.js');
-
-            function setupSvsLoadingHtml(doc, win) {
-                const fnMatch = svsCode.match(/function loadingHtml\(\)[\s\S]*?\n    \}/);
-                expect(fnMatch).not.toBeNull();
-                return new Function('document', 'window', `
-                    ${fnMatch[0]}
-                    return loadingHtml;
-                `)(doc, win);
-            }
-
-            it('renders silhouette of two alliance blocks (Server A vs Server B) and roster lines', () => {
-                const dom = new JSDOM(`<!DOCTYPE html><html><body><div id="svs-matchup-container"></div></body></html>`);
-                const getLoadingHtml = setupSvsLoadingHtml(dom.window.document, dom.window);
-                const html = getLoadingHtml();
-
-                expect(html).toContain('class="gm-matchup-skeleton"');
-                expect(html).toContain('aria-busy="true"');
-                expect(html).not.toContain('Loading…');
-                expect(html).not.toContain('ph-circle-notch');
-
-                const container = dom.window.document.getElementById('svs-matchup-container');
-                container.innerHTML = html;
-
-                // Two alliance columns
-                const twoCols = container.querySelectorAll('.gm-matchup-2col');
-                expect(twoCols.length).toBe(2); // Top selector cards & bottom side-by-side roster blocks
-
-                // Avatar and text lines for rosters
-                const avatars = container.querySelectorAll('.gm-skeleton-avatar');
-                expect(avatars.length).toBe(10); // 5 rows * 2 sides
-            });
-        });
-
-        describe('GvG Matchup (gvg-matchup.js)', () => {
-            const gvgCode = read('gvg-matchup.js');
-
-            function setupGvgLoadingHtml(doc, win) {
-                const fnMatch = gvgCode.match(/function loadingHtml\(\)[\s\S]*?\n    \}/);
-                expect(fnMatch).not.toBeNull();
-                return new Function('document', 'window', `
-                    ${fnMatch[0]}
-                    return loadingHtml;
-                `)(doc, win);
-            }
-
-            it('renders silhouette of two alliance blocks (Defender vs Opponent) and roster lines', () => {
-                const dom = new JSDOM(`<!DOCTYPE html><html><body><div id="gvg-matchup-container"></div></body></html>`);
-                const getLoadingHtml = setupGvgLoadingHtml(dom.window.document, dom.window);
-                const html = getLoadingHtml();
-
-                expect(html).toContain('class="gm-matchup-skeleton"');
-                expect(html).toContain('aria-busy="true"');
-                expect(html).not.toContain('Loading…');
-                expect(html).not.toContain('ph-circle-notch');
-
-                const container = dom.window.document.getElementById('gvg-matchup-container');
-                container.innerHTML = html;
-
-                const twoCols = container.querySelectorAll('.gm-matchup-2col');
-                expect(twoCols.length).toBe(2);
-
-                const avatars = container.querySelectorAll('.gm-skeleton-avatar');
-                expect(avatars.length).toBe(10);
-            });
-        });
-
-        describe('Draft Scouting (CrossRankView & cross-rank.js)', () => {
-            it('renders draft ranking table silhouette with filter toolbar', () => {
-                const html = CrossRankView.loadingHtml();
-
-                expect(html).toContain('class="gm-cross-rank-skeleton"');
-                expect(html).toContain('aria-busy="true"');
-                expect(html).not.toContain('Loading cross-guild migration scouting data...');
-
-                const dom = new JSDOM(`<!DOCTYPE html><html><body><div id="cross-rank-container">${html}</div></body></html>`);
-                const container = dom.window.document.getElementById('cross-rank-container');
-
-                const rows = container.querySelectorAll('tbody tr');
-                expect(rows.length).toBe(5);
-
-                const avatars = container.querySelectorAll('.gm-skeleton-avatar');
-                expect(avatars.length).toBe(5);
-            });
-        });
-    });
 });

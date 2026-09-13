@@ -69,7 +69,6 @@ import { PortalChart } from './modules/portal/components/PortalChart';
 import { OverviewView } from './modules/overview/views/OverviewView';
 import { HistoryView } from './modules/history/views/HistoryView';
 import { SanctionsView } from './modules/sanctions/views/SanctionsView';
-import { CrossRankView } from './modules/matchup/cross-rank';
 import { GloryView } from './modules/glory/glory-view';
 import { SubscriptionView } from './modules/subscription/subscription-view';
 import { BadgesView } from './modules/badges/badges-view';
@@ -202,7 +201,6 @@ if (typeof window !== 'undefined') {
     OverviewView,
     HistoryView,
     SanctionsView,
-    CrossRankView,
     GloryView,
     SubscriptionView,
     BadgesView
@@ -213,14 +211,6 @@ if (typeof window !== 'undefined') {
     setAppNotificationBadge
   };
 
-  (window as any).GM_CROSSRANK = CrossRankView;
-  // SvS/GvG matchup have no /src port: svs-matchup.ts/gvg-matchup.ts existed
-  // only as 50-line stubs (a fixed hardcoded RPC call, no real table render)
-  // that risked silently shadowing the complete legacy implementations
-  // (svs-matchup.js / gvg-matchup.js — side-by-side rosters, combined
-  // dangerosity leaderboard, sorting) once this module started executing in
-  // production (build pipeline fix, 2026-08-30). Removed rather than kept
-  // around unfinished; a real port is a from-scratch task, not a resume.
   // window.GM_SUBSCRIPTION is self-registered by importing SubscriptionView
   // above (see subscription-view.ts) — replaces legacy subscription.js.
 
