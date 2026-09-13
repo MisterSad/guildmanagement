@@ -66,7 +66,7 @@ describe('Cross-server migration groups migration', () => {
 describe('Cross-server migration groups UI wiring', () => {
   const appJs = fs.readFileSync(path.resolve(__dirname, '../app.js'), 'utf-8');
   const indexHtml = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-  const portalJs = fs.readFileSync(path.resolve(__dirname, '../portal.js'), 'utf-8');
+  const portalJs = fs.readFileSync(path.resolve(__dirname, '../src/modules/portal/views/PortalView.ts'), 'utf-8');
   const memberPortalFn = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/member-portal/index.ts'), 'utf-8');
 
   it('renders a Super Admin card to create/open/close migration groups', () => {

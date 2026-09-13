@@ -41,7 +41,7 @@ describe('Donate nav item ("Buy Me a Coffee") visibility', () => {
 describe('Donate nav item styling (coffee-brown accent) is wired everywhere the link renders', () => {
     const shell = read('src/modules/shell/views/ShellView.ts');
     const shellCss = read('shell.css');
-    const portalJs = read('portal.js');
+    const portalJs = read('src/modules/portal/views/PortalView.ts');
 
     it('shell.css defines the coffee-brown accent class', () => {
         expect(shellCss).toContain('.gm-donate-nav-item');

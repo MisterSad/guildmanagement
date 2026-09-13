@@ -58,6 +58,7 @@ import { statsView } from './modules/stats/views/StatsView';
 import { shellView } from './modules/shell/views/ShellView';
 import { shadowfrontView } from './modules/shadowfront/views/ShadowfrontView';
 import { armsRaceView } from './modules/armsrace/views/ArmsRaceView';
+import { portalView } from './modules/portal/views/PortalView';
 import { PortalService } from './modules/portal/portal.service';
 import { AuditService } from './modules/audit/audit.service';
 import { logger } from './core/logger/logger';
@@ -184,6 +185,14 @@ if (typeof window !== 'undefined') {
     load: () => armsRaceView.load(),
     addMemberToActiveEvents: (pseudo: string) => armsRaceView.addMemberToActiveEvents(pseudo),
     removeMemberFromActiveEvents: (pseudo: string) => armsRaceView.removeMemberFromActiveEvents(pseudo)
+  };
+
+  // Backward-compatible Player Portal entrypoint. Replaces the former root
+  // portal.js (Strangler cutover): app.js and e2e call
+  // window.GM_PORTAL.loadDashboard() / renderDashboard() unchanged.
+  (window as any).GM_PORTAL = {
+    loadDashboard: () => portalView.loadDashboard(),
+    renderDashboard: () => portalView.renderDashboard()
   };
 
   (window as any).GM.components = {

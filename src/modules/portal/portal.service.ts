@@ -29,19 +29,28 @@ export class PortalService {
         body: { action, payload }
       });
 
-      if (!res || !res.data) {
-        logger.error(`PortalService action [${action}] failed without data`, res?.error);
-        return {
-          ok: false,
-          error: (res && res.error && res.error.message) || 'request_failed'
-        };
+      // Recover the real {ok, error} body even when the platform gateway
+      // rejected the request with a non-2xx status (rate limit, ...). Without
+      // this, supabase-js discards that body and every failure collapses into a
+      // generic "request_failed" — legacy portal.js relied on GM's helper.
+      const parsed = await this.parseInvokeResult(res);
+      if (!parsed || typeof parsed !== 'object') {
+        return { ok: false, error: 'request_failed' };
       }
-
-      return res.data as PortalResponse<T>;
+      return parsed as PortalResponse<T>;
     } catch (e: any) {
       logger.error(`PortalService action [${action}] threw exception`, e);
       return { ok: false, error: 'request_failed' };
     }
+  }
+
+  /** Uses window.GM.parseFunctionsInvokeResult when available (legacy parity). */
+  private static async parseInvokeResult(result: any): Promise<any> {
+    const w = (typeof window !== 'undefined' ? window : {}) as any;
+    if (w.GM && typeof w.GM.parseFunctionsInvokeResult === 'function') {
+      return w.GM.parseFunctionsInvokeResult(result);
+    }
+    return (result && result.data) || { ok: false, error: (result && result.error && result.error.message) || 'request_failed' };
   }
 
   public static async getActiveSessions(): Promise<PortalResponse> {
@@ -54,6 +63,63 @@ export class PortalService {
 
   public static async getPersonalKPIs(): Promise<PortalResponse> {
     return this.invokeAction('get-personal-kpis');
+  }
+
+  public static async getWeeklyChallenges(): Promise<PortalResponse> {
+    return this.invokeAction('get-weekly-challenges');
+  }
+
+  public static async getBadges(): Promise<PortalResponse> {
+    return this.invokeAction('get-badges');
+  }
+
+  public static async getTransferGuilds(): Promise<PortalResponse> {
+    return this.invokeAction('get-transfer-guilds');
+  }
+
+  public static async getPushPrefs(): Promise<PortalResponse> {
+    return this.invokeAction('get-push-prefs');
+  }
+
+  public static async setPushPrefs(eventTypes: string[]): Promise<PortalResponse> {
+    return this.invokeAction('set-push-prefs', { event_types: eventTypes });
+  }
+
+  public static async confirmDiscordLink(code: string): Promise<PortalResponse> {
+    return this.invokeAction('confirm-discord-link', { code });
+  }
+
+  public static async updateTimezone(offset: number): Promise<PortalResponse> {
+    return this.invokeAction('update-timezone', { offset });
+  }
+
+  public static async getAbsences(): Promise<PortalResponse> {
+    return this.invokeAction('get-absences');
+  }
+
+  public static async setAbsence(payload: {
+    start_date: string;
+    end_date: string;
+    kind?: string;
+    note?: string;
+  }): Promise<PortalResponse> {
+    return this.invokeAction('set-absence', payload);
+  }
+
+  public static async deleteAbsence(id: string): Promise<PortalResponse> {
+    return this.invokeAction('delete-absence', { id });
+  }
+
+  public static async createDonation(payload: {
+    plan: string;
+    returnUrl?: string;
+    amountCents?: number;
+  }): Promise<PortalResponse> {
+    return this.invokeAction('create-donation', payload);
+  }
+
+  public static async submitScorePayload(payload: Record<string, any>): Promise<PortalResponse> {
+    return this.invokeAction('submit-scores', payload);
   }
 
   public static async submitEventScore(

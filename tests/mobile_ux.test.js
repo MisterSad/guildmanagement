@@ -12,7 +12,7 @@ const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
 describe('Mobile UX regression guards (v128.0)', () => {
   it('portal bottom nav renders 4 primary tabs + More sheet, not all 7 in one bar', () => {
-    const portal = read('portal.js');
+    const portal = read('src/modules/portal/views/PortalView.ts');
     expect(portal).toContain("primaryNavIds = ['settings', 'dashboard', 'challenges', 'events']");
     expect(portal).toContain("drawerNavIds = ['absence', 'badges', 'donation']");
     expect(portal).toContain('data-portal-more');
@@ -77,14 +77,14 @@ describe('Mobile UX regression guards (v128.0)', () => {
   });
 
   it('portal charts are DPR-aware and redraw on resize', () => {
-    const portal = read('portal.js');
+    const portal = read('src/modules/portal/views/PortalView.ts');
     const utils = read('gm-utils.js');
     // DPR sizing lives in the shared chart renderer (gm-utils.js) since
     // both the portal dashboard and the admin Player History view draw
-    // through it now; portal.js keeps the resize-driven redraw wiring.
+    // through it now; the portal view keeps the resize-driven redraw wiring.
     expect(utils).toContain('devicePixelRatio');
     expect(utils).toContain('function drawScoreTrendChart');
-    expect(portal).toContain('window.GM.drawScoreTrendChart');
+    expect(portal).toContain('drawScoreTrendChart');
     expect(portal).toContain('chartRegistry');
     expect(portal).toMatch(/addEventListener\('resize'/);
   });

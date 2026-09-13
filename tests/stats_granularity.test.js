@@ -120,9 +120,9 @@ describe('Admin Player History modal (app.js)', () => {
   });
 });
 
-describe('Chart renderer extracted to gm-utils.js and reused by portal.js', () => {
+describe('Chart renderer extracted to gm-utils.js and reused by the portal view', () => {
   const utilsJs = read('gm-utils.js');
-  const portalJs = read('portal.js');
+  const portalJs = read('src/modules/portal/views/PortalView.ts');
 
   it('gm-utils.js defines and exports drawScoreTrendChart and formatChartDate', () => {
     expect(utilsJs).toContain('function drawScoreTrendChart(canvas, history)');
@@ -131,8 +131,8 @@ describe('Chart renderer extracted to gm-utils.js and reused by portal.js', () =
     expect(utilsJs).toContain('formatChartDate: formatChartDate');
   });
 
-  it('portal.js delegates its own drawChart() to the shared renderer instead of a private implementation', () => {
-    expect(portalJs).toContain('window.GM.drawScoreTrendChart(canvas, ev.history || [])');
+  it('the portal view delegates its own drawChart() to the shared renderer instead of a private implementation', () => {
+    expect(portalJs).toContain('drawScoreTrendChart(canvas, ev.history || [])');
     expect(portalJs).not.toContain('function formatPortalDateDDMMAA');
   });
 });
