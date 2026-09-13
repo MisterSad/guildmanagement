@@ -194,6 +194,7 @@ import { ToastNotification } from './components/ui/Toast';
 import { PortalChart } from './modules/portal/components/PortalChart';
 import { SubscriptionView } from './modules/subscription/subscription-view';
 import { initPWA, promptPWAInstall, setAppNotificationBadge } from './core/pwa/pwa';
+import { initTooltips } from './components/ui/Tooltip';
 
 // Initialize global window.GM bridge for full backward compatibility
 if (typeof window !== 'undefined') {
@@ -560,6 +561,8 @@ if (typeof window !== 'undefined') {
     sanctionsView.init();
     // i18n single pass over the complete dictionary once the DOM is ready.
     applyTranslations();
+    // Declarative gm-ui tooltips over [data-tooltip] elements.
+    initTooltips();
     // Former app.js document-level OCR trigger delegation. Without it the
     // .btn-ocr-trigger dropdown/menu buttons would no longer open the modal.
     document.addEventListener('click', (ev) => {

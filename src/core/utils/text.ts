@@ -69,6 +69,24 @@ export function formatNumber(n: number | string | null | undefined): string {
 }
 
 /**
+ * Compact display form for very large scores (event scores up to 9,999,999,999):
+ * thousands "123.4K", millions "12.3M", billions "9.9B", dropping the decimal
+ * when exact (2M not 2.0M). Values round DOWN so the visible compact number
+ * never overstates the exact figure carried in a title/aria-label by callers.
+ * Small numbers fall back to the grouped formatNumber() form.
+ */
+export function formatCompactNumber(n: number | string | null | undefined): string {
+  if (n === null || n === undefined || n === '') return '';
+  const num = typeof n === 'number' ? n : parseInt(String(n).replace(/\D/g, ''), 10);
+  if (isNaN(num)) return '';
+  const abs = Math.abs(num);
+  if (abs >= 1_000_000_000) return String(Math.floor(num / 100_000_000) / 10) + 'B';
+  if (abs >= 1_000_000) return String(Math.floor(num / 100_000) / 10) + 'M';
+  if (abs >= 1_000) return String(Math.floor(num / 100) / 10) + 'K';
+  return String(num);
+}
+
+/**
  * Parses numeric string digits clamped up to MAX_NUMERIC.
  */
 export function parseNumber(s: string | number | null | undefined): number | null {

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="styles.css?v=13">
     <link rel="stylesheet" href="tokens.css?v=6">
+   <link rel="stylesheet" href="theme.css?v=1">
     <link rel="stylesheet" href="components.css?v=31">
     <link rel="stylesheet" href="shell.css?v=22">
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=3">
@@ -555,31 +556,45 @@
                             <div class="gm-row" style="gap: 1rem; flex-wrap: wrap;">
                                 <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="guild-server-number-setting">Server # (4 digits)</label>
-                                    <input type="text" id="guild-server-number-setting" class="gm-input" maxlength="4" pattern="\d{4}" placeholder="e.g. 1058">
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="text" id="guild-server-number-setting" class="gm-ui-input-field" maxlength="4" pattern="\d{4}" placeholder="e.g. 1058">
+                                </span>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 140px; gap: 0.35rem;">
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="guild-tag-setting">In-Game Guild Tag</label>
-                                    <input type="text" id="guild-tag-setting" class="gm-input" placeholder="e.g. [PR1M] or PR1M" style="font-weight: 700; text-transform: uppercase;">
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="text" id="guild-tag-setting" class="gm-ui-input-field" placeholder="e.g. [PR1M] or PR1M" style="font-weight: 700; text-transform: uppercase;">
+                                </span>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-svs" data-i18n="label_coeff_svs">SvS Coeff</label>
-                                    <input type="number" id="coeff-svs" class="gm-input" min="0" max="20" required>
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="number" id="coeff-svs" class="gm-ui-input-field" min="0" max="20" required>
+                                </span>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-gvg" data-i18n="label_coeff_gvg">GvG Coeff</label>
-                                    <input type="number" id="coeff-gvg" class="gm-input" min="0" max="20" required>
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="number" id="coeff-gvg" class="gm-ui-input-field" min="0" max="20" required>
+                                </span>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-shadowfront" data-i18n="label_coeff_shadowfront">Shadowfront Coeff</label>
-                                    <input type="number" id="coeff-shadowfront" class="gm-input" min="0" max="20" required>
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="number" id="coeff-shadowfront" class="gm-ui-input-field" min="0" max="20" required>
+                                </span>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-dtr" data-i18n="label_coeff_dtr">DTR Coeff</label>
-                                    <input type="number" id="coeff-dtr" class="gm-input" min="0" max="20" required>
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="number" id="coeff-dtr" class="gm-ui-input-field" min="0" max="20" required>
+                                </span>
                                 </div>
                                 <div class="gm-col" style="flex: 1; min-width: 130px; gap: 0.35rem;">
                                     <label class="gm-dim" style="font-size: 0.85rem;" for="coeff-armsrace" data-i18n="label_coeff_armsrace">Arms Race Coeff</label>
-                                    <input type="number" id="coeff-armsrace" class="gm-input" min="0" max="20" required>
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="number" id="coeff-armsrace" class="gm-ui-input-field" min="0" max="20" required>
+                                </span>
                                 </div>
                             </div>
                         </div>
@@ -593,7 +608,9 @@
                             <div class="gm-col" style="gap: 0.5rem;">
                                 <label class="gm-dim" style="font-size: 0.85rem; font-weight: 500;" for="discord-role-id" data-i18n="label_discord_role_id">Default Discord Role ID / Mention (tagged in all event alerts)</label>
                                 <div style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
-                                    <input type="text" id="discord-role-id" class="gm-input" style="max-width: 360px; font-family:var(--font-mono, monospace);" placeholder="e.g. 1523751822139981976 or @everyone">
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="text" id="discord-role-id" class="gm-ui-input-field" style="max-width: 360px; font-family:var(--font-mono, monospace);" placeholder="e.g. 1523751822139981976 or @everyone">
+                                </span>
                                     <span class="gm-badge" style="background:var(--accent-lime-soft); color:var(--accent-lime-fg); border:1px solid var(--accent-lime-soft); font-size:.78rem; padding:5px 12px; border-radius:var(--radius-pill); font-weight:600;"><i class="ph ph-check-circle"></i> Formats as @Role automatically</span>
                                 </div>
                                 <span style="font-size: 0.78rem; color: var(--fg-dim); margin-top: 0.25rem;" data-i18n="label_discord_role_id_hint">Tip: Get the Role ID in Discord by enabling Developer Mode, right-clicking the Role in Server Settings &gt; Roles, and selecting <strong>Copy Role ID</strong>.</span>
@@ -609,7 +626,9 @@
                             <div class="gm-row" style="gap: 1.5rem; flex-wrap: wrap;">
                                 <div class="gm-col" style="gap: 0.5rem; flex: 1; min-width: 260px;">
                                     <label class="gm-dim" style="font-size: 0.85rem; font-weight: 500;" for="discord-verification-channel-id" data-i18n="label_discord_verification_channel_id">Verification Channel ID</label>
-                                    <input type="text" id="discord-verification-channel-id" class="gm-input" style="font-family:var(--font-mono, monospace);" placeholder="e.g. 1487153638580289701">
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="text" id="discord-verification-channel-id" class="gm-ui-input-field" style="font-family:var(--font-mono, monospace);" placeholder="e.g. 1487153638580289701">
+                                </span>
                                 </div>
                             </div>
                             <span style="font-size: 0.78rem; color: var(--fg-dim); margin-top: 0.5rem; display: block;" data-i18n="label_discord_verification_hint">Leave the channel ID empty to disable. When set, players posting a profile screenshot in that channel are matched against your server's existing Discord roles: if a role named after their bracketed guild tag already exists (e.g. "[PR1M]"), it's assigned automatically and their roster entry is created or updated; otherwise they get the "[VISITOR]" role and no roster entry is touched. Their nickname is also set to "[TAG] Pseudo #Server" when a matching role is found. Role names must always use the bracketed "[TAG]" format. The bot needs Manage Roles and Manage Nicknames permissions, with its own role positioned above every role it assigns (including "[VISITOR]").</span>
@@ -652,24 +671,40 @@
                                         </button>
                                     </div>
                                     <div class="gm-col" style="gap: 0.4rem; margin-bottom: 0.5rem;">
-                                        <input type="url" id="webhook-armsrace" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
-                                        <input type="text" id="discord-role-id-armsrace" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="url" id="webhook-armsrace" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
+                                        </span>
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="text" id="discord-role-id-armsrace" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        </span>
                                     </div>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-armsrace-creation" checked>
-                                        <span data-i18n="notify_creation">Creation & Updates</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-armsrace-creation" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_creation">Creation & Updates</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-armsrace-30" checked>
-                                        <span data-i18n="notify_30m">30 min before</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-armsrace-30" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_30m">30 min before</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-armsrace-5" checked>
-                                        <span data-i18n="notify_5m">5 min before</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-armsrace-5" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_5m">5 min before</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-armsrace-start" checked>
-                                        <span data-i18n="notify_start">Event Start</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-armsrace-start" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_start">Event Start</span></span>
                                     </label>
                                 </div>
 
@@ -683,24 +718,40 @@
                                         </button>
                                     </div>
                                     <div class="gm-col" style="gap: 0.4rem; margin-bottom: 0.5rem;">
-                                        <input type="url" id="webhook-dtr" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
-                                        <input type="text" id="discord-role-id-dtr" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="url" id="webhook-dtr" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
+                                        </span>
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="text" id="discord-role-id-dtr" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        </span>
                                     </div>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-dtr-creation" checked>
-                                        <span data-i18n="notify_creation">Creation & Updates</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-dtr-creation" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_creation">Creation & Updates</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-dtr-30" checked>
-                                        <span data-i18n="notify_30m">30 min before</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-dtr-30" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_30m">30 min before</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-dtr-5" checked>
-                                        <span data-i18n="notify_5m">5 min before</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-dtr-5" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_5m">5 min before</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-dtr-start" checked>
-                                        <span data-i18n="notify_start">Event Start</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-dtr-start" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_start">Event Start</span></span>
                                     </label>
                                 </div>
 
@@ -714,25 +765,43 @@
                                         </button>
                                     </div>
                                     <div class="gm-col" style="gap: 0.4rem; margin-bottom: 0.5rem;">
-                                        <input type="url" id="webhook-shadowfront" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
-                                        <input type="text" id="discord-role-id-shadowfront" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (Squad 1 / Default)">
-                                        <input type="text" id="discord-role-id-shadowfront-squad2" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID Squad 2 (optional)">
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="url" id="webhook-shadowfront" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
+                                        </span>
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="text" id="discord-role-id-shadowfront" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (Squad 1 / Default)">
+                                        </span>
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="text" id="discord-role-id-shadowfront-squad2" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID Squad 2 (optional)">
+                                        </span>
                                     </div>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-shadowfront-creation" checked>
-                                        <span data-i18n="notify_creation">Creation & Updates</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-shadowfront-creation" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_creation">Creation & Updates</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-shadowfront-30" checked>
-                                        <span data-i18n="notify_30m">30 min before</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-shadowfront-30" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_30m">30 min before</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-shadowfront-5" checked>
-                                        <span data-i18n="notify_5m">5 min before</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-shadowfront-5" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_5m">5 min before</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-shadowfront-start" checked>
-                                        <span data-i18n="notify_start">Event Start</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-shadowfront-start" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_start">Event Start</span></span>
                                     </label>
                                 </div>
 
@@ -746,12 +815,19 @@
                                         </button>
                                     </div>
                                     <div class="gm-col" style="gap: 0.4rem; margin-bottom: 0.5rem;">
-                                        <input type="url" id="webhook-calamity" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
-                                        <input type="text" id="discord-role-id-calamity" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="url" id="webhook-calamity" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
+                                        </span>
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="text" id="discord-role-id-calamity" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        </span>
                                     </div>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-calamity-10" checked>
-                                        <span data-i18n="notify_calamity_reminder">10 min reminder (Rounds)</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-calamity-10" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_calamity_reminder">10 min reminder (Rounds)</span></span>
                                     </label>
                                 </div>
 
@@ -765,16 +841,26 @@
                                         </button>
                                     </div>
                                     <div class="gm-col" style="gap: 0.4rem; margin-bottom: 0.5rem;">
-                                        <input type="url" id="webhook-gvg" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
-                                        <input type="text" id="discord-role-id-gvg" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="url" id="webhook-gvg" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
+                                        </span>
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="text" id="discord-role-id-gvg" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        </span>
                                     </div>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-gvg-daily-tasks" checked>
-                                        <span data-i18n="notify_gvg_daily_tasks_desc">Daily Tasks breakdown</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-gvg-daily-tasks" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_gvg_daily_tasks_desc">Daily Tasks breakdown</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-gvg-pvp" checked>
-                                        <span data-i18n="notify_gvg_pvp_desc">Enable Day 6</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-gvg-pvp" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_gvg_pvp_desc">Enable Day 6</span></span>
                                     </label>
                                     <button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="btn-dispatch-gvg-tasks" style="width: 100%; margin-top: 0.5rem; font-size: 0.8rem; justify-content: center;">
                                         <i class="ph ph-paper-plane-tilt"></i> <span data-i18n="btn_send_gvg_tasks_now">Send Today's GvG Tasks Now</span>
@@ -791,20 +877,33 @@
                                         </button>
                                     </div>
                                     <div class="gm-col" style="gap: 0.4rem; margin-bottom: 0.5rem;">
-                                        <input type="url" id="webhook-svs" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
-                                        <input type="text" id="discord-role-id-svs" class="gm-input gm-input-sm" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="url" id="webhook-svs" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Webhook URL">
+                                        </span>
+                                        <span class="gm-ui-input gm-ui-input-sm">
+                                            <input type="text" id="discord-role-id-svs" class="gm-ui-input-field" style="font-size: 0.8rem; font-family:var(--font-mono, monospace);" placeholder="Role ID (optional)">
+                                        </span>
                                     </div>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-svs-pvp" checked>
-                                        <span data-i18n="notify_svs_pvp_desc">Enable Day 6</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-svs-pvp" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_svs_pvp_desc">Enable Day 6</span></span>
                                     </label>
-                                    <label class="notification-option">
-                                        <input type="checkbox" id="notify-svs-garrison" checked>
-                                        <span data-i18n="notify_svs_garrison_desc">Garrison reminder</span>
+                                    <label class="notification-option gm-ui-switch">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-svs-garrison" class="gm-ui-switch-input" checked role="switch" aria-checked="true">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_svs_garrison_desc">Garrison reminder</span></span>
                                     </label>
-                                    <label class="notification-option" style="border-top: 1px dashed var(--border-soft); padding-top: 0.5rem; margin-top: 0.25rem;">
-                                        <input type="checkbox" id="notify-svs-won-prep">
-                                        <span data-i18n="notify_svs_won_prep_desc" style="font-weight: 500;">Won Day 1 to 5</span>
+                                    <label class="notification-option gm-ui-switch" style="border-top: 1px dashed var(--border-soft); padding-top: 0.5rem; margin-top: 0.25rem;">
+                                        <span class="gm-ui-switch-hit">
+                                            <input type="checkbox" id="notify-svs-won-prep" class="gm-ui-switch-input" role="switch" aria-checked="false">
+                                            <span class="gm-ui-switch-track"><span class="gm-ui-switch-thumb"></span></span>
+                                        </span>
+                                        <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="notify_svs_won_prep_desc" style="font-weight: 500;">Won Day 1 to 5</span></span>
                                     </label>
                                 </div>
                             </div>

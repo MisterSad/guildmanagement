@@ -31,6 +31,7 @@ import {
 } from '../history.service';
 import { EventsService, type WarEventName } from '../../events/events.service';
 import { resolveChestsForScore } from '../../../core/scoring/chests';
+import { openDialog, closeDialog } from '../../../components/ui/Dialog';
 import type { ChestTier } from '../../../types/database';
 
 function winAny(): any {
@@ -614,18 +615,14 @@ export class HistoryView {
     const deleteBtnHtml =
       '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' + legacy.t('delete_title') + '</span></button>';
 
-    const overlay = document.createElement('div');
-    overlay.id = 'history-modal';
-    overlay.className = 'gm-modal-overlay';
-    overlay.innerHTML =
-      '<div class="gm-modal-card" style="max-width: 860px; width: 95vw;">' +
-        '<div class="gm-row" style="justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">' +
-          '<div>' +
-            '<h3 style="margin:0;"><i class="ph-fill ' + meta.icon + '" style="color:' + meta.border + ';"></i> ' + legacy.esc(meta.label) + '</h3>' +
-            '<div class="gm-dim" style="margin-top:.25rem; font-size:.85rem;">' + legacy.esc(when) + ' · ' + legacy.esc(legacy.formatWeek(weekStart)) + '</div>' +
-          '</div>' +
-          '<button class="gm-btn gm-btn-ghost gm-btn-icon" id="history-modal-close" title="' + legacy.t('close_title') + '"><i class="ph ph-x"></i></button>' +
-        '</div>' +
+    const overlay = openDialog({
+      id: 'history-modal',
+      title: meta.label,
+      iconClass: meta.icon,
+      subtitle: legacy.esc(when) + ' · ' + legacy.esc(legacy.formatWeek(weekStart)),
+      size: 'lg',
+      scrollBody: true,
+      body:
         '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;">' +
           '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + sorted.length + '</span>' +
           '<span class="gm-chip gm-chip-success"><i class="ph-fill ph-check-circle"></i> ' + doneCount + ' ' + legacy.t('event_participated') + '</span>' +
@@ -633,21 +630,22 @@ export class HistoryView {
         '</div>' +
         (sorted.length === 0
           ? '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('history_empty_session') + '</div></div>'
-          : '<div class="gm-table-wrap"><div class="gm-table-scroll" style="max-height: 60vh;">' +
+          : '<div class="gm-table-wrap"><div class="gm-table-scroll">' +
               '<table class="gm-table gm-resp-table">' +
                 '<thead><tr>' + headerCols + '</tr></thead>' +
                 '<tbody>' + rowsHtml + '</tbody>' +
               '</table>' +
-            '</div></div>') +
-        '<div class="gm-modal-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border-soft);">' +
-          '<div id="history-modal-footer-left">' + (isAdmin ? deleteBtnHtml : '') + '</div>' +
-          '<div style="display:flex; gap:0.5rem; align-items:center;">' +
-            '<button type="button" class="gm-btn gm-btn-ghost" id="history-modal-footer-close">' + legacy.t('close_title') + '</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    document.body.appendChild(overlay);
-    winAny().requestAnimationFrame(() => { overlay.classList.add('visible'); });
+            '</div></div>'),
+      footer:
+        // gm-modal-footer contract: destructive delete sits in the dialog
+        // footer-left, close action on the right, never next to the header X.
+        '<div id="history-modal-footer-left">' + (isAdmin ? deleteBtnHtml : '') + '</div>' +
+        '<div style="display:flex; gap:0.5rem; align-items:center;">' +
+          '<button type="button" class="gm-btn gm-btn-ghost" id="history-modal-footer-close" data-dialog-close>' + legacy.t('close_title') + '</button>' +
+        '</div>',
+      confirmLabel: undefined,
+      onConfirm: () => { /* Dialog closes itself after a resolved onConfirm. */ }
+    });
 
     if (isAdmin) {
       overlay.querySelectorAll('.hist-edit-check').forEach((el) => {
@@ -681,14 +679,7 @@ export class HistoryView {
       });
     }
 
-    const close = (): void => {
-      overlay.classList.remove('visible');
-      setTimeout(() => { overlay.remove(); }, 300);
-    };
-    const closeBtn = document.getElementById('history-modal-close');
-    if (closeBtn) closeBtn.addEventListener('click', close);
-    const footerCloseBtn = document.getElementById('history-modal-footer-close');
-    if (footerCloseBtn) footerCloseBtn.addEventListener('click', close);
+    const close = (): void => closeDialog(overlay);
 
     const deleteBtn = document.getElementById('history-modal-delete');
     if (deleteBtn) {
@@ -730,8 +721,6 @@ export class HistoryView {
         );
       });
     }
-
-    overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
   }
 }
 

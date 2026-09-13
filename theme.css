@@ -1,0 +1,49 @@
+/**
+ * theme.css — shadcn/ui semantic design-token layer
+ *
+ * Maps the canonical shadcn token names (--background, --foreground,
+ * --primary, --ring, --radius, ...) 1:1 onto the Google Material Design 3
+ * base already defined in tokens.css, which stays untouched. Loaded AFTER
+ * tokens.css so every var() indirection below resolves at runtime.
+ *
+ * Single dark palette only: the app's spatial/dark art direction is
+ * dark-only by design, mirroring tokens.css. No light-theme surface is
+ * introduced here and no JS ever toggles [data-theme].
+ *
+ * Restriction: this file MUST stay at the project root — scripts/build.js
+ * only copies first-level root files into dist/ (no subdirectory traversal).
+ */
+
+:root {
+  /* ─── Surfaces ──────────────────────────────────────────────────────────── */
+  --background:           var(--md-sys-color-surface);
+  --foreground:           var(--md-sys-color-on-surface);
+  --card:                 var(--md-sys-color-surface-container);
+  --card-foreground:      var(--md-sys-color-on-surface);
+  --popover:              var(--md-sys-color-surface-container-high);
+  --popover-foreground:   var(--md-sys-color-on-surface);
+
+  /* ─── Brand & actions ───────────────────────────────────────────────────── */
+  --primary:              var(--md-sys-color-primary);
+  --primary-foreground:   var(--md-sys-color-on-primary);
+  --secondary:            var(--md-sys-color-secondary);
+  --secondary-foreground: var(--md-sys-color-on-secondary);
+
+  /* ─── Semantic states ───────────────────────────────────────────────────── */
+  --muted:                var(--md-sys-color-on-surface-dim);
+  --muted-foreground:     var(--md-sys-color-on-surface-dim);
+  --accent:               var(--gm-event-gvg);
+  --accent-foreground:    var(--gm-event-gvg-fg);
+  --destructive:          var(--gm-status-sanctions);
+  --destructive-foreground: var(--gm-status-sanctions-fg);
+
+  /* ─── Borders, inputs & focus ring ──────────────────────────────────────── */
+  --border:               var(--md-sys-color-outline);
+  --input:                var(--md-sys-color-outline-variant);
+  --ring:                 var(--md-sys-color-primary);
+
+  /* ─── Corner radius ─────────────────────────────────────────────────────── */
+  --radius:               var(--md-sys-shape-corner-medium);
+  --radius-sm:            var(--md-sys-shape-corner-small);
+  --radius-lg:            var(--md-sys-shape-corner-extra-large);
+}

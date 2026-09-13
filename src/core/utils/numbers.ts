@@ -6,6 +6,6 @@
  * logic; this module is the canonical import path for the numbers domain.
  */
 
-export { parseNumber, formatNumber, formatPower, MAX_NUMERIC } from './text';
+export { parseNumber, formatNumber, formatCompactNumber, formatPower, MAX_NUMERIC } from './text';
 export { parseSafeMetric, getPowerTier, getPowerTierMeta } from '../scoring/combat';
 export type { PowerTier, PowerTierMeta } from '../scoring/combat';

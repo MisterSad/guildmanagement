@@ -24,6 +24,8 @@ import {
 } from '../events.service';
 import type { WarSession, ChestTier } from '../../../types/database';
 import { resolveChestsForScore, defaultChestGrid } from '../../../core/scoring/chests';
+import { renderBadge, renderWarStatusBadge } from '../../../components/ui/Badge';
+import { formatCompactNumber, formatNumber } from '../../../core/utils/numbers';
 import { syncWarOcrGate } from '../../app/ocr/ocr.controller';
 
 function winAny(): any {
@@ -489,11 +491,14 @@ export class EventsView {
 
     const dayChips = [1, 2, 3, 4, 5, 6].map((d) => {
       const result = war.session ? (war.session as any)['day' + d + '_result'] || null : null;
-      const label = result === 'won' ? legacy.t('war_day_won') : result === 'lost' ? legacy.t('war_day_lost') : legacy.t('war_day_pending');
+      const statusBadge = renderWarStatusBadge(
+        result === 'won' ? 'W' : result === 'lost' ? 'L' : 'pending',
+        { won: legacy.t('war_day_won'), lost: legacy.t('war_day_lost'), pending: legacy.t('war_day_pending') }
+      );
       const cls = result === 'won' ? 'war-day-won' : result === 'lost' ? 'war-day-lost' : '';
       return '<button type="button" class="war-day-toggle ' + cls + '" data-day="' + d + '" title="Day ' + d + '">' +
         '<span class="war-day-num">D' + d + '</span>' +
-        '<span class="war-day-state">' + legacy.esc(label) + '</span>' +
+        '<span class="war-day-state">' + statusBadge + '</span>' +
       '</button>';
     }).join('');
 
@@ -567,7 +572,10 @@ export class EventsView {
     if (next === 'lost') btn.classList.add('war-day-lost');
     const stateSpan = btn.querySelector('.war-day-state');
     if (stateSpan) {
-      stateSpan.textContent = next === 'won' ? legacy.t('war_day_won') : next === 'lost' ? legacy.t('war_day_lost') : legacy.t('war_day_pending');
+      stateSpan.innerHTML = renderWarStatusBadge(
+        next === 'won' ? 'W' : next === 'lost' ? 'L' : 'pending',
+        { won: legacy.t('war_day_won'), lost: legacy.t('war_day_lost'), pending: legacy.t('war_day_pending') }
+      );
     }
 
     void EventsService.upsertWarSession({
@@ -608,7 +616,11 @@ export class EventsView {
       total += resolveChestsForScore(grid.filter((g) => g.day === d), score);
     }
     const cell = row.querySelector('.player-chests-cell');
-    if (cell) cell.textContent = total ? legacy.fmt(total) : '-';
+    if (cell) {
+      cell.innerHTML = total
+        ? renderBadge({ text: formatNumber(total), tone: 'glory', style: 'soft', size: 'sm', title: formatNumber(total) })
+        : '-';
+    }
   }
 
   private async saveGranularRow(tabKey: string, pseudo: string, row: Element | null): Promise<void> {
@@ -918,7 +930,7 @@ export class EventsView {
           '<span class="gm-chip gm-chip-success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated') + '</span>' +
           '<span class="gm-chip"><i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + legacy.t('event_absent') + '</span>' +
           (isDtr ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-check-square"></i> ' + appointedCount + ' Appointed</span>' : '') +
-          (hasScore ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-trophy"></i> ' + legacy.t('event_total_score') + ' ' + legacy.fmt(totalScore) + '</span>' : '') +
+          (hasScore ? '<span class="gm-chip gm-chip-accent" title="' + legacy.esc(formatNumber(totalScore)) + '"><i class="ph-fill ph-trophy"></i> ' + legacy.t('event_total_score') + ' ' + formatCompactNumber(totalScore) + '</span>' : '') +
           approveAllBtn +
         '</div>' +
         '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
@@ -927,8 +939,8 @@ export class EventsView {
           '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><span class="material-symbols-rounded">cancel</span></button>' +
         '</div>' +
         '</div>' +
-      '<div class="gm-table-wrap"><div class="gm-table-scroll">' +
-      '<table class="gm-table gm-resp-table">' +
+      '<div class="gm-table-wrap gm-ui-table-wrap"><div class="gm-table-scroll">' +
+      '<table class="gm-table gm-resp-table gm-ui-table-el gm-ui-table-sticky">' +
         '<thead><tr>' +
           '<th>' + legacy.t('col_member') + '</th>' +
           '<th class="gm-center">' + legacy.t('col_participated') + '</th>' +
@@ -965,7 +977,11 @@ export class EventsView {
         for (let d = 1; d <= 6; d++) {
           chestTotal += resolveChestsForScore(grid.filter((g) => g.day === d), dayScores[d]);
         }
-        granularCells += '<td class="gm-right player-chests-cell">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
+        granularCells += '<td class="gm-right player-chests-cell" title="' + legacy.esc(formatNumber(chestTotal || 0)) + '">' +
+          (chestTotal
+            ? renderBadge({ text: formatNumber(chestTotal), tone: 'glory', style: 'soft', size: 'sm', title: formatNumber(chestTotal) })
+            : '-') +
+        '</td>';
       }
 
       const rowClass = 'participant-row' + (isChecked ? ' participated' : '') + (p.is_pending ? ' pending-approval-row' : '');

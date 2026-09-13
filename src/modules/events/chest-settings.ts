@@ -15,6 +15,7 @@ import { getActiveGuild } from '../../core/auth/roles';
 import { showToast } from '../app/dialogs/dialogs.service';
 import { t, byId, esc } from '../app/admin/utils';
 import { defaultChestGrid } from '../../core/scoring/chests';
+import { renderBadge } from '../../components/ui/Badge';
 
 const DAYS = [1, 2, 3, 4, 5, 6];
 
@@ -28,6 +29,15 @@ function dayTiers(day: number): ChestTier[] {
     .sort((a, b) => a.min_score - b.min_score);
 }
 
+function tierIndexBadge(day: number, idx: number): string {
+  return renderBadge({
+    text: 'T' + (idx + 1),
+    tone: currentEvent === 'SvS' ? 'svs' : 'gvg',
+    style: 'soft',
+    size: 'sm'
+  });
+}
+
 function renderGrid(): void {
   const gridEl = byId('chest-tiers-grid');
   if (!gridEl) return;
@@ -36,7 +46,7 @@ function renderGrid(): void {
     const tiers = dayTiers(day);
     const rows = tiers.map((tier, idx) =>
       '<div class="chest-tier-row" data-day="' + day + '">' +
-        '<span class="chest-tier-index">T' + (idx + 1) + '</span>' +
+        '<span class="chest-tier-index">' + tierIndexBadge(day, idx) + '</span>' +
         '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' + esc(tier.min_score) + '" placeholder="' + t('war_min_score') + '">' +
         '<span class="chest-tier-arrow">→</span>' +
         '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' + esc(tier.chests) + '" placeholder="' + t('war_chests_count') + '">' +
@@ -65,7 +75,7 @@ function addTier(day: number): void {
   const nextMin = tiers.length > 0 ? Number(tiers[tiers.length - 1].min_score) + 1000 : 1000;
   const nextChests = tiers.length > 0 ? tiers[tiers.length - 1].chests : 1;
   row.innerHTML =
-    '<span class="chest-tier-index">T' + (tiers.length + 1) + '</span>' +
+    '<span class="chest-tier-index">' + tierIndexBadge(day, tiers.length) + '</span>' +
     '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' + nextMin + '" placeholder="' + t('war_min_score') + '">' +
     '<span class="chest-tier-arrow">→</span>' +
     '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' + nextChests + '" placeholder="' + t('war_chests_count') + '">' +

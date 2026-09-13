@@ -223,6 +223,11 @@ function setChecked(id: string, value: string | null, defaultValue: boolean): vo
   if (!el) return;
   if (value === null || value === undefined || value === '') el.checked = defaultValue;
   else el.checked = (value === 'true' || value === '1');
+  // gm-ui switches expose role="switch": keep aria-checked in sync so the
+  // ARIA contract never drifts after legacy imperative reads/writes.
+  if (el.getAttribute('role') === 'switch') {
+    el.setAttribute('aria-checked', el.checked ? 'true' : 'false');
+  }
 }
 
 export async function loadGuildSettings(): Promise<void> {

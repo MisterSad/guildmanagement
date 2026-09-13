@@ -11,6 +11,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { esc, winAny, byId, gm, t } from '../admin/utils';
+import { initTooltips } from '../../../components/ui/Tooltip';
 import { showToast } from '../dialogs/dialogs.service';
 import { getGuildMembers } from '../members/members.store';
 import { renderGuildMembers } from '../members/members.render';
@@ -56,11 +57,18 @@ export function syncWarOcrGate(activeEvent: WarGranularGateEvent | null, granula
     if (granular) {
       el.disabled = true;
       el.setAttribute('title', t('war_ocr_granular_hint'));
+      el.setAttribute('data-tooltip', t('war_ocr_granular_hint'));
+      el.setAttribute('data-tooltip-pos', 'top');
       el.style.opacity = '0.45';
       el.style.cursor = 'not-allowed';
+      // gm-ui tooltip: bind the freshly decorated buttons (boot scan may
+      // have run before the granular gate armed them).
+      initTooltips(toolbar);
     } else {
       el.disabled = false;
       el.removeAttribute('title');
+      el.removeAttribute('data-tooltip');
+      el.removeAttribute('data-tooltip-pos');
       el.style.opacity = '';
       el.style.cursor = '';
     }

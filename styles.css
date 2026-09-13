@@ -1056,6 +1056,278 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .check-toggle-accent input:checked ~ .check-slider { background: var(--accent-soft); border-color: var(--accent); }
 .check-toggle-accent input:checked ~ .check-slider::after { transform: translateX(18px); background: var(--accent); }
 
+/* ─── gm-ui primitives (shadcn token layer over theme.css) ─────────────── */
+
+/* Accent palette — custom props consumed by switch/checkbox state rules.
+   Kept dark-only: each accent resolves the M3 event tokens from tokens.css. */
+.gm-ui-accent-default {
+    --gm-ui-accent: var(--success);
+    --gm-ui-accent-soft: var(--success-soft);
+    --gm-ui-accent-thumb: var(--accent-lime);
+}
+.gm-ui-accent-svs {
+    --gm-ui-accent: var(--gm-event-svs);
+    --gm-ui-accent-soft: var(--gm-event-svs-soft);
+    --gm-ui-accent-thumb: var(--gm-event-svs);
+}
+.gm-ui-accent-gvg {
+    --gm-ui-accent: var(--gm-event-gvg);
+    --gm-ui-accent-soft: var(--gm-event-gvg-soft);
+    --gm-ui-accent-thumb: var(--gm-event-gvg);
+}
+.gm-ui-accent-glory {
+    --gm-ui-accent: var(--gm-event-glory);
+    --gm-ui-accent-soft: var(--gm-event-glory-soft);
+    --gm-ui-accent-thumb: var(--gm-event-glory);
+}
+.gm-ui-accent-danger {
+    --gm-ui-accent: var(--danger);
+    --gm-ui-accent-soft: var(--danger-soft);
+    --gm-ui-accent-thumb: var(--danger);
+}
+
+/* Switch — accessible toggle (role="switch") with 44px hit-slop. */
+.gm-ui-switch { display: inline-flex; align-items: center; gap: 0.7rem; cursor: pointer; }
+.gm-ui-switch-sm .gm-ui-switch-label { font-size: var(--fs-sm); }
+.gm-ui-switch-hit { position: relative; width: 44px; height: 44px; flex: 0 0 auto; display: inline-block; }
+.gm-ui-switch-input { position: absolute; inset: 0; margin: 0; opacity: 0; z-index: 1; cursor: pointer; }
+.gm-ui-switch-input:focus-visible { outline: none; }
+.gm-ui-switch-track {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 40px; height: 24px; border-radius: var(--radius-pill);
+    background: var(--background); border: 1px solid var(--border);
+    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.gm-ui-switch-thumb {
+    position: absolute; left: 2px; top: 2px; width: 18px; height: 18px;
+    border-radius: 50%; background: var(--muted-foreground);
+    transition: transform .15s ease, background .15s ease;
+}
+.gm-ui-switch-input:checked ~ .gm-ui-switch-track {
+    background: var(--gm-ui-accent-soft, rgba(16,185,129,0.3));
+    border-color: var(--gm-ui-accent, var(--success));
+}
+.gm-ui-switch-input:checked ~ .gm-ui-switch-track .gm-ui-switch-thumb {
+    transform: translateX(18px);
+    background: var(--gm-ui-accent-thumb, var(--success));
+}
+.gm-ui-switch-input:focus-visible ~ .gm-ui-switch-track { box-shadow: 0 0 0 2px var(--ring); }
+.gm-ui-switch-input:disabled { cursor: not-allowed; }
+.gm-ui-switch-input:disabled ~ .gm-ui-switch-track { opacity: 0.55; }
+.gm-ui-switch-label { display: inline-flex; flex-direction: column; gap: 0.1rem; }
+.gm-ui-switch-text { font-size: var(--fs-base); color: var(--fg); }
+.gm-ui-switch-desc { font-size: var(--fs-sm); color: var(--fg-dim); }
+
+/* Checkbox — accessible native checkbox, 44px hit-slop, indeterminate dash. */
+.gm-ui-checkbox { display: inline-flex; align-items: center; gap: 0.6rem; cursor: pointer; }
+.gm-ui-checkbox-sm .gm-ui-checkbox-label { font-size: var(--fs-sm); }
+.gm-ui-checkbox-hit { position: relative; width: 44px; height: 44px; flex: 0 0 auto; display: inline-block; }
+.gm-ui-checkbox-input { position: absolute; inset: 0; margin: 0; opacity: 0; z-index: 1; cursor: pointer; }
+.gm-ui-checkbox-input:focus-visible { outline: none; }
+.gm-ui-checkbox-box {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 18px; height: 18px; border-radius: var(--radius-sm);
+    background: var(--background); border: 1px solid var(--border);
+    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.gm-ui-checkbox-box::after {
+    content: ''; position: absolute; inset: 0; display: grid; place-items: center;
+    color: var(--gm-ui-accent-thumb, var(--accent-lime));
+    font-size: 0.7rem; opacity: 0; transition: opacity .12s ease;
+}
+.gm-ui-checkbox-input:checked ~ .gm-ui-checkbox-box {
+    background: var(--gm-ui-accent-soft, var(--accent-soft));
+    border-color: var(--gm-ui-accent, var(--accent));
+}
+.gm-ui-checkbox-input:checked ~ .gm-ui-checkbox-box::after { content: '\2713'; opacity: 1; }
+.gm-ui-checkbox-input:indeterminate ~ .gm-ui-checkbox-box::after { content: '\2212'; opacity: 1; }
+.gm-ui-checkbox-input:focus-visible ~ .gm-ui-checkbox-box { box-shadow: 0 0 0 2px var(--ring); }
+.gm-ui-checkbox-input:disabled { cursor: not-allowed; }
+.gm-ui-checkbox-input:disabled ~ .gm-ui-checkbox-box { opacity: 0.55; }
+.gm-ui-checkbox-label { display: inline-flex; flex-direction: column; gap: 0.1rem; }
+.gm-ui-checkbox-text { font-size: var(--fs-base); color: var(--fg); }
+
+/* Input — harmonized field, focus ring on var(--ring), inline error state. */
+.gm-ui-input { position: relative; display: block; width: 100%; }
+.gm-ui-input-field {
+    box-sizing: border-box;
+    width: 100%; padding: .65rem .95rem;
+    background: var(--background); border: 1px solid var(--input);
+    border-radius: var(--radius-sm); color: var(--foreground);
+    font-family: var(--font); font-size: var(--fs-base);
+    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    outline: none;
+}
+.gm-ui-input-field::placeholder { color: var(--fg-dim); }
+.gm-ui-input-field:focus-visible {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px var(--ring);
+}
+.gm-ui-input-sm .gm-ui-input-field { padding: .35rem .6rem; font-size: var(--fs-sm); }
+.gm-ui-input-mono { font-family: var(--font-mono); }
+.gm-ui-input-invalid .gm-ui-input-field { border-color: var(--destructive); }
+.gm-ui-input-error { display: block; margin-top: 0.3rem; font-size: var(--fs-sm); color: var(--destructive); }
+
+/* ─── gm-ui badges (status / score chips over theme.css) ─────────────────── */
+
+.gm-ui-badge {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: var(--fs-sm); font-weight: 600; line-height: 1;
+    border-radius: var(--radius-sm);
+    padding: 0.2rem 0.55rem;
+    white-space: nowrap;
+}
+.gm-ui-badge-sm { font-size: var(--fs-2xs); padding: 0.1rem 0.4rem; }
+
+.gm-ui-badge-svs     { --gm-ui-badge: var(--gm-event-svs);     --gm-ui-badge-soft: var(--gm-event-svs-soft);     --gm-ui-badge-fg: var(--gm-event-svs-fg); }
+.gm-ui-badge-gvg     { --gm-ui-badge: var(--gm-event-gvg);     --gm-ui-badge-soft: var(--gm-event-gvg-soft);     --gm-ui-badge-fg: var(--gm-event-gvg-fg); }
+.gm-ui-badge-glory   { --gm-ui-badge: var(--gm-event-glory);   --gm-ui-badge-soft: var(--gm-event-glory-soft);   --gm-ui-badge-fg: var(--gm-event-glory-fg); }
+.gm-ui-badge-danger  { --gm-ui-badge: var(--danger);           --gm-ui-badge-soft: var(--danger-soft);           --gm-ui-badge-fg: var(--gm-status-sanctions-fg); }
+.gm-ui-badge-default { --gm-ui-badge: var(--accent);           --gm-ui-badge-soft: var(--accent-soft);           --gm-ui-badge-fg: var(--accent-fg); }
+.gm-ui-badge-warning { --gm-ui-badge: var(--warning);          --gm-ui-badge-soft: var(--warning-soft);          --gm-ui-badge-fg: var(--accent-amber-fg); }
+.gm-ui-badge-success { --gm-ui-badge: var(--success);          --gm-ui-badge-soft: var(--success-soft);          --gm-ui-badge-fg: var(--accent-lime-fg); }
+
+.gm-ui-badge-soft {
+    background: var(--gm-ui-badge-soft);
+    color: var(--gm-ui-badge-fg);
+    border: 1px solid var(--gm-ui-badge-soft);
+}
+.gm-ui-badge-solid {
+    background: var(--gm-ui-badge);
+    color: var(--gm-ui-badge-fg);
+    border: 1px solid var(--gm-ui-badge);
+}
+.gm-ui-badge-outline {
+    background: transparent;
+    color: var(--gm-ui-badge-fg);
+    border: 1px solid var(--gm-ui-badge);
+}
+.gm-ui-badge-pill {
+    border-radius: var(--radius-pill);
+    padding: 0.18rem 0.7rem;
+}
+
+/* ─── gm-ui table (sticky headers, empty/loading states, highlights) ─────── */
+
+.gm-ui-table-wrap { position: relative; }
+.gm-ui-table-sticky thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--md-sys-color-surface-container);
+}
+.gm-ui-table-loading-row td {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: var(--fg-dim);
+}
+.gm-ui-table-loading::after {
+    content: ''; display: inline-block; vertical-align: middle;
+    width: 0.75rem; height: 0.75rem; margin-left: 0.5rem;
+    border: 2px solid var(--border-soft); border-top-color: var(--ring);
+    border-radius: 50%; animation: gmUiTableSpin .7s linear infinite;
+}
+@keyframes gmUiTableSpin { to { transform: rotate(360deg); } }
+.gm-ui-table-empty-row td {
+    padding: 1.5rem 1rem;
+    text-align: center;
+}
+.gm-ui-table-row[data-state] { filter: none; }
+.gm-ui-table-row.gm-ui-table-hl-alert { background: var(--danger-soft); }
+.gm-ui-table-row.gm-ui-table-hl-target { background: var(--success-soft); }
+
+/* ─── gm-ui dialog (modal overlay consolidation over theme.css) ──────────── */
+
+.gm-ui-dialog-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    z-index: 9999;
+    padding: 1.5rem 1rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    animation: gmUiDialogBackdropIn .2s ease;
+}
+@keyframes gmUiDialogBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+
+.gm-ui-dialog-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    padding: 1.75rem;
+    margin: auto;
+    color: var(--foreground);
+    animation: gmUiDialogCardIn .22s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: none;
+}
+@keyframes gmUiDialogCardIn {
+    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+.gm-ui-dialog-sm { max-width: 420px; width: 90vw; }
+.gm-ui-dialog-md { max-width: 640px; width: 92vw; }
+.gm-ui-dialog-lg { max-width: 860px; width: 95vw; }
+.gm-ui-dialog-full { width: 98vw; height: 96vh; }
+.gm-ui-dialog-danger .gm-ui-dialog-title { color: var(--danger); }
+
+.gm-ui-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+.gm-ui-dialog-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    flex: 1 1 auto;
+}
+.gm-ui-dialog-heading > i.ph-fill { color: var(--accent); font-size: var(--fs-lg); }
+.gm-ui-dialog-heading-text { display: flex; flex-direction: column; gap: 0.15rem; }
+.gm-ui-dialog-title {
+    margin: 0;
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    color: var(--foreground);
+}
+.gm-ui-dialog-subtitle {
+    font-size: 0.85rem;
+    color: var(--fg-dim);
+}
+.gm-ui-dialog-header-close { flex: 0 0 auto; }
+.gm-ui-dialog-body { }
+.gm-ui-dialog-scroll { max-height: 62vh; overflow-y: auto; }
+.gm-ui-dialog-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+.gm-ui-dialog-footer-actions { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; }
+
+/* ─── gm-ui tooltip (singleton, fixed positioning) ────────────────────────── */
+
+.gm-ui-tooltip {
+    position: fixed;
+    z-index: 3000;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.65rem;
+    font-size: var(--fs-sm);
+    max-width: 260px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+.gm-ui-tooltip-visible { opacity: 1; }
+
 /* ─── Score Input ────────────────────────────────────────────────────────── */
 .score-input, .sf-score-input {
     width: 180px;
@@ -2024,7 +2296,7 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 .notification-option:hover {
     color: white;
 }
-.notification-option input[type="checkbox"] {
+.notification-option input[type="checkbox"]:not(.gm-ui-switch-input):not(.gm-ui-checkbox-input) {
     accent-color: var(--accent);
     width: 17px;
     height: 17px;
@@ -2032,7 +2304,7 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     cursor: pointer;
     margin: 0;
 }
-.notification-option input[type="checkbox"]:focus-visible {
+.notification-option input[type="checkbox"]:not(.gm-ui-switch-input):not(.gm-ui-checkbox-input):focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
 }
@@ -2084,6 +2356,9 @@ body.guild-read-only .gm-content .event-status-btn,
 body.guild-read-only .gm-content .score-input-cell,
 body.guild-read-only .gm-content .participation-check,
 body.guild-read-only .gm-content .check-toggle,
+body.guild-read-only .gm-content .gm-ui-switch,
+body.guild-read-only .gm-content .gm-ui-checkbox,
+body.guild-read-only .gm-content .gm-ui-input,
 body.guild-read-only .gm-content .ar-stage-cell,
 body.guild-read-only .gm-content .score-cell {
     pointer-events: none !important;

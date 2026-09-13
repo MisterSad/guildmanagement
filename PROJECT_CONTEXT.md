@@ -3,15 +3,16 @@
 ## 1. Stack Technique Réelle
 - **Runtime & Build :** Node.js 20 LTS, Vite 8.2 (build via `scripts/build.js` + minification esbuild).
 - **Frontend :** SPA TypeScript/ESM (`/src/main.ts`), pont legacy `window.GM_*` assemblé dans `/src/core/gm-bridge.ts`. Le monolithe `app.js` (7 431 lignes) a été **supprimé** au cutover final Strangler et le Service Worker legacy racine a été migré sous `/src/sw/service-worker.ts` (parseur pur dans `/src/sw/push-payload.ts`), compilé vers `dist/sw.js` (racine de `dist/`, scope `/`) par esbuild dans `scripts/build.js`. La racine du projet ne contient plus aucun script applicatif : uniquement des configs d'outillage (`playwright.config.js`, `vitest.config.js`).
+- **Design System UI/UX (shadcn-like) :** primitives canoniques `cn()` (clsx + tailwind-merge, conflits last-wins) et `cva`/`VariantProps` (class-variance-authority) dans `src/core/utils/`, couche sémantique de tokens `theme.css` à la racine (alias 1:1 sur le socle M3 de `tokens.css`, dark-only), bibliothèque modulaire `src/components/ui/` — Switch, Checkbox, Input, Badge, Table, Dialog, Tooltip + `types.ts`. Zéro Tailwind/PostCSS/Vite ajouté : primitives portées, tokens par CSS variables.
 - **Base de données :** Supabase PostgreSQL (42 tables persistantes actives avec RLS hermétique — y compris les 4 tables de guerre `war_opponents`/`war_sessions`/`event_daily_scores`/`event_chest_tiers` — sur 45 `CREATE TABLE` historiques, helpers SECURITY DEFINER avec search_path vide, résolution de rôles stricte via table `accounts`).
 - **Edge Functions (16 live) :** Deno / TypeScript dans `supabase/functions/` — 8 publiques sans JWT (`verify_jwt = false` : `auth-login`, `auth-passkey`, `player-register`, `guild-request`, `event-reminders`, `gm-stripe-webhook`, `discord-bot-interactions`, `discord-profile-verification`) et 8 sécurisées par JWT (`verify_jwt = true` : `member-portal`, `admin-accounts`, `ocr-guild-members`, `discord-webhook-proxy`, `gm-create-order`, `gm-order-status`, `guild-data-export`, `tickets`).
 - **Authentification & Crypto :** WebAuthn (Passkeys RP_ID `guildmanagement.vercel.app`), Discord OAuth2/Ed25519.
-- **Tests :** Vitest (104 suites, 1 199 tests, 100 % passants — état vérifié au 2026-09-13 après la fiabilisation du système de notifications/rappels Discord), Playwright (E2E sur port 4173), syntax-check racine et type-check TypeScript.
+- **Tests :** Vitest (108 suites, 1 279 tests, 100 % passants — état vérifié au 2026-09-13 avec la refonte UI/UX shadcn-like P1→P3), Playwright (E2E sur port 4173), syntax-check racine et type-check TypeScript.
 - **Hébergement :** Vercel (frontend statique + headers de sécurité dans `vercel.json`), Supabase Cloud (PostgreSQL, Auth, Edge Functions).
 
 ## 2. Règles d'Or & Standards d'Ingénierie
 - **Stratégie de Modularisation (Strangler) :** Tout nouveau code est écrit sous forme de module TypeScript/ESM dans `/src/`. Interdiction stricte de créer de nouveaux fichiers `.js` à la racine ou d'ajouter de nouvelles variables globales sur `window.GM_*`.
-- **Porte Qualité CI :** Aucun commit sans que `npm run type-check`, `npm test` (1 199 tests verts, 104 suites) et `scripts/build.js` ne soient au vert.
+- **Porte Qualité CI :** Aucun commit sans que `npm run type-check`, `npm test` (1 279 tests verts, 108 suites) et `scripts/build.js` ne soient au vert.
 - **Sécurité RLS :** 100 % des tables doivent avoir `ENABLE ROW LEVEL SECURITY` et `FORCE ROW LEVEL SECURITY`. Les rôles sont lus exclusivement dans la table `accounts` (aucun fallback `user_metadata`).
 - **Logos & Tiers :** Utiliser exclusivement le package `simple-icons` pour tout logo officiel tiers (Discord, Google, Apple, etc.). Ne jamais inventer de SVG à la main.
 
@@ -117,3 +118,31 @@ Audit complet du système de notifications/reminders Discord (diagnostic des fan
 - `npm test` : **1 199 tests réussis / 104 suites** (+37 depuis 1 162/102 — toggles stricts, webhooks, migration SQL/TZ, cohérence SQL↔Edge, fenêtre SvS, normalisation des événements).
 - `npm run build` : production stable, `version.json` V3.18.1.
 - **Déploiement requis** : `supabase db push` (migration 20260914110000) + redéploiement de `event-reminders` ; puis push frontend (Vercel).
+
+## 7. Clôture Mission — Refonte UI/UX shadcn-like P1→P3 (2026-09-13)
+
+Cycle de modernisation complet du système UI/UX livré en 3 étapes (`feat(ui)`), 100 % frontend (aucune migration SQL, aucun changement de contrat Edge).
+
+### Étape 1 — Primitives & tokens (fondations)
+- Nouvelles deps runtime (seules) : `clsx`, `tailwind-merge`, `class-variance-authority` — aucun Tailwind/PostCSS/Vite ajouté, `scripts/build.js` intact.
+- `src/core/utils/cn.ts` (helper canonique `cn()` = clsx + twMerge, résolution de conflits last-wins) et `src/core/utils/cva.ts` (re-export typé `cva` + `VariantProps` — signature **`cva(base, config)`** de la v0.7.1, base = ClassValue).
+- `src/components/ui/types.ts` (`UiSize`, `UiAccent`, `UiState`).
+- `theme.css` (racine, impératif build esbuild) : alias layer shadcn (`--background`, `--foreground`, `--card`, `--popover`, `--primary`, `--ring`, `--radius-*`, …) mappé 1:1 sur le socle M3 de `tokens.css`, dark-only, chargé juste après `tokens.css` dans `index.html`.
+
+### Étape 2 — Composants de formulaire & rétrofit Admin (P1)
+- `Switch` / `Checkbox` / `Input` : inputs **natifs conservant les `id` legacy** (`byId().checked/.value`, `setChecked()`, `onGuildSettingsSubmit` inchangés), `role="switch"`, `aria-checked`, hit-slop 44 px, focus ring `var(--ring)`, recettes cva (size/accent), `Input` avec état d'erreur (`aria-invalid` + message `role="alert"`).
+- Rétrofit Guild Settings : 18 toggles `notify-*` et 22 champs (`coeff-*`, `webhook-*`, `discord-role-id*`, server/tag) sur le harnais `gm-ui-*`, ids strictement stables ; CSS `gm-ui-*` dans `styles.css` (legacy `.check-toggle` conservé) ; `setChecked` synchronise désormais `aria-checked` sur les inputs `role="switch"`.
+
+### Étape 3 — Badge & Table + vue granulaire (P2)
+- `Badge` (7 tonalités dont svs/gvg/glory/danger/warning/success, styles soft/solid/outline/pill, sm/md, `renderWarStatusBadge` W/L/tie/pending) et `Table` (en-têtes sticky, alignements, états vide/chargement accessibles `role="status"`, `rowClass`/`highlight`/`rowKey`).
+- Vue granulaire : statuts W/L D1-D6 en badge (bandeau + rebuils), total coffres en badge glory avec `title` valeur exacte, grilles sticky `gm-ui-table-el`/`gm-ui-table-sticky`, formatage compact `formatCompactNumber` (K/M/B, borné à 9 999 999 999, arrondi à la baisse) avec valeur exacte en tooltip. Logique métier **intacte** : `resolveChestsForScore` et RPC `gm_upsert_daily_scores`/`gm_upsert_war_session` inchangés (gardes de tests).
+
+### Étape 4 — Dialog & Tooltip + consolidation (P3)
+- `Dialog` : `role="dialog"` + `aria-modal="true"` + `aria-labelledby/describedby`, focus trap Tab bidirectionnel, fermeture Échap / backdrop / X, hooks `onConfirm`/`onCancel`/`onClose`, tone default/danger, tailles sm/md/lg/full, zone `footer` dédiée (isolation danger-zone, auto-wire `data-dialog-close`/`data-dialog-confirm`).
+- `Tooltip` : singleton `#gm-ui-tooltip-root` (`role="tooltip"`), déclaratif `data-tooltip` (+`-pos`/`-delay`) via `initTooltips()`, programmatique `bindTooltip`, déclencheurs souris ET clavier (focusin/focusout), `aria-describedby`.
+- Rétrofits : modale session historique → `Dialog` (surface `history-modal*` et plomb de sécurité « delete en pied de modale » conservés), boutons OCR granularisés désactivés → `data-tooltip` (attribut `title` conservé).
+
+### État des tests (fin de mission, 2026-09-13)
+- `npm run type-check` : **0 erreur**.
+- `npm test` : **1 279 tests réussis / 108 suites** (+80 depuis 1 199/104 — 13 primitives/tokens, 20 composants P1 + renforts, 26 composants P2 + intégration granulaire, 21 P3 Dialog/Tooltip + rétrofits history/events/ocr).
+- `npm run build` : production stable, `version.json` V3.18.1, `dist/theme.css` généré.
