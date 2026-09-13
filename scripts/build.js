@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import { transform } from 'esbuild';
+import { build as esbuildBuild, transform } from 'esbuild';
 import fs from 'fs';
 import path from 'path';
 
@@ -11,6 +11,25 @@ const distDir = path.join(rootDir, 'dist');
 
 if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir, { recursive: true });
+}
+
+// Service worker: compiled from TypeScript under /src (the Strangler
+// invariant forbids new root runtime scripts) straight to dist/sw.js at the
+// root of the output so its registration scope stays `/`. Bundled as a classic
+// IIFE because the registration calls (`/sw.js`, no `{ type: 'module' }`) must
+// keep working unchanged. It intentionally exposes no `fetch`/cache logic.
+{
+  const swEntry = path.join(rootDir, 'src/sw/service-worker.ts');
+  await esbuildBuild({
+    entryPoints: [swEntry],
+    outfile: path.join(distDir, 'sw.js'),
+    bundle: true,
+    format: 'iife',
+    target: 'es2022',
+    minify: true,
+    logLevel: 'warning',
+  });
+  console.log('Compiled service worker: src/sw/service-worker.ts -> dist/sw.js.');
 }
 
 const files = fs.readdirSync(rootDir);

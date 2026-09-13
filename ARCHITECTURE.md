@@ -9,7 +9,7 @@
 
 ### 1. High-Level System Topology
 
-**FGF Guild Management Tool** is a serverless, multi-tenant SaaS tactical command and analytics platform built for competitive guilds in *Foundation Galactic Frontier*. The live production system is a single TypeScript/ESM frontend (`/src/main.ts`) that assembles the legacy `window.GM_*` bridge in-browser, backed by Supabase PostgreSQL 17 with Row Level Security (RLS) and Deno TypeScript Edge Functions. The former root monolith `app.js` was removed in the Strangler final cutover.
+**FGF Guild Management Tool** is a serverless, multi-tenant SaaS tactical command and analytics platform built for competitive guilds in *Foundation Galactic Frontier*. The live production system is a single TypeScript/ESM frontend (`/src/main.ts`) that assembles the legacy `window.GM_*` bridge in-browser, backed by Supabase PostgreSQL 17 with Row Level Security (RLS) and Deno TypeScript Edge Functions. The former root monolith `app.js` was removed in the Strangler final cutover. The project root now holds no application script at all — only tooling configs (`playwright.config.js`, `vitest.config.js`) — and the service worker is a typed module at `src/sw/service-worker.ts` (pure parser in `src/sw/push-payload.ts`) compiled to the root-scoped `dist/sw.js` by esbuild in `scripts/build.js`.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
@@ -233,7 +233,7 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 ---
 
 ### 6. Web Push Notifications
-Anonymous, per-device opt-in (`push.js` + `sw.js`, VAPID keys in Supabase secrets). The opt-in control (`window.GM_PUSH.mount(container)`) is mounted in **both** the admin Overview screen and the Portal's Notifications card — a player-facing gap (portal preferences existed with no way to actually subscribe) was found and fixed 2026-08-31; if a future notification surface is added, mount the control there too rather than assuming one mount point covers every audience.
+Anonymous, per-device opt-in (client `src/modules/push/PushService.ts` + service worker `src/sw/service-worker.ts`, compiled to `dist/sw.js` by esbuild; VAPID keys in Supabase secrets). The opt-in control (`window.GM_PUSH.mount(container)`) is mounted in **both** the admin Overview screen and the Portal's Notifications card — a player-facing gap (portal preferences existed with no way to actually subscribe) was found and fixed 2026-08-31; if a future notification surface is added, mount the control there too rather than assuming one mount point covers every audience.
 - **Send path**: `event-reminders`' `sendWebPush()` fans out to `push_subscriptions` (filtered by `player_push_prefs` per-type opt-outs) alongside the existing Discord webhook dispatch, on the same cron tick.
 - **iOS constraint**: `PushManager` only exists inside an **installed** PWA on iOS Safari (16.4+) — a plain Safari tab shows an "Add to Home Screen" hint instead. Desktop/Android need no install step.
 - **CSP dependency**: the uploaded-file `<video>` blob and any future blob-backed media element depend on `media-src` explicitly including `blob:` in `vercel.json` — `default-src 'self'` does **not** cover it by CSP-spec fallback, and this silently blocks the resource identically on every browser (not a codec/compat issue) if ever dropped. Confirmed live via `document.addEventListener('securitypolicyviolation', ...)` when this shipped without it.

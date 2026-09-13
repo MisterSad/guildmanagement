@@ -2,8 +2,11 @@
  * Root Script Syntax Verification Suite
  *
  * This test suite guards against unparseable JavaScript files in the repository root.
- * After the Strangler final cutover the only root runtime script is `sw.js`
- * (service worker); the app entrypoint is the `/src/main.ts` TS module.
+ * After the Strangler final cutover there are no root runtime scripts left: the
+ * app entrypoint is the `/src/main.ts` TS module and the service worker now
+ * lives at `src/sw/service-worker.ts` (compiled to `dist/sw.js` by the build).
+ * The only remaining root .js files are the build/test configs
+ * (`playwright.config.js`, `vitest.config.js`).
  *
  * This test runs `node --check <file>` on every root .js file to ensure zero syntax errors
  * can ever slip through CI or production releases silently again.
@@ -20,8 +23,8 @@ describe('Root Scripts Syntax Validation (node --check)', () => {
         .filter(f => f.endsWith('.js') && fs.statSync(path.join(rootDir, f)).isFile())
         .sort();
 
-    it('finds at least 3 root JavaScript scripts', () => {
-        expect(rootJsFiles.length).toBeGreaterThanOrEqual(3);
+    it('finds at least 2 root JavaScript config scripts', () => {
+        expect(rootJsFiles.length).toBeGreaterThanOrEqual(2);
     });
 
     rootJsFiles.forEach((file) => {
