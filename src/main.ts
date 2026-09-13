@@ -56,6 +56,7 @@ import { ShadowfrontService } from './modules/shadowfront/shadowfront.service';
 import { StatsService } from './modules/stats/stats.service';
 import { statsView } from './modules/stats/views/StatsView';
 import { shellView } from './modules/shell/views/ShellView';
+import { shadowfrontView } from './modules/shadowfront/views/ShadowfrontView';
 import { PortalService } from './modules/portal/portal.service';
 import { AuditService } from './modules/audit/audit.service';
 import { logger } from './core/logger/logger';
@@ -163,6 +164,17 @@ if (typeof window !== 'undefined') {
     renderShell: () => shellView.renderShell(),
     renderSidebar: () => shellView.renderSidebar(),
     renderTopbar: () => shellView.renderTopbar()
+  };
+
+  // Backward-compatible Shadowfront entrypoint. Replaces the former root
+  // shadowfront.js (Strangler cutover): app.js, ShellView's lazy registry and
+  // OCR flows keep calling window.GM_SHADOWFRONT.load()/render()/getAssignments().
+  (window as any).GM_SHADOWFRONT = {
+    load: () => shadowfrontView.load(),
+    render: () => shadowfrontView.render(),
+    setStateForTest: (state: any) => shadowfrontView.setStateForTest(state),
+    getAssignments: () => shadowfrontView.getAssignments(),
+    getActiveSquadSession: (squadKey: any) => shadowfrontView.getActiveSquadSession(squadKey)
   };
 
   (window as any).GM.components = {

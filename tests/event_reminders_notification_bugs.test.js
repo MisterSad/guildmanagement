@@ -89,8 +89,8 @@ describe('discord-webhook-proxy: allowed_mentions defaults', () => {
 describe('frontend: allowed_mentions and squad 2 role support', () => {
   const gmUtilsPath = path.resolve(__dirname, '../gm-utils.js');
   const gmUtilsContent = fs.readFileSync(gmUtilsPath, 'utf-8');
-  const shadowfrontPath = path.resolve(__dirname, '../shadowfront.js');
-  const shadowfrontContent = fs.readFileSync(shadowfrontPath, 'utf-8');
+  const shadowfrontViewContent = fs.readFileSync(path.resolve(__dirname, '../src/modules/shadowfront/views/ShadowfrontView.ts'), 'utf-8');
+  const shadowfrontServiceContent = fs.readFileSync(path.resolve(__dirname, '../src/modules/shadowfront/shadowfront.service.ts'), 'utf-8');
 
   it('gm-utils sendDiscordWebhookDetailed guarantees allowed_mentions', () => {
     expect(gmUtilsContent).toContain("body.allowed_mentions = body.allowed_mentions || { parse: ['roles', 'users', 'everyone'] };");
@@ -103,8 +103,8 @@ describe('frontend: allowed_mentions and squad 2 role support', () => {
     expect(gmUtilsContent).toContain("getGuildConfig('discord_role_id_shadowfront_squad2')");
   });
 
-  it('shadowfront.js shareSquadOnDiscord uses squad 1 / squad 2 roles and allowed_mentions', () => {
-    expect(shadowfrontContent).toContain("squadKey === 'squad2' ? 'discord_role_id_shadowfront_squad2' : 'discord_role_id_shadowfront_squad1'");
-    expect(shadowfrontContent).toContain("allowed_mentions: { parse: ['roles', 'users', 'everyone'] }");
+  it('the Shadowfront share uses squad 1 / squad 2 roles and allowed_mentions', () => {
+    expect(shadowfrontViewContent).toContain("squadKey === 'squad2' ? 'discord_role_id_shadowfront_squad2' : 'discord_role_id_shadowfront_squad1'");
+    expect(shadowfrontServiceContent).toContain("allowed_mentions: { parse: ['roles', 'users', 'everyone'] }");
   });
 });

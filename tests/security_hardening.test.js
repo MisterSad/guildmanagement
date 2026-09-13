@@ -37,8 +37,8 @@ describe('Security Hardening & Module Audits', () => {
         expect(content).toContain('Unauthorized field update attempt');
     });
 
-    it('verifies shadowfront.js calls atomic gm_unsync_shadowfront_participant RPC', () => {
-        const filePath = path.resolve(__dirname, '../shadowfront.js');
+    it('verifies ShadowfrontView calls atomic gm_unsync_shadowfront_participant RPC', () => {
+        const filePath = path.resolve(__dirname, '../src/modules/shadowfront/views/ShadowfrontView.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('gm_unsync_shadowfront_participant');
     });
