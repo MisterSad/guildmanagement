@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { initOcrDropdown } from '../src/modules/app/ocr/ocr.controller';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -10,7 +11,7 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
     describe('1. Static Template & Markup Invariants (index.html & components.css)', () => {
         const html = read('index.html');
         const css = read('components.css');
-        const app = read('app.js');
+        const app = read('src/modules/app/ocr/ocr.controller.ts');
 
         it('replaces horizontal 8-button row with single compact trigger button in .gm-ocr-toolbar', () => {
             const toolbarMatch = html.match(/<div class="gm-ocr-toolbar"[^>]*>([\s\S]*?)<\/div>\s*<form id="add-member-form"/);
@@ -77,9 +78,9 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
             expect(i18nTs).toContain('AI Metric Scanners');
         });
 
-        it('app.js defines initOcrDropdown and exposes it on window.GM', () => {
-            expect(app).toContain('function initOcrDropdown()');
-            expect(app).toContain('window.GM.initOcrDropdown = initOcrDropdown;');
+        it('defines initOcrDropdown in the OCR controller and exposes it through window.GM_OCR', () => {
+            expect(app).toContain('function initOcrDropdown');
+            expect(read('src/main.ts')).toContain('initOcrDropdown');
         });
     });
 
@@ -90,13 +91,8 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
         let outsideElem;
 
         function setupInitOcrDropdown() {
-            const appJs = read('app.js');
-            const fnMatch = appJs.match(/function initOcrDropdown\(\)[\s\S]*?\n    }/);
-            expect(fnMatch).not.toBeNull();
-            return new Function('document', 'window', `
-                ${fnMatch[0]}
-                return initOcrDropdown;
-            `)(document, window);
+            // Ported to /src (Strangler cutover): use the real typed module.
+            return initOcrDropdown;
         }
 
         beforeEach(() => {

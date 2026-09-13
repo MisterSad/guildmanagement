@@ -102,21 +102,22 @@ describe('stats granularity additions (StatsView + StatsService after cutover)',
   });
 });
 
-describe('Admin Player History modal (app.js)', () => {
-  const appJs = read('app.js');
+describe('Admin Player History modal (src/modules/app/dialogs/dialogs.service.ts)', () => {
+  const appJs = read('src/modules/app/dialogs/dialogs.service.ts');
+  const mainTs = read('src/main.ts');
 
   it('defines showPlayerHistoryDialog and exposes it on window.GM_APP', () => {
-    expect(appJs).toContain('async function showPlayerHistoryDialog(uid, pseudo)');
-    expect(appJs).toContain('window.GM_APP.showPlayerHistory = showPlayerHistoryDialog');
+    expect(appJs).toMatch(/async function showPlayerHistoryDialog\(/);
+    expect(mainTs).toContain('GM_APP.showPlayerHistory = showPlayerHistoryDialog');
   });
 
   it('calls both gm_get_player_metrics_history (previously unused) and the new gm_get_player_event_history RPC', () => {
-    expect(appJs).toContain("supabase.rpc('gm_get_player_metrics_history'");
-    expect(appJs).toContain("supabase.rpc('gm_get_player_event_history'");
+    expect(appJs).toMatch(/\.rpc\('gm_get_player_metrics_history'/);
+    expect(appJs).toMatch(/\.rpc\('gm_get_player_event_history'/);
   });
 
   it('renders the power trend using the chart renderer shared with the player Portal', () => {
-    expect(appJs).toContain('window.GM.drawScoreTrendChart');
+    expect(appJs).toContain('drawScoreTrendChart');
   });
 });
 

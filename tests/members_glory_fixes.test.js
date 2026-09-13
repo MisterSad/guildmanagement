@@ -19,33 +19,33 @@ describe('Members accordion collapse (v128.1)', () => {
   });
 
   it('the accordion JS wiring is intact (header click toggles collapse state)', () => {
-    const app = read('app.js');
+    const app = read('src/modules/app/members/members.render.ts');
     expect(app).toContain('.gm-role-group-header');
-    expect(app).toContain('window.GM_COLLAPSED_ROLES[role] = !window.GM_COLLAPSED_ROLES[role]');
-    expect(app).toMatch(/gm-role-group' \+ \(isCollapsed \? ' is-collapsed' : ''\)/);
+    expect(app).toMatch(/GM_COLLAPSED_ROLES\[role\] = !\w*\.?GM_COLLAPSED_ROLES\[role\]/);
+    expect(app).toMatch(/gm-role-group' \+ \(collapsed \? ' is-collapsed' : ''\)/);
   });
 });
 
 describe('Glory OCR weekly routing (v128.1)', () => {
   it('existing-member glory updates route through the gm_upsert_player_glory RPC', () => {
-    const app = read('app.js');
-    const commitIdx = app.indexOf('async function executeRosterCommit');
+    const app = read('src/modules/app/ocr/ocr.controller.ts');
+    const commitIdx = app.indexOf('function executeRosterCommit');
     const commitSrc = app.slice(commitIdx, commitIdx + 12000);
     expect(commitIdx).toBeGreaterThan(-1);
     // The glory branch calls the RPC (writes event_participants weekly row + syncs guild_members)
     expect(commitSrc).toContain("if (targetField === 'glory_score')");
-    expect(commitSrc).toContain("db.rpc('gm_upsert_player_glory'");
+    expect(commitSrc).toMatch(/\.rpc\('gm_upsert_player_glory'/);
     expect(commitSrc).toContain('p_week_start: gloryWeek');
     // Non-glory metrics keep the direct guild_members update
-    expect(commitSrc).toContain("db.from('guild_members')");
+    expect(commitSrc).toContain("from('guild_members')");
   });
 
   it('new-member glory inserts also record the weekly event_participants row', () => {
-    const app = read('app.js');
-    const commitIdx = app.indexOf('async function executeRosterCommit');
+    const app = read('src/modules/app/ocr/ocr.controller.ts');
+    const commitIdx = app.indexOf('function executeRosterCommit');
     const commitSrc = app.slice(commitIdx, commitIdx + 16000);
     expect(commitSrc).toMatch(/if \(targetField === 'glory_score' && nScore > 0\)/);
-    expect(commitSrc).toContain('p_week_start: gloryWeekNew');
+    expect(commitSrc).toContain('p_week_start: getWeekStart()');
   });
 
   it('the Glory tab still reads weekly scores from event_participants by week_start', () => {

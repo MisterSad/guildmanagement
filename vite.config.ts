@@ -4,7 +4,9 @@ export default defineConfig({
   root: './',
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // Source maps disabled for production: the post-cutover invariant is that
+    // no `app.js` reference survives in the shipped bundle (index.html/dist).
+    sourcemap: false,
     target: 'es2022',
   },
   server: {

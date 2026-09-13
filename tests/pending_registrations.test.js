@@ -72,7 +72,7 @@ describe('Pending Player Registration Visibility & Validation', () => {
     });
   });
 
-  describe('Admin Console UI (index.html & app.js)', () => {
+  describe('Admin Console UI (index.html & /src admin modules)', () => {
     it('index.html contains pending registrations section in Accounts & Access tab', () => {
       const html = read('index.html');
       expect(html).toContain('id="pending-accounts-card-admin"');
@@ -80,23 +80,23 @@ describe('Pending Player Registration Visibility & Validation', () => {
       expect(html).toContain('id="admin-pending-account-count"');
     });
 
-    it('app.js renderPendingRegistrations updates both Overview and Accounts tabs', () => {
-      const appJs = read('app.js');
-      expect(appJs).toContain('document.getElementById(\'admin-pending-account-list\')');
-      expect(appJs).toContain('document.getElementById(\'admin-pending-account-count\')');
-      expect(appJs).toContain('document.getElementById(\'pending-account-list\')');
-      expect(appJs).toContain('document.getElementById(\'pending-account-count\')');
+    it('renderPendingRegistrations updates both Overview and Accounts tabs', () => {
+      const appJs = read('src/modules/app/admin/guild-requests.controller.ts');
+      expect(appJs).toContain("byId('admin-pending-account-list')");
+      expect(appJs).toContain("byId('admin-pending-account-count')");
+      expect(appJs).toContain("byId('pending-account-list')");
+      expect(appJs).toContain("byId('pending-account-count')");
     });
 
-    it('app.js matches guild case-insensitively in renderPendingRegistrations and renderAccounts', () => {
-      const appJs = read('app.js');
-      expect(appJs).toMatch(/var activeGUpper = String\(activeG \|\| ''\)\.trim\(\)\.toUpperCase\(\);/);
+    it('matches guild case-insensitively in renderPendingRegistrations and renderAccounts', () => {
+      const appJs = read('src/modules/app/admin/guild-requests.controller.ts') + read('src/modules/app/admin/accounts.render.ts');
+      expect(appJs).toMatch(/const activeGUpper = String\(guild \|\| ''\)\.trim\(\)\.toUpperCase\(\);/);
       expect(appJs).toMatch(/accGuildUpper === activeGUpper/);
       expect(appJs).toMatch(/String\(accGuild\)\.trim\(\)\.toUpperCase\(\) === activeGUpper/);
     });
 
-    it('app.js filters out pending status accounts from active member accounts', () => {
-      const appJs = read('app.js');
+    it('filters out pending status accounts from active member accounts', () => {
+      const appJs = read('src/modules/app/admin/accounts.render.ts');
       expect(appJs).toMatch(/if \(acc\.status === 'pending'\) return false;/);
     });
   });

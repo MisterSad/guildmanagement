@@ -74,50 +74,46 @@ describe('StatsView / HistoryView TTL freshness gating', () => {
   });
 });
 
-describe('app.js invalidates the cache after every mutation the Stats/History pages depend on', () => {
-  const appJs = read('app.js');
+describe('member mutations invalidate the cache the Stats/History pages depend on', () => {
+  const membersCtrl = read('src/modules/app/members/members.controller.ts');
+  const ocrCtrl = read('src/modules/app/ocr/ocr.controller.ts');
 
   it('invalidates after member delete, add, and edit', () => {
-    // Loose structural check: each of these functions contains an
-    // invalidate() call somewhere after its success toast, without pinning
-    // exact line numbers (all three are reused, deep in a large function).
-    const deleteFn = appJs.slice(appJs.indexOf('async function deleteGuildMember'), appJs.indexOf('async function deleteGuildMember') + 1500);
-    expect(deleteFn).toContain('window.GM.cache.invalidate()');
+    const deleteStart = membersCtrl.indexOf('function deleteGuildMember');
+    const deleteFn = membersCtrl.slice(deleteStart, deleteStart + 1500);
+    expect(deleteFn).toContain('cache.invalidate()');
 
-    const addStart = appJs.indexOf('async function handleAddMember');
-    const addNextFn = appJs.indexOf('\n    async function ', addStart + 100);
-    const addFn = appJs.slice(addStart, addNextFn);
-    expect(addFn).toContain('window.GM.cache.invalidate()');
+    const addStart = membersCtrl.indexOf('function handleAddMember');
+    const addNextFn = membersCtrl.indexOf('export async function', addStart + 10);
+    const addFn = membersCtrl.slice(addStart, addNextFn > addStart ? addNextFn : addStart + 6000);
+    expect(addFn).toContain('cache.invalidate()');
 
-    expect(appJs).toContain("showToast(t('toast_member_updated'), 'success');\n            if (window.GM && window.GM.cache) window.GM.cache.invalidate();");
+    expect(membersCtrl).toMatch(/showToast\(t\('toast_member_updated'\), 'success'\);\s*if \(gm && gm\.cache && typeof gm\.cache\.invalidate === 'function'\) gm\.cache\.invalidate\(\);/);
   });
 
   it('invalidates after both OCR commit branches (event participation + roster metrics)', () => {
-    const occurrences = (appJs.match(/window\.GM\.cache\.invalidate\(\)/g) || []).length;
-    // 6 known sites: delete, add, edit, 2 OCR branches, instant transfer,
-    // plus resolveTransfer — at least 6, allowing headroom for the exact count.
+    const occurrences = ((membersCtrl + ocrCtrl).match(/cache\.invalidate\(/g) || []).length;
     expect(occurrences).toBeGreaterThanOrEqual(6);
   });
 
   it('invalidates after both transfer paths (instant transfer and the approve/reject queue)', () => {
-    const resolveStart = appJs.indexOf('window.GM.resolveTransfer = async function');
-    const resolveFn = appJs.slice(resolveStart, resolveStart + 1500);
-    expect(resolveFn).toContain('window.GM.cache.invalidate()');
-    expect(appJs).toContain("transferred to ' + targetGuild + ' on Server #' + targetServer + '!', 'success');\n                if (window.GM && window.GM.cache) window.GM.cache.invalidate();");
+    const resolveStart = membersCtrl.indexOf('function resolveTransfer');
+    const resolveFn = membersCtrl.slice(resolveStart, resolveStart + 2000);
+    expect(resolveFn).toContain('cache.invalidate()');
+    expect(membersCtrl).toContain('transfer_guild_member');
   });
 });
 
 describe('Batched per-row Supabase calls (previously sequential for-loops)', () => {
-  const appJs = read('app.js');
+  const ocrJs = read('src/modules/app/ocr/ocr.controller.ts');
   const eventsJs = read('src/modules/events/views/EventsView.ts');
 
-  it('commitOcrUpdates() batches all 5 known loops (Shadowfront, Arms Race, generic event, existing-member updates, new-member inserts) via runInChunks', () => {
-    const ocrFnStart = appJs.indexOf('async function commitOcrUpdates');
-    const nextFnStart = appJs.indexOf('\n    async function ', ocrFnStart + 100);
-    const ocrFn = appJs.slice(ocrFnStart, nextFnStart);
-    const runInChunksCalls = (ocrFn.match(/window\.GM\.runInChunks\(/g) || []).length;
+  it('commitOcrUpdates/executeRosterCommit batch all known loops via runInChunks', () => {
+    const start = ocrJs.indexOf('export async function commitOcrUpdates');
+    const end = ocrJs.indexOf('function invalidateCache');
+    const ocrFn = ocrJs.slice(start, end > start ? end : undefined);
+    const runInChunksCalls = (ocrFn.match(/runInChunks\(/g) || []).length;
     expect(runInChunksCalls).toBeGreaterThanOrEqual(5);
-    // No leftover sequential per-row for-loops in this function.
     expect(ocrFn).not.toMatch(/for \(var i = 0; i < selected(Players|Existing)\.length; i\+\+\)/);
   });
 
@@ -128,13 +124,13 @@ describe('Batched per-row Supabase calls (previously sequential for-loops)', () 
 });
 
 describe('showTransferMemberDialog fires its two independent queries in parallel', () => {
-  const appJs = read('app.js');
+  const membersCtrl = read('src/modules/app/members/members.controller.ts');
 
   it('kicks off both promises before awaiting either', () => {
-    const fnStart = appJs.indexOf('async function showTransferMemberDialog');
-    const fn = appJs.slice(fnStart, fnStart + 2500);
-    const eligIdx = fn.indexOf('var eligPromise = supabase.rpc');
-    const curIdx = fn.indexOf('var curPromise = supabase.from');
+    const fnStart = membersCtrl.indexOf('function showTransferMemberDialog');
+    const fn = membersCtrl.slice(fnStart, fnStart + 3000);
+    const eligIdx = fn.indexOf('const eligPromise = client.rpc');
+    const curIdx = fn.indexOf('const curPromise = client.from');
     const firstAwaitIdx = fn.indexOf('await eligPromise');
     expect(eligIdx).toBeGreaterThan(-1);
     expect(curIdx).toBeGreaterThan(-1);

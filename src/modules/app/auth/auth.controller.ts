@@ -1,0 +1,786 @@
+/**
+ * src/modules/app/auth/auth.controller.ts
+ *
+ * Sous-lot 6.3 (Strangler) — auth/session UI controller ported from app.js:
+ * session restore, post-login routing, logout, the auth tab/form wiring, the
+ * passkey nudge, passkey sign-in buttons and the backup-code dialog.
+ *
+ * Runtime notes:
+ *  - `app.js` is still the authoritative parser-time wiring; this module is the
+ *    typed replacement exposed on `window.GM_AUTH` (no auto-init yet, to avoid
+ *    double listeners).
+ *  - Restrictions are written through `patchAppState`, so `/src` modules and
+ *    `app.js` stay coherent via the window mirror.
+ *  - Passkey ceremonies delegate to `window.GM.webauthn` (via core/auth/session),
+ *    and user feedback delegates to dialogs.service.
+ */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { patchAppState, resetAppState } from '../state/app-state';
+import { showToast } from '../dialogs/dialogs.service';
+
+export type AuthTab = 'signin' | 'register' | 'guild-request' | 'login' | 'request';
+
+export interface LoginResponse {
+  ok: boolean;
+  role?: string;
+  id?: string;
+  hasPasskey?: boolean;
+  error?: string;
+  [key: string]: any;
+}
+
+export type AuthSuccessHandler = (resp: LoginResponse, typedUser: string) => void | Promise<void>;
+
+export interface RestoreSessionResult {
+  restored: boolean;
+  role?: string;
+  portal?: boolean;
+}
+
+function w(): any {
+  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
+}
+
+function ls(): Storage | null {
+  return typeof localStorage !== 'undefined' ? localStorage : null;
+}
+
+function ss(): Storage | null {
+  return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
+}
+
+function el<T extends HTMLElement = HTMLElement>(id: string): T | null {
+  if (typeof document === 'undefined') return null;
+  return document.getElementById(id) as T | null;
+}
+
+function g(): any {
+  return w().GM;
+}
+
+function db(): any {
+  const x = g();
+  return x && x.db ? x.db : null;
+}
+
+function normalizeRole(role: unknown): string {
+  const x = g();
+  if (x && typeof x.normalizeRole === 'function') return x.normalizeRole(role);
+  if (role === 'R5' || role === 'admin' || role === 'super_admin') return 'super_admin';
+  if (role === 'server_admin') return 'server_admin';
+  if (role === 'R4' || role === 'guild_admin') return 'guild_admin';
+  return 'member';
+}
+
+function t(key: string): string {
+  const x = g();
+  return x && typeof x.t === 'function' ? x.t(key) : key;
+}
+
+function setLoginError(message: string): void {
+  const box = el('login-error');
+  if (!box) return;
+  const span = box.querySelector('span:last-of-type');
+  if (span) span.textContent = message;
+  box.classList.remove('hidden');
+}
+
+// ── UI reveal helpers ────────────────────────────────────────────────────────
+
+function revealPortal(): void {
+  const loginView = el('login-view');
+  const dashboardView = el('dashboard-view');
+  const playerPortalView = el('player-portal-view');
+  const portalStepLookup = el('portal-step-lookup');
+  const portalStepForm = el('portal-step-form');
+
+  if (loginView) loginView.classList.add('hidden');
+  if (dashboardView) { dashboardView.classList.add('hidden'); dashboardView.classList.remove('active'); }
+  if (playerPortalView) playerPortalView.classList.remove('hidden');
+  if (portalStepLookup) portalStepLookup.classList.add('hidden');
+  if (portalStepForm) portalStepForm.classList.remove('hidden');
+  if (playerPortalView) playerPortalView.classList.add('portal-connected');
+
+  const container = document.querySelector('.gm-portal-container');
+  if (container) container.classList.add('portal-wide');
+
+  const portal = w().GM_PORTAL;
+  if (portal && typeof portal.loadDashboard === 'function') portal.loadDashboard();
+}
+
+function revealAdmin(role: string): void {
+  const app = w().GM_APP;
+  if (app && typeof app.showAdminDashboard === 'function') {
+    app.showAdminDashboard(role);
+    return;
+  }
+  const loginView = el('login-view');
+  if (loginView) loginView.classList.add('hidden');
+  const dashboardView = el('dashboard-view');
+  if (dashboardView) { dashboardView.classList.remove('hidden'); dashboardView.classList.add('active'); }
+  const shell = w().GM_SHELL;
+  if (shell && typeof shell.renderShell === 'function') shell.renderShell();
+}
+
+function reloadActiveView(): void {
+  const app = w().GM_APP;
+  if (app && typeof app.reloadActiveView === 'function') app.reloadActiveView();
+}
+
+async function fetchGuildsIfAvailable(): Promise<void> {
+  const app = w().GM_APP;
+  if (app && typeof app.fetchGuilds === 'function') {
+    try { await app.fetchGuilds(); } catch (_) { /* best effort */ }
+  }
+}
+
+// ── Session restore ──────────────────────────────────────────────────────────
+
+/**
+ * Restores the persisted Supabase session on boot. Hides the login panel before
+ * the async JWT verification (anti-flash of the admin dashboard), then either
+ * restores the player portal, restores the admin dashboard, or logs out.
+ */
+export async function restoreSession(): Promise<RestoreSessionResult> {
+  const store = ls();
+  const localRole = store ? store.getItem('gm_role') : null;
+  const localUser = store ? store.getItem('gm_user') : null;
+  const portalSession = store ? store.getItem('gm_portal_session') === '1' : false;
+
+  if (localRole || localUser) {
+    const loginView = el('login-view');
+    if (loginView) loginView.classList.add('hidden');
+  }
+
+  const x = g();
+  let info: any = x && typeof x.sessionInfo === 'function' ? await x.sessionInfo() : null;
+  if (!info && x && typeof x.forceRefreshPortalSession === 'function') {
+    info = await x.forceRefreshPortalSession();
+  }
+
+  if (!info) {
+    if (localRole || localUser) await doLogout();
+    return { restored: false };
+  }
+
+  // Player-portal session: restore the portal directly, full page.
+  if (portalSession && info.role === 'member') {
+    if (store) {
+      store.setItem('gm_role', 'member');
+      if (info.accountId) store.setItem('gm_user', info.accountId);
+    }
+    if (x && info.accountId) x.currentAccountId = info.accountId;
+    patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
+    if (store) store.removeItem('gm_guild_restriction');
+    revealPortal();
+    return { restored: true, role: 'member', portal: true };
+  }
+
+  if (store) store.removeItem('gm_portal_session');
+
+  // Restriction resolution (accounts-table-only).
+  if (info.role === 'guild_admin' && info.accountId) {
+    const client = db();
+    let guild: string | null = null;
+    if (client) {
+      try {
+        const { data } = await client.from('accounts').select('guild').ilike('id', info.accountId).maybeSingle();
+        guild = data && data.guild ? data.guild : null;
+      } catch (err) {
+        console.error('Failed to restore account guild restriction:', err);
+      }
+    }
+    patchAppState({ currentGuildRestriction: guild, currentServerRestriction: null });
+    if (store) {
+      if (guild) { store.setItem('gm_guild_restriction', guild); store.setItem('gm_current_guild', guild); }
+      else store.removeItem('gm_guild_restriction');
+      store.removeItem('gm_server_restriction');
+    }
+  } else if (info.role === 'server_admin' && info.accountId) {
+    const client = db();
+    let serverNumber: string | null = null;
+    if (client) {
+      try {
+        const { data } = await client.from('accounts').select('guild, server_number').ilike('id', info.accountId).maybeSingle();
+        const sNum = data && data.server_number;
+        if (sNum) serverNumber = String(sNum);
+        else if (data && data.guild) {
+          const { data: guildRow } = await client.from('guilds').select('server_number').eq('id', data.guild).maybeSingle();
+          if (guildRow && guildRow.server_number) serverNumber = String(guildRow.server_number);
+        }
+      } catch (err) {
+        console.error('Failed to restore server restriction:', err);
+      }
+    }
+    patchAppState({ currentGuildRestriction: null, currentServerRestriction: serverNumber });
+    if (store) {
+      if (serverNumber) store.setItem('gm_server_restriction', serverNumber);
+      else store.removeItem('gm_server_restriction');
+      store.removeItem('gm_guild_restriction');
+    }
+  } else {
+    patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
+    if (store) {
+      store.removeItem('gm_guild_restriction');
+      store.removeItem('gm_server_restriction');
+    }
+  }
+
+  const role = info.role;
+  if (store) {
+    store.setItem('gm_role', role);
+    if (info.accountId) store.setItem('gm_user', info.accountId);
+  }
+  if (x && info.accountId) x.currentAccountId = info.accountId;
+
+  if (role === 'guild_admin' && x && typeof x.ensureGuildRestriction === 'function') {
+    try { await x.ensureGuildRestriction(); } catch (_) { /* best effort */ }
+  }
+
+  await fetchGuildsIfAvailable();
+  revealAdmin(role);
+  reloadActiveView();
+
+  return { restored: true, role };
+}
+
+// ── Post-login ───────────────────────────────────────────────────────────────
+
+/** Shared post-login path (password, passkey, backup code). */
+export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: string): Promise<void> {
+  const x = g();
+  if (x && typeof x.abortConditionalPasskeyLogin === 'function') x.abortConditionalPasskeyLogin();
+
+  const canonicalUser = resp.id || typedUser || '';
+  const loginError = el('login-error');
+  if (loginError) loginError.classList.add('hidden');
+  const password = el<HTMLInputElement>('password');
+  if (password) password.value = '';
+
+  await fetchGuildsIfAvailable();
+
+  const role = normalizeRole(resp.role);
+  const store = ls();
+
+  if (role === 'guild_admin') {
+    const client = db();
+    let guild: string | null = null;
+    if (client) {
+      try {
+        const { data } = await client.from('accounts').select('guild').ilike('id', canonicalUser).maybeSingle();
+        guild = data && data.guild ? data.guild : null;
+      } catch (err) {
+        console.error('Failed to load login guild restriction:', err);
+      }
+    }
+    if (guild) {
+      patchAppState({ currentGuildRestriction: guild, currentGuild: guild, currentServerRestriction: null });
+      if (store) { store.setItem('gm_current_guild', guild); store.setItem('gm_guild_restriction', guild); store.removeItem('gm_server_restriction'); }
+    } else {
+      patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
+      if (store) { store.removeItem('gm_guild_restriction'); store.removeItem('gm_server_restriction'); }
+    }
+  } else if (role === 'server_admin') {
+    const client = db();
+    let serverNumber: string | null = null;
+    if (client) {
+      try {
+        const { data } = await client.from('accounts').select('guild, server_number').ilike('id', canonicalUser).maybeSingle();
+        const sNum = data && data.server_number;
+        if (sNum) serverNumber = String(sNum);
+        else if (data && data.guild) {
+          const { data: guildRow } = await client.from('guilds').select('server_number').eq('id', data.guild).maybeSingle();
+          if (guildRow && guildRow.server_number) serverNumber = String(guildRow.server_number);
+        }
+      } catch (err) {
+        console.error('Failed to load login server restriction:', err);
+      }
+    }
+    patchAppState({ currentGuildRestriction: null, currentServerRestriction: serverNumber });
+    if (store) {
+      if (serverNumber) store.setItem('gm_server_restriction', serverNumber);
+      else store.removeItem('gm_server_restriction');
+      store.removeItem('gm_guild_restriction');
+    }
+  } else {
+    patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
+    if (store) { store.removeItem('gm_guild_restriction'); store.removeItem('gm_server_restriction'); }
+  }
+
+  if (store) {
+    store.setItem('gm_role', role);
+    store.setItem('gm_user', canonicalUser);
+  }
+  if (x) x.currentAccountId = canonicalUser;
+
+  revealAdmin(role);
+  showToast(role === 'super_admin'
+    ? t('toast_login_ok')
+    : (t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !'), 'success');
+
+  maybeShowSecureAccountPrompt(resp, role);
+}
+
+// ── Logout / login screens ───────────────────────────────────────────────────
+
+export async function doLogout(): Promise<void> {
+  const x = g();
+  if (x && typeof x.logout === 'function') {
+    try {
+      const r = x.logout();
+      if (r && typeof r.then === 'function') await r;
+    } catch (_) { /* ignore */ }
+  }
+
+  const store = ls();
+  if (store) {
+    ['gm_role', 'gm_user', 'gm_current_guild', 'gm_guild_restriction', 'gm_server_restriction', 'gm_portal_session']
+      .forEach((k) => store.removeItem(k));
+  }
+
+  resetAppState();
+  showLogin();
+  showToast(t('toast_logout'), 'info');
+}
+
+export function showLogin(): void {
+  const dashboardView = el('dashboard-view');
+  if (dashboardView) { dashboardView.classList.add('hidden'); dashboardView.classList.remove('active'); }
+  const loginView = el('login-view');
+  if (loginView) { loginView.classList.remove('hidden'); loginView.classList.add('active'); }
+  startConditionalPasskeyListener();
+}
+
+/** Arms the conditional/autofill passkey listener (silent, normal no-op). */
+export function startConditionalPasskeyListener(): void {
+  const x = g();
+  if (!x || typeof x.startConditionalPasskeyLogin !== 'function') return;
+  x.startConditionalPasskeyLogin()
+    .then((resp: LoginResponse | null) => {
+      if (resp && resp.ok) void handleSuccessfulLogin(resp, resp.id);
+    })
+    .catch(() => { /* silent by design */ });
+}
+
+// ── Auth tabs & forms ────────────────────────────────────────────────────────
+
+/** Switches between the signin / register / guild-request auth panels. */
+export function showAuthTab(tab: AuthTab): void {
+  const tabId = tab === 'login' ? 'signin' : (tab === 'request' ? 'guild-request' : tab);
+  const loginForm = el('login-form');
+  const registerForm = el('register-form');
+  const guildRequestForm = el('guild-request-form');
+  if (loginForm) loginForm.classList.toggle('hidden', tabId !== 'signin');
+  if (registerForm) registerForm.classList.toggle('hidden', tabId !== 'register');
+  if (guildRequestForm) guildRequestForm.classList.toggle('hidden', tabId !== 'guild-request');
+
+  const registerError = el('register-error');
+  if (registerError) registerError.classList.add('hidden');
+  const guildRequestError = el('guild-request-error');
+  if (guildRequestError) guildRequestError.classList.add('hidden');
+  const guildRequestSuccess = el('guild-request-success');
+  if (guildRequestSuccess) guildRequestSuccess.classList.add('hidden');
+
+  const signinTab = el('auth-tab-signin');
+  const registerTab = el('auth-tab-register');
+  const requestTab = el('auth-tab-guild-request');
+  if (signinTab) signinTab.classList.toggle('active', tabId === 'signin');
+  if (registerTab) registerTab.classList.toggle('active', tabId === 'register');
+  if (requestTab) requestTab.classList.toggle('active', tabId === 'guild-request');
+}
+
+/** Boolean-compatible wrapper kept for legacy call sites. */
+export function showRegisterForm(show: boolean): void {
+  showAuthTab(show ? 'register' : 'signin');
+}
+
+const GUILD_REQUEST_ERRORS: Record<string, string> = {
+  invalid_guild_tag: 'Guild tag must be 2-12 letters, numbers or underscores.',
+  invalid_server_number: 'Server number must be exactly 4 digits.',
+  invalid_admin_id: 'Admin login must be 3 to 32 characters.',
+  invalid_discord_handle: 'Please enter a valid Discord handle.',
+  note_too_long: 'Note is too long (max 500 characters).',
+  tag_taken: 'This guild tag is already taken or has a pending request.',
+  admin_id_taken: 'This admin login is already taken or has a pending request.',
+  too_many_pending_requests: 'Too many pending requests right now. Please try again later.',
+  too_many_attempts: 'Too many attempts. Please wait a few minutes and try again.',
+  missing_fields: 'Please fill in all required fields.',
+  request_failed: 'Network error. Please try again.'
+};
+
+const REGISTER_ERRORS: Record<string, string> = {
+  invalid_identifier: 'Identifier must be 3 to 32 characters.',
+  weak_password: 'Password must be at least 8 characters.',
+  invalid_uid: 'Invalid in-game UID.',
+  invalid_code: 'Invalid guild join code.',
+  uid_not_in_guild: 'This UID is not a member of the guild for this join code.',
+  uid_already_claimed: 'This UID is already linked to an account.',
+  identifier_taken: 'This identifier is already taken.',
+  too_many_attempts: 'Too many attempts. Try again later.',
+  request_failed: 'Network error. Please try again.'
+};
+
+async function onLoginSubmit(e: Event): Promise<void> {
+  e.preventDefault();
+  const form = e.target as HTMLFormElement;
+  const userInput = el<HTMLInputElement>('username');
+  const passInput = el<HTMLInputElement>('password');
+  const user = userInput ? userInput.value.trim() : '';
+  const pass = passInput ? passInput.value : '';
+
+  const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+  if (btn) btn.disabled = true;
+  const span = btn ? btn.querySelector('span') : null;
+  if (span) span.textContent = t('login_btn_loading');
+
+  try {
+    const x = g();
+    const resp: LoginResponse = x && typeof x.login === 'function'
+      ? await x.login(user, pass)
+      : { ok: false, error: 'no_client' };
+
+    if (resp.ok) {
+      await handleSuccessfulLogin(resp, user);
+    } else if (resp.error === 'pending_approval') {
+      setLoginError('Your account is awaiting approval by a guild admin.');
+    } else if (resp.error === 'invalid_credentials') {
+      setLoginError(t('login_error'));
+    } else if (resp.error === 'too_many_attempts') {
+      setLoginError('Too many attempts. Please wait a few minutes and try again.');
+    } else if (resp.error === 'account_locked') {
+      setLoginError('This account is temporarily locked after too many failed attempts.');
+    } else {
+      setLoginError(resp.error || t('login_error'));
+    }
+  } catch (err: any) {
+    console.error('Login error details:', err);
+    setLoginError(err && err.message ? err.message : t('login_error'));
+    const card = document.querySelector('.login-card');
+    if (card) {
+      (card as HTMLElement).style.animation = 'none';
+      void (card as HTMLElement).offsetHeight;
+      (card as HTMLElement).style.animation = 'shake 0.4s ease-in-out';
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+    if (span) span.textContent = t('login_btn');
+  }
+}
+
+async function onRegisterSubmit(e: Event): Promise<void> {
+  e.preventDefault();
+  const form = e.target as HTMLFormElement;
+  const id = (el<HTMLInputElement>('register-id') || ({} as any)).value || '';
+  const pass = (el<HTMLInputElement>('register-password') || ({} as any)).value || '';
+  const uid = (el<HTMLInputElement>('register-uid') || ({} as any)).value || '';
+  const code = (el<HTMLInputElement>('register-code') || ({} as any)).value || '';
+
+  const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+  if (btn) btn.disabled = true;
+  const span = btn ? btn.querySelector('span') : null;
+  if (span) span.textContent = 'Submitting...';
+
+  try {
+    const x = g();
+    const resp: LoginResponse = x && typeof x.registerPlayer === 'function'
+      ? await x.registerPlayer(id.trim(), pass, uid.trim(), code.trim())
+      : { ok: false, error: 'no_client' };
+
+    if (resp.ok) {
+      const registerError = el('register-error');
+      if (registerError) registerError.classList.add('hidden');
+      form.reset();
+      showRegisterForm(false);
+      showToast('Registration submitted. A guild admin will approve your account.', 'success');
+    } else {
+      const msg = REGISTER_ERRORS[resp.error || ''] || 'Registration failed. Please try again.';
+      const registerError = el('register-error');
+      if (registerError) {
+        registerError.classList.remove('hidden');
+        const regMsg = registerError.querySelector('span:last-of-type');
+        if (regMsg) regMsg.textContent = msg;
+      }
+    }
+  } catch (err) {
+    console.error('Registration error details:', err);
+    const registerError = el('register-error');
+    if (registerError) registerError.classList.remove('hidden');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (span) span.textContent = 'Create account';
+  }
+}
+
+async function onGuildRequestSubmit(e: Event): Promise<void> {
+  e.preventDefault();
+  const form = e.target as HTMLFormElement;
+  const tag = (el<HTMLInputElement>('guild-request-tag') || ({} as any)).value || '';
+  const server = (el<HTMLInputElement>('guild-request-server') || ({} as any)).value || '';
+  const adminId = (el<HTMLInputElement>('guild-request-admin-id') || ({} as any)).value || '';
+  const discord = (el<HTMLInputElement>('guild-request-discord') || ({} as any)).value || '';
+  const note = (el<HTMLTextAreaElement>('guild-request-note') || ({} as any)).value || '';
+
+  const guildRequestError = el('guild-request-error');
+  const guildRequestSuccess = el('guild-request-success');
+  if (guildRequestError) guildRequestError.classList.add('hidden');
+  if (guildRequestSuccess) guildRequestSuccess.classList.add('hidden');
+
+  const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+  if (btn) btn.disabled = true;
+  const span = btn ? btn.querySelector('span:last-of-type') : null;
+  const origText = span ? span.textContent : '';
+  if (span) span.textContent = 'Submitting...';
+
+  try {
+    const x = g();
+    const resp: LoginResponse = x && typeof x.submitGuildRequest === 'function'
+      ? await x.submitGuildRequest(tag.trim(), server.trim(), adminId.trim(), discord.trim(), note.trim())
+      : { ok: false, error: 'no_client' };
+
+    if (resp.ok) {
+      form.reset();
+      if (guildRequestSuccess) guildRequestSuccess.classList.remove('hidden');
+    } else {
+      const msg = GUILD_REQUEST_ERRORS[resp.error || ''] || 'Request failed. Please try again.';
+      if (guildRequestError) {
+        guildRequestError.classList.remove('hidden');
+        const errMsg = guildRequestError.querySelector('span:last-of-type');
+        if (errMsg) errMsg.textContent = msg;
+      }
+    }
+  } catch (err) {
+    console.error('Guild request error details:', err);
+    if (guildRequestError) guildRequestError.classList.remove('hidden');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (span) span.textContent = origText;
+  }
+}
+
+function wireOnce(node: HTMLElement | null, flag: string, event: string, handler: (e: Event) => void): void {
+  if (!node || (node as any)[flag]) return;
+  (node as any)[flag] = true;
+  node.addEventListener(event, handler);
+}
+
+/** Wires the auth tabs/forms/logout. Idempotent via per-element flags. */
+export function initAuthForms(): void {
+  if (typeof document === 'undefined') return;
+
+  wireOnce(el('login-form'), '__gmAuthWired', 'submit', (e) => { void onLoginSubmit(e); });
+  wireOnce(el('register-form'), '__gmAuthWired', 'submit', (e) => { void onRegisterSubmit(e); });
+  wireOnce(el('guild-request-form'), '__gmAuthWired', 'submit', (e) => { void onGuildRequestSubmit(e); });
+
+  wireOnce(el('auth-tab-signin'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
+  wireOnce(el('auth-tab-register'), '__gmAuthWired', 'click', () => showAuthTab('register'));
+  wireOnce(el('auth-tab-guild-request'), '__gmAuthWired', 'click', () => showAuthTab('guild-request'));
+  wireOnce(el('go-to-register-btn'), '__gmAuthWired', 'click', () => showAuthTab('register'));
+  wireOnce(el('register-back-btn'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
+  wireOnce(el('guild-request-back-btn'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
+
+  wireOnce(el('logout-btn'), '__gmAuthWired', 'click', () => { void doLogout(); });
+  wireOnce(el('member-logout-btn'), '__gmAuthWired', 'click', () => { void doLogout(); });
+}
+
+// ── Passkey nudge ────────────────────────────────────────────────────────────
+
+/** One-time passkey nudge after a plain password login (never after a passkey). */
+export function maybeShowSecureAccountPrompt(resp: LoginResponse, role: string): void {
+  if (typeof document === 'undefined') return;
+  if (resp.hasPasskey !== false) return;
+  const storage = ss();
+  if (storage && storage.getItem('gm_secure_prompt_dismissed') === '1') return;
+  const x = g();
+  if (!x || !x.webauthn || typeof x.webauthn.isSupported !== 'function' || !x.webauthn.isSupported()) return;
+
+  const existing = document.getElementById('secure-account-banner');
+  if (existing) existing.remove();
+
+  const isPortal = role === 'member';
+
+  const banner = document.createElement('div');
+  banner.id = 'secure-account-banner';
+  banner.style.cssText = 'position:fixed; bottom:1rem; right:1rem; z-index:9000; max-width:360px; ' +
+    'background:var(--bg-soft, #1a1a24); border:1px solid rgba(255,255,255,0.1); border-radius:12px; ' +
+    'padding:1rem 1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:.6rem;';
+  banner.innerHTML =
+    '<div style="display:flex; align-items:flex-start; gap:.6rem;">' +
+      '<i class="ph ph-fingerprint" style="font-size: var(--fs-2xl); color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
+      '<div>' +
+        '<div style="font-weight:600; margin-bottom:.15rem;">Secure your account</div>' +
+        '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">Add a passkey to sign in faster next time, without typing your password.</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex; gap:.5rem; justify-content:flex-end;">' +
+      '<button type="button" id="secure-prompt-later" class="gm-btn gm-btn-ghost gm-btn-sm">Later</button>' +
+      '<button type="button" id="secure-prompt-setup" class="gm-btn gm-btn-primary gm-btn-sm">Set up now</button>' +
+    '</div>';
+
+  document.body.appendChild(banner);
+
+  function dismiss(): void {
+    if (storage) storage.setItem('gm_secure_prompt_dismissed', '1');
+    banner.remove();
+  }
+
+  const later = document.getElementById('secure-prompt-later');
+  if (later) later.addEventListener('click', dismiss);
+  const setup = document.getElementById('secure-prompt-setup');
+  if (setup) setup.addEventListener('click', () => {
+    dismiss();
+    if (isPortal) {
+      const navBtn = document.querySelector('[data-portal-nav="settings"]') as HTMLElement | null;
+      if (navBtn) navBtn.click();
+    } else {
+      const shell = w().GM_SHELL;
+      if (shell && typeof shell.gotoItem === 'function') shell.gotoItem('accounts');
+    }
+  });
+}
+
+// ── Passkey sign-in buttons / backup code dialog ─────────────────────────────
+
+/** Wires a passkey sign-in button (id optional → fully discoverable ceremony). */
+export function wirePasskeyLoginButton(
+  btnId: string,
+  idInputId: string,
+  errorElId: string,
+  onSuccess: AuthSuccessHandler
+): void {
+  const btn = el<HTMLButtonElement>(btnId);
+  if (!btn) return;
+  const x = g();
+  if (x && x.webauthn && typeof x.webauthn.isSupported === 'function' && !x.webauthn.isSupported()) {
+    btn.disabled = true;
+    btn.title = 'Passkeys are not supported in this browser.';
+  }
+
+  btn.addEventListener('click', async () => {
+    const idInput = el<HTMLInputElement>(idInputId);
+    const id = idInput ? idInput.value.trim() : '';
+    const errorEl = errorElId ? el(errorElId) : null;
+
+    btn.disabled = true;
+    const icon = btn.querySelector('i');
+    const originalIconClass = icon ? icon.className : '';
+    if (icon) icon.className = 'ph ph-circle-notch ph-spin';
+    try {
+      const client = g();
+      const resp: LoginResponse = client && typeof client.loginWithPasskey === 'function'
+        ? await client.loginWithPasskey(id)
+        : { ok: false, error: 'webauthn_unavailable' };
+
+      if (!resp.ok) {
+        if (resp.error !== 'cancelled' && errorEl) {
+          const msg = resp.error === 'no_passkeys'
+            ? 'No passkey found for this account.'
+            : resp.error === 'account_locked'
+              ? 'This account is temporarily locked.'
+              : 'Passkey sign-in failed.';
+          const span = errorEl.querySelector('span:last-of-type');
+          if (span) span.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+        return;
+      }
+      if (errorEl) errorEl.classList.add('hidden');
+      await onSuccess(resp, id);
+    } finally {
+      btn.disabled = false;
+      if (icon) icon.className = originalIconClass;
+    }
+  });
+}
+
+/** Backup-code sign-in dialog (both login screens). */
+export function openBackupCodeDialog(idInputId: string, onSuccess: AuthSuccessHandler): void {
+  if (typeof document === 'undefined') return;
+  const existing = document.getElementById('backup-code-login-overlay');
+  if (existing) existing.remove();
+
+  const prefilledId = (el<HTMLInputElement>(idInputId) || ({} as any)).value || '';
+
+  const html =
+    '<div id="backup-code-login-overlay" class="gm-modal-overlay">' +
+      '<div class="gm-modal-card" style="max-width: 380px; width: 92%;">' +
+        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom: .75rem;">' +
+          '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--accent);"></i>' +
+          '<h3 style="margin:0; font-size: var(--fs-xl);">Use a Backup Code</h3>' +
+        '</div>' +
+        '<div class="gm-login-field">' +
+          '<label for="backup-code-login-id">Identifier</label>' +
+          '<input type="text" id="backup-code-login-id" class="gm-input" value="' + String(prefilledId).replace(/"/g, '&quot;') + '" autocomplete="username">' +
+        '</div>' +
+        '<div class="gm-login-field" style="margin-top:.6rem;">' +
+          '<label for="backup-code-login-code">Backup code</label>' +
+          '<input type="text" id="backup-code-login-code" class="gm-input" placeholder="XXXXX-XXXXX" autocomplete="one-time-code">' +
+        '</div>' +
+        '<div id="backup-code-login-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
+          '<i class="ph ph-warning-circle"></i><span></span>' +
+        '</div>' +
+        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
+          '<button type="button" class="gm-btn gm-btn-ghost" id="backup-code-login-cancel">Cancel</button>' +
+          '<button type="button" class="gm-btn gm-btn-primary" id="backup-code-login-submit">Sign in</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  const overlay = document.getElementById('backup-code-login-overlay');
+  if (!overlay) return;
+  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+
+  const closeModal = (): void => {
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.remove(); }, 200);
+  };
+  const cancelBtn = document.getElementById('backup-code-login-cancel');
+  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
+
+  const submitBtn = document.getElementById('backup-code-login-submit') as HTMLButtonElement | null;
+  if (submitBtn) {
+    submitBtn.addEventListener('click', async () => {
+      const id = (el<HTMLInputElement>('backup-code-login-id') || ({} as any)).value || '';
+      const code = (el<HTMLInputElement>('backup-code-login-code') || ({} as any)).value || '';
+      const errorEl = document.getElementById('backup-code-login-error');
+      const trimmedId = id.trim();
+      const trimmedCode = code.trim();
+      if (!trimmedId || !trimmedCode) {
+        if (errorEl) {
+          const span = errorEl.querySelector('span:last-of-type');
+          if (span) span.textContent = 'Enter both your identifier and a backup code.';
+          errorEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      submitBtn.disabled = true;
+      try {
+        const client = g();
+        const resp: LoginResponse = client && typeof client.loginWithBackupCode === 'function'
+          ? await client.loginWithBackupCode(trimmedId, trimmedCode)
+          : { ok: false, error: 'webauthn_unavailable' };
+
+        if (!resp.ok) {
+          if (errorEl) {
+            const span = errorEl.querySelector('span:last-of-type');
+            if (span) {
+              span.textContent = resp.error === 'account_locked'
+                ? 'This account is temporarily locked.'
+                : 'Invalid identifier or backup code.';
+            }
+            errorEl.classList.remove('hidden');
+          }
+          return;
+        }
+        closeModal();
+        await onSuccess(resp, trimmedId);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+}

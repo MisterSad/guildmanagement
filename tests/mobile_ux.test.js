@@ -54,7 +54,7 @@ describe('Mobile UX regression guards (v128.0)', () => {
   it('wide admin tables degrade to cards on mobile (gm-resp-table + data labels + no forced min-width)', () => {
     const css = read('components.css');
     expect(css).toMatch(/\.gm-resp-table \{ min-width: 0 !important; \}/);
-    const app = read('app.js');
+    const app = read('src/modules/app/members/members.render.ts');
     expect(app).toContain('gm-table gm-resp-table');
     expect(app).toContain('data-label="Rally Score"');
     const stats = read('src/modules/stats/views/StatsView.ts');

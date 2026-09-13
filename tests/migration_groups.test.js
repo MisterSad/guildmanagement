@@ -64,7 +64,8 @@ describe('Cross-server migration groups migration', () => {
 });
 
 describe('Cross-server migration groups UI wiring', () => {
-  const appJs = fs.readFileSync(path.resolve(__dirname, '../app.js'), 'utf-8');
+  const appJs = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/admin/migration-groups.controller.ts'), 'utf-8');
+  const membersCtrl = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/members/members.controller.ts'), 'utf-8');
   const indexHtml = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
   const portalJs = fs.readFileSync(path.resolve(__dirname, '../src/modules/portal/views/PortalView.ts'), 'utf-8');
   const memberPortalFn = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/member-portal/index.ts'), 'utf-8');
@@ -75,18 +76,17 @@ describe('Cross-server migration groups UI wiring', () => {
     expect(indexHtml).toContain('id="migration-groups-list-container"');
   });
 
-  it('app.js defines renderMigrationGroupsList and wires it into the Super Admin tab load path', () => {
-    expect(appJs).toContain('async function renderMigrationGroupsList()');
+  it('defines renderMigrationGroupsList and wires it into the Super Admin tab load path', () => {
+    expect(appJs).toContain('function renderMigrationGroupsList');
     expect(appJs).toContain("server_migration_groups");
     expect(appJs).toContain("server_migration_group_servers");
-    // Called alongside renderGuildsSubscriptionList at both call sites.
     const callSites = (appJs.match(/renderMigrationGroupsList\(\);/g) || []).length;
     expect(callSites).toBeGreaterThanOrEqual(2);
   });
 
   it('showTransferMemberDialog uses the backend-authoritative eligibility RPC and labels cross-server options', () => {
-    expect(appJs).toContain("gm_list_transfer_eligible_guilds");
-    expect(appJs).toContain('Migration Window');
+    expect(membersCtrl).toContain("gm_list_transfer_eligible_guilds");
+    expect(membersCtrl).toContain('Migration Window');
   });
 
   it('the player portal transfer picker and its Edge Function action use the same eligibility RPC', () => {

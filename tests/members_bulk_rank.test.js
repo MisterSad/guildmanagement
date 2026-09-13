@@ -93,11 +93,11 @@ describe('Bulk Member Rank Assignment (Excluding R5)', () => {
             expect(css).toContain('.gm-member-select-chk');
         });
 
-        it('app.js includes bulk update logic, checkbox rendering, and R5 protection guards', () => {
-            const app = read('app.js');
+        it('members renderer includes bulk update logic, checkbox rendering, and R5 protection guards', () => {
+            const app = read('src/modules/app/members/members.render.ts');
             expect(app).toContain('bulkUpdateMemberRoles');
             expect(app).toContain('updateBulkActionBar');
-            expect(app).toContain('window.adminSelectedMembers');
+            expect(app).toContain('adminSelectedMembers');
             expect(app).toContain('filterBulkEligibleMembers');
             expect(app).toContain('isRoleAllowedForBulk');
             expect(app).toMatch(/isR5\s*\?\s*['"]\s*disabled['"]/);

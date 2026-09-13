@@ -2,8 +2,8 @@
  * Root Script Syntax Verification Suite
  *
  * This test suite guards against unparseable JavaScript files in the repository root.
- * Classic browser scripts loaded directly by index.html (like app.js, gm-utils.js,
- * i18n.js, etc.) are executed by browsers outside the TypeScript compiler pipeline.
+ * After the Strangler final cutover the only root runtime script is `sw.js`
+ * (service worker); the app entrypoint is the `/src/main.ts` TS module.
  *
  * This test runs `node --check <file>` on every root .js file to ensure zero syntax errors
  * can ever slip through CI or production releases silently again.

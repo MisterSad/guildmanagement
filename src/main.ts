@@ -78,6 +78,115 @@ import { overviewView } from './modules/overview/views/OverviewView';
 import { webAuthnService } from './core/auth/webauthn.service';
 import { mountPasskeysPanel, downloadBackupCodes } from './modules/auth/PasskeysPanel';
 import { logger } from './core/logger/logger';
+import {
+  showConfirm,
+  showToast as showAppToast,
+  showPlayerHistoryDialog
+} from './modules/app/dialogs/dialogs.service';
+import {
+  initAppState,
+  getAppState,
+  patchAppState,
+  resetAppState
+} from './modules/app/state/app-state';
+import {
+  restoreSession,
+  handleSuccessfulLogin,
+  doLogout,
+  showAuthTab,
+  showRegisterForm,
+  maybeShowSecureAccountPrompt,
+  wirePasskeyLoginButton,
+  openBackupCodeDialog,
+  initAuthForms,
+  startConditionalPasskeyListener
+} from './modules/app/auth/auth.controller';
+import {
+  checkForNewVersion,
+  showNewVersionBanner,
+  initVersionCheck,
+  resetVersionCheck
+} from './modules/app/auth/version-check';
+import { handlePortalLookupSuccess } from './modules/app/auth/portal.controller';
+import {
+  triggerTabDataLoad,
+  onTabActivated,
+  reloadActiveView,
+  restoreSavedTab,
+  initTabNavigation,
+  showAdminDashboard,
+  showLogin
+} from './modules/app/router';
+import {
+  fetchAccounts,
+  deleteAccount,
+  fetchGuilds,
+  populateAccountGuildSelect,
+  wireJoinCode,
+  initAccountsUi,
+  generatePassword,
+  mountMyPasskeysCard,
+  loadMyPasskeysCard
+} from './modules/app/admin/accounts.controller';
+import {
+  fetchGuildRequests,
+  renderGuildRequestsList,
+  wireGuildRequestListeners,
+  loadGuildSettings,
+  renderPendingRegistrations,
+  resolveRegistration,
+  initGuildRequestsUi
+} from './modules/app/admin/guild-requests.controller';
+import { renderMigrationGroupsList } from './modules/app/admin/migration-groups.controller';
+import { renderGuildsSubscriptionList } from './modules/app/admin/subscriptions.controller';
+import {
+  fetchGuildMembers,
+  handleAddMember,
+  deleteGuildMember,
+  renameGuildMember,
+  renderPendingTransfers,
+  resolveTransfer,
+  showUidTakenDialog,
+  showEditMemberDialog,
+  showTransferMemberDialog,
+  initMembersUi
+} from './modules/app/members/members.controller';
+import {
+  renderGuildMembers,
+  buildMilitaryMatrixHtml,
+  bulkUpdateMemberRoles,
+  renderAbsenceSummary,
+  renderTimezoneCoverage,
+  memberTileHtml
+} from './modules/app/members/members.render';
+import {
+  fetchBannedPlayers,
+  renderBannedPlayers,
+  handleAddBannedPlayer,
+  deleteBannedPlayer,
+  initBannedUi
+} from './modules/app/members/banned.controller';
+import {
+  openOcrModal,
+  closeOcrModal,
+  setOcrMetric,
+  resetOcrModalState,
+  initOcrDropdown,
+  initTimezoneCollapsible,
+  initOcrGeminiModule,
+  extractFramesFromVideo,
+  handleOcrFiles,
+  callGeminiOcrBatchApi,
+  commitOcrUpdates,
+  executeRosterCommit
+} from './modules/app/ocr/ocr.controller';
+import {
+  renderOcrResults,
+  toggleAllCheckboxes,
+  updateCommitButtonCount,
+  renderOcrRankCell
+} from './modules/app/ocr/ocr.render';
+import { getOcrModel, getOcrExtractedPlayers, OCR_METRICS_META } from './modules/app/ocr/ocr.meta';
 
 import { BaseComponent } from './components/ui/BaseComponent';
 import { ToastNotification } from './components/ui/Toast';
@@ -104,6 +213,142 @@ if (typeof window !== 'undefined') {
   // Assemble the full legacy window.GM surface (~108 members) from the typed
   // /src modules (gm-utils Strangler cutover).
   installGmBridge();
+
+  // Sous-lot 6.1 (Strangler): global dialogs/toasts now owned by /src. The
+  // legacy app.js classic script still loads and sets these at parse time, so
+  // these assignments overwrite its bridges with the typed implementations
+  // (app.js is removed in the final cutover lot).
+  wAny.showConfirm = showConfirm;
+  wAny.GM_APP = wAny.GM_APP || {};
+  wAny.GM_APP.showToast = showAppToast;
+  wAny.GM_APP.showPlayerHistory = showPlayerHistoryDialog;
+
+  // Sous-lot 6.2 (Strangler): unified cross-cutting state. Init before the
+  // bootstrap and expose typed accessors for /src modules; every write is
+  // mirrored onto window.* so the still-loaded classic app.js stays coherent.
+  initAppState();
+  wAny.GM.appState = { get: getAppState, patch: patchAppState, reset: resetAppState };
+
+  // Sous-lot 6.3 (Strangler): auth/session/version/portal handlers exposed for
+  // the legacy cutover. NOT auto-initialized while app.js still wires its own
+  // listeners (would double-bind forms/pollers).
+  wAny.GM_AUTH = {
+    restoreSession,
+    handleSuccessfulLogin,
+    doLogout,
+    showAuthTab,
+    showRegisterForm,
+    maybeShowSecureAccountPrompt,
+    wirePasskeyLoginButton,
+    openBackupCodeDialog,
+    initAuthForms,
+    startConditionalPasskeyListener,
+    checkForNewVersion,
+    showNewVersionBanner,
+    initVersionCheck,
+    resetVersionCheck,
+    handlePortalLookupSuccess
+  };
+
+  // Sous-lot 6.4/6.8 (Strangler): tab router / view switching now routes every
+  // tab directly to the typed /src domain controllers through the window.GM_*
+  // bridges (the legacy app.js IIFE has been removed).
+  wAny.GM_APP.onTabActivated = (tabId: string) => { void onTabActivated(tabId); };
+  wAny.GM_APP.reloadActiveView = () => { reloadActiveView(); };
+  wAny.GM_APP.showAdminDashboard = showAdminDashboard;
+  wAny.GM_APP.fetchGuilds = fetchGuilds;
+  wAny.GM_ROUTER = {
+    triggerTabDataLoad,
+    onTabActivated,
+    reloadActiveView,
+    restoreSavedTab,
+    initTabNavigation,
+    showAdminDashboard,
+    showLogin
+  };
+
+  // Sous-lot 6.5 (Strangler): admin/accounts/guild-request/migration/subscription
+  // handlers exposed under GM_ADMIN for the cutover. Deliberately NOT assigned to
+  // bare window.fetchAccounts/loadGuildSettings/... while app.js runs: its tab
+  // loaders also call IIFE-private helpers (loadMyPasskeysCard, members badge
+  // re-render) that /src does not yet own, so the router keeps delegating whole
+  // tabs to the captured legacy loader. Also NOT auto-initializing the form
+  // wiring (app.js already binds those forms => would double-submit).
+  wAny.GM_ADMIN = {
+    fetchAccounts,
+    deleteAccount,
+    fetchGuilds,
+    populateAccountGuildSelect,
+    wireJoinCode,
+    initAccountsUi,
+    generatePassword,
+    mountMyPasskeysCard,
+    loadMyPasskeysCard,
+    fetchGuildRequests,
+    renderGuildRequestsList,
+    wireGuildRequestListeners,
+    loadGuildSettings,
+    renderPendingRegistrations,
+    resolveRegistration,
+    initGuildRequestsUi,
+    renderMigrationGroupsList,
+    renderGuildsSubscriptionList
+  };
+
+  // Sous-lot 6.6 (Strangler): members/roster/matrix/transfers/absences/banned
+  // exposed under GM_MEMBERS (namespaced). Names are NOT assigned to the bare
+  // window.* probes used by the router's legacyTabLoader, so app.js keeps
+  // owning the live roster until the full cutover.
+  wAny.GM_MEMBERS = {
+    fetchGuildMembers,
+    renderGuildMembers,
+    buildMilitaryMatrixHtml,
+    bulkUpdateMemberRoles,
+    renderPendingTransfers,
+    resolveTransfer,
+    fetchBannedPlayers,
+    renderBannedPlayers,
+    handleAddMember,
+    deleteGuildMember,
+    renameGuildMember,
+    showUidTakenDialog,
+    showEditMemberDialog,
+    showTransferMemberDialog,
+    renderAbsenceSummary,
+    renderTimezoneCoverage,
+    memberTileHtml,
+    handleAddBannedPlayer,
+    deleteBannedPlayer,
+    initMembersUi,
+    initBannedUi
+  };
+
+  // Sous-lot 6.7 (Strangler): OCR bulk roster pipeline exposed under GM_OCR.
+  // The bare window.openOcrModal/closeOcrModal are only backfilled when absent
+  // (app.js already defines them) so its UI buttons keep working unchanged.
+  wAny.GM_OCR = {
+    openOcrModal,
+    closeOcrModal,
+    setOcrMetric,
+    resetOcrModalState,
+    initOcrDropdown,
+    initTimezoneCollapsible,
+    initOcrGeminiModule,
+    extractFramesFromVideo,
+    handleOcrFiles,
+    callGeminiOcrBatchApi,
+    commitOcrUpdates,
+    executeRosterCommit,
+    renderOcrResults,
+    toggleAllCheckboxes,
+    updateCommitButtonCount,
+    renderOcrRankCell,
+    getOcrModel,
+    getOcrExtractedPlayers,
+    metrics: OCR_METRICS_META
+  };
+  wAny.openOcrModal = (metric?: string) => { void openOcrModal(metric); };
+  wAny.closeOcrModal = () => { closeOcrModal(); };
   (window as any).GM.isoWeekKey = isoWeekKey;
   (window as any).GM.dateKey = dateKey;
   (window as any).GM.eventScoringKey = eventScoringKey;
@@ -284,22 +529,40 @@ if (typeof window !== 'undefined') {
   // above (see subscription-view.ts) — replaces legacy subscription.js.
 
   document.addEventListener('DOMContentLoaded', () => {
-    // i18n is now owned by /src (Strangler cutover): the legacy i18n.js no
-    // longer runs, so this is the single applyTranslations() pass over the
-    // complete dictionary once the DOM is ready.
-    applyTranslations();
-    // gm-utils startup side-effects (rad_* migration, window.currentGuild,
-    // terms modal listeners).
+    // Full cutover bootstrap order (app.js removed). gm-utils startup
+    // side-effects (rad_* migration, window.currentGuild, terms modal) first.
     runGmBootstrap();
+    // Auth/session form wiring, tab router, admin forms, OCR dropdown, tz
+    // collapsible, stale-tab detection.
+    initAuthForms();
+    initTabNavigation();
+    initAccountsUi();
+    initGuildRequestsUi();
+    initMembersUi();
+    initBannedUi();
+    initOcrDropdown();
+    initTimezoneCollapsible();
+    initVersionCheck();
     initPWA();
-    // Former shell.js bootstrap (DOMContentLoaded): wrap the dashboard and
-    // render the shell once the DOM is ready.
+    // Former shell.js/gm-help.js/push.js/sanctions bootstrap.
     shellView.init();
-    // Wave 1 satellites: contextual help delegation + push service-worker
-    // registration (formerly the root gm-help.js / push.js bootstrap).
     helpView.init();
     pushService.init();
-    // Wave 2: sanctions self-bound its form + rad-lang-change at parse time.
     sanctionsView.init();
+    // i18n single pass over the complete dictionary once the DOM is ready.
+    applyTranslations();
+    // Former app.js document-level OCR trigger delegation. Without it the
+    // .btn-ocr-trigger dropdown/menu buttons would no longer open the modal.
+    document.addEventListener('click', (ev) => {
+      const target = ev.target;
+      const btn = target instanceof HTMLElement ? target.closest('.btn-ocr-trigger') : null;
+      if (!btn) return;
+      const metric = btn.getAttribute('data-metric') || 'members';
+      void openOcrModal(metric);
+    });
+    // Restore the persisted session, then the last active tab on success.
+    void restoreSession().then((res) => {
+      if (res && res.restored) restoreSavedTab();
+    });
   });
 }

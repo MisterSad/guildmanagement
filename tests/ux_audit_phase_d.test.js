@@ -27,7 +27,18 @@ describe('Nav reorganization: Donate -> footer', () => {
 });
 
 describe('Legacy button/modal classes unified to the gm-btn / gm-modal-* system', () => {
-  const files = ['app.js', 'src/core/dom/ui.ts', 'src/modules/history/views/HistoryView.ts', 'src/modules/overview/views/OverviewView.ts', 'index.html'];
+  const files = [
+    'src/modules/app/dialogs/dialogs.service.ts',
+    'src/modules/app/members/members.render.ts',
+    'src/modules/app/members/members.controller.ts',
+    'src/modules/app/ocr/ocr.render.ts',
+    'src/modules/app/ocr/ocr.controller.ts',
+    'src/modules/app/admin/accounts.render.ts',
+    'src/core/dom/ui.ts',
+    'src/modules/history/views/HistoryView.ts',
+    'src/modules/overview/views/OverviewView.ts',
+    'index.html'
+  ];
 
   it('no file constructs a .confirm-overlay or .confirm-card element anymore', () => {
     files.forEach((f) => {

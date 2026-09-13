@@ -9,19 +9,21 @@
 
 ### 1. High-Level System Topology
 
-**FGF Guild Management Tool** is a serverless, multi-tenant SaaS tactical command and analytics platform built for competitive guilds in *Foundation Galactic Frontier*. The live production system combines classic vanilla JS root scripts running in the browser, Supabase PostgreSQL 17 with Row Level Security (RLS), and Deno TypeScript Edge Functions.
+**FGF Guild Management Tool** is a serverless, multi-tenant SaaS tactical command and analytics platform built for competitive guilds in *Foundation Galactic Frontier*. The live production system is a single TypeScript/ESM frontend (`/src/main.ts`) that assembles the legacy `window.GM_*` bridge in-browser, backed by Supabase PostgreSQL 17 with Row Level Security (RLS) and Deno TypeScript Edge Functions. The former root monolith `app.js` was removed in the Strangler final cutover.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   CLIENT LAYER (Browser / PWA)                          │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
-│  │ Classic Vanilla JS Runtime Shell (`index.html` + Cache Busters `?v=XX`)           │  │
-│  │ ├─ Core Utilities & Business Logic: `gm-utils.js`, `i18n.js`                     │  │
-│  │ ├─ Admin Command Center: `app.js`, `events.js`, `history.js`, StatsView (`/src`)  │  │
-│  │ ├─ Player Self-Service Portal: PortalView (`/src`), `push.js`                     │  │
-│  │ ├─ Roster OCR (screenshots or video) + Rank Detection: `app.js`, `gm-utils.js`    │  │
-│  │ ├─ Identity: `gm-webauthn.js` (Passkeys client, no `@simplewebauthn/browser` dep)  │  │
-│  │ └─ Design System: Material Design 3.0 Tokens (`tokens.css`) + Apple Cozy Neutral  │  │
+│  │ TypeScript / ESM Frontend (`index.html` + `/src/main.ts` module)              │  │
+│  │ ├─ Core Utilities & Legacy Bridge: `/src/core/gm-bridge.ts` (window.GM)        │  │
+│  │ ├─ Admin Command Center: `/src/modules/app/admin/*` (accounts, requests,       │  │
+│  │ │   subscriptions, migration groups), EventsView/StatsView (`/src`)            │  │
+│  │ ├─ Player Self-Service Portal: PortalView (`/src`), `/src/modules/push`        │  │
+│  │ ├─ Roster OCR (screenshots or video) + Rank Detection:                         │  │
+│  │ │   `/src/modules/app/ocr/*` + `/src/modules/ocr/ocr.service.ts`              │  │
+│  │ ├─ Identity: `/src/core/auth/webauthn.service.ts` (Passkeys client)           │  │
+│  │ └─ Design System: Material Design 3.0 Tokens (`tokens.css`) + Apple Cozy Neutral│  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────┬──────────────────────────────────────────────┘
                                            │ HTTPS / WSS / Cryptographic JWT
@@ -180,7 +182,8 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 [ Guild Admin Uploads Screenshots OR a Screen-Recording Video ]
                        │
                        ├─ Video path (client-side, before any upload):
-                       │    `app.js:extractFramesFromVideo` samples the video
+                       │    `src/modules/app/ocr/ocr.controller.ts:extractFramesFromVideo`
+                       │    samples the video
                        │    continuously but KEEPS a frame only where the visible
                        │    content changed since the last kept frame (12x12
                        │    luminance-grid diff) — avoids wasting the batch on
@@ -257,4 +260,4 @@ The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild l
 - **i18n**: `src/core/i18n/i18n.ts` exists but is intentionally **not** the active dictionary — `main.ts` prefers the legacy `i18n.js`'s `GM_I18N.t`, since the `/src` dictionary only covers strings authored so far and would silently blank out every string outside it. Migrating i18n itself is unstarted.
 - **Incident, resolved 2026-08-31 / feature removed 2026-09**: `svs-matchup.ts`/`gvg-matchup.ts` existed as 50-line stubs (hardcoded fake server/guild IDs, no real table render) that risked silently shadowing the complete legacy `svs-matchup.js`/`gvg-matchup.js` (700+ lines each) the moment `main.ts` started executing in production, since both write into the same DOM containers. The stubs were deleted first, then the whole Settings tab (Draft Mercato / SvS / GvG matchup) was removed entirely, so `svs-matchup.js`, `gvg-matchup.js`, `cross-rank.js` and `#tab-settings` no longer exist.
 
-> **Operational Invariant**: For any given feature, whichever of legacy (`app.js` et al.) or `/src` is *actually bridged and complete* is the source of truth — check `main.ts`'s bridge section, don't assume by directory. An unfinished `/src` port must stay unbridged (or be deleted, per the incident above) until it matches or exceeds the legacy feature it would replace.
+> **Operational Invariant**: The Strangler migration is complete — `app.js` and the other legacy root scripts have been removed, and `/src` is now the single source of truth for all runtime behavior. `main.ts` assembles the `window.GM_*` bridge from typed modules; any new feature must live under `/src` and must never re-introduce a root `.js` runtime script or a new `window.GM_*` global (only the existing bridge surface may be extended).

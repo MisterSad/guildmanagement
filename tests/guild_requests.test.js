@@ -9,7 +9,8 @@ describe('Guild Requests admin panel: discord_handle/note must always be HTML-es
     // guild-request Edge Function, no login required). A future edit that
     // interpolates them without esc() would be a stored-XSS hole reachable
     // by anyone, no account needed.
-    const src = fs.readFileSync(path.resolve(__dirname, '../app.js'), 'utf-8');
+    // Ported to /src in the Strangler cutover (was app.js).
+    const src = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/admin/guild-requests.controller.ts'), 'utf-8');
 
     it('wraps r.note in esc() before interpolating into markup', () => {
         expect(src).toMatch(/esc\(r\.note\)/);
@@ -28,16 +29,16 @@ describe('Guild Requests admin panel: discord_handle/note must always be HTML-es
 });
 
 describe('Guild Requests: eligible-leaders-style RPC usage for approve/reject', () => {
-    const src = fs.readFileSync(path.resolve(__dirname, '../app.js'), 'utf-8');
+    const src = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/admin/guild-requests.controller.ts'), 'utf-8');
 
     it('approve/reject guild requests go through the admin-accounts edge function, not a raw table write', () => {
-        expect(src).toContain("window.GM.adminAccounts('approve-guild-request'");
-        expect(src).toContain("window.GM.adminAccounts('reject-guild-request'");
+        expect(src).toMatch(/adminAccounts\(['"]approve-guild-request['"]/);
+        expect(src).toMatch(/adminAccounts\(['"]reject-guild-request['"]/);
         expect(src).not.toMatch(/from\(['"]guild_creation_requests['"]\)\.update/);
     });
 
     it('clear-history button goes through admin-accounts too, and asks for confirmation first', () => {
-        expect(src).toContain("window.GM.adminAccounts('clear-resolved-guild-requests'");
+        expect(src).toMatch(/adminAccounts\(['"]clear-resolved-guild-requests['"]/);
         expect(src).toMatch(/showConfirm\(\s*['"]Clear Guild Request History['"][\s\S]{0,400}clear-resolved-guild-requests/);
     });
 });

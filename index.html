@@ -1767,11 +1767,11 @@
     <!-- Vite ES Module entrypoint -->
     <script type="module" src="/src/main.ts"></script>
 
-    <!-- Scripts: Supabase, icons, utils, then app.js (i18n is in /src/main.ts) -->
+    <!-- Scripts: Supabase + icons CDN. All app logic (window.GM bridge,
+         i18n, router, domain controllers) is assembled by /src/main.ts.
+         The legacy root monolith was removed in the Strangler final cutover. -->
     <!-- TODO(phase-3): vendor supabase-js and phosphor-icons via Vite, drop CDN origins from CSP -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>
-    <!-- gm-utils.js removed: window.GM is assembled by /src/main.ts -->
-    <script src="app.js?v=105"></script>
 </body>
 </html>

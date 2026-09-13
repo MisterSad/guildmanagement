@@ -7,19 +7,20 @@ describe('Regression: stale long-lived tabs must be detected against version.jso
     // which guild tab they had open -- one tab had simply never reloaded
     // since before the latest deploy (long-lived tab / PWA install), so it
     // kept silently running old code, missing every fix shipped since.
-    // app.js polls /version.json (network-fresh, cache: 'no-store') and
-    // prompts a reload when it disagrees with the version already running.
-    const appSrc = fs.readFileSync(path.resolve(__dirname, '../app.js'), 'utf-8');
+    // src/modules/app/auth/version-check.ts polls /version.json
+    // (network-fresh, cache: 'no-store') and prompts a reload when it disagrees
+    // with the version already running (formerly app.js, Strangler cutover).
+    const appSrc = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/auth/version-check.ts'), 'utf-8');
     const buildSrc = fs.readFileSync(path.resolve(__dirname, '../scripts/build.js'), 'utf-8');
     const utilsSrc = fs.readFileSync(path.resolve(__dirname, '../src/core/config/constants.ts'), 'utf-8');
 
-    it('app.js fetches version.json with cache: no-store, not a cacheable request', () => {
+    it('fetches version.json with cache: no-store, not a cacheable request', () => {
         expect(appSrc).toMatch(/fetch\(['"]\/version\.json['"],\s*\{\s*cache:\s*['"]no-store['"]\s*\}\)/);
     });
 
-    it('app.js compares the fetched version against the currently-running APP_VERSION before prompting', () => {
+    it('compares the fetched version against the currently-running APP_VERSION before prompting', () => {
         expect(appSrc).toContain('data.version !== currentAppVersion()');
-        expect(appSrc).toContain('window.GM && window.GM.appVersion');
+        expect(appSrc).toMatch(/\.GM && w\.GM\.appVersion/);
     });
 
     it('checks on tab visibility regain, not just a blind interval', () => {

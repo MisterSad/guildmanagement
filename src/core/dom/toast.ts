@@ -10,12 +10,12 @@ function winAny(): any {
   return (typeof window !== 'undefined' ? window : {}) as any;
 }
 
-export function showToast(message: unknown, type?: string, duration?: number): void {
-  const w = winAny();
-  if (w.GM_APP && typeof w.GM_APP.showToast === 'function') {
-    w.GM_APP.showToast(message, type);
-    return;
-  }
+/**
+ * Concrete toast renderer: always builds the toast itself and never delegates
+ * back to `GM_APP.showToast` (this is the implementation the app bridge points
+ * at, so delegating here would recurse).
+ */
+export function renderToast(message: unknown, type?: string, duration?: number): void {
   if (typeof document === 'undefined') return;
   const tc = document.getElementById('toast-container');
   if (!tc) return;
@@ -44,4 +44,14 @@ export function showToast(message: unknown, type?: string, duration?: number): v
     toast.classList.add('fade-out');
     setTimeout(() => { toast.remove(); }, 300);
   }, ttl);
+}
+
+/** Legacy entry: prefers the app toast host, else renders directly. */
+export function showToast(message: unknown, type?: string, duration?: number): void {
+  const w = winAny();
+  if (w.GM_APP && typeof w.GM_APP.showToast === 'function') {
+    w.GM_APP.showToast(message, type);
+    return;
+  }
+  renderToast(message, type, duration);
 }
