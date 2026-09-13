@@ -2,10 +2,13 @@
 // roster upsert). Exercises the real decision logic in
 // _shared/discord-verification.ts against a fake Supabase client (same
 // pattern as tests/discord_bot_phase2.test.js), plus static regressions
-// confirming the Edge Function and the always-on worker stay thin (no
-// business logic creeping into either) and that no path ever touches
-// `accounts` (screenshot-only trust model -- roster presence, never a
-// login credential).
+// confirming the Edge Function stays a thin caller and the always-on worker
+// never writes to roster/account tables directly -- the worker only reads
+// `guild_members`/`accounts`/`discord_account_links` for its /profile and
+// /absent slash commands and routes every write through the validated
+// service-role RPC (gm_upsert_player_absence). No path ever writes to
+// `accounts` (screenshot-only trust model -- roster presence, never a login
+// credential).
 
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
@@ -274,19 +277,25 @@ describe('Regression: discord-profile-verification stays a thin caller', () => {
   });
 });
 
-describe('Regression: discord-verification-worker has no business logic', () => {
+describe('Regression: discord-verification-worker keeps business writes out', () => {
   const workerSrc = fs.readFileSync(
     path.resolve(__dirname, '../discord-verification-worker/index.js'),
     'utf-8'
   );
 
-  it('never touches guild_members, banned_players, or accounts directly', () => {
-    expect(workerSrc).not.toContain('guild_members');
+  it('never writes to guild_members, accounts, or banned_players directly', () => {
     expect(workerSrc).not.toContain('banned_players');
-    expect(workerSrc).not.toContain('accounts');
+    expect(workerSrc).not.toMatch(/from\(["'](guild_members|accounts)["']\)\.(insert|update|upsert|delete)/);
   });
 
-  it('only reads the channel -> guild config map, and forwards everything else to the Edge Function', () => {
+  it('reads roster/account data only for the slash commands and writes absences through the validated service-role RPC', () => {
+    expect(workerSrc).toContain('.from("guild_members")');
+    expect(workerSrc).toContain('.from("accounts")');
+    expect(workerSrc).toContain('.from("discord_account_links")');
+    expect(workerSrc).toContain('gm_upsert_player_absence');
+  });
+
+  it('still reads the channel -> guild config map, and forwards verification screenshots to the Edge Function', () => {
     expect(workerSrc).toContain("eq(\"key\", \"discord_verification_channel_id\")");
     expect(workerSrc).toContain('VERIFICATION_FUNCTION_URL');
     expect(workerSrc).toContain('DISCORD_WORKER_SECRET');
