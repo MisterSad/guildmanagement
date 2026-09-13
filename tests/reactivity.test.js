@@ -55,11 +55,11 @@ describe('window.GM.debounce / runInChunks / cache (gm-utils.js)', () => {
   });
 });
 
-describe('StatsView / history.js TTL freshness gating', () => {
-  // Stats migrated from root stats.js to /src (Strangler cutover): the TTL
-  // gate now lives in StatsView.ts behind the typed legacy cache adapter.
+describe('StatsView / HistoryView TTL freshness gating', () => {
+  // Stats + History migrated from root scripts to /src (Strangler cutover): the
+  // TTL gates now live in their views behind the typed legacy cache adapter.
   const statsJs = read('src/modules/stats/views/StatsView.ts');
-  const historyJs = read('history.js');
+  const historyJs = read('src/modules/history/views/HistoryView.ts');
 
   it('initAndLoad() checks the cache freshness before re-fetching, keyed per guild', () => {
     expect(statsJs).toContain("const cacheKey = 'stats:'");
@@ -68,8 +68,9 @@ describe('StatsView / history.js TTL freshness gating', () => {
   });
 
   it('loadHistory() has the same freshness gate plus a re-entrancy guard (previously had neither)', () => {
-    expect(historyJs).toContain("var cacheKey = 'history:'");
-    expect(historyJs).toContain('window.GM.cache.isFresh(cacheKey, HISTORY_CACHE_TTL_MS)');
+    expect(historyJs).toContain("const cacheKey = 'history:'");
+    expect(historyJs).toContain('legacy.cacheIsFresh(cacheKey, HISTORY_CACHE_TTL_MS)');
+    expect(historyJs).toContain('legacy.cacheMarkFresh(cacheKey)');
     expect(historyJs).toContain('historyLoading');
   });
 });

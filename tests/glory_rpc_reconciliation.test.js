@@ -34,7 +34,7 @@ describe('event_participants live reconciliation (v128.2)', () => {
   });
 
   it('saveGlory surfaces logical RPC failures, not only transport errors', () => {
-    const glory = read('glory.js');
+    const glory = read('src/modules/glory/views/GloryView.ts');
     expect(glory).toContain("db.rpc('gm_upsert_player_glory'");
     expect(glory).toMatch(/if \(!row \|\| !row\.ok\) throw/);
     expect(glory).toMatch(/' Glory' \+ \(err && err\.message/);

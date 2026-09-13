@@ -18,8 +18,8 @@ describe('Ticket 1.1 — ar_subtitle i18n tag and Event History modal safety', (
     expect(i18nTs).toMatch(/ar_subtitle:\s*'Track and manage Arms Race stages & scores'/);
   });
 
-  it('history.js modal moves delete action away from header close icon and into modal footer', () => {
-    const historyJs = read('history.js');
+  it('HistoryView modal moves delete action away from header close icon and into modal footer', () => {
+    const historyJs = read('src/modules/history/views/HistoryView.ts');
 
     // Header close icon is isolated and no longer paired with delete button
     expect(historyJs).not.toMatch(/deleteBtnHtml\s*\+\s*['"]<button[^>]+id="history-modal-close"/);
@@ -37,11 +37,11 @@ describe('Ticket 1.1 — ar_subtitle i18n tag and Event History modal safety', (
     expect(footerSnippet.indexOf('history-modal-footer-left')).toBeLessThan(footerSnippet.indexOf('history-modal-footer-close'));
   });
 
-  it('history.js requires explicit confirmation dialog before executing session deletion', () => {
-    const historyJs = read('history.js');
+  it('HistoryView requires explicit confirmation dialog before executing session deletion', () => {
+    const historyJs = read('src/modules/history/views/HistoryView.ts');
     expect(historyJs).toContain('confirm_delete_session_title');
     expect(historyJs).toContain('confirm_delete_session_body');
     // Verifies defensive fallback to window.showConfirm / window.confirm
-    expect(historyJs).toMatch(/typeof\s+window\.showConfirm\s*===\s*'function'/);
+    expect(historyJs).toMatch(/typeof\s+(?:window|w)\.showConfirm\s*===\s*'function'/);
   });
 });

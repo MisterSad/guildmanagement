@@ -65,15 +65,15 @@ import * as badgesService from './modules/badges/badges.service';
 import { pushService } from './modules/push/PushService';
 import { helpView } from './modules/help/HelpView';
 import { ticketsView } from './modules/tickets/views/TicketsView';
+import { gloryView } from './modules/glory/views/GloryView';
+import { sanctionsView } from './modules/sanctions/views/SanctionsView';
+import { historyView } from './modules/history/views/HistoryView';
 import { logger } from './core/logger/logger';
 
 import { BaseComponent } from './components/ui/BaseComponent';
 import { ToastNotification } from './components/ui/Toast';
 import { PortalChart } from './modules/portal/components/PortalChart';
 import { OverviewView } from './modules/overview/views/OverviewView';
-import { HistoryView } from './modules/history/views/HistoryView';
-import { SanctionsView } from './modules/sanctions/views/SanctionsView';
-import { GloryView } from './modules/glory/glory-view';
 import { SubscriptionView } from './modules/subscription/subscription-view';
 import { initPWA, promptPWAInstall, setAppNotificationBadge } from './core/pwa/pwa';
 
@@ -216,14 +216,16 @@ if (typeof window !== 'undefined') {
     loadingHtml: () => ticketsView.loadingHtml()
   };
 
+  // Wave 2 Strangler bridges (glory / sanctions / history).
+  (window as any).GM_GLORY = { load: () => gloryView.load() };
+  (window as any).GM_SANCTIONS = { load: () => sanctionsView.load() };
+  (window as any).GM_HISTORY = { load: () => historyView.load() };
+
   (window as any).GM.components = {
     BaseComponent,
     ToastNotification,
     PortalChart,
     OverviewView,
-    HistoryView,
-    SanctionsView,
-    GloryView,
     SubscriptionView
   };
 
@@ -250,5 +252,7 @@ if (typeof window !== 'undefined') {
     // registration (formerly the root gm-help.js / push.js bootstrap).
     helpView.init();
     pushService.init();
+    // Wave 2: sanctions self-bound its form + rad-lang-change at parse time.
+    sanctionsView.init();
   });
 }

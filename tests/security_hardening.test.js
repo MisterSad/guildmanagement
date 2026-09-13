@@ -30,11 +30,12 @@ describe('Security Hardening & Module Audits', () => {
         expect(content).toContain('x-real-ip');
     });
 
-    it('verifies history.js contains ALLOWED_HISTORY_FIELDS whitelist', () => {
-        const filePath = path.resolve(__dirname, '../history.js');
-        const content = fs.readFileSync(filePath, 'utf-8');
-        expect(content).toContain('ALLOWED_HISTORY_FIELDS');
-        expect(content).toContain('Unauthorized field update attempt');
+    it('verifies History whitelist ALLOWED_HISTORY_FIELDS + guarded update', () => {
+        const service = fs.readFileSync(path.resolve(__dirname, '../src/modules/history/history.service.ts'), 'utf-8');
+        expect(service).toContain('ALLOWED_HISTORY_FIELDS');
+        const view = fs.readFileSync(path.resolve(__dirname, '../src/modules/history/views/HistoryView.ts'), 'utf-8');
+        expect(view).toContain('ALLOWED_HISTORY_FIELDS');
+        expect(view).toContain('Unauthorized field update attempt');
     });
 
     it('verifies ShadowfrontView calls atomic gm_unsync_shadowfront_participant RPC', () => {

@@ -49,7 +49,7 @@ describe('Glory OCR weekly routing (v128.1)', () => {
   });
 
   it('the Glory tab still reads weekly scores from event_participants by week_start', () => {
-    const glory = read('glory.js');
+    const glory = read('src/modules/glory/views/GloryView.ts');
     expect(glory).toContain(".eq('event_name', 'Glory')");
     expect(glory).toContain(".eq('week_start', week)");
   });
