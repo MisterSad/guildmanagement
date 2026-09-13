@@ -96,9 +96,9 @@ Le plafond de tracking des scores d'événements et de gloire passe de 500 000 0
 - `npm run build` : production stable, `version.json` V3.18.0.
 - **Déploiement requis** : `supabase db push` (migration 20260914100000) + redéploiement des Edge Functions `member-portal`, `discord-bot-interactions` et `ocr-guild-members` (constante partagée).
 
-## 6. Clôture Mission — Fiabilisation des Notifications & Rappels Discord (2026-09-13)
+## 6. Clôture Mission — Fiabilisation des Notifications & Rappels Discord (V3.18.1, 2026-09-13)
 
-Audit complet du système de notifications/reminders Discord (diagnostic des fantômes quotidiens et des rappels jamais émis) suivi de la remédiation **P0 + P1** livrée en un commit `fix(reminders)`. Migration SQL déployable exclusivement via `supabase db push` : `supabase/migrations/20260914110000_fix_event_reminders_trigger_and_tz.sql` (+ redéploiement de l'Edge Function `event-reminders`).
+Audit complet du système de notifications/reminders Discord (diagnostic des fantômes quotidiens et des rappels jamais émis) suivi de la remédiation **P0 + P1** livrée en un commit `fix(reminders)`, version bump **V3.18.1** (`chore(release)`). Migration SQL déployable exclusivement via `supabase db push` : `supabase/migrations/20260914110000_fix_event_reminders_trigger_and_tz.sql` (+ redéploiement de l'Edge Function `event-reminders`).
 
 ### P0 — Notifications fantômes (partaient tous les jours alors que décochées)
 - **Toggle strict** : helper unique `isToggleEnabled()` dans `supabase/functions/_shared/reminder-rules.ts` — seules `'true'`/`'1'` activent ; ligne absente/vide/`'false'`/`'0'` = **désactivé** (remplace les `config[key] === undefined || === 'true'` et `!== 'false'` par défaut-ON).
@@ -115,5 +115,5 @@ Audit complet du système de notifications/reminders Discord (diagnostic des fan
 ### État des tests (fin de mission, 2026-09-13)
 - `npm run type-check` : **0 erreur**.
 - `npm test` : **1 199 tests réussis / 104 suites** (+37 depuis 1 162/102 — toggles stricts, webhooks, migration SQL/TZ, cohérence SQL↔Edge, fenêtre SvS, normalisation des événements).
-- `npm run build` : production stable, `version.json` V3.18.0.
+- `npm run build` : production stable, `version.json` V3.18.1.
 - **Déploiement requis** : `supabase db push` (migration 20260914110000) + redéploiement de `event-reminders` ; puis push frontend (Vercel).
