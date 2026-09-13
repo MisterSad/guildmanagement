@@ -12,8 +12,9 @@
 import { t, esc, winAny, byId } from '../admin/utils';
 import { patchAppState } from '../state/app-state';
 import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers } from './members.store';
-import { renderGuildMembers } from './members.render';
+import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
+import { toastFetchError, isAbortError } from '../../../core/api/fetch-errors';
 
 function g(): any {
   return winAny().GM;
@@ -92,18 +93,35 @@ export function initMembersUi(): void {
 
 // ── Fetch ────────────────────────────────────────────────────────────────────
 
-export async function fetchGuildMembers(): Promise<void> {
+function applySignal(builder: any, signal?: AbortSignal): any {
+  if (!signal || !builder || typeof builder.abortSignal !== 'function') return builder;
+  try { return builder.abortSignal(signal); } catch { return builder; }
+}
+
+/**
+ * Loads the roster batch (4 queries in parallel). Accepts an optional
+ * AbortSignal from the tab router so switching tabs cancels the batch
+ * (P3-03); shows a cold-start skeleton only when nothing is cached yet
+ * (P3-08), and surfaces failures through the unified error mapper (P3-01).
+ */
+export async function fetchGuildMembers(opts?: { signal?: AbortSignal }): Promise<void> {
   const client = db();
   if (!client) return;
   maybeInitOcr();
   const currentG = activeGuild();
+  const signal = opts && opts.signal ? opts.signal : undefined;
+
+  if (getGuildMembers().length === 0) {
+    const list = byId('guild-member-list');
+    if (list) list.innerHTML = membersSkeletonHtml();
+  }
 
   try {
     const [res, transfersRes, absencesRes, gloryRes] = await Promise.all([
-      client.from('guild_members').select('*').eq('guild', currentG).order('pseudo', { ascending: true }),
-      client.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild').eq('status', 'pending').order('created_at', { ascending: true }),
-      client.from('player_absences').select('*').eq('guild', currentG),
-      client.from('event_participants').select('pseudo, score, week_start').eq('guild', currentG).eq('event_name', 'Glory').not('score', 'is', null).order('week_start', { ascending: false })
+      applySignal(client.from('guild_members').select('*').eq('guild', currentG).order('pseudo', { ascending: true }), signal),
+      applySignal(client.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild').eq('status', 'pending').order('created_at', { ascending: true }), signal),
+      applySignal(client.from('player_absences').select('*').eq('guild', currentG), signal),
+      applySignal(client.from('event_participants').select('pseudo, score, week_start').eq('guild', currentG).eq('event_name', 'Glory').not('score', 'is', null).order('week_start', { ascending: false }), signal)
     ]);
 
     if (res.error) throw res.error;
@@ -136,7 +154,8 @@ export async function fetchGuildMembers(): Promise<void> {
     renderPendingTransfers();
     renderGuildMembers();
   } catch (err: any) {
-    showToast(t('toast_err_fetch_members') + ' ' + err.message, 'error');
+    if (isAbortError(err)) return;
+    toastFetchError(err, t('toast_err_fetch_members') || 'members', () => { void fetchGuildMembers(); });
   }
 }
 
@@ -213,9 +232,9 @@ export async function resolveTransfer(transferId: string, action: string): Promi
         void fetchGuildMembers();
         if (g() && g().cache && typeof g().cache.invalidate === 'function') g().cache.invalidate();
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Error processing transfer.', 'error');
+    } catch (err: any) {
+      if (isAbortError(err)) return;
+      toastFetchError(err, 'transfer');
     }
   });
 }

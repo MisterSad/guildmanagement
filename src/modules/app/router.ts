@@ -19,6 +19,13 @@ function ls(): Storage | null {
   return typeof localStorage !== 'undefined' ? localStorage : null;
 }
 
+// P3-03: per-tab request lifecycle. A single in-flight batch per view load:
+// switching tabs aborts the previous batch, and a redundant click on the same
+// tab while it is still loading is ignored instead of doubling the queries.
+let activeLoadController: AbortController | null = null;
+let activeLoadTabId = '';
+let loadingTab = false;
+
 async function invokeMethod(namespaceName: string, method: string, ...args: unknown[]): Promise<boolean> {
   const ns = w()[namespaceName];
   if (!ns || typeof ns[method] !== 'function') return false;
@@ -43,65 +50,92 @@ function resetTabChrome(): void {
  */
 export async function triggerTabDataLoad(tabId: string): Promise<void> {
   if (!tabId) return;
+
+  // Cancel the previous tab's still-running batch when the user navigated away
+  // before it resolved (prevents wasted requests and stale renders).
+  if (activeLoadTabId !== tabId && activeLoadController) {
+    try { activeLoadController.abort(); } catch { /* noop */ }
+    activeLoadController = null;
+  }
+
+  // Ignore redundant activation of the SAME tab while its batch is in flight.
+  if (activeLoadTabId === tabId && loadingTab) return;
+
   resetTabChrome();
 
-  // ── Members / banned (GM_MEMBERS) ────────────────────────────────────────
-  if (['admin-members', 'member-members', 'member-home', 'members'].includes(tabId)) {
-    await invokeMethod('GM_MEMBERS', 'fetchGuildMembers');
-  }
-  if (tabId === 'admin-banned' || tabId === 'banned') {
-    await invokeMethod('GM_MEMBERS', 'fetchBannedPlayers');
-  }
+  const controller = new AbortController();
+  activeLoadController = controller;
+  activeLoadTabId = tabId;
+  loadingTab = true;
+  const signal = controller.signal;
 
-  // ── Accounts / guild settings (GM_ADMIN) ─────────────────────────────────
-  if (tabId === 'admin-home' || tabId === 'accounts') {
-    await invokeMethod('GM_ADMIN', 'fetchAccounts');
-    await invokeMethod('GM_ADMIN', 'loadGuildSettings');
-    await invokeMethod('GM_ADMIN', 'populateAccountGuildSelect');
-    await invokeMethod('GM_ADMIN', 'wireJoinCode');
-    await invokeMethod('GM_ADMIN', 'loadMyPasskeysCard');
-  }
-  if (tabId === 'admin-discord' || tabId === 'guild-settings') {
-    await invokeMethod('GM_ADMIN', 'loadGuildSettings');
-  }
-  if (tabId === 'guild-requests') {
-    await invokeMethod('GM_ADMIN', 'fetchGuildRequests');
-  }
-  if (tabId === 'subscriptions') {
-    await invokeMethod('GM_ADMIN', 'renderGuildsSubscriptionList');
-  }
-  if (tabId === 'migration-groups') {
-    await invokeMethod('GM_ADMIN', 'renderMigrationGroupsList');
-  }
-  if (tabId === 'admin-superadmin') {
-    await invokeMethod('GM_ADMIN', 'renderGuildsSubscriptionList');
-    await invokeMethod('GM_ADMIN', 'renderMigrationGroupsList');
-    await invokeMethod('GM_ADMIN', 'fetchAccounts');
-    await invokeMethod('GM_ADMIN', 'populateAccountGuildSelect');
-    await invokeMethod('GM_ADMIN', 'fetchGuildRequests');
-  }
+  try {
+    // ── Members / banned (GM_MEMBERS) ────────────────────────────────────────
+    if (['admin-members', 'member-members', 'member-home', 'members'].includes(tabId)) {
+      await invokeMethod('GM_MEMBERS', 'fetchGuildMembers', signal);
+    }
+    if (tabId === 'admin-banned' || tabId === 'banned') {
+      await invokeMethod('GM_MEMBERS', 'fetchBannedPlayers');
+    }
 
-  // ── Migrated /src-backed view modules ────────────────────────────────────
-  if (tabId === 'tab-subscription') { await invokeMethod('GM_SUBSCRIPTION', 'load'); }
-  if (tabId === 'tab-tickets') { await invokeMethod('GM_TICKETS', 'load'); }
-  if (tabId === 'tab-sanctions' || tabId === 'sanctions') { await invokeMethod('GM_SANCTIONS', 'load'); }
-  if (tabId === 'gm-overview' || tabId === 'overview') { await invokeMethod('GM_OVERVIEW', 'load'); }
-  if (tabId === 'event-svs' || tabId === 'svs') { await invokeMethod('GM_EVENTS', 'loadEvent', 'SvS'); }
-  if (tabId === 'event-gvg' || tabId === 'gvg') { await invokeMethod('GM_EVENTS', 'loadEvent', 'GvG'); }
-  if (tabId === 'event-shadowfront' || tabId === 'Shadowfront' || tabId === 'shadowfront') {
-    await invokeMethod('GM_SHADOWFRONT', 'load');
-  }
-  if (tabId === 'event-dtr' || tabId === 'dtr') { await invokeMethod('GM_EVENTS', 'loadEvent', 'Defend Trade Route'); }
-  if (tabId === 'event-arms-race' || tabId === 'ARMS RACE' || tabId === 'Arms Race' || tabId === 'armsrace') {
-    await invokeMethod('GM_ARMSRACE', 'load');
-  }
-  if (tabId === 'event-glory' || tabId === 'glory') { await invokeMethod('GM_GLORY', 'load'); }
-  if (tabId === 'event-history' || tabId === 'history') { await invokeMethod('GM_HISTORY', 'load'); }
-  if (tabId === 'stats-admin' || tabId === 'stats-member' || tabId === 'stats') {
-    await invokeMethod('GM_STATS', 'load');
-  }
-  if ((tabId === 'player-portal-view' || tabId === 'portal') && w().GM_PORTAL) {
-    await invokeMethod('GM_PORTAL', 'loadDashboard');
+    // ── Accounts / guild settings (GM_ADMIN) ─────────────────────────────────
+    if (tabId === 'admin-home' || tabId === 'accounts') {
+      await invokeMethod('GM_ADMIN', 'fetchAccounts');
+      await invokeMethod('GM_ADMIN', 'loadGuildSettings');
+      await invokeMethod('GM_ADMIN', 'populateAccountGuildSelect');
+      await invokeMethod('GM_ADMIN', 'wireJoinCode');
+      await invokeMethod('GM_ADMIN', 'loadMyPasskeysCard');
+    }
+    if (tabId === 'admin-discord' || tabId === 'guild-settings') {
+      await invokeMethod('GM_ADMIN', 'loadGuildSettings');
+    }
+    if (tabId === 'guild-requests') {
+      await invokeMethod('GM_ADMIN', 'fetchGuildRequests');
+    }
+    if (tabId === 'subscriptions') {
+      await invokeMethod('GM_ADMIN', 'renderGuildsSubscriptionList');
+    }
+    if (tabId === 'migration-groups') {
+      await invokeMethod('GM_ADMIN', 'renderMigrationGroupsList');
+    }
+    if (tabId === 'admin-superadmin') {
+      await invokeMethod('GM_ADMIN', 'renderGuildsSubscriptionList');
+      await invokeMethod('GM_ADMIN', 'renderMigrationGroupsList');
+      await invokeMethod('GM_ADMIN', 'fetchAccounts');
+      await invokeMethod('GM_ADMIN', 'populateAccountGuildSelect');
+      await invokeMethod('GM_ADMIN', 'fetchGuildRequests');
+    }
+
+    // ── Migrated /src-backed view modules ────────────────────────────────────
+    if (tabId === 'tab-subscription') { await invokeMethod('GM_SUBSCRIPTION', 'load'); }
+    if (tabId === 'tab-tickets') { await invokeMethod('GM_TICKETS', 'load'); }
+    if (tabId === 'tab-sanctions' || tabId === 'sanctions') { await invokeMethod('GM_SANCTIONS', 'load'); }
+    if (tabId === 'gm-overview' || tabId === 'overview') { await invokeMethod('GM_OVERVIEW', 'load'); }
+    if (tabId === 'event-svs' || tabId === 'svs') { await invokeMethod('GM_EVENTS', 'loadEvent', 'SvS'); }
+    if (tabId === 'event-gvg' || tabId === 'gvg') { await invokeMethod('GM_EVENTS', 'loadEvent', 'GvG'); }
+    if (tabId === 'event-shadowfront' || tabId === 'Shadowfront' || tabId === 'shadowfront') {
+      await invokeMethod('GM_SHADOWFRONT', 'load');
+    }
+    if (tabId === 'event-dtr' || tabId === 'dtr') { await invokeMethod('GM_EVENTS', 'loadEvent', 'Defend Trade Route'); }
+    if (tabId === 'event-arms-race' || tabId === 'ARMS RACE' || tabId === 'Arms Race' || tabId === 'armsrace') {
+      await invokeMethod('GM_ARMSRACE', 'load');
+    }
+    if (tabId === 'event-glory' || tabId === 'glory') { await invokeMethod('GM_GLORY', 'load'); }
+    if (tabId === 'event-history' || tabId === 'history') { await invokeMethod('GM_HISTORY', 'load'); }
+    if (tabId === 'stats-admin' || tabId === 'stats-member' || tabId === 'stats') {
+      await invokeMethod('GM_STATS', 'load');
+    }
+    if ((tabId === 'player-portal-view' || tabId === 'portal') && w().GM_PORTAL) {
+      await invokeMethod('GM_PORTAL', 'loadDashboard');
+    }
+  } finally {
+    // Only the still-current controller releases the lock; an aborted older
+    // invocation must not clobber the newer load.
+    if (activeLoadController === controller) {
+      activeLoadController = null;
+      activeLoadTabId = '';
+      loadingTab = false;
+    }
   }
 }
 

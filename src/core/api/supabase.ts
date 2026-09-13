@@ -7,6 +7,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY } from '../config/constants';
 import { normalizeRole } from '../utils/text';
+import { mapFetchError } from './fetch-errors';
 
 let client: SupabaseClient | null = null;
 
@@ -120,8 +121,16 @@ export async function ensureAuthSession(): Promise<any> {
       const now = Math.floor(Date.now() / 1000);
       if (exp && (exp - now < 60)) {
         const ref = await c.auth.refreshSession();
-        if (ref && ref.data && ref.data.session) return ref.data.session;
+        if (ref && ref.data && ref.data.session) {
+          resetSessionInvalidationFlag();
+          return ref.data.session;
+        }
+        if (ref && ref.error && isUnauthorizedError(ref.error)) {
+          handleSessionInvalidation();
+          return null;
+        }
       }
+      resetSessionInvalidationFlag();
       return session;
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -137,6 +146,55 @@ export async function ensureAuthSession(): Promise<any> {
 export function storageKeyForProject(): string | null {
   const m = String(SUPABASE_URL).match(/https:\/\/([a-z0-9]+)\.supabase\.co/);
   return m ? 'sb-' + m[1] + '-auth-token' : null;
+}
+
+/* ---------------------------------------------------------------------------
+ * Session invalidation (P3-02): centralized handling of real 401 / jwt-expired
+ * errors so every tab load converges on a single "reconnect" path instead of
+ * per-view generic toasts or silent empty lists.
+ * ------------------------------------------------------------------------- */
+
+let sessionInvalidFlag = false;
+
+/** True when the error is a definite auth-session invalidation (401 / JWT expired / invalid refresh grant). */
+export function isUnauthorizedError(err: any): boolean {
+  return mapFetchError(err).kind === 'unauthorized';
+}
+
+/** Purges the persisted GoTrue session from storage (sb-* / supabase.* keys). */
+export function purgeInvalidSessionStorage(): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const key = storageKeyForProject();
+    if (key) localStorage.removeItem(key);
+    const doomed: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('sb-') || k.startsWith('supabase.'))) doomed.push(k);
+    }
+    doomed.forEach((k) => localStorage.removeItem(k));
+  } catch { /* storage unavailable */ }
+}
+
+/** Re-arms the invalidation guard after a successful session refresh. */
+export function resetSessionInvalidationFlag(): void {
+  sessionInvalidFlag = false;
+}
+
+/**
+ * Runs the single invalidation flow: purge the persisted session once (guarded,
+ * so a cascade of parallel 401s cannot spam), then dispatch `gm:session-expired`
+ * which the bootstrap listens for to close the session and show the login panel.
+ */
+export function handleSessionInvalidation(): void {
+  if (sessionInvalidFlag) return;
+  sessionInvalidFlag = true;
+  purgeInvalidSessionStorage();
+  if (typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(new Event('gm:session-expired'));
+    } catch { /* noop */ }
+  }
 }
 
 export interface PortalSessionInfo {
@@ -174,7 +232,11 @@ export async function forceRefreshPortalSession(): Promise<PortalSessionInfo | n
       body: JSON.stringify({ refresh_token: refreshToken })
     });
     const data = await resp.json();
-    if (!data || !data.access_token) return null;
+    if (!data || !data.access_token) {
+      // Invalidated/Ghost refresh grant: route through the shared invalidation flow.
+      if (data && isUnauthorizedError(data)) handleSessionInvalidation();
+      return null;
+    }
     const s = await c.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
     if (s.error) return null;
     const p = data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');

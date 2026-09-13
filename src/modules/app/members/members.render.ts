@@ -16,6 +16,7 @@ import { filterBulkEligibleMembers, isRoleAllowedForBulk } from '../../members/m
 import {
   type GuildMember,
   getGuildMembers,
+  getMaxOverallPower,
   findGuildMember
 } from './members.store';
 import { deleteGuildMember, showEditMemberDialog, showTransferMemberDialog, fetchGuildMembers } from './members.controller';
@@ -84,6 +85,20 @@ function emptyStateHtml(): string {
   return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
 }
 
+// ── Cold-start skeleton (P3-08) ──────────────────────────────────────────────
+
+export function membersSkeletonHtml(): string {
+  const row = (w: string) =>
+    '<div class="gm-card gm-card-padded gm-skeleton-card" aria-hidden="true" style="display:flex; gap:12px; align-items:center; margin-bottom:10px; min-height:56px;">' +
+      '<div class="gm-skeleton" style="width:44px; height:44px; border-radius:12px; flex-shrink:0;"></div>' +
+      '<div style="flex:1;"><div class="gm-skeleton gm-skeleton-title" style="width:' + w + '; height:1rem; margin-bottom:.4rem;"></div>' +
+      '<div class="gm-skeleton gm-skeleton-text" style="width:65%; height:.75rem;"></div></div>' +
+    '</div>';
+  return '<div class="gm-members-skeleton-list" aria-busy="true" aria-label="Loading members" style="padding:.25rem 0;">' +
+    row('55%') + row('70%') + row('48%') + row('62%') +
+    '</div>';
+}
+
 const ROLE_NAMES: Record<string, string> = {
   R5: 'R5 (Leader)',
   R4: 'R4 (Officer)',
@@ -93,9 +108,21 @@ const ROLE_NAMES: Record<string, string> = {
 };
 const ROLE_ORDER = ['R5', 'R4', 'R3', 'R2', 'R1'];
 
-// ── Sorting ──────────────────────────────────────────────────────────────────
+function memberKey(m: GuildMember): string {
+  return String(m.pseudo || '').toLowerCase();
+}
 
-export function sortMembers(list: GuildMember[], sortVal: string): GuildMember[] {
+// ── Sorting (P3-04) ──────────────────────────────────────────────────────────
+
+export function sortMembers(list: GuildMember[], sortVal: string, scoreMap?: Map<string, number>): GuildMember[] {
+  const isRallySort = sortVal === 'density_desc' || sortVal === 'rally_desc' || sortVal === 'war_desc';
+  let scores: Map<string, number> | null = scoreMap || null;
+  if (isRallySort && !scores) {
+    // Memoize calculateRallyScore once (O(n)) instead of recomputing it inside
+    // every comparator call (O(n log n) score computations).
+    scores = new Map();
+    for (const m of list) scores.set(memberKey(m), calculateRallyScore(m));
+  }
   return list.slice().sort((a: any, b: any) => {
     const pa = parseInt(a.overall_power) || 0;
     const pb = parseInt(b.overall_power) || 0;
@@ -120,8 +147,8 @@ export function sortMembers(list: GuildMember[], sortVal: string): GuildMember[]
       case 'density_desc':
       case 'rally_desc':
       case 'war_desc': {
-        const ra = calculateRallyScore(a);
-        const rb = calculateRallyScore(b);
+        const ra = scores!.get(memberKey(a)) ?? 0;
+        const rb = scores!.get(memberKey(b)) ?? 0;
         if (rb !== ra) return rb - ra;
         if (pb !== pa) return pb - pa;
         const fb = (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
@@ -257,7 +284,7 @@ export function buildGroupedListHtml(
   withActions: boolean,
   portalUids: Record<string, boolean>
 ): string {
-  const maxPower = Math.max(0, ...getGuildMembers().map((m) => parseInt(String(m.overall_power)) || 0));
+  const maxPower = getMaxOverallPower();
   const grouped: Record<string, GuildMember[]> = { R5: [], R4: [], R3: [], R2: [], R1: [] };
   filteredList.forEach((m) => {
     const role = m.role || 'R1';
@@ -303,12 +330,18 @@ export function buildMilitaryMatrixHtml(
   _portalUids?: Record<string, boolean>
 ): string {
   sortVal = sortVal || 'rally_desc';
-  const sorted = sortMembers(list, sortVal);
-  if (sorted.length === 0) return emptyStateHtml();
+
+  // P3-04: compute every rally score once into a memo map, then reuse it for
+  // the ranking sort, the display order and every per-row badge (no repeated
+  // calculateRallyScore calls, no double sort on rally views).
+  const scoreMap = new Map<string, number>();
+  for (const m of list) scoreMap.set(memberKey(m), calculateRallyScore(m));
+
+  const isRallyView = sortVal === 'rally_desc' || sortVal === 'war_desc' || sortVal === 'density_desc';
 
   const rallyRankedList = list.slice().sort((a: any, b: any) => {
-    const ra = calculateRallyScore(a);
-    const rb = calculateRallyScore(b);
+    const ra = scoreMap.get(memberKey(a)) ?? 0;
+    const rb = scoreMap.get(memberKey(b)) ?? 0;
     if (rb !== ra) return rb - ra;
     const pb = (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
     if (pb !== 0) return pb;
@@ -317,12 +350,16 @@ export function buildMilitaryMatrixHtml(
     return (parseInt(b.fleet_rating) || 0) - (parseInt(a.fleet_rating) || 0);
   });
 
+  // Single sort: on rally views the ranking IS the table order.
+  const sorted = isRallyView ? rallyRankedList : sortMembers(list, sortVal, scoreMap);
+  if (sorted.length === 0) return emptyStateHtml();
+
   let maxRallyScore = 0;
   const rallyRankMap: Record<string, { isLeader: boolean; rank: number }> = {};
   let leaderCount = 0;
   rallyRankedList.forEach((m, idx) => {
-    const pKey = (m.pseudo || '').toLowerCase();
-    const rScore = calculateRallyScore(m);
+    const pKey = memberKey(m);
+    const rScore = scoreMap.get(pKey) ?? 0;
     if (rScore > maxRallyScore) maxRallyScore = rScore;
     if (idx < 16 && rScore > 0) { leaderCount++; rallyRankMap[pKey] = { isLeader: true, rank: idx + 1 }; }
     else rallyRankMap[pKey] = { isLeader: false, rank: idx + 1 };
@@ -357,7 +394,7 @@ export function buildMilitaryMatrixHtml(
     const uidVal = m.uid || '-';
     const roleVal = m.role || 'R1';
     const powerVal = parseInt(m.overall_power) || 0;
-    const rallyScore = calculateRallyScore(m);
+    const rallyScore = scoreMap.get(memberKey(m)) ?? 0;
     const rallyGrade = calculateRallyGrade(m, maxRallyScore);
     const rallyInfo = rallyRankMap[(m.pseudo || '').toLowerCase()] || { isLeader: false, rank: 999 };
     let rallyRoleChip: string;
@@ -630,7 +667,7 @@ export function renderGuildMembers(skipSubpanels?: boolean): void {
   }
 
   const members = getGuildMembers();
-  const maxPower = members.length ? Math.max(...members.map((m) => parseInt(String(m.overall_power)) || 0)) : 0;
+  const maxPower = members.length ? getMaxOverallPower() : 0;
 
   const portalUids: Record<string, boolean> = {};
   getAccounts().forEach((a) => {
@@ -697,92 +734,114 @@ function updateTempUidBadge(): void {
   }
 }
 
-function wireRosterInteractions(filteredAdmin: GuildMember[]): void {
-  const selected = getAppState().adminSelectedMembers;
+// ── Roster event delegation (P3-04) ──────────────────────────────────────────
+// Bound ONCE per page: every click/change on the roster is routed through a
+// single delegated handler on `document`, reading the current filtered roster
+// from the module context. No more per-node addEventListener + re-binding on
+// every render.
 
-  document.querySelectorAll('.admin-member-chk').forEach((chk) => {
-    chk.addEventListener('change', () => {
-      const pseudo = chk.getAttribute('data-pseudo');
+let rosterDelegationBound = false;
+let rosterCtx: GuildMember[] = [];
+
+function bindRosterDelegation(): void {
+  if (rosterDelegationBound || typeof document === 'undefined') return;
+  rosterDelegationBound = true;
+
+  document.addEventListener('change', (ev: Event) => {
+    const target = ev.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const selected = getAppState().adminSelectedMembers;
+
+    if (target.classList.contains('admin-member-chk')) {
+      const pseudo = target.getAttribute('data-pseudo');
       if (!pseudo) return;
-      const input = chk as HTMLInputElement;
-      if (input.checked) selected.add(pseudo); else selected.delete(pseudo);
-      updateBulkActionBar(filteredAdmin);
-      const rowOrCard = (chk as HTMLElement).closest('.gm-member-row, tr');
-      if (rowOrCard) rowOrCard.classList.toggle('is-selected', input.checked);
-    });
-  });
+      if (target.checked) selected.add(pseudo); else selected.delete(pseudo);
+      updateBulkActionBar(rosterCtx);
+      const rowOrCard = target.closest('.gm-member-row, tr');
+      if (rowOrCard) rowOrCard.classList.toggle('is-selected', target.checked);
+      return;
+    }
 
-  const matrixSelectAll = document.querySelector('.admin-matrix-select-all-chk') as HTMLInputElement | null;
-  if (matrixSelectAll) {
-    matrixSelectAll.addEventListener('change', () => {
-      const eligible = filteredAdmin.filter((m) => m && m.pseudo && m.role !== 'R5');
-      if (matrixSelectAll.checked) eligible.forEach((m) => selected.add(m.pseudo));
+    if (target.classList.contains('admin-matrix-select-all-chk')) {
+      const eligible = rosterCtx.filter((m) => m && m.pseudo && m.role !== 'R5');
+      if (target.checked) eligible.forEach((m) => selected.add(m.pseudo));
       else eligible.forEach((m) => selected.delete(m.pseudo));
       renderGuildMembers();
-    });
-  }
-
-  const selectAllBtn = byId('admin-members-select-all-btn');
-  if (selectAllBtn) {
-    (selectAllBtn as HTMLElement).onclick = () => {
-      const eligible = filteredAdmin.filter((m) => m && m.pseudo && m.role !== 'R5');
-      const allSelected = eligible.length > 0 && eligible.every((m) => selected.has(m.pseudo));
-      if (allSelected) eligible.forEach((m) => selected.delete(m.pseudo));
-      else eligible.forEach((m) => selected.add(m.pseudo));
-      renderGuildMembers();
-    };
-  }
-
-  const bulkClearBtn = byId('admin-bulk-clear-btn');
-  if (bulkClearBtn) {
-    (bulkClearBtn as HTMLElement).onclick = () => { selected.clear(); renderGuildMembers(); };
-  }
-
-  document.querySelectorAll('.gm-bulk-role-btn').forEach((btn) => {
-    (btn as HTMLElement).onclick = () => { void bulkUpdateMemberRoles(btn.getAttribute('data-role') || ''); };
+    }
   });
 
-  document.querySelectorAll('#admin-members-view-mode .gm-seg-btn').forEach((btn) => {
-    (btn as HTMLElement).onclick = () => {
-      const v = btn.getAttribute('data-view') === 'matrix' ? 'matrix' : 'cards';
-      const ww = w();
-      ww.adminMembersViewMode = v;
-      document.querySelectorAll('#admin-members-view-mode .gm-seg-btn').forEach((b) => {
-        const isActive = b.getAttribute('data-view') === v;
-        b.classList.toggle('active', isActive);
-        (b as HTMLElement).style.background = isActive ? 'var(--accent)' : 'transparent';
-        (b as HTMLElement).style.color = isActive ? '#fff' : 'var(--text-muted)';
-      });
-      renderGuildMembers();
-    };
-  });
+  document.addEventListener('click', (ev: Event) => {
+    const target = ev.target as HTMLElement | null;
+    if (!target || typeof target.closest !== 'function') return;
+    const selected = getAppState().adminSelectedMembers;
 
-  document.querySelectorAll('.gm-role-group-header').forEach((header) => {
-    header.addEventListener('click', () => {
-      const role = header.getAttribute('data-role');
+    const roleHeader = target.closest<HTMLElement>('.gm-role-group-header');
+    if (roleHeader) {
+      const role = roleHeader.getAttribute('data-role');
       if (!role) return;
       const ww = w();
       if (!ww.GM_COLLAPSED_ROLES) ww.GM_COLLAPSED_ROLES = {};
       ww.GM_COLLAPSED_ROLES[role] = !ww.GM_COLLAPSED_ROLES[role];
       renderGuildMembers();
-    });
-  });
+      return;
+    }
 
-  document.querySelectorAll('.guild-transfer-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const member = findGuildMember(btn.getAttribute('data-pseudo') || '');
+    const segBtn = target.closest<HTMLElement>('#admin-members-view-mode .gm-seg-btn');
+    if (segBtn) {
+      const v = segBtn.getAttribute('data-view') === 'matrix' ? 'matrix' : 'cards';
+      const ww = w();
+      ww.adminMembersViewMode = v;
+      document.querySelectorAll('#admin-members-view-mode .gm-seg-btn').forEach((b) => {
+        const bb = b as HTMLElement;
+        const isActive = bb.getAttribute('data-view') === v;
+        bb.classList.toggle('active', isActive);
+        bb.style.background = isActive ? 'var(--accent)' : 'transparent';
+        bb.style.color = isActive ? '#fff' : 'var(--text-muted)';
+      });
+      renderGuildMembers();
+      return;
+    }
+
+    const selectAllBtn = target.closest<HTMLElement>('#admin-members-select-all-btn');
+    if (selectAllBtn) {
+      const eligible = rosterCtx.filter((m) => m && m.pseudo && m.role !== 'R5');
+      const allSelected = eligible.length > 0 && eligible.every((m) => selected.has(m.pseudo));
+      if (allSelected) eligible.forEach((m) => selected.delete(m.pseudo));
+      else eligible.forEach((m) => selected.add(m.pseudo));
+      renderGuildMembers();
+      return;
+    }
+
+    const bulkClearBtn = target.closest<HTMLElement>('#admin-bulk-clear-btn');
+    if (bulkClearBtn) {
+      selected.clear();
+      renderGuildMembers();
+      return;
+    }
+
+    const bulkRoleBtn = target.closest<HTMLElement>('.gm-bulk-role-btn');
+    if (bulkRoleBtn) {
+      void bulkUpdateMemberRoles(bulkRoleBtn.getAttribute('data-role') || '');
+      return;
+    }
+
+    const transferBtn = target.closest<HTMLElement>('.guild-transfer-btn');
+    if (transferBtn) {
+      const member = findGuildMember(transferBtn.getAttribute('data-pseudo') || '');
       if (member) void showTransferMemberDialog(member);
-    });
-  });
-  document.querySelectorAll('.guild-edit-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const member = findGuildMember(btn.getAttribute('data-pseudo') || '');
+      return;
+    }
+
+    const editBtn = target.closest<HTMLElement>('.guild-edit-btn');
+    if (editBtn) {
+      const member = findGuildMember(editBtn.getAttribute('data-pseudo') || '');
       if (member) void showEditMemberDialog(member);
-    });
-  });
-  document.querySelectorAll('.guild-delete-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const pseudo = btn.getAttribute('data-pseudo') || '';
+      return;
+    }
+
+    const deleteBtn = target.closest<HTMLElement>('.guild-delete-btn');
+    if (deleteBtn) {
+      const pseudo = deleteBtn.getAttribute('data-pseudo') || '';
       const ww = w();
       if (!ww.showConfirm) return;
       ww.showConfirm(
@@ -790,6 +849,11 @@ function wireRosterInteractions(filteredAdmin: GuildMember[]): void {
         t('confirm_remove_member_body') + ' <strong>' + esc(pseudo) + '</strong> ' + t('confirm_remove_member_body2'),
         () => { void deleteGuildMember(pseudo); }
       );
-    });
+    }
   });
+}
+
+function wireRosterInteractions(filteredAdmin: GuildMember[]): void {
+  rosterCtx = filteredAdmin;
+  bindRosterDelegation();
 }

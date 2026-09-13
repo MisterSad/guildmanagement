@@ -6,7 +6,8 @@
  */
 
 import { t, getLang, setLang, applyTranslations } from './core/i18n/i18n';
-import { getSupabaseClient, escapeHTML } from './core/api/supabase';
+import { getSupabaseClient, escapeHTML, handleSessionInvalidation, resetSessionInvalidationFlag } from './core/api/supabase';
+import { configureFetchErrorRuntime } from './core/api/fetch-errors';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY } from './core/config/constants';
 import { installDbWriteGuard } from './core/api/db-guard';
@@ -532,6 +533,14 @@ if (typeof window !== 'undefined') {
     // Full cutover bootstrap order (app.js removed). gm-utils startup
     // side-effects (rad_* migration, window.currentGuild, terms modal) first.
     runGmBootstrap();
+    // P3-01/P3-02: wire the shared fetch-error runtime (classified toasts +
+    // session invalidation) and route the global session-expiry signal to
+    // logout/re-login instead of per-view generic toasts.
+    configureFetchErrorRuntime({
+      showToast: showAppToast,
+      onSessionInvalid: () => { handleSessionInvalidation(); },
+    });
+    window.addEventListener('gm:session-expired', () => { void doLogout(); });
     // Auth/session form wiring, tab router, admin forms, OCR dropdown, tz
     // collapsible, stale-tab detection.
     initAuthForms();
@@ -562,7 +571,10 @@ if (typeof window !== 'undefined') {
     });
     // Restore the persisted session, then the last active tab on success.
     void restoreSession().then((res) => {
-      if (res && res.restored) restoreSavedTab();
+      if (res && res.restored) {
+        resetSessionInvalidationFlag();
+        restoreSavedTab();
+      }
     });
   });
 }

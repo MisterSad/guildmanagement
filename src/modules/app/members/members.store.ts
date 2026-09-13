@@ -47,20 +47,40 @@ let guildMembers: GuildMember[] = [];
 let bannedPlayers: BannedPlayer[] = [];
 let pendingTransfers: PendingTransfer[] = [];
 
+// P3-05: precomputed roster max power (O(1) reads instead of Math.max(...map())
+// on every render pass).
+let maxOverallPower = 0;
+
+function recomputeMaxPower(): void {
+  let mx = 0;
+  for (const m of guildMembers) {
+    const p = parseInt(String(m.overall_power)) || 0;
+    if (p > mx) mx = p;
+  }
+  maxOverallPower = mx;
+}
+
 export function getGuildMembers(): GuildMember[] {
   return guildMembers;
 }
 export function setGuildMembers(list: GuildMember[] | null | undefined): void {
   guildMembers = Array.isArray(list) ? list : [];
+  recomputeMaxPower();
 }
 export function pushGuildMember(member: GuildMember): void {
   guildMembers.push(member);
+  recomputeMaxPower();
 }
 export function filterGuildMembersOut(predicate: (m: GuildMember) => boolean): void {
   guildMembers = guildMembers.filter((m) => !predicate(m));
+  recomputeMaxPower();
 }
 export function findGuildMember(pseudo: string): GuildMember | undefined {
   return guildMembers.find((m) => m.pseudo === pseudo);
+}
+/** Highest `overall_power` currently in the roster (0 when empty). */
+export function getMaxOverallPower(): number {
+  return maxOverallPower;
 }
 
 export function getBannedPlayers(): BannedPlayer[] {

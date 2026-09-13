@@ -28,8 +28,15 @@ describe('Final cutover: app.js removed', () => {
     const router = read('src/modules/app/router.ts');
     expect(router).not.toContain('legacyTabLoader');
     expect(router).not.toContain('setLegacyTabLoader');
-    expect(router).toContain("invokeMethod('GM_MEMBERS', 'fetchGuildMembers')");
+    expect(router).toContain("invokeMethod('GM_MEMBERS', 'fetchGuildMembers', signal)");
     expect(router).toContain("invokeMethod('GM_ADMIN', 'fetchAccounts')");
+  });
+
+  it('the router cancels/dedupes in-flight tab loads via AbortController (P3-03)', () => {
+    const router = read('src/modules/app/router.ts');
+    expect(router).toContain('new AbortController()');
+    expect(router).toContain('activeLoadController.abort()');
+    expect(router).toContain('signal');
   });
 });
 
