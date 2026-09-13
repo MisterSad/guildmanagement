@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import '../i18n.js';
 
 const I18N = window.GM_I18N;
 expect(I18N).toBeTruthy();

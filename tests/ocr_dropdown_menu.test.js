@@ -68,11 +68,11 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
         });
 
         it('i18n dictionary defines ocr_ai_metric_scanners key', () => {
-            const i18nJs = read('i18n.js');
+            const i18nJs = read('src/core/i18n/i18n.dictionary.ts');
             expect(i18nJs).toContain('ocr_ai_metric_scanners');
             expect(i18nJs).toContain('AI Metric Scanners');
 
-            const i18nTs = read('src/core/i18n/i18n.ts');
+            const i18nTs = read('src/core/i18n/i18n.dictionary.ts');
             expect(i18nTs).toContain('ocr_ai_metric_scanners');
             expect(i18nTs).toContain('AI Metric Scanners');
         });

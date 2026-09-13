@@ -9,7 +9,6 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../gm-utils.js';
-import '../i18n.js';
 import { PortalView } from '../src/modules/portal/views/PortalView';
 import { resetSupabaseClient } from '../src/core/api/supabase';
 

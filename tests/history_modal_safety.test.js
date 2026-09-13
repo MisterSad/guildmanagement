@@ -11,10 +11,10 @@ describe('Ticket 1.1 — ar_subtitle i18n tag and Event History modal safety', (
     expect(html).toContain('data-i18n="ar_subtitle"');
     expect(html).toContain('Track and manage Arms Race stages &amp; scores');
 
-    const i18nJs = read('i18n.js');
+    const i18nJs = read('src/core/i18n/i18n.dictionary.ts');
     expect(i18nJs).toMatch(/ar_subtitle:\s*'Track and manage Arms Race stages & scores'/);
 
-    const i18nTs = read('src/core/i18n/i18n.ts');
+    const i18nTs = read('src/core/i18n/i18n.dictionary.ts');
     expect(i18nTs).toMatch(/ar_subtitle:\s*'Track and manage Arms Race stages & scores'/);
   });
 

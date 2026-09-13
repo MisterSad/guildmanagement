@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import '../gm-utils.js';
-import '../i18n.js';
 
 const GM = window.GM;
 expect(GM).toBeTruthy();

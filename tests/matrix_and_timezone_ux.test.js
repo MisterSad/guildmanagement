@@ -12,8 +12,8 @@ describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible 
         const html = read('index.html');
         const css = read('components.css');
         const app = read('app.js');
-        const i18nJs = read('i18n.js');
-        const i18nTs = read('src/core/i18n/i18n.ts');
+        const i18nJs = read('src/core/i18n/i18n.dictionary.ts');
+        const i18nTs = read('src/core/i18n/i18n.dictionary.ts');
 
         it('defines tabular-nums and gm-matrix-num in components.css with text-align: right and font-variant-numeric', () => {
             expect(css).toMatch(/\.tabular-nums,\s*\.gm-matrix-num\s*\{[^}]*font-variant-numeric:\s*tabular-nums;/);
@@ -26,11 +26,11 @@ describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible 
             expect(css).toMatch(/\.gm-collapsible-head\[aria-expanded=["']true["']\]\s*\.gm-collapse-icon\s*\{[^}]*transform:\s*rotate\(180deg\);/);
         });
 
-        it('defines timezone_expand and timezone_collapse in both i18n.js and src/core/i18n/i18n.ts', () => {
+        it('defines timezone_expand and timezone_collapse in both i18n.js and src/core/i18n/i18n.dictionary.ts', () => {
             expect(i18nJs).toContain('timezone_expand:');
             expect(i18nJs).toContain('timezone_collapse:');
-            expect(i18nTs).toContain("timezone_expand: 'Expand'");
-            expect(i18nTs).toContain("timezone_collapse: 'Collapse'");
+            expect(i18nTs).toMatch(/timezone_expand:\s+'Expand'/);
+            expect(i18nTs).toMatch(/timezone_collapse:\s+'Collapse'/);
         });
 
         it('structures timezone coverage section as collapsible accordion closed by default in index.html', () => {

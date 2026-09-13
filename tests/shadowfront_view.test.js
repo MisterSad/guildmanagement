@@ -11,7 +11,6 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../gm-utils.js';
-import '../i18n.js';
 import { ShadowfrontView } from '../src/modules/shadowfront/views/ShadowfrontView';
 
 const GM = window.GM;

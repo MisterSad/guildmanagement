@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../gm-utils.js';
-import '../i18n.js';
 import { gloryView } from '../src/modules/glory/views/GloryView';
 
 const GM = window.GM;

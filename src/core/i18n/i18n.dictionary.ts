@@ -1,14 +1,12 @@
 /**
- * FGF GUILD MANAGEMENT TOOL – i18n module
- * English-only (the app UI is fully in English).
- * Usage:  t('key')          → translated string
- *         setLang(lang)     → no-op (kept for API compatibility)
- *         applyTranslations() → update all [data-i18n] elements
+ * src/core/i18n/i18n.dictionary.ts
+ *
+ * Full English translation table, extracted verbatim from the legacy root
+ * `i18n.js` (English-only app). Keys/values must stay byte-identical to the
+ * legacy dictionary until the i18n cutover is complete.
  */
-(function () {
 
-    var TRANSLATIONS = {
-        en: {
+export const EN: Record<string, string> = {
             /* ── Login ──────────────────────────── */
             login_title:           'FGF GUILD MANAGEMENT',
             login_subtitle:        'Foundation Galactic Frontier',
@@ -568,37 +566,4 @@
             placeholder_uid:                 'Player UID',
             placeholder_banned_reason:       'Ban reason (optional)',
             label_uid:                       'Player UID',
-            btn_refresh:                     'Refresh',
-        }
-    };
-
-    // ── Public API ─────────────────────────────────────────────────────────────
-    var currentLang = 'en';
-
-    window.GM_I18N = {
-        t: function (key) {
-            return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key])
-                || key;
-        },
-        getLang: function () { return currentLang; },
-        setLang: function (lang) {
-            // English-only: do nothing
-        },
-        applyTranslations: function () {
-            var t = window.GM_I18N.t;
-            // Text content
-            document.querySelectorAll('[data-i18n]').forEach(function (el) {
-                el.textContent = t(el.getAttribute('data-i18n'));
-            });
-            // Placeholder attributes
-            document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
-                el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
-            });
-            // Title attributes
-            document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
-                el.setAttribute('title', t(el.getAttribute('data-i18n-title')));
-            });
-        }
-    };
-
-})();
+            btn_refresh:                     'Refresh',};

@@ -6,7 +6,6 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../gm-utils.js';
-import '../i18n.js';
 import { EventsView } from '../src/modules/events/views/EventsView';
 
 const SESSION = 'SVS-2026-W32';

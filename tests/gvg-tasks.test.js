@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from '../src/core/config/gvg-tasks';
-import '../i18n.js';
 import '../gm-utils.js';
 
 describe('GvG Daily Task Reminders & Points Breakdown', () => {

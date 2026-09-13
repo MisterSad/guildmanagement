@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../gm-utils.js';
-import '../i18n.js';
 
 describe('Member Duplicate UID & Same-Guild Rename Detection', () => {
     let container;

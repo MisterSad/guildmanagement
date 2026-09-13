@@ -192,7 +192,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
   });
 
   it('i18n exposes the ticket strings including screenshots and statuses', () => {
-    const i18n = read('i18n.js');
+    const i18n = read('src/core/i18n/i18n.dictionary.ts');
     expect(i18n).toContain('gm_nav_tickets:');
     expect(i18n).toContain("ticket_report_bug:");
     expect(i18n).toContain('ticket_submit:');

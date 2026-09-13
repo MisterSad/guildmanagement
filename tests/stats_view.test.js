@@ -11,7 +11,6 @@
  * that StatsView exposes no new `window.GM_*` global.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import '../i18n.js';
 import '../gm-utils.js';
 import { StatsView } from '../src/modules/stats/views/StatsView';
 

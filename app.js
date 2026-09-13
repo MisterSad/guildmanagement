@@ -38,7 +38,9 @@
     window.adminSelectedMembers = window.adminSelectedMembers || new Set();
 
     // ─── Boot ─────────────────────────────────────────────────────────────────
-    window.GM_I18N.applyTranslations();
+    // Optional-chained: i18n is now bridged by the deferred /src/main.ts module
+    // (which runs after this classic script), so GM_I18N may not exist yet here.
+    window.GM_I18N?.applyTranslations?.();
 
     // Restaure depuis la session Supabase persistée (survit au rechargement
     // et à la fermeture d'onglet tant que le refresh token est valide).

@@ -1767,8 +1767,7 @@
     <!-- Vite ES Module entrypoint -->
     <script type="module" src="/src/main.ts"></script>
 
-    <!-- Scripts: i18n first, then Supabase, icons, utils, modules, then app.js -->
-    <script src="i18n.js?v=51"></script>
+    <!-- Scripts: Supabase, icons, utils, then app.js (i18n is in /src/main.ts) -->
     <!-- TODO(phase-3): vendor supabase-js and phosphor-icons via Vite, drop CDN origins from CSP -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>

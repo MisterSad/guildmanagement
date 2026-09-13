@@ -1,130 +1,24 @@
 /**
  * src/core/i18n/i18n.ts
  *
- * ES Module i18n translation system.
+ * ES Module i18n engine (English-only). Mirrors the legacy `i18n.js` public
+ * contract exactly: t() falls back to the raw key, setLang() is a documented
+ * no-op, getLang() returns 'en', and applyTranslations() fills
+ * [data-i18n], [data-i18n-placeholder] and [data-i18n-title].
+ *
+ * Phase 1: this module does NOT assign window.GM_I18N — the parity bridge is
+ * added in src/main.ts at cutover (avoids any test-time side effect).
  */
 
-const TRANSLATIONS: Record<string, Record<string, string>> = {
-  en: {
-    login_title: 'FGF GUILD MANAGEMENT',
-    login_subtitle: 'Foundation Galactic Frontier',
-    login_label_id: 'Identifier',
-    login_placeholder_id: 'Your identifier',
-    login_label_pass: 'Password',
-    login_placeholder_pass: 'Your password',
-    login_error: 'Invalid credentials.',
-    login_btn: 'Access',
-    login_btn_loading: 'Logging in...',
-    login_discord: 'Want a guild space for your guild? Join our Discord',
-    footer_terms: 'Terms & Conditions',
-    terms_modal_title: 'Terms of Service & General Conditions of Sale (TOS/GCS)',
-    terms_close: 'Close',
-    nav_dashboard: 'Command Center',
-    nav_members: 'Members',
-    nav_admin_label: 'Admin:',
-    nav_logout_title: 'Logout',
-    admin_title: 'Command Center',
-    admin_subtitle: 'Manage access and accounts for the guild',
-    card_create_account: 'Create Account',
-    label_account_id: 'Account Identifier',
-    placeholder_account_id: 'e.g. MemberName',
-    btn_generate: 'Generate Access',
-    btn_generating: 'Creating...',
-    card_active_accounts: 'Active Accounts',
-    empty_accounts: 'No accounts generated',
-    copy_title: 'Copy password',
-    delete_title: 'Delete',
-    show_pwd: 'Show / Hide',
-    cred_created: 'Created',
-    card_guild_settings: 'Guild Settings & Coefficients',
-    label_coeff_svs: 'SvS Coeff',
-    label_coeff_gvg: 'GvG Coeff',
-    label_coeff_shadowfront: 'Shadowfront Coeff',
-    label_coeff_dtr: 'DTR Coeff',
-    label_coeff_armsrace: 'Arms Race Coeff',
-    ar_subtitle: 'Track and manage Arms Race stages & scores',
-    stats_no_event_data_title: 'No event data for this period',
-    stats_no_event_data_desc: 'No scores recorded for this event in the selected week. Try selecting another week or trigger an OCR scan.',
-    ocr_ai_metric_scanners: 'AI Metric Scanners',
-    timezone_expand: 'Expand',
-    timezone_collapse: 'Collapse',
-    label_discord_webhook: 'Discord Webhook URL',
-    notify_gvg_daily_tasks_desc: 'Daily Tasks breakdown',
-    btn_send_gvg_tasks_now: 'Send Today\'s GvG Tasks Now',
-    btn_save_config: 'Save Configuration',
-    toast_config_updated: 'Guild configuration updated successfully!',
-    members_title: 'Guild Members',
-    members_subtitle: 'Manage in-game members of Foundation Galactic Frontier',
-    card_add_member: 'Add a member',
-    label_pseudo: 'In-Game Name (Pseudo)',
-    placeholder_pseudo: 'e.g. SpaceCommander',
-    label_uid: 'Player UID',
-    placeholder_uid: 'Numeric UID',
-    label_power: 'Overall Power',
-    btn_add_member: 'Add Member',
-    btn_adding: 'Adding...',
-    card_member_list: 'Members List',
-    empty_members: 'No members registered',
-    search_placeholder: 'Search by pseudo...',
-    sort_fleet_desc: 'Sort: Fleet Rating (High-Low)',
-    sort_tech_desc: 'Sort: Tech Power (High-Low)',
-    sort_flagship_desc: 'Sort: Flagship (High-Low)',
-    sort_glory_desc: 'Sort: Glory (High-Low)',
-    sort_war_desc: 'Sort: War Score (High-Low)',
-    label_tech_power: 'Tech Power',
-    label_champion_power: 'Champion Power',
-    label_crew_power: 'Crew Power',
-    label_flagship_power: 'Flagship Power',
-    label_fleet_rating: 'Fleet Rating',
-    label_glory_score: 'Glory Score',
-    label_density_index: 'Combat Density',
-    label_residual_power: 'Volatile Troop Power',
-    label_combativity: 'Combativity Ratio',
-    filter_role_all: 'All Roles',
-    filter_role_r5: 'R5 — Leader',
-    filter_role_r4: 'R4 — Officer',
-    filter_role_r3: 'R3 — Member',
-    filter_role_r2: 'R2 — Member',
-    filter_role_r1: 'R1 — Member',
-    confirm_delete_account: 'Are you sure you want to delete account "{name}"?',
-    confirm_delete_member: 'Are you sure you want to delete member "{name}"?',
-    confirm_demote: 'Are you sure you want to demote "{name}" to Member?',
-    confirm_promote: 'Promote "{name}" to Officer (R4)?',
-    toast_account_created: 'Account "{name}" generated!',
-    toast_account_deleted: 'Account deleted.',
-    toast_member_added: 'Member "{name}" added!',
-    toast_member_deleted: 'Member deleted.',
-    toast_role_updated: 'Role updated for {name}.',
-    toast_copied: 'Password copied to clipboard!',
-    toast_copy_error: 'Unable to copy password.',
-    toast_error_auth: 'Incorrect identifier or password.',
-    toast_error_network: 'Network connection error.',
-    toast_error_unknown: 'An unexpected error occurred.',
-    validation_pseudo_empty: 'Please enter a pseudo.',
-    validation_pseudo_too_long: 'Pseudo must not exceed 32 characters.',
-    validation_pseudo_invalid_chars: 'Pseudo contains forbidden characters.',
-    validation_uid_invalid: 'UID is invalid.',
-    validation_uid_too_long: 'UID must not exceed 20 characters.',
-    validation_uid_not_numeric: 'UID must contain numbers only.',
-    tab_dashboard: 'Command Center',
-    tab_members: 'Members',
-    tab_overview: 'Overview',
-    tab_events: 'Active Events',
-    tab_stats: 'Participation',
-    tab_sanctions: 'Sanctions',
-    tab_history: 'Session History',
-    tab_armsrace: 'Arms Race',
-    tab_shadowfront: 'Shadowfront',
-    tab_glory: 'Glory',
-    btn_refresh: 'Refresh'
-  }
-};
+import { EN } from './i18n.dictionary';
 
+const TRANSLATIONS: Record<string, Record<string, string>> = { en: EN };
 let currentLang = 'en';
 
+/** Exact translation, or the raw key when unknown. */
 export function t(key: string, replacements?: Record<string, string | number>): string {
   const dict = TRANSLATIONS[currentLang] || TRANSLATIONS['en'];
-  let str = dict[key] || TRANSLATIONS['en'][key] || key;
+  let str = (dict && dict[key]) || (TRANSLATIONS['en'] && TRANSLATIONS['en'][key]) || key;
   if (replacements) {
     Object.keys(replacements).forEach((k) => {
       str = str.replace(new RegExp('\\{' + k + '\\}', 'g'), String(replacements[k]));
@@ -137,37 +31,33 @@ export function getLang(): string {
   return currentLang;
 }
 
-export function setLang(lang: string): void {
-  if (TRANSLATIONS[lang]) currentLang = lang;
+/** English-only: kept as a documented no-op for API compatibility. */
+export function setLang(_lang: string): void {
+  // no-op
 }
 
-export function applyTranslations(): void {
+export function applyTranslations(root?: HTMLElement | Document): void {
   if (typeof document === 'undefined') return;
-  const elements = document.querySelectorAll('[data-i18n]');
+  const scope: ParentNode = root || document;
+
+  const elements = scope.querySelectorAll('[data-i18n]');
   elements.forEach((el) => {
     const key = el.getAttribute('data-i18n');
     if (key) el.textContent = t(key);
   });
-  const placeholders = document.querySelectorAll('[data-i18n-placeholder]');
+
+  const placeholders = scope.querySelectorAll('[data-i18n-placeholder]');
   placeholders.forEach((el) => {
     const key = el.getAttribute('data-i18n-placeholder');
     if (key) (el as HTMLInputElement).placeholder = t(key);
   });
+
+  const titles = scope.querySelectorAll('[data-i18n-title]');
+  titles.forEach((el) => {
+    const key = el.getAttribute('data-i18n-title');
+    if (key) el.setAttribute('title', t(key));
+  });
 }
 
-// Expose on window.GM_I18N — but only as a fallback. i18n.js (legacy,
-// loaded before this module ever runs — it's a classic sync script, this is
-// a deferred ES module) is the real, complete translation table in
-// production; this one only covers login/dashboard strings authored so far
-// in /src. Overwriting window.GM_I18N unconditionally here clobbered the
-// legacy dictionary the moment this module started actually executing
-// (build.js used to ship a broken /src/main.ts reference, so it never had),
-// and every t() call across the whole app started returning raw keys.
-if (typeof window !== 'undefined' && !(window as any).GM_I18N) {
-  (window as any).GM_I18N = {
-    t,
-    getLang,
-    setLang,
-    applyTranslations
-  };
-}
+export const i18n = { t, getLang, setLang, applyTranslations };
+export default i18n;
