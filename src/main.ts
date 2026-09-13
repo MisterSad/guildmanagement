@@ -57,6 +57,7 @@ import { StatsService } from './modules/stats/stats.service';
 import { statsView } from './modules/stats/views/StatsView';
 import { shellView } from './modules/shell/views/ShellView';
 import { shadowfrontView } from './modules/shadowfront/views/ShadowfrontView';
+import { armsRaceView } from './modules/armsrace/views/ArmsRaceView';
 import { PortalService } from './modules/portal/portal.service';
 import { AuditService } from './modules/audit/audit.service';
 import { logger } from './core/logger/logger';
@@ -68,7 +69,6 @@ import { OverviewView } from './modules/overview/views/OverviewView';
 import { HistoryView } from './modules/history/views/HistoryView';
 import { SanctionsView } from './modules/sanctions/views/SanctionsView';
 import { CrossRankView } from './modules/matchup/cross-rank';
-import { ArmsRaceView } from './modules/armsrace/armsrace-view';
 import { GloryView } from './modules/glory/glory-view';
 import { SubscriptionView } from './modules/subscription/subscription-view';
 import { BadgesView } from './modules/badges/badges-view';
@@ -177,6 +177,15 @@ if (typeof window !== 'undefined') {
     getActiveSquadSession: (squadKey: any) => shadowfrontView.getActiveSquadSession(squadKey)
   };
 
+  // Backward-compatible Arms Race entrypoint. Replaces the former root
+  // armsrace.js (Strangler cutover): app.js and ShellView's lazy registry keep
+  // calling window.GM_ARMSRACE.load()/addMemberToActiveEvents()/removeMember…
+  (window as any).GM_ARMSRACE = {
+    load: () => armsRaceView.load(),
+    addMemberToActiveEvents: (pseudo: string) => armsRaceView.addMemberToActiveEvents(pseudo),
+    removeMemberFromActiveEvents: (pseudo: string) => armsRaceView.removeMemberFromActiveEvents(pseudo)
+  };
+
   (window as any).GM.components = {
     BaseComponent,
     ToastNotification,
@@ -185,7 +194,6 @@ if (typeof window !== 'undefined') {
     HistoryView,
     SanctionsView,
     CrossRankView,
-    ArmsRaceView,
     GloryView,
     SubscriptionView,
     BadgesView
