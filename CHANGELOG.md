@@ -1,6 +1,6 @@
 # Changelog
 
-## New
+## [3.17.2]
 
 - **Global remediation — Phases 1-3 (DB/RPC resilience, strict role isolation, frontend resilience & roster performance) (V3.17.2)** — three audit phases shipped together on 2026-09-13.
   - **Added**: `src/core/api/fetch-errors.ts` (unified network-error taxonomy: offline / gateway / rate-limit / unauthorized / server / unknown, classified toasts + inline Retry banner); `public.gm_check_ip_throttle` atomic throttle RPC (`SUM` + `INSERT … ON CONFLICT DO UPDATE`, `service_role` only); `accounts.session_version` epoch + `public.gm_session_is_valid()`; session-invalidation / error-classification test suites (`tests/fetch_errors.test.js`, `tests/roles_rls_session_hardening.test.js`).
@@ -8,7 +8,9 @@
   - **Fixed**: peak-hour login/connection timeouts and Postgres lock contention (targeted indexes, strict timeouts, atomic throttle, retention moved off the request path); R5/R4 → `super_admin` role-escalation paths (exact helpers, `guild_admin` no longer elevated, direct PostgREST writes to `public.accounts` closed); `player_absences` policy comparing the wrong column (`app_metadata.account_id` vs in-game `uid`); duplicate-key storms on `guild_config` `sent_*` locks (`ON CONFLICT DO NOTHING` via `acquireReminderLock`).
   - **Performance**: roster DOM event delegation bound once; `calculateRallyScore` memoized per sort pass; Tactical Force Matrix ranks in a single sort; O(1) precomputed `overall_power` max; cold-start `aria-busy` skeletons without clearing cached data on refresh.
   - **Security**: strict four-role isolation (`super_admin` / `server_admin` / `guild_admin` / `member`) with the legacy in-game roles retired; compromised GoTrue sessions invalidated via the `session_version` epoch bump on password reset / role change / suspension.
-  - **Verification**: `npm run type-check` — 0 errors; **1133/1133 Vitest tests green across 100 suites** (+40 tests vs the previous 1093/97 baseline); production build stable (`version.json` V3.17.1), Service Worker compiled.
+  - **Verification**: `npm run type-check` — 0 errors; **1133/1133 Vitest tests green across 100 suites** (+40 tests vs the previous 1093/97 baseline); production build stable (`version.json` V3.17.2), Service Worker compiled.
+
+## New
 
 - **Fix: Discord webhook notification role suppression, Shadowfront Squad 1 & 2 roles, and stale event auto-expiration (V3.16.1)** — Discord API suppresses push/bell notifications for role mentions (`<@&role_id>`) from webhooks unless `allowed_mentions: { parse: ['roles', 'users', 'everyone'] }` is explicitly provided. Added `allowed_mentions` to all 5 event reminder payload builders in `event-reminders`, defaulted it in `discord-webhook-proxy`, and enforced it across `gm-utils.js` and `shadowfront.js`. Added separate Discord role ID support for Shadowfront Squad 1 (`discord_role_id_shadowfront_squad1`) and Squad 2 (`discord_role_id_shadowfront_squad2`) with fallback to the global role in `event-reminders`, `gm-utils.js`, `shadowfront.js`, `index.html`, and `app.js`. Replaced hardcoded `@everyone` in SvS garrison reminder with `${svsGuildTag || '@everyone'}`. Added 24-hour auto-expiration in `event-reminders` so abandoned sessions never remain permanently active in `event_status`. Reconciled ALPHA's production state for tonight's Squad 2 session (`SF2-20260904-1` at 23:00 UTC). **712/712 Vitest unit tests green** (+8 new regression tests).
 
