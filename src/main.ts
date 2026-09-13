@@ -70,6 +70,8 @@ import { sanctionsView } from './modules/sanctions/views/SanctionsView';
 import { historyView } from './modules/history/views/HistoryView';
 import { eventsView } from './modules/events/views/EventsView';
 import { overviewView } from './modules/overview/views/OverviewView';
+import { webAuthnService } from './core/auth/webauthn.service';
+import { mountPasskeysPanel, downloadBackupCodes } from './modules/auth/PasskeysPanel';
 import { logger } from './core/logger/logger';
 
 import { BaseComponent } from './components/ui/BaseComponent';
@@ -230,6 +232,26 @@ if (typeof window !== 'undefined') {
   };
   (window as any).GM_OVERVIEW = {
     load: () => overviewView.load()
+  };
+
+  // Wave 4 Strangler bridge: WebAuthn is nested under window.GM (not a GM_*
+  // global), consumed by app.js and gm-utils.js login helpers.
+  (window as any).GM = (window as any).GM || {};
+  (window as any).GM.webauthn = {
+    isSupported: () => webAuthnService.isSupported(),
+    registerPasskey: (pseudo?: string) => webAuthnService.registerPasskey(pseudo),
+    authenticateWithPasskey: (accountId?: string) => webAuthnService.authenticateWithPasskey(accountId),
+    redeemBackupCode: (accountId: string, code: string) => webAuthnService.redeemBackupCode(accountId, code),
+    listPasskeys: (accountId?: string) => webAuthnService.listPasskeys(accountId),
+    renamePasskey: (credentialId: string, label: string) => webAuthnService.renamePasskey(credentialId, label),
+    removePasskey: (credentialId: string) => webAuthnService.removePasskey(credentialId),
+    regenerateBackupCodes: (accountId?: string) => webAuthnService.regenerateBackupCodes(accountId),
+    downloadBackupCodes: (codes: string[], accountId: string) => downloadBackupCodes(codes, accountId),
+    mountPasskeysPanel: (config: any) => mountPasskeysPanel(config),
+    adminResetPasskeys: (accountId: string) => webAuthnService.adminResetPasskeys(accountId),
+    isConditionalMediationAvailable: () => webAuthnService.isConditionalMediationAvailable(),
+    startConditionalAuth: (onSuccess: (accId: string) => void) => webAuthnService.startConditionalAuth(onSuccess),
+    abortConditionalAuth: () => webAuthnService.abortConditionalAuth()
   };
 
   (window as any).GM.components = {
