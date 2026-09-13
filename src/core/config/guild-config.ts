@@ -78,11 +78,15 @@ export async function getGuildConfig(key: string): Promise<any> {
   return LOCAL_CONFIG_FALLBACK[key] !== undefined ? LOCAL_CONFIG_FALLBACK[key] : '';
 }
 
-/** Writes one config key to localStorage immediately, then to the DB. */
+/**
+ * Writes one config key to the DB, then mirrors it to localStorage on success.
+ * Returns `false` (never throwing) on any DB failure so callers can surface the
+ * error instead of validating a change that never persisted. The localStorage
+ * mirror is only written AFTER a successful upsert: a failed write must not
+ * visually validate an unchecked notification toggle (P0 audit RC1).
+ */
 export async function setGuildConfig(key: string, value: any): Promise<boolean> {
   const currentG = getActiveGuild();
-  const store = ls();
-  if (store) store.setItem('gm_config_' + currentG + '_' + key, value);
   const c = getClient();
   if (c) {
     try {
@@ -91,14 +95,16 @@ export async function setGuildConfig(key: string, value: any): Promise<boolean> 
         { onConflict: 'guild,key' }
       );
       if (res && (res as any).error) {
-        console.warn('setGuildConfig db error:', (res as any).error);
+        console.error(`[guild-config] Failed to persist "${key}" for guild "${currentG}":`, (res as any).error);
         return false;
       }
     } catch (e) {
-      console.warn('setGuildConfig db error:', e);
+      console.error(`[guild-config] Exception persisting "${key}" for guild "${currentG}":`, e);
       return false;
     }
   }
+  const store = ls();
+  if (store) store.setItem('gm_config_' + currentG + '_' + key, value);
   return true;
 }
 

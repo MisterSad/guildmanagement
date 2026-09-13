@@ -69,8 +69,8 @@ describe('event-reminders: Discord webhook allowed_mentions and role handling', 
   });
 
   it('supports dedicated role IDs for Shadowfront Squad 1 and Squad 2 with fallback', () => {
-    expect(content).toContain("event.event_name === 'Shadowfront Squad 1' && config['discord_role_id_shadowfront_squad1']?.trim()");
-    expect(content).toContain("event.event_name === 'Shadowfront Squad 2' && config['discord_role_id_shadowfront_squad2']?.trim()");
+    expect(content).toContain("normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 1' && config['discord_role_id_shadowfront_squad1']?.trim()");
+    expect(content).toContain("normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 2' && config['discord_role_id_shadowfront_squad2']?.trim()");
     expect(content).toContain("eventSpecificRoleId = config[`discord_role_id_${eventPrefix}`] || null;");
   });
 
@@ -92,6 +92,30 @@ describe('discord-webhook-proxy: allowed_mentions defaults', () => {
   it('ensures payload.allowed_mentions defaults to parsing roles, users, and everyone', () => {
     expect(proxyContent).toContain('!payload.allowed_mentions');
     expect(proxyContent).toContain('payload.allowed_mentions = { parse: ["roles", "users", "everyone"] };');
+  });
+});
+
+describe('event-reminders: strict toggle evaluation (P0 RC1/RC2 — no more ghost notifications)', () => {
+  it('imports the shared reminder rules (isToggleEnabled + resolveGuildWebhook)', () => {
+    expect(content).toContain('from "../_shared/reminder-rules.ts"');
+  });
+
+  it('no longer uses the default-ON patterns (== undefined || == "true"), != "false" gates, or the gvg_svs_calamity_enabled master gate', () => {
+    expect(content).not.toMatch(/=== undefined \|\| config\[[^\]]*\] === 'true'/);
+    expect(content).not.toMatch(/!== 'false'/);
+    expect(content).not.toContain("config['gvg_svs_calamity_enabled']");
+  });
+
+  it('has removed the locally redefined resolveGuildWebhook (falls back only when the category key was never set)', () => {
+    expect(content).not.toContain('function resolveGuildWebhook(');
+  });
+});
+
+describe('event-reminders: webhook category silencing (P0 RC3)', () => {
+  it('relies on the shared resolveGuildWebhook for every category send site', () => {
+    const matches = content.match(/resolveGuildWebhook\(config, /g) || [];
+    // Standard events, GvG daily tasks, GvG Saturday, SvS, Calamity -- 5 sites.
+    expect(matches.length).toBe(5);
   });
 });
 

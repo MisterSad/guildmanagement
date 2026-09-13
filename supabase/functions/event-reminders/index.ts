@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from "../_shared/gvg-tasks.ts"
+import { isToggleEnabled, resolveGuildWebhook, isStandardEventName, isSvsEventName, eventPrefixForName, normalizeEventName, isSvsActiveForWeek } from "../_shared/reminder-rules.ts"
 import { validateCallerAuth } from "../_shared/auth.ts"
 import { EdgeLogger } from "../_shared/logger.ts"
 import { getCorsHeaders } from "../_shared/cors.ts"
@@ -25,7 +26,6 @@ const SVS_ACTIONS = [
 
 const STATIC_CONFIG_KEYS: string[] = [
   'discord_webhook_url',
-  'gvg_svs_calamity_enabled',
   'discord_role_id',
   'discord_role_id_gvg',
   'discord_role_id_svs',
@@ -403,6 +403,24 @@ serve(async (req) => {
       }
     }
 
+    // RC6: durable SvS war_sessions rows per guild — calendar-week fallback so
+    // weekly SvS reminders keep firing even when the live event_status.start_at
+    // is stale or missing. Single batched query before the guild loop.
+    const svsWarByGuild: Record<string, Array<number | null>> = {};
+    if (GUILDS.length > 0) {
+      const wsRes = await supabase
+        .from('war_sessions')
+        .select('guild, start_at')
+        .in('guild', GUILDS)
+        .eq('event_name', 'SvS');
+      if (wsRes.error) throw wsRes.error;
+      for (const row of wsRes.data || []) {
+        if (!row || !row.guild) continue;
+        const ms = row.start_at ? new Date(row.start_at).getTime() : null;
+        (svsWarByGuild[row.guild] ||= []).push(Number.isNaN(ms as number) ? null : ms);
+      }
+    }
+
     const now = Date.now();
     const results: any[] = [];
 
@@ -418,13 +436,6 @@ serve(async (req) => {
       return str;
     }
 
-    function resolveGuildWebhook(configMap: Record<string, string> | undefined, prefix: string): string {
-      if (!configMap) return '';
-      const specific = prefix ? (configMap[`webhook_${prefix}`] || '').trim() : '';
-      if (specific) return specific;
-      return (configMap['discord_webhook_url'] || '').trim();
-    }
-
     // Loop through each guild tenant
     for (const guild of GUILDS) {
       const config = configsByGuild[guild];
@@ -434,12 +445,9 @@ serve(async (req) => {
       for (const event of events) {
         if (!event.start_at) continue;
 
-        const isStandardEvent = event.event_name === 'ARMS RACE STAGE A' ||
-                                event.event_name === 'ARMS RACE STAGE B' ||
-                                event.event_name === 'Defend Trade Route' ||
-                                event.event_name === 'Shadowfront Squad 1' ||
-                                event.event_name === 'Shadowfront Squad 2';
-        if (!isStandardEvent) continue;
+        // RC5: canonical (trim + case-insensitive) name matching — a slightly
+        // different label must never silently disable the 30m/5m/start reminders.
+        if (!isStandardEventName(event.event_name)) continue;
 
         const startMs = new Date(event.start_at).getTime();
 
@@ -456,19 +464,12 @@ serve(async (req) => {
         }
 
         // FIX (A11): formatDiscordRoleMention moved outside the loop — was being redefined on every iteration.
-        let eventPrefix = '';
-        const nameUpper = (event.event_name || '').toUpperCase();
-        if (nameUpper.includes('ARMS RACE')) eventPrefix = 'armsrace';
-        else if (nameUpper.includes('TRADE ROUTE') || nameUpper.includes('DTR')) eventPrefix = 'dtr';
-        else if (nameUpper.includes('SHADOWFRONT')) eventPrefix = 'shadowfront';
-        else if (nameUpper.includes('CALAMITY')) eventPrefix = 'calamity';
-        else if (nameUpper.includes('GVG')) eventPrefix = 'gvg';
-        else if (nameUpper.includes('SVS')) eventPrefix = 'svs';
+        const eventPrefix = eventPrefixForName(event.event_name);
 
         let eventSpecificRoleId: string | null = null;
-        if (event.event_name === 'Shadowfront Squad 1' && config['discord_role_id_shadowfront_squad1']?.trim()) {
+        if (normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 1' && config['discord_role_id_shadowfront_squad1']?.trim()) {
           eventSpecificRoleId = config['discord_role_id_shadowfront_squad1'];
-        } else if (event.event_name === 'Shadowfront Squad 2' && config['discord_role_id_shadowfront_squad2']?.trim()) {
+        } else if (normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 2' && config['discord_role_id_shadowfront_squad2']?.trim()) {
           eventSpecificRoleId = config['discord_role_id_shadowfront_squad2'];
         } else if (eventPrefix) {
           eventSpecificRoleId = config[`discord_role_id_${eventPrefix}`] || null;
@@ -500,18 +501,11 @@ serve(async (req) => {
 
         if (trigger) {
           // Check configuration toggle
-          let eventPrefix = '';
-          if (event.event_name.startsWith('ARMS RACE')) {
-            eventPrefix = 'armsrace';
-          } else if (event.event_name === 'Defend Trade Route') {
-            eventPrefix = 'dtr';
-          } else if (event.event_name.startsWith('Shadowfront Squad')) {
-            eventPrefix = 'shadowfront';
-          }
+          const eventPrefix = eventPrefixForName(event.event_name);
 
           if (eventPrefix) {
             const configKey = `notify_${eventPrefix}_${reminderType}`;
-            const isNotificationEnabled = config[configKey] === undefined || config[configKey] === 'true';
+            const isNotificationEnabled = isToggleEnabled(config, configKey);
             if (!isNotificationEnabled) {
               logger.info(`[${guild}] Notification for ${event.event_name} (${reminderType}) is disabled in configuration, skipping.`);
               continue;
@@ -668,7 +662,7 @@ serve(async (req) => {
         : '@everyone';
 
       // 3.1. GvG Daily Task Reminders (Monday to Saturday at 00:01 UTC)
-      const isGvgDailyTasksEnabled = config['notify_gvg_daily_tasks'] === undefined || config['notify_gvg_daily_tasks'] === 'true';
+      const isGvgDailyTasksEnabled = isToggleEnabled(config, 'notify_gvg_daily_tasks');
       const webhookUrlGvg = resolveGuildWebhook(config, 'gvg');
 
       if (isGvgDailyTasksEnabled && webhookUrlGvg !== '') {
@@ -751,7 +745,7 @@ serve(async (req) => {
       }
 
       // 3.2. GvG Saturday War Prism and Fortress Reminders
-      const isGvgPvpEnabled = config['notify_gvg_pvp'] === undefined || config['notify_gvg_pvp'] === 'true';
+      const isGvgPvpEnabled = isToggleEnabled(config, 'notify_gvg_pvp');
       const webhookUrlGvgSat = resolveGuildWebhook(config, 'gvg');
       if (isGvgPvpEnabled && webhookUrlGvgSat !== '') {
           const dateUtc = new Date(now);
@@ -927,21 +921,18 @@ serve(async (req) => {
         }
 
       // 4. SvS notifications and reminders
-      const svsEvent = events.find(e => e.event_name === 'SvS');
-      let isSvsActive = false;
-      if (svsEvent) {
-        let sessionMs = svsEvent.start_at ? new Date(svsEvent.start_at).getTime() : NaN;
-        if (isNaN(sessionMs) && svsEvent.updated_at) {
-          sessionMs = new Date(svsEvent.updated_at).getTime();
-        }
-        if (isNaN(sessionMs)) {
-          isSvsActive = true;
-        } else {
-          const ageDays = (now - sessionMs) / (24 * 3600 * 1000);
-          isSvsActive = ageDays >= 0 && ageDays <= 7.5;
-        }
-      }
-      if (isSvsActive && config['gvg_svs_calamity_enabled'] !== 'false') {
+      // RC6: the session is active when it belongs to the current UTC calendar
+      // week — either an active event_status SvS row whose start_at falls in the
+      // week (or has no start_at), or a durable war_sessions SvS row of the
+      // week. The legacy 7.5-day sliding window silently killed weekly SvS
+      // reminders mid-cycle and is gone.
+      const svsEvent = events.find(e => isSvsEventName(e.event_name));
+      const isSvsActive = isSvsActiveForWeek(now, {
+        eventActive: !!svsEvent,
+        eventStartAtMs: svsEvent && svsEvent.start_at ? new Date(svsEvent.start_at).getTime() : null,
+        warSessionTimestampsMs: svsWarByGuild[guild] || [],
+      });
+      if (isSvsActive) {
         const eventSpecificRoleId = config['discord_role_id_svs'];
         const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
           ? eventSpecificRoleId
@@ -975,21 +966,23 @@ serve(async (req) => {
 
         for (const slot of matchingSlots) {
           // Check configuration toggle
-          const wonPrep = config['notify_svs_won_prep'] === 'true';
           if (slot.type === 'portal_5' || slot.type === 'portal_open') {
-            const isSvsPvpEnabled = config['notify_svs_pvp'] === undefined || config['notify_svs_pvp'] === 'true';
-            if (!isSvsPvpEnabled || !wonPrep) {
-              logger.info(`[${guild}] SvS Portal notification (${slot.type}) skipped (PvP disabled or prep phase not won).`);
+            // RC7: portal battle notifications are detached from won_prep — only
+            // notify_svs_pvp gates them. notify_svs_won_prep remains a pure
+            // content switch (invasion vs defense wording) further below.
+            const isSvsPvpEnabled = isToggleEnabled(config, 'notify_svs_pvp');
+            if (!isSvsPvpEnabled) {
+              logger.info(`[${guild}] SvS Portal notification (${slot.type}) skipped (PvP disabled).`);
               continue;
             }
           } else if (slot.type === 'garrison') {
-            const isGarrisonEnabled = config['notify_svs_garrison'] === undefined || config['notify_svs_garrison'] === 'true';
+            const isGarrisonEnabled = isToggleEnabled(config, 'notify_svs_garrison');
             if (!isGarrisonEnabled) {
               logger.info(`[${guild}] SvS Garrison Reminder is disabled in configuration, skipping.`);
               continue;
             }
           } else {
-            const isSvsPvpEnabled = config['notify_svs_pvp'] === undefined || config['notify_svs_pvp'] === 'true';
+            const isSvsPvpEnabled = isToggleEnabled(config, 'notify_svs_pvp');
             if (!isSvsPvpEnabled) {
               logger.info(`[${guild}] SvS PvP Day notification (${slot.type}) is disabled in configuration, skipping.`);
               continue;
@@ -1047,7 +1040,7 @@ serve(async (req) => {
               if (slot.type === 'portal_5' || slot.type === 'portal_open') {
                 timeStr = '00:00 UTC';
               }
-              const wonPrep = config['notify_svs_won_prep'] === 'true';
+              const wonPrep = isToggleEnabled(config, 'notify_svs_won_prep');
               
               if (slot.type === 'portal_5') {
                 content = `⏰ **SvS: Invasion Portal opens in 5 minutes! Prepare to cross!** @everyone`;
@@ -1109,7 +1102,7 @@ serve(async (req) => {
             }
 
             let actionSuffix = '';
-            const wonPrepVal = config['notify_svs_won_prep'] === 'true';
+            const wonPrepVal = isToggleEnabled(config, 'notify_svs_won_prep');
             if (slot.type === 'reminder_30') {
               actionSuffix = wonPrepVal ? 'reminder_30_invasion' : 'reminder_30_defense';
             } else if (slot.type === 'reminder_5') {
@@ -1195,14 +1188,13 @@ serve(async (req) => {
       }
 
       // 5. Calamity Befalls weekly reminders (10m before round)
-      if (config['gvg_svs_calamity_enabled'] !== 'false') {
-        const eventSpecificRoleId = config['discord_role_id_calamity'];
-        const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
-          ? eventSpecificRoleId
-          : config['discord_role_id'];
-        const calamityGuildTag = (discordRoleId && discordRoleId.trim() !== '')
-          ? `<@&${discordRoleId.trim()}>`
-          : '@everyone';
+      const calamityRoleId = config['discord_role_id_calamity'];
+      const calamityDiscordRoleId = (calamityRoleId && calamityRoleId.trim() !== '')
+        ? calamityRoleId
+        : config['discord_role_id'];
+      const calamityGuildTag = (calamityDiscordRoleId && calamityDiscordRoleId.trim() !== '')
+        ? `<@&${calamityDiscordRoleId.trim()}>`
+        : '@everyone';
 
         const dateUtc = new Date(now);
         const curDay = dateUtc.getUTCDay();
@@ -1235,7 +1227,7 @@ serve(async (req) => {
 
         for (const slot of matchingSlots) {
           // Check configuration toggle
-          const isCalamityEnabled = config['notify_calamity_10'] === undefined || config['notify_calamity_10'] === 'true';
+          const isCalamityEnabled = isToggleEnabled(config, 'notify_calamity_10');
           if (!isCalamityEnabled) {
             logger.info(`[${guild}] Calamity Befalls Round reminders are disabled in configuration, skipping.`);
             continue;
@@ -1357,7 +1349,6 @@ serve(async (req) => {
               .eq('key', lockKey);
           }
         }
-      }
     }
 
     return json({ ok: true, processed: results }, 200);

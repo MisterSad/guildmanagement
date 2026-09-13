@@ -278,7 +278,7 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
     }
     const serverNumVal = (byId<HTMLInputElement>('guild-server-number-setting')?.value || '').trim();
 
-    const promises: Promise<void>[] = [
+    const promises: Promise<boolean | void>[] = [
       g.config.set('guild_tag', tagVal),
       g.config.set('server_number', serverNumVal)
     ];
@@ -293,7 +293,15 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
       promises.push(g.config.set(field.key, (checked && (!field.gated || showCalamityGvgSvs)) ? 'true' : 'false'));
     }
 
-    await Promise.all(promises);
+    // P0 audit RC1: never validate a save that silently failed (RLS, expired
+    // session, offline DB). Each upsert reports its own result; any `false`
+    // result upgrades to an explicit error toast instead of the success one.
+    const results = await Promise.all(promises);
+    const failures = results.filter((ok) => ok === false).length;
+    if (failures > 0) {
+      showToast(t('toast_config_save_failed').replace('{n}', String(failures)), 'error');
+      return;
+    }
     showToast(t('toast_config_updated'), 'success');
   } catch (err: any) {
     showToast(t('toast_err_generic') + ' ' + err.message, 'error');

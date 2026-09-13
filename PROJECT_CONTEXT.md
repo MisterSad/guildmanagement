@@ -6,12 +6,12 @@
 - **Base de données :** Supabase PostgreSQL (42 tables persistantes actives avec RLS hermétique — y compris les 4 tables de guerre `war_opponents`/`war_sessions`/`event_daily_scores`/`event_chest_tiers` — sur 45 `CREATE TABLE` historiques, helpers SECURITY DEFINER avec search_path vide, résolution de rôles stricte via table `accounts`).
 - **Edge Functions (16 live) :** Deno / TypeScript dans `supabase/functions/` — 8 publiques sans JWT (`verify_jwt = false` : `auth-login`, `auth-passkey`, `player-register`, `guild-request`, `event-reminders`, `gm-stripe-webhook`, `discord-bot-interactions`, `discord-profile-verification`) et 8 sécurisées par JWT (`verify_jwt = true` : `member-portal`, `admin-accounts`, `ocr-guild-members`, `discord-webhook-proxy`, `gm-create-order`, `gm-order-status`, `guild-data-export`, `tickets`).
 - **Authentification & Crypto :** WebAuthn (Passkeys RP_ID `guildmanagement.vercel.app`), Discord OAuth2/Ed25519.
-- **Tests :** Vitest (102 suites, 1 162 tests, 100 % passants — état vérifié au 2026-09-13 après la mission SvS/GvG Granular War Management et le relèvement du plafond de score/gloire), Playwright (E2E sur port 4173), syntax-check racine et type-check TypeScript.
+- **Tests :** Vitest (104 suites, 1 199 tests, 100 % passants — état vérifié au 2026-09-13 après la fiabilisation du système de notifications/rappels Discord), Playwright (E2E sur port 4173), syntax-check racine et type-check TypeScript.
 - **Hébergement :** Vercel (frontend statique + headers de sécurité dans `vercel.json`), Supabase Cloud (PostgreSQL, Auth, Edge Functions).
 
 ## 2. Règles d'Or & Standards d'Ingénierie
 - **Stratégie de Modularisation (Strangler) :** Tout nouveau code est écrit sous forme de module TypeScript/ESM dans `/src/`. Interdiction stricte de créer de nouveaux fichiers `.js` à la racine ou d'ajouter de nouvelles variables globales sur `window.GM_*`.
-- **Porte Qualité CI :** Aucun commit sans que `npm run type-check`, `npm test` (1 162 tests verts, 102 suites) et `scripts/build.js` ne soient au vert.
+- **Porte Qualité CI :** Aucun commit sans que `npm run type-check`, `npm test` (1 199 tests verts, 104 suites) et `scripts/build.js` ne soient au vert.
 - **Sécurité RLS :** 100 % des tables doivent avoir `ENABLE ROW LEVEL SECURITY` et `FORCE ROW LEVEL SECURITY`. Les rôles sont lus exclusivement dans la table `accounts` (aucun fallback `user_metadata`).
 - **Logos & Tiers :** Utiliser exclusivement le package `simple-icons` pour tout logo officiel tiers (Discord, Google, Apple, etc.). Ne jamais inventer de SVG à la main.
 
@@ -95,3 +95,25 @@ Le plafond de tracking des scores d'événements et de gloire passe de 500 000 0
 - `npm test` : **1 162 tests réussis / 102 suites** (+1 suite `score_limit` et +10 tests).
 - `npm run build` : production stable, `version.json` V3.18.0.
 - **Déploiement requis** : `supabase db push` (migration 20260914100000) + redéploiement des Edge Functions `member-portal`, `discord-bot-interactions` et `ocr-guild-members` (constante partagée).
+
+## 6. Clôture Mission — Fiabilisation des Notifications & Rappels Discord (2026-09-13)
+
+Audit complet du système de notifications/reminders Discord (diagnostic des fantômes quotidiens et des rappels jamais émis) suivi de la remédiation **P0 + P1** livrée en un commit `fix(reminders)`. Migration SQL déployable exclusivement via `supabase db push` : `supabase/migrations/20260914110000_fix_event_reminders_trigger_and_tz.sql` (+ redéploiement de l'Edge Function `event-reminders`).
+
+### P0 — Notifications fantômes (partaient tous les jours alors que décochées)
+- **Toggle strict** : helper unique `isToggleEnabled()` dans `supabase/functions/_shared/reminder-rules.ts` — seules `'true'`/`'1'` activent ; ligne absente/vide/`'false'`/`'0'` = **désactivé** (remplace les `config[key] === undefined || === 'true'` et `!== 'false'` par défaut-ON).
+- **Écritures fiabilisées** : `setGuildConfig` ne miroite localStorage qu'après upsert réussi ; `onGuildSettingsSubmit` agrège chaque résultat d'écriture et affiche `toast_config_save_failed` au lieu d'un succès factice (échec RLS / session expirée / offline).
+- **Porte globale `gvg_svs_calamity_enabled` supprimée** côté serveur — seuls les toggles d'événements font foi.
+- **Webhooks isolés** : `resolveGuildWebhook` — clé de catégorie présente mais vide = catégorie coupée (silencée) ; repli sur `discord_webhook_url` uniquement si la clé spécifique n'a jamais été configurée.
+
+### P1 — Rappels jamais émis
+- **Garde cron UTC** (`gm_invoke_event_reminders`, migration 20260914110000) : `extract(dow/hour/minute FROM timezone('utc', now()))` — indépendant du timezone de session Postgres ; garde Vault `event_reminders_cron_secret` conservée avec `RAISE WARNING` explicite si le secret est absent.
+- **Fenêtre SvS calendaire** : `isSvsActiveForWeek` — semaine UTC courante (start_at dans la semaine, ou session durable `war_sessions` SvS de la semaine) à la place de la fenêtre glissante 7,5 j.
+- **Portail détaché de won_prep** : `portal_5`/`portal_open` gatés par `notify_svs_pvp` uniquement.
+- **Noms d'événements canoniques** : `normalizeEventName`/`isStandardEventName`/`eventPrefixForName` (trim + insensible à la casse).
+
+### État des tests (fin de mission, 2026-09-13)
+- `npm run type-check` : **0 erreur**.
+- `npm test` : **1 199 tests réussis / 104 suites** (+37 depuis 1 162/102 — toggles stricts, webhooks, migration SQL/TZ, cohérence SQL↔Edge, fenêtre SvS, normalisation des événements).
+- `npm run build` : production stable, `version.json` V3.18.0.
+- **Déploiement requis** : `supabase db push` (migration 20260914110000) + redéploiement de `event-reminders` ; puis push frontend (Vercel).

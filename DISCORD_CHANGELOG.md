@@ -1,3 +1,29 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.18.1**
+
+This update is all about making your Discord notifications behave exactly as you set them — no more notifications showing up every day when you turned them off, and no more reminders going missing at the wrong moment.
+
+### 🛡️ Notifications Now Follow Your Switches
+- **What changed**: I hardened how every notification toggle is read. A notification only fires when it's explicitly switched on — if it's off (or was never saved), it stays quiet.
+- **The benefit**: If you uncheck "GvG Daily Tasks" or "SvS reminders" in Guild Admin, they now actually stop. No more phantom messages in your Discord every day.
+
+### 🔇 Category Webhooks, On/Off
+- **What changed**: Clearing a category webhook (for example the GvG one) now switches that category off completely instead of quietly routing to your general channel.
+- **The benefit**: Full control per category — want SvS silent but Arms Race on? Just empty the SvS webhook.
+
+### ⚡ Reminders Land at the Right Time
+- **What changed**: I made the reminder trigger timezone-proof (always UTC) and fixed the weekly SvS detection so it follows the current calendar week, not a fragile time window.
+- **The benefit**: GvG, SvS and Calamity reminders fire when they're supposed to — even across server and clock quirks — and portal battle alerts no longer depend on marking the prep phase as "Won".
+
+### 🧾 Event Names Are Forgiving
+- **What changed**: Event matching is now case- and spacing-insensitive.
+- **The benefit**: Even if an event label differs slightly, your 30-minute, 5-minute and start reminders still go out.
+
+Plus, if a setting ever fails to save (permission or subscription hiccup), you now get a clear error instead of a silent "saved" toast — so what you see is always what's actually running.
+
+Try it and let me know! Feedback and bug reports through Report a Bug or Discord are always welcome. 🚀🔔
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.18.0**
 
 Welcome to V3.18! This update reworks SvS and GvG tracking around a single idea: every day counts, on its own. Scores are now entered day by day (Day 1 to Day 6), chest rewards follow a configurable score grid, and you can mark each day Won or Lost — with the enemy server or guild tracked right on the event screen.
