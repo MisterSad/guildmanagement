@@ -68,12 +68,13 @@ import { ticketsView } from './modules/tickets/views/TicketsView';
 import { gloryView } from './modules/glory/views/GloryView';
 import { sanctionsView } from './modules/sanctions/views/SanctionsView';
 import { historyView } from './modules/history/views/HistoryView';
+import { eventsView } from './modules/events/views/EventsView';
+import { overviewView } from './modules/overview/views/OverviewView';
 import { logger } from './core/logger/logger';
 
 import { BaseComponent } from './components/ui/BaseComponent';
 import { ToastNotification } from './components/ui/Toast';
 import { PortalChart } from './modules/portal/components/PortalChart';
-import { OverviewView } from './modules/overview/views/OverviewView';
 import { SubscriptionView } from './modules/subscription/subscription-view';
 import { initPWA, promptPWAInstall, setAppNotificationBadge } from './core/pwa/pwa';
 
@@ -221,11 +222,20 @@ if (typeof window !== 'undefined') {
   (window as any).GM_SANCTIONS = { load: () => sanctionsView.load() };
   (window as any).GM_HISTORY = { load: () => historyView.load() };
 
+  // Wave 3 Strangler bridges (events / overview).
+  (window as any).GM_EVENTS = {
+    loadEvent: (tabId: string, customGuildId?: string) => eventsView.loadEvent(tabId, customGuildId),
+    addMemberToActiveEvents: (pseudo: string) => eventsView.addMemberToActiveEvents(pseudo),
+    removeMemberFromActiveEvents: (pseudo: string) => eventsView.removeMemberFromActiveEvents(pseudo)
+  };
+  (window as any).GM_OVERVIEW = {
+    load: () => overviewView.load()
+  };
+
   (window as any).GM.components = {
     BaseComponent,
     ToastNotification,
     PortalChart,
-    OverviewView,
     SubscriptionView
   };
 

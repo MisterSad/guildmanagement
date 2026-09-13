@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../gm-utils.js';
 import '../i18n.js';
-import '../overview.js';
+import { overviewView } from '../src/modules/overview/views/OverviewView';
 
 const GM = window.GM;
-const OV = window.GM_OVERVIEW;
+const OV = overviewView;
 
 const W_CUR = GM.getWeekStart();
 const W_PREV = GM.getPrevWeekStart();

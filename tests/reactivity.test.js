@@ -110,7 +110,7 @@ describe('app.js invalidates the cache after every mutation the Stats/History pa
 
 describe('Batched per-row Supabase calls (previously sequential for-loops)', () => {
   const appJs = read('app.js');
-  const eventsJs = read('events.js');
+  const eventsJs = read('src/modules/events/views/EventsView.ts');
 
   it('commitOcrUpdates() batches all 5 known loops (Shadowfront, Arms Race, generic event, existing-member updates, new-member inserts) via runInChunks', () => {
     const ocrFnStart = appJs.indexOf('async function commitOcrUpdates');
@@ -122,8 +122,8 @@ describe('Batched per-row Supabase calls (previously sequential for-loops)', () 
     expect(ocrFn).not.toMatch(/for \(var i = 0; i < selected(Players|Existing)\.length; i\+\+\)/);
   });
 
-  it('events.js batches the "Approve All" loop via runInChunks', () => {
-    expect(eventsJs).toContain('window.GM.runInChunks(pendingPseudos, 10');
+  it('EventsView batches the "Approve All" loop via runInChunks', () => {
+    expect(eventsJs).toContain('runInChunks(pendingPseudos, 10');
     expect(eventsJs).not.toMatch(/for \(var pi = 0; pi < pendingPseudos\.length; pi\+\+\)/);
   });
 });

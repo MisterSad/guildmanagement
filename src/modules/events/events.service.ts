@@ -82,3 +82,36 @@ export class EventsService {
     return { ok: true };
   }
 }
+
+// ── Events view constants (verbatim from the root events.js) ──────────────────
+
+export const STANDARD_EVENTS = ['SvS', 'GvG', 'Defend Trade Route'];
+
+/** UI tab → DB event_name(s) it drives (Arms Race has 2 stages). */
+export const TAB_TO_DB_EVENTS: Record<string, string[]> = {
+  'SvS': ['SvS'],
+  'GvG': ['GvG'],
+  'Defend Trade Route': ['Defend Trade Route']
+};
+
+export const PANEL_MAP: Record<string, string> = {
+  'SvS': 'event-svs',
+  'GvG': 'event-gvg',
+  'Defend Trade Route': 'event-dtr'
+};
+
+export const EVENTS_WITHOUT_SCORE = ['Defend Trade Route'];
+
+/** These tabs require an admin-set UTC start date before launching. */
+export const SCHEDULED_TABS = ['SvS', 'GvG', 'Defend Trade Route'];
+
+export type EventTabKey = 'SvS' | 'GvG' | 'Defend Trade Route';
+
+export interface EventTabState {
+  activeEventName: string | null;
+  sessionId: string | null;
+  stage: string | null;
+  startAt?: string | null;
+  isActive: boolean;
+  participants: any[];
+}
