@@ -2,7 +2,8 @@
  * src/modules/events/chest-settings.ts
  *
  * Guild Settings card for the parametrizable SvS / GvG chest-tier grid.
- * Two tabs (SvS / GvG), six day blocks with tier rows (min_score -> chests),
+ * Two tabs (SvS / GvG), seven day blocks (day 0 = cumulative prep total,
+ * days 1..6 = per-day) with tier rows (min_score -> chests),
  * add/remove per day, and an atomic save backed by EventsService.saveChestTiers.
  * When no grid exists yet in the DB, a sensible default grid is rendered.
  */
@@ -17,7 +18,12 @@ import { t, byId, esc } from '../app/admin/utils';
 import { defaultChestGrid } from '../../core/scoring/chests';
 import { renderBadge } from '../../components/ui/Badge';
 
-const DAYS = [1, 2, 3, 4, 5, 6];
+/** Grid buckets: day 0 = cumulative "Day 1 to 5 total", 1..6 = per-day. */
+const DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+function dayHeader(day: number): string {
+  return day === 0 ? t('war_day_total_prep') : t('war_day_n').replace('{day}', String(day));
+}
 
 let currentEvent: WarEventName = 'SvS';
 let grid: ChestTier[] = [];
@@ -55,7 +61,7 @@ function renderGrid(): void {
     ).join('');
 
     return '<div class="chest-tier-day">' +
-      '<div class="chest-tier-day-header">' + t('war_day_n').replace('{day}', String(day)) + '</div>' +
+      '<div class="chest-tier-day-header">' + dayHeader(day) + '</div>' +
       (rows || '<div class="chest-tier-empty">' + t('war_tiers_empty_day') + '</div>') +
       '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm chest-tier-add" data-day="' + day + '">' +
         '<i class="ph ph-plus"></i> <span>' + t('war_chest_tier_add') + '</span>' +
@@ -138,7 +144,7 @@ async function saveTiers(): Promise<void> {
     const min = Number(minRaw);
     const chests = Number(chestRaw);
     if (!Number.isInteger(min) || min < 0 || !Number.isInteger(chests) || chests < 1
-        || day < 1 || day > 6) {
+        || day < 0 || day > 6) {
       showToast(t('war_save_tiers_error'), 'error');
       if (saveBtn) saveBtn.disabled = false;
       return;
@@ -191,7 +197,7 @@ export function initChestTiersSettings(): void {
       const addBtn = target.closest<HTMLElement>('.chest-tier-add');
       if (addBtn) {
         const day = Number(addBtn.getAttribute('data-day'));
-        if (day >= 1 && day <= 6) addTier(day);
+        if (day >= 0 && day <= 6) addTier(day);
         return;
       }
       const rmBtn = target.closest<HTMLElement>('.chest-tier-remove');

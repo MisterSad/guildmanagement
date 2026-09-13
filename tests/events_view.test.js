@@ -296,18 +296,18 @@ describe('EventsView — granular war mode', () => {
     expect(day1.className).toContain('war-day-won');
   });
 
-  it('disables the legacy OCR prep/pvp buttons in granular mode', async () => {
+  it('keeps every SvS/GvG OCR button clickable in granular mode', async () => {
     const view = new EventsView();
     await view.loadEvent('SvS');
 
     const prep = document.querySelector('#event-svs .btn-ocr-trigger[data-metric="svs_prep"]');
     const pvp = document.querySelector('#event-svs .btn-ocr-trigger[data-metric="svs_pvp"]');
-    expect(prep.disabled).toBe(true);
-    expect(pvp.disabled).toBe(true);
-    expect(prep.getAttribute('title')).toBeTruthy();
+    expect(prep.disabled).toBe(false);
+    expect(pvp.disabled).toBe(false);
+    expect(prep.getAttribute('data-tooltip')).toBeNull();
   });
 
-  it('re-enables the OCR buttons when no granular session is active', async () => {
+  it('keeps the OCR buttons clickable across sessions (GvG active, SvS inactive)', async () => {
     currentTables.event_status = [{ event_name: 'GvG', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-02' }];
     currentTables.event_participants = [
       { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'GvG', session_id: SESSION, participated: 1, score_prep: 10, score_pvp: 5, is_pending: false, appointed: false }
@@ -316,9 +316,9 @@ describe('EventsView — granular war mode', () => {
     await view.loadEvent('GvG');
 
     const prep = document.querySelector('#event-gvg .btn-ocr-trigger[data-metric="gvg_prep"]');
-    expect(prep.disabled).toBe(true);
+    expect(prep.disabled).toBe(false);
 
-    // Switching to an inactive SvS session re-enables that panel's buttons.
+    // Switching to an inactive SvS session keeps that panel's buttons usable.
     currentTables.event_status = [{ event_name: 'SvS', guild: 'ALPHA', is_active: false, session_id: null, stage: null, start_at: null }];
     await view.loadEvent('SvS');
     const svsPrep = document.querySelector('#event-svs .btn-ocr-trigger[data-metric="svs_prep"]');

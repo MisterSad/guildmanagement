@@ -126,7 +126,8 @@ export function renderOcrResults(players: any[]): void {
       } else if (meta.eventType === 'armsrace') {
         updateCount++;
         badgeHtml = '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> Present &rarr; [Participated ✓]</span>';
-      } else if (getCurrentOcrMetric() === 'svs_prep' || getCurrentOcrMetric() === 'gvg_prep') {
+      } else if (getCurrentOcrMetric() === 'svs_prep' || getCurrentOcrMetric() === 'gvg_prep'
+           || getCurrentOcrMetric() === 'svs_day' || getCurrentOcrMetric() === 'gvg_day') {
         updateCount++;
         badgeHtml = '<span class="gm-chip" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);"><i class="ph ph-sword"></i> Prep Score: ' + fmtNum(pScore) + ' &rarr; [Participated ✓]</span>';
       } else if (getCurrentOcrMetric() === 'svs_pvp' || getCurrentOcrMetric() === 'gvg_pvp') {

@@ -30,7 +30,7 @@ import {
   type HistorySession
 } from '../history.service';
 import { EventsService, type WarEventName } from '../../events/events.service';
-import { resolveChestsForScore } from '../../../core/scoring/chests';
+import { resolveChestsForScore, resolvePrepChests, WAR_AGGREGATE_DAY } from '../../../core/scoring/chests';
 import { openDialog, closeDialog } from '../../../components/ui/Dialog';
 import type { ChestTier } from '../../../types/database';
 
@@ -451,7 +451,7 @@ export class HistoryView {
   }
 
   private async updateGranularDayField(eventName: string, sessionId: string, pseudo: string, day: number, score: number): Promise<void> {
-    if (!(day >= 1 && day <= 6)) return;
+    if (!(day >= 0 && day <= 6)) return;
     const res = await EventsService.upsertDailyScores(
       legacy.getActiveGuild(),
       eventName as WarEventName,
@@ -542,27 +542,51 @@ export class HistoryView {
       let participatedCell = '', lateCell = '', excusedCell = '', subPresentCell = '', appointedCell = '', scoreCells = '';
 
       // Granular SvS/GvG: six per-day columns (+ chests) instead of the
-      // aggregated score_prep / score_pvp fields.
+      // aggregated score_prep / score_pvp fields. A player in aggregate mode
+      // (day-0 row) renders a single cumulative "Total D1–D5" cell instead of
+      // the five empty per-day cells, with chests from resolvePrepChests.
       if (granular) {
         const dayOf: Record<number, number> = {};
         if (warExtra) {
           ((warExtra.daily[r.pseudo]) || []).forEach((e) => { dayOf[e.day] = e.score; });
         }
+        const isAggregate = dayOf[WAR_AGGREGATE_DAY] !== undefined;
         let dayCells = '';
-        for (let d = 1; d <= 6; d++) {
-          const v = dayOf[d];
+        if (isAggregate) {
+          const total = dayOf[WAR_AGGREGATE_DAY];
           if (isAdmin) {
-            dayCells += '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + legacy.esc(r.pseudo) + '" data-day="' + d + '" value="' + (v != null ? legacy.fmt(v) : '') + '"></td>';
+            dayCells += '<td colspan="5" class="gm-right" data-label="' + legacy.t('war_col_total_d15') + '">' +
+              '<input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + legacy.esc(r.pseudo) + '" data-day="' + WAR_AGGREGATE_DAY + '" value="' + (total != null ? legacy.fmt(total) : '') + '" title="' + legacy.t('war_col_total_d15') + '"><span class="gm-dim" style="font-size:var(--fs-2xs);"> ' + legacy.t('war_col_total_d15') + '</span></td>';
           } else {
-            dayCells += '<td class="gm-right">' + (v != null ? legacy.fmt(v) : '-') + '</td>';
+            dayCells += '<td colspan="5" class="gm-right" data-label="' + legacy.t('war_col_total_d15') + '">' + legacy.t('war_col_total_d15') + ': ' + (total != null ? legacy.fmt(total) : '-') + '</td>';
           }
-        }
-        if (hasGrid && warExtra) {
-          let chestTotal = 0;
+          const d6 = dayOf[6];
+          if (isAdmin) {
+            dayCells += '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + legacy.esc(r.pseudo) + '" data-day="6" value="' + (d6 != null ? legacy.fmt(d6) : '') + '"></td>';
+          } else {
+            dayCells += '<td class="gm-right">' + (d6 != null ? legacy.fmt(d6) : '-') + '</td>';
+          }
+          if (hasGrid && warExtra) {
+            const chestTotal = resolvePrepChests(warExtra.grid, dayOf, total) +
+              resolveChestsForScore(warExtra.grid.filter((g) => g.day === 6), dayOf[6]);
+            dayCells += '<td class="gm-right">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
+          }
+        } else {
           for (let d = 1; d <= 6; d++) {
-            chestTotal += resolveChestsForScore(warExtra.grid.filter((g) => g.day === d), dayOf[d]);
+            const v = dayOf[d];
+            if (isAdmin) {
+              dayCells += '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + legacy.esc(r.pseudo) + '" data-day="' + d + '" value="' + (v != null ? legacy.fmt(v) : '') + '"></td>';
+            } else {
+              dayCells += '<td class="gm-right">' + (v != null ? legacy.fmt(v) : '-') + '</td>';
+            }
           }
-          dayCells += '<td class="gm-right">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
+          if (hasGrid && warExtra) {
+            let chestTotal = 0;
+            for (let d = 1; d <= 6; d++) {
+              chestTotal += resolveChestsForScore(warExtra.grid.filter((g) => g.day === d), dayOf[d]);
+            }
+            dayCells += '<td class="gm-right">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
+          }
         }
         scoreCells = dayCells;
       } else if (isAdmin) {

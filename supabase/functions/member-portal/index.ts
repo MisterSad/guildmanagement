@@ -484,6 +484,27 @@ export async function handleRequest(req: Request): Promise<Response> {
         return json({ ok: false, error: "session_inactive" }, 400);
       }
 
+      // Granular guard: when a war_sessions row exists for this session the
+      // daily grid is the single source of truth for prep scores — a direct
+      // score_prep write would be silently overwritten by the next
+      // gm_upsert_daily_scores derivation, so reject it before any write.
+      if (payload && payload.score_prep !== undefined) {
+        const { data: warRows, error: warErr } = await admin
+          .from("war_sessions")
+          .select("session_id")
+          .eq("guild", member.guild)
+          .eq("event_name", eventName)
+          .eq("session_id", sessionId)
+          .limit(1);
+        if (warErr) {
+          logger.error("DB error checking war-session guard", warErr, { guild: member.guild, eventName, sessionId });
+          return json({ ok: false, error: "db_error" }, 200);
+        }
+        if (warRows && warRows.length > 0) {
+          return json({ ok: false, error: "granular_session_use_daily" }, 400);
+        }
+      }
+
       const { data: existingRows } = await admin
         .from("event_participants")
         .select("is_pending")

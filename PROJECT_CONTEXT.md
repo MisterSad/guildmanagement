@@ -7,12 +7,12 @@
 - **Base de données :** Supabase PostgreSQL (42 tables persistantes actives avec RLS hermétique — y compris les 4 tables de guerre `war_opponents`/`war_sessions`/`event_daily_scores`/`event_chest_tiers` — sur 45 `CREATE TABLE` historiques, helpers SECURITY DEFINER avec search_path vide, résolution de rôles stricte via table `accounts`).
 - **Edge Functions (16 live) :** Deno / TypeScript dans `supabase/functions/` — 8 publiques sans JWT (`verify_jwt = false` : `auth-login`, `auth-passkey`, `player-register`, `guild-request`, `event-reminders`, `gm-stripe-webhook`, `discord-bot-interactions`, `discord-profile-verification`) et 8 sécurisées par JWT (`verify_jwt = true` : `member-portal`, `admin-accounts`, `ocr-guild-members`, `discord-webhook-proxy`, `gm-create-order`, `gm-order-status`, `guild-data-export`, `tickets`).
 - **Authentification & Crypto :** WebAuthn (Passkeys RP_ID `guildmanagement.vercel.app`), Discord OAuth2/Ed25519.
-- **Tests :** Vitest (108 suites, 1 279 tests, 100 % passants — état vérifié au 2026-09-13 avec la refonte UI/UX shadcn-like P1→P3), Playwright (E2E sur port 4173), syntax-check racine et type-check TypeScript.
+- **Tests :** Vitest (111 suites, 1 323 tests, 100 % passants — état vérifié au 2026-09-13 avec la réconciliation Day 0 / OCR hybride), Playwright (E2E sur port 4173), syntax-check racine et type-check TypeScript.
 - **Hébergement :** Vercel (frontend statique + headers de sécurité dans `vercel.json`), Supabase Cloud (PostgreSQL, Auth, Edge Functions).
 
 ## 2. Règles d'Or & Standards d'Ingénierie
 - **Stratégie de Modularisation (Strangler) :** Tout nouveau code est écrit sous forme de module TypeScript/ESM dans `/src/`. Interdiction stricte de créer de nouveaux fichiers `.js` à la racine ou d'ajouter de nouvelles variables globales sur `window.GM_*`.
-- **Porte Qualité CI :** Aucun commit sans que `npm run type-check`, `npm test` (1 279 tests verts, 108 suites) et `scripts/build.js` ne soient au vert.
+- **Porte Qualité CI :** Aucun commit sans que `npm run type-check`, `npm test` (1 323 tests verts, 111 suites) et `scripts/build.js` ne soient au vert.
 - **Sécurité RLS :** 100 % des tables doivent avoir `ENABLE ROW LEVEL SECURITY` et `FORCE ROW LEVEL SECURITY`. Les rôles sont lus exclusivement dans la table `accounts` (aucun fallback `user_metadata`).
 - **Logos & Tiers :** Utiliser exclusivement le package `simple-icons` pour tout logo officiel tiers (Discord, Google, Apple, etc.). Ne jamais inventer de SVG à la main.
 
@@ -146,3 +146,31 @@ Cycle de modernisation complet du système UI/UX livré en 3 étapes (`feat(ui)`
 - `npm run type-check` : **0 erreur**.
 - `npm test` : **1 279 tests réussis / 108 suites** (+80 depuis 1 199/104 — 13 primitives/tokens, 20 composants P1 + renforts, 26 composants P2 + intégration granulaire, 21 P3 Dialog/Tooltip + rétrofits history/events/ocr).
 - `npm run build` : production stable, `version.json` V3.18.1, `dist/theme.css` généré.
+
+## 8. Clôture Mission — Réconciliation des scores de guerre Day 0 (2026-09-13)
+
+Réconciliation entre la saisie granulaire (D1..D5) et la saisie globale (« Day 1 to 5 total ») des scores de préparation SvS/GvG, livrée en 3 lots (`feat(war)`), avec OCR hybride (total D1-5 + journalier). **Migration SQL déployable via `supabase db push`** : `supabase/migrations/20260915100000_war_aggregate_day0.sql` (+ redéploiement Edge `member-portal` et `ocr-guild-members`).
+
+### Lot 1 — Modèle & calculs (migration en base)
+- **Pseudo-jour `day = 0`** : `event_daily_scores.day` et `event_chest_tiers.day` élargis en `CHECK (day BETWEEN 0 AND 6)` — 0 = total cumulé D1-5, 1..6 = jours. `gm_save_chest_tiers` accepte le bucket day 0 (accumulateur `v_last_agg` dédié, les arrays Postgres étant 1-indexés).
+- **Convergence transactionnelle** dans `gm_upsert_daily_scores` (zéro double-comptage) : passage 1 de validation + lexique d'intention par pseudo ; batch touchant `day = 0` ⇒ DELETE des lignes D1..5 (agrégat gagne en cas de mix, day 6 jamais touché) ; batch `day ∈ [1..5]` ⇒ DELETE du day 0. Dérivation cache : `score_prep = SUM(day IN (0..5))`, `score_pvp = day 6`, `score = NULL`, `participated` si prep+pvp > 0.
+- **Coffres agrégés** : tranche `day = 0` de la grille figée, avec repli déterministe sur la tranche `day = 1` (miroir TS/SQL strict `aggregateTierSlice`).
+- **Garde `member-portal`** : toute soumission `score_prep` ciblant une session possédant une ligne `war_sessions` est rejetée (`granular_session_use_daily`).
+- **Miroir TS** (`src/core/scoring/chests.ts`) : constantes `WAR_AGGREGATE_DAY = 0`, `PREP_DAYS = [1..5]` et fonctions canoniques pures `prepTotal(playerScores)` (priorité à la somme réelle D1..5, repli day 0), `aggregateTierSlice(grid)` et `resolvePrepChests(grid, dailyScoresMap, aggregateScore)` (parité SQL 1:1) ; `defaultChestGrid()` inclut un bloc day 0 cumulatif.
+
+### Lot 2 — Commutateur de mode & grilles
+- **EventsView** : `war.mode: 'detailed' | 'aggregate'` persisté dans `guild_config` (`war_prep_mode:SvS|GvG`, défaut `detailed`) ; segmented control dans le bandeau ; vue « Cumul » = colonnes `Total D1–D5` (`data-day="0"`) + `Day 6` + Coffres ; totaux du bandeau via `prepTotal(P) + day6` (plus de double comptage) ; conversion destructive D0→D1..5 **confirmée par Dialog** (annuler ⇒ revert des inputs + aucun write, confirmer ⇒ RPC + toast `war_toast_total_replaced_days`) ; conversion inverse silencieuse + toast `war_toast_days_replaced_total` ; debounce 700 ms préservé.
+- **History** : joueur agrégé rendu en cellule `colspan=5` « Total D1–D5 » (input day 0 en admin) + Day 6, coffres via `resolvePrepChests`.
+- **Chest Settings** : bloc day 0 « Day 1–5 (Total) » (DAYS = 0..6, en-tête `war_day_total_prep`, validations élargies).
+- i18n : +7 clés `war_*` (golden 552 → **559**).
+
+### Lot 3 — OCR hybride
+- **Réactivation OCR agrégé** : `syncWarOcrGate` supprimé définitivement (EventsView + ocr.controller) — boutons toujours cliquables ; `svs_prep`/`gvg_prep` écrivent désormais `day = 0`.
+- **OCR journalier** : métriques `svs_day`/`gvg_day` (`dayRange: [1, 5]`) avec sélecteur de jour dans la modale (`#ocr-day-buttons`) ; `scanDay` validé côté Edge par `MetadataSchema.scanDay: z.number().int().min(1).max(6).optional()` (jamais d'interpolation de chaîne brute) et substitué dans le prompt via `.replace("{day}", String(scanDay))` ; `taskMetadata.scan_day`.
+- **Routage des commits** (tous via `EventsService.upsertDailyScores` → `gm_upsert_daily_scores`, jamais d'écriture directe `score_prep`) : `svs_prep/gvg_prep → day 0`, `svs_day/gvg_day → day = scanDay`, `svs_pvp/gvg_pvp → day 6`, flush par lots ≤ 100 ; `dtr` reste sur le chemin legacy `event_participants` (non-régression).
+
+### État des tests (fin de mission, 2026-09-13)
+- `npm run type-check` : **0 erreur**.
+- `npm test` : **1 323 tests réussis / 111 suites** (+44 depuis 1 279/108 — Lot 1 `war_aggregate_day0` : 23 ; Lot 2 `war_ui_aggregate_mode` : 9 ; Lot 3 `war_ocr_granular` : 12, + ajustements gate/OCR). Golden i18n 559.
+- `npm run build` : production stable, `version.json` V3.18.1.
+- **Déploiement requis** : `supabase db push` (migration 20260915100000) + redéploiement de `member-portal` et `ocr-guild-members` ; puis push frontend (Vercel).

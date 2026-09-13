@@ -2164,6 +2164,16 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     border-color: var(--accent);
     color: #fff;
 }
+.war-mode-switch .war-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.war-mode-switch .war-mode-btn.gm-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
 .chest-tier-day {
     background: rgba(255, 255, 255, 0.015);
     border: 1px solid var(--border-soft);

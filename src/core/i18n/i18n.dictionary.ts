@@ -225,6 +225,13 @@ export const EN: Record<string, string> = {
             war_card_opponent:     'vs {name}',
             war_card_record:       '{w}W / {l}L',
             war_save_daily_success:'Daily scores saved.',
+            war_mode_detailed:    'Detailed D1–D5',
+            war_mode_aggregate:   'Cumulative D1–D5',
+            war_col_total_d15:    'Total D1–D5',
+            war_day_total_prep:   'Day 1–5 (Total)',
+            war_confirm_total_replaces_days: 'The cumulative total will replace this player\'s Day 1–5 scores. Continue?',
+            war_toast_total_replaced_days: 'Replaced the player\'s Day 1–5 scores with the cumulative total.',
+            war_toast_days_replaced_total: 'Daily entry replaced the player\'s cumulative total.',
             war_results_none:      'No session yet',
 
             /* ── Shadowfront ───────────────────── */

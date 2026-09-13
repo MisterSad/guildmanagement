@@ -10,8 +10,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { esc, winAny, byId, gm, t } from '../admin/utils';
-import { initTooltips } from '../../../components/ui/Tooltip';
+import { esc, winAny, byId, gm } from '../admin/utils';
 import { showToast } from '../dialogs/dialogs.service';
 import { getGuildMembers } from '../members/members.store';
 import { renderGuildMembers } from '../members/members.render';
@@ -29,50 +28,31 @@ import {
   getOcrExtractedPlayers,
   setOcrExtractedPlayers,
   getOcrMeta,
-  getOcrModel
+  getOcrModel,
+  getOcrScanDay,
+  setOcrScanDay
 } from './ocr.meta';
 import { renderOcrResults, toggleAllCheckboxes } from './ocr.render';
+import { EventsService } from '../../events/events.service';
 
 export { getOcrModel };
 
-/** Reference to avoid circular imports when EventsView toggles the gate. */
-export type WarGranularGateEvent = 'SvS' | 'GvG';
+/** War prep metric commit target: event name + day container (0 = aggregate). */
+interface WarOcrDayTarget { eventName: 'SvS' | 'GvG'; day: number }
 
 /**
- * OCR legacy-buttons gate for SvS/GvG panels: when a session is in granular
- * (per-day) mode the aggregate "Day 1 to 5 / Day 6" OCR buttons are disabled
- * with an explanatory tooltip, since scores are entered per day in Events.
+ * Maps an SvS/GvG OCR metric to its daily-score container. All SvS/GvG score
+ * commits flow through EventsService.upsertDailyScores (which invokes
+ * gm_upsert_daily_scores) — never a direct event_participants.score_prep write.
  */
-export function syncWarOcrGate(activeEvent: WarGranularGateEvent | null, granular: boolean): void {
-  if (typeof document === 'undefined') return;
-  const panelId = activeEvent === 'SvS' ? 'event-svs' : activeEvent === 'GvG' ? 'event-gvg' : null;
-  const panel = panelId ? document.getElementById(panelId) : null;
-  const toolbar = panel ? panel.querySelector('.gm-event-ocr-toolbar') : null;
-  if (!toolbar) return;
-  const prefix = activeEvent === 'SvS' ? 'svs' : 'gvg';
-  toolbar.querySelectorAll('.btn-ocr-trigger').forEach((btn) => {
-    const metric = btn.getAttribute('data-metric') || '';
-    if (metric !== prefix + '_prep' && metric !== prefix + '_pvp') return;
-    const el = btn as HTMLButtonElement;
-    if (granular) {
-      el.disabled = true;
-      el.setAttribute('title', t('war_ocr_granular_hint'));
-      el.setAttribute('data-tooltip', t('war_ocr_granular_hint'));
-      el.setAttribute('data-tooltip-pos', 'top');
-      el.style.opacity = '0.45';
-      el.style.cursor = 'not-allowed';
-      // gm-ui tooltip: bind the freshly decorated buttons (boot scan may
-      // have run before the granular gate armed them).
-      initTooltips(toolbar);
-    } else {
-      el.disabled = false;
-      el.removeAttribute('title');
-      el.removeAttribute('data-tooltip');
-      el.removeAttribute('data-tooltip-pos');
-      el.style.opacity = '';
-      el.style.cursor = '';
-    }
-  });
+function resolveWarOcrDay(metric: string): WarOcrDayTarget | null {
+  if (metric === 'svs_prep') return { eventName: 'SvS', day: 0 };
+  if (metric === 'gvg_prep') return { eventName: 'GvG', day: 0 };
+  if (metric === 'svs_day') return { eventName: 'SvS', day: getOcrScanDay() };
+  if (metric === 'gvg_day') return { eventName: 'GvG', day: getOcrScanDay() };
+  if (metric === 'svs_pvp') return { eventName: 'SvS', day: 6 };
+  if (metric === 'gvg_pvp') return { eventName: 'GvG', day: 6 };
+  return null;
 }
 
 function w(): any {
@@ -161,6 +141,18 @@ export async function setOcrMetric(metric: string): Promise<void> {
     if (scopeBadge) { scopeBadge.innerHTML = '<i class="ph ph-shield-check"></i> Intra-Guild Scan'; scopeBadge.style.background = 'rgba(99,102,241,0.18)'; scopeBadge.style.color = 'var(--accent)'; }
     if (scopeDesc) scopeDesc.textContent = 'Screenshots contain exclusively your guild members (full roster scan).';
     if (tagInputGroup) tagInputGroup.style.display = 'none';
+  }
+
+  // Per-day war metrics (svs_day / gvg_day): show the day selector and
+  // highlight the current target day. The selection feeds metadata.scanDay.
+  const isDayMetric = active === 'svs_day' || active === 'gvg_day';
+  const daySelector = byId('ocr-day-selector');
+  if (daySelector) daySelector.style.display = isDayMetric ? 'flex' : 'none';
+  if (isDayMetric) {
+    document.querySelectorAll('#ocr-day-buttons .gm-seg-btn').forEach((btn) => {
+      const d = parseInt(btn.getAttribute('data-ocr-day') || '', 10);
+      btn.classList.toggle('gm-active', Number.isInteger(d) && d === getOcrScanDay());
+    });
   }
 }
 
@@ -285,6 +277,25 @@ export function initOcrGeminiModule(): void {
 
   const metricTabs = byId('ocr-metric-tabs');
   if (metricTabs) metricTabs.querySelectorAll('.gm-seg-btn').forEach((btn) => btn.addEventListener('click', () => { void setOcrMetric(btn.getAttribute('data-metric') || 'members'); }));
+
+  const dayButtons = document.querySelectorAll('#ocr-day-buttons .gm-seg-btn');
+  if (dayButtons.length > 0) {
+    dayButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const d = parseInt(btn.getAttribute('data-ocr-day') || '1', 10);
+        setOcrScanDay(d);
+        document.querySelectorAll('#ocr-day-buttons .gm-seg-btn').forEach((b) => {
+          const bd = parseInt(b.getAttribute('data-ocr-day') || '', 10);
+          b.classList.toggle('gm-active', Number.isInteger(bd) && bd === d);
+        });
+        const meta = getOcrMeta();
+        const scopeDesc = byId('ocr-scope-desc');
+        if (meta && meta.isEvent && scopeDesc) {
+          scopeDesc.textContent = 'Day ' + d + ' screenshots — scores are imported into the Day ' + d + ' column of the preparation grid.';
+        }
+      });
+    });
+  }
 
   const tagInput = byId<HTMLInputElement>('ocr-guild-tag-input');
   if (tagInput) {
@@ -552,7 +563,11 @@ export async function callGeminiOcrBatchApi(
   if (!client || !client.functions) throw new Error('OCR service unavailable. Please sign in and try again.');
 
   if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR (' + metricType.toUpperCase() + (guildTag ? ' ' + guildTag : '') + ')...');
-  const res = await client.functions.invoke('ocr-guild-members', { body: { images: batchImageItems, metricType, guildTag, rankHint: rankHint || null } });
+  // Per-day war metrics attach the validated scan-day target to the metadata
+  // object (the Edge Function re-validates it through the Zod scanDay enum).
+  let metadata: { scanDay: number } | undefined;
+  if (metricType === 'svs_day' || metricType === 'gvg_day') metadata = { scanDay: getOcrScanDay() };
+  const res = await client.functions.invoke('ocr-guild-members', { body: { images: batchImageItems, metricType, guildTag, rankHint: rankHint || null, metadata } });
   if (res.data && res.data.ok && Array.isArray(res.data.players)) return { players: res.data.players, endingRank: res.data.endingRank || null };
   const errMsg = (res.data && res.data.error) || (res.error && res.error.message) || 'OCR analysis failed. Please try again.';
   throw new Error(errMsg);
@@ -631,17 +646,36 @@ export async function commitOcrUpdates(): Promise<void> {
           return;
         }
         const evSid = evRes.data.session_id;
-        await runInChunks(selectedPlayers, 10, async (sp: any) => {
-          const scoreVal = sp.score != null ? sp.score : 0;
-          const updatePayload: any = {};
-          if (metric === 'svs_prep' || metric === 'gvg_prep') { updatePayload.score_prep = scoreVal; updatePayload.participated = 1; }
-          else if (metric === 'svs_pvp' || metric === 'gvg_pvp') { updatePayload.score_pvp = scoreVal; updatePayload.participated = 1; }
-          else if (metric === 'dtr') { if (scoreVal > 0) updatePayload.participated = 1; else { updatePayload.appointed = true; updatePayload.participated = 1; } }
-          const upRes = await client.from('event_participants').update(updatePayload).eq('guild', currentG).eq('event_name', evName).eq('session_id', evSid).eq('pseudo', sp.pseudo).select('pseudo');
-          if (upRes.data && upRes.data.length === 0) {
-            await client.from('event_participants').insert([Object.assign({ guild: currentG, event_name: evName, session_id: evSid, pseudo: sp.pseudo, week_start: getWeekStart(evRes.data.start_at || new Date()) }, updatePayload)]);
+        const warDay = resolveWarOcrDay(metric);
+        if (warDay) {
+          // SvS/GvG commits ALWAYS flow through gm_upsert_daily_scores (via
+          // EventsService.upsertDailyScores): day 0 for the aggregate totals,
+          // scanDay for the per-day metrics, day 6 for PvP. Direct
+          // event_participants.score_prep writes are forbidden here — the RPC
+          // converges the grid (zero double-counting) and derives the cache.
+          const rows = selectedPlayers.map((sp: any) => ({
+            pseudo: sp.pseudo,
+            day: warDay.day,
+            score: sp.score != null ? sp.score : 0
+          }));
+          // gm_upsert_daily_scores caps a batch at 200 rows — flush in chunks.
+          for (let offset = 0; offset < rows.length; offset += 100) {
+            const chunk = rows.slice(offset, offset + 100);
+            const batchRes = await EventsService.upsertDailyScores(currentG, warDay.eventName, evSid, chunk);
+            if (!batchRes.ok) throw new Error(batchRes.error || 'rpc_failed');
           }
-        });
+        } else if (metric === 'dtr') {
+          await runInChunks(selectedPlayers, 10, async (sp: any) => {
+            const scoreVal = sp.score != null ? sp.score : 0;
+            const updatePayload: any = {};
+            if (scoreVal > 0) updatePayload.participated = 1;
+            else { updatePayload.appointed = true; updatePayload.participated = 1; }
+            const upRes = await client.from('event_participants').update(updatePayload).eq('guild', currentG).eq('event_name', evName).eq('session_id', evSid).eq('pseudo', sp.pseudo).select('pseudo');
+            if (upRes.data && upRes.data.length === 0) {
+              await client.from('event_participants').insert([Object.assign({ guild: currentG, event_name: evName, session_id: evSid, pseudo: sp.pseudo, week_start: getWeekStart(evRes.data.start_at || new Date()) }, updatePayload)]);
+            }
+          });
+        }
         const events = w().GM_EVENTS;
         if (events && typeof events.loadEvent === 'function') await events.loadEvent(evName);
       }

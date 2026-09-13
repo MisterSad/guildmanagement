@@ -23,10 +23,11 @@ import {
   type OpponentCandidate
 } from '../events.service';
 import type { WarSession, ChestTier } from '../../../types/database';
-import { resolveChestsForScore, defaultChestGrid } from '../../../core/scoring/chests';
+import { resolveChestsForScore, resolvePrepChests, prepTotal, aggregateTierSlice, defaultChestGrid, WAR_AGGREGATE_DAY, PREP_DAYS } from '../../../core/scoring/chests';
 import { renderBadge, renderWarStatusBadge } from '../../../components/ui/Badge';
 import { formatCompactNumber, formatNumber } from '../../../core/utils/numbers';
-import { syncWarOcrGate } from '../../app/ocr/ocr.controller';
+import { openDialog } from '../../../components/ui/Dialog';
+import { getGuildConfig, setGuildConfig } from '../../../core/config/guild-config';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -112,11 +113,15 @@ interface WarDayScore {
   chests_unlocked: number;
 }
 
+/** Prep score entry mode of a war tab (grid layout + input conventions). */
+type WarScoreMode = 'detailed' | 'aggregate';
+
 interface WarTabState {
   session: WarSession | null;
   opponents: OpponentCandidate[];
   grid: ChestTier[];
   daily: Record<string, WarDayScore[]>;
+  mode: WarScoreMode;
 }
 
 function createTabState(): EventTabState {
@@ -375,7 +380,7 @@ export class EventsView {
 
   private getWar(tabKey: string): WarTabState {
     if (!this.war[tabKey]) {
-      this.war[tabKey] = { session: null, opponents: [], grid: defaultChestGrid(), daily: {} };
+      this.war[tabKey] = { session: null, opponents: [], grid: defaultChestGrid(), daily: {}, mode: 'detailed' };
     }
     return this.war[tabKey];
   }
@@ -397,6 +402,15 @@ export class EventsView {
     const guild = this.currentGuild();
     const ev = s.activeEventName as WarEventName;
     const war = this.getWar(tabKey);
+
+    // Prep entry mode is a guild preference per event (guild_config), shared
+    // with the History modal — aggregates read the same daily-scores source.
+    try {
+      const savedMode = await getGuildConfig('war_prep_mode:' + ev);
+      war.mode = savedMode === 'aggregate' ? 'aggregate' : 'detailed';
+    } catch (_) {
+      war.mode = 'detailed';
+    }
 
     const sessRes = await EventsService.getWarSession(guild, ev, s.sessionId);
     if (sessRes.ok) war.session = sessRes.session ?? null;
@@ -431,7 +445,6 @@ export class EventsView {
     }
 
     this.renderWarBanner(tabKey);
-    this.syncWarGates();
     this.renderParticipants(tabKey);
   }
 
@@ -450,29 +463,25 @@ export class EventsView {
     delete this.war[tabKey];
     const host = this.getPanel(tabKey)?.querySelector<HTMLElement>('.war-banner');
     if (host) host.innerHTML = '';
-    this.syncWarGates();
-  }
-
-  private warGranularFor(eventName: string): boolean {
-    for (const key of Object.keys(this.state)) {
-      const s = this.state[key];
-      if (s.isActive && s.activeEventName === eventName && this.isGranular(key)) return true;
-    }
-    return false;
-  }
-
-  private syncWarGates(): void {
-    syncWarOcrGate('SvS', this.warGranularFor('SvS'));
-    syncWarOcrGate('GvG', this.warGranularFor('GvG'));
   }
 
   private warTotalScore(tabKey: string): number {
     const war = this.war[tabKey];
     if (!war) return 0;
-    return Object.values(war.daily).reduce(
-      (a, list) => a + list.reduce((x, e) => x + (Number(e.score) || 0), 0),
-      0
-    );
+    return Object.values(war.daily).reduce((sum, list) => {
+      const byDay: Record<number, number> = {};
+      let pvp = 0;
+      for (const entry of list) {
+        if (entry.day === 6) pvp = Number(entry.score) || 0;
+        else byDay[entry.day] = Number(entry.score) || 0;
+      }
+      const prep = prepTotal(Object.keys(byDay).map((d) => ({ day: Number(d), score: byDay[Number(d)] })));
+      return sum + prep + pvp;
+    }, 0);
+  }
+
+  private warMode(tabKey: string): WarScoreMode {
+    return this.getWar(tabKey).mode === 'aggregate' ? 'aggregate' : 'detailed';
   }
 
   private renderWarBanner(tabKey: string): void {
@@ -506,6 +515,14 @@ export class EventsView {
       '<option value="' + legacy.esc(o.name) + '"></option>'
     ).join('');
 
+    const mode = this.warMode(tabKey);
+    const modeSwitch =
+      '<div class="gm-row war-mode-switch" role="group" aria-label="' + legacy.esc(legacy.t('war_mode_detailed')) + '/' + legacy.esc(legacy.t('war_mode_aggregate')) + '" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">' +
+        '<span class="gm-chip" style="white-space:nowrap;">' + legacy.t('war_day_total_prep') + '</span>' +
+        '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' + (mode === 'detailed' ? ' gm-active' : '') + '" data-war-mode="detailed" style="padding:0.3rem 0.6rem;"><i class="ph ph-list-numbers"></i> ' + legacy.esc(legacy.t('war_mode_detailed')) + '</button>' +
+        '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' + (mode === 'aggregate' ? ' gm-active' : '') + '" data-war-mode="aggregate" style="padding:0.3rem 0.6rem;"><i class="ph ph-plus-minus"></i> ' + legacy.esc(legacy.t('war_mode_aggregate')) + '</button>' +
+      '</div>';
+
     host.innerHTML =
       '<div class="gm-card gm-card-padded" style="margin-bottom:1rem;">' +
         '<div class="gm-row" style="gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">' +
@@ -517,6 +534,10 @@ export class EventsView {
           '</div>' +
           '<div class="gm-row war-day-results" style="gap:.45rem; flex-wrap:wrap;" data-event="' + legacy.esc(s.activeEventName || '') + '">' + dayChips + '</div>' +
         '</div>' +
+        '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top:.6rem;">' +
+          '<span class="gm-dim" style="font-size:var(--fs-2xs);">' + legacy.esc(legacy.t(mode === 'aggregate' ? 'war_col_total_d15' : 'war_ocr_granular_hint')) + '</span>' +
+          modeSwitch +
+        '</div>' +
       '</div>';
 
     const input = host.querySelector<HTMLInputElement>('.war-opponent-input');
@@ -526,6 +547,22 @@ export class EventsView {
     host.querySelectorAll('.war-day-toggle').forEach((btn) => {
       btn.addEventListener('click', () => { this.cycleWarDay(tabKey, btn as HTMLElement); });
     });
+    host.querySelectorAll('.war-mode-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.setWarMode(tabKey, btn.getAttribute('data-war-mode') === 'aggregate' ? 'aggregate' : 'detailed');
+      });
+    });
+  }
+
+  private setWarMode(tabKey: string, mode: WarScoreMode): void {
+    const s = this.state[tabKey];
+    if (!s.activeEventName || !s.sessionId) return;
+    const war = this.getWar(tabKey);
+    if (war.mode === mode) return;
+    war.mode = mode;
+    void setGuildConfig('war_prep_mode:' + s.activeEventName, mode);
+    this.renderWarBanner(tabKey);
+    this.renderParticipants(tabKey);
   }
 
   private async saveWarOpponent(tabKey: string, rawValue: string): Promise<void> {
@@ -610,16 +647,59 @@ export class EventsView {
     if (!row) return;
     const grid = this.getWar(tabKey).grid;
     let total = 0;
-    for (let d = 1; d <= 6; d++) {
-      const inp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="' + d + '"]');
-      const score = inp ? legacy.parseNumber(inp.value) : 0;
-      total += resolveChestsForScore(grid.filter((g) => g.day === d), score);
+    if (this.warMode(tabKey) === 'aggregate') {
+      const aggInp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="' + WAR_AGGREGATE_DAY + '"]');
+      const d6Inp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="6"]');
+      const agg = aggInp ? legacy.parseNumber(aggInp.value) : 0;
+      const d6 = d6Inp ? legacy.parseNumber(d6Inp.value) : 0;
+      total = resolvePrepChests(grid, null, agg) +
+        resolveChestsForScore(grid.filter((g) => g.day === 6), d6);
+    } else {
+      for (let d = 1; d <= 6; d++) {
+        const inp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="' + d + '"]');
+        const score = inp ? legacy.parseNumber(inp.value) : 0;
+        total += resolveChestsForScore(grid.filter((g) => g.day === d), score);
+      }
     }
     const cell = row.querySelector('.player-chests-cell');
     if (cell) {
       cell.innerHTML = total
         ? renderBadge({ text: formatNumber(total), tone: 'glory', style: 'soft', size: 'sm', title: formatNumber(total) })
         : '-';
+    }
+  }
+
+  private async confirmAggregateConversion(_tabKey: string, pseudo: string): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      openDialog({
+        title: legacy.t('war_confirm_total_replaces_days'),
+        iconClass: 'ph-warning',
+        tone: 'danger',
+        subtitle: legacy.esc(pseudo),
+        body: '<strong>' + legacy.esc(pseudo) + '</strong><br>' + legacy.esc(legacy.t('war_col_total_d15')),
+        confirmLabel: legacy.t('confirm_ok'),
+        cancelLabel: legacy.t('confirm_cancel'),
+        onConfirm: () => resolve(true),
+        onCancel: () => resolve(false),
+        onClose: () => resolve(false),
+        initialFocus: null
+      });
+    });
+  }
+
+  private revertRowInputs(tabKey: string, row: Element | null, pseudo: string): void {
+    const byDay: Record<number, number> = {};
+    const entries = this.getWar(tabKey).daily[pseudo] || [];
+    for (const entry of entries) byDay[entry.day] = entry.score;
+    if (row) {
+      row.querySelectorAll('.day-score-input').forEach((node) => {
+        const inp = node as HTMLInputElement;
+        if (inp.getAttribute('data-pseudo') !== pseudo) return;
+        const day = Number(inp.getAttribute('data-day'));
+        const v = byDay[day];
+        inp.value = v !== undefined ? String(v) : '';
+      });
+      this.updateChestCell(row, tabKey);
     }
   }
 
@@ -640,10 +720,27 @@ export class EventsView {
     inputs.forEach((inp) => {
       if (inp.getAttribute('data-pseudo') !== pseudo) return;
       const day = Number(inp.getAttribute('data-day'));
-      if (!(day >= 1 && day <= 6)) return;
+      if (!(day >= 0 && day <= 6)) return;
       rows.push({ pseudo, day, score: legacy.parseNumber(inp.value) });
     });
     if (rows.length === 0) return;
+
+    const war = this.getWar(tabKey);
+    const existing = war.daily[pseudo] || [];
+    const prevHasDaily = existing.some((e) => PREP_DAYS.indexOf(e.day) !== -1 && (Number(e.score) || 0) > 0);
+    const prevHasAgg = existing.some((e) => e.day === WAR_AGGREGATE_DAY);
+    const wroteAgg = rows.some((r) => r.day === WAR_AGGREGATE_DAY);
+    const wroteDaily = rows.some((r) => PREP_DAYS.indexOf(r.day) !== -1);
+
+    // Destructive conversion (aggregate on top of existing D1..D5): the RPC
+    // clears the player's per-day scores, so require an explicit confirmation.
+    if (wroteAgg && prevHasDaily) {
+      const confirmed = await this.confirmAggregateConversion(tabKey, pseudo);
+      if (!confirmed) {
+        this.revertRowInputs(tabKey, row, pseudo);
+        return;
+      }
+    }
 
     const res = await EventsService.upsertDailyScores(
       this.currentGuild(),
@@ -653,12 +750,20 @@ export class EventsView {
     );
     if (!res.ok) return;
 
-    const war = this.getWar(tabKey);
     war.daily[pseudo] = rows.map((r) => ({
       day: r.day,
       score: r.score,
-      chests_unlocked: resolveChestsForScore(war.grid.filter((g) => g.day === r.day), r.score)
+      chests_unlocked: r.day === WAR_AGGREGATE_DAY
+        ? resolveChestsForScore(aggregateTierSlice(war.grid), r.score)
+        : resolveChestsForScore(war.grid.filter((g) => g.day === r.day), r.score)
     }));
+
+    if (wroteAgg && prevHasDaily) {
+      legacy.showToast(legacy.t('war_toast_total_replaced_days'), 'success');
+    } else if (wroteDaily && prevHasAgg) {
+      legacy.showToast(legacy.t('war_toast_days_replaced_total'), 'info');
+    }
+
     const contentEl = this.getContentEl(tabKey);
     if (row) this.updateChestCell(row, tabKey);
     if (contentEl) this.refreshStats(contentEl, tabKey);
@@ -910,6 +1015,7 @@ export class EventsView {
     const isDtr = dbEventName === 'Defend Trade Route';
     const hasScore = EVENTS_WITHOUT_SCORE.indexOf(dbEventName as string) === -1;
     const granular = isSvsOrGvg && this.isGranular(tabKey);
+    const prepMode = granular ? this.warMode(tabKey) : 'detailed';
     const done = participants.reduce((a, p) => a + (p.participated || 0), 0);
     const appointedCount = participants.reduce((a, p) => a + (p.appointed ? 1 : 0), 0);
     const totalScore = granular
@@ -946,9 +1052,11 @@ export class EventsView {
           '<th class="gm-center">' + legacy.t('col_participated') + '</th>' +
           (isDtr ? '<th class="gm-center">Appointed</th>' : '') +
           (granular
-            ? [1, 2, 3, 4, 5, 6].map((d) =>
-                '<th class="gm-right">' + legacy.t('war_day_n').replace('{day}', String(d)) + '</th>'
-              ).join('') +
+            ? (prepMode === 'aggregate'
+                ? '<th class="gm-right">' + legacy.t('war_col_total_d15') + '</th><th class="gm-right">' + legacy.t('war_day_n').replace('{day}', '6') + '</th>'
+                : [1, 2, 3, 4, 5, 6].map((d) =>
+                    '<th class="gm-right">' + legacy.t('war_day_n').replace('{day}', String(d)) + '</th>'
+                  ).join('')) +
               '<th class="gm-right">' + legacy.t('war_col_chests') + '</th>'
             : (isSvsOrGvg
               ? '<th class="gm-right">' + legacy.t('col_score_prep') + '</th><th class="gm-right">' + legacy.t('col_score_pvp') + '</th>'
@@ -966,16 +1074,29 @@ export class EventsView {
         const entries = this.getWar(tabKey).daily[p.pseudo] || [];
         const dayScores: Record<number, number> = {};
         for (const e of entries) dayScores[e.day] = e.score;
-        for (let d = 1; d <= 6; d++) {
-          const v = dayScores[d];
-          granularCells += '<td class="gm-right" data-label="Day ' + d + '">' +
-            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + legacy.esc(p.pseudo) + '" data-day="' + d + '" value="' + (v != null ? legacy.fmt(v) : '') + '" placeholder="-">' +
-          '</td>';
-        }
         const grid = this.getWar(tabKey).grid;
         let chestTotal = 0;
-        for (let d = 1; d <= 6; d++) {
-          chestTotal += resolveChestsForScore(grid.filter((g) => g.day === d), dayScores[d]);
+        if (prepMode === 'aggregate') {
+          const agg = dayScores[WAR_AGGREGATE_DAY];
+          const d6 = dayScores[6];
+          granularCells += '<td class="gm-right" data-label="' + legacy.t('war_col_total_d15') + '">' +
+            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + legacy.esc(p.pseudo) + '" data-day="0" value="' + (agg != null ? legacy.fmt(agg) : '') + '" placeholder="-">' +
+          '</td>';
+          granularCells += '<td class="gm-right" data-label="Day 6">' +
+            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + legacy.esc(p.pseudo) + '" data-day="6" value="' + (d6 != null ? legacy.fmt(d6) : '') + '" placeholder="-">' +
+          '</td>';
+          chestTotal = resolvePrepChests(grid, dayScores, agg) +
+            resolveChestsForScore(grid.filter((g) => g.day === 6), d6);
+        } else {
+          for (let d = 1; d <= 6; d++) {
+            const v = dayScores[d];
+            granularCells += '<td class="gm-right" data-label="Day ' + d + '">' +
+              '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + legacy.esc(p.pseudo) + '" data-day="' + d + '" value="' + (v != null ? legacy.fmt(v) : '') + '" placeholder="-">' +
+            '</td>';
+          }
+          for (let d = 1; d <= 6; d++) {
+            chestTotal += resolveChestsForScore(grid.filter((g) => g.day === d), dayScores[d]);
+          }
         }
         granularCells += '<td class="gm-right player-chests-cell" title="' + legacy.esc(formatNumber(chestTotal || 0)) + '">' +
           (chestTotal

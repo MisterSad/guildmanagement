@@ -22,6 +22,8 @@ export interface OcrMetricMeta {
   eventKey?: string;
   squad?: 'squad1' | 'squad2';
   stage?: 'stageA' | 'stageB';
+  /** Valid target-day range for per-day war metrics (svs_day / gvg_day). */
+  dayRange?: [number, number];
 }
 
 export const OCR_METRICS_META: Record<string, OcrMetricMeta> = {
@@ -33,9 +35,11 @@ export const OCR_METRICS_META: Record<string, OcrMetricMeta> = {
   champs: { title: '6. Champs OCR — Champions Total Power (Server Leaderboard)', subtitle: 'Upload Champion Total Power leaderboards to track hero collections and ranks', dropTitle: 'Drop Champions Total Power leaderboard screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Server Leaderboard: filters by your Guild Tag)', header: 'Extracted Champions Power', field: 'champion_power', color: '#f472b6', icon: 'ph-crown', isMultiGuild: true },
   crew: { title: '7. Crew OCR — Crew Total Power (Server Leaderboard)', subtitle: 'Upload Crew Total Power leaderboards to evaluate Foundation officer development', dropTitle: 'Drop Crew Total Power leaderboard screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Server Leaderboard: filters by your Guild Tag)', header: 'Extracted Crew Power', field: 'crew_power', color: '#38bdf8', icon: 'ph-users-three', isMultiGuild: true },
   glory: { title: '8. Glory OCR — Weekly Glory Score', subtitle: 'Upload Glory rankings to track weekly battle points and PvP contribution', dropTitle: 'Drop Glory Ranking leaderboard screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Intra-Guild: extracts Glory score points)', header: 'Extracted Glory Score', field: 'glory_score', color: '#34d399', icon: 'ph-trophy', isMultiGuild: false },
-  svs_prep: { title: 'SvS Day 1 to 5 OCR — Preparation Stage', subtitle: 'Upload SvS Day 1-5 screenshots to import prep scores and validate participation for your guild', dropTitle: 'Drop SvS Day 1 to 5 screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)', header: 'SvS Prep Score', field: 'score_prep', color: '#f59e0b', icon: 'ph-sword', isMultiGuild: true, isEvent: true, eventType: 'standard', eventKey: 'SvS' },
+  svs_prep: { title: 'SvS Day 1 to 5 OCR — Preparation Total', subtitle: 'Upload SvS Day 1-5 screenshots to import the cumulative prep total (Day 1 to 5) and validate participation for your guild', dropTitle: 'Drop SvS Day 1 to 5 screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)', header: 'SvS Prep Total (D1–D5)', field: 'score_prep', color: '#f59e0b', icon: 'ph-sword', isMultiGuild: true, isEvent: true, eventType: 'standard', eventKey: 'SvS' },
+  svs_day: { title: 'SvS Day N OCR — Daily Preparation Score', subtitle: 'Upload a single SvS preparation day screenshot to import that day\'s scores into the daily grid', dropTitle: 'Drop the target SvS day screenshot here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Per-day grid: pick the N day of the screenshot first)', header: 'SvS Day N Prep Score', field: 'score_prep', color: '#f59e0b', icon: 'ph-calendar-dots', isMultiGuild: true, isEvent: true, eventType: 'standard', eventKey: 'SvS', dayRange: [1, 5] },
   svs_pvp: { title: 'SvS Day 6 OCR — PvP Battle Day', subtitle: 'Upload SvS Day 6 PvP screenshots to import battle scores and validate participation for your guild', dropTitle: 'Drop SvS Day 6 PvP screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)', header: 'SvS PvP Score', field: 'score_pvp', color: '#f97316', icon: 'ph-fire', isMultiGuild: true, isEvent: true, eventType: 'standard', eventKey: 'SvS' },
-  gvg_prep: { title: 'GvG Day 1 to 5 OCR — Preparation Stage', subtitle: 'Upload GvG Day 1-5 screenshots to import prep scores and validate participation for your guild', dropTitle: 'Drop GvG Day 1 to 5 screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)', header: 'GvG Prep Score', field: 'score_prep', color: '#60a5fa', icon: 'ph-flag-banner', isMultiGuild: true, isEvent: true, eventType: 'standard', eventKey: 'GvG' },
+  gvg_prep: { title: 'GvG Day 1 to 5 OCR — Preparation Total', subtitle: 'Upload GvG Day 1-5 screenshots to import the cumulative prep total (Day 1 to 5) and validate participation for your guild', dropTitle: 'Drop GvG Day 1 to 5 screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)', header: 'GvG Prep Total (D1–D5)', field: 'score_prep', color: '#60a5fa', icon: 'ph-flag-banner', isMultiGuild: true, isEvent: true, eventType: 'standard', eventKey: 'GvG' },
+  gvg_day: { title: 'GvG Day N OCR — Daily Preparation Score', subtitle: 'Upload a single GvG preparation day screenshot to import that day\'s scores into the daily grid', dropTitle: 'Drop the target GvG day screenshot here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Per-day grid: pick the N day of the screenshot first)', header: 'GvG Day N Prep Score', field: 'score_prep', color: '#60a5fa', icon: 'ph-calendar-dots', isMultiGuild: true, isEvent: true, eventType: 'standard', eventKey: 'GvG', dayRange: [1, 5] },
   gvg_pvp: { title: 'GvG Day 6 OCR — PvP Battle Day', subtitle: 'Upload GvG Day 6 PvP screenshots to import battle scores and validate participation for your guild', dropTitle: 'Drop GvG Day 6 PvP screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Targets members with your Guild Tag)', header: 'GvG PvP Score', field: 'score_pvp', color: '#38bdf8', icon: 'ph-swords', isMultiGuild: true, isEvent: true, eventType: 'standard', eventKey: 'GvG' },
   shadowfront_s1: { title: 'Shadowfront S1 OCR — Squad 1 Battle & Roster', subtitle: 'Upload Shadowfront Squad 1 screenshots to validate Main squad (Participated) and Substitutes (Sub Present + Participated)', dropTitle: 'Drop Shadowfront Squad 1 screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Detects Squad 1 Main & Reserve members)', header: 'Squad 1 Status', field: 'participated', color: '#a855f7', icon: 'ph-users-three', isMultiGuild: false, isEvent: true, eventType: 'shadowfront', squad: 'squad1' },
   shadowfront_s2: { title: 'Shadowfront S2 OCR — Squad 2 Battle & Roster', subtitle: 'Upload Shadowfront Squad 2 screenshots to validate Main squad (Participated) and Substitutes (Sub Present + Participated)', dropTitle: 'Drop Shadowfront Squad 2 screenshots here or click to browse', dropDesc: 'Screenshots or a scroll-recording video · PNG/JPG/WEBP/MP4/MOV (Detects Squad 2 Main & Reserve members)', header: 'Squad 2 Status', field: 'participated', color: '#d946ef', icon: 'ph-users-three', isMultiGuild: false, isEvent: true, eventType: 'shadowfront', squad: 'squad2' },
@@ -46,8 +50,12 @@ export const OCR_METRICS_META: Record<string, OcrMetricMeta> = {
 
 export const DEFAULT_OCR_METRIC = 'members';
 
-/** Legacy aggregate OCR metrics made obsolete by the granular SvS/GvG grid. */
-export const WAR_LEGACY_OCR_METRICS = ['svs_prep', 'svs_pvp', 'gvg_prep', 'gvg_pvp'] as const;
+/**
+ * War prep OCR metrics routing to the aggregate (day = 0) "Day 1 to 5 total"
+ * container. Per-day prep (svs_day / gvg_day) and Day 6 (svs_pvp / gvg_pvp)
+ * are separate metrics that write day = scanDay and day = 6 respectively.
+ */
+export const WAR_LEGACY_OCR_METRICS = ['svs_prep', 'gvg_prep'] as const;
 
 export function isWarLegacyOcrMetric(metric: string): boolean {
   return (WAR_LEGACY_OCR_METRICS as readonly string[]).indexOf(metric) !== -1;
@@ -56,12 +64,22 @@ export function isWarLegacyOcrMetric(metric: string): boolean {
 let currentOcrMetric = DEFAULT_OCR_METRIC;
 let ocrExtractedPlayers: any[] = [];
 
+/** Validated numeric day (1..6) for per-day war metrics (svs_day / gvg_day). */
+let currentOcrScanDay = 1;
+
 export function getCurrentOcrMetric(): string {
   return currentOcrMetric;
 }
 export function setCurrentOcrMetric(metric: string): void {
   if (!OCR_METRICS_META[metric]) metric = DEFAULT_OCR_METRIC;
   currentOcrMetric = metric;
+}
+export function getOcrScanDay(): number {
+  return currentOcrScanDay;
+}
+export function setOcrScanDay(day: number): void {
+  const n = Number(day);
+  currentOcrScanDay = (Number.isInteger(n) && n >= 1 && n <= 6) ? n : 1;
 }
 export function getOcrExtractedPlayers(): any[] {
   return ocrExtractedPlayers;

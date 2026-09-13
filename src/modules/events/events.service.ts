@@ -24,6 +24,21 @@ export interface SaveChestTiersResult { ok: boolean; saved?: number; error?: str
 export interface WarSessionResult { ok: boolean; session?: WarSession | null; error?: string; }
 export interface DailyScoresResult { ok: boolean; rows: EventDailyScore[]; error?: string; }
 export interface UpsertDailyScoresResult { ok: boolean; updated?: number; error?: string; }
+
+/**
+ * One row of the granular war score grid. `day` spans 0..6:
+ *   0    — aggregate "Day 1 to 5 total" (prep total; mutually exclusive with
+ *          1..5 per pseudo per session — the RPC converges the two);
+ *   1..5 — per-day prep scores;
+ *   6    — Day 6 PvP score.
+ * `chests` is optional: when omitted, the RPC computes it from the frozen grid.
+ */
+export interface UpsertDailyScoreRow {
+  pseudo: string;
+  day: number;
+  score: number;
+  chests?: number;
+}
 export interface OpponentCandidate {
   id?: string;
   kind: string;
@@ -271,12 +286,15 @@ export class EventsService {
     return { ok: true, rows };
   }
 
-  /** Batch upserts Day 1..6 scores (chests auto-computed by the RPC). */
+  /** Batch upserts the war score grid (day 0..6). `day = 0` is the aggregate
+   *  "Day 1 to 5 total" prep bucket (mutually exclusive with days 1..5 per
+   *  pseudo — convergence is enforced by the RPC); chests are auto-computed
+   *  by the RPC when omitted. */
   public static async upsertDailyScores(
     guild: string,
     eventName: WarEventName,
     sessionId: string,
-    rows: Array<{ pseudo: string; day: number; score: number; chests?: number }>
+    rows: UpsertDailyScoreRow[]
   ): Promise<UpsertDailyScoresResult> {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, error: 'no_client' };

@@ -1,5 +1,23 @@
 📢 **FGF Guild Management Tool Update — CHANG_V3.18.1**
 
+This update gives you full freedom on how you enter SvS/GvG preparation scores — one global total or day-by-day detail — with zero risk of double counting, plus a smarter OCR that reads single days too.
+
+### 🎛️ Pick Your Entry Mode for Prep Scores
+- **What changed**: In the Events war panel you now have a switcher: **Detailed D1–D5** (six per-day columns as before) or **Cumulative D1–D5** (one single "Total" column for the whole preparation phase + Day 6). Your choice is remembered per event.
+- **The benefit**: Prefer precision on one day? Use the daily grid. Prefer speed? Enter one total per player. The tool never mixes the two for the same player.
+
+### 🛡️ No More Double Counting, Ever
+- **What changed**: The database now guarantees a player can never hold both a total AND per-day scores on the same session — writing one automatically (and safely) replaces the other.
+- **The benefit**: Chest thresholds and totals always reflect exactly one coherent source, whichever mode each guild prefers.
+
+### 📅 Party OCR: Total or Single-Day Screenshots
+- **What changed**: The SvS/GvG OCR buttons now come in three: **Day 1 to 5 (Total)**, **Day N** (pick Day 1–5 inside the scanner), and **Day 6**. The daily scan imports each player's score straight into the matching day column.
+- **The benefit**: You no longer have to crop screenshots into one cumulative image — scan any single prep day and the right column updates automatically, on both server and guild wars.
+
+### ⚙️ Chest Tiers for the Cumulative Total
+- **What changed**: Guild Settings → SvS/GvG Chest Tiers now includes a **"Day 1–5 (Total)"** block so you can calibrate rewards for phase-long performance.
+- **The benefit**: Reward your players' overall preparation just as precisely as their daily pushes.
+
 This update is all about making your Discord notifications behave exactly as you set them — no more notifications showing up every day when you turned them off, and no more reminders going missing at the wrong moment.
 
 ### 🛡️ Notifications Now Follow Your Switches

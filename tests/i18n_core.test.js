@@ -10,8 +10,8 @@ import { t, getLang, setLang, applyTranslations } from '../src/core/i18n/i18n';
 import { EN } from '../src/core/i18n/i18n.dictionary';
 
 describe('i18n dictionary (golden)', () => {
-  it('keeps the full 552-key English dictionary', () => {
-    expect(Object.keys(EN).length).toBe(552);
+  it('keeps the full 559-key English dictionary', () => {
+    expect(Object.keys(EN).length).toBe(559);
   });
 
   it('has no empty translation value', () => {

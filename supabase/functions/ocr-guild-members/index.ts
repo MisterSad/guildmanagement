@@ -25,6 +25,8 @@ export const VALID_METRICS = [
   "svs_pvp",
   "gvg_prep",
   "gvg_pvp",
+  "svs_day",
+  "gvg_day",
   "shadowfront_s1",
   "shadowfront_s2",
   "dtr",
@@ -50,11 +52,15 @@ export const GuildTagSchema = z
   .nullable();
 
 // Strictly typed metadata schema
+// scanDay is the validated target preparation day (1..6) for the per-day war
+// metrics (svs_day / gvg_day). It is a strict integer enum enforced by Zod —
+// never interpolated from a raw, uncontrolled string into the prompt.
 export const MetadataSchema = z
   .object({
     metricType: z.enum(VALID_METRICS).optional(),
     guildTag: GuildTagSchema,
     rankHint: z.enum(VALID_RANKS).optional().nullable(),
+    scanDay: z.number().int().min(1).max(6).optional(),
   })
   .strict();
 
@@ -158,6 +164,8 @@ Deno.serve(async (req: Request) => {
 
   const guildTag = (metadata?.guildTag ?? parseResult.data.guildTag ?? "").trim();
   const rankHint = metadata?.rankHint ?? parseResult.data.rankHint ?? null;
+  // Strict int enum (1..6) enforced by MetadataSchema — never raw user text.
+  const scanDay = metadata?.scanDay;
   const imagesArray = images || [];
   let imageBase64 = rawBase64 || "";
   let mimeType = rawMime || "image/png";
@@ -175,7 +183,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "missing_image" }, 400);
   }
 
-  const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp"].includes(metricType);
+  const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp", "svs_day", "gvg_day"].includes(metricType);
   const isMembersRoster = metricType === "members";
 
   const metricInstructions: Record<string, string> = {
@@ -191,6 +199,10 @@ Deno.serve(async (req: Request) => {
     svs_pvp: `Server vs Server (SvS) Day 6 PvP Battle Score / Score Jour 6 PvP SvS. Extract player pseudo and Day 6 PvP score integer. Convert strings like "45.8M" -> 45800000, "3,450,000" -> 3450000. Target guild members with guild tag.`,
     gvg_prep: `Guild vs Guild (GvG) Day 1 to 5 Preparation Stage Score / Score Phase de Préparation GvG (Jours 1 à 5). Extract player pseudo and preparation score integer. Convert strings like "18.2M" -> 18200000, "950,000" -> 950000. Target guild members with guild tag.`,
     gvg_pvp: `Guild vs Guild (GvG) Day 6 PvP Battle Score / Score Jour 6 PvP GvG. Extract player pseudo and Day 6 PvP score integer. Convert strings like "35.1M" -> 35100000, "2,100,000" -> 2100000. Target guild members with guild tag.`,
+    // Per-day grid metrics: {day} is substituted with the VALIDATED scanDay
+    // integer below (never a raw, uncontrolled string).
+    svs_day: `Server vs Server (SvS) Day {day} Preparation Score / Score Jour {day} Phase de Préparation SvS. Extract player pseudo and the preparation score for Day {day} only (per-day grid, not the cumulative total). Convert strings like "5.2M" -> 5200000, "850,000" -> 850000. Target guild members with guild tag.`,
+    gvg_day: `Guild vs Guild (GvG) Day {day} Preparation Score / Score Jour {day} Phase de Préparation GvG. Extract player pseudo and the preparation score for Day {day} only (per-day grid, not the cumulative total). Convert strings like "4.8M" -> 4800000, "720,000" -> 720000. Target guild members with guild tag.`,
     shadowfront_s1: `Shadowfront Squad 1 Battle / Composition Roster (Escouade 1). Extract all visible player usernames (pseudos) participating or listed in Squad 1 main squad or reserve substitutes.`,
     shadowfront_s2: `Shadowfront Squad 2 Battle / Composition Roster (Escouade 2). Extract all visible player usernames (pseudos) participating or listed in Squad 2 main squad or reserve substitutes.`,
     dtr: `Defend Trade Route (DTR) / Défense de la Route Commerciale. Extract all player usernames (pseudos) and their score/points. If score is explicitly 0 or 0 pts, output score as 0; if score > 0, output positive integer score.`,
@@ -200,11 +212,19 @@ Deno.serve(async (req: Request) => {
 
   const targetMetricDesc = metricInstructions[metricType] || metricInstructions.power;
 
+  // Substitution is only allowed for the two per-day war metrics, using the
+  // Zod-validated integer (never raw text). Any other metric keeps its prompt.
+  let resolvedMetricDesc = targetMetricDesc;
+  if ((metricType === "svs_day" || metricType === "gvg_day") && scanDay !== undefined) {
+    resolvedMetricDesc = targetMetricDesc.replace("{day}", String(scanDay));
+  }
+
   const taskMetadata = {
     metric: metricType,
-    metric_description: targetMetricDesc,
+    metric_description: resolvedMetricDesc,
     guild_tag: guildTag || null,
     rank_hint: rankHint || null,
+    scan_day: scanDay || null,
     is_multi_guild: isMultiGuild,
     is_members_roster: isMembersRoster,
   };

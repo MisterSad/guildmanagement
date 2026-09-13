@@ -8,7 +8,6 @@
  *   (mouseenter/leave) triggers, declarative [data-tooltip] init.
  * - HistoryView session modal now rides the Dialog component while keeping
  *   the legacy #history-modal / #history-modal-delete surface.
- * - OCR granular gate decorates disabled buttons with the declarative tooltip.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -24,7 +23,6 @@ import {
   bindTooltip,
   initTooltips
 } from '../src/components/ui/Tooltip';
-import { syncWarOcrGate } from '../src/modules/app/ocr/ocr.controller';
 import { HistoryView } from '../src/modules/history/views/HistoryView';
 
 /* ─── Dialog — cva recipe & variants ──────────────────────────────────── */
@@ -331,31 +329,5 @@ describe('HistoryView — Dialog retrofit contract', () => {
     await tick();
     document.getElementById('history-modal-delete').click();
     expect(window.showConfirm).toHaveBeenCalledWith('confirm_delete_session_title', expect.any(String), expect.any(Function));
-  });
-});
-
-/* ─── OCR gate — declarative tooltip on disabled buttons ───────────────── */
-describe('OCR granular gate — declarative tooltip deployment', () => {
-  afterEach(() => {
-    document.body.innerHTML = '';
-    vi.restoreAllMocks();
-  });
-
-  it('decorates disabled granular-gated buttons with data-tooltip', () => {
-    document.body.innerHTML =
-      '<div id="event-svs"><div class="gm-event-ocr-toolbar">' +
-        '<button type="button" class="btn-ocr-trigger" data-metric="svs_prep"></button>' +
-        '<button type="button" class="btn-ocr-trigger" data-metric="svs_pvp"></button>' +
-      '</div></div>';
-    syncWarOcrGate('SvS', true);
-    const btn = document.querySelector('#event-svs .btn-ocr-trigger[data-metric="svs_prep"]');
-    expect(btn.disabled).toBe(true);
-    expect(btn.getAttribute('title')).toBe('war_ocr_granular_hint');
-    expect(btn.getAttribute('data-tooltip')).toBe('war_ocr_granular_hint');
-    expect(btn.getAttribute('aria-describedby')).toBe('gm-ui-tooltip-root');
-    syncWarOcrGate('SvS', false);
-    expect(btn.disabled).toBe(false);
-    expect(btn.hasAttribute('data-tooltip')).toBe(false);
-    expect(btn.hasAttribute('title')).toBe(false);
   });
 });
