@@ -15,6 +15,19 @@ function winAny(): any {
   return (typeof window !== 'undefined' ? window : {}) as any;
 }
 
+const AUTH_REQUEST_TIMEOUT_MS = 20_000;
+
+/** Rejects `promise` after `ms` unless it settles first (bounds network waits). */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('auth_request_timeout')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
 export interface AuthResult {
   ok: boolean;
   error?: string;
@@ -27,12 +40,38 @@ export async function login(id: string, password: string): Promise<AuthResult> {
   if (!c) return { ok: false, error: 'no_client' };
   let r: any;
   try {
-    r = await c.functions.invoke('auth-login', { body: { id: id, password: password } });
-  } catch (e) {
-    return { ok: false, error: 'request_failed' };
+    r = await withTimeout(
+      c.functions.invoke('auth-login', { body: { id: id, password: password } }),
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+  } catch (e: any) {
+    return {
+      ok: false,
+      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+    };
   }
   const data = await parseFunctionsInvokeResult(r);
-  if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
+
+  // A successful auth-login payload always carries `ok: true`. Older/stale
+  // deployments used to return the minted GoTrue session WITHOUT the `ok` flag;
+  // accept that shape too so a version mismatch cannot lock everyone out.
+  if (data && !data.ok && data.access_token && data.refresh_token) {
+    const legacy = await c.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+    if (legacy.error) return { ok: false, error: 'session_set_failed' };
+    return { ok: true, role: data.role, id: data.id, hasPasskey: !!data.has_passkey };
+  }
+
+  if (!data || !data.ok) {
+    // Gateway error bodies (404 "not found", 401 verify_jwt, 500 crash, ...)
+    // have no `error` key — surface the real detail instead of the bare
+    // "invalid" fallback that made the failure impossible to diagnose.
+    const detail =
+      (data && (data.error || data.msg || data.message || data.code)) ||
+      (r && r.error && r.error.message) ||
+      'request_failed';
+    return { ok: false, error: String(detail) };
+  }
+
   const s = await c.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
   if (s.error) return { ok: false, error: 'session_set_failed' };
   return { ok: true, role: data.role, id: data.id, hasPasskey: !!data.has_passkey };

@@ -451,6 +451,8 @@ async function onLoginSubmit(e: Event): Promise<void> {
       setLoginError('Too many attempts. Please wait a few minutes and try again.');
     } else if (resp.error === 'account_locked') {
       setLoginError('This account is temporarily locked after too many failed attempts.');
+    } else if (resp.error === 'request_timeout') {
+      setLoginError('The server did not respond in time. Please check your connection and try again.');
     } else {
       setLoginError(resp.error || t('login_error'));
     }
