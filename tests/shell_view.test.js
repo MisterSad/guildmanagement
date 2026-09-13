@@ -47,7 +47,6 @@ function installGM(role, paymentsDisabled) {
     onTabActivated: (id) => calls.onTabActivated.push(id),
     reloadActiveView: () => calls.reloadActiveView.push(1)
   };
-  window.GM_LEADER_HALL = { updateAllUnreadBadges: vi.fn() };
   window.GM_OVERVIEW = { load: vi.fn() };
   window.GM_SHADOWFRONT = { load: vi.fn() };
   window.GM_ARMSRACE = { load: vi.fn() };
@@ -84,7 +83,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   delete window.GM;
   delete window.GM_APP;
-  delete window.GM_LEADER_HALL;
   delete window.GM_OVERVIEW;
   delete window.GM_SHADOWFRONT;
   delete window.GM_ARMSRACE;
@@ -100,7 +98,6 @@ describe('ShellView — structure & constants', () => {
   it('keeps the key constants (BREAKPOINT_MOBILE = 900, NAV_ITEMS) and does not write window.GM_SHELL', () => {
     expect(BREAKPOINT_MOBILE).toBe(900);
     expect(NAV_ITEMS.find((i) => i.id === 'subscription').adminOnly).toBe(true);
-    expect(NAV_ITEMS.find((i) => i.id === 'leader-hall').section).toBe('play');
     expect(NAV_ITEMS.find((i) => i.id === 'subscription').section).toBe('footer');
 
     const { view } = boot('super_admin');
@@ -207,7 +204,7 @@ describe('ShellView — nav visibility matrix', () => {
     view.init();
     const ids = sidebarIds();
     expect(ids).toEqual(expect.arrayContaining([
-      'superadmin-accounts', 'tickets', 'subscription', 'leader-hall'
+      'superadmin-accounts', 'tickets', 'subscription'
     ]));
   });
 

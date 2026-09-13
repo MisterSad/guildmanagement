@@ -21,8 +21,6 @@
 │  │ ├─ Player Self-Service Portal: PortalView (`/src`), `push.js`                     │  │
 │  │ ├─ Roster OCR (screenshots or video) + Rank Detection: `app.js`, `gm-utils.js`    │  │
 │  │ ├─ Identity: `gm-webauthn.js` (Passkeys client, no `@simplewebauthn/browser` dep)  │  │
-│  │ ├─ Leader Hall E2EE (Signal Protocol 1:1 + groups): `gm-signal-crypto.js`,        │  │
-│  │ │   `gm-leader-hall.js`, `noble-crypto.bundle.js` (vendored `@noble/*` build)     │  │
 │  │ └─ Design System: Material Design 3.0 Tokens (`tokens.css`) + Apple Cozy Neutral  │  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────┬──────────────────────────────────────────────┘
@@ -153,7 +151,7 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 - **Self-Service Requests** (1): `guild_creation_requests` (public `guild-request` submissions, reviewed by `super_admin`).
 - **Player Portal** (2): `player_absences`, `player_push_prefs` (per-player Web Push type opt-outs).
 - **Notifications** (1): `push_subscriptions` (Web Push endpoints; `event-reminders` fans out to both this and Discord webhooks).
-- **Leader Hall E2EE (Signal Protocol)** (7): `e2ee_prekey_bundles`, `e2ee_one_time_prekeys`, `e2ee_conversations`, `e2ee_conversation_members`, `e2ee_messages`, `e2ee_blocked_accounts`, `e2ee_message_reactions`.
+- **Leader Hall E2EE (Signal Protocol) — front-end removed 2026-09, SQL cleanup pending (7)**: `e2ee_prekey_bundles`, `e2ee_one_time_prekeys`, `e2ee_conversations`, `e2ee_conversation_members`, `e2ee_messages`, `e2ee_blocked_accounts`, `e2ee_message_reactions`. No UI reads them anymore; a dedicated drop migration is the follow-up Lot C.
 - **Billing & Support** (2): `gm_payments`, `tickets` (in-app bug-report console).
 - **Observability** (1): `system_audit_logs` (service_role-only INSERT).
 
@@ -237,8 +235,8 @@ Anonymous, per-device opt-in (`push.js` + `sw.js`, VAPID keys in Supabase secret
 - **iOS constraint**: `PushManager` only exists inside an **installed** PWA on iOS Safari (16.4+) — a plain Safari tab shows an "Add to Home Screen" hint instead. Desktop/Android need no install step.
 - **CSP dependency**: the uploaded-file `<video>` blob and any future blob-backed media element depend on `media-src` explicitly including `blob:` in `vercel.json` — `default-src 'self'` does **not** cover it by CSP-spec fallback, and this silently blocks the resource identically on every browser (not a codec/compat issue) if ever dropped. Confirmed live via `document.addEventListener('securitypolicyviolation', ...)` when this shipped without it.
 
-### 7. Leader Hall — End-to-End Encrypted Messaging
-1:1 and group messaging between guild leadership, encrypted client-side via the Signal Protocol (`gm-signal-crypto.js`, `noble-crypto.bundle.js` — a vendored build of `@noble/curves`/`@noble/hashes`, not a CDN dependency). Server-side tables (`e2ee_prekey_bundles`, `e2ee_one_time_prekeys`, `e2ee_conversations`, `e2ee_conversation_members`, `e2ee_messages`, `e2ee_blocked_accounts`, `e2ee_message_reactions`) store only ciphertext and protocol metadata — the server never has plaintext access. UI lives in `gm-leader-hall.js`.
+### 7. Leader Hall — End-to-End Encrypted Messaging (removed 2026-09)
+The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild leadership) has been **removed entirely from the front-end**: `gm-signal-crypto.js`, `gm-leader-hall.js`, `noble-crypto.bundle.js`, the `/src` port and the `#tab-leader-hall` DOM are gone. The server-side `e2ee_*` tables and leader RPCs remain in the database pending a dedicated drop migration (Lot C) — no UI reads them anymore.
 
 ---
 

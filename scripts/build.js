@@ -28,8 +28,7 @@ const EXCLUDED_FILES = ['package.json', 'package-lock.json', 'tsconfig.json', 'v
 // them — they're plain <script>/<link> tags relying on load order and
 // shared globals, not ES modules, so they can't be safely run through a
 // bundler). They were shipped byte-for-byte unminified until now, even
-// though esbuild is already a project dependency and already minifies
-// noble-crypto.bundle.js (scripts/build-noble-crypto.mjs) — this applies
+// though esbuild is already a project dependency — this applies
 // that same, already-proven step to every other root .js/.css file.
 // `transform()` (not `build()`) minifies one file's source in place without
 // bundling/resolving imports, which is exactly what a non-module script

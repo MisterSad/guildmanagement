@@ -164,9 +164,6 @@
         if (role !== 'member' && window.GM_SHELL && window.GM_SHELL.renderShell) {
             window.GM_SHELL.renderShell();
         }
-        if (role !== 'member' && window.GM_LEADER_HALL && window.GM_LEADER_HALL.initGlobalUnreadListener) {
-            window.GM_LEADER_HALL.initGlobalUnreadListener();
-        }
         reloadActiveView();
 
         // Handle a Stripe checkout redirect (back from the hosted payment
@@ -408,9 +405,6 @@
         showAdminDashboard(role);
         if (role !== 'member' && window.GM_SHELL && window.GM_SHELL.renderShell) {
             window.GM_SHELL.renderShell();
-        }
-        if (role !== 'member' && window.GM_LEADER_HALL && window.GM_LEADER_HALL.initGlobalUnreadListener) {
-            window.GM_LEADER_HALL.initGlobalUnreadListener();
         }
         showToast(role === 'super_admin' ? t('toast_login_ok') : (t('toast_welcome') + ' ' + typedUser + ' !'), 'success');
 
@@ -723,11 +717,9 @@
 
     function triggerTabDataLoad(tabId) {
         if (!tabId) return;
-        if (tabId !== 'tab-leader-hall') {
-            var blackout = document.getElementById('gm-anti-capture-fullscreen-overlay');
-            if (blackout) blackout.classList.add('hidden');
-            document.body.classList.remove('gm-mobile-chat-open');
-        }
+        var blackout = document.getElementById('gm-anti-capture-fullscreen-overlay');
+        if (blackout) blackout.classList.add('hidden');
+        document.body.classList.remove('gm-mobile-chat-open');
         if (tabId === 'admin-members' || tabId === 'member-members' || tabId === 'member-home') {
             fetchGuildMembers();
         }
@@ -756,9 +748,6 @@
         }
         if (tabId === 'tab-tickets' && window.GM_TICKETS) {
             window.GM_TICKETS.load();
-        }
-        if (tabId === 'tab-leader-hall' && window.GM_LEADER_HALL) {
-            window.GM_LEADER_HALL.load();
         }
         if ((tabId === 'tab-sanctions' || tabId === 'sanctions') && window.GM_SANCTIONS) {
             window.GM_SANCTIONS.load();

@@ -62,7 +62,6 @@
     color: white;
 }
 
-
 * {
     margin: 0;
     padding: 0;
@@ -398,7 +397,6 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
         justify-content: center;
     }
 }
-
 
 .nav-brand {
     display: flex;
@@ -1057,7 +1055,6 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 
 .check-toggle-accent input:checked ~ .check-slider { background: var(--accent-soft); border-color: var(--accent); }
 .check-toggle-accent input:checked ~ .check-slider::after { transform: translateX(18px); background: var(--accent); }
-
 
 /* ─── Score Input ────────────────────────────────────────────────────────── */
 .score-input, .sf-score-input {
@@ -1992,89 +1989,10 @@ body.guild-read-only .gm-content .score-cell {
     opacity: 0.5;
 }
 
-
-/* ─── Guild Leader Hall (E2EE Signal Protocol) ────────────────────────── */
-.gm-leader-hall-layout {
-    display: grid;
-    grid-template-columns: 290px minmax(0, 1fr);
-    gap: 1.25rem;
-    height: calc(100vh - 165px);
-    min-height: 580px;
-    align-items: stretch;
-}
-
 @media (max-width: 900px) {
-    .gm-leader-hall-layout {
-        display: flex !important;
-        flex-direction: column !important;
-        height: calc(100dvh - 140px) !important;
-        min-height: 480px !important;
-        gap: 0 !important;
-    }
-
-    /* By default on mobile: Show Sidebar (Channel list), hide chat viewport */
-    .gm-leader-hall-layout .gm-leader-hall-sidebar {
-        display: flex !important;
-        width: 100% !important;
-        height: 100% !important;
-        border-radius: var(--radius-md, 8px) !important;
-    }
-    .gm-leader-hall-layout .gm-leader-hall-main {
-        display: none !important;
-    }
-
-    /* When conversation is active on mobile: True Fullscreen Native Messaging App Mode */
-    body.gm-mobile-chat-open .gm-bottom-nav,
-    body.gm-mobile-chat-open [data-gm-bottom-nav],
-    body.gm-mobile-chat-open .gm-topbar,
-    body.gm-mobile-chat-open .dashboard-header,
-    body.gm-mobile-chat-open #tab-leader-hall .gm-page-header {
-        display: none !important;
-    }
 
     body.gm-mobile-chat-open {
         overflow: hidden !important;
-    }
-
-    body.gm-mobile-chat-open #tab-leader-hall {
-        padding: 0 !important;
-        margin: 0 !important;
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100vw !important;
-        height: 100dvh !important;
-        max-height: 100dvh !important;
-        z-index: 9999 !important;
-        background: var(--bg-0, #0f0f12) !important;
-    }
-
-    body.gm-mobile-chat-open #tab-leader-hall .gm-page {
-        padding: 0 !important;
-        margin: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        max-width: none !important;
-    }
-
-    body.gm-mobile-chat-open .gm-leader-hall-layout {
-        height: 100% !important;
-        max-height: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-
-    body.gm-mobile-chat-open .gm-leader-hall-sidebar {
-        display: none !important;
-    }
-
-    body.gm-mobile-chat-open .gm-leader-hall-main {
-        display: flex !important;
-        width: 100vw !important;
-        height: 100% !important;
-        max-height: 100dvh !important;
-        border: none !important;
-        border-radius: 0 !important;
-        background: var(--bg-0, #0f0f12) !important;
     }
 
     body.gm-mobile-chat-open .gm-chat-header {
@@ -2148,15 +2066,6 @@ body.guild-read-only .gm-content .score-cell {
     .gm-chat-back-btn:hover {
         background: rgba(255, 255, 255, 0.16) !important;
     }
-}
-
-.gm-leader-hall-sidebar {
-    background: var(--bg-1, #18181c);
-    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
-    border-radius: var(--radius-lg, 12px);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
 }
 
 .gm-hall-sidebar-scroll {
@@ -2397,15 +2306,6 @@ body.guild-read-only .gm-content .score-cell {
     border: 1px solid rgba(239, 68, 68, 0.35);
     padding: 1px 4px;
     border-radius: 3px;
-}
-
-.gm-leader-hall-main {
-    background: var(--bg-1, #18181c);
-    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
-    border-radius: var(--radius-lg, 12px);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
 }
 
 .gm-chat-header {
@@ -3021,14 +2921,6 @@ body.guild-read-only .gm-content .score-cell {
 }
 
 /* Print Media Protection */
-@media print {
-    #tab-leader-hall,
-    .gm-leader-hall-main,
-    .gm-protected-session {
-        display: none !important;
-        visibility: hidden !important;
-    }
-}
 
 .gm-chat-input:focus {
     outline: none;

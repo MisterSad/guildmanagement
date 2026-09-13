@@ -145,7 +145,7 @@ describe('showTransferMemberDialog fires its two independent queries in parallel
 describe('Build pipeline minifies legacy JS/CSS instead of a byte-for-byte copy', () => {
   const buildJs = read('scripts/build.js');
 
-  it('uses esbuild transform (same dependency already used for noble-crypto.bundle.js)', () => {
+  it('uses esbuild transform to minify legacy root scripts', () => {
     expect(buildJs).toContain("import { transform } from 'esbuild'");
     expect(buildJs).toContain("minify: true");
   });

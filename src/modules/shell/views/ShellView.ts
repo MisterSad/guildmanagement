@@ -11,7 +11,7 @@
  *     `window.guildsData`, `window.GM_APP.*` reads happen at call time through
  *     an internal typed adapter (no capture at module load).
  *   - The sibling modules driven lazily (GM_OVERVIEW, GM_SHADOWFRONT,
- *     GM_ARMSRACE, GM_LEADER_HALL)
+ *     GM_ARMSRACE)
  *     are resolved through a lazy registry, at call time, behind the same
  *     `if (module && module.load)` guards — none of them is imported or
  *     required to migrate.
@@ -55,9 +55,6 @@ export const NAV_ITEMS: ShellNavItem[] = [
   { id: 'glory', tabId: 'event-glory', m3Icon: 'trophy', icon: 'ph-trophy', labelKey: 'gm_nav_glory', section: 'play', panels: ['event-glory'] },
   { id: 'history', tabId: 'event-history', m3Icon: 'history', icon: 'ph-clock-counter-clockwise', labelKey: 'gm_nav_history', section: 'play', panels: ['event-history'] },
   { id: 'stats', tabId: 'stats-admin', m3Icon: 'leaderboard', icon: 'ph-chart-bar', labelKey: 'gm_nav_stats', section: 'play', panels: ['stats-admin'] },
-
-  // Leader Hall lives in `play`, not `admin`: real-time daily chat surface.
-  { id: 'leader-hall', tabId: 'tab-leader-hall', m3Icon: 'forum', icon: 'ph-chat-circle-dots', labelKey: 'nav_leader_hall', section: 'play', panels: ['tab-leader-hall'] },
 
   { id: 'accounts', tabId: 'admin-home', m3Icon: 'manage_accounts', icon: 'ph-key', labelKey: 'gm_nav_accounts', section: 'admin', panels: ['admin-home'] },
   { id: 'discord', tabId: 'admin-discord', m3Icon: 'notifications', icon: 'ph-bell-ringing', labelKey: 'gm_nav_discord', section: 'admin', panels: ['admin-discord'] },
@@ -174,10 +171,6 @@ const legacy = {
     }
     return false;
   },
-  leaderHallUpdateBadges(): void {
-    const lh = winAny().GM_LEADER_HALL;
-    if (lh && typeof lh.updateAllUnreadBadges === 'function') lh.updateAllUnreadBadges();
-  },
   matchMedia(query: string): any {
     const w = winAny();
     if (typeof w.matchMedia === 'function') return w.matchMedia(query);
@@ -196,8 +189,7 @@ type LazyLoader = { load?: () => any };
 export const lazyModules = {
   overview(): any { return winAny().GM_OVERVIEW; },
   shadowfront(): any { return winAny().GM_SHADOWFRONT; },
-  armsrace(): any { return winAny().GM_ARMSRACE; },
-  leaderHall(): any { return winAny().GM_LEADER_HALL; }
+  armsrace(): any { return winAny().GM_ARMSRACE; }
 };
 
 function callLoad(mod: LazyLoader | undefined | null): void {
@@ -1079,8 +1071,6 @@ export class ShellView {
     });
     const moreBtn = el.querySelector('[data-gm-more]');
     if (moreBtn) moreBtn.addEventListener('click', () => this.openDrawer());
-
-    legacy.leaderHallUpdateBadges();
   }
 
   private renderDrawer(): void {
@@ -1093,11 +1083,9 @@ export class ShellView {
       const isActive = this.state.active === item.id;
       const label = legacy.t(item.labelKey);
       const m3Icon = item.m3Icon || 'circle';
-      const badgeHtml = (item.id === 'leader-hall') ? '<span class="gm-drawer-unread-badge hidden" id="drawer-badge-leader-hall">0</span>' : '';
       const donateCls = (item.id === 'subscription') ? ' gm-donate-nav-item' : '';
 
       html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + donateCls + '" data-gm-nav-item="' + item.id + '">' +
-                  badgeHtml +
                   '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
                   '<span>' + label + '</span>' +
               '</button>';
@@ -1116,8 +1104,6 @@ export class ShellView {
       });
     });
     backdrop.addEventListener('click', () => this.closeDrawer());
-
-    legacy.leaderHallUpdateBadges();
   }
 
   public openDrawer(): void {

@@ -390,12 +390,6 @@
             gm_nav_banned:         'Banned players',
             /* ── Bug-report ticketing ── */
             gm_nav_tickets:        'Tickets',
-            /* ── Guild Leader Hall ── */
-            nav_leader_hall:       'Leader Hall',
-            leader_hall_title:     'Guild Leader Hall',
-            leader_hall_subtitle:  'End-to-End Encrypted diplomacy and tactical coordination for Guild Masters (R5) and Officers (R4)',
-            leader_hall_no_convs:  'No discussions yet',
-            leader_hall_new_conv:  'New Discussion',
             ticket_report_bug:     'Report a bug',
             ticket_title:          'Title',
             ticket_title_ph:       'Short summary of the issue',

@@ -399,11 +399,6 @@
                             <span class="material-symbols-rounded" style="color:var(--gm-status-sanctions);">gavel</span>
                             <span data-i18n="nav_sanctions">Sanctions</span>
                         </button>
-                        <button class="nav-tab" data-tab="tab-leader-hall" data-view="dashboard-view">
-                            <span class="material-symbols-rounded" style="color:#38bdf8;">forum</span>
-                            <span data-i18n="nav_leader_hall">Leader Hall</span>
-                            <span class="gm-nav-unread-badge hidden" id="nav-badge-leader-hall">0</span>
-                        </button>
                         <button class="nav-tab" data-tab="admin-banned" data-view="dashboard-view">
                             <span class="material-symbols-rounded">block</span>
                             <span data-i18n="nav_banned_players">Banned Players</span>
@@ -1266,136 +1261,6 @@
                 </div>
             </main>
 
-            <!-- ─ Tab: Guild Leader Hall (E2EE Signal Protocol) ──────────── -->
-            <main class="dashboard-content tab-panel" id="tab-leader-hall">
-                <div class="gm-page" style="max-width:1400px; padding:0 0.5rem;">
-                    <header class="gm-page-header" style="margin-bottom:1rem;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
-                            <div>
-                                <div style="display:flex; align-items:center; gap:0.5rem;">
-                                    <h1 class="gm-page-title" data-i18n="leader_hall_title">Guild Leader Hall</h1>
-                                    <span class="gm-chip" style="background:rgba(52,211,153,0.12); color:#34d399; border:1px solid rgba(52,211,153,0.3); font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:9999px;">
-                                        <i class="ph ph-shield-check"></i> Signal Protocol E2EE
-                                    </span>
-                                </div>
-                                <p class="gm-page-subtitle" data-i18n="leader_hall_subtitle">End-to-End Encrypted diplomacy and tactical coordination for Guild Masters (R5) and Officers (R4)</p>
-                            </div>
-                        </div>
-                    </header>
-
-                    <div class="gm-leader-hall-layout">
-                        <!-- Sidebar: 4 Accordion Spaces -->
-                        <aside class="gm-leader-hall-sidebar">
-                            <div class="gm-hall-sidebar-scroll" id="leader-hall-sidebar-accordions">
-                                <!-- Space 1: Global Leaders Lounge -->
-                                <div class="gm-hall-accordion" id="acc-space-global">
-                                    <div class="gm-hall-acc-header" data-space="global">
-                                        <div class="gm-hall-acc-title">
-                                            <i class="ph ph-caret-down gm-acc-caret"></i>
-                                            <i class="ph ph-planet" style="color:var(--primary, #38bdf8);"></i>
-                                            <span>Global Leaders Lounge</span>
-                                        </div>
-                                        <span class="gm-hall-acc-badge">2</span>
-                                    </div>
-                                    <div class="gm-hall-acc-body" id="acc-body-global"></div>
-                                </div>
-                                <!-- Space 2: 1:1 Discussions -->
-                                <div class="gm-hall-accordion" id="acc-space-direct">
-                                    <div class="gm-hall-acc-header" data-space="direct">
-                                        <div class="gm-hall-acc-title">
-                                            <i class="ph ph-caret-down gm-acc-caret"></i>
-                                            <i class="ph ph-user" style="color:#a855f7;"></i>
-                                            <span>1:1 Discussions</span>
-                                        </div>
-                                        <div style="display:flex; align-items:center; gap:0.35rem;">
-                                            <span class="gm-acc-unread-badge hidden" id="badge-direct-unread">0 new</span>
-                                            <span class="gm-hall-acc-badge" id="badge-direct-count">0</span>
-                                            <button type="button" class="gm-acc-add-btn" id="btn-add-direct" title="Start 1:1 Chat"><i class="ph ph-plus"></i></button>
-                                        </div>
-                                    </div>
-                                    <div class="gm-hall-acc-body" id="acc-body-direct"></div>
-                                </div>
-                                <!-- Space 3: Group Discussions -->
-                                <div class="gm-hall-accordion" id="acc-space-group">
-                                    <div class="gm-hall-acc-header" data-space="group">
-                                        <div class="gm-hall-acc-title">
-                                            <i class="ph ph-caret-down gm-acc-caret"></i>
-                                            <i class="ph ph-users-three" style="color:#34d399;"></i>
-                                            <span>Group Discussions</span>
-                                        </div>
-                                        <div style="display:flex; align-items:center; gap:0.35rem;">
-                                            <span class="gm-acc-unread-badge hidden" id="badge-group-unread">0 new</span>
-                                            <span class="gm-hall-acc-badge" id="badge-group-count">0</span>
-                                            <button type="button" class="gm-acc-add-btn" id="btn-add-group" title="Create Group"><i class="ph ph-plus"></i></button>
-                                        </div>
-                                    </div>
-                                    <div class="gm-hall-acc-body" id="acc-body-group"></div>
-                                </div>
-                                <!-- Space 4: R5 Summit -->
-                                <div class="gm-hall-accordion" id="acc-space-r5">
-                                    <div class="gm-hall-acc-header" data-space="r5">
-                                        <div class="gm-hall-acc-title">
-                                            <i class="ph ph-caret-down gm-acc-caret"></i>
-                                            <i class="ph ph-crown" style="color:#facc15;"></i>
-                                            <span>R5 Summit</span>
-                                        </div>
-                                        <div style="display:flex; align-items:center; gap:0.35rem;">
-                                            <span class="gm-acc-unread-badge hidden" id="badge-r5-unread">0 new</span>
-                                            <span class="gm-hall-acc-badge" id="badge-r5-count">0</span>
-                                            <button type="button" class="gm-acc-add-btn" id="btn-add-r5" title="New R5 Summit"><i class="ph ph-plus"></i></button>
-                                        </div>
-                                    </div>
-                                    <div class="gm-hall-acc-body" id="acc-body-r5"></div>
-                                </div>
-                            </div>
-                        </aside>
-
-                        <section class="gm-leader-hall-main">
-                            <div class="gm-privacy-shield-overlay" id="leader-hall-privacy-shield">
-                                <i class="ph ph-shield-warning gm-privacy-shield-icon"></i>
-                                <h3 class="gm-privacy-shield-title">Confidential Session Protected</h3>
-                                <p class="gm-privacy-shield-desc">Screen capture and background viewing are restricted for high-command diplomatic communications.</p>
-                            </div>
-                            <div class="gm-chat-header" id="leader-hall-chat-header">
-                                <div class="gm-chat-header-left">
-                                    <h2 class="gm-chat-title">Select a channel or discussion</h2>
-                                    <div class="gm-chat-e2ee-tag">
-                                        <i class="ph ph-lock-key"></i>
-                                        <span>End-to-End Encrypted</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="gm-chat-messages-viewport" id="leader-hall-messages">
-                                <div class="gm-empty" style="padding:4rem 1rem;">
-                                    <i class="ph ph-chats-circle gm-icon"></i>
-                                    <div class="gm-empty-title">Select or start a discussion</div>
-                                </div>
-                            </div>
-                            <div class="gm-mention-autocomplete-popup hidden" id="leader-hall-mention-popup"></div>
-                            <div class="gm-reply-preview-bar hidden" id="leader-hall-reply-preview">
-                                <div class="gm-reply-preview-left">
-                                    <i class="ph ph-arrow-bend-up-left gm-reply-icon"></i>
-                                    <div class="gm-reply-preview-content">
-                                        <div class="gm-reply-preview-sender" id="leader-hall-reply-sender">Replying to ...</div>
-                                        <div class="gm-reply-preview-text" id="leader-hall-reply-text">...</div>
-                                    </div>
-                                </div>
-                                <button type="button" class="gm-reply-cancel-btn" id="leader-hall-cancel-reply" title="Cancel reply">
-                                    <i class="ph ph-x"></i>
-                                </button>
-                            </div>
-                            <div class="gm-chat-input-bar" id="leader-hall-input-bar">
-                                <input type="text" id="leader-hall-msg-input" class="gm-chat-input" placeholder="Type an encrypted message... (use @ to mention)" autocomplete="off">
-                                <button type="button" class="gm-btn gm-btn-primary gm-btn-sm" id="leader-hall-send-btn">
-                                    <i class="ph ph-paper-plane-right"></i>
-                                    <span>Send</span>
-                                </button>
-                            </div>
-                        </section>
-                    </div>
-                </div>
-            </main>
-
             <!-- ─ Tab: Bug Tickets (Super Admin only) ────────────────────── -->
             <main class="dashboard-content tab-panel" id="tab-tickets">
                 <div class="gm-page">
@@ -1909,8 +1774,6 @@
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" integrity="sha384-cPFV+/abYd3INVFHPmSKpBmcnH+Q+bTZW7dv/EiuShUNPkHyFmRF8PsL7Ibfvunk" crossorigin="anonymous"></script>
     <script src="gm-utils.js?v=61"></script>
     <script src="gm-webauthn.js?v=6"></script>
-    <script src="noble-crypto.bundle.js?v=1"></script>
-    <script src="gm-signal-crypto.js?v=4"></script>
     <script src="push.js?v=5"></script>
     <script src="events.js?v=30"></script>
     <script src="glory.js?v=22"></script>
@@ -1920,7 +1783,6 @@
     <script src="tickets.js?v=2"></script>
     <script src="badges.js?v=6"></script>
     <script src="gm-help.js?v=5"></script>
-    <script src="gm-leader-hall.js?v=31"></script>
     <script src="app.js?v=105"></script>
 </body>
 </html>
