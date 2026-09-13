@@ -32,28 +32,35 @@
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   EDGE & SECURITY LAYER                                 │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
-│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 13 live         │  │
+│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 16 live         │  │
 │  │ ├─ Public (`verify_jwt = false`):                                                 │  │
 │  │ │   ├─ `auth-login`: Bcrypt dual-read, lockout, IP rate limit, JWT issuer         │  │
-│  │ │   ├─ `auth-passkey`: Passkeys/WebAuthn — register, sign in (scoped or fully    │  │
-│  │ │   │   discoverable across accounts), backup codes, admin reset escape hatch    │  │
+│  │ │   ├─ `auth-passkey`: Passkeys/WebAuthn — register, sign in (scoped or fully     │  │
+│  │ │   │   discoverable across accounts), backup codes, admin reset escape hatch     │  │
 │  │ │   ├─ `player-register`: Self-service member registration                        │  │
+│  │ │   ├─ `guild-request`: Public guild self-service request submission (reviewed    │  │
+│  │ │   │   manually by a super_admin; provisions nothing on its own)                 │  │
 │  │ │   ├─ `event-reminders`: Cron-secret gated notification dispatcher (Vault),      │  │
 │  │ │   │   fans out to both Discord webhooks and Web Push subscribers                │  │
 │  │ │   ├─ `gm-stripe-webhook`: Stripe webhook signature verification                 │  │
-│  │ │   └─ `gm-revolut-webhook`: Revolut webhook signature verification               │  │
-│  │ ├─ JWT-Gated (`verify_jwt = true`):                                               │  │
-│  │ │   ├─ `member-portal`: Cryptographically resolved player portal backend          │  │
-│  │ │   ├─ `admin-accounts`: Centralized admin role provisioner (`admin-authz.ts`)    │  │
-│  │ │   ├─ `ocr-guild-members`: Gemini vision multimodal OCR parser — screenshots OR  │  │
-│  │ │   │   a screen-recording video (client extracts frames first); Members scans   │  │
-│  │ │   │   also detect R1-R4 rank from the roster's section headers                 │  │
-│  │ │   ├─ `discord-webhook-proxy`: Whitelisted Discord webhook proxy (SSRF safe)     │  │
-│  │ │   ├─ `gm-create-order`: Stripe subscription checkout session initializer        │  │
-│  │ │   ├─ `gm-order-status`: Order status reader and verification                    │  │
-│  │ │   └─ `tickets`: Bug-report ticketing console backend                            │  │
-│  │ └─ Shared Modules: `_shared/auth.ts`, `_shared/logger.ts`, `_shared/rate-limit.ts`,│  │
-│  │     `_shared/admin-authz.ts`, `_shared/shadow-session.ts`, `_shared/cors.ts`      │  │
+│  │ │   ├─ `discord-bot-interactions`: Slash-command handler, Ed25519-verified        │  │
+│  │ │   ├─ `discord-profile-verification`: Worker shared-secret gated (screenshot     │  │
+│  │ │   │   OCR → guild tag → Discord role/nickname)                                  │  │
+│  │ │   └─ JWT-Gated (`verify_jwt = true`):                                           │  │
+│  │ │       ├─ `member-portal`: Cryptographically resolved player portal backend      │  │
+│  │ │       ├─ `admin-accounts`: Centralized admin role provisioner (`admin-authz.ts`)│  │
+│  │ │       ├─ `ocr-guild-members`: Gemini vision multimodal OCR — screenshots OR     │  │
+│  │ │       │   a screen-recording video (client extracts frames first); Members      │  │
+│  │ │       │   scans also detect R1-R4 rank from the roster's section headers        │  │
+│  │ │       ├─ `discord-webhook-proxy`: Whitelisted Discord webhook proxy (SSRF safe) │  │
+│  │ │       ├─ `gm-create-order`: Stripe subscription checkout session initializer    │  │
+│  │ │       ├─ `gm-order-status`: Order status reader and verification                │  │
+│  │ │       ├─ `guild-data-export`: Guild data export (JWT-gated)                     │  │
+│  │ │       └─ `tickets`: Bug-report ticketing console backend                        │  │
+│  │ ├─ Non implémenté / Déprécié: `gm-revolut-webhook` (Revolut) — aucun code         │  │
+│  │ │   associé dans `supabase/functions/`; ne pas déployer (voir note §1).           │  │
+│  │ └─ Shared Modules: _shared/auth.ts, _shared/logger.ts, _shared/rate-limit.ts,     │  │
+│  │     _shared/admin-authz.ts, _shared/shadow-session.ts, _shared/cors.ts            │  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────┬──────────────────────────────────────────────┘
                                            │ Postgres Wire Protocol / RLS
@@ -62,7 +69,7 @@
 │                                   DATABASE LAYER (Postgres 17)                          │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ Supabase Postgres 17 (Multi-Tenant Schema with Zero-Trust Row Level Security)       │  │
-│  │ ├─ 33 Relational Tables with Full RLS Enforcement                                 │  │
+│  │ ├─ 41 table definitions / 38 persistent active, Full RLS Enforcement              │  │
 │  │ ├─ Security Definer Access Helpers with `SET search_path TO ''`                   │  │
 │  │ ├─ Deterministic Event Session Generator: `public.gm_event_session_id()`           │  │
 │  │ ├─ Distributed Audit Ledger: `public.system_audit_logs` (service_role only)       │  │
@@ -71,6 +78,8 @@
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+> **⚠️ `gm-revolut-webhook` — Non implémenté / Déprécié**: historically referenced as a Revolut webhook receiver, but there is **no handler** in `supabase/functions/` and no `[functions.gm-revolut-webhook]` block in `supabase/config.toml`. Only the Stripe webhook (`gm-stripe-webhook`) is implemented. Do not include it in deployment matrices.
 
 ---
 
@@ -139,14 +148,17 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 
 ### 4. Database Topology & Access Helpers
 
-#### 4.1 The 33 Database Tables (verified live via `list_tables`, all RLS-enabled):
-- **Core Tenant / Roster**: `guilds` (13 rows, 1 is `DEMO`), `guild_members` (~1,540 rows), `event_status`, `event_participants` (~33k rows — the permanent attendance ledger), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `diplomatic_treaties`, `server_migration_groups`, `server_migration_group_servers`.
-- **Accounts & Identity**: `accounts` (custom bcrypt credential store, source of truth — see §2), `login_throttle` (shared IP rate limit for `auth-login` + `auth-passkey`), `webauthn_challenges`, `account_passkeys`, `account_backup_codes` (Passkeys/WebAuthn, added 2026-09).
-- **Player Portal**: `player_absences`, `player_push_prefs` (per-player Web Push type opt-outs).
-- **Notifications**: `push_subscriptions` (Web Push endpoints; `event-reminders` fans out to both this and Discord webhooks).
-- **Leader Hall E2EE (Signal Protocol)**: `e2ee_prekey_bundles`, `e2ee_one_time_prekeys`, `e2ee_conversations`, `e2ee_conversation_members`, `e2ee_messages`, `e2ee_blocked_accounts`, `e2ee_message_reactions`.
-- **Billing & Support**: `gm_payments`, `tickets` (in-app bug-report console).
-- **Observability**: `system_audit_logs` (service_role-only INSERT).
+#### 4.1 Database Tables (41 `CREATE TABLE` definitions; 38 persistent tables active, all RLS-enabled):
+- **Core Tenant / Roster** (16): `guilds` (13 rows, 1 is `DEMO`), `guild_members` (~1,540 rows), `event_status`, `event_participants` (~33k rows — the permanent attendance ledger), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `diplomatic_treaties`, `server_migration_groups`, `server_migration_group_servers`.
+- **Accounts & Identity** (8): `accounts` (custom bcrypt credential store, source of truth — see §2), `login_throttle` (shared IP rate limit for `auth-login` + `auth-passkey`), `webauthn_challenges`, `account_passkeys`, `account_backup_codes` (Passkeys/WebAuthn, added 2026-09), `discord_account_links`, `discord_link_codes`, `discord_verification_throttle` (Discord account linking + verification rate limiting, added 2026-09).
+- **Self-Service Requests** (1): `guild_creation_requests` (public `guild-request` submissions, reviewed by `super_admin`).
+- **Player Portal** (2): `player_absences`, `player_push_prefs` (per-player Web Push type opt-outs).
+- **Notifications** (1): `push_subscriptions` (Web Push endpoints; `event-reminders` fans out to both this and Discord webhooks).
+- **Leader Hall E2EE (Signal Protocol)** (7): `e2ee_prekey_bundles`, `e2ee_one_time_prekeys`, `e2ee_conversations`, `e2ee_conversation_members`, `e2ee_messages`, `e2ee_blocked_accounts`, `e2ee_message_reactions`.
+- **Billing & Support** (2): `gm_payments`, `tickets` (in-app bug-report console).
+- **Observability** (1): `system_audit_logs` (service_role-only INSERT).
+
+> **Count note**: the canonical migrations contain 41 `CREATE TABLE` definitions. Two legacy notification tables (`discord_notifications_sent`, `event_reminders_sent`) were dropped by `20260819203500_drop_orphaned_notification_tables.sql`, and `tmp_demo_roster` is a session-scoped `TEMP` staging table used by the demo reset, leaving **38 persistent active tables**. All of them have RLS enabled.
 
 > ⚠️ **Note on `shadowfront_squads` completeness**: a long-tenured player can show more attended Shadowfront weeks (`event_participants`) than surviving squad-assignment rows (`shadowfront_squads`), because the latter doesn't reliably retain every past week once a later session overwrites it. The Stats attendance-rate calculation (`gm-utils.js:computeShadowfrontAttendanceRate`) floors its denominator at the attended count to stay mathematically capped at 100%, but the underlying gap in `shadowfront_squads` itself is unresolved — any *new* feature reading that table should not assume it is a complete historical ledger.
 

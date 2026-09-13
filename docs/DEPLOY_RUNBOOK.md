@@ -144,23 +144,33 @@ Apply each migration file sequentially using `supabase db query --linked -f <FIL
 
 ## 5. Phase 3 — Edge Functions Deployment Matrix
 
-Deploy all 10 Edge Functions adhering to the codified JWT verification matrix in `supabase/config.toml`:
+Deploy all **16** Edge Functions, adhering to the codified JWT verification matrix in `supabase/config.toml` (the two must stay in lockstep — `tests/supabase_config_functions.test.js` enforces one `[functions.<name>]` block per function):
 
 ```sh
 # Public Endpoints (verify_jwt = false)
 supabase functions deploy auth-login --no-verify-jwt
+supabase functions deploy auth-passkey --no-verify-jwt
 supabase functions deploy player-register --no-verify-jwt
+supabase functions deploy guild-request --no-verify-jwt
 supabase functions deploy event-reminders --no-verify-jwt
 supabase functions deploy gm-stripe-webhook --no-verify-jwt
+supabase functions deploy discord-bot-interactions --no-verify-jwt
+supabase functions deploy discord-profile-verification --no-verify-jwt
 
 # JWT-Gated Endpoints (verify_jwt = true)
 supabase functions deploy member-portal
 supabase functions deploy admin-accounts
+supabase functions deploy ocr-guild-members
+supabase functions deploy discord-webhook-proxy
 supabase functions deploy gm-create-order
 supabase functions deploy gm-order-status
-supabase functions deploy discord-webhook-proxy
-supabase functions deploy ocr-guild-members
+supabase functions deploy guild-data-export
+supabase functions deploy tickets
 ```
+
+> **Discord verification worker**: `discord-verification-worker/` is a standalone, always-on Node.js Gateway listener — **not** an Edge Function — deployed separately (e.g. Render). It holds no business logic and calls the `discord-profile-verification` Edge Function with the shared `DISCORD_WORKER_SECRET`. The `--no-verify-jwt` flag applies to the `discord-profile-verification` endpoint it calls, not to the worker itself.
+
+> **`gm-revolut-webhook`**: documented historically but **not implemented** — no handler exists in `supabase/functions/`. Do not add it to this matrix.
 
 ---
 
