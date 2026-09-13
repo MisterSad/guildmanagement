@@ -69,7 +69,6 @@ export function shouldThrottle(options: {
 }
 
 // In-isolate throttling cache & DB sync helper
-let lastPurgeTime = 0;
 let lastDiscordPurgeTime = 0;
 
 // Same sliding-window logic as checkAndRecordIpAttempt, but keyed by a
@@ -142,6 +141,12 @@ export async function checkAndRecordDiscordAttempt(
   }
 }
 
+// Sliding-window IP throttle, delegated to the atomic public.gm_check_ip_throttle
+// RPC: the database does the SUM and the bucket increment (INSERT ... ON CONFLICT
+// DO UPDATE) in one transaction, so concurrent calls on the same (ip, bucket)
+// can no longer raise login_throttle_pkey violations or lose increments the way
+// the previous SELECT-then-INSERT/UPDATE did. Retention is handled by the
+// scheduled `login-throttle-retention` pg_cron job, not per request.
 export async function checkAndRecordIpAttempt(
   admin: any,
   ip: string,
@@ -150,68 +155,27 @@ export async function checkAndRecordIpAttempt(
   const now = Date.now();
   const { limit, windowMs } = options;
   const windowStartIso = new Date(Math.floor(now / 60000) * 60000).toISOString(); // 1-minute bucket
-  const cutoffIso = new Date(now - windowMs).toISOString();
 
   try {
-    // 1. Fetch recent windows for IP
-    const { data: rows, error: fetchErr } = await admin
-      .from("login_throttle")
-      .select("window_start, attempts")
-      .eq("ip", ip)
-      .gte("window_start", cutoffIso);
+    const { data, error } = await admin.rpc("gm_check_ip_throttle", {
+      p_ip: ip,
+      p_limit: limit,
+      p_window_ms: windowMs,
+      p_bucket: windowStartIso,
+    });
 
-    if (fetchErr) {
+    if (error) {
       // Fail open on database error to avoid locking legitimate users
       return { allowed: true, remaining: 1 };
     }
 
-    const records: ThrottleRecord[] = rows || [];
-    const isThrottled = shouldThrottle({
-      recentWindows: records,
-      limit,
-      windowMs,
-      now,
-    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return { allowed: true, remaining: 1 };
 
-    let currentTotal = records.reduce((sum, r) => sum + (Number(r.attempts) || 0), 0);
-
-    if (isThrottled) {
-      return { allowed: false, remaining: 0 };
-    }
-
-    // 2. Record current attempt (upsert into current 1-minute bucket)
-    const { data: existingBucket } = await admin
-      .from("login_throttle")
-      .select("attempts")
-      .eq("ip", ip)
-      .eq("window_start", windowStartIso)
-      .maybeSingle();
-
-    if (existingBucket) {
-      await admin
-        .from("login_throttle")
-        .update({ attempts: (existingBucket.attempts || 0) + 1 })
-        .eq("ip", ip)
-        .eq("window_start", windowStartIso);
-    } else {
-      await admin
-        .from("login_throttle")
-        .insert({ ip, window_start: windowStartIso, attempts: 1 });
-    }
-
-    // 3. Opportunistic retention cleanup (> 24 hours), rate-limited to once per 10 minutes per isolate
-    if (now - lastPurgeTime > 600000) {
-      lastPurgeTime = now;
-      const purgeCutoff = new Date(now - 86400000).toISOString();
-      admin
-        .from("login_throttle")
-        .delete()
-        .lt("window_start", purgeCutoff)
-        .then(() => {})
-        .catch(() => {});
-    }
-
-    return { allowed: true, remaining: Math.max(0, limit - (currentTotal + 1)) };
+    return {
+      allowed: row.allowed !== false,
+      remaining: Math.max(0, Number(row.remaining) || 0),
+    };
   } catch {
     return { allowed: true, remaining: 1 };
   }

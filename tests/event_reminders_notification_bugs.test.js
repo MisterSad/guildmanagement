@@ -7,14 +7,18 @@
 //    (confirmed live: 10/10 valid subscriptions all failing the same way).
 //
 // 2. Duplicate Discord notifications: the per-guild "lock" used to prevent
-//    sending the same reminder twice used .upsert(), which never errors on
-//    a primary-key conflict (guild_config's real PK is (guild, key)) -- it
-//    just silently overwrites. A slow invocation overlapping with the next
-//    minute's cron tick meant both read a stale "no lock yet" snapshot and
-//    both sent. Confirmed live: 6 consecutive cron ticks (00:01-00:06 UTC)
-//    all timed out the same morning 6 duplicate GvG Day 3 messages were
-//    reported. Switched to a real .insert() so a genuine PK conflict raises
-//    an error every "already claimed" retry correctly detects.
+//    sending the same reminder twice used a merge .upsert(), which never
+//    errors on a primary-key conflict (guild_config's real PK is
+//    (guild, key)) -- it just silently overwrites. A slow invocation
+//    overlapping with the next minute's cron tick meant both read a stale
+//    "no lock yet" snapshot and both sent. Confirmed live: 6 consecutive cron
+//    ticks (00:01-00:06 UTC) all timed out the same morning 6 duplicate GvG
+//    Day 3 messages were reported. A plain .insert() then surfaced the
+//    conflict as a Postgres unique violation on every overlap (log noise,
+//    wasted round-trips). Acquisition now goes through acquireReminderLock,
+//    which uses upsert({ ignoreDuplicates: true }) -- ON CONFLICT DO NOTHING:
+//    it never overwrites, returns no row when the lock is already held, and
+//    raises no constraint error.
 
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
@@ -31,24 +35,29 @@ describe('event-reminders: Web Push call signature', () => {
   });
 });
 
-describe('event-reminders: reminder locks are atomic (insert, not upsert)', () => {
-  it('never uses .upsert() to acquire a guild_config send-lock', () => {
-    // guild_config's real PK is (guild, key) -- upsert silently overwrites
-    // on conflict instead of erroring, defeating the "already locked" check.
-    expect(content).not.toContain('.upsert({ guild: guild, key: lockKey');
+describe('event-reminders: reminder locks are atomic (ON CONFLICT DO NOTHING)', () => {
+  it('acquires send-locks through acquireReminderLock with ignoreDuplicates, never a merge-upsert', () => {
+    // A merge-upsert silently overwrote on conflict; a plain insert raised a
+    // real PK violation on every overlap. ignoreDuplicates maps to
+    // ON CONFLICT DO NOTHING, so it never overwrites and returns no row when
+    // the lock is already held.
+    expect(content).toContain("ignoreDuplicates: true");
+    expect(content).toContain("onConflict: 'guild,key'");
+    expect(content).not.toContain('.insert({ guild: guild, key: lockKey');
+    expect(content).not.toMatch(/\.upsert\(\s*\{[^}]*guild[^}]*key: lockKey[^}]*\}\s*\)/);
   });
 
-  it('every lock-acquisition site uses a real insert that can conflict', () => {
-    const matches = content.match(/\.insert\(\{ guild: guild, key: lockKey, value: 'sending'/g) || [];
+  it('every lock-acquisition site goes through acquireReminderLock', () => {
+    const matches = content.match(/const lockAcquired = await acquireReminderLock\(supabase, guild, lockKey\)/g) || [];
     // Standard events, GvG daily tasks, GvG Saturday, SvS, Calamity -- 5 sites.
     expect(matches.length).toBe(5);
   });
 
-  it('the GvG daily task lock treats an insert conflict as "already sent" and skips, rather than silently doing nothing', () => {
+  it('the GvG daily task lock treats an already-held lock as "already sent" and skips, rather than silently doing nothing', () => {
     const idx = content.indexOf('Lock already exists for GvG Daily Tasks Day');
     expect(idx).toBeGreaterThan(-1);
     const before = content.slice(Math.max(0, idx - 200), idx);
-    expect(before).toContain('if (lockErr) {');
+    expect(before).toContain('if (!lockAcquired) {');
   });
 });
 

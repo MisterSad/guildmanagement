@@ -7,6 +7,82 @@ import { getCorsHeaders } from "../_shared/cors.ts"
 
 let logger = new EdgeLogger("event-reminders");
 
+// Only the guild_config keys this function actually reads are fetched. The
+// previous unfiltered SELECT pulled every template/toggle/role for every guild
+// on every tick, and its row count grew with the sent_* lock rows.
+const EVENT_PREFIXES = ['armsrace', 'dtr', 'shadowfront'] as const;
+const REMINDER_TYPES = ['reminder_30', 'reminder_5', 'start'] as const;
+const GVG_ACTIONS = ['start', 'reminder'] as const;
+const SVS_ACTIONS = [
+  'garrison',
+  'reminder_30_invasion',
+  'reminder_30_defense',
+  'reminder_5_invasion',
+  'reminder_5_defense',
+  'start_invasion',
+  'start_defense',
+] as const;
+
+const STATIC_CONFIG_KEYS: string[] = [
+  'discord_webhook_url',
+  'gvg_svs_calamity_enabled',
+  'discord_role_id',
+  'discord_role_id_gvg',
+  'discord_role_id_svs',
+  'discord_role_id_calamity',
+  'discord_role_id_shadowfront_squad1',
+  'discord_role_id_shadowfront_squad2',
+  'notify_gvg_daily_tasks',
+  'notify_gvg_pvp',
+  'notify_svs_garrison',
+  'notify_svs_pvp',
+  'notify_svs_won_prep',
+  'notify_calamity_10',
+  ...EVENT_PREFIXES.flatMap((prefix) => [
+    `webhook_${prefix}`,
+    `discord_role_id_${prefix}`,
+    ...REMINDER_TYPES.flatMap((type) => [
+      `notify_${prefix}_${type}`,
+      `tpl_${prefix}_${type}_content`,
+      `tpl_${prefix}_${type}_title`,
+      `tpl_${prefix}_${type}_desc`,
+    ]),
+  ]),
+  ...GVG_ACTIONS.flatMap((action) => [
+    `tpl_gvg_${action}_content`,
+    `tpl_gvg_${action}_title`,
+    `tpl_gvg_${action}_desc`,
+  ]),
+  ...SVS_ACTIONS.flatMap((action) => [
+    `tpl_svs_${action}_content`,
+    `tpl_svs_${action}_title`,
+    `tpl_svs_${action}_desc`,
+  ]),
+  'tpl_calamity_reminder_10_content',
+  'tpl_calamity_reminder_10_title',
+  'tpl_calamity_reminder_10_desc',
+];
+
+// Acquire a sent_* reminder lock without ever raising a unique violation:
+// ON CONFLICT DO NOTHING (ignoreDuplicates) returns no row when another
+// invocation already holds the guild_config (guild, key) lock, which we treat
+// as "already claimed".
+async function acquireReminderLock(supabase: any, guild: string, lockKey: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('guild_config')
+    .upsert(
+      { guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() },
+      { onConflict: 'guild,key', ignoreDuplicates: true }
+    )
+    .select('key');
+
+  if (error) {
+    logger.error(`[${guild}] Error acquiring reminder lock ${lockKey}`, error);
+    return false;
+  }
+  return Array.isArray(data) && data.length > 0;
+}
+
 async function sendWebPush(supabase: any, title: string, body: string, guild: string, eventType = "events") {
   try {
     const { data: subs, error: subError } = await supabase
@@ -285,12 +361,31 @@ serve(async (req) => {
 
     if (eventError) throw eventError;
 
-    // 2. Fetch all config rows across all guilds
-    const { data: configRows, error: configError } = await supabase
-      .from('guild_config')
-      .select('guild, key, value, updated_at');
-      
-    if (configError) throw configError;
+    // 2. Fetch only the guild_config rows this function needs: the known
+    //    static keys, plus recent sent_* lock rows (bounded to the last 8
+    //    days -- every reminder key embeds a date or session id, and slots
+    //    recur weekly at most, so older locks can never match a live slot).
+    const lockCutoffIso = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+    const configRows: any[] = [];
+    if (GUILDS.length > 0) {
+      const [staticRes, lockRes] = await Promise.all([
+        supabase
+          .from('guild_config')
+          .select('guild, key, value, updated_at')
+          .in('guild', GUILDS)
+          .in('key', STATIC_CONFIG_KEYS),
+        supabase
+          .from('guild_config')
+          .select('guild, key, value, updated_at')
+          .in('guild', GUILDS)
+          .like('key', 'sent_%')
+          .gte('updated_at', lockCutoffIso),
+      ]);
+
+      if (staticRes.error) throw staticRes.error;
+      if (lockRes.error) throw lockRes.error;
+      configRows.push(...(staticRes.data || []), ...(lockRes.data || []));
+    }
 
     // Group configuration by guild
     const configsByGuild: Record<string, Record<string, string>> = {};
@@ -299,7 +394,7 @@ serve(async (req) => {
       configsByGuild[g] = {};
       lockTimes[g] = {};
     }
-    for (const row of (configRows || [])) {
+    for (const row of configRows) {
       if (!row.guild) continue;
       const g = row.guild;
       if (configsByGuild[g]) {
@@ -444,16 +539,11 @@ serve(async (req) => {
                 .eq('key', lockKey);
             }
 
-            // Acquire lock. Must be a plain insert (not upsert) so a genuine
-            // PK conflict -- guild_config's real (guild, key) primary key --
-            // raises an error we can treat as "already claimed": upsert
-            // silently overwrites on conflict instead, which let overlapping
-            // invocations (see below) both believe they held the lock.
-            const { error: lockErr } = await supabase
-              .from('guild_config')
-              .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
-
-            if (lockErr) {
+            // Claim the lock atomically. ON CONFLICT DO NOTHING never raises
+            // the old PK violation, and no returned row means a concurrent
+            // invocation already holds it.
+            const lockAcquired = await acquireReminderLock(supabase, guild, lockKey);
+            if (!lockAcquired) {
               logger.info(`[${guild}] Lock already exists for standard event ${event.event_name} (${reminderType}), skipping`);
               continue;
             }
@@ -615,12 +705,8 @@ serve(async (req) => {
             }
 
             if (shouldProceed) {
-              // Plain insert, not upsert -- see the standard-events lock above.
-              const { error: lockErr } = await supabase
-                .from('guild_config')
-                .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
-
-              if (lockErr) {
+              const lockAcquired = await acquireReminderLock(supabase, guild, lockKey);
+              if (!lockAcquired) {
                 logger.info(`[${guild}] Lock already exists for GvG Daily Tasks Day ${curDay}, skipping`);
               } else {
                 try {
@@ -717,12 +803,8 @@ serve(async (req) => {
                 .eq('key', lockKey);
             }
 
-            // Acquire lock (plain insert, not upsert -- see standard-events lock above)
-            const { error: lockErr } = await supabase
-              .from('guild_config')
-              .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
-
-            if (lockErr) {
+            const lockAcquired = await acquireReminderLock(supabase, guild, lockKey);
+            if (!lockAcquired) {
               logger.info(`[${guild}] Lock already exists for GvG ${slot.label} (${slot.type}), skipping`);
               continue;
             }
@@ -936,12 +1018,8 @@ serve(async (req) => {
               .eq('key', lockKey);
           }
 
-          // Acquire lock (plain insert, not upsert -- see standard-events lock above)
-          const { error: lockErr } = await supabase
-            .from('guild_config')
-            .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
-
-          if (lockErr) {
+          const lockAcquired = await acquireReminderLock(supabase, guild, lockKey);
+          if (!lockAcquired) {
             logger.info(`[${guild}] Lock already exists for SvS ${slot.label} (${slot.type}), skipping`);
             continue;
           }
@@ -1185,12 +1263,8 @@ serve(async (req) => {
               .eq('key', lockKey);
           }
 
-          // Acquire lock (plain insert, not upsert -- see standard-events lock above)
-          const { error: lockErr } = await supabase
-            .from('guild_config')
-            .insert({ guild: guild, key: lockKey, value: 'sending', updated_at: new Date().toISOString() });
-
-          if (lockErr) {
+          const lockAcquired = await acquireReminderLock(supabase, guild, lockKey);
+          if (!lockAcquired) {
             logger.info(`[${guild}] Lock already exists for Calamity Round ${slot.round}, skipping`);
             continue;
           }
