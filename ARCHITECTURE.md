@@ -68,7 +68,7 @@
 │                                   DATABASE LAYER (Postgres 17)                          │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ Supabase Postgres 17 (Multi-Tenant Schema with Zero-Trust Row Level Security)       │  │
-│  │ ├─ 41 table definitions / 38 persistent active, Full RLS Enforcement              │  │
+│  │ ├─ 45 table definitions / 42 persistent active, Full RLS Enforcement              │  │
 │  │ ├─ Security Definer Access Helpers with `SET search_path TO ''`                   │  │
 │  │ ├─ Deterministic Event Session Generator: `public.gm_event_session_id()`           │  │
 │  │ ├─ Distributed Audit Ledger: `public.system_audit_logs` (service_role only)       │  │
@@ -157,8 +157,8 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 
 ### 4. Database Topology & Access Helpers
 
-#### 4.1 Database Tables (41 `CREATE TABLE` definitions; 38 persistent tables active, all RLS-enabled):
-- **Core Tenant / Roster** (16): `guilds` (13 rows, 1 is `DEMO`), `guild_members` (~1,540 rows), `event_status`, `event_participants` (~33k rows — the permanent attendance ledger), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `diplomatic_treaties`, `server_migration_groups`, `server_migration_group_servers`.
+#### 4.1 Database Tables (45 `CREATE TABLE` definitions; 42 persistent tables active, all RLS-enabled):
+- **Core Tenant / Roster** (20): `guilds` (13 rows, 1 is `DEMO`), `guild_members` (~1,540 rows), `event_status`, `event_participants` (~33k rows — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `diplomatic_treaties`, `server_migration_groups`, `server_migration_group_servers`.
 - **Accounts & Identity** (8): `accounts` (custom bcrypt credential store, source of truth — see §2), `login_throttle` (shared IP rate limit for `auth-login` + `auth-passkey`), `webauthn_challenges`, `account_passkeys`, `account_backup_codes` (Passkeys/WebAuthn, added 2026-09), `discord_account_links`, `discord_link_codes`, `discord_verification_throttle` (Discord account linking + verification rate limiting, added 2026-09).
 - **Self-Service Requests** (1): `guild_creation_requests` (public `guild-request` submissions, reviewed by `super_admin`).
 - **Player Portal** (2): `player_absences`, `player_push_prefs` (per-player Web Push type opt-outs).
@@ -167,7 +167,7 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 - **Billing & Support** (2): `gm_payments`, `tickets` (in-app bug-report console).
 - **Observability** (1): `system_audit_logs` (service_role-only INSERT).
 
-> **Count note**: the canonical migrations contain 41 `CREATE TABLE` definitions. Two legacy notification tables (`discord_notifications_sent`, `event_reminders_sent`) were dropped by `20260819203500_drop_orphaned_notification_tables.sql`, and `tmp_demo_roster` is a session-scoped `TEMP` staging table used by the demo reset, leaving **38 persistent active tables**. All of them have RLS enabled.
+> **Count note**: the canonical migrations contain 45 `CREATE TABLE` definitions. Two legacy notification tables (`discord_notifications_sent`, `event_reminders_sent`) were dropped by `20260819203500_drop_orphaned_notification_tables.sql`, and `tmp_demo_roster` is a session-scoped `TEMP` staging table used by the demo reset, leaving **42 persistent active tables** (the four SvS/GvG war tables below were added by `20260914090000`). All of them have RLS enabled.
 
 > ⚠️ **Note on `shadowfront_squads` completeness**: a long-tenured player can show more attended Shadowfront weeks (`event_participants`) than surviving squad-assignment rows (`shadowfront_squads`), because the latter doesn't reliably retain every past week once a later session overwrites it. The Stats attendance-rate calculation (`gm-utils.js:computeShadowfrontAttendanceRate`) floors its denominator at the attended count to stay mathematically capped at 100%, but the underlying gap in `shadowfront_squads` itself is unresolved — any *new* feature reading that table should not assume it is a complete historical ledger.
 
@@ -183,6 +183,25 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 1. `fgf-event-reminders`: Runs every minute (`* * * * *`), invokes `SELECT public.gm_invoke_event_reminders();` using Vault-stored secret.
 2. `daily-demo-tenant-reset`: Runs daily at 03:00 UTC (`0 3 * * *`), executes `SELECT public.gm_reset_demo_tenant_data();`.
 3. `daily-cleanup-stale-locks`: Runs daily at 04:00 UTC (`0 4 * * *`), executes `SELECT public.gm_cleanup_stale_reminder_locks();`.
+
+#### 4.4 SvS / GvG Granular War Management (added 2026-09-13, migration `20260914090000_war_daily_scores_and_chest_tiers.sql`)
+
+Tracks SvS and GvG at per-day granularity — scores (Day 1..6), parametrizable chest tiers, Won/Lost results per day and per-session opponent — replacing the previous monolithic `score_prep` (aggregated Day 1-5) / `score_pvp` (Day 6) columns as the primary entry path.
+
+**New tenanted tables** (all `FORCE ROW LEVEL SECURITY`, policies: `SELECT` via `public.gm_can_read_guild_data(guild)`, `INSERT/UPDATE/DELETE` via `public.check_user_guild_write_access(guild) AND public.is_subscription_active(guild)`):
+
+| Table | Role |
+|---|---|
+| `war_opponents` | Per-guild opponent catalog — `kind` `'server'\|'guild'`, `name`, optional `server_number`/`guild_ref`; `UNIQUE (guild, kind, name)`. **Deliberately never FK'd to `guilds`**: an adversary created on the fly is a lightweight snapshot, never a tenant (no cross-tenant writes). |
+| `war_sessions` | Persistent per-session war metadata — frozen `opponent_snapshot` (jsonb), `day1_result`..`day6_result` (`won`/`lost`), frozen `chest_tiers_snapshot` (jsonb grid), `start_at`; `UNIQUE (guild, event_name, session_id)`. Survives the weekly overwrite of `event_status` (which only holds the *live* session). |
+| `event_daily_scores` | Granular per-player per-day scores + `chests_unlocked`; `UNIQUE (guild, event_name, session_id, pseudo, day)`, FK cascade to `guild_members` and `war_sessions`. |
+| `event_chest_tiers` | Parametrizable Guild Settings grid — PK `(guild, event_name, day, tier)`, `min_score BIGINT >= 0`, `chests BIGINT >= 1`; atomically replaced by `gm_save_chest_tiers`. |
+
+**Scoring contract (chests)**: deterministic helper `public.gm_chests_for_score(p_tiers jsonb, p_score bigint) RETURNS integer` (`STABLE`, `search_path=''`) returns the chest count of the highest tier with `min_score <= score` over a **per-day tier slice** (the caller filters the grid by `day`). Mirrored 1:1 client-side in `src/core/scoring/chests.ts:resolveChestsForScore()` (+ `defaultChestGrid()` fallback). The grid is **frozen into `war_sessions.chest_tiers_snapshot` at session open** — rebalancing the grid never rewrites historical sessions.
+
+**RPCs** (all `SECURITY DEFINER SET search_path TO ''`, authenticated only): `gm_get_chest_tiers`, `gm_save_chest_tiers` (bounded/ordered validation + audit), `gm_upsert_war_session` (resolve-or-create opponent, upsert session, freeze grid on first create), `gm_get_war_session`, `gm_list_war_sessions`, `gm_upsert_daily_scores` (batch ≤ 200, auto-chests from snapshot), `gm_get_daily_scores`, `gm_delete_war_session`, `gm_list_opponent_candidates` (pick-list: own catalog + distinct `guilds.server_number` for SvS / registered `guilds` for GvG).
+
+**Retro-compatibility guarantee**: no destructive `ALTER`, no backfill. For sessions that opt into the granular grid, `gm_upsert_daily_scores` **derives** `event_participants.score_prep` (sum Day 1-5) and `score_pvp` (Day 6) and sets `score = NULL` (avoiding double-count in `score+score_prep+score_pvp` totals) in the same transaction; `participated = 1` when any day is non-zero. Legacy sessions keep their aggregate columns and the History modal keeps its dual-score layout because `gm_list_event_sessions` now exposes a `granular boolean` (EXISTS on `war_sessions`) consumed by both EventsView and HistoryView to pick the day-grid rendering. Admin editing of a granular session in History routes through the war RPCs, and the legacy SvS/GvG OCR aggregate buttons (`svs_prep`/`svs_pvp`/`gvg_prep`/`gvg_pvp`) are disabled by `syncWarOcrGate` while a granular session is active.
 
 ---
 

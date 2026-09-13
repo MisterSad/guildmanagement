@@ -46,6 +46,13 @@ export const OCR_METRICS_META: Record<string, OcrMetricMeta> = {
 
 export const DEFAULT_OCR_METRIC = 'members';
 
+/** Legacy aggregate OCR metrics made obsolete by the granular SvS/GvG grid. */
+export const WAR_LEGACY_OCR_METRICS = ['svs_prep', 'svs_pvp', 'gvg_prep', 'gvg_pvp'] as const;
+
+export function isWarLegacyOcrMetric(metric: string): boolean {
+  return (WAR_LEGACY_OCR_METRICS as readonly string[]).indexOf(metric) !== -1;
+}
+
 let currentOcrMetric = DEFAULT_OCR_METRIC;
 let ocrExtractedPlayers: any[] = [];
 

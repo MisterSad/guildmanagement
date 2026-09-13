@@ -1,3 +1,27 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.18.0**
+
+Welcome to V3.18! This update reworks SvS and GvG tracking around a single idea: every day counts, on its own. Scores are now entered day by day (Day 1 to Day 6), chest rewards follow a configurable score grid, and you can mark each day Won or Lost — with the enemy server or guild tracked right on the event screen.
+
+### ⚔️ Daily SvS / GvG Scores, Day by Day
+- **What changed**: the old "Day 1-5 score" box is gone. You now have six separate score columns — Day 1, Day 2, Day 3, Day 4, Day 5 and Day 6 — one per player, saved automatically as you type.
+- **The benefit**: you can finally see *which* day won or lost you the fight, not just a week-long blob. Perfect for coaching, garrisons, and post-war debriefs.
+
+### 📦 Configurable Chest Tiers
+- **What changed**: a new "Chest Tiers" panel in Guild Settings lets you define, for each day, exactly how many points unlock how many chests — add, edit or remove thresholds for SvS and GvG separately.
+- **The benefit**: when the game's editor rebalances chest rewards, you adjust one screen instead of re-entering every score. Past sessions keep the grid they started with, so your history stays accurate forever.
+
+### 🏹 Track the Enemy & the Result
+- **What changed**: each SvS session now remembers the enemy server, each GvG session the enemy guild (pick one, or type a new one on the fly), and every day gets a simple Won / Lost toggle. History cards show it all at a glance: "vs Omega · 4W/2L".
+- **The benefit**: no more digging through screenshots to remember who you faced and whether you won the day. One glance at History tells the whole story.
+
+### 🧭 Smarter OCR Guard
+- **What changed**: the old SvS/GvG "Day 1 to 5" OCR buttons automatically switch off while a session is in per-day mode, with a clear hint to enter scores day by day instead.
+- **The benefit**: no more accidental overwrites of your carefully-entered daily scores — the tool nudges you to the right workflow.
+
+Try it on the next SvS or GvG session, and let me know what you think! As always, feedback and bug reports through Report a Bug or Discord are very welcome. 🚀⚔️
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.17.2**
 
 Welcome to V3.17.2! This update is all about keeping things fast, safe and smooth: logins stay instant even during the biggest SvS/GvG rallies, accounts are locked down behind strict role isolation, the roster feels effortless, and network hiccups now come with clear guidance. Full breakdown below.

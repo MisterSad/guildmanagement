@@ -2,7 +2,7 @@
  * src/core/api/db-guard.ts
  *
  * Multi-tenant write guard (port of the gm-utils.js db.from interception).
- * For the 11 tenant tables it:
+ * For the tenant tables it:
  *   a) blocks delete/update/insert/upsert when the caller cannot write the
  *      active guild, returning a "Read-only access" error;
  *   b) injects `guild: <activeGuild>` on insert/upsert;
@@ -18,6 +18,10 @@ export const TENANT_TABLES = [
   'banned_players',
   'event_status',
   'event_participants',
+  'event_daily_scores',
+  'event_chest_tiers',
+  'war_opponents',
+  'war_sessions',
   'sanctions',
   'weekly_scores',
   'guild_config',

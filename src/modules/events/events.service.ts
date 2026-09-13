@@ -7,8 +7,44 @@
 
 import { getSupabaseClient } from '../../core/api/supabase';
 import { buildEventSessionId } from '../../core/config/events';
-import { EventStatus, EventParticipant } from '../../types/database';
+import { EventStatus, EventParticipant, ChestTier, WarSession, EventDailyScore, WarOpponentKind } from '../../types/database';
 import { logger } from '../../core/logger/logger';
+
+export type WarEventName = 'SvS' | 'GvG';
+
+export interface WarOpponentInput {
+  kind: WarOpponentKind;
+  name: string;
+  server_number?: string;
+  guild_ref?: string;
+}
+
+export interface ChestTiersResult { ok: boolean; tiers: ChestTier[]; error?: string; }
+export interface SaveChestTiersResult { ok: boolean; saved?: number; error?: string; }
+export interface WarSessionResult { ok: boolean; session?: WarSession | null; error?: string; }
+export interface DailyScoresResult { ok: boolean; rows: EventDailyScore[]; error?: string; }
+export interface UpsertDailyScoresResult { ok: boolean; updated?: number; error?: string; }
+export interface OpponentCandidate {
+  id?: string;
+  kind: string;
+  name: string;
+  server_number?: string | null;
+  is_existing: boolean;
+}
+export interface OpponentCandidatesResult { ok: boolean; items: OpponentCandidate[]; error?: string; }
+
+export interface UpsertWarSessionParams {
+  guild: string;
+  eventName: WarEventName;
+  sessionId: string;
+  opponent?: WarOpponentInput;
+  dailyResults?: Record<string, 'won' | 'lost' | null>;
+  startAt?: string;
+}
+
+function rpcData(resultData: unknown, fallback: Record<string, unknown>): Record<string, unknown> {
+  return (resultData && typeof resultData === 'object' ? resultData : fallback) as Record<string, unknown>;
+}
 
 export class EventsService {
   public static async getActiveSessions(guild: string): Promise<EventStatus[]> {
@@ -80,6 +116,186 @@ export class EventsService {
     }
 
     return { ok: true };
+  }
+
+  // ── SvS / GvG granular war helpers (RPCs from Lot 1) ─────────────────────
+
+  /** Active chest-tier grid for one event (SvS or GvG). */
+  public static async getChestTiers(guild: string, eventName: WarEventName): Promise<ChestTiersResult> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { ok: false, tiers: [], error: 'no_client' };
+
+    const { data, error } = await supabase
+      .rpc('gm_get_chest_tiers', { p_guild: guild, p_event_name: eventName });
+    if (error) {
+      logger.error('gm_get_chest_tiers failed', error, { guild, eventName });
+      return { ok: false, tiers: [], error: error.message };
+    }
+
+    const payload = rpcData(data, {});
+    if (payload.ok !== true) return { ok: false, tiers: [], error: String(payload.error || 'rpc_failed') };
+    const tiers = Array.isArray(payload.tiers) ? (payload.tiers as ChestTier[]) : [];
+    return { ok: true, tiers };
+  }
+
+  /** Atomically replaces the chest-tier grid for one event. */
+  public static async saveChestTiers(
+    guild: string,
+    eventName: WarEventName,
+    tiers: ChestTier[]
+  ): Promise<SaveChestTiersResult> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { ok: false, error: 'no_client' };
+
+    const { data, error } = await supabase
+      .rpc('gm_save_chest_tiers', { p_guild: guild, p_event_name: eventName, p_tiers: tiers as unknown as Record<string, unknown> });
+    if (error) {
+      logger.error('gm_save_chest_tiers failed', error, { guild, eventName, count: tiers.length });
+      return { ok: false, error: error.message };
+    }
+
+    const payload = rpcData(data, {});
+    if (payload.ok !== true) return { ok: false, error: String(payload.error || 'rpc_failed') };
+    return { ok: true, saved: typeof payload.saved === 'number' ? payload.saved : tiers.length };
+  }
+
+  /** Session metadata: opponent snapshot, Won/Lost per day, frozen grid. */
+  public static async getWarSession(
+    guild: string,
+    eventName: WarEventName,
+    sessionId: string
+  ): Promise<WarSessionResult> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { ok: false, error: 'no_client' };
+
+    const { data, error } = await supabase
+      .rpc('gm_get_war_session', { p_guild: guild, p_event_name: eventName, p_session_id: sessionId });
+    if (error) {
+      logger.error('gm_get_war_session failed', error, { guild, eventName, sessionId });
+      return { ok: false, error: error.message };
+    }
+
+    const payload = rpcData(data, {});
+    if (payload.ok !== true) return { ok: false, error: String(payload.error || 'rpc_failed') };
+    return { ok: true, session: payload.session ? (payload.session as WarSession) : null };
+  }
+
+  /** All war sessions for a guild (optionally filtered to one event). */
+  public static async listWarSessions(
+    guild: string,
+    eventName?: WarEventName
+  ): Promise<{ ok: boolean; sessions: WarSession[]; error?: string }> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { ok: false, sessions: [], error: 'no_client' };
+
+    const { data, error } = await supabase
+      .rpc('gm_list_war_sessions', { p_guild: guild, p_event_name: eventName || '' });
+    if (error) {
+      logger.error('gm_list_war_sessions failed', error, { guild, eventName });
+      return { ok: false, sessions: [], error: error.message };
+    }
+
+    const payload = rpcData(data, {});
+    if (payload.ok !== true) return { ok: false, sessions: [], error: String(payload.error || 'rpc_failed') };
+    const sessions = Array.isArray(payload.sessions) ? (payload.sessions as WarSession[]) : [];
+    return { ok: true, sessions };
+  }
+
+  /** Creates or updates a war session + its opponent/daily results. */
+  public static async upsertWarSession(params: UpsertWarSessionParams): Promise<WarSessionResult> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { ok: false, error: 'no_client' };
+
+    const { data, error } = await supabase.rpc('gm_upsert_war_session', {
+      p_guild: params.guild,
+      p_event_name: params.eventName,
+      p_session_id: params.sessionId,
+      p_opponent: params.opponent ? (params.opponent as unknown as Record<string, unknown>) : null,
+      p_daily_results: params.dailyResults ? (params.dailyResults as unknown as Record<string, unknown>) : null,
+      p_start_at: params.startAt || null
+    });
+    if (error) {
+      logger.error('gm_upsert_war_session failed', error, {
+        guild: params.guild,
+        eventName: params.eventName,
+        sessionId: params.sessionId
+      });
+      return { ok: false, error: error.message };
+    }
+
+    const payload = rpcData(data, {});
+    if (payload.ok !== true) return { ok: false, error: String(payload.error || 'rpc_failed') };
+    return { ok: true, session: payload.session ? (payload.session as WarSession) : null };
+  }
+
+  /** Pick-list candidates for an opponent selector (server or guild). */
+  public static async listOpponentCandidates(
+    guild: string,
+    kind: 'server' | 'guild'
+  ): Promise<OpponentCandidatesResult> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { ok: false, items: [], error: 'no_client' };
+
+    const { data, error } = await supabase
+      .rpc('gm_list_opponent_candidates', { p_guild: guild, p_kind: kind });
+    if (error) {
+      logger.error('gm_list_opponent_candidates failed', error, { guild, kind });
+      return { ok: false, items: [], error: error.message };
+    }
+
+    const payload = rpcData(data, {});
+    if (payload.ok !== true) return { ok: false, items: [], error: String(payload.error || 'rpc_failed') };
+    const items = Array.isArray(payload.items) ? (payload.items as OpponentCandidate[]) : [];
+    return { ok: true, items };
+  }
+
+  /** Full player × day score matrix for a session. */
+  public static async getDailyScores(
+    guild: string,
+    eventName: WarEventName,
+    sessionId: string
+  ): Promise<DailyScoresResult> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { ok: false, rows: [], error: 'no_client' };
+
+    const { data, error } = await supabase
+      .rpc('gm_get_daily_scores', { p_guild: guild, p_event_name: eventName, p_session_id: sessionId });
+    if (error) {
+      logger.error('gm_get_daily_scores failed', error, { guild, eventName, sessionId });
+      return { ok: false, rows: [], error: error.message };
+    }
+
+    const payload = rpcData(data, {});
+    if (payload.ok !== true) return { ok: false, rows: [], error: String(payload.error || 'rpc_failed') };
+    const rows = Array.isArray(payload.rows) ? (payload.rows as EventDailyScore[]) : [];
+    return { ok: true, rows };
+  }
+
+  /** Batch upserts Day 1..6 scores (chests auto-computed by the RPC). */
+  public static async upsertDailyScores(
+    guild: string,
+    eventName: WarEventName,
+    sessionId: string,
+    rows: Array<{ pseudo: string; day: number; score: number; chests?: number }>
+  ): Promise<UpsertDailyScoresResult> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { ok: false, error: 'no_client' };
+
+    const { data, error } = await supabase
+      .rpc('gm_upsert_daily_scores', {
+        p_guild: guild,
+        p_event_name: eventName,
+        p_session_id: sessionId,
+        p_rows: rows as unknown as Record<string, unknown>[]
+      });
+    if (error) {
+      logger.error('gm_upsert_daily_scores failed', error, { guild, eventName, sessionId, count: rows.length });
+      return { ok: false, error: error.message };
+    }
+
+    const payload = rpcData(data, {});
+    if (payload.ok !== true) return { ok: false, error: String(payload.error || 'rpc_failed') };
+    return { ok: true, updated: typeof payload.updated === 'number' ? payload.updated : rows.length };
   }
 }
 

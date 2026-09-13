@@ -10,7 +10,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { esc, winAny, byId, gm } from '../admin/utils';
+import { esc, winAny, byId, gm, t } from '../admin/utils';
 import { showToast } from '../dialogs/dialogs.service';
 import { getGuildMembers } from '../members/members.store';
 import { renderGuildMembers } from '../members/members.render';
@@ -33,6 +33,39 @@ import {
 import { renderOcrResults, toggleAllCheckboxes } from './ocr.render';
 
 export { getOcrModel };
+
+/** Reference to avoid circular imports when EventsView toggles the gate. */
+export type WarGranularGateEvent = 'SvS' | 'GvG';
+
+/**
+ * OCR legacy-buttons gate for SvS/GvG panels: when a session is in granular
+ * (per-day) mode the aggregate "Day 1 to 5 / Day 6" OCR buttons are disabled
+ * with an explanatory tooltip, since scores are entered per day in Events.
+ */
+export function syncWarOcrGate(activeEvent: WarGranularGateEvent | null, granular: boolean): void {
+  if (typeof document === 'undefined') return;
+  const panelId = activeEvent === 'SvS' ? 'event-svs' : activeEvent === 'GvG' ? 'event-gvg' : null;
+  const panel = panelId ? document.getElementById(panelId) : null;
+  const toolbar = panel ? panel.querySelector('.gm-event-ocr-toolbar') : null;
+  if (!toolbar) return;
+  const prefix = activeEvent === 'SvS' ? 'svs' : 'gvg';
+  toolbar.querySelectorAll('.btn-ocr-trigger').forEach((btn) => {
+    const metric = btn.getAttribute('data-metric') || '';
+    if (metric !== prefix + '_prep' && metric !== prefix + '_pvp') return;
+    const el = btn as HTMLButtonElement;
+    if (granular) {
+      el.disabled = true;
+      el.setAttribute('title', t('war_ocr_granular_hint'));
+      el.style.opacity = '0.45';
+      el.style.cursor = 'not-allowed';
+    } else {
+      el.disabled = false;
+      el.removeAttribute('title');
+      el.style.opacity = '';
+      el.style.cursor = '';
+    }
+  });
+}
 
 function w(): any {
   return winAny();

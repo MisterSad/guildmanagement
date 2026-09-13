@@ -480,6 +480,95 @@ export type Database = {
           },
         ]
       }
+event_chest_tiers: {
+        Row: {
+          chests: number
+          day: number
+          event_name: string
+          guild: string
+          min_score: number
+          tier: number
+          updated_at: string
+        }
+        Insert: {
+          chests: number
+          day: number
+          event_name: string
+          guild: string
+          min_score: number
+          tier: number
+          updated_at?: string
+        }
+        Update: {
+          chests?: number
+          day?: number
+          event_name?: string
+          guild?: string
+          min_score?: number
+          tier?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_chest_tiers_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_daily_scores: {
+        Row: {
+          chests_unlocked: number
+          day: number
+          event_name: string
+          guild: string
+          id: number
+          pseudo: string
+          score: number
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          chests_unlocked?: number
+          day: number
+          event_name: string
+          guild: string
+          id?: number
+          pseudo: string
+          score?: number
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          chests_unlocked?: number
+          day?: number
+          event_name?: string
+          guild?: string
+          id?: number
+          pseudo?: string
+          score?: number
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_event_daily_scores_member"
+            columns: ["guild", "pseudo"]
+            isOneToOne: false
+            referencedRelation: "guild_members"
+            referencedColumns: ["guild", "pseudo"]
+          },
+          {
+            foreignKeyName: "fk_event_daily_scores_session"
+            columns: ["guild", "event_name", "session_id"]
+            isOneToOne: false
+            referencedRelation: "war_sessions"
+            referencedColumns: ["guild", "event_name", "session_id"]
+          },
+        ]
+      }
       event_participants: {
         Row: {
           appointed: boolean | null
@@ -1227,6 +1316,122 @@ export type Database = {
           },
         ]
       }
+      war_opponents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          guild: string
+          guild_ref: string | null
+          id: string
+          kind: string
+          name: string
+          server_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          guild: string
+          guild_ref?: string | null
+          id?: string
+          kind: string
+          name: string
+          server_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          guild?: string
+          guild_ref?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          server_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "war_opponents_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      war_sessions: {
+        Row: {
+          chest_tiers_snapshot: Json
+          created_at: string
+          day1_result: string | null
+          day2_result: string | null
+          day3_result: string | null
+          day4_result: string | null
+          day5_result: string | null
+          day6_result: string | null
+          event_name: string
+          guild: string
+          id: number
+          opponent_id: string | null
+          opponent_snapshot: Json
+          session_id: string
+          start_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          chest_tiers_snapshot?: Json
+          created_at?: string
+          day1_result?: string | null
+          day2_result?: string | null
+          day3_result?: string | null
+          day4_result?: string | null
+          day5_result?: string | null
+          day6_result?: string | null
+          event_name: string
+          guild: string
+          id?: number
+          opponent_id?: string | null
+          opponent_snapshot?: Json
+          session_id: string
+          start_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chest_tiers_snapshot?: Json
+          created_at?: string
+          day1_result?: string | null
+          day2_result?: string | null
+          day3_result?: string | null
+          day4_result?: string | null
+          day5_result?: string | null
+          day6_result?: string | null
+          event_name?: string
+          guild?: string
+          id?: number
+          opponent_id?: string | null
+          opponent_snapshot?: Json
+          session_id?: string
+          start_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "war_sessions_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "war_sessions_opponent_id_fkey"
+            columns: ["opponent_id"]
+            isOneToOne: false
+            referencedRelation: "war_opponents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_scores: {
         Row: {
           computed_at: string | null
@@ -1386,6 +1591,10 @@ export type Database = {
           status: string
         }[]
       }
+      gm_chests_for_score: {
+        Args: { p_score: number; p_tiers?: Json }
+        Returns: number
+      }
       gm_cleanup_stale_reminder_locks: { Args: never; Returns: number }
       gm_create_diplomatic_treaty: {
         Args: {
@@ -1478,6 +1687,10 @@ export type Database = {
         Args: { p_id: string; p_uid: string }
         Returns: Json
       }
+      gm_delete_war_session: {
+        Args: { p_event_name: string; p_guild: string; p_session_id: string }
+        Returns: Json
+      }
       gm_event_scoring_key:
         | {
             Args: {
@@ -1513,6 +1726,14 @@ export type Database = {
           signed_prekey_sig: string
         }[]
       }
+      gm_get_chest_tiers: {
+        Args: { p_event_name: string; p_guild: string }
+        Returns: Json
+      }
+      gm_get_daily_scores: {
+        Args: { p_event_name: string; p_guild: string; p_session_id: string }
+        Returns: Json
+      }
       gm_get_join_code: { Args: { p_guild: string }; Returns: Json }
       gm_get_player_absences: {
         Args: { p_uid: string }
@@ -1538,6 +1759,10 @@ export type Database = {
           auth_user_id: string
           gotrue_secret: string
         }[]
+      }
+      gm_get_war_session: {
+        Args: { p_event_name: string; p_guild: string; p_session_id: string }
+        Returns: Json
       }
       gm_guild_benchmark: {
         Args: never
@@ -1604,6 +1829,7 @@ export type Database = {
         Returns: {
           display_name: string
           event_name: string
+          granular: boolean
           participants: number
           participated_count: number
           session_id: string
@@ -1611,6 +1837,14 @@ export type Database = {
           total_score: number
           week_start: string
         }[]
+      }
+      gm_list_opponent_candidates: {
+        Args: { p_guild: string; p_kind: string }
+        Returns: Json
+      }
+      gm_list_war_sessions: {
+        Args: { p_event_name: string; p_guild: string }
+        Returns: Json
       }
       gm_list_tickets: {
         Args: never
@@ -1703,6 +1937,10 @@ export type Database = {
         Args: { p_treaty_id: string }
         Returns: boolean
       }
+      gm_save_chest_tiers: {
+        Args: { p_event_name: string; p_guild: string; p_tiers: Json }
+        Returns: Json
+      }
       gm_session_id_base: { Args: { p_session_id: string }; Returns: string }
       gm_set_join_code: {
         Args: { p_code: string; p_guild: string }
@@ -1789,6 +2027,10 @@ export type Database = {
           title: string
         }[]
       }
+      gm_upsert_daily_scores: {
+        Args: { p_event_name: string; p_guild: string; p_rows: Json; p_session_id: string }
+        Returns: Json
+      }
       gm_upsert_player_absence: {
         Args: {
           p_end_date: string
@@ -1825,6 +2067,17 @@ export type Database = {
           p_pseudo: string
           p_tech_power?: number
           p_total_power?: number
+        }
+        Returns: Json
+      }
+      gm_upsert_war_session: {
+        Args: {
+          p_daily_results?: Json
+          p_event_name: string
+          p_guild: string
+          p_opponent?: Json
+          p_session_id: string
+          p_start_at?: string
         }
         Returns: Json
       }

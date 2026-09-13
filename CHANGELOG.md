@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.18.0]
+
+- **SvS / GvG Granular War Management (V3.18.0)** — per-day (Day 1-6) scores with parametrizable chest tiers, explicit Won/Lost results and per-session opponent tracking for SvS & GvG, shipped on 2026-09-13 (migration `20260914090000_war_daily_scores_and_chest_tiers.sql`).
+  - **Added**: four tenanted tables with forced RLS (`war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers`); nine war RPCs (`gm_get_chest_tiers`, `gm_save_chest_tiers`, `gm_upsert_war_session`, `gm_get_war_session`, `gm_list_war_sessions`, `gm_upsert_daily_scores`, `gm_get_daily_scores`, `gm_delete_war_session`, `gm_list_opponent_candidates`) plus the deterministic chest scorer `gm_chests_for_score`; Guild Settings "SvS/GvG — Chest Tiers" card (SvS/GvG tabs, add/edit/remove a threshold per day, atomic save); SvS/GvG event banner with an opponent picker (server numbers / guild names, existing or created on the fly) and interactive Won/Lost toggles for Day 1-6; `granular` flag on `gm_list_event_sessions`; typed RPC service wrappers and the `resolveChestsForScore` TS mirror (`src/core/scoring/chests.ts`).
+  - **Changed**: the SvS/GvG participant table now renders six live per-day score columns (Day 1..Day 6) plus a per-player chests total computed on the client, saved in a 700 ms debounced batch through `gm_upsert_daily_scores` — for granular sessions, `event_participants.score_prep` (D1-5) and `score_pvp` (D6) become transactionally derived cache columns (`score = NULL`, `participated = 1` when any day > 0); History session cards show `vs <opponent> · wW/lL` and the session modal switches to the six-day grid for granular sessions.
+  - **Fixed**: the legacy SvS/GvG OCR aggregate buttons (`svs_prep` / `svs_pvp` / `gvg_prep` / `gvg_pvp`) are now disabled with an explanatory tooltip while a granular session is active, preventing aggregate writes from diverging from the day grid.
+  - **Verification**: `npm run type-check` — 0 errors; **1152/1152 Vitest tests green across 101 suites** (+7 vs the previous 1145/101 baseline: chest-tier scoring parity, granular EventsView RPC coverage, i18n golden update to 551 keys); production build stable (`version.json` V3.18.0). **Deploy note**: `supabase db push` must be run to apply the war migration before/alongside the frontend deploy.
+
 ## [3.17.2]
 
 - **Global remediation — Phases 1-3 (DB/RPC resilience, strict role isolation, frontend resilience & roster performance) (V3.17.2)** — three audit phases shipped together on 2026-09-13.

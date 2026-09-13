@@ -13,6 +13,7 @@ import { t, esc, gm, winAny, byId, getDb } from './utils';
 import { type AccountRow, getAccounts, filterAccountsOut } from './admin-store';
 import { fetchAccounts, fetchGuilds } from './accounts.controller';
 import { showToast } from '../dialogs/dialogs.service';
+import { initChestTiersSettings, loadChestTiers } from '../../events/chest-settings';
 
 const GUILD_REQUEST_STATUS_META: Record<string, { label: string; cls: string }> = {
   pending: { label: 'Pending', cls: 'gm-chip-warning' },
@@ -251,6 +252,9 @@ export async function loadGuildSettings(): Promise<void> {
   }
   const serverNumSettingEl = byId<HTMLInputElement>('guild-server-number-setting');
   if (serverNumSettingEl) serverNumSettingEl.value = (await configGet('server_number')) || '';
+
+  initChestTiersSettings();
+  await loadChestTiers();
 }
 
 async function onGuildSettingsSubmit(e: Event): Promise<void> {

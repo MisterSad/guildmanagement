@@ -17,8 +17,14 @@ import {
   EVENTS_WITHOUT_SCORE,
   SCHEDULED_TABS,
   type EventTabKey,
-  type EventTabState
+  type EventTabState,
+  EventsService,
+  type WarEventName,
+  type OpponentCandidate
 } from '../events.service';
+import type { WarSession, ChestTier } from '../../../types/database';
+import { resolveChestsForScore, defaultChestGrid } from '../../../core/scoring/chests';
+import { syncWarOcrGate } from '../../app/ocr/ocr.controller';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -98,6 +104,19 @@ const legacy = {
   }
 };
 
+interface WarDayScore {
+  day: number;
+  score: number;
+  chests_unlocked: number;
+}
+
+interface WarTabState {
+  session: WarSession | null;
+  opponents: OpponentCandidate[];
+  grid: ChestTier[];
+  daily: Record<string, WarDayScore[]>;
+}
+
 function createTabState(): EventTabState {
   return { activeEventName: null, sessionId: null, stage: null, startAt: null, isActive: false, participants: [] };
 }
@@ -106,6 +125,8 @@ export class EventsView {
   private state: Record<string, EventTabState> = {};
   private uidMap: Record<string, string> = {};
   private guildOverride: string | null = null;
+  private war: Record<string, WarTabState> = {};
+  private warSaveTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
   constructor() {
     Object.keys(TAB_TO_DB_EVENTS).forEach((k) => { this.state[k] = createTabState(); });
@@ -145,12 +166,14 @@ export class EventsView {
         if (s.sessionId && s.participants.length === 0) {
           await this.populateParticipants(tabKey);
         }
+        await this.loadWarMeta(tabKey);
       } else {
         s.activeEventName = null;
         s.sessionId = null;
         s.stage = null;
         s.startAt = null;
         s.isActive = false;
+        this.resetWar(tabKey);
         this.renderStatus(tabKey);
         this.renderInactive(tabKey);
       }
@@ -339,6 +362,294 @@ export class EventsView {
     ((memRes.data || []) as any[]).forEach((m) => { this.uidMap[m.pseudo] = m.uid; });
     s.participants = (partRes.data || []) as any[];
     this.renderParticipants(tabKey);
+  }
+
+  // ── SvS / GvG granular war helpers (opponent, W/L, per-day grid) ─────────
+
+  private isWarTab(tabKey: string): boolean {
+    const ev = this.state[tabKey] && this.state[tabKey].activeEventName;
+    return ev === 'SvS' || ev === 'GvG';
+  }
+
+  private getWar(tabKey: string): WarTabState {
+    if (!this.war[tabKey]) {
+      this.war[tabKey] = { session: null, opponents: [], grid: defaultChestGrid(), daily: {} };
+    }
+    return this.war[tabKey];
+  }
+
+  private isGranular(tabKey: string): boolean {
+    const s = this.state[tabKey];
+    if (!s.isActive || !s.activeEventName || !s.sessionId) return false;
+    if (!this.isWarTab(tabKey)) return false;
+    return !!this.war[tabKey];
+  }
+
+  private async loadWarMeta(tabKey: string): Promise<void> {
+    const s = this.state[tabKey];
+    if (!s.activeEventName || !s.sessionId) return;
+    if (!this.isWarTab(tabKey)) return;
+
+    const host = this.getPanel(tabKey)?.querySelector<HTMLElement>('.war-banner');
+    if (!host) return;
+    const guild = this.currentGuild();
+    const ev = s.activeEventName as WarEventName;
+    const war = this.getWar(tabKey);
+
+    const sessRes = await EventsService.getWarSession(guild, ev, s.sessionId);
+    if (sessRes.ok) war.session = sessRes.session ?? null;
+    else war.session = null;
+
+    const snapshot = war.session
+      && Array.isArray(war.session.chest_tiers_snapshot)
+      && (war.session.chest_tiers_snapshot as unknown as unknown[]).length > 0
+      ? (war.session.chest_tiers_snapshot as unknown as ChestTier[])
+      : null;
+    if (snapshot) {
+      war.grid = snapshot;
+    } else {
+      const tierRes = await EventsService.getChestTiers(guild, ev);
+      war.grid = tierRes.ok && tierRes.tiers.length > 0 ? tierRes.tiers : defaultChestGrid();
+    }
+
+    if (!war.session) war.session = await this.ensureWarSession(tabKey);
+
+    const [candRes, dailyRes] = await Promise.all([
+      EventsService.listOpponentCandidates(guild, ev === 'SvS' ? 'server' : 'guild'),
+      EventsService.getDailyScores(guild, ev, s.sessionId)
+    ]);
+    war.opponents = candRes.ok ? candRes.items : [];
+    war.daily = {};
+    if (dailyRes.ok) {
+      for (const row of dailyRes.rows) {
+        const arr = war.daily[row.pseudo] || [];
+        arr.push({ day: row.day, score: row.score ?? 0, chests_unlocked: row.chests_unlocked ?? 0 });
+        war.daily[row.pseudo] = arr;
+      }
+    }
+
+    this.renderWarBanner(tabKey);
+    this.syncWarGates();
+    this.renderParticipants(tabKey);
+  }
+
+  private async ensureWarSession(tabKey: string): Promise<WarSession | null> {
+    const s = this.state[tabKey];
+    if (!s.activeEventName || !s.sessionId) return null;
+    const res = await EventsService.upsertWarSession({
+      guild: this.currentGuild(),
+      eventName: s.activeEventName as WarEventName,
+      sessionId: s.sessionId
+    });
+    return res.ok && res.session ? res.session : null;
+  }
+
+  private resetWar(tabKey: string): void {
+    delete this.war[tabKey];
+    const host = this.getPanel(tabKey)?.querySelector<HTMLElement>('.war-banner');
+    if (host) host.innerHTML = '';
+    this.syncWarGates();
+  }
+
+  private warGranularFor(eventName: string): boolean {
+    for (const key of Object.keys(this.state)) {
+      const s = this.state[key];
+      if (s.isActive && s.activeEventName === eventName && this.isGranular(key)) return true;
+    }
+    return false;
+  }
+
+  private syncWarGates(): void {
+    syncWarOcrGate('SvS', this.warGranularFor('SvS'));
+    syncWarOcrGate('GvG', this.warGranularFor('GvG'));
+  }
+
+  private warTotalScore(tabKey: string): number {
+    const war = this.war[tabKey];
+    if (!war) return 0;
+    return Object.values(war.daily).reduce(
+      (a, list) => a + list.reduce((x, e) => x + (Number(e.score) || 0), 0),
+      0
+    );
+  }
+
+  private renderWarBanner(tabKey: string): void {
+    const panel = this.getPanel(tabKey);
+    const host = panel ? panel.querySelector<HTMLElement>('.war-banner') : null;
+    if (!host) return;
+    const s = this.state[tabKey];
+    const war = this.getWar(tabKey);
+    const isSvs = s.activeEventName === 'SvS';
+    const datalistId = 'war-opponents-' + tabKey;
+
+    const anySession = war.session
+      && (war.session as any).opponent_snapshot
+      && typeof (war.session as any).opponent_snapshot === 'object';
+    const current = anySession ? String(((war.session as any).opponent_snapshot.name) || '') : '';
+
+    const dayChips = [1, 2, 3, 4, 5, 6].map((d) => {
+      const result = war.session ? (war.session as any)['day' + d + '_result'] || null : null;
+      const label = result === 'won' ? legacy.t('war_day_won') : result === 'lost' ? legacy.t('war_day_lost') : legacy.t('war_day_pending');
+      const cls = result === 'won' ? 'war-day-won' : result === 'lost' ? 'war-day-lost' : '';
+      return '<button type="button" class="war-day-toggle ' + cls + '" data-day="' + d + '" title="Day ' + d + '">' +
+        '<span class="war-day-num">D' + d + '</span>' +
+        '<span class="war-day-state">' + legacy.esc(label) + '</span>' +
+      '</button>';
+    }).join('');
+
+    const options = war.opponents.map((o) =>
+      '<option value="' + legacy.esc(o.name) + '"></option>'
+    ).join('');
+
+    host.innerHTML =
+      '<div class="gm-card gm-card-padded" style="margin-bottom:1rem;">' +
+        '<div class="gm-row" style="gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">' +
+          '<div class="gm-row" style="gap:.5rem; align-items:center; flex:1 1 260px; min-width:220px;">' +
+            '<span class="gm-chip" style="white-space:nowrap;">' + legacy.t('war_opponent_label') + '</span>' +
+            '<input type="text" class="gm-input war-opponent-input" list="' + datalistId + '" placeholder="' +
+              legacy.esc(isSvs ? legacy.t('war_opponent_placeholder_svs') : legacy.t('war_opponent_placeholder_gvg')) + '" value="' + legacy.esc(current) + '">' +
+            '<datalist id="' + datalistId + '">' + options + '</datalist>' +
+          '</div>' +
+          '<div class="gm-row war-day-results" style="gap:.45rem; flex-wrap:wrap;" data-event="' + legacy.esc(s.activeEventName || '') + '">' + dayChips + '</div>' +
+        '</div>' +
+      '</div>';
+
+    const input = host.querySelector<HTMLInputElement>('.war-opponent-input');
+    if (input) {
+      input.addEventListener('change', () => { void this.saveWarOpponent(tabKey, input.value); });
+    }
+    host.querySelectorAll('.war-day-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => { this.cycleWarDay(tabKey, btn as HTMLElement); });
+    });
+  }
+
+  private async saveWarOpponent(tabKey: string, rawValue: string): Promise<void> {
+    const s = this.state[tabKey];
+    if (!s.activeEventName || !s.sessionId) return;
+    const name = String(rawValue || '').trim();
+    if (!name) return;
+    const isSvs = s.activeEventName === 'SvS';
+    const war = this.getWar(tabKey);
+    const known = war.opponents.find((o) => o && String(o.name).toLowerCase() === name.toLowerCase());
+    const res = await EventsService.upsertWarSession({
+      guild: this.currentGuild(),
+      eventName: s.activeEventName as WarEventName,
+      sessionId: s.sessionId,
+      opponent: {
+        kind: isSvs ? 'server' : 'guild',
+        name,
+        server_number: known && known.server_number ? known.server_number : undefined,
+        guild_ref: known && (known as any).guild_ref ? (known as any).guild_ref : undefined
+      }
+    });
+    if (res.ok) {
+      if (res.session) war.session = res.session;
+      this.renderWarBanner(tabKey);
+    } else {
+      legacy.showToast(legacy.t('war_opponent_save_error'), 'error');
+      this.renderWarBanner(tabKey);
+    }
+  }
+
+  private cycleWarDay(tabKey: string, btn: HTMLElement): void {
+    const s = this.state[tabKey];
+    if (!s.activeEventName || !s.sessionId) return;
+    const day = Number(btn.getAttribute('data-day'));
+    if (!(day >= 1 && day <= 6)) return;
+    const war = this.getWar(tabKey);
+    const key = 'day' + day + '_result';
+    const prev = war.session ? (war.session as any)[key] || null : null;
+    const next: 'won' | 'lost' | null = prev === 'won' ? 'lost' : prev === 'lost' ? null : 'won';
+    if (war.session) (war.session as any)[key] = next;
+
+    btn.classList.remove('war-day-won', 'war-day-lost');
+    if (next === 'won') btn.classList.add('war-day-won');
+    if (next === 'lost') btn.classList.add('war-day-lost');
+    const stateSpan = btn.querySelector('.war-day-state');
+    if (stateSpan) {
+      stateSpan.textContent = next === 'won' ? legacy.t('war_day_won') : next === 'lost' ? legacy.t('war_day_lost') : legacy.t('war_day_pending');
+    }
+
+    void EventsService.upsertWarSession({
+      guild: this.currentGuild(),
+      eventName: s.activeEventName as WarEventName,
+      sessionId: s.sessionId,
+      dailyResults: { ['day' + day]: next }
+    }).then((res) => {
+      if (res.ok && res.session) war.session = res.session;
+      else this.renderWarBanner(tabKey);
+    });
+  }
+
+  private wireGranularInputs(el: Element, tabKey: string): void {
+    el.querySelectorAll('.day-score-input').forEach((node) => {
+      const inp = node as HTMLInputElement;
+      legacy.attachNumberFormatter(inp);
+      const pseudo = inp.getAttribute('data-pseudo') || '';
+      inp.addEventListener('input', () => {
+        const row = inp.closest('.participant-row');
+        if (row) this.updateChestCell(row, tabKey);
+        const timerKey = tabKey + '::' + pseudo;
+        if (this.warSaveTimers[timerKey]) clearTimeout(this.warSaveTimers[timerKey]);
+        this.warSaveTimers[timerKey] = setTimeout(() => {
+          void this.saveGranularRow(tabKey, pseudo, row);
+        }, 700);
+      });
+    });
+  }
+
+  private updateChestCell(row: Element | null, tabKey: string): void {
+    if (!row) return;
+    const grid = this.getWar(tabKey).grid;
+    let total = 0;
+    for (let d = 1; d <= 6; d++) {
+      const inp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="' + d + '"]');
+      const score = inp ? legacy.parseNumber(inp.value) : 0;
+      total += resolveChestsForScore(grid.filter((g) => g.day === d), score);
+    }
+    const cell = row.querySelector('.player-chests-cell');
+    if (cell) cell.textContent = total ? legacy.fmt(total) : '-';
+  }
+
+  private async saveGranularRow(tabKey: string, pseudo: string, row: Element | null): Promise<void> {
+    const s = this.state[tabKey];
+    if (!s.activeEventName || !s.sessionId) return;
+
+    let inputs: HTMLInputElement[] = [];
+    if (row) {
+      inputs = Array.from(row.querySelectorAll('.day-score-input'));
+    } else {
+      const el = this.getContentEl(tabKey);
+      inputs = el ? Array.from(el.querySelectorAll('.day-score-input')) : [];
+    }
+    if (inputs.length === 0) return;
+
+    const rows: Array<{ pseudo: string; day: number; score: number }> = [];
+    inputs.forEach((inp) => {
+      if (inp.getAttribute('data-pseudo') !== pseudo) return;
+      const day = Number(inp.getAttribute('data-day'));
+      if (!(day >= 1 && day <= 6)) return;
+      rows.push({ pseudo, day, score: legacy.parseNumber(inp.value) });
+    });
+    if (rows.length === 0) return;
+
+    const res = await EventsService.upsertDailyScores(
+      this.currentGuild(),
+      s.activeEventName as WarEventName,
+      s.sessionId,
+      rows
+    );
+    if (!res.ok) return;
+
+    const war = this.getWar(tabKey);
+    war.daily[pseudo] = rows.map((r) => ({
+      day: r.day,
+      score: r.score,
+      chests_unlocked: resolveChestsForScore(war.grid.filter((g) => g.day === r.day), r.score)
+    }));
+    const contentEl = this.getContentEl(tabKey);
+    if (row) this.updateChestCell(row, tabKey);
+    if (contentEl) this.refreshStats(contentEl, tabKey);
   }
 
   // ── Save participation / score ────────────────────────────────────────────
@@ -586,11 +897,14 @@ export class EventsView {
     const isSvsOrGvg = dbEventName === 'SvS' || dbEventName === 'GvG';
     const isDtr = dbEventName === 'Defend Trade Route';
     const hasScore = EVENTS_WITHOUT_SCORE.indexOf(dbEventName as string) === -1;
+    const granular = isSvsOrGvg && this.isGranular(tabKey);
     const done = participants.reduce((a, p) => a + (p.participated || 0), 0);
     const appointedCount = participants.reduce((a, p) => a + (p.appointed ? 1 : 0), 0);
-    const totalScore = isSvsOrGvg
-      ? participants.reduce((a, p) => a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0), 0)
-      : participants.reduce((a, p) => a + (p.score || 0), 0);
+    const totalScore = granular
+      ? this.warTotalScore(tabKey)
+      : isSvsOrGvg
+        ? participants.reduce((a, p) => a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0), 0)
+        : participants.reduce((a, p) => a + (p.score || 0), 0);
 
     const pendingCount = participants.reduce((a, p) => a + (p.is_pending ? 1 : 0), 0);
     const approveAllBtn = pendingCount > 0
@@ -619,9 +933,14 @@ export class EventsView {
           '<th>' + legacy.t('col_member') + '</th>' +
           '<th class="gm-center">' + legacy.t('col_participated') + '</th>' +
           (isDtr ? '<th class="gm-center">Appointed</th>' : '') +
-          (isSvsOrGvg
-            ? '<th class="gm-right">' + legacy.t('col_score_prep') + '</th><th class="gm-right">' + legacy.t('col_score_pvp') + '</th>'
-            : (hasScore ? '<th class="gm-right">' + legacy.t('col_score') + '</th>' : '')) +
+          (granular
+            ? [1, 2, 3, 4, 5, 6].map((d) =>
+                '<th class="gm-right">' + legacy.t('war_day_n').replace('{day}', String(d)) + '</th>'
+              ).join('') +
+              '<th class="gm-right">' + legacy.t('war_col_chests') + '</th>'
+            : (isSvsOrGvg
+              ? '<th class="gm-right">' + legacy.t('col_score_prep') + '</th><th class="gm-right">' + legacy.t('col_score_pvp') + '</th>'
+              : (hasScore ? '<th class="gm-right">' + legacy.t('col_score') + '</th>' : ''))) +
           (pendingCount > 0 ? '<th class="gm-center">Actions</th>' : '') +
         '</tr></thead><tbody>';
 
@@ -629,6 +948,25 @@ export class EventsView {
       const isChecked = p.participated > 0;
       const isAppointedChecked = !!p.appointed;
       const initial = legacy.avatarInit(p.pseudo);
+
+      let granularCells = '';
+      if (granular) {
+        const entries = this.getWar(tabKey).daily[p.pseudo] || [];
+        const dayScores: Record<number, number> = {};
+        for (const e of entries) dayScores[e.day] = e.score;
+        for (let d = 1; d <= 6; d++) {
+          const v = dayScores[d];
+          granularCells += '<td class="gm-right" data-label="Day ' + d + '">' +
+            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + legacy.esc(p.pseudo) + '" data-day="' + d + '" value="' + (v != null ? legacy.fmt(v) : '') + '" placeholder="-">' +
+          '</td>';
+        }
+        const grid = this.getWar(tabKey).grid;
+        let chestTotal = 0;
+        for (let d = 1; d <= 6; d++) {
+          chestTotal += resolveChestsForScore(grid.filter((g) => g.day === d), dayScores[d]);
+        }
+        granularCells += '<td class="gm-right player-chests-cell">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
+      }
 
       const rowClass = 'participant-row' + (isChecked ? ' participated' : '') + (p.is_pending ? ' pending-approval-row' : '');
       const rowStyle = p.is_pending ? 'background: rgba(245, 158, 11, 0.05); border-left: 3px solid var(--warning);' : '';
@@ -662,16 +1000,18 @@ export class EventsView {
                 '</label>' +
               '</td>'
             : '') +
-          (isSvsOrGvg
-            ? '<td class="gm-right" data-label="' + legacy.t('col_score_prep') + '">' +
-                '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? legacy.fmt(p.score_prep) : '') + '" placeholder="-" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
-              '</td>' +
-              '<td class="gm-right" data-label="' + legacy.t('col_score_pvp') + '">' +
-                '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? legacy.fmt(p.score_pvp) : '') + '" placeholder="-" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
-              '</td>'
-            : (hasScore ? '<td class="gm-right" data-label="' + legacy.t('col_score') + '">' +
-                '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? legacy.fmt(p.score) : '') + '" placeholder="-" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
-              '</td>' : '')) +
+          (granular
+            ? granularCells
+            : (isSvsOrGvg
+              ? '<td class="gm-right" data-label="' + legacy.t('col_score_prep') + '">' +
+                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? legacy.fmt(p.score_prep) : '') + '" placeholder="-" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
+                '</td>' +
+                '<td class="gm-right" data-label="' + legacy.t('col_score_pvp') + '">' +
+                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? legacy.fmt(p.score_pvp) : '') + '" placeholder="-" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
+                '</td>'
+              : (hasScore ? '<td class="gm-right" data-label="' + legacy.t('col_score') + '">' +
+                  '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? legacy.fmt(p.score) : '') + '" placeholder="-" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
+                '</td>' : ''))) +
           (pendingCount > 0 ? '<td class="gm-center" data-label="Actions">' + actionBtn + '</td>' : '') +
         '</tr>';
     });
@@ -736,9 +1076,13 @@ export class EventsView {
       });
     };
 
-    wireScoreInputs('.score-input', 'score', 'score');
-    wireScoreInputs('.score-input-prep', 'score_prep', 'score_prep');
-    wireScoreInputs('.score-input-pvp', 'score_pvp', 'score_pvp');
+    if (granular) {
+      this.wireGranularInputs(el, tabKey);
+    } else {
+      wireScoreInputs('.score-input', 'score', 'score');
+      wireScoreInputs('.score-input-prep', 'score_prep', 'score_prep');
+      wireScoreInputs('.score-input-pvp', 'score_pvp', 'score_pvp');
+    }
 
     const searchInput = el.querySelector('.event-search-input') as HTMLInputElement | null;
     if (searchInput) {
@@ -820,10 +1164,13 @@ export class EventsView {
   private refreshStats(el: Element, tabKey: string): void {
     const participants = this.state[tabKey].participants;
     const isSvsOrGvg = this.state[tabKey].activeEventName === 'SvS' || this.state[tabKey].activeEventName === 'GvG';
+    const granular = isSvsOrGvg && this.isGranular(tabKey);
     const done = participants.reduce((a, p) => a + (p.participated || 0), 0);
-    const totalScore = isSvsOrGvg
-      ? participants.reduce((a, p) => a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0), 0)
-      : participants.reduce((a, p) => a + (p.score || 0), 0);
+    const totalScore = granular
+      ? this.warTotalScore(tabKey)
+      : isSvsOrGvg
+        ? participants.reduce((a, p) => a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0), 0)
+        : participants.reduce((a, p) => a + (p.score || 0), 0);
     const chips = el.querySelectorAll('.event-stats .gm-chip');
     if (chips[1]) chips[1].innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated');
     if (chips[2]) chips[2].innerHTML = '<i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + legacy.t('event_absent');

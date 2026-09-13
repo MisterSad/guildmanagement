@@ -2,7 +2,7 @@
  * tests/i18n_core.test.js
  *
  * Golden suite for src/core/i18n/i18n.ts after the legacy root `i18n.js`
- * removal. The full English dictionary (523 keys) is now the single source of
+ * removal. The full English dictionary (537 keys) is now the single source of
  * truth; window.GM_I18N is provided by tests/setup.js (mirroring src/main.ts).
  */
 import { describe, it, expect } from 'vitest';
@@ -10,8 +10,8 @@ import { t, getLang, setLang, applyTranslations } from '../src/core/i18n/i18n';
 import { EN } from '../src/core/i18n/i18n.dictionary';
 
 describe('i18n dictionary (golden)', () => {
-  it('keeps the full 524-key English dictionary', () => {
-    expect(Object.keys(EN).length).toBe(524);
+  it('keeps the full 551-key English dictionary', () => {
+    expect(Object.keys(EN).length).toBe(551);
   });
 
   it('has no empty translation value', () => {

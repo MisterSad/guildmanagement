@@ -29,6 +29,9 @@ import {
   sortSessionsDesc,
   type HistorySession
 } from '../history.service';
+import { EventsService, type WarEventName } from '../../events/events.service';
+import { resolveChestsForScore } from '../../../core/scoring/chests';
+import type { ChestTier } from '../../../types/database';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -119,6 +122,7 @@ export class HistoryView {
   private sessions: HistorySession[] = [];
   private activeFilter = 'All';
   private historyLoading = false;
+  private warSessions: Record<string, any> = {};
 
   public getState(): { sessions: HistorySession[]; activeFilter: string } {
     return { sessions: this.sessions, activeFilter: this.activeFilter };
@@ -142,6 +146,15 @@ export class HistoryView {
         return;
       }
       this.sessions = (res.data || []) as HistorySession[];
+
+      // War metadata (opponent + daily results) for SvS/GvG cards/modal.
+      const warRes = await db.rpc('gm_list_war_sessions', { p_guild: currentG, p_event_name: '' });
+      if (!warRes.error && warRes.data && warRes.data.ok && Array.isArray(warRes.data.sessions)) {
+        this.warSessions = {};
+        (warRes.data.sessions as any[]).forEach((ws) => {
+          this.warSessions[(ws.event_name || '') + ':' + (ws.session_id || '')] = ws;
+        });
+      }
 
       // Manual fetch for Glory if not returned by the sessions RPC.
       const hasGlory = this.sessions.some((s) => s.event_name === 'Glory');
@@ -235,6 +248,21 @@ export class HistoryView {
       const ratio = (s.participants || 0) > 0 ? Math.round(((s.participated_count || 0) / (s.participants as number)) * 100) : 0;
       const themeClass = legacy.getEventTheme(s.event_name || '');
 
+      // Opponent + Won/Lost summary for SvS/GvG sessions with war metadata.
+      let warMetaHtml = '';
+      if (s.event_name === 'SvS' || s.event_name === 'GvG') {
+        const war = this.warSessions[(s.event_name) + ':' + (s.session_id || '')];
+        if (war && war.opponent_snapshot && war.opponent_snapshot.name) {
+          const won = [1, 2, 3, 4, 5, 6].filter((d) => war['day' + d + '_result'] === 'won').length;
+          const lost = [1, 2, 3, 4, 5, 6].filter((d) => war['day' + d + '_result'] === 'lost').length;
+          const opLabel = legacy.t('war_card_opponent').replace('{name}', String(war.opponent_snapshot.name));
+          let recLabel = '';
+          if (won || lost) recLabel = ' · ' + legacy.t('war_card_record').replace('{w}', String(won)).replace('{l}', String(lost));
+          warMetaHtml = '<div class="war-card-meta"><i class="ph ph-crosshair"></i> ' +
+            legacy.esc(opLabel) + legacy.esc(recLabel) + '</div>';
+        }
+      }
+
       let leftTopStr = '';
       let leftSubStr = '';
       let subtitleText = '';
@@ -271,7 +299,7 @@ export class HistoryView {
             '<div class="gm-timeline-dot"></div>' +
           '</div>' +
           '<div>' +
-            '<div class="gm-task-card gm-history-card ' + themeClass + '" data-event="' + legacy.esc(s.event_name) + '" data-display="' + legacy.esc(displayName) + '" data-session="' + legacy.esc(s.session_id || '') + '" data-week="' + legacy.esc(s.week_start) + '">' +
+            '<div class="gm-task-card gm-history-card ' + themeClass + '" data-event="' + legacy.esc(s.event_name) + '" data-display="' + legacy.esc(displayName) + '" data-session="' + legacy.esc(s.session_id || '') + '" data-week="' + legacy.esc(s.week_start) + '" data-granular="' + (s.granular ? '1' : '0') + '">' +
               '<div class="gm-task-card-top">' +
                 '<div class="gm-task-status-tag">' +
                   '<i class="ph ' + legacy.esc(iconClass) + '"></i>' +
@@ -289,6 +317,7 @@ export class HistoryView {
                 '<div class="gm-task-info">' +
                   '<div class="gm-task-title">' + legacy.esc(meta.label) + '</div>' +
                   '<div class="gm-task-sub">' + legacy.esc(subtitleText) + '</div>' +
+                  warMetaHtml +
                 '</div>' +
                 '<button class="gm-task-action-btn" title="View Session Details" aria-label="View session details">' +
                   '<i class="ph ph-caret-right" style="font-size:1.3rem;"></i>' +
@@ -329,7 +358,8 @@ export class HistoryView {
         const disp = card.getAttribute('data-display') || null;
         const sid = card.getAttribute('data-session') || null;
         const week = card.getAttribute('data-week') || '';
-        void this.openSessionDetail(ev, disp, sid, week);
+        const granular = card.getAttribute('data-granular') === '1';
+        void this.openSessionDetail(ev, disp, sid, week, granular);
       });
     });
   }
@@ -367,7 +397,7 @@ export class HistoryView {
     );
   }
 
-  private async openSessionDetail(eventName: string, displayName: string | null, sessionId: string | null, weekStart: string): Promise<void> {
+  private async openSessionDetail(eventName: string, displayName: string | null, sessionId: string | null, weekStart: string, granular: boolean): Promise<void> {
     const db = legacy.getDb();
     if (!db) return;
     const meta: any = EVENT_META[eventName] || { label: displayName || eventName, icon: 'ph-circle', hasScore: false, border: 'var(--border-soft)' };
@@ -391,7 +421,47 @@ export class HistoryView {
 
     const rows = (res.data || []) as any[];
     const isDualScore = (eventName === 'SvS' || eventName === 'GvG');
-    this.renderSessionModal(eventName, sessionId, weekStart, rows, meta, isDualScore);
+
+    // Granular mode: fetch the frozen grid + per-day scores and render the
+    // 6-day columns instead of the legacy aggregated score_prep/score_pvp.
+    let warExtra: { grid: ChestTier[]; daily: Record<string, Array<{ day: number; score: number; chests_unlocked: number }>> } | null = null;
+    let granularActive = false;
+    if (granular && sessionId && isDualScore) {
+      const [warRes, dayRes] = await Promise.all([
+        EventsService.getWarSession(legacy.getActiveGuild(), eventName as WarEventName, sessionId),
+        EventsService.getDailyScores(legacy.getActiveGuild(), eventName as WarEventName, sessionId)
+      ]);
+      if (warRes.ok && dayRes.ok) {
+        const snapshot = warRes.session
+          && Array.isArray(warRes.session.chest_tiers_snapshot)
+          && (warRes.session.chest_tiers_snapshot as unknown as unknown[]).length > 0
+          ? (warRes.session.chest_tiers_snapshot as unknown as ChestTier[])
+          : [];
+        const daily: Record<string, Array<{ day: number; score: number; chests_unlocked: number }>> = {};
+        dayRes.rows.forEach((r) => {
+          (daily[r.pseudo] = daily[r.pseudo] || []).push({ day: r.day, score: r.score ?? 0, chests_unlocked: r.chests_unlocked ?? 0 });
+        });
+        warExtra = { grid: snapshot, daily };
+        granularActive = true;
+      }
+    }
+
+    this.renderSessionModal(eventName, sessionId, weekStart, rows, meta, isDualScore && !granularActive, granularActive, warExtra);
+  }
+
+  private async updateGranularDayField(eventName: string, sessionId: string, pseudo: string, day: number, score: number): Promise<void> {
+    if (!(day >= 1 && day <= 6)) return;
+    const res = await EventsService.upsertDailyScores(
+      legacy.getActiveGuild(),
+      eventName as WarEventName,
+      sessionId,
+      [{ pseudo, day, score }]
+    );
+    if (res.ok) {
+      legacy.showToast(legacy.t('war_save_daily_success'), 'success');
+    } else {
+      legacy.showToast(legacy.t('war_save_tiers_error') + (res.error && res.error !== 'rpc_failed' ? ' ' + res.error : ''), 'error');
+    }
   }
 
   private async updateParticipantField(eventName: string, sessionId: string | null, weekStart: string, pseudo: string, field: string, value: unknown): Promise<void> {
@@ -420,7 +490,16 @@ export class HistoryView {
     }
   }
 
-  private renderSessionModal(eventName: string, sessionId: string | null, weekStart: string, rows: any[], meta: any, isDualScore: boolean): void {
+  private renderSessionModal(
+    eventName: string,
+    sessionId: string | null,
+    weekStart: string,
+    rows: any[],
+    meta: any,
+    isDualScore: boolean,
+    granular = false,
+    warExtra: { grid: ChestTier[]; daily: Record<string, Array<{ day: number; score: number; chests_unlocked: number }>> } | null = null
+  ): void {
     const existing = document.getElementById('history-modal');
     if (existing) existing.remove();
 
@@ -437,6 +516,7 @@ export class HistoryView {
 
     const isDtr = (eventName === 'Defend Trade Route');
     const isAdmin = (legacy.roleFromStorage() !== 'member');
+    const hasGrid = granular && !!(warExtra && warExtra.grid && warExtra.grid.length > 0);
 
     let headerCols = '<th>' + legacy.t('col_member') + '</th>';
     const hasParticipated = (eventName !== 'Glory');
@@ -445,14 +525,46 @@ export class HistoryView {
       headerCols += '<th class="gm-center">Late</th><th class="gm-center">Excused</th><th class="gm-center">Sub Present</th>';
     }
     if (isDtr) headerCols += '<th class="gm-center">Appointed</th>';
-    if (isDualScore) headerCols += '<th class="gm-right">' + legacy.t('col_score_prep') + '</th><th class="gm-right">' + legacy.t('col_score_pvp') + '</th>';
-    else if (meta.hasScore) headerCols += '<th class="gm-right">' + legacy.t('col_score') + '</th>';
+    if (granular) {
+      for (let d = 1; d <= 6; d++) {
+        headerCols += '<th class="gm-right">' + legacy.t('war_day_n').replace('{day}', String(d)) + '</th>';
+      }
+      if (hasGrid) headerCols += '<th class="gm-right">' + legacy.t('war_col_chests') + '</th>';
+    } else if (isDualScore) {
+      headerCols += '<th class="gm-right">' + legacy.t('col_score_prep') + '</th><th class="gm-right">' + legacy.t('col_score_pvp') + '</th>';
+    } else if (meta.hasScore) {
+      headerCols += '<th class="gm-right">' + legacy.t('col_score') + '</th>';
+    }
 
     const rowsHtml = sorted.map((r) => {
       const initial = legacy.avatarInit(r.pseudo);
       let participatedCell = '', lateCell = '', excusedCell = '', subPresentCell = '', appointedCell = '', scoreCells = '';
 
-      if (isAdmin) {
+      // Granular SvS/GvG: six per-day columns (+ chests) instead of the
+      // aggregated score_prep / score_pvp fields.
+      if (granular) {
+        const dayOf: Record<number, number> = {};
+        if (warExtra) {
+          ((warExtra.daily[r.pseudo]) || []).forEach((e) => { dayOf[e.day] = e.score; });
+        }
+        let dayCells = '';
+        for (let d = 1; d <= 6; d++) {
+          const v = dayOf[d];
+          if (isAdmin) {
+            dayCells += '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + legacy.esc(r.pseudo) + '" data-day="' + d + '" value="' + (v != null ? legacy.fmt(v) : '') + '"></td>';
+          } else {
+            dayCells += '<td class="gm-right">' + (v != null ? legacy.fmt(v) : '-') + '</td>';
+          }
+        }
+        if (hasGrid && warExtra) {
+          let chestTotal = 0;
+          for (let d = 1; d <= 6; d++) {
+            chestTotal += resolveChestsForScore(warExtra.grid.filter((g) => g.day === d), dayOf[d]);
+          }
+          dayCells += '<td class="gm-right">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
+        }
+        scoreCells = dayCells;
+      } else if (isAdmin) {
         if (hasParticipated) {
           participatedCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
         }
@@ -547,7 +659,7 @@ export class HistoryView {
           void this.updateParticipantField(eventName, sessionId, weekStart, pseudo, field, val);
         });
       });
-      overlay.querySelectorAll('.hist-edit-num').forEach((el) => {
+      overlay.querySelectorAll('.hist-edit-num:not(.hist-day-input)').forEach((el) => {
         const input = el as HTMLInputElement;
         legacy.attachNumberFormatter(input);
         input.addEventListener('change', () => {
@@ -555,6 +667,16 @@ export class HistoryView {
           const field = input.getAttribute('data-field') || '';
           const val = legacy.parseNumber(input.value);
           void this.updateParticipantField(eventName, sessionId, weekStart, pseudo, field, val);
+        });
+      });
+      overlay.querySelectorAll('.hist-day-input').forEach((el) => {
+        const input = el as HTMLInputElement;
+        legacy.attachNumberFormatter(input);
+        input.addEventListener('change', () => {
+          const pseudo = input.getAttribute('data-pseudo') || '';
+          const day = Number(input.getAttribute('data-day'));
+          const val = legacy.parseNumber(input.value);
+          if (sessionId) void this.updateGranularDayField(eventName, sessionId, pseudo, day, val);
         });
       });
     }

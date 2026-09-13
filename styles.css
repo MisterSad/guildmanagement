@@ -1883,6 +1883,107 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     gap: 1.25rem;
     margin-top: 1rem;
 }
+.chest-tiers-tab {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.chest-tiers-tab.gm-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.chest-tier-day {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.chest-tier-day-header {
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1.5px solid var(--border-soft);
+    padding-bottom: 0.45rem;
+}
+.chest-tier-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.chest-tier-index {
+    width: 2rem;
+    font-size: var(--fs-sm);
+    color: var(--fg-dim);
+    font-weight: 700;
+    text-align: center;
+    flex-shrink: 0;
+}
+.chest-tier-arrow {
+    color: var(--fg-dim);
+}
+.chest-tier-min { max-width: 130px; }
+.chest-tier-chests { max-width: 100px; }
+.chest-tier-remove { flex-shrink: 0; }
+.chest-tier-empty {
+    font-size: var(--fs-sm);
+    color: var(--fg-dim);
+    font-style: italic;
+}
+.chest-tier-add { align-self: flex-start; }
+.war-day-toggle {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    min-width: 3.4rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    color: var(--fg-dim);
+    cursor: pointer;
+    font-size: var(--fs-sm);
+    transition: var(--transition);
+}
+.war-day-toggle:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+}
+.war-day-num {
+    font-weight: 700;
+    font-size: var(--fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+}
+.war-day-state { font-weight: 700; }
+.war-day-toggle.war-day-won {
+    background: rgba(52, 211, 153, 0.12);
+    border-color: rgba(52, 211, 153, 0.45);
+    color: #34d399;
+}
+.war-day-toggle.war-day-lost {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #f87171;
+}
+.player-chests-cell {
+    font-weight: 700;
+    color: var(--accent-lime);
+    white-space: nowrap;
+}
+.war-card-meta {
+    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
 .notification-group {
     background: rgba(255, 255, 255, 0.015);
     border: 1px solid var(--border-soft);
