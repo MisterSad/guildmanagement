@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 // Regression coverage for commit 506078a: the OCR modal's Cancel button had
-// zero JS wiring (only the X icon closed the modal). openOcrModal() is
-// exposed on window.GM with no login/backend dependency, so we bypass the
-// dashboard boot entirely and open the modal directly, same bypass style as
-// portal.spec.js's openPortal() helper.
+// zero JS wiring (only the X icon closed the modal). The typed bridge exposes
+// openOcrModal() on window.GM_OCR with no login/backend dependency, so we
+// bypass the dashboard boot entirely and open the modal directly, same bypass
+// style as portal.spec.js's openPortal() helper.
 
 function openMembersOcrModal(page) {
-    return page.evaluate(() => window.GM.openOcrModal('members'));
+    return page.evaluate(() => window.GM_OCR.openOcrModal('members'));
 }
 
 test.beforeEach(async ({ page }) => {
