@@ -246,11 +246,18 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
       expect(SubmitScoresSchema.safeParse({ event_name: '', session_id: 's1' }).success).toBe(false);
     });
 
-    it('rejects negative scores or scores exceeding 500M bound', () => {
+    it('accepts scores above 500M up to the 9,999,999,999 bound', () => {
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: 500_000_001 }).success).toBe(true);
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_prep: 4_999_999_999 }).success).toBe(true);
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_pvp: 9_999_999_999 }).success).toBe(true);
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: '9,999,999,999' }).success).toBe(true);
+    });
+
+    it('rejects negative scores or scores exceeding the 9,999,999,999 bound', () => {
       expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: -1 }).success).toBe(false);
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: 500_000_001 }).success).toBe(false);
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: 10_000_000_000 }).success).toBe(false);
       expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_prep: -10 }).success).toBe(false);
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_pvp: 600_000_000 }).success).toBe(false);
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_pvp: 10_000_000_000 }).success).toBe(false);
     });
 
     it('rejects malformed string scores', () => {
@@ -294,11 +301,16 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
       expect(UpdateMetricsSchema.safeParse({ total_power: 5000 }).success).toBe(true);
     });
 
+    it('accepts glory metrics above 500M up to the 9,999,999,999 bound', () => {
+      expect(UpdateMetricsSchema.safeParse({ glory_score: 500_000_001 }).success).toBe(true);
+      expect(UpdateMetricsSchema.safeParse({ glory_score: 9_999_999_999 }).success).toBe(true);
+    });
+
     it('rejects out of bounds metrics', () => {
       expect(UpdateMetricsSchema.safeParse({ total_power: -5 }).success).toBe(false);
       expect(UpdateMetricsSchema.safeParse({ tech_power: 6_000_000_000 }).success).toBe(false);
       expect(UpdateMetricsSchema.safeParse({ glory_score: -1 }).success).toBe(false);
-      expect(UpdateMetricsSchema.safeParse({ glory_score: 500_000_001 }).success).toBe(false);
+      expect(UpdateMetricsSchema.safeParse({ glory_score: 10_000_000_000 }).success).toBe(false);
     });
   });
 
@@ -321,12 +333,13 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
       expect(UpdateGlorySchema.safeParse({ glory: 0 }).success).toBe(true);
       expect(UpdateGlorySchema.safeParse({ glory: 500000 }).success).toBe(true);
       expect(UpdateGlorySchema.safeParse({ glory: 500_000_000 }).success).toBe(true);
+      expect(UpdateGlorySchema.safeParse({ glory: 9_999_999_999 }).success).toBe(true);
       expect(UpdateGlorySchema.safeParse({ glory: '150,000' }).success).toBe(true);
     });
 
     it('rejects invalid or out of bound glory scores', () => {
       expect(UpdateGlorySchema.safeParse({ glory: -1 }).success).toBe(false);
-      expect(UpdateGlorySchema.safeParse({ glory: 500_000_001 }).success).toBe(false);
+      expect(UpdateGlorySchema.safeParse({ glory: 10_000_000_000 }).success).toBe(false);
       expect(UpdateGlorySchema.safeParse({ glory: 'invalid' }).success).toBe(false);
       expect(UpdateGlorySchema.safeParse({}).success).toBe(false);
     });

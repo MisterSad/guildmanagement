@@ -6,12 +6,12 @@
 - **Base de données :** Supabase PostgreSQL (42 tables persistantes actives avec RLS hermétique — y compris les 4 tables de guerre `war_opponents`/`war_sessions`/`event_daily_scores`/`event_chest_tiers` — sur 45 `CREATE TABLE` historiques, helpers SECURITY DEFINER avec search_path vide, résolution de rôles stricte via table `accounts`).
 - **Edge Functions (16 live) :** Deno / TypeScript dans `supabase/functions/` — 8 publiques sans JWT (`verify_jwt = false` : `auth-login`, `auth-passkey`, `player-register`, `guild-request`, `event-reminders`, `gm-stripe-webhook`, `discord-bot-interactions`, `discord-profile-verification`) et 8 sécurisées par JWT (`verify_jwt = true` : `member-portal`, `admin-accounts`, `ocr-guild-members`, `discord-webhook-proxy`, `gm-create-order`, `gm-order-status`, `guild-data-export`, `tickets`).
 - **Authentification & Crypto :** WebAuthn (Passkeys RP_ID `guildmanagement.vercel.app`), Discord OAuth2/Ed25519.
-- **Tests :** Vitest (101 suites, 1 152 tests, 100 % passants — état vérifié au 2026-09-13 après la mission SvS/GvG Granular War Management), Playwright (E2E sur port 4173), syntax-check racine et type-check TypeScript.
+- **Tests :** Vitest (102 suites, 1 162 tests, 100 % passants — état vérifié au 2026-09-13 après la mission SvS/GvG Granular War Management et le relèvement du plafond de score/gloire), Playwright (E2E sur port 4173), syntax-check racine et type-check TypeScript.
 - **Hébergement :** Vercel (frontend statique + headers de sécurité dans `vercel.json`), Supabase Cloud (PostgreSQL, Auth, Edge Functions).
 
 ## 2. Règles d'Or & Standards d'Ingénierie
 - **Stratégie de Modularisation (Strangler) :** Tout nouveau code est écrit sous forme de module TypeScript/ESM dans `/src/`. Interdiction stricte de créer de nouveaux fichiers `.js` à la racine ou d'ajouter de nouvelles variables globales sur `window.GM_*`.
-- **Porte Qualité CI :** Aucun commit sans que `npm run type-check`, `npm test` (1 152 tests verts, 101 suites) et `scripts/build.js` ne soient au vert.
+- **Porte Qualité CI :** Aucun commit sans que `npm run type-check`, `npm test` (1 162 tests verts, 102 suites) et `scripts/build.js` ne soient au vert.
 - **Sécurité RLS :** 100 % des tables doivent avoir `ENABLE ROW LEVEL SECURITY` et `FORCE ROW LEVEL SECURITY`. Les rôles sont lus exclusivement dans la table `accounts` (aucun fallback `user_metadata`).
 - **Logos & Tiers :** Utiliser exclusivement le package `simple-icons` pour tout logo officiel tiers (Discord, Google, Apple, etc.). Ne jamais inventer de SVG à la main.
 
@@ -68,6 +68,30 @@ Mission d'audit global terminée et **déployée en production le 2026-09-13** (
 
 ### État des tests (fin de mission, 2026-09-13)
 - `npm run type-check` : **0 erreur**.
-- `npm test` : **1 152 tests réussis / 101 suites** (+7 depuis 1 145) — scoring coffres (11 tests), mode granulaire EventsView (6 tests), golden i18n 551.
+- `npm test` : **1 162 tests réussis / 102 suites** (+10 depuis 1 152) — scoring coffres (11 tests), mode granulaire EventsView (7 tests), golden i18n 551, gardes statiques plafond de score (7 tests).
 - `npm run build` : production stable, `version.json` V3.18.0.
-- **Déploiement requis** : `supabase db push` (migration 20260914090000) puis push frontend (Vercel) — le push git seul n'applique pas le SQL.
+- **Déploiement requis** : `supabase db push` (migrations 20260914090000 + 20260914100000) puis push frontend (Vercel) — le push git seul n'applique pas le SQL.
+
+## 5. Clôture Mission — Relèvement du plafond de score/gloire à 9 999 999 999 (2026-09-13)
+
+Le plafond de tracking des scores d'événements et de gloire passe de 500 000 000 à **9 999 999 999** (migration `supabase/migrations/20260914100000_raise_event_score_limit_to_9999999999.sql`, `feat(scores)`).
+
+### Données (migration 20260914100000)
+- **Colonnes élargies en BIGINT** (INT4 plafonne à ~2.147B < 9.99B) :
+  - `event_participants.score` / `score_prep` / `score_pvp` ;
+  - `event_daily_scores.score` (grille granulaire Day 1-6) ;
+  - `weekly_scores.glory_score`.
+  - (`guild_members.glory_score` et `player_metrics_history.glory_score` étaient déjà en BIGINT.) Aucun CHECK de borne haute à modifier.
+- **RPC `gm_upsert_daily_scores`** re-définie : borne par jour `<= 9 999 999 999`, sommes dérivées D1-5/D6 en `::bigint` (le cast `::integer` aurait débordé).
+- **RPC `gm_upsert_player_glory`** re-définie : paramètre `p_glory bigint` (les 2 overloads `integer` supprimés), cap `LEAST(9999999999, …)`, suppression du cast d'écriture `::integer`.
+
+### Validation & propagation
+- **Constante SSOT** `supabase/functions/_shared/player-actions.ts` : `MAX_ALLOWED_EVENT_SCORE = 9_999_999_999` — propagée aux schémas Zod et `parseSafeScore` de `member-portal` et `discord-bot-interactions` (aucun doublon). Types TS inchangés (`number` sûr jusqu'à 9.99B).
+- EventsView/HistoryView : aucune borne client-side à adapter (le batch granulaire transmet les valeurs telles quelles au RPC).
+- Tests : gardes statiques `tests/score_limit.test.js` (cols BIGINT, bornes, zéro résiduel 500M sous `supabase/functions/` et `src/`), schémas Zod `portal_matrix` (acceptation 500 000 001 → 9 999 999 999, rejet 10 000 000 000), EventsView granulaire (score 9 999 999 999 transmis tel quel).
+
+### État des tests (fin de mission, 2026-09-13)
+- `npm run type-check` : **0 erreur**.
+- `npm test` : **1 162 tests réussis / 102 suites** (+1 suite `score_limit` et +10 tests).
+- `npm run build` : production stable, `version.json` V3.18.0.
+- **Déploiement requis** : `supabase db push` (migration 20260914100000) + redéploiement des Edge Functions `member-portal`, `discord-bot-interactions` et `ocr-guild-members` (constante partagée).

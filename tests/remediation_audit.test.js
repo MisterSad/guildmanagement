@@ -52,7 +52,7 @@ describe('Audit Remediation Verification Suite', () => {
     // (Discord bot Phase 2) so discord-bot-interactions can reuse the same
     // bounds -- member-portal now imports it rather than redefining it.
     const playerActionsContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/player-actions.ts'), 'utf-8');
-    expect(playerActionsContent).toContain('MAX_ALLOWED_EVENT_SCORE = 500_000_000');
+    expect(playerActionsContent).toContain('MAX_ALLOWED_EVENT_SCORE = 9_999_999_999');
     expect(playerActionsContent).toContain('function parseSafeScore');
     expect(content).toContain('parseSafeScore,');
     expect(content).toContain('} from "../_shared/player-actions.ts"');

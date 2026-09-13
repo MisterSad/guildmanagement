@@ -19,7 +19,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPlayer } from "./member-lookup.ts";
 
 export const MAX_ALLOWED_POWER = 5_000_000_000;
-export const MAX_ALLOWED_EVENT_SCORE = 500_000_000;
+export const MAX_ALLOWED_EVENT_SCORE = 9_999_999_999;
 
 export function parseSafeScore(val: unknown): number | null {
   if (val === undefined || val === null || val === "") return null;

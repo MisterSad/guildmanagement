@@ -247,6 +247,22 @@ describe('EventsView — granular war mode', () => {
     }));
   });
 
+  it('forwards day scores above 500M unchanged up to 9,999,999,999', async () => {
+    const view = new EventsView();
+    await view.loadEvent('SvS');
+
+    const day6 = area('event-svs').querySelector('.day-score-input[data-pseudo="Alpha"][data-day="6"]');
+    day6.value = '9999999999';
+    day6.dispatchEvent(new Event('input'));
+    await new Promise((r) => setTimeout(r, 800));
+
+    const calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_daily_scores');
+    expect(calls.length).toBe(1);
+    expect(calls[0][1].p_rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ pseudo: 'Alpha', day: 6, score: 9999999999 })
+    ]));
+  });
+
   it('creates/updates the war opponent through gm_upsert_war_session', async () => {
     const view = new EventsView();
     await view.loadEvent('SvS');
