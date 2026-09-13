@@ -59,17 +59,17 @@ describe('Bug-report ticketing (V3.5.3)', () => {
   });
 
   it('the topbar Report-a-bug button is gated by isGuildAdmin (all 3 admin roles, member excluded)', () => {
-    const shell = read('shell.js');
+    const shell = read('src/modules/shell/views/ShellView.ts');
     expect(shell).toContain('data-gm-report-bug');
-    expect(shell).toContain('window.GM.isGuildAdmin()');
+    expect(shell).toContain('isGuildAdmin()');
     expect(shell).toContain('openBugReportModal');
     // A super-admin Tickets nav item exists
     expect(shell).toContain("id: 'tickets'");
   });
 
   it('the desktop sidebar also renders the Report-a-bug button (topbar is hidden >= 901px)', () => {
-    const shell = read('shell.js');
-    const sidebar = shell.slice(shell.indexOf('function renderSidebar'), shell.indexOf('function renderTopbar'));
+    const shell = read('src/modules/shell/views/ShellView.ts');
+    const sidebar = shell.slice(shell.indexOf('public renderSidebar(): void'), shell.indexOf('public renderTopbar(): void'));
     expect(sidebar).toContain('gm-sidebar-report-bug');
     expect(sidebar).toContain("(canReportBug");
     expect(sidebar).toContain('openBugReportModal');
@@ -87,9 +87,9 @@ describe('Bug-report ticketing (V3.5.3)', () => {
   });
 
   it('tickets are submitted through the tickets Edge Function and escape output', () => {
-    const shell = read('shell.js');
+    const shell = read('src/modules/shell/views/ShellView.ts');
     expect(shell).toContain("functions.invoke('tickets'");
-    const modalStart = shell.indexOf('function openBugReportModal');
+    const modalStart = shell.indexOf('public openBugReportModal(): void');
     const modal = shell.slice(modalStart, modalStart + 20000);
     expect(modal).toContain('gm-modal-overlay');
     expect(modal).toContain('bug-report-submit');
@@ -157,7 +157,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(migration).toContain('ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS attachments JSONB');
     expect(migration).toContain('p_attachments jsonb');
 
-    const shell = read('shell.js');
+    const shell = read('src/modules/shell/views/ShellView.ts');
     expect(shell).toContain('ticket-dropzone');
     expect(shell).toContain('ticket-file-input');
     expect(shell).toContain('ticket-screenshots-preview');

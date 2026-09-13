@@ -64,7 +64,7 @@ describe('Leader Hall mobile breakpoint aligned to the shell (900px, was 768px)'
 });
 
 describe('Nav reorganization: Leader Hall -> play, Donate -> footer', () => {
-  const shellJs = read('shell.js');
+  const shellJs = read('src/modules/shell/views/ShellView.ts');
 
   it('leader-hall item is in the play section', () => {
     const idx = shellJs.indexOf("id: 'leader-hall'");
@@ -80,8 +80,8 @@ describe('Nav reorganization: Leader Hall -> play, Donate -> footer', () => {
   });
 
   it('renderSidebar renders footer-section items as a lightweight link near the legal footer', () => {
-    expect(shellJs).toContain("var footerItems = visible.filter(function (i) { return i.section === 'footer'; });");
-    expect(shellJs).toContain('footerItems.map(function (item)');
+    expect(shellJs).toContain("const footerItems = visible.filter((i) => i.section === 'footer');");
+    expect(shellJs).toContain('footerItems.map((item) =>');
   });
 });
 

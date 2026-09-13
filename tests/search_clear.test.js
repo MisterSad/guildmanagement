@@ -27,9 +27,9 @@ describe('Search Input Clear Button Feature', () => {
     expect(compCss).toContain('.gm-search-clear-btn');
   });
 
-  it('shell.js defines and registers wireSearchClearButtons', () => {
-    const shellJs = read('shell.js');
-    expect(shellJs).toContain('function wireSearchClearButtons()');
+  it('ShellView defines and registers wireSearchClearButtons', () => {
+    const shellJs = read('src/modules/shell/views/ShellView.ts');
+    expect(shellJs).toContain('wireSearchClearButtons(): void');
     expect(shellJs).toContain('wireSearchClearButtons();');
   });
 

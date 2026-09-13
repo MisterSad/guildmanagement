@@ -24,12 +24,12 @@ describe('Release version propagation (v3.5.2)', () => {
     expect(utils).toContain('appVersion: APP_VERSION');
   });
 
-  it('shell.js renders the version above Terms & Conditions (sidebar + drawer) via the dynamic bridge value', () => {
-    const shell = read('shell.js');
+  it('ShellView renders the version above Terms & Conditions (sidebar + drawer) via the dynamic bridge value', () => {
+    const shell = read('src/modules/shell/views/ShellView.ts');
     // Both render sites read window.GM.appVersion dynamically (never a hardcoded copy)
     const renders = (shell.match(/gm-app-version/g) || []).length;
     expect(renders).toBeGreaterThanOrEqual(2);
-    expect(shell).toContain('window.GM.appVersion');
+    expect(shell).toContain('g.appVersion');
     // The version element sits above the Terms & Conditions link in the sidebar
     const sidebarFooter = shell.slice(shell.indexOf('gm-sidebar-legal-footer'));
     expect(sidebarFooter.indexOf('gm-app-version')).toBeLessThan(sidebarFooter.indexOf('footer_terms'));

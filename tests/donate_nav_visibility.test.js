@@ -14,10 +14,10 @@ const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
 describe('Donate nav item ("Buy Me a Coffee") visibility', () => {
-    const shell = read('shell.js');
+    const shell = read('src/modules/shell/views/ShellView.ts');
 
     it('the subscription/donate NAV_ITEMS entry is still adminOnly (never shown to a member)', () => {
-        const navStart = shell.indexOf('var NAV_ITEMS = [');
+        const navStart = shell.indexOf('const NAV_ITEMS: ShellNavItem[] = [');
         const navEnd = shell.indexOf('];', navStart);
         const nav = shell.slice(navStart, navEnd);
         const donateLine = nav.split('\n').find((l) => l.includes("id: 'subscription'"));
@@ -31,15 +31,15 @@ describe('Donate nav item ("Buy Me a Coffee") visibility', () => {
     });
 
     it('visibleNavItems only excludes adminOnly items for a member, not by allowlisting specific admin roles', () => {
-        const fnStart = shell.indexOf('function visibleNavItems()');
-        const fnEnd = shell.indexOf('\n    }', fnStart);
+        const fnStart = shell.indexOf('visibleNavItems(): ShellNavItem[]');
+        const fnEnd = shell.indexOf('\n  }', fnStart);
         const fn = shell.slice(fnStart, fnEnd);
         expect(fn).toMatch(/if\s*\(i\.adminOnly\s*&&\s*role\s*===\s*['"]member['"]\)\s*return;/);
     });
 });
 
 describe('Donate nav item styling (coffee-brown accent) is wired everywhere the link renders', () => {
-    const shell = read('shell.js');
+    const shell = read('src/modules/shell/views/ShellView.ts');
     const shellCss = read('shell.css');
     const portalJs = read('portal.js');
 

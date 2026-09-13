@@ -11,8 +11,8 @@ const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
 describe('Settings sub-tab consolidation (v3.5.2)', () => {
   it('NAV_ITEMS no longer registers standalone SvS/GvG matchup items', () => {
-    const shell = read('shell.js');
-    const navStart = shell.indexOf('var NAV_ITEMS = [');
+    const shell = read('src/modules/shell/views/ShellView.ts');
+    const navStart = shell.indexOf('const NAV_ITEMS: ShellNavItem[] = [');
     const navEnd = shell.indexOf('];', navStart);
     const nav = shell.slice(navStart, navEnd);
     expect(nav).not.toContain("id: 'svs-matchup'");
@@ -34,12 +34,12 @@ describe('Settings sub-tab consolidation (v3.5.2)', () => {
     expect(html).not.toContain('id="tab-gvg-matchup"');
   });
 
-  it('shell.js wires the sub-tabs to the draft/svs/gvg loaders', () => {
-    const shell = read('shell.js');
-    expect(shell).toContain('function wireSettingsSubtabs');
-    expect(shell).toContain('draft: function () { if (window.GM_SETTINGS) window.GM_SETTINGS.load(); }');
-    expect(shell).toContain('svs:   function () { if (window.GM_SVS_MATCHUP) window.GM_SVS_MATCHUP.load(); }');
-    expect(shell).toContain('gvg:   function () { if (window.GM_GVG_MATCHUP) window.GM_GVG_MATCHUP.load(); }');
-    expect(shell).toContain('wireSettingsSubtabs();');
+  it('shell module wires the sub-tabs to the draft/svs/gvg loaders', () => {
+    const shell = read('src/modules/shell/views/ShellView.ts');
+    expect(shell).toContain('wireSettingsSubtabs');
+    expect(shell).toContain('draft: () => callLoad(lazyModules.settings())');
+    expect(shell).toContain('svs: () => callLoad(lazyModules.svsMatchup())');
+    expect(shell).toContain('gvg: () => callLoad(lazyModules.gvgMatchup())');
+    expect(shell).toContain('this.wireSettingsSubtabs();');
   });
 });

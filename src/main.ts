@@ -55,6 +55,7 @@ import { EventsService } from './modules/events/events.service';
 import { ShadowfrontService } from './modules/shadowfront/shadowfront.service';
 import { StatsService } from './modules/stats/stats.service';
 import { statsView } from './modules/stats/views/StatsView';
+import { shellView } from './modules/shell/views/ShellView';
 import { PortalService } from './modules/portal/portal.service';
 import { AuditService } from './modules/audit/audit.service';
 import { logger } from './core/logger/logger';
@@ -154,6 +155,16 @@ if (typeof window !== 'undefined') {
     getState: () => statsView.getState()
   };
 
+  // Backward-compatible shell entrypoint. Replaces the former root shell.js
+  // (Strangler cutover): app.js, gm-leader-hall.js and subscription.service.ts
+  // keep calling window.GM_SHELL.gotoItem/renderShell/renderSidebar/renderTopbar.
+  (window as any).GM_SHELL = {
+    gotoItem: (itemId: string) => shellView.gotoItem(itemId),
+    renderShell: () => shellView.renderShell(),
+    renderSidebar: () => shellView.renderSidebar(),
+    renderTopbar: () => shellView.renderTopbar()
+  };
+
   (window as any).GM.components = {
     BaseComponent,
     ToastNotification,
@@ -192,5 +203,8 @@ if (typeof window !== 'undefined') {
     // with raw i18n keys for every element outside that partial dictionary.
     // Migrating i18n itself is a separate future module.
     initPWA();
+    // Former shell.js bootstrap (DOMContentLoaded): wrap the dashboard and
+    // render the shell once the DOM is ready.
+    shellView.init();
   });
 }
