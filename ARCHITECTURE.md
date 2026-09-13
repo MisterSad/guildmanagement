@@ -115,6 +115,8 @@ Authentication operates on an **accounts-table-only** role resolution model. `us
 3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Write operations require active SaaS subscription (`public.is_subscription_active()`).
 4. **`member`**: **Zero direct database table access**. Communicates exclusively through the `member-portal` Edge Function.
 
+> These are the **only** values `accounts.role` may hold — the DB enforces it via the `accounts_role_check` CHECK constraint (column default `member`). The legacy virtual/in-game ranks (`R5`, `R4`) and the historical `admin` alias were **retired on 2026-09-13** and are rejected by the constraint; no helper maps them to elevated access anymore.
+
 #### 2.1 Passkeys / WebAuthn (Alternate Sign-In, added 2026-09)
 Any account (admin or portal) can additionally register a Passkey per device instead of typing a password every time. Backed by `@simplewebauthn/server@10.0.1` (server-side crypto only — no `@simplewebauthn/browser` client dependency; `gm-webauthn.js` hand-rolls the base64url/ArrayBuffer marshalling to avoid adding a new CDN origin).
 - **Registration**: `auth-passkey` `register-options`/`register-verify` (JWT-authenticated). First passkey on an account also issues 10 one-time backup codes (SHA-256 hashed, shown once).
@@ -122,6 +124,14 @@ Any account (admin or portal) can additionally register a Passkey per device ins
 - **iOS constraint**: `PushManager`/full WebAuthn UX is materially better inside an installed PWA — see §6 for the same "must be installed" constraint on push notifications.
 - **Admin escape hatch**: `admin-reset-passkeys` action revokes every passkey + backup code for a target account (lost every device and the codes), gated by the same `canManageAccount`/`admin-authz.ts` matrix as the manual password-reset flow. R5 is not specially protected here (unlike the rank-assignment matrix) — the existing role hierarchy check already prevents managing an equal-or-higher role.
 - **Rate limiting**: `auth-passkey` and `auth-login` share one IP budget (`login_throttle`, keyed purely by IP, not by which function calls it) — a passkey sign-in costs 2 requests (options + verify), and the conditional/autofill listener adds a background options call on every page load. Widen this budget (not the per-function limit) if login attempts start getting throttled after adding another auth-adjacent feature.
+
+#### 2.2 Strict Role Isolation & Session Invalidation (added 2026-09-13)
+
+- **Canonical roles only**: `accounts_role_check` restricts `accounts.role` to exactly `{ super_admin, server_admin, guild_admin, member }` (default `member`). The legacy in-game/virtual ranks `R5`/`R4`/`admin` are **forbidden at the database level** — the client-side and edge-side `normalizeRole()` (in `_shared/admin-authz.ts`) maps any such value to `member`, never to an elevated role.
+- **Exact authorization helpers**: `is_super_admin()`, `is_server_admin()` and `gm_can_read_guilds()` now resolve the caller **exclusively** from `public.accounts` (`auth_user_id = auth.uid()` AND `status = 'active'`) with zero role aliasing and zero metadata fallback. All RLS policies that reference them inherit the tightened semantics (e.g. `server_migration_groups` writes now require a true `super_admin`).
+- **Session-invalidation epoch (M4)**: `public.accounts.session_version` (integer, default 0) is bumped on every privileged account event — password reset, role change, suspension (`admin-accounts` `bumpSessionVersion()`). `public.gm_session_is_valid()` compares that epoch against the JWT's `app_metadata.session_version` claim, which the shadow-session minting path (`_shared/shadow-session.ts`) stamps on every create/refresh. A pre-bump token therefore fails the gate; enforcement points on the sensitive policies/helpers can be flipped on incrementally without a global re-login at deploy time.
+- **Roster RLS self-read (M2)**: `player_absences_select_policy` self-branch resolves through `public.accounts` (`a.uid = player_absences.uid` AND `a.status = 'active'`) instead of the app_metadata `account_id` claim.
+- **Write-surface hardening**: direct PostgREST writes to `public.accounts` are henceforth unreachable for any guild-scoped legacy-role session; admin writes (reset-password, update-role, reject-registration) bump the epoch and re-stamp the GoTrue `app_metadata` in the same transaction.
 
 ---
 
@@ -259,5 +269,16 @@ The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild l
 - **BaseComponent Framework** (`src/components/ui/BaseComponent.ts`): Encapsulated UI component lifecycle with automatic listener cleanup.
 - **i18n**: `src/core/i18n/i18n.ts` exists but is intentionally **not** the active dictionary — `main.ts` prefers the legacy `i18n.js`'s `GM_I18N.t`, since the `/src` dictionary only covers strings authored so far and would silently blank out every string outside it. Migrating i18n itself is unstarted.
 - **Incident, resolved 2026-08-31 / feature removed 2026-09**: `svs-matchup.ts`/`gvg-matchup.ts` existed as 50-line stubs (hardcoded fake server/guild IDs, no real table render) that risked silently shadowing the complete legacy `svs-matchup.js`/`gvg-matchup.js` (700+ lines each) the moment `main.ts` started executing in production, since both write into the same DOM containers. The stubs were deleted first, then the whole Settings tab (Draft Mercato / SvS / GvG matchup) was removed entirely, so `svs-matchup.js`, `gvg-matchup.js`, `cross-rank.js` and `#tab-settings` no longer exist.
+
+### Frontend Resilience & Main-Thread Performance (added 2026-09-13)
+
+- **Network-error taxonomy** (`src/core/api/fetch-errors.ts`): every view loader classifies its failures through `mapFetchError()` into `offline` / `gateway` (502/503/504) / `rate_limited` (429) / `unauthorized` (401 / `jwt_expired` / invalid refresh grant) / `server` / `unknown`. `toastFetchError(err, ctx, retryFn?)` shows a non-blocking, classified toast and — for tab loads — mounts a body-level **Retry** banner wired to the caller's reload function. A 401 routes to the single session-invalidation flow (`handleSessionInvalidation()` in `core/api/supabase.ts`: storage purge of `sb-*`/`supabase.*` keys + `gm:session-expired` browser event → `doLogout()` / re-login), so expired sessions no longer degrade into silent empty tabs.
+- **Per-view request lifecycle** (`src/modules/app/router.ts`): `triggerTabDataLoad()` owns one `AbortController` per load batch. Switching tabs aborts the previous batch before it resolves; redundant activations of the same tab while loading are ignored. `fetchGuildMembers()` receives the `AbortSignal` and passes it to the PostgREST builders via `.abortSignal(signal)`, so a tab switch cancels the 4-query roster batch instead of wasting requests.
+- **Roster main-thread optimizations** (`src/modules/app/members/`):
+  - DOM event delegation bound **once** on `document` (`wireRosterInteractions` → `bindRosterDelegation`) instead of per-node `addEventListener` re-binding on every render.
+  - `calculateRallyScore` is memoized once per sort pass (O(n) + O(n log n)) instead of being recomputed inside every comparator invocation.
+  - The Tactical Force Matrix sorts **once**: on rally views the memoized ranking *is* the display order; `sortMembers()` accepts the precomputed score map.
+  - Max `overall_power` is precomputed in the store (`getMaxOverallPower()`, O(1)) instead of `Math.max(...map())` on every render.
+  - Cold tab loads render an `aria-busy` skeleton (`membersSkeletonHtml()`) without clearing cached data on refresh.
 
 > **Operational Invariant**: The Strangler migration is complete — `app.js` and the other legacy root scripts have been removed, and `/src` is now the single source of truth for all runtime behavior. `main.ts` assembles the `window.GM_*` bridge from typed modules; any new feature must live under `/src` and must never re-introduce a root `.js` runtime script or a new `window.GM_*` global (only the existing bridge surface may be extended).
