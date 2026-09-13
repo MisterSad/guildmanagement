@@ -5,7 +5,6 @@
  * jsdom. The legacy root `overview.js` is untouched during Phase 1.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import '../gm-utils.js';
 import { OverviewView } from '../src/modules/overview/views/OverviewView';
 
 const W_CUR = '2026-08-03';

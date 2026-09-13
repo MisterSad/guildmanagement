@@ -12,16 +12,16 @@ const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
 function extractAppVersion() {
-  const utils = read('gm-utils.js');
-  const m = utils.match(/var APP_VERSION = '([^']+)'/);
-  expect(m, 'gm-utils.js must define var APP_VERSION').not.toBeNull();
+  const utils = read('src/core/config/constants.ts');
+  const m = utils.match(/APP_VERSION = '([^']+)'/);
+  expect(m, 'constants.ts must define APP_VERSION').not.toBeNull();
   return m[1];
 }
 
 describe('Release version propagation (v3.5.2)', () => {
-  it('gm-utils.js exposes the version through the GM bridge', () => {
-    const utils = read('gm-utils.js');
-    expect(utils).toContain('appVersion: APP_VERSION');
+  it('exposes the version through the GM bridge', () => {
+    const bridge = read('src/core/gm-bridge.ts');
+    expect(bridge).toContain('appVersion: APP_VERSION');
   });
 
   it('ShellView renders the version above Terms & Conditions (sidebar + drawer) via the dynamic bridge value', () => {

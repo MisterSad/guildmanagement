@@ -5,6 +5,8 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_KEY } from '../config/constants';
+import { normalizeRole } from '../utils/text';
 
 let client: SupabaseClient | null = null;
 
@@ -26,6 +28,17 @@ export function validateSupabaseEnv(): { url: string; anonKey: string } {
 
 export function resetSupabaseClient(): void {
   client = null;
+}
+
+/**
+ * Runtime client accessor (port of gm-utils.js#getClient): returns the live
+ * window.GM.db (tests / hot-swap) and nothing else — never a cached client.
+ */
+export function getClient(): SupabaseClient | null {
+  if (typeof window !== 'undefined' && (window as any).GM && (window as any).GM.db) {
+    return (window as any).GM.db;
+  }
+  return null;
 }
 
 export function getSupabaseClient(): SupabaseClient | null {
@@ -71,4 +84,127 @@ export function escapeHTML(str: any): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
     .replace(/`/g, '&#96;');
+}
+
+export interface SessionInfo {
+  role: string;
+  accountId: string | null;
+}
+
+/**
+ * Recovers the real body of an Edge Function invocation even when the platform
+ * gateway rejected it with a non-2xx status (rate limit, auth, ...): supabase-js
+ * otherwise discards that body. Mirrors gm-utils.js#parseFunctionsInvokeResult.
+ */
+export async function parseFunctionsInvokeResult(result: any): Promise<any> {
+  if (result && result.data) return result.data;
+  const ctx = result && result.error && result.error.context;
+  if (ctx && typeof ctx.clone === 'function') {
+    try {
+      const body = await ctx.clone().json();
+      if (body && typeof body === 'object') return body;
+    } catch (e) { /* not JSON, or already consumed — fall through */ }
+  }
+  return { ok: false, error: (result && result.error && result.error.message) || 'request_failed' };
+}
+
+/** Returns the current Supabase session, refreshing it if it expires within 60s. */
+export async function ensureAuthSession(): Promise<any> {
+  const c = getClient();
+  if (!c) return null;
+  try {
+    let s = await c.auth.getSession();
+    const session = (s && s.data) ? s.data.session : null;
+    if (session) {
+      const exp = (session as any).expires_at;
+      const now = Math.floor(Date.now() / 1000);
+      if (exp && (exp - now < 60)) {
+        const ref = await c.auth.refreshSession();
+        if (ref && ref.data && ref.data.session) return ref.data.session;
+      }
+      return session;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    s = await c.auth.getSession();
+    return (s && s.data) ? s.data.session : null;
+  } catch (e) {
+    console.warn('ensureAuthSession error', e);
+    return null;
+  }
+}
+
+/** supabase-js default storage key: `sb-<projectRef>-auth-token`. */
+export function storageKeyForProject(): string | null {
+  const m = String(SUPABASE_URL).match(/https:\/\/([a-z0-9]+)\.supabase\.co/);
+  return m ? 'sb-' + m[1] + '-auth-token' : null;
+}
+
+export interface PortalSessionInfo {
+  role: string;
+  accountId: string | null;
+}
+
+/**
+ * Fallback for player-portal sessions: read the refresh token straight from the
+ * supabase-js storage entry, exchange it against GoTrue, re-inject the session.
+ */
+export async function forceRefreshPortalSession(): Promise<PortalSessionInfo | null> {
+  const c = getClient();
+  if (!c) return null;
+  const key = storageKeyForProject();
+  if (!key) return null;
+
+  let raw: string | null = null;
+  try { raw = localStorage.getItem(key); } catch (_) { return null; }
+  if (!raw) return null;
+
+  let stored: any = null;
+  try {
+    stored = typeof raw === 'string' && raw.charAt(0) === '{' ? JSON.parse(raw) : null;
+    if (!stored && raw.charAt(0) !== '{') stored = JSON.parse(decodeURIComponent(raw));
+  } catch (_) { return null; }
+
+  const refreshToken = stored && (stored.refresh_token || (stored.currentSession && stored.currentSession.refresh_token));
+  if (!refreshToken) return null;
+
+  try {
+    const resp = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    const data = await resp.json();
+    if (!data || !data.access_token) return null;
+    const s = await c.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+    if (s.error) return null;
+    const p = data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = p + '='.repeat((4 - p.length % 4) % 4);
+    const jsonStr = atob(padded).split('').map((ch: string) => '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2)).join('');
+    const claims = JSON.parse(decodeURIComponent(jsonStr));
+    const am = claims.app_metadata || {};
+    return { role: normalizeRole(am.app_role || 'member'), accountId: am.account_id || null };
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Decodes the current session JWT into { role, accountId } (or null). */
+export async function sessionInfo(): Promise<SessionInfo | null> {
+  const c = getClient();
+  if (!c) return null;
+  let res: any;
+  try { res = await c.auth.getSession(); } catch (_) { return null; }
+  const session = res && res.data && res.data.session;
+  if (!session || !session.access_token) return null;
+  try {
+    const p = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = p + '='.repeat((4 - p.length % 4) % 4);
+    const jsonStr = atob(padded).split('').map((ch: string) => '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2)).join('');
+    const claims = JSON.parse(decodeURIComponent(jsonStr));
+    const am = claims.app_metadata || {};
+    if (!am.app_role) return null;
+    return { role: normalizeRole(am.app_role), accountId: am.account_id || null };
+  } catch (e) {
+    return null;
+  }
 }

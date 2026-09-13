@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import '../gm-utils.js';
 import { shadowfrontView } from '../src/modules/shadowfront/views/ShadowfrontView';
 
 // Mirror the src/main.ts bridge so window.GM_SHADOWFRONT keeps the same public

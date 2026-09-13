@@ -92,15 +92,15 @@ if (minifiedCount > 0) {
 
 // version.json: a tiny, unminified marker the client polls (see app.js
 // checkForNewVersion()) to detect a stale long-lived tab -- a full reload
-// re-fetches this deploy's actual gm-utils.js/app.js, so a stale tab never
-// silently keeps running old code (and missing bugfixes) indefinitely.
-// Generated from gm-utils.js's APP_VERSION so there is exactly one source
-// of truth; this file is never hand-edited.
+// re-fetches this deploy's actual app.js, so a stale tab never silently keeps
+// running old code (and missing bugfixes) indefinitely. Generated from the
+// typed APP_VERSION in src/core/config/constants.ts so there is exactly one
+// source of truth; this file is never hand-edited.
 {
-  const utilsSrc = fs.readFileSync(path.join(rootDir, 'gm-utils.js'), 'utf8');
-  const m = utilsSrc.match(/var APP_VERSION = '([^']+)'/);
+  const versionSrc = fs.readFileSync(path.join(rootDir, 'src/core/config/constants.ts'), 'utf8');
+  const m = versionSrc.match(/APP_VERSION = '([^']+)'/);
   if (!m) {
-    throw new Error('build.js: could not find APP_VERSION in gm-utils.js -- version.json would be stale.');
+    throw new Error('build.js: could not find APP_VERSION in src/core/config/constants.ts -- version.json would be stale.');
   }
   fs.writeFileSync(
     path.join(distDir, 'version.json'),

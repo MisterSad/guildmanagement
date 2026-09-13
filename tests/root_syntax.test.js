@@ -20,8 +20,8 @@ describe('Root Scripts Syntax Validation (node --check)', () => {
         .filter(f => f.endsWith('.js') && fs.statSync(path.join(rootDir, f)).isFile())
         .sort();
 
-    it('finds at least 5 root JavaScript scripts', () => {
-        expect(rootJsFiles.length).toBeGreaterThanOrEqual(5);
+    it('finds at least 3 root JavaScript scripts', () => {
+        expect(rootJsFiles.length).toBeGreaterThanOrEqual(3);
     });
 
     rootJsFiles.forEach((file) => {

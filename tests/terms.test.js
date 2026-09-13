@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import '../gm-utils.js';
 
 describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
     const termsHtmlPath = path.resolve(__dirname, '../terms.html');

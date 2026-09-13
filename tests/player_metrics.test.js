@@ -6,7 +6,6 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import '../gm-utils.js';
 import { PortalService } from '../src/modules/portal/portal.service.ts';
 
 describe('Tactical Military Metrics & Calculations', () => {

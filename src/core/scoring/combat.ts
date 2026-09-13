@@ -5,6 +5,8 @@
  * Extracted from gm-utils.js as part of Ticket 3.2 modularization.
  */
 
+import { normalizeRole } from '../utils/text';
+
 export interface CombatMemberMetrics {
   overall_power?: number | string | null;
   total_power?: number | string | null;
@@ -153,4 +155,46 @@ export function getPowerTierMeta(tier?: string | null): PowerTierMeta {
   if (tier === 'B') return { cls: 'tier-b', label: 'Epic', color: '#f97316', icon: '💎' };
   if (tier === 'C') return { cls: 'tier-c', label: 'Rare', color: '#3b82f6', icon: '⭐' };
   return { cls: 'tier-d', label: 'Common', color: 'var(--text-muted)', icon: '🛡️' };
+}
+
+export interface RoleInfo {
+  role: string;
+  isSuperAdmin: boolean;
+  isServerAdmin: boolean;
+  isGuildAdmin: boolean;
+  isAdmin: boolean;
+  guild: string | null;
+  serverNumber: string | null;
+}
+
+/**
+ * Current role, prioritizing the live Supabase session (window.GM.sessionInfo)
+ * and falling back to the localStorage role (mirrors gm-utils.js#getRoleInfo).
+ */
+export async function getRoleInfo(): Promise<RoleInfo> {
+  const w = (typeof window !== 'undefined' ? window : {}) as any;
+  const ls = typeof localStorage !== 'undefined' ? localStorage : null;
+
+  let info: any = null;
+  if (w.GM && typeof w.GM.sessionInfo === 'function') {
+    try { info = await w.GM.sessionInfo(); } catch (_) { info = null; }
+  }
+
+  let role = normalizeRole(ls ? ls.getItem('gm_role') : null);
+  // A stored 'member' with a restriction denotes a former admin account.
+  if (role === 'member') {
+    if (ls && ls.getItem('gm_server_restriction')) role = 'server_admin';
+    else if (w.currentGuildRestriction) role = 'guild_admin';
+  }
+  if (info && info.role) role = info.role as any;
+
+  return {
+    role,
+    isSuperAdmin: role === 'super_admin',
+    isServerAdmin: role === 'server_admin' || role === 'super_admin',
+    isGuildAdmin: role === 'guild_admin' || role === 'server_admin' || role === 'super_admin',
+    isAdmin: role === 'super_admin' || role === 'server_admin' || role === 'guild_admin',
+    guild: w.currentGuildRestriction || null,
+    serverNumber: (ls ? ls.getItem('gm_server_restriction') : null) || null
+  };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import '../gm-utils.js';
+import { migrateLegacyStorageKeys } from '../src/core/bootstrap';
 
 const GM = window.GM;
 
@@ -212,10 +212,10 @@ describe('forceRefreshPortalSession (refresh-token fallback)', () => {
 });
 
 describe('localStorage rad_* → gm_* migration shim', () => {
-    it('migrates legacy keys on load and removes the originals', async () => {
+    it('migrates legacy keys on boot and removes the originals', async () => {
         clearStorage();
         setStorage({ rad_role: 'R4', rad_current_guild: 'IMK', rad_config_ALPHA_x: '1' });
-        await import('../gm-utils.js?shim-test=' + Math.random());
+        migrateLegacyStorageKeys();
         expect(localStorage.getItem('gm_role')).toBe('R4');
         expect(localStorage.getItem('gm_current_guild')).toBe('IMK');
         expect(localStorage.getItem('gm_config_ALPHA_x')).toBe('1');

@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import '../gm-utils.js';
 
 const GM = window.GM;
 

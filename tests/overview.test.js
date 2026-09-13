@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import '../gm-utils.js';
 import { overviewView } from '../src/modules/overview/views/OverviewView';
 
 const GM = window.GM;

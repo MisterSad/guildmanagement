@@ -5,6 +5,8 @@
  */
 
 import { AccountRole } from '../../types/database';
+import { getClient, sessionInfo } from '../api/supabase';
+import { APP_VERSION } from '../config/constants';
 
 export function normalizeRole(roleRaw: string | null | undefined): AccountRole {
   if (!roleRaw) return 'member';
@@ -22,6 +24,7 @@ export function roleFromStorage(): AccountRole {
     if (role === 'member') {
       if (serverRestriction) return 'server_admin';
       if (guildRestriction) return 'guild_admin';
+      if (typeof window !== 'undefined' && (window as any).currentGuildRestriction) return 'guild_admin';
     }
     return role;
   } catch (e) {
@@ -66,4 +69,154 @@ export function getRoleInfoFromStorage(): RoleInfo {
     guild,
     serverNumber
   };
+}
+
+function winAny(): any {
+  return (typeof window !== 'undefined' ? window : {}) as any;
+}
+
+function ls(): Storage | null {
+  return typeof localStorage !== 'undefined' ? localStorage : null;
+}
+
+/** Active guild id: restriction → current → localStorage → ALPHA. */
+export function getActiveGuild(): string {
+  const w = winAny();
+  const store = ls();
+  return w.currentGuildRestriction || w.currentGuild || (store ? store.getItem('gm_current_guild') : null) || 'ALPHA';
+}
+
+/** Subscription gating is neutralized (platform is free since v127.0). */
+export function isGuildSubscriptionExpired(_guildId?: string): boolean {
+  return false;
+}
+
+/** Logged-in pseudo (gm_user → gm_pseudo). */
+export function getCurrentPseudo(): string | null {
+  const store = ls();
+  if (!store) return null;
+  return store.getItem('gm_user') || store.getItem('gm_pseudo') || null;
+}
+
+/** Canonical account id (window.GM.currentAccountId → gm_user). */
+export function currentAccountId(): string | null {
+  const w = winAny();
+  const fromGm = w.GM && w.GM.currentAccountId;
+  const store = ls();
+  return fromGm || (store ? store.getItem('gm_user') : null) || null;
+}
+
+/** True when the guild has payments disabled (from window.guildsData). */
+export function isPaymentsDisabled(guildId?: string): boolean {
+  const g = guildId || getActiveGuild();
+  const w = winAny();
+  if (!w.guildsData || !w.guildsData[g]) return false;
+  return !!w.guildsData[g].paymentsDisabled;
+}
+
+/** Role-based write access, mirroring gm-utils.js#canWriteGuild. */
+export function canWriteGuild(guildId?: string): boolean {
+  const activeG = guildId || getActiveGuild();
+  const role = roleFromStorage();
+  const w = winAny();
+  const store = ls();
+
+  if (role === 'super_admin') return true;
+
+  if (role === 'server_admin') {
+    const serverRestriction = store ? store.getItem('gm_server_restriction') : null;
+    if (!serverRestriction) return false;
+    const targetData = w.guildsData && w.guildsData[activeG];
+    if (!targetData || String(targetData.server_number) !== String(serverRestriction)) return false;
+    return !isGuildSubscriptionExpired(activeG);
+  }
+
+  if (role === 'guild_admin') {
+    const restricted = w.currentGuildRestriction;
+    // Never fall back to a default guild: writing to the wrong tenant is worse
+    // than blocking. Missing restriction ⇒ block (UI shows read-only).
+    if (!restricted) return false;
+    return activeG === restricted && !isGuildSubscriptionExpired(activeG);
+  }
+
+  return false;
+}
+
+/**
+ * Re-fetches the caller's guild restriction from accounts when missing
+ * (defensive: login normally sets it). Returns the guild or null.
+ */
+export async function ensureGuildRestriction(): Promise<string | null> {
+  const role = roleFromStorage();
+  const w = winAny();
+  if (role === 'super_admin') return null;
+  if (role !== 'guild_admin') return null;
+  if (w.currentGuildRestriction) return w.currentGuildRestriction;
+
+  const c = getClient();
+  if (!c) return null;
+  try {
+    const info = await sessionInfo();
+    if (!info || !info.accountId) return null;
+    const res = await c.from('accounts').select('guild').ilike('id', info.accountId).maybeSingle();
+    if (res && (res as any).data && (res as any).data.guild) {
+      const guild = (res as any).data.guild;
+      w.currentGuildRestriction = guild;
+      w.currentGuild = guild;
+      const store = ls();
+      try {
+        if (store) {
+          store.setItem('gm_current_guild', guild);
+          store.setItem('gm_guild_restriction', guild);
+        }
+      } catch (_) { /* storage unavailable */ }
+      return guild;
+    }
+  } catch (_) { /* best-effort */ }
+  return null;
+}
+
+export interface ClientEnvironment {
+  appVersion: string;
+  os: string;
+  browser: string;
+}
+
+/** UA-based OS/browser detection (port of gm-utils.js#detectClientEnvironment). */
+export function detectClientEnvironment(ua?: string): ClientEnvironment {
+  const userAgent = (typeof ua === 'string' && ua)
+    ? ua
+    : (typeof navigator !== 'undefined' && navigator.userAgent ? navigator.userAgent : '');
+  let os = 'Unknown OS';
+  if (/iPhone|iPad|iPod/i.test(userAgent)) os = 'iOS';
+  else if (/Macintosh|Mac\s+OS\s+X/i.test(userAgent)) os = 'macOS';
+  else if (/Android/i.test(userAgent)) {
+    const m = userAgent.match(/Android\s+([\d\.]+)/i);
+    os = 'Android' + (m ? ' ' + m[1] : '');
+  } else if (/Windows/i.test(userAgent)) {
+    if (/Windows NT 10.0/i.test(userAgent)) os = 'Windows 10/11';
+    else if (/Windows NT 6.3/i.test(userAgent)) os = 'Windows 8.1';
+    else if (/Windows NT 6.1/i.test(userAgent)) os = 'Windows 7';
+    else os = 'Windows';
+  } else if (/Linux/i.test(userAgent)) os = 'Linux';
+
+  let browser = 'Unknown Browser';
+  if (/Edg\/([\d\.]+)/i.test(userAgent)) {
+    const m = userAgent.match(/Edg\/([\d\.]+)/i);
+    browser = 'Edge' + (m ? ' ' + m[1].split('.')[0] : '');
+  } else if (/Chrome\/([\d\.]+)/i.test(userAgent) && !/Chromium|OPR/i.test(userAgent)) {
+    const m = userAgent.match(/Chrome\/([\d\.]+)/i);
+    browser = 'Chrome' + (m ? ' ' + m[1].split('.')[0] : '');
+  } else if (/Safari\/([\d\.]+)/i.test(userAgent) && !/Chrome|Chromium|Android/i.test(userAgent)) {
+    const m = userAgent.match(/Version\/([\d\.]+)/i);
+    browser = 'Safari' + (m ? ' ' + m[1].split('.')[0] : '');
+  } else if (/Firefox\/([\d\.]+)/i.test(userAgent)) {
+    const m = userAgent.match(/Firefox\/([\d\.]+)/i);
+    browser = 'Firefox' + (m ? ' ' + m[1].split('.')[0] : '');
+  } else if (/OPR\/([\d\.]+)/i.test(userAgent)) {
+    const m = userAgent.match(/OPR\/([\d\.]+)/i);
+    browser = 'Opera' + (m ? ' ' + m[1].split('.')[0] : '');
+  }
+
+  return { appVersion: APP_VERSION, os: os.trim(), browser: browser.trim() };
 }

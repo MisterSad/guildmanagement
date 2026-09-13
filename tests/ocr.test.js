@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import '../gm-utils.js';
 
 const GM = window.GM;
 expect(GM).toBeTruthy();

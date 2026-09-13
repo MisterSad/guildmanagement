@@ -10,7 +10,6 @@
  * plus the cutover guard that the view exposes no `window.GM_SHADOWFRONT`.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import '../gm-utils.js';
 import { ShadowfrontView } from '../src/modules/shadowfront/views/ShadowfrontView';
 
 const GM = window.GM;

@@ -5,7 +5,6 @@
  * jsdom. The legacy root `events.js` is untouched during Phase 1.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import '../gm-utils.js';
 import { EventsView } from '../src/modules/events/views/EventsView';
 
 const SESSION = 'SVS-2026-W32';

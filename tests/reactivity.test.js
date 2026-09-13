@@ -7,12 +7,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import '../gm-utils.js';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
-describe('window.GM.debounce / runInChunks / cache (gm-utils.js)', () => {
+describe('window.GM.debounce / runInChunks / cache (GM bridge)', () => {
   beforeEach(() => {
     if (window.GM && window.GM.cache) window.GM.cache.invalidate();
   });

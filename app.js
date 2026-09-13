@@ -6,8 +6,15 @@
 (function () {
 
     function t(key) { return window.GM_I18N.t(key); }
-    var supabase = window.GM ? window.GM.db : null;
-    var esc = window.GM ? window.GM.escapeHTML : function (s) { return s; };
+    // Call-time lookups (Strangler cutover): gm-utils.js is gone and window.GM
+    // is installed by the deferred /src/main.ts module, so these must not be
+    // captured at parse time.
+    var supabase = {
+        from: function () { return window.GM.db.from.apply(window.GM.db, arguments); },
+        rpc: function () { return window.GM.db.rpc.apply(window.GM.db, arguments); },
+        functions: { invoke: function () { return window.GM.db.functions.invoke.apply(window.GM.db.functions, arguments); } }
+    };
+    function esc(s) { var g = window.GM; return g && g.escapeHTML ? g.escapeHTML(s) : String(s == null ? '' : s); }
 
     // ─── DOM References ───────────────────────────────────────────────────────
     var loginView         = document.getElementById('login-view');
@@ -273,15 +280,15 @@
     // every fix shipped since. Poll a tiny unminified marker file (written by
     // scripts/build.js from the same APP_VERSION gm-utils.js exposes) and
     // prompt a reload when it doesn't match what's actually running here.
-    var CURRENT_APP_VERSION = window.GM && window.GM.appVersion;
+    function currentAppVersion() { return (window.GM && window.GM.appVersion) || 'V3.17.1'; }
     var newVersionBannerShown = false;
 
     function checkForNewVersion() {
-        if (!CURRENT_APP_VERSION || newVersionBannerShown) return;
+        if (!currentAppVersion() || newVersionBannerShown) return;
         fetch('/version.json', { cache: 'no-store' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
-                if (data && data.version && data.version !== CURRENT_APP_VERSION) {
+                if (data && data.version && data.version !== currentAppVersion()) {
                     showNewVersionBanner(data.version);
                 }
             })
@@ -2107,14 +2114,26 @@
     // static index.html elements (unlike the portal, which rebuilds its
     // whole settings panel on every render); loadMyPasskeysCard() below
     // triggers the actual data fetch, called on admin-home tab activation.
-    var myPasskeysPanel = window.GM.webauthn ? window.GM.webauthn.mountPasskeysPanel({
-        listEl: document.getElementById('my-passkeys-list'),
-        addBtnEl: document.getElementById('add-passkey-btn'),
-        regenBtnEl: document.getElementById('regen-backup-codes-btn'),
-        regenLabelEl: document.getElementById('backup-codes-btn-label')
-    }) : null;
+    var myPasskeysPanel = null;
+    function mountMyPasskeysPanel() {
+        if (myPasskeysPanel) return;
+        var w = window.GM && window.GM.webauthn;
+        if (!w || !w.mountPasskeysPanel) return;
+        myPasskeysPanel = w.mountPasskeysPanel({
+            listEl: document.getElementById('my-passkeys-list'),
+            addBtnEl: document.getElementById('add-passkey-btn'),
+            regenBtnEl: document.getElementById('regen-backup-codes-btn'),
+            regenLabelEl: document.getElementById('backup-codes-btn-label')
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mountMyPasskeysPanel);
+    } else {
+        mountMyPasskeysPanel();
+    }
 
     function loadMyPasskeysCard() {
+        mountMyPasskeysPanel();
         if (myPasskeysPanel) myPasskeysPanel.reload();
     }
 
@@ -3528,11 +3547,26 @@
         throw new Error(errMsg);
     }
 
-    var calculateStringSimilarity = (window.GM && window.GM.calculateStringSimilarity) ? window.GM.calculateStringSimilarity : function () { return 0; };
-    var levenshteinDistance = (window.GM && window.GM.levenshteinDistance) ? window.GM.levenshteinDistance : function () { return 0; };
-    var findBestMatchingMember = (window.GM && window.GM.findBestMatchingMember) ? window.GM.findBestMatchingMember : function () { return null; };
-    var categorizeOcrDiff = (window.GM && window.GM.categorizeOcrDiff) ? window.GM.categorizeOcrDiff : function () { return { existing: [], new: [], removed: [] }; };
-    var computeOcrRosterDelta = (window.GM && window.GM.computeOcrRosterDelta) ? window.GM.computeOcrRosterDelta : function (b, a, r) { return { before: b, after: b + a - r, added: a, removed: r }; };
+    function calculateStringSimilarity() {
+        var g = window.GM;
+        return (g && g.calculateStringSimilarity ? g.calculateStringSimilarity : function () { return 0; }).apply(null, arguments);
+    }
+    function levenshteinDistance() {
+        var g = window.GM;
+        return (g && g.levenshteinDistance ? g.levenshteinDistance : function () { return 0; }).apply(null, arguments);
+    }
+    function findBestMatchingMember() {
+        var g = window.GM;
+        return (g && g.findBestMatchingMember ? g.findBestMatchingMember : function () { return null; }).apply(null, arguments);
+    }
+    function categorizeOcrDiff() {
+        var g = window.GM;
+        return (g && g.categorizeOcrDiff ? g.categorizeOcrDiff : function () { return { existing: [], new: [], removed: [] }; }).apply(null, arguments);
+    }
+    function computeOcrRosterDelta() {
+        var g = window.GM;
+        return (g && g.computeOcrRosterDelta ? g.computeOcrRosterDelta : function (b, a, r) { return { before: b, after: b + a - r, added: a, removed: r }; }).apply(null, arguments);
+    }
 
     // Renders the Members-metric "Rank" cell: an editable R4/R3/R2/R1 select
     // pre-filled with the OCR-detected rank (defaulting to "keep the current
@@ -5235,7 +5269,15 @@
     // a burst of typing collapses into a single render instead of one per
     // character. Filter/sort renders skip the unrelated absence/timezone
     // subpanels (renderGuildMembers(true)) since neither depends on them.
-    var gmDebounce = (window.GM && window.GM.debounce) ? window.GM.debounce : function (fn) { return fn; };
+    function gmDebounce(fn, wait) {
+        var timer = null;
+        return function () {
+            var args = arguments;
+            var ctx = this;
+            clearTimeout(timer);
+            timer = setTimeout(function () { fn.apply(ctx, args); }, wait);
+        };
+    }
     var debouncedMemberSearch = gmDebounce(function () { renderGuildMembers(true); }, 200);
     var handleRosterFilterChange = function () { renderGuildMembers(true); };
 

@@ -1,11 +1,15 @@
-// Strangler cutover: the legacy root i18n.js is gone, so replicate the
-// src/main.ts bridge (window.GM_I18N + window.GM.t) for the test environment.
+// Strangler cutover: the legacy root i18n.js and gm-utils.js are gone, so
+// replicate the src/main.ts bridges for the test environment.
 import { t as i18nT, getLang as i18nGetLang, setLang as i18nSetLang, applyTranslations as i18nApplyTranslations } from '../src/core/i18n/i18n';
+import { installGmBridge } from '../src/core/gm-bridge';
 
 if (typeof window !== 'undefined') {
     window.GM_I18N = { t: i18nT, getLang: i18nGetLang, setLang: i18nSetLang, applyTranslations: i18nApplyTranslations };
     window.GM = window.GM || {};
     window.GM.t = i18nT;
+    // Full legacy window.GM surface from the typed /src modules.
+    installGmBridge();
+    if (!window.currentGuild) window.currentGuild = 'ALPHA';
 }
 
 // Node 26 ships an experimental global `localStorage` (gated behind

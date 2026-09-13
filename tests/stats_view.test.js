@@ -11,7 +11,6 @@
  * that StatsView exposes no new `window.GM_*` global.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import '../gm-utils.js';
 import { StatsView } from '../src/modules/stats/views/StatsView';
 
 // ── Supabase mock (same shape as tests/stats.test.js) ─────────────────────────

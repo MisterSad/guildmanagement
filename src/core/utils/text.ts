@@ -8,6 +8,54 @@
 
 export const MAX_NUMERIC = 9999999999;
 
+export type AppRole = 'super_admin' | 'server_admin' | 'guild_admin' | 'member';
+
+/**
+ * Escapes HTML-significant characters (strict anti-XSS invariant). Order and
+ * replacement set mirror the legacy gm-utils.js#escapeHTML exactly.
+ */
+export function escapeHTML(s: unknown): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/`/g, '&#96;');
+}
+
+/** Returns a validation error key, or null when the pseudo is valid. */
+export function validatePseudo(pseudo: unknown): string | null {
+  if (typeof pseudo !== 'string') return 'validation_pseudo_invalid';
+  const v = pseudo.trim();
+  if (v.length === 0) return 'validation_pseudo_empty';
+  if (v.length > 32) return 'validation_pseudo_too_long';
+  // Reject HTML/JS-dangerous characters and control characters.
+  if (/[<>"'`&\\\/\x00-\x1F\x7F]/.test(v)) return 'validation_pseudo_invalid_chars';
+  return null;
+}
+
+/** Returns a validation error key, or null when the UID is valid (optional). */
+export function validateUid(uid: unknown): string | null {
+  if (uid == null || uid === '') return null;
+  if (typeof uid !== 'string') return 'validation_uid_invalid';
+  const v = uid.trim();
+  if (v.length === 0) return null;
+  if (!/^[0-9]+$/.test(v)) return 'validation_uid_not_numeric';
+  if (v.length < 6) return 'validation_uid_too_short';
+  if (v.length > 10) return 'validation_uid_too_long';
+  return null;
+}
+
+/** Normalizes legacy role labels (R5/admin/R4/...) to the canonical role set. */
+export function normalizeRole(r?: string | null): AppRole {
+  if (r === 'R5' || r === 'admin') return 'super_admin';
+  if (r === 'server_admin') return 'server_admin';
+  if (r === 'R4') return 'guild_admin';
+  if (r === 'super_admin' || r === 'guild_admin' || r === 'member') return r;
+  return 'member';
+}
+
 /**
  * Formats a number with spaces as thousands separators up to MAX_NUMERIC.
  * e.g. 1000000 -> "1 000 000"

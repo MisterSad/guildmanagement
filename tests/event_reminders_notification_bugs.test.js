@@ -87,7 +87,7 @@ describe('discord-webhook-proxy: allowed_mentions defaults', () => {
 });
 
 describe('frontend: allowed_mentions and squad 2 role support', () => {
-  const gmUtilsPath = path.resolve(__dirname, '../gm-utils.js');
+  const gmUtilsPath = path.resolve(__dirname, '../src/core/integrations/discord.ts');
   const gmUtilsContent = fs.readFileSync(gmUtilsPath, 'utf-8');
   const shadowfrontViewContent = fs.readFileSync(path.resolve(__dirname, '../src/modules/shadowfront/views/ShadowfrontView.ts'), 'utf-8');
   const shadowfrontServiceContent = fs.readFileSync(path.resolve(__dirname, '../src/modules/shadowfront/shadowfront.service.ts'), 'utf-8');

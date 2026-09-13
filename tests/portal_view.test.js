@@ -8,7 +8,6 @@
  * invariant.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import '../gm-utils.js';
 import { PortalView } from '../src/modules/portal/views/PortalView';
 import { resetSupabaseClient } from '../src/core/api/supabase';
 

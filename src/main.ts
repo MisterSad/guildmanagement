@@ -7,6 +7,11 @@
 
 import { t, getLang, setLang, applyTranslations } from './core/i18n/i18n';
 import { getSupabaseClient, escapeHTML } from './core/api/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_KEY } from './core/config/constants';
+import { installDbWriteGuard } from './core/api/db-guard';
+import { installGmBridge } from './core/gm-bridge';
+import { runGmBootstrap } from './core/bootstrap';
 import {
   isoWeekKey,
   dateKey,
@@ -89,7 +94,16 @@ if (typeof window !== 'undefined') {
   (window as any).GM_I18N = { t, getLang, setLang, applyTranslations };
   (window as any).GM.t = t;
   (window as any).GM.escapeHTML = escapeHTML;
-  (window as any).GM.db = (window as any).GM.db || getSupabaseClient();
+  // P3: build the client from hardcoded constants (never import.meta.env) and
+  // install the multi-tenant write guard, exactly like the legacy gm-utils.js.
+  const wAny = window as any;
+  const rawClient = wAny.GM.db || (typeof wAny.supabase?.createClient === 'function'
+    ? wAny.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+    : createClient(SUPABASE_URL, SUPABASE_KEY));
+  wAny.GM.db = installDbWriteGuard(rawClient);
+  // Assemble the full legacy window.GM surface (~108 members) from the typed
+  // /src modules (gm-utils Strangler cutover).
+  installGmBridge();
   (window as any).GM.isoWeekKey = isoWeekKey;
   (window as any).GM.dateKey = dateKey;
   (window as any).GM.eventScoringKey = eventScoringKey;
@@ -274,6 +288,9 @@ if (typeof window !== 'undefined') {
     // longer runs, so this is the single applyTranslations() pass over the
     // complete dictionary once the DOM is ready.
     applyTranslations();
+    // gm-utils startup side-effects (rad_* migration, window.currentGuild,
+    // terms modal listeners).
+    runGmBootstrap();
     initPWA();
     // Former shell.js bootstrap (DOMContentLoaded): wrap the dashboard and
     // render the shell once the DOM is ready.

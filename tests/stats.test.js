@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import '../gm-utils.js';
 import { statsView } from '../src/modules/stats/views/StatsView';
 
 // Bridge the /src StatsView onto the legacy window.GM_STATS surface, exactly

@@ -298,7 +298,7 @@ describe('Audit Remediation Verification Suite', () => {
     expect(htmlContent).not.toContain('user-scalable=no');
     expect(htmlContent).not.toContain('maximum-scale=1.0');
 
-    const utilsContent = fs.readFileSync(path.resolve(__dirname, '../gm-utils.js'), 'utf-8');
+    const utilsContent = fs.readFileSync(path.resolve(__dirname, '../src/core/auth/session.ts'), 'utf-8');
     expect(utilsContent).toContain('sessionStorage.clear()');
     expect(utilsContent).toContain('localStorage.removeItem');
   });

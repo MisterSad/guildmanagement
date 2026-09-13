@@ -6,7 +6,6 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import '../gm-utils.js';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -79,10 +78,10 @@ describe('Bug-report ticketing (V3.5.3)', () => {
   });
 
   it('isGuildAdmin() covers guild_admin, server_admin and super_admin (and excludes member)', () => {
-    const utils = read('gm-utils.js');
-    const fnStart = utils.indexOf('function isGuildAdmin()');
-    const fn = utils.slice(fnStart, utils.indexOf('\n    }', fnStart) + 6);
-    expect(fn).toContain("r === 'guild_admin' || r === 'server_admin' || r === 'super_admin'");
+    const roles = read('src/core/auth/roles.ts');
+    const fnStart = roles.indexOf('export function isGuildAdmin()');
+    const fn = roles.slice(fnStart, roles.indexOf('\n}', fnStart) + 2);
+    expect(fn).toContain("role === 'guild_admin' || role === 'server_admin' || role === 'super_admin'");
     expect(fn).not.toContain("'member'");
   });
 

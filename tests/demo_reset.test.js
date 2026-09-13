@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildEventSessionId, isoWeekKey, dateKey } from '../src/core/config/events.ts';
-import '../gm-utils.js';
 
 describe('DEMO Tenant Dynamic Data & Daily Reset Automation', () => {
     const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260818030000_demo_tenant_dynamic_data_and_daily_reset.sql');

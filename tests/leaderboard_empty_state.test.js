@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import '../gm-utils.js';
 import { statsView } from '../src/modules/stats/views/StatsView';
 
 // Mirror the src/main.ts bridge so window.GM_STATS keeps the same public API.

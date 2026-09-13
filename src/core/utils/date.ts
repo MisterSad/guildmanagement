@@ -110,3 +110,18 @@ export function formatChartDate(h?: string | DateHolder | null): string {
 
   return String(raw);
 }
+
+/**
+ * Formats an ISO timestamp as a short UTC wall-clock label,
+ * e.g. "ven. 17/05 · 20:00 UTC". Locale follows window.GM_I18N.getLang().
+ */
+export function formatDateTimeUTC(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const w = (typeof window !== 'undefined' ? window : {}) as any;
+  const lang = (w.GM_I18N && w.GM_I18N.getLang) ? w.GM_I18N.getLang() : 'en';
+  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
+  const date = d.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+  return date + ' · ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ' UTC';
+}
