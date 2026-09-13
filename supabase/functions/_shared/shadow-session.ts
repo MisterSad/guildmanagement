@@ -45,8 +45,26 @@ export async function establishShadowSession(
   role: string,
   logger: EdgeLogger
 ): Promise<ShadowSessionResult> {
-  const meta = { app_role: role, account_id: canonicalId };
+  const meta: { app_role: string; account_id: string; session_version?: number } = {
+    app_role: role,
+    account_id: canonicalId,
+  };
   const email = await emailFor(canonicalId);
+
+  // M4: stamp the account's current session_version epoch into app_metadata so
+  // gm_session_is_valid() can revoke pre-bump tokens after a password reset,
+  // role change, or suspension. Read straight from accounts (source of truth).
+  const { data: accountRow, error: accErr } = await admin
+    .from("accounts")
+    .select("session_version")
+    .eq("id", canonicalId)
+    .maybeSingle();
+  if (accErr) {
+    logger.error("Failed to read account session_version", accErr, { id: canonicalId });
+    return { ok: false, error: "server_error", status: 500 };
+  }
+  const sessionVersion = accountRow?.session_version ?? 0;
+  meta.session_version = sessionVersion;
 
   const { data: shadow, error: sErr } = await admin.rpc("gm_get_shadow", { p_id: canonicalId });
   if (sErr) {

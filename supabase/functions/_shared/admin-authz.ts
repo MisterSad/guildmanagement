@@ -7,6 +7,23 @@
 
 export type Role = "super_admin" | "server_admin" | "guild_admin" | "member";
 
+/**
+ * Strict role normalization: only the canonical four roles are recognized.
+ * Legacy in-game ranks ('R5', 'R4') and the historical 'admin' alias fall back
+ * to "member" (lowest privilege) -- they must NOT grant admin powers now that
+ * the accounts CHECK constraint forbids them. This mirrors the SQL helpers in
+ * supabase/migrations/20260913130000_roles_rls_session_hardening.sql.
+ */
+export function normalizeRole(r: string | null | undefined): Role {
+  if (!r) return "member";
+  const s = String(r).toLowerCase().trim();
+  if (s === "super_admin") return "super_admin";
+  if (s === "server_admin") return "server_admin";
+  if (s === "guild_admin") return "guild_admin";
+  if (s === "member") return "member";
+  return "member";
+}
+
 export interface CallerCtx {
   role: Role | null;
   guild: string | null;

@@ -2,10 +2,46 @@ import { describe, it, expect } from 'vitest';
 import {
   canManageAccount,
   maxAssignableRole,
-  isGuildInScope
+  isGuildInScope,
+  normalizeRole
 } from '../supabase/functions/_shared/admin-authz';
 
 describe('admin-authz pure authorization matrix', () => {
+  describe('normalizeRole (strict, H1 remediation)', () => {
+    it('recognizes the canonical four roles', () => {
+      expect(normalizeRole('super_admin')).toBe('super_admin');
+      expect(normalizeRole('server_admin')).toBe('server_admin');
+      expect(normalizeRole('guild_admin')).toBe('guild_admin');
+      expect(normalizeRole('member')).toBe('member');
+    });
+
+    it('case-insensitive and trims whitespace', () => {
+      expect(normalizeRole('Super_Admin')).toBe('super_admin');
+      expect(normalizeRole('  member ')).toBe('member');
+    });
+
+    it('legacy R5 can NO LONGER elevate to super_admin (falls back to member)', () => {
+      expect(normalizeRole('R5')).toBe('member');
+      expect(normalizeRole('r5')).toBe('member');
+    });
+
+    it('legacy R4 can NO LONGER elevate to guild_admin (falls back to member)', () => {
+      expect(normalizeRole('R4')).toBe('member');
+      expect(normalizeRole('r4')).toBe('member');
+    });
+
+    it('historical admin alias can NO LONGER elevate to super_admin', () => {
+      expect(normalizeRole('admin')).toBe('member');
+    });
+
+    it('unknown, null and undefined fall back to member', () => {
+      expect(normalizeRole('weird')).toBe('member');
+      expect(normalizeRole(null)).toBe('member');
+      expect(normalizeRole(undefined)).toBe('member');
+      expect(normalizeRole('')).toBe('member');
+    });
+  });
+
   describe('maxAssignableRole', () => {
     it('returns super_admin for super_admin', () => {
       expect(maxAssignableRole('super_admin')).toBe('super_admin');

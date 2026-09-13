@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { findUserByEmail } from "../_shared/pagination.ts";
-import { canManageAccount, maxAssignableRole, isGuildInScope, Role } from "../_shared/admin-authz.ts";
+import { canManageAccount, maxAssignableRole, isGuildInScope, normalizeRole, Role } from "../_shared/admin-authz.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
@@ -45,14 +45,32 @@ function makeJson(req: Request) {
     });
 }
 
-function normalizeRole(r: string | null | undefined): Role {
-  if (!r) return "member";
-  const s = String(r).toLowerCase().trim();
-  if (s === "super_admin" || s === "r5" || s === "admin") return "super_admin";
-  if (s === "server_admin") return "server_admin";
-  if (s === "guild_admin" || s === "r4") return "guild_admin";
-  if (s === "member") return "member";
-  return "member";
+// Strict normalization, imported from _shared/admin-authz.ts. Legacy ranks
+// ('R5'/'R4') and the historical 'admin' alias now normalize to 'member'.
+
+// Bumps the account's session_version epoch (M4): increments the accounts row
+// AND re-stamps the GoTrue app_metadata so the next minted/refreshed JWT carries
+// the new version. Call on password reset, role change, or suspension so that
+// tokens issued before the event stop matching gm_session_is_valid().
+async function bumpSessionVersion(
+  admin: ReturnType<typeof createClient>,
+  accountId: string,
+  role: string,
+  authUserId: string | null
+): Promise<number> {
+  const { data: cur } = await admin
+    .from("accounts")
+    .select("session_version")
+    .eq("id", accountId)
+    .maybeSingle();
+  const next = ((cur?.session_version ?? 0) | 0) + 1;
+  await admin.from("accounts").update({ session_version: next }).eq("id", accountId);
+  if (authUserId) {
+    await admin.auth.admin.updateUserById(authUserId, {
+      app_metadata: { app_role: role, account_id: accountId, session_version: next },
+    });
+  }
+  return next;
 }
 
 async function getCallerInfo(
@@ -268,6 +286,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Invalidate previously issued sessions (M4) -- the account's password
+    // just changed, so pre-reset access/refresh tokens must stop matching.
+    await bumpSessionVersion(admin, canonicalId, targetAcc.role || "member", targetAcc.auth_user_id ?? null);
+
     logger.info("Admin reset account password", { targetId: canonicalId });
     return json({ ok: true, password: newPassword });
   }
@@ -394,6 +416,16 @@ Deno.serve(async (req: Request) => {
       updateFields.server_number = targetServerNumber;
     }
 
+    // M4: a role change bumps session_version so all previously issued JWT
+    // claims for this account stop matching gm_session_is_valid().
+    const { data: curVer } = await admin
+      .from("accounts")
+      .select("session_version")
+      .eq("id", targetAcc.id)
+      .maybeSingle();
+    const nextSessionVersion = ((curVer?.session_version ?? 0) | 0) + 1;
+    updateFields.session_version = nextSessionVersion;
+
     const { error: updErr } = await admin
       .from("accounts")
       .update(updateFields)
@@ -407,7 +439,7 @@ Deno.serve(async (req: Request) => {
     if (targetAcc.auth_user_id) {
       try {
         await admin.auth.admin.updateUserById(targetAcc.auth_user_id, {
-          app_metadata: { app_role: newRole, account_id: targetAcc.id }
+          app_metadata: { app_role: newRole, account_id: targetAcc.id, session_version: nextSessionVersion }
         });
       } catch (err) {
         logger.warn("Failed to sync GoTrue app_role on update-role", { id: targetAcc.id, error: err });
@@ -636,6 +668,10 @@ Deno.serve(async (req: Request) => {
       logger.error("Failed gm_reject_player_account", error, { id });
       return json({ ok: false, error: "server_error", message: error.message }, 500);
     }
+
+    // Suspension: bump the epoch so any session minted while the account was
+    // pending stops matching gm_session_is_valid().
+    await bumpSessionVersion(admin, id, targetAcc.role || "member", null);
 
     logger.info("Player registration rejected", { id, guild: targetAcc.guild });
     return json(data);
