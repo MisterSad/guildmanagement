@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import '../badges.js';
-
-const compute = window.GM_BADGES.computeBadges;
+import { computeBadges as compute, parseRank, daysSince } from '../src/modules/badges/badges.service';
 
 function find(catalog, id) {
     let found = null;
@@ -177,17 +175,17 @@ describe('GM_BADGES participation badges', () => {
     });
 });
 
-describe('GM_BADGES helper functions', () => {
+describe('BadgesService helper functions', () => {
     it('parses rank strings', () => {
-        expect(window.GM_BADGES.parseRank('R3')).toBe(3);
-        expect(window.GM_BADGES.parseRank('r5')).toBe(5);
-        expect(window.GM_BADGES.parseRank(null)).toBe(1);
-        expect(window.GM_BADGES.parseRank('guildmaster')).toBe(1);
+        expect(parseRank('R3')).toBe(3);
+        expect(parseRank('r5')).toBe(5);
+        expect(parseRank(null)).toBe(1);
+        expect(parseRank('guildmaster')).toBe(1);
     });
 
     it('computes days since a date', () => {
         const past = new Date(Date.now() - 10 * 86400000).toISOString();
-        expect(window.GM_BADGES.daysSince(past)).toBe(10);
-        expect(window.GM_BADGES.daysSince(null)).toBe(0);
+        expect(daysSince(past)).toBe(10);
+        expect(daysSince(null)).toBe(0);
     });
 });

@@ -142,8 +142,8 @@ describe('Bug-report ticketing (V3.5.3)', () => {
   });
 
   it('the super-admin tickets console lists, updates statuses, and displays screenshot thumbnails', () => {
-    const tickets = read('tickets.js');
-    expect(tickets).toContain('window.GM_TICKETS');
+    const tickets = read('src/modules/tickets/views/TicketsView.ts');
+    expect(tickets).toContain('ticketsView');
     expect(tickets).toContain("action: 'list'");
     expect(tickets).toContain("action: 'update-status'");
     expect(tickets).toContain('gm-ticket-status');
@@ -178,7 +178,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(migration).toContain("'waiting'");
     expect(migration).toContain("'in_progress'");
 
-    const tickets = read('tickets.js');
+    const tickets = read('src/modules/tickets/views/TicketsView.ts');
     expect(tickets).toContain('tickets_status_waiting');
     expect(tickets).toContain('tickets_status_in_progress');
     expect(tickets).toContain('tickets_status_resolved');

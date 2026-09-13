@@ -61,6 +61,10 @@ import { armsRaceView } from './modules/armsrace/views/ArmsRaceView';
 import { portalView } from './modules/portal/views/PortalView';
 import { PortalService } from './modules/portal/portal.service';
 import { AuditService } from './modules/audit/audit.service';
+import * as badgesService from './modules/badges/badges.service';
+import { pushService } from './modules/push/PushService';
+import { helpView } from './modules/help/HelpView';
+import { ticketsView } from './modules/tickets/views/TicketsView';
 import { logger } from './core/logger/logger';
 
 import { BaseComponent } from './components/ui/BaseComponent';
@@ -71,7 +75,6 @@ import { HistoryView } from './modules/history/views/HistoryView';
 import { SanctionsView } from './modules/sanctions/views/SanctionsView';
 import { GloryView } from './modules/glory/glory-view';
 import { SubscriptionView } from './modules/subscription/subscription-view';
-import { BadgesView } from './modules/badges/badges-view';
 import { initPWA, promptPWAInstall, setAppNotificationBadge } from './core/pwa/pwa';
 
 // Initialize global window.GM bridge for full backward compatibility
@@ -194,6 +197,25 @@ if (typeof window !== 'undefined') {
     renderDashboard: () => portalView.renderDashboard()
   };
 
+  // Wave 1 Strangler bridges (satellites badges/push/help/tickets).
+  (window as any).GM_BADGES = {
+    computeBadges: badgesService.computeBadges,
+    parseRank: badgesService.parseRank,
+    daysSince: badgesService.daysSince
+  };
+  (window as any).GM_PUSH = {
+    mount: (container: HTMLElement) => pushService.mount(container)
+  };
+  (window as any).GM_HELP = {
+    open: (id: string) => helpView.open(id),
+    close: () => helpView.close(),
+    init: () => helpView.init()
+  };
+  (window as any).GM_TICKETS = {
+    load: () => ticketsView.load(),
+    loadingHtml: () => ticketsView.loadingHtml()
+  };
+
   (window as any).GM.components = {
     BaseComponent,
     ToastNotification,
@@ -202,8 +224,7 @@ if (typeof window !== 'undefined') {
     HistoryView,
     SanctionsView,
     GloryView,
-    SubscriptionView,
-    BadgesView
+    SubscriptionView
   };
 
   (window as any).GM.pwa = {
@@ -225,5 +246,9 @@ if (typeof window !== 'undefined') {
     // Former shell.js bootstrap (DOMContentLoaded): wrap the dashboard and
     // render the shell once the DOM is ready.
     shellView.init();
+    // Wave 1 satellites: contextual help delegation + push service-worker
+    // registration (formerly the root gm-help.js / push.js bootstrap).
+    helpView.init();
+    pushService.init();
   });
 }

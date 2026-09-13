@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { JSDOM } from 'jsdom';
 import { SubscriptionView } from '../src/modules/subscription/subscription-view.ts';
+import { loadingHtml as ticketsLoadingHtml } from '../src/modules/tickets/views/TicketsView.ts';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -34,24 +35,14 @@ describe('Ticket 3.1 — Skeleton Loaders UX Enhancement', () => {
         });
     });
 
-    describe('2. Bug Tickets Skeleton Loader (tickets.js)', () => {
-        const ticketsCode = read('tickets.js');
-
-        function setupTicketsLoadingHtml(doc, win) {
-            const fnMatch = ticketsCode.match(/function loadingHtml\(\)[\s\S]*?\n    \}/);
-            expect(fnMatch).not.toBeNull();
-            return new Function('document', 'window', `
-                ${fnMatch[0]}
-                return loadingHtml;
-            `)(doc, win);
-        }
+    describe('2. Bug Tickets Skeleton Loader (TicketsView.ts)', () => {
+        const ticketsCode = read('src/modules/tickets/views/TicketsView.ts');
 
         it('replaces raw "Loading tickets..." text and lonely spinner with card silhouettes', () => {
             expect(ticketsCode).not.toContain('<div class="gm-empty-title">Loading tickets...</div>');
 
             const dom = new JSDOM(`<!DOCTYPE html><html><body><div id="tickets-container"></div></body></html>`);
-            const getLoadingHtml = setupTicketsLoadingHtml(dom.window.document, dom.window);
-            const html = getLoadingHtml();
+            const html = ticketsLoadingHtml();
 
             // Skeletons are present
             expect(html).toContain('gm-tickets-skeleton-list');
@@ -76,7 +67,7 @@ describe('Ticket 3.1 — Skeleton Loaders UX Enhancement', () => {
             const dom = new JSDOM(`<!DOCTYPE html><html><body><div id="tickets-container"></div></body></html>`);
             const container = dom.window.document.getElementById('tickets-container');
 
-            const getLoadingHtml = setupTicketsLoadingHtml(dom.window.document, dom.window);
+            const getLoadingHtml = ticketsLoadingHtml;
             container.innerHTML = getLoadingHtml();
             expect(container.querySelectorAll('.gm-skeleton').length).toBeGreaterThan(10);
 
