@@ -71,7 +71,7 @@ describe('Mobile UX regression guards (v128.0)', () => {
     expect(app).toContain('data-label="Rally Score"');
     const crossRank = read('cross-rank.js');
     expect(crossRank).toContain('gm-draft-table gm-resp-table');
-    const stats = read('stats.js');
+    const stats = read('src/modules/stats/views/StatsView.ts');
     expect(stats).toContain('gm-table gm-resp-table');
     expect(stats).toContain('data-label="Score"');
   });

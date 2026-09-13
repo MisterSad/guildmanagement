@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import '../gm-utils.js';
-import '../stats.js';
+import { statsView } from '../src/modules/stats/views/StatsView';
+
+// Bridge the /src StatsView onto the legacy window.GM_STATS surface, exactly
+// like src/main.ts does in production, so the historical suite keeps exercising
+// the same public API after the stats.js cutover.
+window.GM_STATS = {
+    load: () => statsView.load(),
+    loadSingleEvent: (eventName, weeks) => statsView.loadSingleEvent(eventName, weeks),
+    renderLeaderboard: () => statsView.renderLeaderboard(),
+    getState: () => statsView.getState()
+};
 
 // ── Mock Supabase query builder ───────────────────────────────────────────────
 class MockBuilder {

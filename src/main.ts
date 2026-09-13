@@ -54,6 +54,7 @@ import { calculateMatchupData, calculateMatchupAsync } from './workers/matchup.w
 import { EventsService } from './modules/events/events.service';
 import { ShadowfrontService } from './modules/shadowfront/shadowfront.service';
 import { StatsService } from './modules/stats/stats.service';
+import { statsView } from './modules/stats/views/StatsView';
 import { PortalService } from './modules/portal/portal.service';
 import { AuditService } from './modules/audit/audit.service';
 import { logger } from './core/logger/logger';
@@ -77,7 +78,7 @@ if (typeof window !== 'undefined') {
   // Prefer the legacy, complete dictionary (i18n.js — a classic sync script,
   // already executed by the time this deferred module runs) over the /src
   // one, which only covers strings authored so far. Several legacy modules
-  // (stats.js, etc.) read window.GM.t dynamically at call time.
+  // (StatsView, app.js, etc.) read window.GM.t dynamically at call time.
   (window as any).GM.t = ((window as any).GM_I18N && (window as any).GM_I18N.t) || t;
   (window as any).GM.escapeHTML = escapeHTML;
   (window as any).GM.db = (window as any).GM.db || getSupabaseClient();
@@ -140,6 +141,17 @@ if (typeof window !== 'undefined') {
     stats: StatsService,
     portal: PortalService,
     audit: AuditService
+  };
+
+  // Backward-compatible stats entrypoint. Replaces the former root stats.js
+  // (Strangler cutover): every legacy caller (app.js tab wiring, shell.js)
+  // still calls window.GM_STATS.load()/loadSingleEvent()/renderLeaderboard()
+  // unchanged, now served by the /src StatsView module.
+  (window as any).GM_STATS = {
+    load: () => statsView.load(),
+    loadSingleEvent: (eventName: any, weeks: any) => statsView.loadSingleEvent(eventName, weeks),
+    renderLeaderboard: () => statsView.renderLeaderboard(),
+    getState: () => statsView.getState()
   };
 
   (window as any).GM.components = {

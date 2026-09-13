@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import '../i18n.js';
 import '../gm-utils.js';
-import '../stats.js';
+import { statsView } from '../src/modules/stats/views/StatsView';
+
+// Mirror the src/main.ts bridge so window.GM_STATS keeps the same public API.
+window.GM_STATS = {
+    load: () => statsView.load(),
+    loadSingleEvent: (eventName, weeks) => statsView.loadSingleEvent(eventName, weeks),
+    renderLeaderboard: () => statsView.renderLeaderboard(),
+    getState: () => statsView.getState()
+};
 
 class MockBuilder {
     constructor(rows) {

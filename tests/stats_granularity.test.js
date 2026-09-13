@@ -66,37 +66,39 @@ describe('gm_get_player_event_history RPC', () => {
   });
 });
 
-describe('stats.js granularity additions', () => {
-  const statsJs = read('stats.js');
+describe('stats granularity additions (StatsView + StatsService after cutover)', () => {
+  // Aggregation moved to StatsService, rendering stayed in StatsView.
+  const statsView = read('src/modules/stats/views/StatsView.ts');
+  const statsService = read('src/modules/stats/stats.service.ts');
 
   it('splits Shadowfront squad assignment into participant/reserve, squad1/squad2, and commander counts', () => {
-    expect(statsJs).toContain('participantCounts');
-    expect(statsJs).toContain('reserveCounts');
-    expect(statsJs).toContain('squad1Counts');
-    expect(statsJs).toContain('squad2Counts');
-    expect(statsJs).toContain('commanderCounts');
-    expect(statsJs).toContain("sq.squad === 'squad1'");
-    expect(statsJs).toContain('sq.is_commander');
+    expect(statsService).toContain('participantCounts');
+    expect(statsService).toContain('reserveCounts');
+    expect(statsService).toContain('squad1Counts');
+    expect(statsService).toContain('squad2Counts');
+    expect(statsService).toContain('commanderCounts');
+    expect(statsService).toContain("sq.squad === 'squad1'");
+    expect(statsService).toContain('sq.is_commander');
   });
 
   it('tracks late/excused counts per row and exposes a Late/Excused column gated to Event Deep-Dive only', () => {
-    expect(statsJs).toContain('late_count');
-    expect(statsJs).toContain('excused_count');
-    expect(statsJs).toContain('showLateExcused');
-    expect(statsJs).toContain("state.primaryView === 'events'");
+    expect(statsService).toContain('late_count');
+    expect(statsService).toContain('excused_count');
+    expect(statsView).toContain('showLateExcused');
+    expect(statsView).toContain("state.primaryView === 'events'");
   });
 
   it('adds Glory as a normalized-row source in loadSingleEventMode and to the event picker', () => {
-    expect(statsJs).toContain("eventName === 'Glory'");
-    expect(statsJs).toContain('raw && raw.glory');
-    expect(statsJs).toContain("{ key: 'Glory'");
+    expect(statsView).toContain("eventName === 'Glory'");
+    expect(statsView).toContain('raw && raw.glory');
+    expect(statsView).toContain("{ key: 'Glory'");
   });
 
-  it('makes leaderboard rows clickable and dispatches to window.GM_APP.showPlayerHistory', () => {
-    expect(statsJs).toContain('gm-stats-row-clickable');
-    expect(statsJs).toContain('data-player-uid');
-    expect(statsJs).toContain('window.GM_APP.showPlayerHistory');
-    expect(statsJs).toContain('state.uidMap');
+  it('makes leaderboard rows clickable and dispatches to the player-history bridge', () => {
+    expect(statsView).toContain('gm-stats-row-clickable');
+    expect(statsView).toContain('data-player-uid');
+    expect(statsView).toContain('legacy.showPlayerHistory');
+    expect(statsView).toContain('state.uidMap');
   });
 });
 

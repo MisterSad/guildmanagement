@@ -17,7 +17,7 @@
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ Classic Vanilla JS Runtime Shell (`index.html` + Cache Busters `?v=XX`)           │  │
 │  │ ├─ Core Utilities & Business Logic: `gm-utils.js`, `i18n.js`                     │  │
-│  │ ├─ Admin Tactical Command Center: `app.js`, `events.js`, `history.js`, `stats.js` │  │
+│  │ ├─ Admin Command Center: `app.js`, `events.js`, `history.js`, StatsView (`/src`)  │  │
 │  │ ├─ Player Self-Service Portal: `portal.js`, `push.js`                             │  │
 │  │ ├─ Tactical Matchups & Rankings: `svs-matchup.js`, `gvg-matchup.js`, `cross-rank.js`│
 │  │ ├─ Roster OCR (screenshots or video) + Rank Detection: `app.js`, `gm-utils.js`    │  │
