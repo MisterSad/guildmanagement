@@ -11,7 +11,9 @@ import {
   handleSuccessfulLogin,
   doLogout,
   showAuthTab,
-  initAuthForms
+  initAuthForms,
+  revealAdmin,
+  revealPortal
 } from '../src/modules/app/auth/auth.controller';
 import {
   checkForNewVersion,
@@ -229,6 +231,24 @@ describe('restoreSession', () => {
     expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
   });
 
+  it('restores a member session into the player portal even without pre-existing gm_portal_session', async () => {
+    localStorage.setItem('gm_role', 'member');
+    window.GM.sessionInfo = vi.fn(async () => ({ role: 'member', accountId: 'Player2' }));
+    window.GM_PORTAL = { loadDashboard: vi.fn() };
+
+    const res = await restoreSession();
+
+    expect(res.restored).toBe(true);
+    expect(res.portal).toBe(true);
+    expect(res.role).toBe('member');
+    expect(localStorage.getItem('gm_role')).toBe('member');
+    expect(localStorage.getItem('gm_portal_session')).toBe('1');
+    expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
+    expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
+    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
+  });
+
   it('resolves a server_admin restriction from the accounts row', async () => {
     localStorage.setItem('gm_role', 'server_admin');
     window.GM.sessionInfo = vi.fn(async () => ({ role: 'server_admin', accountId: 'Serv' }));
@@ -243,6 +263,22 @@ describe('restoreSession', () => {
 });
 
 describe('handleSuccessfulLogin', () => {
+  it('routes a member login directly to the player portal and sets portal session', async () => {
+    window.GM_PORTAL = { loadDashboard: vi.fn() };
+
+    await handleSuccessfulLogin({ ok: true, role: 'member', id: 'Player1' }, 'Player1');
+
+    expect(getAppState().currentGuildRestriction).toBeNull();
+    expect(localStorage.getItem('gm_role')).toBe('member');
+    expect(localStorage.getItem('gm_user')).toBe('Player1');
+    expect(localStorage.getItem('gm_portal_session')).toBe('1');
+    expect(window.GM.currentAccountId).toBe('Player1');
+    expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
+    expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
+    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
+  });
+
   it('syncs the guild restriction and routes to the admin shell', async () => {
     window.GM.db = stubDb({ guild: 'ALPHA' });
 
@@ -273,6 +309,25 @@ describe('handleSuccessfulLogin', () => {
     expect(getAppState().currentGuildRestriction).toBeNull();
     expect(getAppState().currentServerRestriction).toBeNull();
     expect(localStorage.getItem('gm_guild_restriction')).toBeNull();
+  });
+});
+
+describe('revealAdmin and revealPortal', () => {
+  it('guards revealAdmin against showing admin dashboard to members', () => {
+    window.GM_PORTAL = { loadDashboard: vi.fn() };
+    revealAdmin('member');
+    expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
+    expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
+    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
+  });
+
+  it('revealPortal activates player portal and hides admin dashboard', () => {
+    window.GM_PORTAL = { loadDashboard: vi.fn() };
+    revealPortal();
+    expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
+    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
   });
 });
 

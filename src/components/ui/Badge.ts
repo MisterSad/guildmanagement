@@ -14,7 +14,7 @@ import { escapeHTML } from '../../core/utils/text';
 export type BadgeTone = 'svs' | 'gvg' | 'glory' | 'danger' | 'default' | 'warning' | 'success';
 export type BadgeStyle = 'soft' | 'solid' | 'outline' | 'pill';
 export type BadgeSize = 'sm' | 'md';
-export type WarStatus = 'W' | 'L' | 'tie' | 'pending';
+export type WarStatus = 'W' | 'L' | 'tie' | 'pending' | 'neutral';
 
 export interface BadgeProps {
   text: string | number;
@@ -88,13 +88,21 @@ export function renderWarStatusBadge(outcome: WarStatus, labels?: WarStatusLabel
       ? (labels?.lost ?? 'L')
       : outcome === 'tie'
         ? (labels?.tie ?? 'Tie')
-        : (labels?.pending ?? 'Pending');
-  const tone: BadgeTone = outcome === 'W' ? 'success' : outcome === 'L' ? 'danger' : outcome === 'tie' ? 'default' : 'warning';
+        : (labels?.pending ?? '—');
+  const tone: BadgeTone = outcome === 'W'
+    ? 'success'
+    : outcome === 'L'
+      ? 'danger'
+      : outcome === 'tie'
+        ? 'default'
+        : outcome === 'neutral'
+          ? 'default'
+          : 'warning';
   return renderBadge({
     text,
     tone,
     style: 'soft',
     size: 'sm',
-    ...(hasLabels ? {} : { title: outcome === 'W' ? 'Won' : outcome === 'L' ? 'Lost' : outcome === 'tie' ? 'Tie' : 'Pending' })
+    ...(hasLabels ? {} : { title: outcome === 'W' ? 'Won' : outcome === 'L' ? 'Lost' : outcome === 'tie' ? 'Tie' : outcome === 'neutral' ? 'Neutral' : 'Pending' })
   });
 }

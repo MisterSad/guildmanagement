@@ -89,7 +89,7 @@ function setLoginError(message: string): void {
 
 // ── UI reveal helpers ────────────────────────────────────────────────────────
 
-function revealPortal(): void {
+export function revealPortal(): void {
   const loginView = el('login-view');
   const dashboardView = el('dashboard-view');
   const playerPortalView = el('player-portal-view');
@@ -110,7 +110,12 @@ function revealPortal(): void {
   if (portal && typeof portal.loadDashboard === 'function') portal.loadDashboard();
 }
 
-function revealAdmin(role: string): void {
+export function revealAdmin(role: string): void {
+  if (role === 'member') {
+    console.warn('Blocked attempt to reveal admin dashboard for member role. Redirecting to portal.');
+    revealPortal();
+    return;
+  }
   const app = w().GM_APP;
   if (app && typeof app.showAdminDashboard === 'function') {
     app.showAdminDashboard(role);
@@ -118,6 +123,8 @@ function revealAdmin(role: string): void {
   }
   const loginView = el('login-view');
   if (loginView) loginView.classList.add('hidden');
+  const playerPortalView = el('player-portal-view');
+  if (playerPortalView) { playerPortalView.classList.add('hidden'); playerPortalView.classList.remove('portal-connected'); }
   const dashboardView = el('dashboard-view');
   if (dashboardView) { dashboardView.classList.remove('hidden'); dashboardView.classList.add('active'); }
   const shell = w().GM_SHELL;
@@ -166,14 +173,16 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
   }
 
   // Player-portal session: restore the portal directly, full page.
-  if (portalSession && info.role === 'member') {
+  if (info.role === 'member') {
     if (store) {
       store.setItem('gm_role', 'member');
+      store.setItem('gm_portal_session', '1');
       if (info.accountId) store.setItem('gm_user', info.accountId);
+      store.removeItem('gm_guild_restriction');
+      store.removeItem('gm_server_restriction');
     }
     if (x && info.accountId) x.currentAccountId = info.accountId;
     patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
-    if (store) store.removeItem('gm_guild_restriction');
     revealPortal();
     return { restored: true, role: 'member', portal: true };
   }
@@ -263,6 +272,25 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
 
   const role = normalizeRole(resp.role);
   const store = ls();
+
+  if (role === 'member') {
+    patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
+    if (store) {
+      store.setItem('gm_role', 'member');
+      store.setItem('gm_user', canonicalUser);
+      store.setItem('gm_portal_session', '1');
+      store.removeItem('gm_guild_restriction');
+      store.removeItem('gm_server_restriction');
+    }
+    if (x) x.currentAccountId = canonicalUser;
+
+    revealPortal();
+    showToast(t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !', 'success');
+    maybeShowSecureAccountPrompt(resp, role);
+    return;
+  }
+
+  if (store) store.removeItem('gm_portal_session');
 
   if (role === 'guild_admin') {
     const client = db();

@@ -62,9 +62,15 @@ export async function handlePortalLookupSuccess(loginResp: LoginResponse, typedI
     return;
   }
 
+  const loginView = el('login-view');
+  const dashboardView = el('dashboard-view');
+  if (loginView) loginView.classList.add('hidden');
+  if (dashboardView) { dashboardView.classList.add('hidden'); dashboardView.classList.remove('active'); }
+
   const stepLookup = el('portal-step-lookup');
   const stepForm = el('portal-step-form');
   const portalView = el('player-portal-view');
+  if (portalView) portalView.classList.remove('hidden');
   if (stepLookup) stepLookup.classList.add('hidden');
   if (stepForm) stepForm.classList.remove('hidden');
   if (portalView) portalView.classList.add('portal-connected');

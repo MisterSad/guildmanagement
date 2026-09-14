@@ -286,3 +286,93 @@ export async function exportGuildData(guild?: string): Promise<{ ok: boolean; er
 
   return { ok: true, filename: filename };
 }
+
+function normalizeDecimalString(str: string): string {
+  const s = str.replace(/\s/g, '');
+  const hasComma = s.includes(',');
+  const hasDot = s.includes('.');
+
+  if (hasComma && hasDot) {
+    const lastComma = s.lastIndexOf(',');
+    const lastDot = s.lastIndexOf('.');
+    if (lastComma > lastDot) {
+      // European: 1.234,5 -> remove dots, replace comma with dot
+      return s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // US: 1,234.5 -> remove commas
+      return s.replace(/,/g, '');
+    }
+  }
+
+  if (hasComma && !hasDot) {
+    return s.replace(',', '.');
+  }
+
+  return s;
+}
+
+/**
+ * Deterministically parses an OCR score from either numerical values or raw OCR strings.
+ * Handles German/European localizations where 'T' / 'Tsd' stands for Tausend (1,000),
+ * comma ',' is a decimal separator, and period '.' is a thousands separator.
+ * Also protects against runaway trillion/billion multiplier misinterpretations by Gemini.
+ */
+export function parseOcrScore(rawScore: unknown, rawText?: string | null): number {
+  const text = (rawText || (typeof rawScore === 'string' ? rawScore : '')).trim();
+  if (text) {
+    const match = text.match(/^[~><≈]?\s*([0-9\s.,]+)\s*([a-zA-Z.]+)?$/);
+    if (match) {
+      const numStr = match[1].trim();
+      const rawSuffix = (match[2] || '').trim().toLowerCase();
+
+      // Multiplier resolution:
+      // In FGF game scale, 't' / 'tsd' is German Tausend (1,000). Scores never reach trillions.
+      let multiplier = 1;
+      if (rawSuffix.startsWith('t') || rawSuffix.startsWith('k')) {
+        multiplier = 1_000;
+      } else if (rawSuffix.startsWith('m') && !rawSuffix.startsWith('mrd')) {
+        multiplier = 1_000_000;
+      } else if (rawSuffix.startsWith('b') || rawSuffix.startsWith('mrd') || rawSuffix.startsWith('g')) {
+        multiplier = 1_000_000_000;
+      }
+
+      if (multiplier > 1) {
+        // Normalize decimal separator: "67,4" -> "67.4", "24.98" -> "24.98", "1.234,5" -> "1234.5"
+        const clean = normalizeDecimalString(numStr);
+        const val = parseFloat(clean);
+        if (Number.isFinite(val) && val >= 0) {
+          return Math.round(val * multiplier);
+        }
+      } else {
+        // No suffix or multiplier 1
+        // Single dot or comma followed by exactly 3 digits: European thousands separator (e.g. "5.663", "12.550")
+        if (/^\d{1,3}[.,]\d{3}$/.test(numStr)) {
+          const val = parseInt(numStr.replace(/[.,]/g, ''), 10);
+          if (Number.isFinite(val)) return val;
+        }
+        // General digit cleaner for numbers like "12.400.000" or "12,400,000" or "5663"
+        const cleanDigits = numStr.replace(/[^0-9]/g, '');
+        const val = parseInt(cleanDigits, 10);
+        if (Number.isFinite(val)) return val;
+      }
+    }
+  }
+
+  // Fallback for purely numeric rawScore
+  if (typeof rawScore === 'number' && Number.isFinite(rawScore)) {
+    // Trillion / runaway inflation guard: FGF scores never exceed 9,999,999,999.
+    if (rawScore > 9_999_999_999) {
+      if (rawScore >= 1_000_000_000_000) {
+        return Math.round(rawScore / 1_000_000_000);
+      }
+      if (rawScore >= 10_000_000_000) {
+        return Math.round(rawScore / 1_000_000);
+      }
+    }
+    return Math.max(0, Math.round(rawScore));
+  }
+
+  return 0;
+}
+
+

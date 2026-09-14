@@ -161,6 +161,11 @@ function activateTabVisual(tabId: string, viewId?: string | null): void {
 /** Activates a tab and triggers its data loader. */
 export async function onTabActivated(tabId: string, viewId?: string | null): Promise<void> {
   if (!tabId) return;
+  const store = ls();
+  const role = store ? store.getItem('gm_role') : null;
+  if (role === 'member' && tabId !== 'player-portal-view' && tabId !== 'portal') {
+    return;
+  }
   activateTabVisual(tabId, viewId);
   await triggerTabDataLoad(tabId);
 }
@@ -169,6 +174,10 @@ export async function onTabActivated(tabId: string, viewId?: string | null): Pro
 export function showAdminDashboard(): void {
   const refs = getDomRefs();
   if (refs.loginView) refs.loginView.classList.add('hidden');
+  if (refs.playerPortalView) {
+    refs.playerPortalView.classList.add('hidden');
+    refs.playerPortalView.classList.remove('portal-connected');
+  }
   if (refs.dashboardView) {
     refs.dashboardView.classList.remove('hidden');
     refs.dashboardView.classList.add('active');
@@ -181,6 +190,10 @@ export function showLogin(): void {
   if (refs.dashboardView) {
     refs.dashboardView.classList.add('hidden');
     refs.dashboardView.classList.remove('active');
+  }
+  if (refs.playerPortalView) {
+    refs.playerPortalView.classList.add('hidden');
+    refs.playerPortalView.classList.remove('portal-connected');
   }
   if (refs.loginView) {
     refs.loginView.classList.remove('hidden');
@@ -195,6 +208,9 @@ export function showLogin(): void {
  */
 export function restoreSavedTab(defaultTab = 'overview'): void {
   const store = ls();
+  const role = store ? store.getItem('gm_role') : null;
+  if (role === 'member') return;
+
   const saved = (store ? store.getItem('gm_active_tab') : null)
     || (store ? store.getItem('gm_last_tab') : null)
     || defaultTab;

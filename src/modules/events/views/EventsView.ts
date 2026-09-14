@@ -499,13 +499,14 @@ export class EventsView {
     const current = anySession ? String(((war.session as any).opponent_snapshot.name) || '') : '';
 
     const dayChips = [1, 2, 3, 4, 5, 6].map((d) => {
-      const result = war.session ? (war.session as any)['day' + d + '_result'] || null : null;
+      const result: 'won' | 'lost' | null = war.session ? (war.session as any)['day' + d + '_result'] || null : null;
       const statusBadge = renderWarStatusBadge(
-        result === 'won' ? 'W' : result === 'lost' ? 'L' : 'pending',
+        result === 'won' ? 'W' : result === 'lost' ? 'L' : 'neutral',
         { won: legacy.t('war_day_won'), lost: legacy.t('war_day_lost'), pending: legacy.t('war_day_pending') }
       );
-      const cls = result === 'won' ? 'war-day-won' : result === 'lost' ? 'war-day-lost' : '';
-      return '<button type="button" class="war-day-toggle ' + cls + '" data-day="' + d + '" title="Day ' + d + '">' +
+      const cls = result === 'won' ? 'war-day-won' : result === 'lost' ? 'war-day-lost' : 'war-day-neutral';
+      const tooltip = this.warDayTooltip(d, result);
+      return '<button type="button" class="war-day-toggle ' + cls + '" data-day="' + d + '" data-result="' + (result || 'neutral') + '" title="' + legacy.esc(tooltip) + '" aria-label="' + legacy.esc(tooltip) + '">' +
         '<span class="war-day-num">D' + d + '</span>' +
         '<span class="war-day-state">' + statusBadge + '</span>' +
       '</button>';
@@ -593,6 +594,13 @@ export class EventsView {
     }
   }
 
+  private warDayTooltip(day: number, result: 'won' | 'lost' | null): string {
+    const dayLabel = 'Day ' + day;
+    if (result === 'won') return dayLabel + ' : Won (Click: Lost)';
+    if (result === 'lost') return dayLabel + ' : Lost (Click: Neutral)';
+    return dayLabel + ' : Neutral (Click: Won)';
+  }
+
   private cycleWarDay(tabKey: string, btn: HTMLElement): void {
     const s = this.state[tabKey];
     if (!s.activeEventName || !s.sessionId) return;
@@ -600,17 +608,36 @@ export class EventsView {
     if (!(day >= 1 && day <= 6)) return;
     const war = this.getWar(tabKey);
     const key = 'day' + day + '_result';
-    const prev = war.session ? (war.session as any)[key] || null : null;
+    const prev: 'won' | 'lost' | null = war.session ? (war.session as any)[key] || null : null;
     const next: 'won' | 'lost' | null = prev === 'won' ? 'lost' : prev === 'lost' ? null : 'won';
-    if (war.session) (war.session as any)[key] = next;
 
-    btn.classList.remove('war-day-won', 'war-day-lost');
+    if (!war.session) {
+      war.session = {
+        guild: this.currentGuild(),
+        event_name: s.activeEventName as WarEventName,
+        session_id: s.sessionId,
+        day1_result: null, day2_result: null, day3_result: null,
+        day4_result: null, day5_result: null, day6_result: null,
+        opponent_snapshot: null,
+        chest_tiers_snapshot: []
+      } as any;
+    }
+    (war.session as any)[key] = next;
+
+    btn.classList.remove('war-day-won', 'war-day-lost', 'war-day-neutral');
     if (next === 'won') btn.classList.add('war-day-won');
-    if (next === 'lost') btn.classList.add('war-day-lost');
+    else if (next === 'lost') btn.classList.add('war-day-lost');
+    else btn.classList.add('war-day-neutral');
+
+    btn.setAttribute('data-result', next || 'neutral');
+    const tooltip = this.warDayTooltip(day, next);
+    btn.setAttribute('title', tooltip);
+    btn.setAttribute('aria-label', tooltip);
+
     const stateSpan = btn.querySelector('.war-day-state');
     if (stateSpan) {
       stateSpan.innerHTML = renderWarStatusBadge(
-        next === 'won' ? 'W' : next === 'lost' ? 'L' : 'pending',
+        next === 'won' ? 'W' : next === 'lost' ? 'L' : 'neutral',
         { won: legacy.t('war_day_won'), lost: legacy.t('war_day_lost'), pending: legacy.t('war_day_pending') }
       );
     }
@@ -621,8 +648,12 @@ export class EventsView {
       sessionId: s.sessionId,
       dailyResults: { ['day' + day]: next }
     }).then((res) => {
-      if (res.ok && res.session) war.session = res.session;
-      else this.renderWarBanner(tabKey);
+      if (res.ok && res.session) {
+        war.session = { ...war.session, ...res.session, [key]: next };
+      } else {
+        legacy.showToast(legacy.t('war_opponent_save_error') || 'Failed to save day result', 'error');
+        this.renderWarBanner(tabKey);
+      }
     });
   }
 

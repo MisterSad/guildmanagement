@@ -43,6 +43,7 @@ import { attachNumberFormatter, pickEventStart, openTermsModal, closeTermsModal,
 import {
   formatDiscordRoleMention, resolveDiscordWebhook, sendDiscordWebhook, sendDiscordWebhookDetailed, notifyDiscordEvent
 } from './integrations/discord';
+import { parseOcrScore } from '../modules/ocr/ocr.service';
 import {
   login, logout, registerPlayer, submitGuildRequest, adminAccounts, generateJoinCode,
   loginWithPasskey, loginWithBackupCode, startConditionalPasskeyLogin, abortConditionalPasskeyLogin
@@ -73,7 +74,7 @@ export function installGmBridge(): void {
     // Utils: text
     escapeHTML, formatNumber, parseNumber, formatPower, avatarInit, cleanPlayerPseudo,
     levenshteinDistance, calculateStringSimilarity, findBestMatchingMember, parseGeminiJson,
-    normalizeRole, validatePseudo, validateUid,
+    parseOcrScore, normalizeRole, validatePseudo, validateUid,
 
     // Utils: numbers / tiers
     parseSafeMetric, getPowerTier, getPowerTierMeta,

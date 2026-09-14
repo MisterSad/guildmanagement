@@ -1,44 +1,32 @@
 📢 **FGF Guild Management Tool Update — CHANG_V3.18.1**
 
-This update gives you full freedom on how you enter SvS/GvG preparation scores — one global total or day-by-day detail — with zero risk of double counting, plus a smarter OCR that reads single days too.
+Welcome to V3.18.1! Today was a huge day of fixes and quality-of-life upgrades across the board: member logins now land straight on the Player Portal, SvS/GvG day results cycle smoothly in 3 clicks, the OCR scanner understands European & German score formats, official in-game chest thresholds are updated with a clean collapsible settings card, and Discord webhook reminders are back up and running reliably. Here is everything I rolled out today!
 
-### 🎛️ Pick Your Entry Mode for Prep Scores
-- **What changed**: In the Events war panel you now have a switcher: **Detailed D1–D5** (six per-day columns as before) or **Cumulative D1–D5** (one single "Total" column for the whole preparation phase + Day 6). Your choice is remembered per event.
-- **The benefit**: Prefer precision on one day? Use the daily grid. Prefer speed? Enter one total per player. The tool never mixes the two for the same player.
+### 🛡️ Member Login Fix: Direct Player Portal Landing
+- **What changed**: I fixed an issue where regular guild members signing in through the main login screen, biometric passkeys, or refreshing their browser were occasionally routed to an empty Admin Command Center showing 0 active members and 0 stats. Members now land directly and immediately on their personal **Player Portal** (`#tab-portal`), and their session remains cleanly locked to the portal.
+- **The benefit**: Zero confusion for your players — instant access to score submissions, personal combat history, event signups, and absence reports without ever seeing a blank admin screen.
 
-### 🛡️ No More Double Counting, Ever
-- **What changed**: The database now guarantees a player can never hold both a total AND per-day scores on the same session — writing one automatically (and safely) replaces the other.
-- **The benefit**: Chest thresholds and totals always reflect exactly one coherent source, whichever mode each guild prefers.
+### ⚔️ SvS & GvG Daily Win/Loss: 3-Click Cycling
+- **What changed**: The daily D1–D6 win/loss outcome buttons on SvS and GvG event banners now cycle intuitively in 3 clicks:
+  - **Default**: **Neutral** (`—` in subtle gray).
+  - **1st click**: **Won** (`W` in vibrant green).
+  - **2nd click**: **Lost** (`L` in clear red).
+  - **3rd click**: Smoothly resets back to **Neutral** (`—`).
+- **The benefit**: I also updated the backend database logic so resetting a day back to neutral actually saves properly instead of getting stuck on "Lost". Combined with responsive hover tooltips and smooth click micro-interactions, recording daily war outcomes is faster and clearer than ever.
 
-### 📅 Party OCR: Total or Single-Day Screenshots
-- **What changed**: The SvS/GvG OCR buttons now come in three: **Day 1 to 5 (Total)**, **Day N** (pick Day 1–5 inside the scanner), and **Day 6**. The daily scan imports each player's score straight into the matching day column.
-- **The benefit**: You no longer have to crop screenshots into one cumulative image — scan any single prep day and the right column updates automatically, on both server and guild wars.
+### 🔍 Smart OCR: European & German Leaderboard Support
+- **What changed**: I upgraded the AI OCR scanner to natively recognize European and German number formats (such as on "Schadensrangliste" damage boards). The scanner now understands that in German interfaces, `T` stands for *Tausend* (1,000), commas are decimal separators, and dots are thousands separators (`67,4T` = 67,400, `24,98T` = 24,980, and `5.663` = 5,663).
+- **The benefit**: No more inflated scores! German screenshot scores are no longer misinterpreted as trillions or billions, and a built-in safety guard prevents multiplier runaway while preserving exact leaderboard ranks.
 
-### ⚙️ Chest Tiers for the Cumulative Total
-- **What changed**: Guild Settings → SvS/GvG Chest Tiers now includes a **"Day 1–5 (Total)"** block so you can calibrate rewards for phase-long performance.
-- **The benefit**: Reward your players' overall preparation just as precisely as their daily pushes.
+### 📦 Official GvG & SvS 9-Tier Chest Thresholds & Clean Accordion
+- **What changed**: I updated the default 9-tier chest point thresholds for every single day of GvG and SvS (Day 1, Days 2 to 4, Day 5, Day 6 PvP, and cumulative Day 0) to match the official in-game requirements. Additionally, the Chest Tiers configuration in Guild Settings is now housed inside a neat collapsible accordion that stays **closed by default**.
+- **The benefit**: Your war chest calculations are 100% accurate right out of the box, and Guild Admins enjoy a clutter-free settings dashboard that unfolds in one click whenever you want to fine-tune tier values.
 
-This update is all about making your Discord notifications behave exactly as you set them — no more notifications showing up every day when you turned them off, and no more reminders going missing at the wrong moment.
+### 🔔 Discord Webhooks & Automatic Event Reminders Restored
+- **What changed**: I resolved the Discord webhook proxy dispatch errors (eliminating 403 authorization blocks) and fixed the category webhook routing (`webhook_gvg`, `webhook_svs`, `webhook_calamity`) for the background scheduler.
+- **The benefit**: Automatic event reminders (GvG daily pushes, SvS portal phases, and Calamity warnings) fire reliably into your configured guild channels. Best of all, notifications strictly follow your toggles — when you turn a reminder off, it stays completely quiet.
 
-### 🛡️ Notifications Now Follow Your Switches
-- **What changed**: I hardened how every notification toggle is read. A notification only fires when it's explicitly switched on — if it's off (or was never saved), it stays quiet.
-- **The benefit**: If you uncheck "GvG Daily Tasks" or "SvS reminders" in Guild Admin, they now actually stop. No more phantom messages in your Discord every day.
-
-### 🔇 Category Webhooks, On/Off
-- **What changed**: Clearing a category webhook (for example the GvG one) now switches that category off completely instead of quietly routing to your general channel.
-- **The benefit**: Full control per category — want SvS silent but Arms Race on? Just empty the SvS webhook.
-
-### ⚡ Reminders Land at the Right Time
-- **What changed**: I made the reminder trigger timezone-proof (always UTC) and fixed the weekly SvS detection so it follows the current calendar week, not a fragile time window.
-- **The benefit**: GvG, SvS and Calamity reminders fire when they're supposed to — even across server and clock quirks — and portal battle alerts no longer depend on marking the prep phase as "Won".
-
-### 🧾 Event Names Are Forgiving
-- **What changed**: Event matching is now case- and spacing-insensitive.
-- **The benefit**: Even if an event label differs slightly, your 30-minute, 5-minute and start reminders still go out.
-
-Plus, if a setting ever fails to save (permission or subscription hiccup), you now get a clear error instead of a silent "saved" toast — so what you see is always what's actually running.
-
-Try it and let me know! Feedback and bug reports through Report a Bug or Discord are always welcome. 🚀🔔
+Try out the new updates and let me know how they work for your guild! As always, your feedback and bug reports through Report a Bug or Discord are greatly appreciated. 🚀⚔️🛡️
 
 ---
 

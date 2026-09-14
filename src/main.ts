@@ -93,6 +93,7 @@ import {
 import {
   restoreSession,
   handleSuccessfulLogin,
+  revealPortal,
   doLogout,
   showAuthTab,
   showRegisterForm,
@@ -188,6 +189,7 @@ import {
   renderOcrRankCell
 } from './modules/app/ocr/ocr.render';
 import { getOcrModel, getOcrExtractedPlayers, OCR_METRICS_META } from './modules/app/ocr/ocr.meta';
+import { parseOcrScore } from './modules/ocr/ocr.service';
 
 import { BaseComponent } from './components/ui/BaseComponent';
 import { ToastNotification } from './components/ui/Toast';
@@ -237,6 +239,7 @@ if (typeof window !== 'undefined') {
   wAny.GM_AUTH = {
     restoreSession,
     handleSuccessfulLogin,
+    revealPortal,
     doLogout,
     showAuthTab,
     showRegisterForm,
@@ -397,6 +400,7 @@ if (typeof window !== 'undefined') {
   (window as any).GM.calculateStringSimilarity = calculateStringSimilarity;
   (window as any).GM.findBestMatchingMember = findBestMatchingMember;
   (window as any).GM.parseGeminiJson = parseGeminiJson;
+  (window as any).GM.parseOcrScore = parseOcrScore;
   (window as any).GM.MAX_NUMERIC = MAX_NUMERIC;
 
   // Store, Worker & Services bridge
@@ -576,7 +580,9 @@ if (typeof window !== 'undefined') {
     void restoreSession().then((res) => {
       if (res && res.restored) {
         resetSessionInvalidationFlag();
-        restoreSavedTab();
+        if (res.role !== 'member' && !res.portal) {
+          restoreSavedTab();
+        }
       }
     });
   });

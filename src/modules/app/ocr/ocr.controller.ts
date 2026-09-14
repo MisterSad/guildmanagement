@@ -18,7 +18,8 @@ import {
   ocrDownsampleEvenly,
   ocrGridDiffRatio,
   upsertPlayerMetrics,
-  categorizeOcrDiff
+  categorizeOcrDiff,
+  parseOcrScore
 } from '../../ocr/ocr.service';
 import { fetchGuildMembers } from '../members/members.controller';
 import {
@@ -568,7 +569,17 @@ export async function callGeminiOcrBatchApi(
   let metadata: { scanDay: number } | undefined;
   if (metricType === 'svs_day' || metricType === 'gvg_day') metadata = { scanDay: getOcrScanDay() };
   const res = await client.functions.invoke('ocr-guild-members', { body: { images: batchImageItems, metricType, guildTag, rankHint: rankHint || null, metadata } });
-  if (res.data && res.data.ok && Array.isArray(res.data.players)) return { players: res.data.players, endingRank: res.data.endingRank || null };
+  if (res.data && res.data.ok && Array.isArray(res.data.players)) {
+    const sanitized = res.data.players.map((p: any) => {
+      const parsedScore = parseOcrScore(p.score, p.raw_score);
+      return {
+        ...p,
+        score: parsedScore,
+        overall_power: parseOcrScore(p.overall_power != null ? p.overall_power : p.score, p.raw_score),
+      };
+    });
+    return { players: sanitized, endingRank: res.data.endingRank || null };
+  }
   const errMsg = (res.data && res.data.error) || (res.error && res.error.message) || 'OCR analysis failed. Please try again.';
   throw new Error(errMsg);
 }

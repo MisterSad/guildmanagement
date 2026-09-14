@@ -115,6 +115,17 @@ describe('onTabActivated — visual switching', () => {
     expect(document.getElementById('gm-anti-capture-fullscreen-overlay').classList.contains('hidden')).toBe(true);
     expect(document.body.classList.contains('gm-mobile-chat-open')).toBe(false);
   });
+
+  it('blocks admin tab switching when user role is member', async () => {
+    localStorage.setItem('gm_role', 'member');
+    window.GM_MEMBERS.fetchGuildMembers = vi.fn();
+
+    await onTabActivated('admin-members', 'dashboard-view');
+
+    const members = document.getElementById('admin-members');
+    expect(members.classList.contains('active')).toBe(false);
+    expect(window.GM_MEMBERS.fetchGuildMembers).not.toHaveBeenCalled();
+  });
 });
 
 describe('triggerTabDataLoad — /src domain routing', () => {
@@ -228,6 +239,18 @@ describe('restoreSavedTab', () => {
     await tick();
 
     expect(window.GM_OVERVIEW.load).toHaveBeenCalledTimes(1);
+  });
+
+  it('is a no-op when user role is member', () => {
+    localStorage.setItem('gm_role', 'member');
+    localStorage.setItem('gm_active_tab', 'admin-members');
+    window.GM_SHELL = { gotoItem: vi.fn() };
+    window.GM_OVERVIEW = { load: vi.fn() };
+
+    restoreSavedTab();
+
+    expect(window.GM_SHELL.gotoItem).not.toHaveBeenCalled();
+    expect(window.GM_OVERVIEW.load).not.toHaveBeenCalled();
   });
 });
 

@@ -83,6 +83,96 @@ function makeJson(req: Request) {
     });
 }
 
+function normalizeDecimalString(str: string): string {
+  const s = str.replace(/\s/g, "");
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+
+  if (hasComma && hasDot) {
+    const lastComma = s.lastIndexOf(",");
+    const lastDot = s.lastIndexOf(".");
+    if (lastComma > lastDot) {
+      // European: 1.234,5 -> remove dots, replace comma with dot
+      return s.replace(/\./g, "").replace(",", ".");
+    } else {
+      // US: 1,234.5 -> remove commas
+      return s.replace(/,/g, "");
+    }
+  }
+
+  if (hasComma && !hasDot) {
+    return s.replace(",", ".");
+  }
+
+  return s;
+}
+
+/**
+ * Deterministically parses an OCR score from either numerical values or raw OCR strings.
+ * Handles German/European localizations where 'T' / 'Tsd' stands for Tausend (1,000),
+ * comma ',' is a decimal separator, and period '.' is a thousands separator.
+ * Also protects against runaway trillion/billion multiplier misinterpretations by Gemini.
+ */
+export function parseOcrScore(rawScore: unknown, rawText?: string | null): number {
+  const text = (rawText || (typeof rawScore === "string" ? rawScore : "")).trim();
+  if (text) {
+    const match = text.match(/^[~><≈]?\s*([0-9\s.,]+)\s*([a-zA-Z.]+)?$/);
+    if (match) {
+      const numStr = match[1].trim();
+      const rawSuffix = (match[2] || "").trim().toLowerCase();
+
+      // Multiplier resolution:
+      // In FGF game scale, 't' / 'tsd' is German Tausend (1,000). Scores never reach trillions.
+      let multiplier = 1;
+      if (rawSuffix.startsWith("t") || rawSuffix.startsWith("k")) {
+        multiplier = 1_000;
+      } else if (rawSuffix.startsWith("m") && !rawSuffix.startsWith("mrd")) {
+        multiplier = 1_000_000;
+      } else if (rawSuffix.startsWith("b") || rawSuffix.startsWith("mrd") || rawSuffix.startsWith("g")) {
+        multiplier = 1_000_000_000;
+      }
+
+      if (multiplier > 1) {
+        // Normalize decimal separator: "67,4" -> "67.4", "24.98" -> "24.98", "1.234,5" -> "1234.5"
+        const clean = normalizeDecimalString(numStr);
+        const val = parseFloat(clean);
+        if (Number.isFinite(val) && val >= 0) {
+          return Math.round(val * multiplier);
+        }
+      } else {
+        // No suffix or multiplier 1
+        // Single dot or comma followed by exactly 3 digits: European thousands separator (e.g. "5.663", "12.550")
+        if (/^\d{1,3}[.,]\d{3}$/.test(numStr)) {
+          const val = parseInt(numStr.replace(/[.,]/g, ""), 10);
+          if (Number.isFinite(val)) return val;
+        }
+        // General digit cleaner for numbers like "12.400.000" or "12,400,000" or "5663"
+        const cleanDigits = numStr.replace(/[^0-9]/g, "");
+        const val = parseInt(cleanDigits, 10);
+        if (Number.isFinite(val)) return val;
+      }
+    }
+  }
+
+  // Fallback for purely numeric rawScore
+  if (typeof rawScore === "number" && Number.isFinite(rawScore)) {
+    // Trillion / runaway inflation guard: FGF scores never exceed 9,999,999,999.
+    if (rawScore > 9_999_999_999) {
+      if (rawScore >= 1_000_000_000_000) {
+        // E.g. 67.4 * 10^12 -> 67400000000000 / 10^9 = 67400
+        return Math.round(rawScore / 1_000_000_000);
+      }
+      if (rawScore >= 10_000_000_000) {
+        // E.g. 67.4 * 10^9 -> 67400000000 / 10^6 = 67400
+        return Math.round(rawScore / 1_000_000);
+      }
+    }
+    return Math.max(0, Math.round(rawScore));
+  }
+
+  return 0;
+}
+
 const SYSTEM_INSTRUCTION = `You are an OCR expert specializing in gaming leaderboards and guild roster screenshots for Foundation Galactic Frontier (FGF).
 Analyze the provided screenshot image(s) and extract leaderboard or roster data strictly according to the task metadata and response schema.
 
@@ -90,18 +180,39 @@ Core Guidelines:
 1. Extraction:
    - "pseudo": Clean in-game player username. Strip any leading guild tag prefix (e.g. "[TAG]") and brackets so "pseudo" contains only the player name.
    - "guild_tag": Guild tag if visible, otherwise null.
-   - "score": Numerical value converted to an integer (e.g. "145.2M" -> 145200000, "2.16M" -> 2160000, "12,400,000" -> 12400000, "500K" -> 500000).
+   - "score": Numerical value converted to an integer.
+   - "raw_score": Exact score string visible on screen (e.g. "67,4T", "24,98T", "5.663", "145.2M", "500K").
    - "uid": Player UID if visible on screen (string of digits), otherwise null.
    - "rank": The player's rank section ("R4", "R3", "R2", "R1", or null if not applicable/undeterminable).
-2. Rank Section Detection (Roster Mode):
+
+2. Number Formatting, Multipliers & European/German Localizations:
+   CRITICAL: In Foundation Galactic Frontier (FGF), player scores and powers NEVER reach trillions. Maximum scores are in millions or low billions (capped below 10 Billion).
+   - "T" / "Tsd" suffix: In German and European game interfaces (e.g. "Schadensrangliste", "Gesamtschaden", "Phase B", "Händlergilde"), "T" stands for TAUSEND (THOUSAND = 1,000 / 10^3), NOT Trillion!
+     * "67,4T" -> 67400 (67.4 * 1,000)
+     * "24,98T" -> 24980 (24.98 * 1,000)
+     * "12,55T" -> 12550 (12.55 * 1,000)
+     * "500T" -> 500000 (500 * 1,000)
+     NEVER treat "T" as trillion (10^12)! "T" ALWAYS means thousand (multiply by 1,000).
+   - "K" / "k" suffix: Thousands (multiply by 1,000, e.g. "500K" -> 500000, "25K" -> 25000).
+   - "M" / "Mio" suffix: Millions (multiply by 1,000,000, e.g. "145.2M" -> 145200000, "1,2M" -> 1200000).
+   - "B" / "Mrd" suffix: Billions (multiply by 1,000,000,000, e.g. "2.16B" -> 2160000000).
+   - Separators:
+     * Comma is a decimal separator in European notation: "67,4T" is 67.4 thousand = 67400.
+     * Period can be a thousands separator: "5.663" is 5663, "12.400.000" is 12400000.
+   - Leaderboard Coherence:
+     Leaderboard rankings are ALWAYS in descending order of score. For example, Rank 24: 67,4T (67,400) > Rank 25: 24,98T (24,980) > Rank 26: 12,55T (12,550) > Rank 27: 5.663 (5,663). Any interpretation where 67,4T is millions or trillions while rank 27 is 5,663 is strictly WRONG.
+
+3. Rank Section Detection (Roster Mode):
    - "Executive Manager" header -> rank "R4"
    - "Rank 3 Members" header -> rank "R3"
    - "Rank 2 Members" header -> rank "R2"
    - "Rank 1 Members" header -> rank "R1"
    Players belong to the most recent section header above them across consecutive images. If players appear before any visible header, use the incoming rank_hint from the extraction task metadata. Report "endingRank" as the active rank section at the bottom of the last image.
-3. Multi-guild Leaderboards:
+
+4. Multi-guild Leaderboards:
    If a target guild_tag is specified in task metadata, target guild members with that tag and clean any tag prefix from the pseudo.
-4. Output format:
+
+5. Output format:
    Return ONLY a valid JSON object strictly conforming to the requested schema. Never output explanations or markdown outside the JSON.`;
 
 Deno.serve(async (req: Request) => {
@@ -287,6 +398,7 @@ Deno.serve(async (req: Request) => {
             pseudo: { type: "STRING" },
             guild_tag: { type: "STRING", nullable: true },
             score: { type: "NUMBER" },
+            raw_score: { type: "STRING", nullable: true },
             uid: { type: "STRING", nullable: true },
             rank: { type: "STRING", nullable: true },
           },
@@ -375,16 +487,17 @@ Deno.serve(async (req: Request) => {
     const players = rawList
       .map((p: any) => {
         const pseudo = String(p.pseudo || p.name || p.username || "").trim();
-        let val = 0;
         const rawScore = p.score != null ? p.score : (p.overall_power != null ? p.overall_power : (p.power != null ? p.power : 0));
-        if (typeof rawScore === "number") {
-          val = Math.round(rawScore);
-        } else if (typeof rawScore === "string") {
-          const rawClean = rawScore.replace(/[^0-9]/g, "");
-          val = parseInt(rawClean, 10) || 0;
-        }
+        const rawText = p.raw_score != null ? String(p.raw_score).trim() : (typeof rawScore === "string" ? rawScore : null);
+        const val = parseOcrScore(rawScore, rawText);
         const uid = p.uid ? String(p.uid).trim() : null;
-        const result: Record<string, unknown> = { pseudo, score: Math.max(0, val), overall_power: Math.max(0, val), uid };
+        const result: Record<string, unknown> = {
+          pseudo,
+          score: Math.max(0, val),
+          overall_power: Math.max(0, val),
+          raw_score: rawText || (typeof rawScore === "string" ? rawScore : String(val)),
+          uid
+        };
         if (isMembersRoster) {
           const rawRank = typeof p.rank === "string" ? p.rank.trim().toUpperCase() : null;
           result.rank = rawRank && VALID_RANKS.has(rawRank) ? rawRank : null;

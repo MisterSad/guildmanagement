@@ -282,18 +282,45 @@ describe('EventsView — granular war mode', () => {
     }));
   });
 
-  it('cycles and saves the Day Won/Lost state through gm_upsert_war_session', async () => {
+  it('cycles and saves the Day Won/Lost state through gm_upsert_war_session (neutral -> won -> lost -> neutral)', async () => {
     const view = new EventsView();
     await view.loadEvent('SvS');
 
     const day1 = document.querySelector('#event-svs .war-day-toggle[data-day="1"]');
+    expect(day1.className).toContain('war-day-neutral');
+    expect(day1.getAttribute('data-result')).toBe('neutral');
+
+    // Click 1: neutral -> won
     day1.click();
     await tick();
-
-    const calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_war_session');
-    const last = calls[calls.length - 1][1];
-    expect(last).toEqual(expect.objectContaining({ p_daily_results: { day1: 'won' } }));
+    let calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_war_session');
+    expect(calls[calls.length - 1][1]).toEqual(expect.objectContaining({ p_daily_results: { day1: 'won' } }));
     expect(day1.className).toContain('war-day-won');
+    expect(day1.getAttribute('data-result')).toBe('won');
+
+    // Click 2: won -> lost
+    day1.click();
+    await tick();
+    calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_war_session');
+    expect(calls[calls.length - 1][1]).toEqual(expect.objectContaining({ p_daily_results: { day1: 'lost' } }));
+    expect(day1.className).toContain('war-day-lost');
+    expect(day1.getAttribute('data-result')).toBe('lost');
+
+    // Click 3: lost -> neutral (null)
+    day1.click();
+    await tick();
+    calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_war_session');
+    expect(calls[calls.length - 1][1]).toEqual(expect.objectContaining({ p_daily_results: { day1: null } }));
+    expect(day1.className).toContain('war-day-neutral');
+    expect(day1.getAttribute('data-result')).toBe('neutral');
+
+    // Click 4: neutral -> won again
+    day1.click();
+    await tick();
+    calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_war_session');
+    expect(calls[calls.length - 1][1]).toEqual(expect.objectContaining({ p_daily_results: { day1: 'won' } }));
+    expect(day1.className).toContain('war-day-won');
+    expect(day1.getAttribute('data-result')).toBe('won');
   });
 
   it('keeps every SvS/GvG OCR button clickable in granular mode', async () => {
