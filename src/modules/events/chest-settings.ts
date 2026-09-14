@@ -105,9 +105,9 @@ export async function loadChestTiers(): Promise<void> {
     if (result.error && result.error !== 'rpc_failed') {
       showToast(t('war_save_tiers_error') + ' ' + result.error, 'error');
     }
-    grid = defaultChestGrid();
+    grid = defaultChestGrid(currentEvent);
   } else {
-    grid = result.tiers && result.tiers.length > 0 ? result.tiers : defaultChestGrid();
+    grid = result.tiers && result.tiers.length > 0 ? result.tiers : defaultChestGrid(currentEvent);
   }
   renderGrid();
 }

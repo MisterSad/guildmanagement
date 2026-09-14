@@ -180,8 +180,8 @@ describe('war prep mode switcher', () => {
 describe('war aggregate grid computation', () => {
   it('renders chests from resolvePrepChests (day-0 slice) + Day 6 slice', async () => {
     dailyRows = [
-      { day: 0, score: 15000, chests_unlocked: 2, pseudo: 'Alpha' },
-      { day: 6, score: 10000, chests_unlocked: 3, pseudo: 'Alpha' }
+      { day: 0, score: 1000000, chests_unlocked: 2, pseudo: 'Alpha' },
+      { day: 6, score: 750000, chests_unlocked: 3, pseudo: 'Alpha' }
     ];
     const view = new EventsView();
     await view.loadEvent('SvS');
@@ -189,12 +189,12 @@ describe('war aggregate grid computation', () => {
     await wait(10);
 
     const alphaRow = area().querySelector('.participant-row[data-pseudo="Alpha"]');
-    // default grid: day 0 = [0→1, 12500→2, 25000→3], day 6 = [0→1, 2500→2, 5000→3]
-    // prep 15000 → 2 chests ; day 6 10000 → 3 chests ; total 5.
+    // default SvS grid: day 0 tier 2 = 918000, day 6 tier 3 = 700000
+    // prep 1000000 → 2 chests ; day 6 750000 → 3 chests ; total 5.
     expect(alphaRow.querySelector('.player-chests-cell').textContent).toBe('5');
     // Inputs carry the persisted aggregate + Day 6 values.
-    expect(alphaRow.querySelector('.day-score-input[data-day="0"]').value).toBe('15000');
-    expect(alphaRow.querySelector('.day-score-input[data-day="6"]').value).toBe('10000');
+    expect(alphaRow.querySelector('.day-score-input[data-day="0"]').value).toBe('1000000');
+    expect(alphaRow.querySelector('.day-score-input[data-day="6"]').value).toBe('750000');
   });
 
   it('computes the banner total with prepTotal + Day 6 (no double counting)', async () => {

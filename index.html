@@ -635,23 +635,28 @@
                         </div>
 
                         <!-- Card 2.75: SvS/GvG Chest Tiers -->
-                        <div class="gm-card gm-card-padded gm-section" id="chest-tiers-card">
-                            <div class="gm-section-title" style="margin-bottom: 1rem;">
-                                <i class="ph ph-gift"></i>
-                                <span data-i18n="war_chest_tiers_title">SvS / GvG — Chest Tiers</span>
+                        <details class="gm-card gm-card-padded gm-section chest-tiers-accordion" id="chest-tiers-card">
+                            <summary class="chest-tiers-accordion-summary">
+                                <div class="gm-section-title" style="margin-bottom: 0;">
+                                    <i class="ph ph-gift"></i>
+                                    <span data-i18n="war_chest_tiers_title">SvS / GvG — Chest Tiers</span>
+                                </div>
+                                <i class="ph ph-caret-down chest-tiers-accordion-chevron"></i>
+                            </summary>
+                            <div class="chest-tiers-accordion-content" style="margin-top: 1rem;">
+                                <p style="font-size: 0.82rem; color: var(--fg-dim); margin: 0 0 1rem; max-width: 720px;" data-i18n="war_chest_tiers_sub">Configure the score thresholds that unlock chests for each day of SvS and GvG. Already-started sessions keep the grid frozen at their start.</p>
+                                <div class="gm-row" style="gap: 0.5rem; margin-bottom: 1rem;">
+                                    <button type="button" class="gm-btn gm-btn-sm chest-tiers-tab gm-active" data-event="SvS"><span data-i18n="war_svs">SvS</span></button>
+                                    <button type="button" class="gm-btn gm-btn-sm chest-tiers-tab" data-event="GvG"><span data-i18n="war_gvg">GvG</span></button>
+                                </div>
+                                <div id="chest-tiers-grid" class="gm-col" style="gap: 0.75rem;"></div>
+                                <div class="gm-row" style="justify-content: flex-end; margin-top: 1rem;">
+                                    <button type="button" class="gm-btn gm-btn-success" id="chest-tiers-save">
+                                        <i class="ph ph-check"></i> <span data-i18n="war_save_tiers">Save chest tiers</span>
+                                    </button>
+                                </div>
                             </div>
-                            <p style="font-size: 0.82rem; color: var(--fg-dim); margin: 0 0 1rem; max-width: 720px;" data-i18n="war_chest_tiers_sub">Configure the score thresholds that unlock chests for each day of SvS and GvG. Already-started sessions keep the grid frozen at their start.</p>
-                            <div class="gm-row" style="gap: 0.5rem; margin-bottom: 1rem;">
-                                <button type="button" class="gm-btn gm-btn-sm chest-tiers-tab gm-active" data-event="SvS"><span data-i18n="war_svs">SvS</span></button>
-                                <button type="button" class="gm-btn gm-btn-sm chest-tiers-tab" data-event="GvG"><span data-i18n="war_gvg">GvG</span></button>
-                            </div>
-                            <div id="chest-tiers-grid" class="gm-col" style="gap: 0.75rem;"></div>
-                            <div class="gm-row" style="justify-content: flex-end; margin-top: 1rem;">
-                                <button type="button" class="gm-btn gm-btn-success" id="chest-tiers-save">
-                                    <i class="ph ph-check"></i> <span data-i18n="war_save_tiers">Save chest tiers</span>
-                                </button>
-                            </div>
-                        </div>
+                        </details>
 
                         <!-- Card 3: Notification Webhooks & Event Channels Grid -->
                         <div class="gm-card gm-card-padded gm-section">

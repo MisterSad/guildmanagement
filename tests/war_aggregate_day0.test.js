@@ -178,21 +178,22 @@ describe('resolvePrepChests — canonical prep chest resolution', () => {
 });
 
 describe('defaultChestGrid & non-regression', () => {
-  it('includes a default day-0 cumulative bucket plus the 6 daily day blocks', () => {
+  it('includes a default day-0 cumulative bucket plus the 6 daily day blocks with 9 tiers each (63 total)', () => {
     const grid = defaultChestGrid();
-    expect(grid.filter((t) => t.day === WAR_AGGREGATE_DAY).length).toBe(3);
+    expect(grid.filter((t) => t.day === WAR_AGGREGATE_DAY).length).toBe(9);
     for (let d = 1; d <= 6; d++) {
-      expect(grid.filter((t) => t.day === d).length).toBe(3);
+      expect(grid.filter((t) => t.day === d).length).toBe(9);
     }
-    expect(grid.length).toBe(21);
+    expect(grid.length).toBe(63);
   });
 
-  it('keeps the historical per-day default threshold behavior of resolveChestsForScore', () => {
-    const d1 = defaultChestGrid().filter((t) => t.day === 1);
-    expect(resolveChestsForScore(d1, 0)).toBe(1);
-    expect(resolveChestsForScore(d1, 2499)).toBe(1);
-    expect(resolveChestsForScore(d1, 2500)).toBe(2);
-    expect(resolveChestsForScore(d1, 5000)).toBe(3);
+  it('keeps deterministic threshold behavior of resolveChestsForScore with SvS defaults', () => {
+    const d1 = defaultChestGrid('SvS').filter((t) => t.day === 1);
+    expect(resolveChestsForScore(d1, 0)).toBe(0);
+    expect(resolveChestsForScore(d1, 37999)).toBe(0);
+    expect(resolveChestsForScore(d1, 38000)).toBe(1);
+    expect(resolveChestsForScore(d1, 153000)).toBe(2);
+    expect(resolveChestsForScore(d1, 1150000)).toBe(9);
   });
 
   it('exports the canonical constants', () => {

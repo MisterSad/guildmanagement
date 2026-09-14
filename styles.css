@@ -2155,6 +2155,25 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     gap: 1.25rem;
     margin-top: 1rem;
 }
+.chest-tiers-accordion summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+}
+.chest-tiers-accordion summary::-webkit-details-marker {
+    display: none;
+}
+.chest-tiers-accordion-chevron {
+    font-size: 1.25rem;
+    color: var(--fg-dim);
+    transition: transform 0.2s ease;
+}
+.chest-tiers-accordion[open] .chest-tiers-accordion-chevron {
+    transform: rotate(180deg);
+}
 .chest-tiers-tab {
     text-transform: uppercase;
     letter-spacing: 0.05em;

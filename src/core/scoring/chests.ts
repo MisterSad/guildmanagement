@@ -59,18 +59,36 @@ export function resolveChestsForScore(
   return resolved;
 }
 
-const DEFAULT_DAY_THRESHOLDS: Array<{ min_score: number; chests: number }> = [
-  { min_score: 0, chests: 1 },
-  { min_score: 2500, chests: 2 },
-  { min_score: 5000, chests: 3 }
-];
+/** Canonical 9-tier score thresholds per day for GvG. */
+export const GVG_CHEST_THRESHOLDS: Record<number, ReadonlyArray<number>> = {
+  // Day 0: cumulative "Day 1 to 5 total" aggregate prep total
+  0: [405000, 1625400, 2860000, 3572000, 6265000, 8420000, 11329000, 14659000, 18590000],
+  // Day 1
+  1: [25000, 95400, 180000, 358000, 525000, 950000, 1450000, 2020000, 3200000],
+  // Day 2 to 4
+  2: [76000, 306000, 536000, 612000, 1147500, 1532500, 2067000, 2757000, 3450000],
+  3: [76000, 306000, 536000, 612000, 1147500, 1532500, 2067000, 2757000, 3450000],
+  4: [76000, 306000, 536000, 612000, 1147500, 1532500, 2067000, 2757000, 3450000],
+  // Day 5
+  5: [152000, 612000, 1072000, 1378000, 2297500, 2872500, 3678000, 4368000, 5040000],
+  // Day 6 (PvP)
+  6: [120000, 250000, 752000, 1232000, 1572000, 2572000, 3172000, 4344000, 8500000]
+};
 
-/** Default cumulative thresholds for the aggregate (day 0) prep bucket. */
-const DEFAULT_AGGREGATE_THRESHOLDS: Array<{ min_score: number; chests: number }> = [
-  { min_score: 0, chests: 1 },
-  { min_score: 12500, chests: 2 },
-  { min_score: 25000, chests: 3 }
-];
+/** Canonical 9-tier score thresholds per day for SvS. */
+export const SVS_CHEST_THRESHOLDS: Record<number, ReadonlyArray<number>> = {
+  // Day 0: cumulative "Day 1 to 5 total" aggregate prep total
+  0: [228000, 918000, 1608000, 1913000, 2755000, 3601000, 3982000, 5132000, 6280000],
+  // Day 1 to 4
+  1: [38000, 153000, 268000, 306000, 459000, 613000, 689000, 919000, 1150000],
+  2: [38000, 153000, 268000, 306000, 459000, 613000, 689000, 919000, 1150000],
+  3: [38000, 153000, 268000, 306000, 459000, 613000, 689000, 919000, 1150000],
+  4: [38000, 153000, 268000, 306000, 459000, 613000, 689000, 919000, 1150000],
+  // Day 5
+  5: [76000, 306000, 536000, 689000, 919000, 1149000, 1226000, 1456000, 1680000],
+  // Day 6 (PvP)
+  6: [100000, 400000, 700000, 800000, 1200000, 1600000, 1800000, 2400000, 3020000]
+};
 
 /**
  * Canonical preparation total for a player (mirror of the SQL derivation in
@@ -149,21 +167,26 @@ export function resolvePrepChests(
 
 /**
  * Sensible fallback grid rendered when a guild has not configured any chest
- * tier yet: a day-0 cumulative bucket for the prep total plus the 3 daily
- * tiers per day (Day 1..6). Mirrors the pre-configured values shown by the
- * Guild Settings chest-tiers card. Day-0 entries are ignored by the per-day
- * slices of resolveChestsForScore (they filter by day), so existing daily
- * rendering is not affected.
+ * tier yet: a day-0 cumulative bucket for the prep total plus the 6 daily
+ * day blocks (Day 1..6) each populated with 9 official tiers.
+ * Accepts eventName ('SvS' or 'GvG', case-insensitive), defaulting to 'SvS'.
  */
-export function defaultChestGrid(): ChestTier[] {
+export function defaultChestGrid(eventName?: 'SvS' | 'GvG' | string): ChestTier[] {
+  const isGvG = typeof eventName === 'string' && eventName.toUpperCase() === 'GVG';
+  const table = isGvG ? GVG_CHEST_THRESHOLDS : SVS_CHEST_THRESHOLDS;
   const tiers: ChestTier[] = [];
-  DEFAULT_AGGREGATE_THRESHOLDS.forEach((threshold, idx) => {
-    tiers.push({ day: WAR_AGGREGATE_DAY, tier: idx + 1, min_score: threshold.min_score, chests: threshold.chests });
-  });
-  for (let day = 1; day <= 6; day++) {
-    DEFAULT_DAY_THRESHOLDS.forEach((threshold, idx) => {
-      tiers.push({ day, tier: idx + 1, min_score: threshold.min_score, chests: threshold.chests });
+
+  for (let day = 0; day <= 6; day++) {
+    const list = table[day] || [];
+    list.forEach((min_score, idx) => {
+      tiers.push({
+        day,
+        tier: idx + 1,
+        min_score,
+        chests: idx + 1
+      });
     });
   }
+
   return tiers;
 }

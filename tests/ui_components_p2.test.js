@@ -333,7 +333,7 @@ describe('EventsView — granular war retrofit (Badge + Table primitives)', () =
     expect(document.querySelectorAll('#event-svs .war-day-toggle').length).toBe(6);
     // chest cell badge regenerated live from resolveChestsForScore on input.
     const d1 = document.querySelector('#event-svs .day-score-input[data-pseudo="Alpha"][data-day="1"]');
-    d1.value = '9999';
+    d1.value = '50000';
     d1.dispatchEvent(new Event('input'));
     const cell = document.querySelector('#event-svs .participant-row[data-pseudo="Alpha"] .player-chests-cell');
     expect(cell.querySelector('.gm-ui-badge')).toBeTruthy();

@@ -380,7 +380,7 @@ export class EventsView {
 
   private getWar(tabKey: string): WarTabState {
     if (!this.war[tabKey]) {
-      this.war[tabKey] = { session: null, opponents: [], grid: defaultChestGrid(), daily: {}, mode: 'detailed' };
+      this.war[tabKey] = { session: null, opponents: [], grid: defaultChestGrid(tabKey), daily: {}, mode: 'detailed' };
     }
     return this.war[tabKey];
   }
@@ -425,7 +425,7 @@ export class EventsView {
       war.grid = snapshot;
     } else {
       const tierRes = await EventsService.getChestTiers(guild, ev);
-      war.grid = tierRes.ok && tierRes.tiers.length > 0 ? tierRes.tiers : defaultChestGrid();
+      war.grid = tierRes.ok && tierRes.tiers.length > 0 ? tierRes.tiers : defaultChestGrid(ev);
     }
 
     if (!war.session) war.session = await this.ensureWarSession(tabKey);
