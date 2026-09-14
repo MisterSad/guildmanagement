@@ -241,7 +241,8 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
     expect(invokeMock).toHaveBeenCalledTimes(1);
     expect(invokeMock).toHaveBeenCalledWith('discord-webhook-proxy', expect.objectContaining({
       body: expect.objectContaining({
-        webhookUrl: 'https://discord.test/hook',
+        eventPrefix: 'shadowfront',
+        guild: 'ALPHA',
         payload: expect.objectContaining({
           content: expect.stringContaining('Shadowfront'),
           allowed_mentions: { parse: ['roles', 'users', 'everyone'] }

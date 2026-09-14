@@ -9,9 +9,9 @@
 
 import { formatPower } from '../../core/utils/text';
 import { APP_VERSION } from '../../core/config/constants';
-import { getGuildConfig } from '../../core/config/guild-config';
+import { getGuildConfig, setGuildConfig } from '../../core/config/guild-config';
 import { getClient } from '../../core/api/supabase';
-import { detectClientEnvironment } from '../../core/auth/roles';
+import { detectClientEnvironment, getActiveGuild } from '../../core/auth/roles';
 import { showToast } from '../../core/dom/toast';
 
 const ALLOWED_BULK_ROLES = ['R1', 'R2', 'R3', 'R4'];
@@ -88,6 +88,9 @@ export async function shareMatchupRosterToDiscord(options: {
     const inputUrl = w.prompt ? w.prompt('No dedicated ' + eventPrefix.toUpperCase() + ' Opponent Discord Webhook URL configured. Please enter Webhook URL:') : null;
     if (!inputUrl || !inputUrl.trim()) return false;
     webhookUrl = inputUrl.trim();
+    try {
+      await setGuildConfig('webhook_' + eventPrefix + '_opponent', webhookUrl);
+    } catch (_) { /* best-effort save */ }
   }
   webhookUrl = webhookUrl!.trim().replace(/^[<"'\s]+|[>'"\s]+$/g, '');
   if (webhookUrl.indexOf('http') !== 0) webhookUrl = 'https://' + webhookUrl;
@@ -134,6 +137,7 @@ export async function shareMatchupRosterToDiscord(options: {
 
   let successCount = 0;
   let lastErrReason = '';
+  const currentG = getActiveGuild();
 
   for (let cIdx = 0; cIdx < chunks.length; cIdx++) {
     let posted = false;
@@ -141,7 +145,12 @@ export async function shareMatchupRosterToDiscord(options: {
     if (client && client.functions && typeof client.functions.invoke === 'function') {
       try {
         const invokeRes = await client.functions.invoke('discord-webhook-proxy', {
-          body: { webhookUrl: webhookUrl, content: chunks[cIdx] }
+          body: {
+            eventPrefix: eventPrefix + '_opponent',
+            guild: currentG,
+            allowEveryoneMention: true,
+            payload: { content: chunks[cIdx] }
+          }
         });
         if (invokeRes && invokeRes.data && invokeRes.data.ok) posted = true;
         else if (invokeRes && invokeRes.data && invokeRes.data.error) lastErrReason = invokeRes.data.error;

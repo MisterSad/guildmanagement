@@ -38,6 +38,9 @@ const STATIC_CONFIG_KEYS: string[] = [
   'notify_svs_pvp',
   'notify_svs_won_prep',
   'notify_calamity_10',
+  'webhook_gvg',
+  'webhook_svs',
+  'webhook_calamity',
   ...EVENT_PREFIXES.flatMap((prefix) => [
     `webhook_${prefix}`,
     `discord_role_id_${prefix}`,

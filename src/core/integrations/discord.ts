@@ -67,17 +67,20 @@ export async function sendDiscordWebhookDetailed(eventPrefix: string, body: any,
   }
 
   const webhookUrl = normalizeWebhookUrl(await resolveDiscordWebhook(targetPrefix, directUrl));
+  if (!webhookUrl) return { ok: false, error: 'No webhook URL found' };
 
   body.allowed_mentions = body.allowed_mentions || { parse: ['roles', 'users', 'everyone'] };
 
   const client = getClient();
   if (client && client.functions && typeof client.functions.invoke === 'function') {
-    const payloadToSend = Object.assign({
-      webhookUrl: webhookUrl || '',
+    const payloadToSend: any = Object.assign({
       eventPrefix: targetPrefix,
       guild: currentG,
+      allowEveryoneMention: true,
       payload: body
     }, body);
+    delete payloadToSend.webhookUrl;
+    delete payloadToSend.url;
 
     try {
       const invokeRes = await client.functions.invoke('discord-webhook-proxy', { body: payloadToSend });
@@ -85,9 +88,24 @@ export async function sendDiscordWebhookDetailed(eventPrefix: string, body: any,
 
       if (invokeRes && (invokeRes.error || (invokeRes.data && !invokeRes.data.ok))) {
         try {
+          let authHeader = '';
+          try {
+            const sessRes = await client.auth.getSession();
+            const token = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.access_token;
+            if (token) authHeader = 'Bearer ' + token;
+          } catch (_) { /* ignore */ }
+
+          const rawHeaders: Record<string, string> = {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_KEY
+          };
+          if (authHeader) {
+            rawHeaders['Authorization'] = authHeader;
+          }
+
           const rawProxyRes = await fetch(SUPABASE_URL + '/functions/v1/discord-webhook-proxy', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
+            headers: rawHeaders,
             body: JSON.stringify(payloadToSend)
           });
           if (rawProxyRes && typeof rawProxyRes.json === 'function') {

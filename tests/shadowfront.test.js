@@ -159,7 +159,8 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         expect(invokeMock).toHaveBeenCalledTimes(1);
         expect(invokeMock).toHaveBeenCalledWith('discord-webhook-proxy', expect.objectContaining({
             body: expect.objectContaining({
-                webhookUrl: 'https://discord.test/hook',
+                eventPrefix: 'shadowfront',
+                guild: 'ALPHA',
                 payload: expect.objectContaining({
                     content: expect.stringContaining('Shadowfront'),
                 })
@@ -181,7 +182,11 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         expect(invokeMock).toHaveBeenCalledTimes(1);
         expect(invokeMock).toHaveBeenCalledWith('discord-webhook-proxy', expect.objectContaining({
             body: expect.objectContaining({
-                webhookUrl: 'https://canary.discord.com/api/webhooks/123/abc',
+                eventPrefix: 'shadowfront',
+                guild: 'ALPHA',
+                payload: expect.objectContaining({
+                    content: expect.stringContaining('Shadowfront'),
+                })
             })
         }));
         expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
