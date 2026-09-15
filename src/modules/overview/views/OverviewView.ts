@@ -103,10 +103,6 @@ const legacy = {
     const g = gm();
     if (g && typeof g.exportGuildData === 'function') return g.exportGuildData(guild);
     return Promise.reject(new Error('exportGuildData unavailable'));
-  },
-  pushMount(slot: Element): void {
-    const push = winAny().GM_PUSH;
-    if (push && typeof push.mount === 'function') push.mount(slot);
   }
 };
 
@@ -392,7 +388,6 @@ export class OverviewView {
       '<div class="gm-section">' +
         '<div class="gm-section-head">' +
           '<div class="gm-section-title"><i class="ph ph-calendar-dots"></i> ' + legacy.t('overview_upcoming_title') + '</div>' +
-          '<div data-gm-notif></div>' +
         '</div>' +
         this.renderUpcomingCard(upcoming) +
       '</div>' +
@@ -406,9 +401,6 @@ export class OverviewView {
     content.innerHTML = html;
 
     legacy.renderPendingRegistrations();
-
-    const notifSlot = content.querySelector('[data-gm-notif]');
-    if (notifSlot) legacy.pushMount(notifSlot);
 
     this.startCountdownTicker();
   }

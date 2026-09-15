@@ -27,11 +27,10 @@ import path from 'path';
 const filePath = path.resolve(__dirname, '../supabase/functions/event-reminders/index.ts');
 const content = fs.readFileSync(filePath, 'utf-8');
 
-describe('event-reminders: Web Push call signature', () => {
-  it('calls sendNotification with 3 positional arguments, not a single wrapper object', () => {
-    expect(content).toContain('await sendNotification(subscription, JSON.stringify(payload), { vapidDetails });');
-    // The old broken shape must not reappear.
-    expect(content).not.toMatch(/sendNotification\(\{\s*subscription,/);
+describe('event-reminders: Web Push decommissioning', () => {
+  it('confirms Web Push has been decommissioned in favor of Discord notifications', () => {
+    expect(content).toContain('// PWA Web Push decommissioned per user request: all notifications are now routed to Discord exclusively.');
+    expect(content).not.toContain('npm:web-push-neo');
   });
 });
 

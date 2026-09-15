@@ -104,7 +104,7 @@ afterEach(() => {
 });
 
 describe('OverviewView.load()', () => {
-  it('renders the 4 summary tiles, pending card, activity and push slot', async () => {
+  it('renders the 4 summary tiles, pending card and activity', async () => {
     const view = new OverviewView();
     await view.load();
 
@@ -113,7 +113,6 @@ describe('OverviewView.load()', () => {
     expect(panel.textContent).toContain('Guild Power');
     expect(panel.querySelector('#pending-accounts-card')).toBeTruthy();
     expect(window.GM.renderPendingRegistrations).toHaveBeenCalled();
-    expect(window.GM_PUSH.mount).toHaveBeenCalled();
   });
 
   it('computes "Glory this week" as the weekly gain (1000 - 400 = 600)', async () => {

@@ -41,7 +41,8 @@ import {
 import { showToast } from './dom/toast';
 import { attachNumberFormatter, pickEventStart, openTermsModal, closeTermsModal, drawScoreTrendChart } from './dom/ui';
 import {
-  formatDiscordRoleMention, resolveDiscordWebhook, sendDiscordWebhook, sendDiscordWebhookDetailed, notifyDiscordEvent
+  formatDiscordRoleMention, resolveDiscordWebhook, sendDiscordWebhook, sendDiscordWebhookDetailed, notifyDiscordEvent,
+  testDiscordWebhook
 } from './integrations/discord';
 import { parseOcrScore } from '../modules/ocr/ocr.service';
 import {
@@ -109,7 +110,7 @@ export function installGmBridge(): void {
 
     // Discord
     formatDiscordRoleMention, resolveDiscordWebhook, sendDiscordWebhook, sendDiscordWebhookDetailed,
-    notifyDiscordEvent,
+    notifyDiscordEvent, testDiscordWebhook,
 
     // Auth / sessions
     login, logout, registerPlayer, submitGuildRequest, adminAccounts, generateJoinCode,

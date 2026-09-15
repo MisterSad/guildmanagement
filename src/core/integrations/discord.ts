@@ -254,3 +254,31 @@ export async function notifyDiscordEvent(eventName: string, eventStart: string, 
 
   await sendDiscordWebhook(eventPrefix, body);
 }
+
+/** Sends a test notification embed to Discord for validation / diagnosis. */
+export async function testDiscordWebhook(eventPrefix = 'general'): Promise<{ ok: boolean; error?: string }> {
+  const currentG = getActiveGuild();
+  const roleId = await getGuildConfig(eventPrefix && eventPrefix !== 'general' ? `discord_role_id_${eventPrefix}` : 'discord_role_id');
+  const roleMention = formatDiscordRoleMention(roleId);
+
+  const payload = {
+    content: `🔔 **Test Notification** from FGF Guild Management (${currentG}) ${roleMention}`,
+    embeds: [{
+      title: '✅ Discord Webhook Test Successful',
+      description: `Webhook integration is functioning properly for **${currentG}**${eventPrefix && eventPrefix !== 'general' ? ` (channel: ${eventPrefix})` : ''}.`,
+      color: 5763719, // Green
+      fields: [
+        { name: 'Channel / Event', value: eventPrefix || 'general', inline: true },
+        { name: 'Role Mention', value: roleMention, inline: true },
+        { name: 'Timestamp (UTC)', value: new Date().toISOString(), inline: false }
+      ],
+      footer: { text: 'FGF Guild Management Tool • Webhook Test' }
+    }],
+    allowed_mentions: { parse: ['roles', 'users', 'everyone'] }
+  };
+
+  const targetPrefix = (!eventPrefix || eventPrefix === 'general') ? '' : eventPrefix;
+  const res = await sendDiscordWebhookDetailed(targetPrefix, payload);
+  if (res.ok) return { ok: true };
+  return { ok: false, error: typeof res.error === 'string' ? res.error : JSON.stringify(res.error || 'Unknown error') };
+}

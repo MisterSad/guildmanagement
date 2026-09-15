@@ -72,57 +72,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('PushService — unsupported / blocked states', () => {
-  it('shows the unsupported hint when the browser lacks PushManager/Notification', async () => {
-    installGM();
-    // no serviceWorker / PushManager / Notification installed
-    const container = mountContainer();
+describe('PushService — decommissioned inert stub', () => {
+  it('safely no-ops on init, render, and mount', async () => {
     const svc = new PushService();
+    svc.init();
+    const container = mountContainer();
     await svc.render(container);
-    expect(container.textContent).toContain('push_unsupported');
-  });
-
-  it('shows the blocked hint when Notification.permission is denied', async () => {
-    installGM();
-    installPushGlobals({ permission: 'denied' });
-    const container = mountContainer();
-    const svc = new PushService();
-    await svc.render(container);
-    expect(container.textContent).toContain('push_blocked');
-  });
-});
-
-describe('PushService — subscribed / opt-in states', () => {
-  it('renders the enabled chip + disable button when already subscribed', async () => {
-    installGM();
-    installPushGlobals({ permission: 'granted', sub: makeSub() });
-    const container = mountContainer();
-    const svc = new PushService();
-    await svc.render(container);
-    expect(container.textContent).toContain('push_enabled');
-    expect(container.querySelector('.gm-push-off')).toBeTruthy();
-  });
-
-  it('renders the opt-in button and subscribes + saves via RPC on click', async () => {
-    installGM();
-    installPushGlobals({ permission: 'default', grantOnRequest: true, sub: null });
-    const container = mountContainer();
-    const svc = new PushService();
+    expect(container.innerHTML).toBe('');
     svc.mount(container);
-    await new Promise((r) => setTimeout(r, 0));
-
-    const on = container.querySelector('.gm-push-on');
-    expect(on).toBeTruthy();
-    on.click();
-    await new Promise((r) => setTimeout(r, 0));
-
-    expect(rpcMock).toHaveBeenCalledTimes(1);
-    expect(rpcMock).toHaveBeenCalledWith('save_push_subscription', expect.objectContaining({
-      p_endpoint: 'https://push.example/abc',
-      p_p256dh: 'pk',
-      p_auth: 'au',
-      p_pseudo: 'Alpha'
-    }));
-    expect(window.GM.showToast).toHaveBeenCalledWith('push_toast_on', 'success');
+    expect(container.innerHTML).toBe('');
   });
 });

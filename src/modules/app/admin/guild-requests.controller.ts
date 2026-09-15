@@ -14,6 +14,8 @@ import { type AccountRow, getAccounts, filterAccountsOut } from './admin-store';
 import { fetchAccounts, fetchGuilds } from './accounts.controller';
 import { showToast } from '../dialogs/dialogs.service';
 import { initChestTiersSettings, loadChestTiers } from '../../events/chest-settings';
+import { testDiscordWebhook, formatDiscordRoleMention, sendDiscordWebhookDetailed } from '../../../core/integrations/discord';
+import { buildGvgDailyTaskEmbed } from '../../../core/config/gvg-tasks';
 
 const GUILD_REQUEST_STATUS_META: Record<string, { label: string; cls: string }> = {
   pending: { label: 'Pending', cls: 'gm-chip-warning' },
@@ -170,6 +172,7 @@ interface ConfigField { key: string; el: string; gated?: boolean; }
 interface CheckboxField { key: string; el: string; def: boolean; gated?: boolean; }
 
 const VALUE_FIELDS: ConfigField[] = [
+  { key: 'discord_webhook_url', el: 'discord-webhook-url' },
   { key: 'coeff_svs', el: 'coeff-svs' },
   { key: 'coeff_gvg', el: 'coeff-gvg' },
   { key: 'coeff_shadowfront', el: 'coeff-shadowfront' },
@@ -462,5 +465,57 @@ export function initGuildRequestsUi(): void {
   if (settingsForm && !(settingsForm as any).__gmAdminWired) {
     (settingsForm as any).__gmAdminWired = true;
     settingsForm.addEventListener('submit', (e) => { void onGuildSettingsSubmit(e); });
+  }
+
+  const testDefaultBtn = byId<HTMLButtonElement>('btn-test-default-webhook');
+  if (testDefaultBtn && !(testDefaultBtn as any).__gmAdminWired) {
+    (testDefaultBtn as any).__gmAdminWired = true;
+    testDefaultBtn.addEventListener('click', async () => {
+      testDefaultBtn.disabled = true;
+      const origText = testDefaultBtn.innerHTML;
+      testDefaultBtn.textContent = 'Testing...';
+      try {
+        const res = await testDiscordWebhook('general');
+        if (res.ok) {
+          showToast('Discord test notification sent successfully!', 'success');
+        } else {
+          showToast('Discord test failed: ' + (res.error || 'Unknown error'), 'error');
+        }
+      } catch (err: any) {
+        showToast('Discord test failed: ' + (err.message || 'Unknown error'), 'error');
+      } finally {
+        testDefaultBtn.disabled = false;
+        testDefaultBtn.innerHTML = origText;
+      }
+    });
+  }
+
+  const gvgBtn = byId<HTMLButtonElement>('btn-dispatch-gvg-tasks');
+  if (gvgBtn && !(gvgBtn as any).__gmAdminWired) {
+    (gvgBtn as any).__gmAdminWired = true;
+    gvgBtn.addEventListener('click', async () => {
+      gvgBtn.disabled = true;
+      const origHtml = gvgBtn.innerHTML;
+      gvgBtn.textContent = 'Sending...';
+      try {
+        const now = new Date();
+        let day = now.getUTCDay();
+        if (day === 0) day = 1; // Default Sunday to Day 1
+        const roleId = (byId<HTMLInputElement>('discord-role-id-gvg')?.value || byId<HTMLInputElement>('discord-role-id')?.value || '').trim();
+        const roleMention = formatDiscordRoleMention(roleId);
+        const payload = buildGvgDailyTaskEmbed(day, roleMention);
+        const res = await sendDiscordWebhookDetailed('gvg', payload);
+        if (res.ok) {
+          showToast(`GvG Day ${day} tasks sent to Discord!`, 'success');
+        } else {
+          showToast(`Failed to send GvG tasks: ${res.error || 'Unknown error'}`, 'error');
+        }
+      } catch (err: any) {
+        showToast('Error sending GvG tasks: ' + (err.message || 'Unknown error'), 'error');
+      } finally {
+        gvgBtn.disabled = false;
+        gvgBtn.innerHTML = origHtml;
+      }
+    });
   }
 }

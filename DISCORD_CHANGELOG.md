@@ -22,9 +22,18 @@ Welcome to V3.18.1! Today was a huge day of fixes and quality-of-life upgrades a
 - **What changed**: I updated the default 9-tier chest point thresholds for every single day of GvG and SvS (Day 1, Days 2 to 4, Day 5, Day 6 PvP, and cumulative Day 0) to match the official in-game requirements. Additionally, the Chest Tiers configuration in Guild Settings is now housed inside a neat collapsible accordion that stays **closed by default**.
 - **The benefit**: Your war chest calculations are 100% accurate right out of the box, and Guild Admins enjoy a clutter-free settings dashboard that unfolds in one click whenever you want to fine-tune tier values.
 
-### 🔔 Discord Webhooks & Automatic Event Reminders Restored
-- **What changed**: I resolved the Discord webhook proxy dispatch errors (eliminating 403 authorization blocks) and fixed the category webhook routing (`webhook_gvg`, `webhook_svs`, `webhook_calamity`) for the background scheduler.
-- **The benefit**: Automatic event reminders (GvG daily pushes, SvS portal phases, and Calamity warnings) fire reliably into your configured guild channels. Best of all, notifications strictly follow your toggles — when you turn a reminder off, it stays completely quiet.
+### 🔔 Discord Webhooks & Automatic Event Reminders Overhaul
+- **What changed**: I thoroughly overhauled the Discord notification system and fixed the root causes that stopped reminders from arriving:
+  - Added a dedicated **Default Discord Webhook URL** field and a **"Send Test Message"** button right inside Guild Settings so you can verify your Discord webhook in one click.
+  - Added a manual **"Send Today's GvG Tasks Now"** button so guild admins can dispatch daily GvG tasks instantly on demand.
+  - Fixed fallback resolution so empty event-specific webhooks cleanly fall back to your default guild webhook rather than silencing notifications.
+  - Fixed false "sent" locks in the background scheduler that previously prevented reminders from dispatching.
+  - Resolved webhook proxy URL validation to support all standard Discord webhook URL formats.
+- **The benefit**: Automatic event reminders (Arms Race, DTR, Shadowfront, GvG daily tasks, SvS phases, and Calamity alerts) fire reliably into your guild's channels with role mentions, with instant testing available right in Guild Settings!
+
+### 📱 Decommissioning Unused PWA Mobile Push
+- **What changed**: I completely removed mobile browser push notifications (PWA web push) across the backend scheduler and frontend (Overview and Player Portal).
+- **The benefit**: A cleaner, faster interface with zero notification clutter. All guild alerts are now centralized strictly where everyone actually checks them: directly inside your Discord server.
 
 Try out the new updates and let me know how they work for your guild! As always, your feedback and bug reports through Report a Bug or Discord are greatly appreciated. 🚀⚔️🛡️
 

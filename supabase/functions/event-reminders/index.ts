@@ -86,94 +86,7 @@ async function acquireReminderLock(supabase: any, guild: string, lockKey: string
   return Array.isArray(data) && data.length > 0;
 }
 
-async function sendWebPush(supabase: any, title: string, body: string, guild: string, eventType = "events") {
-  try {
-    const { data: subs, error: subError } = await supabase
-      .from('push_subscriptions')
-      .select('*')
-      .eq('guild', guild);
-
-    if (subError) throw subError;
-    if (!subs || subs.length === 0) return;
-
-    let sendNotification: any = null;
-    try {
-      const wp = await import("npm:web-push-neo");
-      sendNotification = wp.sendNotification || wp.default?.sendNotification;
-    } catch (eWp) {
-      logger.warn("web-push module not available", { error: String(eWp) });
-      return;
-    }
-    if (!sendNotification) return;
-
-    // Respect per-player push preferences: only notify subscribers whose
-    // event_types include this reminder type. Subscribers without a prefs
-    // row get all reminders (default = events, glory, challenges).
-    const { data: prefs, error: prefError } = await supabase
-      .from('player_push_prefs')
-      .select('pseudo, event_types')
-      .eq('guild', guild);
-    if (prefError) throw prefError;
-
-    const prefByPseudo = new Map<string, string[]>();
-    for (const p of prefs ?? []) {
-      if (p.pseudo) prefByPseudo.set(p.pseudo.toLowerCase(), p.event_types || []);
-    }
-
-    const vapidDetails = {
-      subject: 'mailto:web-push@guildmanagement.internal',
-      publicKey: Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
-      privateKey: Deno.env.get('VAPID_PRIVATE_KEY') ?? '',
-    };
-
-    if (!vapidDetails.publicKey || !vapidDetails.privateKey) {
-      logger.warn('VAPID keys not configured in Supabase secrets, skipping Web Push');
-      return;
-    }
-
-    const payload = {
-      title,
-      body: body.replace(/@everyone/g, '').trim(),
-      url: '/'
-    };
-
-    for (const sub of subs) {
-      try {
-        // If the player has preferences, honor them; otherwise default to on.
-        const types = sub.pseudo ? prefByPseudo.get(sub.pseudo.toLowerCase()) : undefined;
-        const allowed = types === undefined ? true : types.includes(eventType);
-        if (!allowed) continue;
-
-        const subscription = {
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.p256dh,
-            auth: sub.auth
-          }
-        };
-
-        // web-push-neo's sendNotification takes 3 positional args, NOT a
-        // single {subscription, payload, vapidDetails} object -- passing an
-        // object here made every subscription (including well-formed ones)
-        // fail with "You must pass in a subscription with at least an
-        // endpoint", since the library was validating the wrapper object.
-        await sendNotification(subscription, JSON.stringify(payload), { vapidDetails });
-        logger.info(`Web Push sent successfully to sub ID: ${sub.id} (Guild: ${guild})`);
-      } catch (err: any) {
-        logger.error(`Failed to send Web Push to sub ID ${sub.id}`, err);
-        if (err.statusCode === 410 || err.statusCode === 404 || err.message?.includes('410') || err.message?.includes('404')) {
-          logger.info(`Cleaning up expired subscription ID: ${sub.id}`);
-          await supabase
-            .from('push_subscriptions')
-            .delete()
-            .eq('id', sub.id);
-        }
-      }
-    }
-  } catch (e) {
-    logger.error('Error in sendWebPush', e);
-  }
-}
+// PWA Web Push decommissioned per user request: all notifications are now routed to Discord exclusively.
 
 function isValidDiscordWebhook(url: string): boolean {
   if (!url || typeof url !== 'string') return false;
@@ -624,11 +537,11 @@ serve(async (req) => {
             if (webhookUrl && webhookUrl.trim() !== '') {
               sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
             } else {
-              sentSuccess = true; // No webhook configured
+              logger.warn(`[${guild}] No Discord webhook configured for ${event.event_name} (${reminderType}) — skipping`);
+              sentSuccess = false;
             }
 
             if (sentSuccess) {
-              await sendWebPush(supabase, embedTitle, content, guild);
               try {
                 await supabase
                   .from('guild_config')
@@ -717,7 +630,6 @@ serve(async (req) => {
 
                   if (sentSuccess) {
                     const taskDay = GVG_DAILY_TASKS[curDay];
-                    await sendWebPush(supabase, `⚔️ GvG Day ${curDay} Tasks: ${taskDay?.theme || 'Daily Breakdown'}`, `Daily GvG tasks are active for Day ${curDay} (${taskDay?.dayName}).`, guild);
                     await supabase
                       .from('guild_config')
                       .update({ value: 'sent', updated_at: new Date().toISOString() })
@@ -892,11 +804,11 @@ serve(async (req) => {
               if (webhookUrl && webhookUrl.trim() !== '') {
                 sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
               } else {
-                sentSuccess = true;
+                logger.warn(`[${guild}] No Discord webhook configured for GvG Saturday ${slot.label} — skipping`);
+                sentSuccess = false;
               }
 
               if (sentSuccess) {
-                await sendWebPush(supabase, embedTitle, content, guild);
                 await supabase
                   .from('guild_config')
                   .update({ value: 'sent', updated_at: new Date().toISOString() })
@@ -1159,11 +1071,11 @@ serve(async (req) => {
             if (webhookUrl && webhookUrl.trim() !== '') {
               sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
             } else {
-              sentSuccess = true;
+              logger.warn(`[${guild}] No Discord webhook configured for SvS ${slot.label} — skipping`);
+              sentSuccess = false;
             }
 
             if (sentSuccess) {
-              await sendWebPush(supabase, embedTitle, content, guild);
               await supabase
                 .from('guild_config')
                 .update({ value: 'sent', updated_at: new Date().toISOString() })
@@ -1323,11 +1235,11 @@ serve(async (req) => {
             if (webhookUrl && webhookUrl.trim() !== '') {
               sentSuccess = await sendDiscordWebhookWithRetry(webhookUrl, body);
             } else {
-              sentSuccess = true;
+              logger.warn(`[${guild}] No Discord webhook configured for Calamity Round ${slot.round} — skipping`);
+              sentSuccess = false;
             }
 
             if (sentSuccess) {
-              await sendWebPush(supabase, embedTitle, content, guild);
               await supabase
                 .from('guild_config')
                 .update({ value: 'sent', updated_at: new Date().toISOString() })

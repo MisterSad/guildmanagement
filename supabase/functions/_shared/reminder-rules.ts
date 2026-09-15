@@ -35,10 +35,18 @@ export function isToggleEnabled(
 export function resolveGuildWebhook(configMap: ConfigMap | Record<string, string> | undefined, prefix: string): string {
   if (!configMap) return '';
   if (prefix) {
-    const specific = configMap[`webhook_${prefix}`];
-    if (specific !== undefined) return (specific || '').trim();
+    const specific = (configMap[`webhook_${prefix}`] || '').trim();
+    if (specific) return specific;
   }
-  return (configMap['discord_webhook_url'] || '').trim();
+  const general = (configMap['discord_webhook_url'] || '').trim();
+  if (general) return general;
+
+  const fallbackKeys = ['webhook_armsrace', 'webhook_svs', 'webhook_gvg', 'webhook_dtr', 'webhook_calamity', 'webhook_shadowfront'];
+  for (const fk of fallbackKeys) {
+    const fb = (configMap[fk] || '').trim();
+    if (fb) return fb;
+  }
+  return '';
 }
 
 /* ---------------------------------------------------------------------------

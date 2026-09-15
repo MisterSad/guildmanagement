@@ -2,6 +2,14 @@
 
 ## [3.18.1]
 
+- **Fix: Discord notification system end-to-end resolution & PWA push removal (V3.18.1)** — resolved Discord webhook delivery failures and completely removed redundant mobile PWA web push notifications.
+  - **Fixed (Discord webhook settings UI & persistence)**: added Default Discord Webhook URL input (`#discord-webhook-url`) and test trigger (`#btn-test-default-webhook`) to the Admin Discord interface in `index.html`; registered `discord_webhook_url` in `VALUE_FIELDS` in `src/modules/app/admin/guild-requests.controller.ts`; wired `#btn-dispatch-gvg-tasks` to build and send the current day's GvG tasks directly to Discord with instant feedback toasts.
+  - **Fixed (webhook fallback resolution)**: in `supabase/functions/_shared/reminder-rules.ts`, updated `resolveGuildWebhook` to treat empty and whitespace-only specific webhooks as unset, properly falling back to `discord_webhook_url` or event category webhooks instead of silencing events.
+  - **Fixed (lock false-sent bug)**: in `supabase/functions/event-reminders/index.ts`, eliminated `sentSuccess = true` when webhook URLs are missing or dispatch fails, preventing the cron worker from permanently locking reminders without actual delivery.
+  - **Fixed (webhook proxy regex)**: in `supabase/functions/discord-webhook-proxy/index.ts`, updated `DISCORD_WEBHOOK_PATH_REGEX` to accept trailing slashes and added caller tenant fallback.
+  - **Removed (mobile PWA push notifications)**: removed `sendWebPush` and `web-push-neo` from `event-reminders`; removed the Push opt-in slot from `OverviewView.ts` and the Notifications card / player push preference listeners from `PortalView.ts`; converted `PushService.ts` to an inert backward-compatible stub.
+  - **Verification**: `npm run type-check` — 0 errors; **1367/1367 Vitest tests green across 115 suites**; production build clean.
+
 - **Fix: Player portal routing & empty admin dashboard prevention for members (V3.18.1)** — resolved normal members landing on an empty Admin Dashboard with 0s upon sign-in or session refresh.
   - **Fixed (post-login routing)**: `handleSuccessfulLogin()` in `src/modules/app/auth/auth.controller.ts` now branches immediately on `role === 'member'`, persisting `gm_role = 'member'`, `gm_portal_session = '1'`, and calling `revealPortal()`, preventing any execution of `revealAdmin(role)` for members.
   - **Fixed (session restoration)**: `restoreSession()` now unconditionally routes any user whose resolved role is `member` directly to `revealPortal()` and sets `gm_portal_session = '1'`, eliminating the prior requirement of a pre-existing `gm_portal_session` flag in localStorage that previously dumped members into `revealAdmin(role)` on page reloads.

@@ -47,24 +47,26 @@ describe('isToggleEnabled (strict notify_* toggles)', () => {
   });
 });
 
-describe('resolveGuildWebhook (RC3: explicit empty = silenced, no fallback)', () => {
+describe('resolveGuildWebhook (robust fallback to general webhook & other categories)', () => {
   const GENERAL = 'https://discord.com/api/webhooks/111/aaa';
+  const ARMS = 'https://discord.com/api/webhooks/333/ccc';
 
   it('uses a configured category webhook trimmed', () => {
     expect(resolveGuildWebhook({ 'webhook_gvg': '  https://discord.com/api/webhooks/222/bbb  ', discord_webhook_url: GENERAL }, 'gvg'))
       .toBe('https://discord.com/api/webhooks/222/bbb');
   });
 
-  it('returns an empty string for an explicitly cleared category webhook even when a general webhook exists', () => {
-    expect(resolveGuildWebhook({ 'webhook_gvg': '', discord_webhook_url: GENERAL }, 'gvg')).toBe('');
+  it('falls back to the general webhook when specific webhook is empty or whitespace', () => {
+    expect(resolveGuildWebhook({ 'webhook_gvg': '', discord_webhook_url: GENERAL }, 'gvg')).toBe(GENERAL);
+    expect(resolveGuildWebhook({ 'webhook_svs': '   ', discord_webhook_url: GENERAL }, 'svs')).toBe(GENERAL);
   });
 
-  it('treats whitespace-only as cleared (silenced)', () => {
-    expect(resolveGuildWebhook({ 'webhook_svs': '   ', discord_webhook_url: GENERAL }, 'svs')).toBe('');
-  });
-
-  it('falls back to the general webhook only when the category key was never configured', () => {
+  it('falls back to the general webhook when the category key was never configured', () => {
     expect(resolveGuildWebhook({ discord_webhook_url: GENERAL }, 'gvg')).toBe(GENERAL);
+  });
+
+  it('falls back to other category webhooks when general is not set', () => {
+    expect(resolveGuildWebhook({ webhook_armsrace: ARMS }, 'gvg')).toBe(ARMS);
   });
 
   it('returns an empty string when nothing is configured', () => {

@@ -107,10 +107,6 @@ const legacy = {
   computeBadges(payload: unknown): any {
     const badges = winAny().GM_BADGES;
     return badges && typeof badges.computeBadges === 'function' ? badges.computeBadges(payload) : null;
-  },
-  pushMount(slot: Element): void {
-    const push = winAny().GM_PUSH;
-    if (push && typeof push.mount === 'function') push.mount(slot);
   }
 };
 
@@ -1171,19 +1167,6 @@ export class PortalView {
         '</div>' +
 
         '<div class="portal-card">' +
-          '<div class="portal-card-title"><i class="ph ph-bell-ringing"></i> Notifications<button class="gm-help-btn" data-help-id="help-portal-dashboard" aria-label="Help: Notifications"><i class="ph ph-info"></i></button></div>' +
-          '<div data-gm-notif></div>' +
-          '<div class="portal-notif-hint"><i class="ph ph-info"></i> Choose which web-push reminders you want to receive.</div>' +
-          '<div class="portal-notif-options">' +
-            '<label class="portal-notif-opt"><input type="checkbox" id="portal-notif-events" value="events"><span><strong>Event reminders</strong><small>Starts, reminders and battle openings</small></span></label>' +
-            '<label class="portal-notif-opt"><input type="checkbox" id="portal-notif-glory" value="glory"><span><strong>Glory</strong><small>Weekly Glory tracking notices</small></span></label>' +
-            '<label class="portal-notif-opt"><input type="checkbox" id="portal-notif-challenges" value="challenges"><span><strong>Challenges</strong><small>Weekly challenges and season updates</small></span></label>' +
-          '</div>' +
-          '<div class="portal-row"><button type="button" id="portal-notif-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button></div>' +
-          '<div class="portal-msg" id="portal-notif-msg"></div>' +
-        '</div>' +
-
-        '<div class="portal-card">' +
           '<div class="portal-card-title"><i class="ph ph-swap"></i> Request Guild Transfer<button class="gm-help-btn" data-help-id="help-portal-transfer" aria-label="Help: Guild Transfer"><i class="ph ph-info"></i></button></div>' +
           '<div class="portal-row"><select id="portal-transfer-select" class="gm-input"><option value="">Select Target Guild...</option></select><button type="button" id="portal-transfer-btn" class="gm-btn gm-btn-primary gm-btn-sm" disabled><i class="ph ph-paper-plane-tilt"></i><span>Send</span></button></div>' +
           '<div id="portal-transfer-msg" class="portal-msg"></div>' +
@@ -1444,56 +1427,6 @@ export class PortalView {
           if (span) span.textContent = origText;
           transferBtn.disabled = !transferSelect.value;
           transferSelect.disabled = false;
-        }
-      });
-    }
-
-    // Notifications preferences
-    const notifSlot = document.querySelector('[data-gm-notif]');
-    if (notifSlot) legacy.pushMount(notifSlot);
-
-    const notifBtn = document.getElementById('portal-notif-btn') as HTMLButtonElement | null;
-    const notifMsg = document.getElementById('portal-notif-msg');
-    const notifBoxes = ['events', 'glory', 'challenges'].map((k) => document.getElementById('portal-notif-' + k) as HTMLInputElement | null);
-
-    const setNotifMsg = (msg: string, type: string): void => {
-      if (!notifMsg) return;
-      notifMsg.textContent = msg;
-      (notifMsg as HTMLElement).style.color = type === 'error' ? 'var(--danger)' : 'var(--success)';
-      (notifMsg as HTMLElement).style.display = 'block';
-    };
-
-    this.invoke('get-push-prefs', {}).then((res: any) => {
-      const types = (res.ok && res.event_types) ? res.event_types : ['events', 'glory', 'challenges'];
-      notifBoxes.forEach((box) => {
-        if (box) box.checked = types.indexOf(box.value) !== -1;
-      });
-    });
-
-    if (notifBtn) {
-      notifBtn.addEventListener('click', async () => {
-        const selected = notifBoxes.filter((b) => b && b.checked).map((b) => (b as HTMLInputElement).value);
-        if (selected.length === 0) {
-          setNotifMsg('Select at least one notification type.', 'error');
-          return;
-        }
-        notifBtn.disabled = true;
-        const span = notifBtn.querySelector('span');
-        const origText = span ? span.textContent : '';
-        if (span) span.textContent = 'Saving...';
-        if (notifMsg) (notifMsg as HTMLElement).style.display = 'none';
-        try {
-          const res = await this.invoke('set-push-prefs', { event_types: selected });
-          if (!res.ok) {
-            setNotifMsg('Failed to save notification preferences (' + (res.error || 'unknown') + ').', 'error');
-          } else {
-            setNotifMsg('Notification preferences saved.', 'success');
-          }
-        } catch (err) {
-          setNotifMsg('An error occurred.', 'error');
-        } finally {
-          if (span) span.textContent = origText;
-          notifBtn.disabled = false;
         }
       });
     }

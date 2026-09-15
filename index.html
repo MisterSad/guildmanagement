@@ -599,21 +599,35 @@
                             </div>
                         </div>
 
-                        <!-- Card 2: Global Discord Role Mention -->
+                        <!-- Card 2: Global Discord Notifications & Webhook -->
                         <div class="gm-card gm-card-padded gm-section">
                             <div class="gm-section-title" style="margin-bottom: 1rem;">
-                                <i class="ph ph-at"></i>
-                                <span data-i18n="label_discord_notifications_config">Global Discord Role Mention</span> <button class="gm-help-btn" data-help-id="help-discord-role" aria-label="Help: Discord Role"><i class="ph ph-info"></i></button>
+                                <i class="ph ph-discord-logo"></i>
+                                <span data-i18n="label_discord_notifications_config">Global Discord Notifications &amp; Webhook</span> <button class="gm-help-btn" data-help-id="help-discord-role" aria-label="Help: Discord Role"><i class="ph ph-info"></i></button>
                             </div>
-                            <div class="gm-col" style="gap: 0.5rem;">
-                                <label class="gm-dim" style="font-size: 0.85rem; font-weight: 500;" for="discord-role-id" data-i18n="label_discord_role_id">Default Discord Role ID / Mention (tagged in all event alerts)</label>
-                                <div style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
-                                    <span class="gm-ui-input gm-ui-input-md">
-                                    <input type="text" id="discord-role-id" class="gm-ui-input-field" style="max-width: 360px; font-family:var(--font-mono, monospace);" placeholder="e.g. 1523751822139981976 or @everyone">
-                                </span>
-                                    <span class="gm-badge" style="background:var(--accent-lime-soft); color:var(--accent-lime-fg); border:1px solid var(--accent-lime-soft); font-size:.78rem; padding:5px 12px; border-radius:var(--radius-pill); font-weight:600;"><i class="ph ph-check-circle"></i> Formats as @Role automatically</span>
+                            <div class="gm-col" style="gap: 1.25rem;">
+                                <div class="gm-col" style="gap: 0.5rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem; font-weight: 500;" for="discord-webhook-url">Default Discord Webhook URL (used for all event alerts unless overridden below)</label>
+                                    <div style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
+                                        <span class="gm-ui-input gm-ui-input-md" style="flex: 1; min-width: 280px; max-width: 600px;">
+                                            <input type="url" id="discord-webhook-url" class="gm-ui-input-field" style="font-family:var(--font-mono, monospace);" placeholder="https://discord.com/api/webhooks/...">
+                                        </span>
+                                        <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="btn-test-default-webhook">
+                                            <i class="ph ph-paper-plane-tilt"></i> <span>Test Webhook</span>
+                                        </button>
+                                    </div>
+                                    <span style="font-size: 0.78rem; color: var(--fg-dim); margin-top: 0.15rem;">In Discord: Server Settings &gt; Integrations &gt; Webhooks &gt; New Webhook &gt; Copy Webhook URL.</span>
                                 </div>
-                                <span style="font-size: 0.78rem; color: var(--fg-dim); margin-top: 0.25rem;" data-i18n="label_discord_role_id_hint">Tip: Get the Role ID in Discord by enabling Developer Mode, right-clicking the Role in Server Settings &gt; Roles, and selecting <strong>Copy Role ID</strong>.</span>
+                                <div class="gm-col" style="gap: 0.5rem;">
+                                    <label class="gm-dim" style="font-size: 0.85rem; font-weight: 500;" for="discord-role-id" data-i18n="label_discord_role_id">Default Discord Role ID / Mention (tagged in all event alerts)</label>
+                                    <div style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
+                                        <span class="gm-ui-input gm-ui-input-md">
+                                            <input type="text" id="discord-role-id" class="gm-ui-input-field" style="max-width: 360px; font-family:var(--font-mono, monospace);" placeholder="e.g. 1523751822139981976 or @everyone">
+                                        </span>
+                                        <span class="gm-badge" style="background:var(--accent-lime-soft); color:var(--accent-lime-fg); border:1px solid var(--accent-lime-soft); font-size:.78rem; padding:5px 12px; border-radius:var(--radius-pill); font-weight:600;"><i class="ph ph-check-circle"></i> Formats as @Role automatically</span>
+                                    </div>
+                                    <span style="font-size: 0.78rem; color: var(--fg-dim); margin-top: 0.25rem;" data-i18n="label_discord_role_id_hint">Tip: Get the Role ID in Discord by enabling Developer Mode, right-clicking the Role in Server Settings &gt; Roles, and selecting <strong>Copy Role ID</strong>.</span>
+                                </div>
                             </div>
                         </div>
 

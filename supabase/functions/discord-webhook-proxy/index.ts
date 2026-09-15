@@ -25,7 +25,7 @@ const ALLOWED_DISCORD_HOSTS = new Set([
   "canary.discordapp.com",
 ]);
 
-const DISCORD_WEBHOOK_PATH_REGEX = /^\/api(?:\/v\d+)?\/webhooks\/\d+\/[A-Za-z0-9_-]+$/;
+const DISCORD_WEBHOOK_PATH_REGEX = /^\/api(?:\/v\d+)?\/webhooks\/\d+\/[A-Za-z0-9_-]+\/?$/;
 
 function isValidDiscordWebhook(url: string): boolean {
   if (!url || typeof url !== "string") return false;
@@ -149,6 +149,7 @@ serve(async (req: Request) => {
       (caller.role === "super_admin" || caller.role === "guild_admin" || caller.role === "server_admin");
 
     // Server-side resolution from guild_config
+    requestedGuild = requestedGuild || caller.guild || "";
     if (!webhookUrl && requestedGuild) {
       const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
       const { data: rows } = await adminClient
