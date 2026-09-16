@@ -420,13 +420,13 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
     const valDesc = templates[reminder.key + '_desc'] || '';
 
     const roundPillContent = eventPrefix === 'calamity'
-      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-hash"></i> N° Manche</button>'
+      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-hash"></i> Round #</button>'
       : '';
     const roundPillTitle = eventPrefix === 'calamity'
-      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-hash"></i> N° Manche</button>'
+      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-hash"></i> Round #</button>'
       : '';
     const roundPillDesc = eventPrefix === 'calamity'
-      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-hash"></i> N° Manche</button>'
+      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-hash"></i> Round #</button>'
       : '';
 
     panesHtml +=
@@ -434,14 +434,14 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
         // Field 1: Ping / Notification Text
         '<div class="gm-col" style="gap: 0.3rem;">' +
           '<label for="tpl-' + reminder.key + '-content" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
-            '<span>Texte de notification (Ping)</span>' +
-            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Alerte sonore</span>' +
+            '<span>Notification Text (Ping)</span>' +
+            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Triggers sound alert</span>' +
           '</label>' +
           '<div class="discord-pills-bar">' +
-            '<button type="button" class="discord-pill-btn" data-insert="{guild_tag}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-tag"></i> Rôle Discord</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{guild_tag}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-tag"></i> Guild Role</button>' +
             '<button type="button" class="discord-pill-btn" data-insert="@everyone" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-megaphone"></i> @everyone</button>' +
-            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-game-controller"></i> Nom Épreuve</button>' +
-            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-clock"></i> Heure UTC</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-game-controller"></i> Event Name</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-clock"></i> UTC Time</button>' +
             roundPillContent +
           '</div>' +
           '<input type="text" id="tpl-' + reminder.key + '-content" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' + esc(defContent) + '" value="' + esc(valContent) + '">' +
@@ -450,12 +450,12 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
         // Field 2: Embed Title
         '<div class="gm-col" style="gap: 0.3rem;">' +
           '<label for="tpl-' + reminder.key + '-title" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
-            '<span>Titre de l\'encadré (Embed Title)</span>' +
-            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Titre en gras</span>' +
+            '<span>Embed Title</span>' +
+            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Bold title</span>' +
           '</label>' +
           '<div class="discord-pills-bar">' +
-            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-game-controller"></i> Nom Épreuve</button>' +
-            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-clock"></i> Heure UTC</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-game-controller"></i> Event Name</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-clock"></i> UTC Time</button>' +
             roundPillTitle +
           '</div>' +
           '<input type="text" id="tpl-' + reminder.key + '-title" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' + esc(defTitle) + '" value="' + esc(valTitle) + '">' +
@@ -464,12 +464,12 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
         // Field 3: Embed Description
         '<div class="gm-col" style="gap: 0.3rem;">' +
           '<label for="tpl-' + reminder.key + '-desc" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
-            '<span>Description de l\'encadré (Embed Description)</span>' +
-            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Corps du message</span>' +
+            '<span>Embed Description</span>' +
+            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Main body</span>' +
           '</label>' +
           '<div class="discord-pills-bar">' +
-            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-game-controller"></i> Nom Épreuve</button>' +
-            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-clock"></i> Heure UTC</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-game-controller"></i> Event Name</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-clock"></i> UTC Time</button>' +
             roundPillDesc +
           '</div>' +
           '<textarea id="tpl-' + reminder.key + '-desc" class="gm-input" style="font-size: var(--fs-sm); height: 65px; resize: vertical;" placeholder="' + esc(defDesc) + '">' + esc(valDesc) + '</textarea>' +
@@ -478,7 +478,7 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
         // Reset to Default button
         '<div style="display: flex; justify-content: flex-start; margin-top: 0.2rem;">' +
           '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm discord-reset-btn" data-reset="' + esc(reminder.key) + '" style="gap: 0.35rem; font-size: var(--fs-xs); color: var(--fg-muted);">' +
-            '<i class="ph ph-arrow-counter-clockwise"></i> Rétablir le message par défaut' +
+            '<i class="ph ph-arrow-counter-clockwise"></i> Reset to default template' +
           '</button>' +
         '</div>' +
       '</div>';
@@ -490,8 +490,8 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
     '<div class="discord-preview-column">' +
       '<div class="discord-preview-wrap">' +
         '<div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #949ba4; font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 0.4rem;">' +
-          '<span><i class="ph ph-discord-logo"></i> Aperçu Discord en direct</span>' +
-          '<span style="font-size: 0.65rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">Rendu réel</span>' +
+          '<span><i class="ph ph-discord-logo"></i> Discord Live Preview</span>' +
+          '<span style="font-size: 0.65rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">Real-time</span>' +
         '</div>' +
         '<div class="discord-msg-header">' +
           '<div class="discord-avatar">🤖</div>' +
@@ -499,7 +499,7 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
             '<div class="discord-author">' +
               '<span>FGF Bot</span>' +
               '<span class="discord-bot-badge">BOT</span>' +
-              '<span class="discord-timestamp">Aujourd\'hui à 14:00</span>' +
+              '<span class="discord-timestamp">Today at 14:00</span>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -583,7 +583,7 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
 
     const sampleEventName = TITLE_MAP[eventPrefix] || 'Arms Race';
     const sampleDate = 'Wed, 14:00 UTC';
-    const sampleRole = '@Guerriers FGF';
+    const sampleRole = '@FGF Guild';
 
     const formatDiscord = (text: string): string => {
       if (!text) return '';
@@ -595,7 +595,7 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
         .replace(/\{round\}/g, '3')
         .replace(/\{guild_tag\}/g, '<span class="discord-mention">' + esc(sampleRole) + '</span>')
         .replace(/@everyone/g, '<span class="discord-mention">@everyone</span>')
-        .replace(/<@&?(\d+)>/g, '<span class="discord-mention">@Rôle</span>')
+        .replace(/<@&?(\d+)>/g, '<span class="discord-mention">@Role</span>')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>');
     };

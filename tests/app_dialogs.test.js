@@ -224,7 +224,7 @@ describe('openCustomMsgModal', () => {
     rolePill.click();
 
     expect(contentInput.value).toBe('Hello {guild_tag}');
-    expect(previewContent.textContent).toContain('Hello @Guerriers FGF');
+    expect(previewContent.textContent).toContain('Hello @FGF Guild');
 
     // Test tab switching to 5 minutes
     const tab5 = overlay.querySelector('.discord-custom-tab-btn[data-tab="reminder_5"]');
