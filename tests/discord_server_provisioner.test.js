@@ -1,0 +1,289 @@
+/**
+ * tests/discord_server_provisioner.test.js
+ *
+ * Comprehensive unit and regression tests for Discord Server Provisioning & Templating:
+ * - Dynamic slugification and template generation across multiple guild tenants (ALPHA, BABE, CLAW).
+ * - Correct category, channel, and voice hierarchy mapping.
+ * - Multi-tenant role permissions & Zero-Trust channel permission overwrites.
+ * - Mocked provisioning flow, progress reporting, and Supabase guild_config auto-wiring.
+ * - Architecture invariants: zero direct writes to accounts or guild_members, no banned_players mentions.
+ */
+
+import { describe, it, expect, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { ChannelType } from "discord.js";
+import {
+  sanitizeSlug,
+  buildServerTemplate,
+  provisionDiscordServer,
+} from "../discord-verification-worker/server-provisioner.js";
+
+describe("Discord Server Provisioner: sanitizeSlug", () => {
+  it("converts mixed strings, spaces and tags to lowercase channel slugs", () => {
+    expect(sanitizeSlug("ALPHA")).toBe("alpha");
+    expect(sanitizeSlug("[PR1M]")).toBe("pr1m");
+    expect(sanitizeSlug("First Galactic Fleet")).toBe("first-galactic-fleet");
+    expect(sanitizeSlug("Cool_Guild--1058")).toBe("cool_guild-1058");
+    expect(sanitizeSlug("")).toBe("guild");
+    expect(sanitizeSlug(null)).toBe("guild");
+  });
+});
+
+describe("Discord Server Provisioner: buildServerTemplate", () => {
+  it("generates dynamic template tailored to ALPHA guild ([PR1M], Server #1058)", () => {
+    const template = buildServerTemplate({
+      guildName: "ALPHA",
+      guildTag: "PR1M",
+      serverNumber: "1058",
+    });
+
+    expect(template.guildName).toBe("ALPHA");
+    expect(template.guildTag).toBe("PR1M");
+    expect(template.serverNumber).toBe("1058");
+    expect(template.guildSlug).toBe("alpha");
+    expect(template.tagSlug).toBe("pr1m");
+
+    // Check roles
+    const roleNames = template.roles.map((r) => r.name);
+    expect(roleNames).toContain("👑 [PR1M] R5");
+    expect(roleNames).toContain("⭐ [PR1M] R4");
+    expect(roleNames).toContain("🛡️ [PR1M] Member");
+    expect(roleNames).toContain("👽 Visitor");
+
+    // Check 7 categories
+    expect(template.categories).toHaveLength(7);
+    const catNames = template.categories.map((c) => c.name);
+    expect(catNames).toEqual([
+      "🛂 WELCOME",
+      "👽 CROSS SERVER VISITORS",
+      "GAME UPDATES",
+      "⌛ EVENT REMINDERS",
+      "🪐 SERVER #1058",
+      "🚨 DOMINION WARZONE",
+      "🔴 ALPHA",
+    ]);
+
+    // Check guild specific category channels
+    const alphaCat = template.categories.find((c) => c.name === "🔴 ALPHA");
+    expect(alphaCat).toBeDefined();
+    const alphaChNames = alphaCat.channels.map((ch) => ch.name);
+    expect(alphaChNames).toContain("📡・alpha-chat");
+    expect(alphaChNames).toContain("🗓️・pr1m-leave-and-absence");
+    expect(alphaChNames).toContain("👑・r4-chat");
+    expect(alphaChNames).toContain("🎧・pr1m-voice");
+    expect(alphaChNames).toContain("R4 VC");
+
+    // Check voice channel types
+    const voiceCh = alphaCat.channels.find((ch) => ch.name === "🎧・pr1m-voice");
+    expect(voiceCh.type).toBe(ChannelType.GuildVoice);
+    const r4VoiceCh = alphaCat.channels.find((ch) => ch.name === "R4 VC");
+    expect(r4VoiceCh.type).toBe(ChannelType.GuildVoice);
+  });
+
+  it("generates dynamic template tailored to BABE guild ([BABE], Server #2042)", () => {
+    const template = buildServerTemplate({
+      guildName: "BABE",
+      guildTag: "BABE",
+      serverNumber: 2042,
+    });
+
+    expect(template.guildName).toBe("BABE");
+    expect(template.serverNumber).toBe("2042");
+
+    const roleNames = template.roles.map((r) => r.name);
+    expect(roleNames).toContain("👑 [BABE] R5");
+    expect(roleNames).toContain("⭐ [BABE] R4");
+    expect(roleNames).toContain("🛡️ [BABE] Member");
+
+    const catNames = template.categories.map((c) => c.name);
+    expect(catNames).toContain("🪐 SERVER #2042");
+    expect(catNames).toContain("🔴 BABE");
+
+    const babeCat = template.categories.find((c) => c.name === "🔴 BABE");
+    const babeChNames = babeCat.channels.map((ch) => ch.name);
+    expect(babeChNames).toContain("📡・babe-chat");
+    expect(babeChNames).toContain("🗓️・babe-leave-and-absence");
+    expect(babeChNames).toContain("🎧・babe-voice");
+  });
+
+  it("enforces Zero-Trust permission isolation on sensitive rooms", () => {
+    const template = buildServerTemplate({
+      guildName: "CLAW",
+      guildTag: "CLAW",
+      serverNumber: "999",
+    });
+
+    const clawCat = template.categories.find((c) => c.name === "🔴 CLAW");
+    // Everyone and visitors locked out of private guild category
+    expect(clawCat.overwrites.everyone.ViewChannel).toBe(false);
+    expect(clawCat.overwrites.visitor.ViewChannel).toBe(false);
+    expect(clawCat.overwrites.member.ViewChannel).toBe(true);
+
+    // r4-chat locked to regular members
+    const r4Chat = clawCat.channels.find((ch) => ch.name === "👑・r4-chat");
+    expect(r4Chat.overwrites.member.ViewChannel).toBe(false);
+    expect(r4Chat.overwrites.officer.ViewChannel).toBe(true);
+
+    // R4 VC locked to regular members
+    const r4Vc = clawCat.channels.find((ch) => ch.name === "R4 VC");
+    expect(r4Vc.overwrites.member.ViewChannel).toBe(false);
+    expect(r4Vc.overwrites.officer.Connect).toBe(true);
+
+    // Verification channel allows @everyone upload
+    const welcomeCat = template.categories.find((c) => c.name === "🛂 WELCOME");
+    const verifChannel = welcomeCat.channels.find((ch) => ch.name === "🔐・verification");
+    expect(verifChannel.overwrites.everyone.SendMessages).toBe(true);
+    expect(verifChannel.overwrites.everyone.AttachFiles).toBe(true);
+  });
+});
+
+describe("Discord Server Provisioner: provisionDiscordServer Execution", () => {
+  function makeFakeDiscordGuild() {
+    const rolesCreated = [];
+    const channelsCreated = [];
+
+    const everyoneRole = { id: "role_everyone", name: "@everyone" };
+    const rolesStore = new Map([["role_everyone", everyoneRole]]);
+    const channelsStore = new Map();
+
+    return {
+      roles: {
+        everyone: everyoneRole,
+        fetch: vi.fn(async () => Array.from(rolesStore.values())),
+        create: vi.fn(async (data) => {
+          const role = { id: `role_${data.name}`, ...data };
+          rolesStore.set(role.id, role);
+          rolesCreated.push(role);
+          return role;
+        }),
+      },
+      channels: {
+        fetch: vi.fn(async () => channelsStore),
+        create: vi.fn(async (data) => {
+          const channel = {
+            id: `channel_${data.name.replace(/[^a-zA-Z0-9]/g, "_")}`,
+            send: vi.fn(async () => ({})),
+            ...data,
+          };
+          channelsStore.set(channel.id, channel);
+          channelsCreated.push(channel);
+          return channel;
+        }),
+      },
+      _state: { rolesCreated, channelsCreated },
+    };
+  }
+
+  it("provisions complete server and auto-wires Supabase guild_config", async () => {
+    const fakeGuild = makeFakeDiscordGuild();
+    const upsertRows = [];
+    const fakeSupabase = {
+      from: (table) => ({
+        upsert: vi.fn(async (rows) => {
+          if (table === "guild_config") upsertRows.push(...rows);
+          return { error: null };
+        }),
+      }),
+    };
+
+    const progressUpdates = [];
+    const onProgress = vi.fn(async (pct, text) => {
+      progressUpdates.push({ pct, text });
+    });
+
+    const res = await provisionDiscordServer(
+      fakeGuild,
+      {
+        guildName: "ALPHA",
+        guildTag: "PR1M",
+        serverNumber: "1058",
+        cleanMode: false,
+        rateLimitDelayMs: 0,
+      },
+      {
+        supabase: fakeSupabase,
+        onProgress,
+      }
+    );
+
+    expect(res.ok).toBe(true);
+    expect(res.createdCounts.roles).toBe(4);
+    expect(res.createdCounts.categories).toBe(7);
+    expect(res.createdCounts.channels).toBeGreaterThanOrEqual(28);
+
+    // Check progress reporting
+    expect(progressUpdates.length).toBeGreaterThan(5);
+    expect(progressUpdates[0].pct).toBe(5);
+    expect(progressUpdates[progressUpdates.length - 1].pct).toBe(100);
+
+    // Check Supabase auto-wiring
+    expect(upsertRows).toHaveLength(3);
+    const verifRow = upsertRows.find((r) => r.key === "discord_verification_channel_id");
+    const auditRow = upsertRows.find((r) => r.key === "discord_audit_channel_id");
+    const memberRoleRow = upsertRows.find((r) => r.key === "discord_member_role_id");
+
+    expect(verifRow).toBeDefined();
+    expect(verifRow.guild).toBe("ALPHA");
+    expect(verifRow.value).toContain("channel_");
+
+    expect(auditRow).toBeDefined();
+    expect(auditRow.guild).toBe("ALPHA");
+    expect(auditRow.value).toContain("channel_");
+
+    expect(memberRoleRow).toBeDefined();
+    expect(memberRoleRow.guild).toBe("ALPHA");
+    expect(memberRoleRow.value).toContain("role_");
+  });
+
+  it("handles clean mode by deleting pre-existing deletable channels", async () => {
+    const fakeGuild = makeFakeDiscordGuild();
+    const oldChannel = {
+      id: "old_general",
+      name: "general",
+      deletable: true,
+      delete: vi.fn(async () => {}),
+    };
+    fakeGuild.channels.fetch = vi.fn(async () => new Map([["old_general", oldChannel]]));
+
+    const fakeSupabase = {
+      from: () => ({ upsert: vi.fn(async () => ({ error: null })) }),
+    };
+
+    const res = await provisionDiscordServer(
+      fakeGuild,
+      {
+        guildName: "DEMO",
+        cleanMode: true,
+        rateLimitDelayMs: 0,
+      },
+      {
+        supabase: fakeSupabase,
+      }
+    );
+
+    expect(res.ok).toBe(true);
+    expect(oldChannel.delete).toHaveBeenCalled();
+  });
+});
+
+describe("Architectural & Security Invariants: server-provisioner", () => {
+  const provisionerPath = path.resolve(__dirname, "../discord-verification-worker/server-provisioner.js");
+  const provisionerCode = fs.readFileSync(provisionerPath, "utf-8");
+
+  const indexPath = path.resolve(__dirname, "../discord-verification-worker/index.js");
+  const indexCode = fs.readFileSync(indexPath, "utf-8");
+
+  it("never references banned_players anywhere in the server provisioner or worker", () => {
+    expect(provisionerCode).not.toContain("banned_players");
+    expect(indexCode).not.toContain("banned_players");
+  });
+
+  it("never executes raw mutations on accounts or guild_members directly", () => {
+    // Both modules should never touch accounts or guild_members tables directly with mutations
+    expect(provisionerCode).not.toMatch(/\.from\(["']accounts["']\)\.(insert|update|upsert|delete)/);
+    expect(provisionerCode).not.toMatch(/\.from\(["']guild_members["']\)\.(insert|update|upsert|delete)/);
+    expect(indexCode).not.toMatch(/\.from\(["']accounts["']\)\.(insert|update|upsert|delete)/);
+    expect(indexCode).not.toMatch(/\.from\(["']guild_members["']\)\.(insert|update|upsert|delete)/);
+  });
+});

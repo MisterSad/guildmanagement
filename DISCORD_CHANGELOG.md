@@ -1,3 +1,31 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.18.4**
+
+Welcome to V3.18.4! Today I just deployed our new **Automated Discord Server Bootstrap & Provisioning Engine** (`/setup-server`)! With this release, our bot can take any blank or new Discord server and completely format it into a battle-ready, standardized guild command center tailored dynamically to your guild. Here is everything newly available:
+
+### 🏗️ Complete Automated Discord Server Bootstrap (`/setup-server`)
+- **What changed**: Guild administrators can now run `/setup-server guild:<GUILD_ID>` (with optional `server_number` and `clean_mode`).
+- **The benefit**: In under 15 seconds, the bot builds an entire server hierarchy with **7 categories, 28 text channels, 3 voice channels, and 4 specialized roles**!
+
+### 🏷️ 100% Dynamic Guild Customization
+- **What changed**: Zero hardcoded names! The bot dynamically extracts your guild's data:
+  - Custom roles: `👑 [TAG] R5`, `⭐ [TAG] R4`, `🛡️ [TAG] Member`, `👽 Visitor`.
+  - Custom category: `🔴 <GUILD_NAME>` (e.g. `🔴 ALPHA` or `🔴 BABE`).
+  - Custom channels: `#📡・<guild_slug>-chat`, `#🗓️・<tag_slug>-leave-and-absence`, `🔊 🎧・<tag_slug>-voice`.
+  - Game server category: `🪐 SERVER #<server_number>` with community rules and channels.
+- **The benefit**: Works out of the box for any guild tenant across the galaxy with zero manual renaming needed.
+
+### 🛡️ Zero-Trust Channel Permissions & Officer Privacy
+- **What changed**: Public visitors and unverified members are automatically locked out of private guild headquarters and classified war rooms. Officers receive dedicated secure rooms (`#👑・r4-chat` and `🔊 R4 VC`) locked strictly to R4 and R5 ranks.
+- **The benefit**: Total operational security for battle strategies, treaty deliberations, and leadership meetings.
+
+### ⚡ Automatic FGF Platform Synchronization
+- **What changed**: The bot doesn't just create channels; it automatically links the newly created `#🔐・verification`, `#👑・r4-chat`, and member role directly into your FGF database (`guild_config`).
+- **The benefit**: Instant zero-configuration activation of AI screenshot verification and officer alerts!
+
+Run `/setup-server` on your Discord server and enjoy an instant, professional guild command center! 🚀🏛️⚔️
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.18.3**
 
 Welcome to V3.18.3! Today I just rolled out a major upgrade to our **Interactive Discord Bot**! From privacy-first zero-clutter channel verification to real-time war check-ins and guild leaderboards, here is everything newly available directly inside your Discord server:

@@ -23,7 +23,9 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  PermissionFlagsBits,
 } from "discord.js";
+import { provisionDiscordServer } from "./server-provisioner.js";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 
@@ -931,6 +933,245 @@ async function handleUpdateStats(interaction) {
   await interaction.reply({ embeds: [embed], ephemeral: true });
 }
 
+const pendingSetups = new Map();
+
+function generateProgressBar(percent) {
+  const totalBars = 16;
+  const clamped = Math.min(100, Math.max(0, percent));
+  const filledBars = Math.round((clamped / 100) * totalBars);
+  const emptyBars = Math.max(0, totalBars - filledBars);
+  return `[${"█".repeat(filledBars)}${"░".repeat(emptyBars)}] ${clamped}%`;
+}
+
+async function handleSetupServer(interaction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: "❌ This command can only be run inside a Discord server.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // Permission check: Discord Administrator
+  const isGuildOwner = interaction.guild.ownerId === interaction.user.id;
+  const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) || isGuildOwner;
+  if (!isAdmin) {
+    await interaction.reply({
+      content: "❌ You must have **Administrator** permissions on this Discord server to use `/setup-server`.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const rawGuild = interaction.options.getString("guild", true).trim().toUpperCase();
+  const rawServer = interaction.options.getString("server_number");
+  const cleanMode = interaction.options.getBoolean("clean_mode") || false;
+
+  // Retrieve guild metadata from Supabase
+  const { data: guildRow } = await supabase
+    .from("guilds")
+    .select("id, name, server_number")
+    .eq("id", rawGuild)
+    .maybeSingle();
+
+  const finalServerNumber = (rawServer ? rawServer.trim() : guildRow?.server_number) || "1000";
+
+  // Resolve guild tag
+  const { data: tagRow } = await supabase
+    .from("guild_config")
+    .select("value")
+    .eq("guild", rawGuild)
+    .eq("key", "guild_tag")
+    .maybeSingle();
+
+  const finalTag = tagRow?.value?.trim() || rawGuild;
+  const setupId = `${interaction.guild.id}_${Date.now()}`;
+
+  pendingSetups.set(setupId, {
+    setupId,
+    guildId: interaction.guild.id,
+    targetGuild: rawGuild,
+    guildName: guildRow?.name || rawGuild,
+    guildTag: finalTag,
+    serverNumber: finalServerNumber,
+    cleanMode,
+    initiatorId: interaction.user.id,
+    createdAt: Date.now(),
+  });
+
+  // Auto expire after 5 minutes
+  setTimeout(() => pendingSetups.delete(setupId), 5 * 60 * 1000);
+
+  const confirmEmbed = {
+    color: 0xf59e0b,
+    title: `⚠️ Confirm Discord Server Setup: [${rawGuild}]`,
+    description:
+      `You are about to bootstrap and format this Discord server for **${guildRow?.name || rawGuild}**.\n\n` +
+      `**Configuration Overview:**\n` +
+      `• **FGF Guild**: \`${rawGuild}\` (Tag: \`[${finalTag}]\`)\n` +
+      `• **Game Server**: \`#${finalServerNumber}\`\n` +
+      `• **Clean Mode**: ${cleanMode ? "⚠️ **Enabled** (All existing channels will be wiped!)" : "Disabled (Existing channels preserved)"}\n` +
+      `• **Roles to Create**: 👑 \`[${finalTag}] R5\`, ⭐ \`[${finalTag}] R4\`, 🛡️ \`[${finalTag}] Member\`, 👽 \`Visitor\`\n` +
+      `• **Categories**: 7 (Welcome, Visitors, Game Updates, Reminders, Server #${finalServerNumber}, Dominion, 🔴 ${rawGuild})\n` +
+      `• **Channels**: 28 Text, 3 Voice with Zero-Trust permission overrides\n` +
+      `• **SaaS Auto-Wiring**: Connects \`#verification\`, \`#r4-chat\`, and member role into Supabase \`guild_config\`.\n\n` +
+      `*Please confirm to launch the automated provisioning pipeline.*`,
+    footer: { text: "FGF Server Provisioner • Administrator Authorized" },
+    timestamp: new Date().toISOString(),
+  };
+
+  const actionRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`setup_confirm_${setupId}`)
+      .setLabel("🚀 Confirmer et Déployer")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`setup_cancel_${setupId}`)
+      .setLabel("❌ Annuler")
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  await interaction.reply({
+    embeds: [confirmEmbed],
+    components: [actionRow],
+  });
+}
+
+async function handleSetupButton(interaction) {
+  const isConfirm = interaction.customId.startsWith("setup_confirm_");
+  const setupId = interaction.customId.replace(isConfirm ? "setup_confirm_" : "setup_cancel_", "");
+
+  const pending = pendingSetups.get(setupId);
+  if (!pending) {
+    await interaction.reply({
+      content: "This setup request has expired or was already handled.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // Check if clicker is initiator or admin
+  const isGuildOwner = interaction.guild?.ownerId === interaction.user.id;
+  const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) || isGuildOwner;
+  if (interaction.user.id !== pending.initiatorId && !isAdmin) {
+    await interaction.reply({
+      content: "Only the administrator who initiated this setup can confirm it.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (!isConfirm) {
+    pendingSetups.delete(setupId);
+    await interaction.update({
+      embeds: [
+        {
+          color: 0xef4444,
+          title: "❌ Server Setup Cancelled",
+          description: `Server formatting for guild **${pending.targetGuild}** was cancelled by <@${interaction.user.id}>.`,
+        },
+      ],
+      components: [],
+    });
+    return;
+  }
+
+  pendingSetups.delete(setupId);
+
+  let lastEditTime = 0;
+  const updateProgressEmbed = async (percent, messageText) => {
+    const now = Date.now();
+    if (now - lastEditTime < 1500 && percent < 100 && percent > 10) return;
+    lastEditTime = now;
+
+    const progressEmbed = {
+      color: percent >= 100 ? 0x22c55e : 0x3b82f6,
+      title: percent >= 100 ? "✅ Server Provisioning Complete!" : "⏳ Provisioning Discord Server...",
+      description:
+        `Formatting server for **${pending.guildName}** (\`[${pending.guildTag}]\`):\n\n` +
+        `\`${generateProgressBar(percent)}\`\n\n` +
+        `**Status**: ${messageText}`,
+      footer: { text: "FGF Automated Server Architect" },
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      await interaction.editReply({
+        embeds: [progressEmbed],
+        components: [],
+      });
+    } catch (err) {
+      console.warn("Could not edit progress embed:", err.message);
+    }
+  };
+
+  await interaction.update({
+    embeds: [
+      {
+        color: 0x3b82f6,
+        title: "⏳ Initializing Server Provisioning...",
+        description: `Starting bootstrap for **${pending.guildName}**...\n\n\`${generateProgressBar(5)}\``,
+      },
+    ],
+    components: [],
+  });
+
+  const res = await provisionDiscordServer(
+    interaction.guild,
+    {
+      guildName: pending.targetGuild,
+      guildTag: pending.guildTag,
+      serverNumber: pending.serverNumber,
+      cleanMode: pending.cleanMode,
+    },
+    {
+      supabase,
+      onProgress: updateProgressEmbed,
+    }
+  );
+
+  if (!res.ok) {
+    await interaction.editReply({
+      embeds: [
+        {
+          color: 0xef4444,
+          title: "❌ Server Provisioning Failed",
+          description: `An error occurred during server formatting: \`${res.error}\`\nPlease verify that the bot has Administrator permissions and is placed at the top of the role hierarchy.`,
+        },
+      ],
+      components: [],
+    });
+    return;
+  }
+
+  await refreshChannelMap();
+  await refreshMemberRoleMap();
+  await refreshAuditChannelMap();
+
+  const successEmbed = {
+    color: 0x22c55e,
+    title: `🎉 Server Successfully Formatted for ${pending.targetGuild}!`,
+    description:
+      `The server structure has been created and customized for **${pending.guildName}**.\n\n` +
+      `**Summary:**\n` +
+      `• **Roles Created**: ${res.createdCounts.roles}\n` +
+      `• **Categories**: ${res.createdCounts.categories}\n` +
+      `• **Channels**: ${res.createdCounts.channels}\n` +
+      `• **Verification Channel**: <#${res.autoWired.verificationChannelId || "unknown"}>\n` +
+      `• **Audit / Officers Channel**: <#${res.autoWired.auditChannelId || "unknown"}>\n` +
+      `• **Member Role**: <@&${res.autoWired.memberRoleId || "unknown"}>\n\n` +
+      `**SaaS Integration:**\n` +
+      `✅ \`guild_config\` has been automatically updated in the Supabase database. The OCR verification engine and absence notifications are now live for this server!`,
+    footer: { text: "FGF Guild Management • Server Architect" },
+    timestamp: new Date().toISOString(),
+  };
+
+  await interaction.editReply({
+    embeds: [successEmbed],
+    components: [],
+  });
+}
+
 async function sendVerificationDm(author, result, fgfGuild) {
   try {
     const isGuildMember = result.role === "guild_member";
@@ -1135,6 +1376,8 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.isButton()) {
       if (interaction.customId.startsWith("cta_")) {
         await handleCtaButton(interaction);
+      } else if (interaction.customId.startsWith("setup_")) {
+        await handleSetupButton(interaction);
       }
       return;
     }
@@ -1153,6 +1396,8 @@ client.on("interactionCreate", async (interaction) => {
       await handleCallToArms(interaction);
     } else if (interaction.commandName === "update-stats") {
       await handleUpdateStats(interaction);
+    } else if (interaction.commandName === "setup-server") {
+      await handleSetupServer(interaction);
     }
   } catch (e) {
     console.error(`Error handling interaction /${interaction.commandName || interaction.customId}:`, e);

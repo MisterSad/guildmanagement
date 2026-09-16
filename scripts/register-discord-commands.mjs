@@ -167,6 +167,32 @@ const COMMANDS = [
       { type: 4, name: "glory", description: "Your current Glory score", required: false, min_value: 0 },
     ],
   },
+  {
+    name: "setup-server",
+    description: "Format and bootstrap a full Discord server structure for an FGF guild",
+    type: 1,
+    default_member_permissions: "8",
+    options: [
+      {
+        type: 3,
+        name: "guild",
+        description: "Target FGF Guild identifier (e.g. ALPHA, BABE, CLAW)",
+        required: true,
+      },
+      {
+        type: 3,
+        name: "server_number",
+        description: "Game server number (e.g. 1058). Defaults to guild's registered server.",
+        required: false,
+      },
+      {
+        type: 5,
+        name: "clean_mode",
+        description: "Delete default empty channels before creating structure (default: false)",
+        required: false,
+      },
+    ],
+  },
 ];
 
 const url = GUILD_ID

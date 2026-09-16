@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.18.4]
+
+- **Feature: Automated Discord Server Bootstrap & Dynamic Provisioning Engine (`/setup-server`) (V3.18.4)** — empowers guild leadership to entirely format, configure, and bootstrap a blank Discord server with a standardized FGF operational hierarchy tailored dynamically to their guild name, tag, and game server number.
+  - **Dynamic Blueprint & Templating Engine**: `discord-verification-worker/server-provisioner.js` generates fully personalized category names, channel slugs, and roles without hardcoding (e.g. `🔴 ALPHA` -> `📡・alpha-chat`, `🗓️・pr1m-leave-and-absence`, `👑 [PR1M] R5`, `⭐ [PR1M] R4`, `🛡️ [PR1M] Member`, `👽 Visitor`).
+  - **Standardized 7-Category Structure**: provisions 7 categories, 28 text channels, and 3 voice rooms covering `🛂 WELCOME` (with OCR verification target), `👽 CROSS SERVER VISITORS`, `GAME UPDATES`, `⌛ EVENT REMINDERS` (Calamity, GvG, Dominion), `🪐 SERVER #<num>` community channels, `🚨 DOMINION WARZONE` (restricted SvS rooms), and `🔴 <GUILD_NAME>` (private HQ).
+  - **Zero-Trust Permission Matrices**: strictly isolates `@everyone` and `👽 Visitor` from private guild channels; restricts `#r4-chat` and `R4 VC` to R4 Officers & R5 Leaders; enables attachment permissions in `#verification` so new recruits can submit profile screenshots.
+  - **Administrator Safeguards & Interactive Confirmation**: `/setup-server` requires Discord Administrator permissions (`default_member_permissions: 8`) and presents an interactive verification prompt (`[ 🚀 Confirmer et Déployer ]` / `[ ❌ Annuler ]`) with optional `clean_mode: true` to clear default channels safely.
+  - **Anti-Rate-Limit Throttling & Live Progress Bar**: sequential execution pipeline with configurable delays protects against Discord API 429 rate limits while updating an interactive progress bar embed (`[████████░░░░░░░░] 50%`) in real time.
+  - **Automatic FGF SaaS Wiring**: automatically binds created channels and roles into Supabase `guild_config` (`discord_verification_channel_id`, `discord_audit_channel_id`, `discord_member_role_id`), instantly activating OCR verification and absence alerts without manual ID copying.
+  - **Verification**: `npm run type-check` — 0 errors; **1392/1392 Vitest tests green across 117 suites** (+8 new tests in `tests/discord_server_provisioner.test.js`); production build clean.
+
 ## [3.18.3]
 
 - **Feature: Interactive Discord Bot Overhaul & Channel Auto-Clean Architecture (V3.18.3)** — comprehensive upgrade to the always-on Gateway worker and Discord slash interaction suite, providing zero-clutter channel verification, leaderboards, real-time war check-ins, and officer tools.

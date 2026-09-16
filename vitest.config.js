@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import path from 'node:path';
 
 export default defineConfig({
   test: {
@@ -11,6 +12,10 @@ export default defineConfig({
   },
   resolve: {
     alias: [
+      {
+        find: 'discord.js',
+        replacement: path.resolve(__dirname, 'discord-verification-worker/node_modules/discord.js/src/index.js')
+      },
       {
         find: /^https:\/\/esm\.sh\/zod(?:@[\d.]+)?$/,
         replacement: 'zod'
