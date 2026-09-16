@@ -287,6 +287,32 @@ const UPDATE_STATS_COMMAND = {
   ],
 };
 
+const SETUP_SERVER_COMMAND = {
+  name: "setup-server",
+  description: "Format and bootstrap a full Discord server structure for an FGF guild.",
+  default_member_permissions: "8",
+  options: [
+    {
+      name: "guild",
+      description: "Target FGF Guild identifier (e.g. ALPHA, BABE, CLAW)",
+      type: 3,
+      required: true,
+    },
+    {
+      name: "server_number",
+      description: "Game server number (e.g. 1058). Defaults to guild's registered server.",
+      type: 3,
+      required: false,
+    },
+    {
+      name: "clean_mode",
+      description: "Delete default empty channels before creating structure (default: false)",
+      type: 5,
+      required: false,
+    },
+  ],
+};
+
 // Registers slash commands via the REST API, merging into whatever
 // global commands already exist so other commands (/link, /myinfo, ...) are
 // never wiped on a redeploy.
@@ -309,6 +335,7 @@ async function registerSlashCommands() {
       ["absences", ABSENCES_COMMAND],
       ["call-to-arms", CALL_TO_ARMS_COMMAND],
       ["update-stats", UPDATE_STATS_COMMAND],
+      ["setup-server", SETUP_SERVER_COMMAND],
     ]);
 
     const body = [];
@@ -331,8 +358,19 @@ async function registerSlashCommands() {
       console.log(`Preserved legacy commands overlapping the new slash surface: ${legacyOverlap.map((c) => `/${c.name}`).join(", ")}.`);
     }
 
+    // Global registration
     await rest.put(Routes.applicationCommands(appId), { body });
-    console.log("Slash commands registered: /profile, /absent, /top, /absences, /call-to-arms, /update-stats");
+    console.log("Slash commands registered globally: /profile, /absent, /top, /absences, /call-to-arms, /update-stats, /setup-server");
+
+    // Also register directly to all current guilds for instant availability (0s propagation)
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        await rest.put(Routes.applicationGuildCommands(appId, guild.id), { body });
+        console.log(`Slash commands registered directly to guild ${guild.name} (${guild.id})`);
+      } catch (err) {
+        console.warn(`Could not register direct guild commands for ${guild.id}:`, err.message);
+      }
+    }
   } catch (e) {
     console.error("Failed to register slash commands:", e);
   }
@@ -1279,6 +1317,23 @@ client.once("ready", async () => {
     console.log("DISCORD_MEMBER_ROLE_ID not set and no guild_config fallback (discord_member_role_id) -- verified-role auto-assignment disabled.");
   } else {
     console.log("Verified-role auto-assignment enabled (DISCORD_MEMBER_ROLE_ID or guild_config fallback).");
+  }
+});
+
+client.on("guildCreate", async (guild) => {
+  try {
+    console.log(`Bot joined new server: ${guild.name} (${guild.id}), registering instant slash commands...`);
+    const appId = client.user?.id;
+    if (appId) {
+      const rest = new REST({ version: "10" }).setToken(DISCORD_BOT_TOKEN);
+      const existing = (await rest.get(Routes.applicationCommands(appId))) || [];
+      if (existing.length > 0) {
+        await rest.put(Routes.applicationGuildCommands(appId, guild.id), { body: existing });
+        console.log(`Successfully registered ${existing.length} instant commands for new guild ${guild.name}`);
+      }
+    }
+  } catch (err) {
+    console.warn(`Could not register instant commands on guildCreate (${guild.id}):`, err.message);
   }
 });
 
