@@ -1,6 +1,39 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.18.2**
+
+Welcome to V3.18.2! Over the past few hours, I completed a complete overhaul of the Discord notification and reminder system. Between an end-to-end fix for automated event reminder delivery and a brand new Message Customization Studio featuring live Discord preview and 1-click tag insertion, customizing and sending your guild's Discord alerts is now effortless and foolproof. Here is everything I just rolled out!
+
+### 🎨 Brand New Discord Reminder Customizer: Tabs, 1-Click Pills & Live Preview
+- **What changed**: When customizing event reminder messages (Arms Race, DTR, Shadowfront, Calamity, GvG, SvS) from Guild Settings, you now have an all-new split-screen studio:
+  - **Horizontal Tabs**: No more endless scrolling through 21 stacked inputs! You can now hop between reminders (`30 Min`, `5 Min`, `Event Start`, `Defense`, `Garrison`) with clean horizontal tabs and configure one reminder at a time.
+  - **1-Click Tag Insertion Pills**: Forget memorizing placeholder syntax or risking broken tags. Handy buttons above each field let you insert your **Guild Role** (`{guild_tag}`), `@everyone`, **Event Name** (`{event_name}`), **UTC Time** (`{date}`), and **Round #** (`{round}`) at your cursor position with a single click.
+  - **Real-Time Discord Live Preview**: The right side displays a realistic Discord dark theme message (`#313338`) that updates live on every keystroke, showing highlighted role mentions, your embed title and body, and color-coded accent borders matching event urgency (Amber, Red, Emerald, Cyan).
+  - **1-Click Reset to Default**: Made a mistake or want to go back to the standard wording? A single tap on **"Reset to default template"** instantly restores the built-in message.
+- **The benefit**: Total creative control over how alerts appear in your Discord server with zero formatting stress, zero syntax errors, and an exact live preview before saving!
+
+### 🔔 Discord Webhooks & Automatic Reminders Fully Restored
+- **What changed**: I tracked down and resolved the underlying issues that caused automated Discord event reminders to get dropped:
+  - **Smart Fallback Webhook Resolution**: If you leave specific event category webhooks blank, the system now automatically falls back to your guild's default Discord webhook rather than silencing the notification.
+  - **Scheduler Lock Resolution**: Fixed a lock bug in the background cron worker where missing webhooks previously marked reminders as permanently "sent", preventing future retries.
+  - **Dedicated Webhook Testing**: Added a **Default Discord Webhook URL** field with an instant **"Send Test Message"** button directly in Guild Settings so you can verify webhook connectivity in 2 seconds.
+  - **Manual GvG Task Dispatch**: Added an instant **"Send Today's GvG Tasks Now"** button so Guild Admins can push daily assignments to Discord on demand whenever needed.
+  - **Cloud Infrastructure Updated**: Deployed updated background reminder and webhook proxy functions to production.
+- **The benefit**: Scheduled alerts for Arms Race, Defend Trade Route, Shadowfront, Calamity Befalls, GvG, and SvS now arrive reliably in your guild's Discord channels with proper role pings.
+
+### ✏️ Fixed Pencil / Edit Icon on Event Cards
+- **What changed**: I fixed a bug where clicking the pencil/edit icon on the event cards inside the Guild Settings Discord section did nothing.
+- **The benefit**: Clicking the edit button on any event card immediately opens the new personalization studio, allowing you to customize your alerts in seconds.
+
+### 📱 Decommissioned Redundant Mobile PWA Web Push
+- **What changed**: I completely decommissioned the experimental browser web push notifications from both the frontend dashboard and backend scheduler.
+- **The benefit**: No redundant background prompts or mobile browser notification noise. All alerts are now unified where your guild actually coordinates: directly inside Discord.
+
+Try out the new customization studio in Guild Settings and let me know your thoughts! As always, your feedback and bug reports are warmly welcome. 🚀⚔️🛡️
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.18.1**
 
-Welcome to V3.18.1! Today was a huge day of fixes and quality-of-life upgrades across the board: member logins now land straight on the Player Portal, SvS/GvG day results cycle smoothly in 3 clicks, the OCR scanner understands European & German score formats, official in-game chest thresholds are updated with a clean collapsible settings card, and Discord webhook reminders are back up and running reliably. Here is everything I rolled out today!
+Welcome to V3.18.1! Today brought major quality-of-life upgrades across the board: member logins now land straight on the Player Portal, SvS/GvG day results cycle smoothly in 3 clicks, the OCR scanner understands European & German score formats, and official in-game chest thresholds are updated with a clean collapsible settings card. Here is everything rolled out in this release!
 
 ### 🛡️ Member Login Fix: Direct Player Portal Landing
 - **What changed**: I fixed an issue where regular guild members signing in through the main login screen, biometric passkeys, or refreshing their browser were occasionally routed to an empty Admin Command Center showing 0 active members and 0 stats. Members now land directly and immediately on their personal **Player Portal** (`#tab-portal`), and their session remains cleanly locked to the portal.
@@ -22,28 +55,7 @@ Welcome to V3.18.1! Today was a huge day of fixes and quality-of-life upgrades a
 - **What changed**: I updated the default 9-tier chest point thresholds for every single day of GvG and SvS (Day 1, Days 2 to 4, Day 5, Day 6 PvP, and cumulative Day 0) to match the official in-game requirements. Additionally, the Chest Tiers configuration in Guild Settings is now housed inside a neat collapsible accordion that stays **closed by default**.
 - **The benefit**: Your war chest calculations are 100% accurate right out of the box, and Guild Admins enjoy a clutter-free settings dashboard that unfolds in one click whenever you want to fine-tune tier values.
 
-### 🔔 Discord Webhooks & Automatic Event Reminders Overhaul
-- **What changed**: I thoroughly overhauled the Discord notification system and fixed the root causes that stopped reminders from arriving:
-  - Added a dedicated **Default Discord Webhook URL** field and a **"Send Test Message"** button right inside Guild Settings so you can verify your Discord webhook in one click.
-  - Added a manual **"Send Today's GvG Tasks Now"** button so guild admins can dispatch daily GvG tasks instantly on demand.
-  - Fixed fallback resolution so empty event-specific webhooks cleanly fall back to your default guild webhook rather than silencing notifications.
-  - Fixed false "sent" locks in the background scheduler that previously prevented reminders from dispatching.
-  - Resolved webhook proxy URL validation to support all standard Discord webhook URL formats.
-- **The benefit**: Automatic event reminders (Arms Race, DTR, Shadowfront, GvG daily tasks, SvS phases, and Calamity alerts) fire reliably into your guild's channels with role mentions, with instant testing available right in Guild Settings!
-
-### 📱 Decommissioning Unused PWA Mobile Push
-- **What changed**: I completely removed mobile browser push notifications (PWA web push) across the backend scheduler and frontend (Overview and Player Portal).
-- **The benefit**: A cleaner, faster interface with zero notification clutter. All guild alerts are now centralized strictly where everyone actually checks them: directly inside your Discord server.
-
-### 🎨 Discord Reminder Message Customizer: Tabs, 1-Click Pills & Live Preview
-- **What changed**: Guild admins customizing Discord alert messages (Arms Race, DTR, Shadowfront, Calamity, GvG, SvS) now have a completely modern split-pane studio:
-  - **Horizontal Tabs**: Switch effortlessly between reminders (30 Min, 5 Min, Event Start, Defense, Garrison) instead of scrolling through dozens of fields.
-  - **1-Click Insertion Pills**: Insert `{guild_tag}` (Role mention), `@everyone`, `{event_name}`, `{date}`, and `{round}` with a single tap at your cursor position — no syntax memorization required.
-  - **Real-Time Discord Preview**: A live preview simulates the exact Discord message as you type, showing ping mentions, embedded cards, and color-coded accent borders in real time.
-  - **1-Click Reset**: Easily revert any reminder back to the default FGF template in a single click.
-- **The benefit**: Total creative control over your Discord announcements with zero technical hassle, zero syntax errors, and a live preview of exactly what your members will see on Discord!
-
-Try out the new updates and let me know how they work for your guild! As always, your feedback and bug reports through Report a Bug or Discord are greatly appreciated. 🚀⚔️🛡️
+Try out the updates and let me know how they work for your guild! As always, your feedback and bug reports are greatly appreciated. 🚀⚔️🛡️
 
 ---
 

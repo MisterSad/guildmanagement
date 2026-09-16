@@ -1,8 +1,8 @@
 # Changelog
 
-## [3.18.1]
+## [3.18.2]
 
-- **Feature: Discord reminder message personalization overhaul (Combined Solutions A, B, C & D)** — modernized reminder customization with horizontal tab navigation, 1-click token pills, real-time Discord live preview, and 1-click reset to default templates.
+- **Feature: Discord reminder message personalization overhaul (Combined Solutions A, B, C & D) (V3.18.2)** — modernized reminder customization with horizontal tab navigation, 1-click token pills, real-time Discord live preview, and 1-click reset to default templates.
   - **Tabs Navigation (Solution C)**: horizontal tab bar (`.discord-custom-tabs`) allows guild admins to configure each reminder individually (`30m`, `5m`, `Event Start`, `Defense`, `Garrison`), eliminating long, vertical 21-input forms.
   - **Tag Insertion Toolbar (Solution A)**: 1-click pill buttons (`.discord-pills-bar`, `.discord-pill-btn`) under each input insert Discord placeholders (`{guild_tag}`, `@everyone`, `{event_name}`, `{date}`, `{round}`) at the active cursor position, eliminating manual syntax errors.
   - **Discord Live Preview (Solution B)**: right-hand realistic Discord dark theme card (`#313338`) simulating the bot message header, notification ping with highlighted role badges (`.discord-mention`), embed card with dynamic border accents (amber, red, emerald, cyan), and real-time live typing updates.
@@ -10,14 +10,16 @@
   - **Strict Security & Backward Compatibility**: all preview inputs are escaped via `esc()` before formatting (XSS prevention); all inputs remain in the DOM across all tabs, preserving full backward compatibility with `guild_config` (`tpl_${prefix}_${key}_content|title|desc`) and automated test suites.
   - **Verification**: `npm run type-check` — 0 errors; **1369/1369 Vitest tests green across 115 suites**; production build clean.
 
-- **Fix: Discord notification system end-to-end resolution & PWA push removal (V3.18.1)** — resolved Discord webhook delivery failures and completely removed redundant mobile PWA web push notifications.
+- **Fix: Discord notification system end-to-end resolution & PWA push removal (V3.18.2)** — resolved Discord webhook delivery failures, wired event modal triggers, and completely removed redundant mobile PWA web push notifications.
   - **Fixed (Discord webhook settings UI & persistence)**: added Default Discord Webhook URL input (`#discord-webhook-url`) and test trigger (`#btn-test-default-webhook`) to the Admin Discord interface in `index.html`; registered `discord_webhook_url` in `VALUE_FIELDS` in `src/modules/app/admin/guild-requests.controller.ts`; wired `#btn-dispatch-gvg-tasks` to build and send the current day's GvG tasks directly to Discord with instant feedback toasts.
   - **Fixed (webhook fallback resolution)**: in `supabase/functions/_shared/reminder-rules.ts`, updated `resolveGuildWebhook` to treat empty and whitespace-only specific webhooks as unset, properly falling back to `discord_webhook_url` or event category webhooks instead of silencing events.
   - **Fixed (lock false-sent bug)**: in `supabase/functions/event-reminders/index.ts`, eliminated `sentSuccess = true` when webhook URLs are missing or dispatch fails, preventing the cron worker from permanently locking reminders without actual delivery.
   - **Fixed (webhook proxy regex)**: in `supabase/functions/discord-webhook-proxy/index.ts`, updated `DISCORD_WEBHOOK_PATH_REGEX` to accept trailing slashes and added caller tenant fallback.
   - **Fixed (Discord message customization modal wiring)**: wired click event listeners on all `[data-custom-msg]` buttons (`armsrace`, `dtr`, `shadowfront`, `calamity`, `gvg`, `svs`) to `openCustomMsgModal(prefix)` inside `initGuildRequestsUi()`, resolving the edit/pencil icon doing nothing when clicked.
   - **Deployed (Supabase Edge Functions)**: deployed the latest `event-reminders` (v68) and `discord-webhook-proxy` (v19) to Supabase production, activating the webhook fallback resolution and eliminating false "sent" locks for automated cron dispatches.
-  - **Verification**: `npm run type-check` — 0 errors; **1368/1368 Vitest tests green across 115 suites** (+1 regression test in `tests/app_dialogs.test.js`); production build clean.
+  - **Verification**: `npm run type-check` — 0 errors; **1369/1369 Vitest tests green across 115 suites**; production build clean.
+
+## [3.18.1]
 
 - **Fix: Player portal routing & empty admin dashboard prevention for members (V3.18.1)** — resolved normal members landing on an empty Admin Dashboard with 0s upon sign-in or session refresh.
   - **Fixed (post-login routing)**: `handleSuccessfulLogin()` in `src/modules/app/auth/auth.controller.ts` now branches immediately on `role === 'member'`, persisting `gm_role = 'member'`, `gm_portal_session = '1'`, and calling `revealPortal()`, preventing any execution of `revealAdmin(role)` for members.
