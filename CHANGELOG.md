@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.18.3]
+
+- **Feature: Interactive Discord Bot Overhaul & Channel Auto-Clean Architecture (V3.18.3)** — comprehensive upgrade to the always-on Gateway worker and Discord slash interaction suite, providing zero-clutter channel verification, leaderboards, real-time war check-ins, and officer tools.
+  - **Zero-Clutter Channel Verification & Privacy**: in `discord-verification-worker/index.js`, successful screenshot verifications now auto-delete the uploaded user screenshot after 3 seconds to protect sensitive in-game player details (UID, fleet levels, assets) from public exposure; failures auto-delete after 60 seconds to prevent channel pollution.
+  - **Direct Message (DM) Welcome & Fallback**: verified members automatically receive a private Discord DM with their updated FGF combat summary (power, glory, role, assigned nickname); if direct messages are blocked, a non-intrusive public mention auto-destructs after 20 seconds.
+  - **Officer Audit Logging**: automatically dispatches rich embed verification records to the designated officer audit channel (`discord_audit_channel_id` / `discord_officer_channel_id`), archiving the member's pseudo, UID, power, and role.
+  - **Guild Leaderboards (`/top`)**: introduces the `/top` slash command supporting Overall Power, Glory Score, and Fleet Rating categories with medal formatting (🥇, 🥈, 🥉) and formatted numerical tiers for the guild roster.
+  - **Enriched Member Profiles (`/profile`)**: `/profile` embeds now dynamically calculate the target member's live local time based on their configured timezone offset (e.g. `16:30 (UTC+2)`) and cross-reference active leaves to display their live availability status (`🟢 Active` or `🔴 Absent until YYYY-MM-DD`).
+  - **Interactive Call-to-Arms War Check-In (`/call-to-arms`)**: officers can initiate live battle roll-calls with interactive native Discord buttons (`🟢 Present`, `🟡 Late (15-30m)`, `🔴 Absent`); dynamically aggregates the total mobilized fleet rating and cumulative combat power in real-time as players check in.
+  - **Absence Briefings & Alerts (`/absences`)**: officers can inspect active absences today or planned leaves over the next 7 days via `/absences [today|upcoming]`; new absence declarations via `/absent` automatically alert the officer channel.
+  - **Quick Stats Update (`/update-stats`)**: allows verified guild members to update their roster power or glory score directly via Discord.
+  - **Verification**: `npm run type-check` — 0 errors; **1384/1384 Vitest tests green across 116 suites** (+15 new regression tests in `tests/discord_bot_advanced.test.js`); production build clean.
+
 ## [3.18.2]
 
 - **Feature: Discord reminder message personalization overhaul (Combined Solutions A, B, C & D) (V3.18.2)** — modernized reminder customization with horizontal tab navigation, 1-click token pills, real-time Discord live preview, and 1-click reset to default templates.

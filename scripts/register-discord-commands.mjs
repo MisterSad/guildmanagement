@@ -95,6 +95,78 @@ const COMMANDS = [
       },
     ],
   },
+  {
+    name: "profile",
+    description: "View a member's combat stats from the FGF roster",
+    type: 1,
+    options: [
+      { type: 6, name: "user", description: "Discord user to look up via their linked account", required: false },
+      { type: 3, name: "ingame_name", description: "In-game pseudo to search in the roster", required: false },
+    ],
+  },
+  {
+    name: "absent",
+    description: "Declare an absence for your guild",
+    type: 1,
+    options: [
+      { type: 3, name: "start_date", description: "First day of absence (YYYY-MM-DD)", required: true },
+      { type: 3, name: "end_date", description: "Last day of absence (YYYY-MM-DD)", required: true },
+      { type: 3, name: "reason", description: "Reason for the absence", required: false },
+    ],
+  },
+  {
+    name: "top",
+    description: "View top guild members leaderboard",
+    type: 1,
+    options: [
+      {
+        type: 3,
+        name: "category",
+        description: "Leaderboard category (power, glory, fleet)",
+        required: false,
+        choices: [
+          { name: "Overall Power", value: "power" },
+          { name: "Glory Score", value: "glory" },
+          { name: "Fleet Rating", value: "fleet" },
+        ],
+      },
+    ],
+  },
+  {
+    name: "absences",
+    description: "Check declared absences in your guild",
+    type: 1,
+    options: [
+      {
+        type: 3,
+        name: "scope",
+        description: "Timeframe to check",
+        required: true,
+        choices: [
+          { name: "Today (Currently Active)", value: "today" },
+          { name: "Upcoming (Next 7 Days)", value: "upcoming" },
+        ],
+      },
+    ],
+  },
+  {
+    name: "call-to-arms",
+    description: "Launch an interactive war check-in with live presence and power tracking",
+    type: 1,
+    options: [
+      { type: 3, name: "event_name", description: "Event name (e.g. SvS Invasion, GvG Saturday)", required: true },
+      { type: 3, name: "description", description: "Battle objective or instructions", required: false },
+    ],
+  },
+  {
+    name: "update-stats",
+    description: "Quickly update your combat power and/or glory score in the roster",
+    type: 1,
+    options: [
+      { type: 4, name: "power", description: "Your current Overall Power (digits only)", required: false, min_value: 0 },
+      { type: 4, name: "glory", description: "Your current Glory score", required: false, min_value: 0 },
+    ],
+  },
 ];
 
 const url = GUILD_ID

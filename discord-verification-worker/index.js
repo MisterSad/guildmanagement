@@ -14,7 +14,16 @@
  * no stateless function can do.
  */
 import { createServer } from "node:http";
-import { Client, GatewayIntentBits, Partials, REST, Routes } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  Partials,
+  REST,
+  Routes,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from "discord.js";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 
@@ -102,6 +111,30 @@ async function refreshMemberRoleMap() {
   console.log(`Verified member role map refreshed: ${memberRoleByGuild.size} guild(s) configured.`);
 }
 
+// Audit/officer channel map (discord_audit_channel_id or discord_officer_channel_id)
+// for forwarding verification events and absence declarations.
+let auditChannelByGuild = new Map();
+
+async function refreshAuditChannelMap() {
+  const { data, error } = await supabase
+    .from("guild_config")
+    .select("guild, value, key")
+    .in("key", ["discord_audit_channel_id", "discord_officer_channel_id"]);
+
+  if (error) {
+    console.error("Failed to refresh audit channel map:", error.message);
+    return;
+  }
+
+  const next = new Map();
+  for (const row of data || []) {
+    const channelId = (row.value || "").trim();
+    if (channelId && !next.has(row.guild)) next.set(row.guild, channelId);
+  }
+  auditChannelByGuild = next;
+  console.log(`Audit channel map refreshed: ${auditChannelByGuild.size} guild(s) configured.`);
+}
+
 // Render creates this as a Web Service (the MCP tool used to provision it
 // has no "background worker" type) -- that expects an HTTP port bound for
 // health checks, even though the actual job here is a Gateway connection,
@@ -179,7 +212,7 @@ async function addVerifiedRole(message, fgfGuild) {
 // ---------------------------------------------------------------------------
 // Slash commands
 // ---------------------------------------------------------------------------
-// ApplicationCommandOptionType: 6 = USER, 3 = STRING.
+// ApplicationCommandOptionType: 6 = USER, 3 = STRING, 4 = INTEGER.
 const PROFILE_COMMAND = {
   name: "profile",
   description: "View a member's combat stats from the FGF roster.",
@@ -199,7 +232,60 @@ const ABSENT_COMMAND = {
   ],
 };
 
-// Registers /profile and /absent via the REST API, merging into whatever
+const TOP_COMMAND = {
+  name: "top",
+  description: "View the top guild members leaderboard.",
+  options: [
+    {
+      name: "category",
+      description: "Leaderboard category (Overall Power, Glory, or Fleet)",
+      type: 3,
+      required: false,
+      choices: [
+        { name: "Overall Power", value: "power" },
+        { name: "Glory Score", value: "glory" },
+        { name: "Fleet Rating", value: "fleet" },
+      ],
+    },
+  ],
+};
+
+const ABSENCES_COMMAND = {
+  name: "absences",
+  description: "Check declared absences in your guild (today or upcoming).",
+  options: [
+    {
+      name: "scope",
+      description: "Timeframe to check",
+      type: 3,
+      required: true,
+      choices: [
+        { name: "Today (Currently Active)", value: "today" },
+        { name: "Upcoming (Next 7 Days)", value: "upcoming" },
+      ],
+    },
+  ],
+};
+
+const CALL_TO_ARMS_COMMAND = {
+  name: "call-to-arms",
+  description: "Launch an interactive war check-in with live presence and power tracking.",
+  options: [
+    { name: "event_name", description: "Event name (e.g. SvS Invasion, GvG Saturday)", type: 3, required: true },
+    { name: "description", description: "Battle objective or instructions", type: 3, required: false },
+  ],
+};
+
+const UPDATE_STATS_COMMAND = {
+  name: "update-stats",
+  description: "Quickly update your combat power and/or glory score in the roster.",
+  options: [
+    { name: "power", description: "Your current Overall Power (digits only, e.g. 150000000)", type: 4, required: false, min_value: 0 },
+    { name: "glory", description: "Your current Glory score", type: 4, required: false, min_value: 0 },
+  ],
+};
+
+// Registers slash commands via the REST API, merging into whatever
 // global commands already exist so other commands (/link, /myinfo, ...) are
 // never wiped on a redeploy.
 async function registerSlashCommands() {
@@ -217,6 +303,10 @@ async function registerSlashCommands() {
     const desired = new Map([
       ["profile", PROFILE_COMMAND],
       ["absent", ABSENT_COMMAND],
+      ["top", TOP_COMMAND],
+      ["absences", ABSENCES_COMMAND],
+      ["call-to-arms", CALL_TO_ARMS_COMMAND],
+      ["update-stats", UPDATE_STATS_COMMAND],
     ]);
 
     const body = [];
@@ -240,7 +330,7 @@ async function registerSlashCommands() {
     }
 
     await rest.put(Routes.applicationCommands(appId), { body });
-    console.log("Slash commands registered: /profile, /absent");
+    console.log("Slash commands registered: /profile, /absent, /top, /absences, /call-to-arms, /update-stats");
   } catch (e) {
     console.error("Failed to register slash commands:", e);
   }
@@ -277,6 +367,36 @@ async function resolveLinkedAccount(discordUserId) {
   if (!account?.uid || !account?.guild) return null;
 
   return { uid: account.uid, guild: account.guild };
+}
+
+function formatPlayerLocalTime(offset) {
+  if (offset === null || offset === undefined || offset === "") return null;
+  const n = Number(offset);
+  if (!Number.isFinite(n)) return null;
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const target = new Date(utc + n * 3600000);
+  const hh = String(target.getUTCHours()).padStart(2, "0");
+  const mm = String(target.getUTCMinutes()).padStart(2, "0");
+  const sign = n >= 0 ? "+" : "";
+  return `${hh}:${mm} (UTC${sign}${n})`;
+}
+
+async function getPlayerActiveAbsence(uid, guild) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await supabase
+      .from("player_absences")
+      .select("start_date, end_date, note")
+      .eq("uid", uid)
+      .eq("guild", guild)
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .maybeSingle();
+    return data || null;
+  } catch {
+    return null;
+  }
 }
 
 const PROFILE_FIELDS = "pseudo, guild, role, overall_power, fleet_rating, tech_power, flagship_power, champion_power, crew_power, glory_score, timezone_offset, uid";
@@ -336,19 +456,31 @@ async function handleProfile(interaction) {
     return;
   }
 
+  const localTime = formatPlayerLocalTime(member.timezone_offset);
+  const activeAbsence = await getPlayerActiveAbsence(member.uid, member.guild);
+  const statusValue = activeAbsence
+    ? `🔴 Absent until ${activeAbsence.end_date}${activeAbsence.note ? ` (${activeAbsence.note})` : ""}`
+    : "🟢 Active";
+
+  const fields = [
+    { name: "Role", value: member.role || "—", inline: true },
+    { name: "Status", value: statusValue, inline: true },
+    { name: "Overall Power", value: formatNumber(member.overall_power), inline: true },
+    { name: "Fleet", value: formatNumber(member.fleet_rating), inline: true },
+    { name: "Tech", value: formatNumber(member.tech_power), inline: true },
+    { name: "Flagship", value: formatNumber(member.flagship_power), inline: true },
+    { name: "Champs", value: formatNumber(member.champion_power), inline: true },
+    { name: "Crew", value: formatNumber(member.crew_power), inline: true },
+    { name: "Timezone", value: timezoneLabel(member.timezone_offset), inline: true },
+  ];
+  if (localTime) {
+    fields.push({ name: "Local Time", value: localTime, inline: true });
+  }
+
   const embed = {
     color: 0x6366f1,
     title: `${member.pseudo} — ${member.guild}`,
-    fields: [
-      { name: "Role", value: member.role || "—", inline: true },
-      { name: "Overall Power", value: formatNumber(member.overall_power), inline: true },
-      { name: "Fleet", value: formatNumber(member.fleet_rating), inline: true },
-      { name: "Tech", value: formatNumber(member.tech_power), inline: true },
-      { name: "Flagship", value: formatNumber(member.flagship_power), inline: true },
-      { name: "Champs", value: formatNumber(member.champion_power), inline: true },
-      { name: "Crew", value: formatNumber(member.crew_power), inline: true },
-      { name: "Timezone", value: timezoneLabel(member.timezone_offset), inline: true },
-    ],
+    fields,
   };
   await interaction.reply({ embeds: [embed], content: note || "" });
 }
@@ -430,6 +562,451 @@ async function handleAbsent(interaction) {
     content: `Absence recorded for **${linked.guild}** from **${startDate}** to **${endDate}**.${suffix}`,
     ephemeral: true,
   });
+
+  const auditChannelId = auditChannelByGuild.get(linked.guild);
+  if (auditChannelId && interaction.guild) {
+    await postOfficerAbsenceAlert(interaction.guild, auditChannelId, member.pseudo, linked.guild, startDate, endDate, reason);
+  }
+}
+
+async function handleTop(interaction) {
+  const category = interaction.options.getString("category") || "power";
+  let fgfGuild = channelToGuild.get(interaction.channelId);
+
+  if (!fgfGuild) {
+    const linked = await resolveLinkedAccount(interaction.user.id).catch(() => null);
+    if (linked) fgfGuild = linked.guild;
+  }
+
+  if (!fgfGuild) {
+    await interaction.reply({
+      content: "Could not determine your guild. Run `/link` first or use this command in a designated guild channel.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  let orderCol = "overall_power";
+  let title = `🏆 Top Overall Power — ${fgfGuild}`;
+  let valueFormatter = (m) => formatNumber(m.overall_power);
+
+  if (category === "glory") {
+    orderCol = "glory_score";
+    title = `🏆 Top Glory Score — ${fgfGuild}`;
+    valueFormatter = (m) => formatNumber(m.glory_score);
+  } else if (category === "fleet") {
+    orderCol = "fleet_rating";
+    title = `🏆 Top Fleet Rating — ${fgfGuild}`;
+    valueFormatter = (m) => formatNumber(m.fleet_rating);
+  }
+
+  const { data: members, error } = await supabase
+    .from("guild_members")
+    .select("pseudo, overall_power, glory_score, fleet_rating, role")
+    .eq("guild", fgfGuild)
+    .order(orderCol, { ascending: false, nullsFirst: false })
+    .limit(10);
+
+  if (error || !members || members.length === 0) {
+    await interaction.reply({
+      content: `No roster members found for **${fgfGuild}**.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const medals = ["🥇", "🥈", "🥉"];
+  const lines = members.map((m, idx) => {
+    const badge = idx < 3 ? medals[idx] : `\`${String(idx + 1).padStart(2, " ")}.\``;
+    const roleTag = m.role ? `[${m.role}]` : "";
+    return `${badge} **${m.pseudo}** ${roleTag} — ${valueFormatter(m)}`;
+  });
+
+  const embed = {
+    color: 0x6366f1,
+    title,
+    description: lines.join("\n"),
+    footer: { text: `FGF Guild Management • Top ${members.length} members shown` },
+    timestamp: new Date().toISOString(),
+  };
+
+  await interaction.reply({ embeds: [embed] });
+}
+
+async function handleAbsences(interaction) {
+  const scope = interaction.options.getString("scope");
+  let fgfGuild = channelToGuild.get(interaction.channelId);
+
+  if (!fgfGuild) {
+    const linked = await resolveLinkedAccount(interaction.user.id).catch(() => null);
+    if (linked) fgfGuild = linked.guild;
+  }
+
+  if (!fgfGuild) {
+    await interaction.reply({
+      content: "Could not determine your guild. Run `/link` first or use this command in a designated guild channel.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const next7Days = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+  let query = supabase.from("player_absences").select("pseudo, start_date, end_date, note, kind").eq("guild", fgfGuild);
+
+  if (scope === "today") {
+    query = query.lte("start_date", today).gte("end_date", today);
+  } else {
+    query = query.gt("start_date", today).lte("start_date", next7Days);
+  }
+
+  const { data: rows, error } = await query.order("start_date", { ascending: true });
+
+  if (error) {
+    await interaction.reply({ content: "Error fetching absences. Please try again later.", ephemeral: true });
+    return;
+  }
+
+  const title = scope === "today"
+    ? `📅 Guild Absences Today (${today}) — ${fgfGuild}`
+    : `📅 Upcoming Guild Absences (Next 7 Days) — ${fgfGuild}`;
+
+  if (!rows || rows.length === 0) {
+    const embed = {
+      color: 0x22c55e,
+      title,
+      description: scope === "today"
+        ? "✅ No members are currently marked absent today!"
+        : "✅ No upcoming absences recorded for the next 7 days.",
+      timestamp: new Date().toISOString(),
+    };
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  const lines = rows.map((r) => {
+    const note = r.note ? ` — *"${r.note}"*` : "";
+    return `• **${r.pseudo}**: \`${r.start_date}\` to \`${r.end_date}\`${note}`;
+  });
+
+  const embed = {
+    color: 0xf59e0b,
+    title,
+    description: lines.join("\n"),
+    footer: { text: `Total absent: ${rows.length}` },
+    timestamp: new Date().toISOString(),
+  };
+
+  await interaction.reply({ embeds: [embed] });
+}
+
+// In-memory call to arms state tracker
+const ctaSessions = new Map();
+
+function buildCtaEmbed(session) {
+  const present = Array.from(session.present.values());
+  const late = Array.from(session.late.values());
+  const absent = Array.from(session.absent.values());
+
+  const totalPower = present.reduce((acc, p) => acc + (Number(p.power) || 0), 0);
+  const totalFleet = present.reduce((acc, p) => acc + (Number(p.fleet) || 0), 0);
+
+  const presentText = present.length > 0
+    ? present.slice(0, 15).map((p) => `• **${p.pseudo}** (${formatNumber(p.power)})`).join("\n") + (present.length > 15 ? `\n*...and ${present.length - 15} more*` : "")
+    : "—";
+
+  const lateText = late.length > 0
+    ? late.slice(0, 10).map((p) => `• **${p.pseudo}**`).join("\n") + (late.length > 10 ? `\n*...and ${late.length - 10} more*` : "")
+    : "—";
+
+  const absentText = absent.length > 0
+    ? absent.slice(0, 10).map((p) => `• **${p.pseudo}**`).join("\n") + (absent.length > 10 ? `\n*...and ${absent.length - 10} more*` : "")
+    : "—";
+
+  return {
+    color: 0x6366f1,
+    title: `⚔️ Call to Arms: ${session.eventName}`,
+    description: session.description
+      ? `${session.description}\n\n**Click a button below to declare your attendance:**`
+      : "**Click a button below to declare your attendance for this battle:**",
+    fields: [
+      { name: `🟢 Present (${present.length})`, value: presentText, inline: false },
+      { name: `🟡 Late (${late.length})`, value: lateText, inline: true },
+      { name: `🔴 Absent (${absent.length})`, value: absentText, inline: true },
+      {
+        name: "⚡ Mobilized Combat Power",
+        value: `**Total Power:** ${formatNumber(totalPower)}\n**Total Fleet Rating:** ${formatNumber(totalFleet)}`,
+        inline: false,
+      },
+    ],
+    footer: { text: "FGF War Coordination • Live Battle Check-In" },
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function buildCtaComponents() {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("cta_present")
+        .setLabel("Present")
+        .setStyle(ButtonStyle.Success)
+        .setEmoji("🟢"),
+      new ButtonBuilder()
+        .setCustomId("cta_late")
+        .setLabel("Late (15-30m)")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("🟡"),
+      new ButtonBuilder()
+        .setCustomId("cta_absent")
+        .setLabel("Absent")
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji("🔴")
+    ),
+  ];
+}
+
+async function handleCallToArms(interaction) {
+  const eventName = interaction.options.getString("event_name");
+  const description = interaction.options.getString("description") || null;
+
+  const session = {
+    eventName,
+    description,
+    present: new Map(),
+    late: new Map(),
+    absent: new Map(),
+  };
+
+  const reply = await interaction.reply({
+    embeds: [buildCtaEmbed(session)],
+    components: buildCtaComponents(),
+    fetchReply: true,
+  });
+
+  ctaSessions.set(reply.id, session);
+}
+
+async function handleCtaButton(interaction) {
+  const messageId = interaction.message.id;
+  let session = ctaSessions.get(messageId);
+
+  if (!session) {
+    const title = interaction.message.embeds?.[0]?.title || "⚔️ Call to Arms";
+    const eventName = title.replace("⚔️ Call to Arms: ", "").trim();
+    session = {
+      eventName,
+      description: null,
+      present: new Map(),
+      late: new Map(),
+      absent: new Map(),
+    };
+    ctaSessions.set(messageId, session);
+  }
+
+  const userId = interaction.user.id;
+  session.present.delete(userId);
+  session.late.delete(userId);
+  session.absent.delete(userId);
+
+  let pseudo = interaction.member?.nickname || interaction.user.username;
+  let power = 0;
+  let fleet = 0;
+
+  const linked = await resolveLinkedAccount(userId).catch(() => null);
+  if (linked) {
+    const { data: member } = await supabase
+      .from("guild_members")
+      .select("pseudo, overall_power, fleet_rating")
+      .eq("uid", linked.uid)
+      .eq("guild", linked.guild)
+      .maybeSingle();
+    if (member) {
+      pseudo = member.pseudo;
+      power = Number(member.overall_power) || 0;
+      fleet = Number(member.fleet_rating) || 0;
+    }
+  }
+
+  const entry = { pseudo, power, fleet };
+  const action = interaction.customId;
+
+  if (action === "cta_present") {
+    session.present.set(userId, entry);
+  } else if (action === "cta_late") {
+    session.late.set(userId, entry);
+  } else if (action === "cta_absent") {
+    session.absent.set(userId, entry);
+  }
+
+  await interaction.message.edit({
+    embeds: [buildCtaEmbed(session)],
+    components: buildCtaComponents(),
+  });
+
+  const label = action === "cta_present" ? "🟢 Present" : action === "cta_late" ? "🟡 Late" : "🔴 Absent";
+  await interaction.reply({
+    content: `You have been registered as **${label}** (${pseudo}).`,
+    ephemeral: true,
+  });
+}
+
+async function handleUpdateStats(interaction) {
+  const power = interaction.options.getInteger("power");
+  const glory = interaction.options.getInteger("glory");
+
+  if (power === null && glory === null) {
+    await interaction.reply({
+      content: "Please provide either a **power** or a **glory** value to update.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const linked = await resolveLinkedAccount(interaction.user.id);
+  if (!linked) {
+    await interaction.reply({
+      content: "Your Discord account isn't linked yet. Run `/link` to connect your player account first.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const { data: member, error: memberErr } = await supabase
+    .from("guild_members")
+    .select("pseudo, overall_power, glory_score")
+    .eq("guild", linked.guild)
+    .eq("uid", linked.uid)
+    .maybeSingle();
+
+  if (memberErr || !member) {
+    await interaction.reply({
+      content: "No roster entry found for your linked account.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const changes = [];
+
+  if (power !== null) {
+    const { error: rpcErr } = await supabase.rpc("gm_upsert_player_metrics", {
+      p_guild: linked.guild,
+      p_pseudo: member.pseudo,
+      p_total_power: power,
+    });
+    if (rpcErr) {
+      await interaction.reply({ content: `Failed to update power: ${rpcErr.message}`, ephemeral: true });
+      return;
+    }
+    const oldP = Number(member.overall_power) || 0;
+    const diff = power - oldP;
+    const sign = diff >= 0 ? "+" : "";
+    changes.push(`• **Power**: ${formatNumber(oldP)} ➔ **${formatNumber(power)}** (${sign}${formatNumber(diff)})`);
+  }
+
+  if (glory !== null) {
+    const { error: rpcErr } = await supabase.rpc("gm_submit_event_score", {
+      p_guild: linked.guild,
+      p_pseudo: member.pseudo,
+      p_uid: linked.uid,
+      p_event_name: "GLORY",
+      p_score: glory,
+    });
+    if (rpcErr) {
+      console.warn("gm_submit_event_score returned:", rpcErr.message);
+    }
+    changes.push(`• **Glory**: **${formatNumber(glory)}**`);
+  }
+
+  const embed = {
+    color: 0x22c55e,
+    title: `✅ Stats Updated — ${member.pseudo} (${linked.guild})`,
+    description: changes.join("\n"),
+    footer: { text: "FGF Guild Management • Updated via Discord" },
+    timestamp: new Date().toISOString(),
+  };
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function sendVerificationDm(author, result, fgfGuild) {
+  try {
+    const isGuildMember = result.role === "guild_member";
+    const embed = {
+      color: isGuildMember ? 0x22c55e : 0xf59e0b,
+      title: isGuildMember
+        ? `🎉 Welcome to ${fgfGuild}! Profile Verified`
+        : `👋 Welcome! Assigned Visitor Role`,
+      description: isGuildMember
+        ? `Your profile has been verified and registered into the **${fgfGuild}** roster!`
+        : `You have been assigned the **Visitor** role. Check in with guild officers if this is unexpected.`,
+      fields: [
+        { name: "In-Game Pseudo", value: result.pseudo || "—", inline: true },
+        { name: "UID", value: result.uid || "—", inline: true },
+        { name: "Assigned Nickname", value: result.nickname || "—", inline: true },
+        { name: "Power", value: formatNumber(result.power), inline: true },
+        { name: "Total Glory", value: formatNumber(result.glory), inline: true },
+        { name: "Role", value: isGuildMember ? `Member (${fgfGuild})` : "Visitor", inline: true },
+      ],
+      footer: { text: "FGF Guild Management • Use /profile or /top anytime" },
+      timestamp: new Date().toISOString(),
+    };
+    await author.send({ embeds: [embed] });
+    return true;
+  } catch (e) {
+    console.log(`Could not send verification DM to ${author.id}: ${e.message}`);
+    return false;
+  }
+}
+
+async function postVerificationAuditLog(guild, auditChannelId, author, result, fgfGuild) {
+  if (!auditChannelId) return;
+  try {
+    const channel = await guild.channels.fetch(auditChannelId).catch(() => null);
+    if (!channel || !channel.isTextBased()) return;
+
+    const embed = {
+      color: result.role === "guild_member" ? 0x6366f1 : 0xf59e0b,
+      title: `📋 Verification Audit Log — ${result.pseudo}`,
+      fields: [
+        { name: "Discord User", value: `<@${author.id}> (${author.username})`, inline: true },
+        { name: "Guild", value: fgfGuild, inline: true },
+        { name: "Status", value: result.role === "guild_member" ? (result.is_new_player ? "🆕 New Player" : "🔄 Roster Updated") : "👋 Visitor", inline: true },
+        { name: "UID", value: result.uid || "—", inline: true },
+        { name: "Power", value: formatNumber(result.power), inline: true },
+        { name: "Nickname", value: result.nickname || "—", inline: true },
+      ],
+      footer: { text: "FGF Verification Audit System" },
+      timestamp: new Date().toISOString(),
+    };
+    await channel.send({ embeds: [embed] });
+  } catch (e) {
+    console.warn(`Failed to post audit log to ${auditChannelId}:`, e.message);
+  }
+}
+
+async function postOfficerAbsenceAlert(guild, auditChannelId, pseudo, fgfGuild, startDate, endDate, reason) {
+  if (!auditChannelId) return;
+  try {
+    const channel = await guild.channels.fetch(auditChannelId).catch(() => null);
+    if (!channel || !channel.isTextBased()) return;
+    const embed = {
+      color: 0xf59e0b,
+      title: `📢 Absence Declared — ${pseudo}`,
+      fields: [
+        { name: "Player", value: pseudo, inline: true },
+        { name: "Guild", value: fgfGuild, inline: true },
+        { name: "Period", value: `${startDate} to ${endDate}`, inline: false },
+        { name: "Reason", value: reason || "*No reason provided*", inline: false },
+      ],
+      timestamp: new Date().toISOString(),
+    };
+    await channel.send({ embeds: [embed] });
+  } catch (e) {
+    console.warn(`Failed to post absence alert to ${auditChannelId}:`, e.message);
+  }
 }
 
 async function safeReplyToInteraction(interaction, content) {
@@ -449,10 +1026,12 @@ client.once("ready", async () => {
   discordReady = true;
   await refreshChannelMap();
   await refreshMemberRoleMap();
+  await refreshAuditChannelMap();
   await registerSlashCommands();
   setInterval(async () => {
     await refreshChannelMap();
     await refreshMemberRoleMap();
+    await refreshAuditChannelMap();
   }, 5 * 60 * 1000);
 
   if (!(DISCORD_MEMBER_ROLE_ID || "").trim() && memberRoleByGuild.size === 0) {
@@ -512,13 +1091,39 @@ client.on("messageCreate", async (message) => {
 
     if (res.ok && result?.ok === true) {
       await settleFeedback(message, true);
-      // Best-effort: add the verified-member role now that the profile is
-      // confirmed. Failure here must never undo the ✅ reaction.
+      // Best-effort: add the verified-member role now that the profile is confirmed.
       await addVerifiedRole(message, fgfGuild);
+
+      // 1. Send Welcome DM
+      const dmSent = await sendVerificationDm(message.author, result, fgfGuild);
+      if (!dmSent) {
+        const fallbackNotice = await message.channel.send(
+          `✅ <@${message.author.id}> Verified: **${result.nickname || result.pseudo}**! Welcome to **${fgfGuild}**.`
+        ).catch(() => null);
+        if (fallbackNotice) setTimeout(() => fallbackNotice.delete().catch(() => {}), 20000);
+      }
+
+      // 2. Post to officer audit log if configured
+      const auditChannelId = result.audit_channel_id || auditChannelByGuild.get(fgfGuild);
+      if (auditChannelId && message.guild) {
+        await postVerificationAuditLog(message.guild, auditChannelId, message.author, result, fgfGuild);
+      }
+
+      // 3. Auto-delete user's screenshot message after 3s for privacy & zero-clutter
+      setTimeout(() => {
+        message.delete().catch((delErr) => {
+          console.warn(`Could not delete verification screenshot in ${message.channel.id} (needs Manage Messages permission):`, delErr.message);
+        });
+      }, 3000);
     } else {
       const error = (result && result.error) || `http_${res.status}`;
       console.warn(`discord-profile-verification returned ${res.status} (${error}) for user ${message.author.id}`);
       await settleFeedback(message, false);
+
+      // Auto-delete failed screenshot after 60s to prevent clutter
+      setTimeout(() => {
+        message.delete().catch(() => {});
+      }, 60000);
     }
   } catch (e) {
     console.error("Error handling messageCreate for profile verification:", e);
@@ -527,17 +1132,33 @@ client.on("messageCreate", async (message) => {
 
 client.on("interactionCreate", async (interaction) => {
   try {
+    if (interaction.isButton()) {
+      if (interaction.customId.startsWith("cta_")) {
+        await handleCtaButton(interaction);
+      }
+      return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
     if (interaction.commandName === "profile") {
       await handleProfile(interaction);
     } else if (interaction.commandName === "absent") {
       await handleAbsent(interaction);
+    } else if (interaction.commandName === "top") {
+      await handleTop(interaction);
+    } else if (interaction.commandName === "absences") {
+      await handleAbsences(interaction);
+    } else if (interaction.commandName === "call-to-arms") {
+      await handleCallToArms(interaction);
+    } else if (interaction.commandName === "update-stats") {
+      await handleUpdateStats(interaction);
     }
   } catch (e) {
-    console.error(`Error handling /${interaction.commandName}:`, e);
+    console.error(`Error handling interaction /${interaction.commandName || interaction.customId}:`, e);
     await safeReplyToInteraction(interaction, "Something went wrong. Please try again.");
   }
 });
 
 client.login(DISCORD_BOT_TOKEN);
+

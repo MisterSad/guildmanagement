@@ -32,7 +32,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkAndRecordDiscordAttempt } from "../_shared/rate-limit.ts";
 import { callGeminiVision } from "../_shared/gemini-vision.ts";
-import { normalizeTag, resolveExpectedTag, resolveTagToGuild, evaluateVerification, ExtractedProfile } from "../_shared/discord-verification.ts";
+import { normalizeTag, resolveExpectedTag, resolveTagToGuild, evaluateVerification, resolveAuditChannelId, ExtractedProfile } from "../_shared/discord-verification.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -289,13 +289,21 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     const reason = tagMatchesThisChannel
       ? `the "${expectedTagDisplay}" role hasn't been created on this server yet`
       : `this looks like a "${rawExtracted?.guild_tag || "different"}" screenshot, not ${expectedTagDisplay}`;
+    const auditChannelId = await resolveAuditChannelId(admin, fgfGuild);
     await postChannelMessage(
       channelId,
       patched
         ? `👋 Assigned the <@&${visitorRole.id}> role${visitorNickname ? ` (**${visitorNickname}**)` : ""} (${reason}). No roster changes were made.`
         : `⚠️ Tried to assign the <@&${visitorRole.id}> role but couldn't -- an officer may need to check my role position in Server Settings > Roles.`
     );
-    return json({ ok: true, role: "visitor", tag_matches_channel: tagMatchesThisChannel, nickname: visitorNickname }, 200);
+    return json({
+      ok: true,
+      role: "visitor",
+      tag_matches_channel: tagMatchesThisChannel,
+      nickname: visitorNickname,
+      assigned_role_id: visitorRole.id,
+      audit_channel_id: auditChannelId,
+    }, 200);
   }
 
   // Real guild member: run every ban / cross-guild / roster decision.
@@ -324,5 +332,20 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     await postChannelMessage(channelId, `✅ Verified and ${summary} (**${result.finalPseudo}**), but I couldn't update your nickname/role automatically -- an officer may need to check my role position in Server Settings > Roles.`);
   }
 
-  return json({ ok: true, role: "guild_member", pseudo: result.finalPseudo, uid: extractedUid, is_new_player: result.isNewPlayer, discord_actions_ok: patched });
+  const auditChannelId = await resolveAuditChannelId(admin, fgfGuild);
+
+  return json({
+    ok: true,
+    role: "guild_member",
+    pseudo: result.finalPseudo,
+    uid: extractedUid,
+    is_new_player: result.isNewPlayer,
+    previous_power: result.previousPower ?? null,
+    power: result.power,
+    glory: result.glory,
+    nickname,
+    assigned_role_id: matchedGuildRole.id,
+    audit_channel_id: auditChannelId,
+    discord_actions_ok: patched,
+  });
 });

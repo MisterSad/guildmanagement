@@ -1,3 +1,43 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.18.3**
+
+Welcome to V3.18.3! Today I just rolled out a major upgrade to our **Interactive Discord Bot**! From privacy-first zero-clutter channel verification to real-time war check-ins and guild leaderboards, here is everything newly available directly inside your Discord server:
+
+### 🧹 Clean Verification & Privacy: Auto-Delete & Welcome DMs
+- **What changed**: When players upload their in-game profile screenshot in `#verification`:
+  - **Auto-Clean**: Once their profile is verified, the bot automatically deletes their screenshot after 3 seconds, keeping your channel spotless and protecting sensitive in-game data (UID, fleet levels, fleet power) from public view!
+  - **Welcome DM**: The bot sends a direct message to the player confirming their registered power, glory, assigned server nickname, and guild role. (If their DMs are disabled, a friendly notice is shown and auto-destructs after 20 seconds).
+  - **Officer Audit Log**: Verification events are silently archived in the officer audit channel (`#verification-logs`) for easy tracking.
+  - **Failed Image Cleanup**: If a screenshot cannot be read, it is cleaned up after 60 seconds.
+- **The benefit**: No more messy verification channels full of old screenshots, and maximum privacy for your guild members.
+
+### 🏆 Guild Leaderboards (`/top`)
+- **What changed**: Added the `/top` slash command to see who is leading the guild:
+  - `/top category:Overall Power` — Top 10 most powerful commanders.
+  - `/top category:Glory Score` — Top 10 weekly glory contributors.
+  - `/top category:Fleet Rating` — Top 10 strongest battle fleets.
+- **The benefit**: Instant recognition for your top performers and friendly competition directly inside Discord!
+
+### ⚔️ Interactive Call to Arms War Check-In (`/call-to-arms`)
+- **What changed**: Officers can now launch an interactive war attendance roll-call with `/call-to-arms <event_name>` (e.g. `SvS Invasion`, `GvG Saturday`).
+- **The benefit**: Members simply click **🟢 Present**, **🟡 Late**, or **🔴 Absent**. The bot automatically updates the message in real-time, displaying the player list and calculating the **Total Mobilized Combat Power** and **Fleet Rating** ready for battle!
+
+### 🕐 Live Member Local Time & Absence Status on `/profile`
+- **What changed**: When viewing any member's combat card via `/profile`:
+  - **Live Local Time**: The bot calculates their current time based on their timezone (e.g. `16:30 (UTC+2)`), so you know at a glance whether they are awake before a war ping.
+  - **Live Absence Status**: Shows if they are `🟢 Active` or `🔴 Absent until YYYY-MM-DD` with their note.
+- **The benefit**: Seamless war coordination without guessing timezones or availability.
+
+### 📅 Officer Absence Briefings (`/absences`) & Instant Alerts
+- **What changed**: Officers can check `/absences scope:Today` or `/absences scope:Upcoming` to view planned leaves for the week. Additionally, when any member submits `/absent`, an alert is immediately sent to the officer channel.
+- **The benefit**: Fast roster adjustments before GvG or SvS match-ups.
+
+### ⚡ Quick Stats Update (`/update-stats`)
+- **What changed**: Verified members can now quickly update their power or glory via `/update-stats [power] [glory]`, showing their progression delta instantly.
+
+Redeploy your worker or invite the updated bot to take advantage of these new capabilities! 🚀⚔️🛡️
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.18.2**
 
 Welcome to V3.18.2! Over the past few hours, I completed a complete overhaul of the Discord notification and reminder system. Between an end-to-end fix for automated event reminder delivery and a brand new Message Customization Studio featuring live Discord preview and 1-click tag insertion, customizing and sending your guild's Discord alerts is now effortless and foolproof. Here is everything I just rolled out!

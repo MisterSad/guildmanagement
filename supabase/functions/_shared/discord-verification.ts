@@ -100,6 +100,19 @@ async function withServerNumber(
   return { fgfGuild, tagDisplay, serverNumber: (guildRow as { server_number?: string } | null)?.server_number || null };
 }
 
+export async function resolveAuditChannelId(
+  admin: ReturnType<typeof createClient>,
+  fgfGuild: string
+): Promise<string | null> {
+  const { data: rows } = await admin
+    .from("guild_config")
+    .select("key, value")
+    .eq("guild", fgfGuild)
+    .in("key", ["discord_audit_channel_id", "discord_officer_channel_id"]);
+  const map = new Map((rows || []).map((r: { key: string; value?: string }) => [r.key, (r.value || "").trim()]));
+  return map.get("discord_audit_channel_id") || map.get("discord_officer_channel_id") || null;
+}
+
 export interface ExtractedProfile {
   pseudo: string;
   uid: string;
@@ -111,7 +124,7 @@ export type VerificationResult =
   | { ok: false; error: "banned" }
   | { ok: false; error: "uid_registered_elsewhere" }
   | { ok: false; error: "db_error" }
-  | { ok: true; finalPseudo: string; isNewPlayer: boolean; power: number; glory: number | null };
+  | { ok: true; finalPseudo: string; isNewPlayer: boolean; power: number; glory: number | null; previousPower?: number | null };
 
 // Called only once the caller has already resolved a live Discord role
 // matching the guild's tag (see discord-profile-verification/index.ts) --
@@ -177,5 +190,12 @@ export async function evaluateVerification(
     metadata: { discord_user_id: discordUserId, power: extracted.power, glory: extracted.glory, is_new_player: !existingPlayer },
   });
 
-  return { ok: true, finalPseudo, isNewPlayer: !existingPlayer, power: extracted.power, glory: extracted.glory };
+  return {
+    ok: true,
+    finalPseudo,
+    isNewPlayer: !existingPlayer,
+    power: extracted.power,
+    glory: extracted.glory,
+    ...(existingPlayer ? { previousPower: existingPlayer.overall_power } : {}),
+  };
 }
