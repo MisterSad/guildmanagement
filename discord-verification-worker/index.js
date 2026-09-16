@@ -313,9 +313,18 @@ const SETUP_SERVER_COMMAND = {
   ],
 };
 
+const LINK_COMMAND = {
+  name: "link",
+  description: "Link your Discord account to your FGF Guild Management player account.",
+};
+
+const MYINFO_COMMAND = {
+  name: "myinfo",
+  description: "Show your linked player stats (power, glory, role, timezone).",
+};
+
 // Registers slash commands via the REST API, merging into whatever
-// global commands already exist so other commands (/link, /myinfo, ...) are
-// never wiped on a redeploy.
+// global commands already exist so other commands are never wiped on a redeploy.
 async function registerSlashCommands() {
   const appId = client.user?.id;
   if (!appId) {
@@ -329,6 +338,8 @@ async function registerSlashCommands() {
     const existingByName = new Map(existing.map((c) => [c.name, c]));
 
     const desired = new Map([
+      ["link", LINK_COMMAND],
+      ["myinfo", MYINFO_COMMAND],
       ["profile", PROFILE_COMMAND],
       ["absent", ABSENT_COMMAND],
       ["top", TOP_COMMAND],
@@ -350,17 +361,14 @@ async function registerSlashCommands() {
       if (!desired.has(cmd.name)) body.push(cmd);
     }
 
-    // Debug surface: if a legacy Edge Function command overlaps the new /
-    // profile + /absent surface, report it so an operator can clean it up
-    // manually (deleting it here could break the endpoint it belongs to).
-    const legacyOverlap = existing.filter((c) => ["absence", "myinfo"].includes(c.name));
+    const legacyOverlap = existing.filter((c) => ["absence"].includes(c.name));
     if (legacyOverlap.length > 0) {
       console.log(`Preserved legacy commands overlapping the new slash surface: ${legacyOverlap.map((c) => `/${c.name}`).join(", ")}.`);
     }
 
     // Global registration
     await rest.put(Routes.applicationCommands(appId), { body });
-    console.log("Slash commands registered globally: /profile, /absent, /top, /absences, /call-to-arms, /update-stats, /setup-server");
+    console.log("Slash commands registered globally: /link, /myinfo, /profile, /absent, /top, /absences, /call-to-arms, /update-stats, /setup-server");
 
     // Also register directly to all current guilds for instant availability (0s propagation)
     for (const guild of client.guilds.cache.values()) {
@@ -437,6 +445,104 @@ async function getPlayerActiveAbsence(uid, guild) {
   } catch {
     return null;
   }
+}
+
+function randomLinkCode() {
+  const alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+}
+
+async function handleLink(interaction) {
+  const discordUserId = interaction.user.id;
+  const discordUsername = interaction.user.username;
+  const code = randomLinkCode();
+
+  // Invalidate any previously pending code for this user
+  await supabase.from("discord_link_codes").delete().eq("discord_user_id", discordUserId);
+  const { error } = await supabase.from("discord_link_codes").insert({
+    code,
+    discord_user_id: discordUserId,
+    discord_username: discordUsername || null,
+  });
+
+  if (error) {
+    console.error("Failed to create discord_link_codes row:", error.message);
+    await interaction.reply({
+      content: "❌ Something went wrong generating your link code. Please try again.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const embed = {
+    color: 0x3b82f6,
+    title: "🔗 Link Your Discord Account",
+    description:
+      `Your link code is: **\`${code}\`**\n\n` +
+      `⏱️ *This code expires in 10 minutes.*\n\n` +
+      `**How to complete linking:**\n` +
+      `1. Open the FGF Guild Management web app.\n` +
+      `2. Go to **Player Portal** ➔ **My Info** ➔ **Link Discord**.\n` +
+      `3. Enter the code **\`${code}\`** and confirm to link your player profile!`,
+    footer: { text: "FGF Guild Management • Account Link" },
+    timestamp: new Date().toISOString(),
+  };
+
+  await interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+  });
+}
+
+async function handleMyInfo(interaction) {
+  const linked = await resolveLinkedAccount(interaction.user.id);
+  if (!linked) {
+    await interaction.reply({
+      content: "Your Discord account isn't linked yet. Run `/link` first, then enter the code in the Player Portal (**My Info** ➔ **Link Discord**).",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const { data: member, error: memberErr } = await supabase
+    .from("guild_members")
+    .select("pseudo, overall_power, glory_score, role, fleet_rating, tech_power, timezone_offset")
+    .eq("guild", linked.guild)
+    .eq("uid", linked.uid)
+    .maybeSingle();
+
+  if (memberErr || !member) {
+    await interaction.reply({
+      content: "Couldn't find your roster entry. Your guild officer may need to re-scan the roster.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const localTime = formatPlayerLocalTime(member.timezone_offset);
+  const tzStr = timezoneLabel(member.timezone_offset);
+
+  const embed = {
+    title: `👤 ${member.pseudo} — [${linked.guild}]`,
+    color: 0x6366f1,
+    fields: [
+      { name: "Overall Power", value: formatNumber(member.overall_power), inline: true },
+      { name: "Glory Score", value: formatNumber(member.glory_score), inline: true },
+      { name: "Role", value: member.role || "—", inline: true },
+      { name: "Fleet Rating", value: formatNumber(member.fleet_rating), inline: true },
+      { name: "Tech Power", value: formatNumber(member.tech_power), inline: true },
+      { name: "Timezone", value: localTime ? `${tzStr} (${localTime})` : tzStr, inline: true },
+    ],
+    footer: { text: "FGF Guild Management • Player Portal" },
+    timestamp: new Date().toISOString(),
+  };
+
+  await interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+  });
 }
 
 const PROFILE_FIELDS = "pseudo, guild, role, overall_power, fleet_rating, tech_power, flagship_power, champion_power, crew_power, glory_score, timezone_offset, uid";
@@ -1439,7 +1545,11 @@ client.on("interactionCreate", async (interaction) => {
 
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === "profile") {
+    if (interaction.commandName === "link") {
+      await handleLink(interaction);
+    } else if (interaction.commandName === "myinfo") {
+      await handleMyInfo(interaction);
+    } else if (interaction.commandName === "profile") {
       await handleProfile(interaction);
     } else if (interaction.commandName === "absent") {
       await handleAbsent(interaction);

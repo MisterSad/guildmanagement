@@ -241,4 +241,12 @@ describe('Discord Bot Advanced: Worker Security & Invariants', () => {
     expect(workerSrc).toContain('cta_late');
     expect(workerSrc).toContain('cta_absent');
   });
+
+  it('registers and handles /link and /myinfo commands without timing out', () => {
+    expect(workerSrc).toContain('interaction.commandName === "link"');
+    expect(workerSrc).toContain('interaction.commandName === "myinfo"');
+    expect(workerSrc).toContain('handleLink');
+    expect(workerSrc).toContain('handleMyInfo');
+    expect(workerSrc).toContain('randomLinkCode()');
+  });
 });
