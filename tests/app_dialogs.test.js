@@ -14,6 +14,7 @@ import {
   openCustomMsgModal,
   showToast
 } from '../src/modules/app/dialogs/dialogs.service';
+import { initGuildRequestsUi } from '../src/modules/app/admin/guild-requests.controller';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -182,6 +183,17 @@ describe('openCustomMsgModal', () => {
 
     expect(document.getElementById('custom-msg-modal').classList.contains('visible')).toBe(false);
     expect(set).not.toHaveBeenCalled();
+  });
+
+  it('wires [data-custom-msg] buttons via initGuildRequestsUi and opens modal on click', async () => {
+    window.GM.config = { get: vi.fn(async () => ''), set: vi.fn(async () => undefined) };
+    document.body.innerHTML = '<button type="button" data-custom-msg="gvg">Edit GVG</button>';
+
+    initGuildRequestsUi();
+
+    document.querySelector('[data-custom-msg="gvg"]').click();
+    await vi.waitFor(() => expect(document.getElementById('custom-msg-modal')).toBeTruthy());
+    expect(document.getElementById('custom-msg-modal').textContent).toContain('Personalization - GvG Saturday');
   });
 });
 

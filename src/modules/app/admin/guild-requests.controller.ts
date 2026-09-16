@@ -12,7 +12,7 @@
 import { t, esc, gm, winAny, byId, getDb } from './utils';
 import { type AccountRow, getAccounts, filterAccountsOut } from './admin-store';
 import { fetchAccounts, fetchGuilds } from './accounts.controller';
-import { showToast } from '../dialogs/dialogs.service';
+import { showToast, openCustomMsgModal } from '../dialogs/dialogs.service';
 import { initChestTiersSettings, loadChestTiers } from '../../events/chest-settings';
 import { testDiscordWebhook, formatDiscordRoleMention, sendDiscordWebhookDetailed } from '../../../core/integrations/discord';
 import { buildGvgDailyTaskEmbed } from '../../../core/config/gvg-tasks';
@@ -518,4 +518,13 @@ export function initGuildRequestsUi(): void {
       }
     });
   }
+
+  document.querySelectorAll<HTMLElement>('[data-custom-msg]').forEach((btn) => {
+    if ((btn as any).__gmCustomMsgWired) return;
+    (btn as any).__gmCustomMsgWired = true;
+    btn.addEventListener('click', () => {
+      const prefix = btn.getAttribute('data-custom-msg');
+      if (prefix) void openCustomMsgModal(prefix);
+    });
+  });
 }
