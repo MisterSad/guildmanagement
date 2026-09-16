@@ -35,6 +35,14 @@ Welcome to V3.18.1! Today was a huge day of fixes and quality-of-life upgrades a
 - **What changed**: I completely removed mobile browser push notifications (PWA web push) across the backend scheduler and frontend (Overview and Player Portal).
 - **The benefit**: A cleaner, faster interface with zero notification clutter. All guild alerts are now centralized strictly where everyone actually checks them: directly inside your Discord server.
 
+### 🎨 Discord Reminder Message Customizer: Tabs, 1-Click Pills & Live Preview
+- **What changed**: Guild admins customizing Discord alert messages (Arms Race, DTR, Shadowfront, Calamity, GvG, SvS) now have a completely modern split-pane studio:
+  - **Horizontal Tabs**: Switch effortlessly between reminders (30 Min, 5 Min, Event Start, Defense, Garrison) instead of scrolling through dozens of fields.
+  - **1-Click Insertion Pills**: Insert `{guild_tag}` (Role mention), `@everyone`, `{event_name}`, `{date}`, and `{round}` with a single tap at your cursor position — no syntax memorization required.
+  - **Real-Time Discord Preview**: A live preview simulates the exact Discord message as you type, showing ping mentions, embedded cards, and color-coded accent borders in real time.
+  - **1-Click Reset**: Easily revert any reminder back to the default FGF template in a single click.
+- **The benefit**: Total creative control over your Discord announcements with zero technical hassle, zero syntax errors, and a live preview of exactly what your members will see on Discord!
+
 Try out the new updates and let me know how they work for your guild! As always, your feedback and bug reports through Report a Bug or Discord are greatly appreciated. 🚀⚔️🛡️
 
 ---

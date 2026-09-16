@@ -38,8 +38,15 @@ function t(key: string): string {
 function esc(value: unknown): string {
   const g = gm();
   if (g && typeof g.escapeHTML === 'function') return g.escapeHTML(value);
-  return value === null || value === undefined ? '' : String(value);
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
+
 
 function getDb(): any {
   const g = gm();
@@ -361,7 +368,7 @@ function getDefaultTpl(eventPrefix: string, key: string, field: string): string 
   return '';
 }
 
-/** Discord message personalization modal (legacy `[data-custom-msg]` handler). */
+/** Discord message personalization modal (combined Solutions A + B + C). */
 export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
   if (typeof document === 'undefined') return;
 
@@ -369,6 +376,8 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
   if (existing) existing.remove();
 
   const reminders = REMINDERS_BY_PREFIX[eventPrefix] || [];
+  if (reminders.length === 0) return;
+
   const templates: Record<string, string> = {};
   for (const reminder of reminders) {
     templates[reminder.key + '_content'] = await configGet('tpl_' + eventPrefix + '_' + reminder.key + '_content') || '';
@@ -380,22 +389,28 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
   overlay.id = 'custom-msg-modal';
   overlay.className = 'gm-modal-overlay';
 
-  let html =
-    '<div class="gm-profile-card" style="max-width: 600px; gap: 1.25rem; align-items: stretch; text-align: left;">' +
-      '<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.75rem;">' +
-        '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
-          '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personalization - ' + (TITLE_MAP[eventPrefix] || eventPrefix) +
-        '</h3>' +
-        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" style="padding: 0.25rem;"><i class="ph ph-x"></i></button>' +
-      '</div>' +
-      '<div style="font-size: var(--fs-sm); color: var(--fg-dim); background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 6px; padding: 0.65rem 0.8rem; line-height: 1.4;">' +
-        '<strong>Available variables:</strong> <code>{event_name}</code>, <code>{date}</code>, <code>{guild_tag}</code>' +
-        (eventPrefix === 'calamity' ? ', <code>{round}</code>' : '') +
-        '<br><span style="font-size: var(--fs-sm);">Leave blank to use the default message template.</span>' +
-      '</div>' +
-      '<div style="display: flex; flex-direction: column; gap: 1.5rem; max-height: 50vh; overflow-y: auto; padding-right: 0.25rem;">';
+  const eventTitle = TITLE_MAP[eventPrefix] || eventPrefix;
 
-  for (const reminder of reminders) {
+  // Build Tab Buttons
+  let tabsHtml = '<div class="discord-custom-tabs" role="tablist" id="custom-msg-tabs">';
+  reminders.forEach((reminder, index) => {
+    let icon = 'ph-bell';
+    if (reminder.key.includes('30')) icon = 'ph-clock';
+    else if (reminder.key.includes('5') || reminder.key.includes('10')) icon = 'ph-warning';
+    else if (reminder.key.includes('start')) icon = 'ph-sword';
+    else if (reminder.key.includes('defense')) icon = 'ph-shield';
+    else if (reminder.key.includes('garrison')) icon = 'ph-anchor';
+
+    tabsHtml +=
+      '<button type="button" class="discord-custom-tab-btn ' + (index === 0 ? 'active' : '') + '" data-tab="' + esc(reminder.key) + '" role="tab">' +
+        '<i class="ph ' + icon + '"></i> ' + esc(reminder.label) +
+      '</button>';
+  });
+  tabsHtml += '</div>';
+
+  // Build Left Panes for Each Reminder
+  let panesHtml = '<div class="discord-edit-column" style="display: flex; flex-direction: column; gap: 1rem;">';
+  reminders.forEach((reminder, index) => {
     const defContent = getDefaultTpl(eventPrefix, reminder.key, 'content');
     const defTitle = getDefaultTpl(eventPrefix, reminder.key, 'title');
     const defDesc = getDefaultTpl(eventPrefix, reminder.key, 'desc');
@@ -404,25 +419,120 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
     const valTitle = templates[reminder.key + '_title'] || '';
     const valDesc = templates[reminder.key + '_desc'] || '';
 
-    html +=
-      '<div style="display: flex; flex-direction: column; gap: 0.75rem; border-bottom: 1px dashed var(--border-soft); padding-bottom: 1.25rem;">' +
-        '<div style="font-size: var(--fs-base); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em;">' + reminder.label + '</div>' +
-        '<div class="gm-col" style="gap: 0.35rem;">' +
-          '<label style="font-size: var(--fs-sm); color: var(--fg-dim);">Discord Message (ping / main text):</label>' +
+    const roundPillContent = eventPrefix === 'calamity'
+      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-hash"></i> N° Manche</button>'
+      : '';
+    const roundPillTitle = eventPrefix === 'calamity'
+      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-hash"></i> N° Manche</button>'
+      : '';
+    const roundPillDesc = eventPrefix === 'calamity'
+      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-hash"></i> N° Manche</button>'
+      : '';
+
+    panesHtml +=
+      '<div class="discord-pane" id="pane-' + reminder.key + '" style="display: ' + (index === 0 ? 'flex' : 'none') + '; flex-direction: column; gap: 0.9rem;">' +
+        // Field 1: Ping / Notification Text
+        '<div class="gm-col" style="gap: 0.3rem;">' +
+          '<label for="tpl-' + reminder.key + '-content" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
+            '<span>Texte de notification (Ping)</span>' +
+            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Alerte sonore</span>' +
+          '</label>' +
+          '<div class="discord-pills-bar">' +
+            '<button type="button" class="discord-pill-btn" data-insert="{guild_tag}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-tag"></i> Rôle Discord</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="@everyone" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-megaphone"></i> @everyone</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-game-controller"></i> Nom Épreuve</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-clock"></i> Heure UTC</button>' +
+            roundPillContent +
+          '</div>' +
           '<input type="text" id="tpl-' + reminder.key + '-content" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' + esc(defContent) + '" value="' + esc(valContent) + '">' +
         '</div>' +
-        '<div class="gm-col" style="gap: 0.35rem;">' +
-          '<label style="font-size: var(--fs-sm); color: var(--fg-dim);">Embed Title:</label>' +
+
+        // Field 2: Embed Title
+        '<div class="gm-col" style="gap: 0.3rem;">' +
+          '<label for="tpl-' + reminder.key + '-title" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
+            '<span>Titre de l\'encadré (Embed Title)</span>' +
+            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Titre en gras</span>' +
+          '</label>' +
+          '<div class="discord-pills-bar">' +
+            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-game-controller"></i> Nom Épreuve</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-clock"></i> Heure UTC</button>' +
+            roundPillTitle +
+          '</div>' +
           '<input type="text" id="tpl-' + reminder.key + '-title" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' + esc(defTitle) + '" value="' + esc(valTitle) + '">' +
         '</div>' +
-        '<div class="gm-col" style="gap: 0.35rem;">' +
-          '<label style="font-size: var(--fs-sm); color: var(--fg-dim);">Embed Description:</label>' +
-          '<textarea id="tpl-' + reminder.key + '-desc" class="gm-input" style="font-size: var(--fs-sm); height: 60px; resize: vertical;" placeholder="' + esc(defDesc) + '">' + valDesc + '</textarea>' +
+
+        // Field 3: Embed Description
+        '<div class="gm-col" style="gap: 0.3rem;">' +
+          '<label for="tpl-' + reminder.key + '-desc" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
+            '<span>Description de l\'encadré (Embed Description)</span>' +
+            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Corps du message</span>' +
+          '</label>' +
+          '<div class="discord-pills-bar">' +
+            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-game-controller"></i> Nom Épreuve</button>' +
+            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-clock"></i> Heure UTC</button>' +
+            roundPillDesc +
+          '</div>' +
+          '<textarea id="tpl-' + reminder.key + '-desc" class="gm-input" style="font-size: var(--fs-sm); height: 65px; resize: vertical;" placeholder="' + esc(defDesc) + '">' + esc(valDesc) + '</textarea>' +
+        '</div>' +
+
+        // Reset to Default button
+        '<div style="display: flex; justify-content: flex-start; margin-top: 0.2rem;">' +
+          '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm discord-reset-btn" data-reset="' + esc(reminder.key) + '" style="gap: 0.35rem; font-size: var(--fs-xs); color: var(--fg-muted);">' +
+            '<i class="ph ph-arrow-counter-clockwise"></i> Rétablir le message par défaut' +
+          '</button>' +
         '</div>' +
       '</div>';
-  }
+  });
+  panesHtml += '</div>';
 
-  html +=
+  // Build Right Column (Discord Live Preview)
+  const previewHtml =
+    '<div class="discord-preview-column">' +
+      '<div class="discord-preview-wrap">' +
+        '<div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #949ba4; font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 0.4rem;">' +
+          '<span><i class="ph ph-discord-logo"></i> Aperçu Discord en direct</span>' +
+          '<span style="font-size: 0.65rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">Rendu réel</span>' +
+        '</div>' +
+        '<div class="discord-msg-header">' +
+          '<div class="discord-avatar">🤖</div>' +
+          '<div>' +
+            '<div class="discord-author">' +
+              '<span>FGF Bot</span>' +
+              '<span class="discord-bot-badge">BOT</span>' +
+              '<span class="discord-timestamp">Aujourd\'hui à 14:00</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="discord-content" id="discord-preview-content"></div>' +
+        '<div class="discord-embed-card" id="discord-preview-embed">' +
+          '<div class="discord-embed-title" id="discord-preview-title"></div>' +
+          '<div class="discord-embed-desc" id="discord-preview-desc"></div>' +
+          '<div class="discord-embed-fields">' +
+            '<div class="discord-embed-field">' +
+              '<div class="discord-field-name">Status</div>' +
+              '<div class="discord-field-value" id="discord-preview-status">📅 Scheduled</div>' +
+            '</div>' +
+            '<div class="discord-embed-field">' +
+              '<div class="discord-field-name">Start Time (UTC)</div>' +
+              '<div class="discord-field-value">Wed, 14:00 UTC</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  const html =
+    '<div class="gm-modal-card discord-custom-modal" style="text-align: left;">' +
+      '<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.75rem;">' +
+        '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
+          '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personalization - ' + esc(eventTitle) +
+        '</h3>' +
+        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" style="padding: 0.25rem;"><i class="ph ph-x"></i></button>' +
+      '</div>' +
+      tabsHtml +
+      '<div class="discord-custom-body">' +
+        panesHtml +
+        previewHtml +
       '</div>' +
       '<div style="display: flex; gap: 0.75rem; justify-content: flex-end; border-top: 1px solid var(--border-soft); padding-top: 0.75rem;">' +
         '<button type="button" class="gm-btn gm-btn-ghost" id="custom-msg-modal-cancel">Cancel</button>' +
@@ -434,7 +544,6 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
 
   overlay.innerHTML = html;
   document.body.appendChild(overlay);
-
   requestAnimationFrame(() => { overlay.classList.add('visible'); });
 
   function closeModal(): void {
@@ -448,6 +557,143 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
 
+  // Cursor insertion helper
+  function insertAtCursor(el: HTMLInputElement | HTMLTextAreaElement, text: string): void {
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    const val = el.value;
+    el.value = val.substring(0, start) + text + val.substring(end);
+    const nextPos = start + text.length;
+    el.selectionStart = el.selectionEnd = nextPos;
+    el.focus();
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // Live Discord Preview Updater
+  let currentKey = reminders[0]?.key || '';
+  function updateDiscordPreview(reminderKey: string): void {
+    const contentEl = document.getElementById('tpl-' + reminderKey + '-content') as HTMLInputElement | null;
+    const titleEl = document.getElementById('tpl-' + reminderKey + '-title') as HTMLInputElement | null;
+    const descEl = document.getElementById('tpl-' + reminderKey + '-desc') as HTMLTextAreaElement | null;
+    if (!contentEl || !titleEl || !descEl) return;
+
+    const rawContent = contentEl.value.trim() || getDefaultTpl(eventPrefix, reminderKey, 'content');
+    const rawTitle = titleEl.value.trim() || getDefaultTpl(eventPrefix, reminderKey, 'title');
+    const rawDesc = descEl.value.trim() || getDefaultTpl(eventPrefix, reminderKey, 'desc');
+
+    const sampleEventName = TITLE_MAP[eventPrefix] || 'Arms Race';
+    const sampleDate = 'Wed, 14:00 UTC';
+    const sampleRole = '@Guerriers FGF';
+
+    const formatDiscord = (text: string): string => {
+      if (!text) return '';
+      // Strict XSS safety: escape HTML first
+      return esc(text)
+        .replace(/@{guild_tag}/g, '{guild_tag}')
+        .replace(/\{event_name\}/g, esc(sampleEventName))
+        .replace(/\{date\}/g, sampleDate)
+        .replace(/\{round\}/g, '3')
+        .replace(/\{guild_tag\}/g, '<span class="discord-mention">' + esc(sampleRole) + '</span>')
+        .replace(/@everyone/g, '<span class="discord-mention">@everyone</span>')
+        .replace(/<@&?(\d+)>/g, '<span class="discord-mention">@Rôle</span>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>');
+    };
+
+    const previewContent = document.getElementById('discord-preview-content');
+    const previewTitle = document.getElementById('discord-preview-title');
+    const previewDesc = document.getElementById('discord-preview-desc');
+    const previewEmbed = document.getElementById('discord-preview-embed');
+    const previewStatus = document.getElementById('discord-preview-status');
+
+    if (previewContent) previewContent.innerHTML = formatDiscord(rawContent);
+    if (previewTitle) previewTitle.innerHTML = formatDiscord(rawTitle);
+    if (previewDesc) previewDesc.innerHTML = formatDiscord(rawDesc);
+
+    if (previewEmbed) {
+      let embedColor = '#6366f1';
+      if (reminderKey.includes('30')) embedColor = '#f59e0b';
+      else if (reminderKey.includes('5') || reminderKey.includes('10')) embedColor = '#ef4444';
+      else if (reminderKey.includes('start')) embedColor = '#10b981';
+      else if (reminderKey.includes('defense') || reminderKey.includes('garrison')) embedColor = '#06b6d4';
+      previewEmbed.style.borderLeftColor = embedColor;
+    }
+
+    if (previewStatus) {
+      if (reminderKey.includes('start')) previewStatus.textContent = '⚔️ Active Now';
+      else if (reminderKey.includes('30')) previewStatus.textContent = '⏰ In 30 Minutes';
+      else if (reminderKey.includes('5') || reminderKey.includes('10')) previewStatus.textContent = '🚨 In 5 Minutes';
+      else if (reminderKey.includes('garrison')) previewStatus.textContent = '🛡️ Garrison';
+      else previewStatus.textContent = '📅 Reminder';
+    }
+  }
+
+  // Wire Tab buttons
+  overlay.querySelectorAll<HTMLButtonElement>('.discord-custom-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-tab');
+      if (!target) return;
+      currentKey = target;
+
+      overlay.querySelectorAll('.discord-custom-tab-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      overlay.querySelectorAll<HTMLElement>('.discord-pane').forEach((pane) => {
+        pane.style.display = pane.id === 'pane-' + target ? 'flex' : 'none';
+      });
+
+      updateDiscordPreview(currentKey);
+    });
+  });
+
+  // Wire Pill insertion buttons
+  overlay.querySelectorAll<HTMLButtonElement>('.discord-pill-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const text = btn.getAttribute('data-insert');
+      const targetId = btn.getAttribute('data-target');
+      if (!text || !targetId) return;
+
+      const targetEl = document.getElementById(targetId) as HTMLInputElement | HTMLTextAreaElement | null;
+      if (targetEl) {
+        insertAtCursor(targetEl, text);
+        updateDiscordPreview(currentKey);
+      }
+    });
+  });
+
+  // Wire Reset buttons
+  overlay.querySelectorAll<HTMLButtonElement>('.discord-reset-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const rKey = btn.getAttribute('data-reset');
+      if (!rKey) return;
+      const cEl = document.getElementById('tpl-' + rKey + '-content') as HTMLInputElement | null;
+      const tEl = document.getElementById('tpl-' + rKey + '-title') as HTMLInputElement | null;
+      const dEl = document.getElementById('tpl-' + rKey + '-desc') as HTMLTextAreaElement | null;
+      if (cEl) cEl.value = '';
+      if (tEl) tEl.value = '';
+      if (dEl) dEl.value = '';
+      if (rKey === currentKey) updateDiscordPreview(currentKey);
+    });
+  });
+
+  // Wire Live Input listeners
+  reminders.forEach((r) => {
+    ['content', 'title', 'desc'].forEach((f) => {
+      const el = document.getElementById('tpl-' + r.key + '-' + f);
+      if (el) {
+        el.addEventListener('input', () => {
+          if (r.key === currentKey) updateDiscordPreview(currentKey);
+        });
+      }
+    });
+  });
+
+  // Initial preview render
+  if (currentKey) {
+    updateDiscordPreview(currentKey);
+  }
+
+  // Wire Save button
   const saveBtn = document.getElementById('custom-msg-modal-save') as HTMLButtonElement | null;
   if (saveBtn) {
     saveBtn.addEventListener('click', async () => {

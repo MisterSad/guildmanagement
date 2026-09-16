@@ -195,6 +195,58 @@ describe('openCustomMsgModal', () => {
     await vi.waitFor(() => expect(document.getElementById('custom-msg-modal')).toBeTruthy());
     expect(document.getElementById('custom-msg-modal').textContent).toContain('Personalization - GvG Saturday');
   });
+  it('supports tab switching, pill button insertion, reset-to-default, and live preview', async () => {
+    window.GM.config = { get: vi.fn(async () => ''), set: vi.fn(async () => undefined) };
+
+    await openCustomMsgModal('armsrace');
+
+    const overlay = document.getElementById('custom-msg-modal');
+    expect(overlay).toBeTruthy();
+
+    // Verify tabs are present
+    const tabs = overlay.querySelectorAll('.discord-custom-tab-btn');
+    expect(tabs.length).toBe(3); // 30m, 5m, start
+    expect(tabs[0].classList.contains('active')).toBe(true);
+
+    // Verify initial live preview shows 30m reminder default
+    const previewContent = document.getElementById('discord-preview-content');
+    expect(previewContent).toBeTruthy();
+    expect(previewContent.textContent).toContain('starts in 30 minutes');
+    expect(previewContent.innerHTML).toContain('discord-mention');
+
+    // Test pill button insertion on 30m input
+    const contentInput = document.getElementById('tpl-reminder_30-content');
+    contentInput.value = 'Hello ';
+    contentInput.selectionStart = contentInput.selectionEnd = 6;
+
+    const rolePill = overlay.querySelector('.discord-pill-btn[data-insert="{guild_tag}"][data-target="tpl-reminder_30-content"]');
+    expect(rolePill).toBeTruthy();
+    rolePill.click();
+
+    expect(contentInput.value).toBe('Hello {guild_tag}');
+    expect(previewContent.textContent).toContain('Hello @Guerriers FGF');
+
+    // Test tab switching to 5 minutes
+    const tab5 = overlay.querySelector('.discord-custom-tab-btn[data-tab="reminder_5"]');
+    tab5.click();
+    expect(tab5.classList.contains('active')).toBe(true);
+    expect(document.getElementById('pane-reminder_5').style.display).toBe('flex');
+    expect(document.getElementById('pane-reminder_30').style.display).toBe('none');
+    expect(previewContent.textContent).toContain('starts in 5 minutes');
+
+    // Test reset button
+    const content5 = document.getElementById('tpl-reminder_5-content');
+    content5.value = 'Custom override';
+    content5.dispatchEvent(new Event('input'));
+    expect(previewContent.textContent).toContain('Custom override');
+
+    const resetBtn = overlay.querySelector('.discord-reset-btn[data-reset="reminder_5"]');
+    resetBtn.click();
+    expect(content5.value).toBe('');
+    expect(previewContent.textContent).toContain('starts in 5 minutes');
+
+    overlay.remove();
+  });
 });
 
 describe('showToast (concrete host)', () => {
