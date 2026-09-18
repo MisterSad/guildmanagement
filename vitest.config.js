@@ -14,7 +14,7 @@ export default defineConfig({
     alias: [
       {
         find: 'discord.js',
-        replacement: path.resolve(__dirname, 'discord-verification-worker/node_modules/discord.js/src/index.js')
+        replacement: path.resolve(__dirname, 'tests/mocks/discord.js')
       },
       {
         find: /^https:\/\/esm\.sh\/zod(?:@[\d.]+)?$/,
