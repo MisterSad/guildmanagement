@@ -110,14 +110,6 @@ export class PortalService {
     return this.invokeAction('delete-absence', { id });
   }
 
-  public static async createDonation(payload: {
-    plan: string;
-    returnUrl?: string;
-    amountCents?: number;
-  }): Promise<PortalResponse> {
-    return this.invokeAction('create-donation', payload);
-  }
-
   public static async submitScorePayload(payload: Record<string, any>): Promise<PortalResponse> {
     return this.invokeAction('submit-scores', payload);
   }

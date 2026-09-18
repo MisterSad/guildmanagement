@@ -131,21 +131,6 @@ export const SetPushPrefsSchema = z.object({
   event_types: z.array(z.string().trim().min(1).max(64)).min(1, "event_types cannot be empty")
 }).passthrough();
 
-export const CreateDonationSchema = z.object({
-  plan: z.string().trim().min(1, "plan is required").max(64),
-  amountCents: z.union([
-    z.number().int(),
-    z.string().regex(/^\d+$/).transform(v => parseInt(v, 10))
-  ]).optional(),
-  guildId: z.string().trim().max(64).optional(),
-  returnUrl: z.string().trim().max(512).optional(),
-}).passthrough().refine((data) => {
-  if (data.plan === "donation_custom") {
-    return typeof data.amountCents === "number" && data.amountCents >= 200 && data.amountCents <= 10000;
-  }
-  return true;
-}, { message: "amountCents must be an integer between 200 and 10000 for donation_custom" });
-
 export const ActionPayloadSchemas = {
   "submit-scores": SubmitScoresSchema,
   "update-power": UpdatePowerSchema,
@@ -158,7 +143,6 @@ export const ActionPayloadSchemas = {
   "update-timezone": UpdateTimezoneSchema,
   "confirm-discord-link": ConfirmDiscordLinkSchema,
   "set-push-prefs": SetPushPrefsSchema,
-  "create-donation": CreateDonationSchema,
 };
 
 describe('Ticket 2.3: Static Containment - Zod Schema Validation in member-portal', () => {
@@ -179,7 +163,7 @@ describe('Ticket 2.3: Static Containment - Zod Schema Validation in member-porta
     expect(portalContent).toContain('export const UpdateTimezoneSchema =');
     expect(portalContent).toContain('export const ConfirmDiscordLinkSchema =');
     expect(portalContent).toContain('export const SetPushPrefsSchema =');
-    expect(portalContent).toContain('export const CreateDonationSchema =');
+    expect(portalContent).not.toContain('CreateDonationSchema');
     expect(portalContent).toContain('export const ActionPayloadSchemas: Record<string, z.ZodType<any>> =');
   });
 
@@ -435,26 +419,6 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
       expect(SetPushPrefsSchema.safeParse({}).success).toBe(false);
     });
   });
-
-  describe('CreateDonationSchema', () => {
-    it('accepts standard tier donation plans', () => {
-      expect(CreateDonationSchema.safeParse({ plan: 'donation_2' }).success).toBe(true);
-      expect(CreateDonationSchema.safeParse({ plan: 'donation_5' }).success).toBe(true);
-      expect(CreateDonationSchema.safeParse({ plan: 'donation_10' }).success).toBe(true);
-    });
-
-    it('accepts valid custom donation with amount between 200 and 10000 cents', () => {
-      expect(CreateDonationSchema.safeParse({ plan: 'donation_custom', amountCents: 500 }).success).toBe(true);
-      expect(CreateDonationSchema.safeParse({ plan: 'donation_custom', amountCents: 200 }).success).toBe(true);
-      expect(CreateDonationSchema.safeParse({ plan: 'donation_custom', amountCents: 10000 }).success).toBe(true);
-    });
-
-    it('rejects custom donation with invalid amount bounds', () => {
-      expect(CreateDonationSchema.safeParse({ plan: 'donation_custom', amountCents: 150 }).success).toBe(false);
-      expect(CreateDonationSchema.safeParse({ plan: 'donation_custom', amountCents: 15000 }).success).toBe(false);
-      expect(CreateDonationSchema.safeParse({ plan: 'donation_custom' }).success).toBe(false);
-    });
-  });
 });
 
 describe('Ticket 2.3: Validation Dispatch Simulation', () => {
@@ -511,11 +475,6 @@ describe('Ticket 2.3: Validation Dispatch Simulation', () => {
     const res4 = simulatePortalRequest({ action: 'update-timezone', payload: { offset: 99 } });
     expect(res4.status).toBe(422);
     expect(res4.body.error).toBe('invalid_payload');
-
-    // 5. create-donation with invalid custom amount
-    const res5 = simulatePortalRequest({ action: 'create-donation', payload: { plan: 'donation_custom', amountCents: 50 } });
-    expect(res5.status).toBe(422);
-    expect(res5.body.error).toBe('invalid_payload');
   });
 
   it('returns HTTP 200 with parsed payload for valid requests', () => {

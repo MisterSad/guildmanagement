@@ -10,14 +10,11 @@ import path from 'path';
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
-describe('Nav reorganization: Donate -> footer', () => {
+describe('Nav reorganization: footer section and dead code cleanup', () => {
   const shellJs = read('src/modules/shell/views/ShellView.ts');
 
-  it('subscription (donate) item is in its own footer section, not admin', () => {
-    const idx = shellJs.indexOf("id: 'subscription'");
-    const itemLine = shellJs.slice(idx, shellJs.indexOf('\n', idx));
-    expect(itemLine).toContain("section: 'footer'");
-    expect(itemLine).not.toContain("section: 'admin'");
+  it('subscription (donate) item is completely removed from NAV_ITEMS', () => {
+    expect(shellJs).not.toContain("id: 'subscription'");
   });
 
   it('renderSidebar renders footer-section items as a lightweight link near the legal footer', () => {

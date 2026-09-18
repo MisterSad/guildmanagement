@@ -117,12 +117,6 @@ const PERIODS = [
   { key: '1w', label: '1 Week' }
 ];
 
-const PORTAL_DONATION_TIERS = [
-  { key: 'donation_2', label: 'Buy a Coffee', price: '2', cents: 200, tag: null, icon: 'ph-coffee' },
-  { key: 'donation_5', label: 'Buy 2 Coffees', price: '5', cents: 500, tag: 'Popular', icon: 'ph-coffee' },
-  { key: 'donation_10', label: 'Buy a Lunch', price: '10', cents: 1000, tag: null, icon: 'ph-heart' }
-];
-
 interface PortalState {
   player: any;
   sessions: any[];
@@ -274,16 +268,14 @@ export class PortalView {
       { id: 'challenges', icon: 'ph-target', label: 'Challenges' },
       { id: 'absence', icon: 'ph-user-minus', label: 'Absence' },
       { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
-      { id: 'badges', icon: 'ph-trophy', label: 'Badges' },
-      { id: 'donation', icon: 'ph-coffee', label: 'Buy Me a Coffee' }
+      { id: 'badges', icon: 'ph-trophy', label: 'Badges' }
     ];
     const primaryNavIds = ['settings', 'dashboard', 'challenges', 'events'];
-    const drawerNavIds = ['absence', 'badges', 'donation'];
+    const drawerNavIds = ['absence', 'badges'];
 
     const navHtml = navItems.map((item) => {
       const isActive = this.state.activeTab === item.id;
-      const donateCls = (item.id === 'donation') ? ' gm-donate-nav-item' : '';
-      return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + donateCls + '" data-portal-nav="' + item.id + '">' +
+      return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
                   '<i class="ph ' + item.icon + '"></i>' +
                   '<span>' + legacy.esc(item.label) + '</span>' +
                 '</button>';
@@ -336,7 +328,6 @@ export class PortalView {
               '<div id="portal-panel-events" class="gm-page portal-panel hidden"></div>' +
               '<div id="portal-panel-absence" class="gm-page portal-panel hidden"></div>' +
               '<div id="portal-panel-settings" class="gm-page portal-panel hidden"></div>' +
-              '<div id="portal-panel-donation" class="gm-page portal-panel hidden"></div>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -367,8 +358,7 @@ export class PortalView {
               const item = navItems.find((n) => n.id === id);
               if (!item) return '';
               const isActive = this.state.activeTab === item.id;
-              const donateCls = (item.id === 'donation') ? ' gm-donate-nav-item' : '';
-              return '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + donateCls + '" data-portal-nav="' + item.id + '">' +
+              return '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
                         '<i class="ph ' + item.icon + ' gm-icon"></i>' +
                         '<span>' + legacy.esc(item.label) + '</span>' +
                       '</button>';
@@ -427,8 +417,8 @@ export class PortalView {
       b.classList.toggle('gm-active', b.getAttribute('data-portal-nav') === tabId);
     });
     const moreBtn = root.querySelector('[data-portal-more]');
-    if (moreBtn) moreBtn.classList.toggle('gm-active', ['absence', 'badges', 'donation'].indexOf(tabId) !== -1);
-    ['dashboard', 'challenges', 'badges', 'events', 'absence', 'settings', 'donation'].forEach((name) => {
+    if (moreBtn) moreBtn.classList.toggle('gm-active', ['absence', 'badges'].indexOf(tabId) !== -1);
+    ['dashboard', 'challenges', 'badges', 'events', 'absence', 'settings'].forEach((name) => {
       const panel = document.getElementById('portal-panel-' + name);
       if (panel) panel.classList.toggle('hidden', name !== this.state.activeTab);
     });
@@ -443,9 +433,6 @@ export class PortalView {
     }
     if (this.state.activeTab === 'absence') {
       this.renderAbsencePanel();
-    }
-    if (this.state.activeTab === 'donation') {
-      this.renderDonationPanel();
     }
   }
 
@@ -1581,149 +1568,6 @@ export class PortalView {
         }
       });
     });
-  }
-
-  // ── Panel: Buy Me a Coffee ──────────────────────────────────────────────
-  private renderDonationPanel(): void {
-    const panel = document.getElementById('portal-panel-donation');
-    if (!panel) return;
-
-    const html =
-      '<header class="gm-page-header">' +
-        '<div>' +
-          '<h1 class="gm-page-title">Buy Me a Coffee</h1>' +
-          '<p class="gm-page-subtitle">The app is free. If it makes your guild stronger, you can support its development with a voluntary donation.</p>' +
-        '</div>' +
-      '</header>' +
-      '<div id="portal-donation-body" style="display:flex; flex-direction:column; gap:1.25rem;">' +
-        '<div class="portal-card">' +
-          '<div class="gm-dim" style="font-size: var(--fs-sm); font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:.75rem;">Support the Project</div>' +
-          '<div class="gm-sub-plans-grid">' +
-            PORTAL_DONATION_TIERS.map((tier) => {
-              const featured = tier.tag ? ' gm-sub-plan-featured' : '';
-              return '<div class="gm-sub-plan-card' + featured + '">' +
-                (tier.tag ? '<span class="gm-sub-plan-tag">' + legacy.esc(tier.tag) + '</span>' : '') +
-                '<div class="gm-sub-plan-label">' + legacy.esc(tier.label) + '</div>' +
-                '<div class="gm-sub-plan-price">€' + legacy.esc(tier.price) + '</div>' +
-                '<div class="gm-sub-plan-period">voluntary one-time donation</div>' +
-                '<button class="gm-btn gm-btn-primary gm-sub-buy" data-portal-donate-plan="' + tier.key + '">' +
-                  '<i class="ph ' + tier.icon + '"></i> Donate €' + legacy.esc(tier.price) +
-                '</button>' +
-              '</div>';
-            }).join('') +
-          '</div>' +
-        '</div>' +
-
-        '<div class="portal-card">' +
-          '<div style="font-size: var(--fs-md); font-weight:700; color:var(--fg); margin-bottom:.5rem;">Custom amount</div>' +
-          '<div class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:.75rem;">Enter any voluntary donation amount between €2 and €100.</div>' +
-          '<div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; max-width:460px;">' +
-            '<div style="position:relative; flex:1; min-width:140px;">' +
-              '<span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); font-weight:700; color:var(--fg-dim);">€</span>' +
-              '<input type="number" id="portal-donation-custom-input" class="gm-input" min="2" max="100" step="1" placeholder="25" style="padding-left:1.75rem; width:100%; box-sizing:border-box;">' +
-            '</div>' +
-            '<button class="gm-btn gm-btn-primary" id="portal-donation-custom-btn" style="white-space:nowrap;">' +
-              '<i class="ph ph-coffee"></i> Donate' +
-            '</button>' +
-          '</div>' +
-          '<div id="portal-donation-custom-error" class="gm-dim" style="color:#ef4444; font-size: var(--fs-sm); margin-top:.5rem; display:none;">Please enter a valid amount between 2 and 100 EUR.</div>' +
-        '</div>' +
-
-        '<div class="portal-card">' +
-          '<div style="font-size: var(--fs-lg); font-weight:700; color:var(--fg); margin-bottom:.75rem; display:flex; align-items:center; gap:0.5rem;">' +
-            '<i class="ph ph-heart" style="color:var(--accent);"></i>' +
-            '<span>Why your support matters</span>' +
-          '</div>' +
-          '<div style="font-size: var(--fs-base); line-height:1.6; color:var(--fg-dim);">' +
-            '<p style="margin:0 0 .75rem 0;">This app is free, and it stays free. But it is not free to run:</p>' +
-            '<ul style="margin:0 0 .75rem 1.25rem; padding:0; display:flex; flex-direction:column; gap:0.4rem;">' +
-              '<li><strong>Hosting &amp; infrastructure:</strong> roughly EUR 45-100 every month, rain or shine.</li>' +
-              '<li><strong>AI OCR scans:</strong> every screenshot you analyze calls a paid AI API. Costs scale directly with how much the community uses it.</li>' +
-              '<li><strong>Development:</strong> hundreds of hours of design, coding, bug fixes, and feature requests handled one by one — evenings and weekends, on top of a day job.</li>' +
-            '</ul>' +
-            '<p style="margin:0;">Your donation covers the servers, keeps the AI scans flowing, and tells me the time I put into this tool is worth it. Every coffee genuinely helps. Thank you!</p>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="portal-card">' +
-          '<div class="gm-dim" style="font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;">' +
-            '<i class="ph ph-shield-check" style="color:var(--accent); font-size: var(--fs-xl);"></i>' +
-            '<span>All payments are securely processed and managed by Stripe. • <a href="terms.html" style="color:var(--text-muted); text-decoration:underline;">Terms &amp; Conditions</a></span>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-
-    panel.innerHTML = html;
-
-    panel.querySelectorAll('[data-portal-donate-plan]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const planKey = btn.getAttribute('data-portal-donate-plan') || '';
-        this.startPortalCheckout(panel, planKey, null, btn as HTMLButtonElement);
-      });
-    });
-
-    const customBtn = document.getElementById('portal-donation-custom-btn') as HTMLButtonElement | null;
-    const customInput = document.getElementById('portal-donation-custom-input') as HTMLInputElement | null;
-    const customErr = document.getElementById('portal-donation-custom-error');
-    if (customBtn && customInput) {
-      customBtn.addEventListener('click', () => {
-        const val = parseFloat(customInput.value);
-        if (isNaN(val) || val < 2 || val > 100 || !Number.isInteger(Math.round(val * 100) / 100)) {
-          if (customErr) (customErr as HTMLElement).style.display = 'block';
-          return;
-        }
-        if (customErr) (customErr as HTMLElement).style.display = 'none';
-        const cents = Math.round(val * 100);
-        this.startPortalCheckout(panel, 'donation_custom', cents, customBtn);
-      });
-      customInput.addEventListener('input', () => {
-        if (customErr) (customErr as HTMLElement).style.display = 'none';
-      });
-    }
-  }
-
-  private async startPortalCheckout(panel: Element, planKey: string, amountCents: number | null, triggerBtn: HTMLButtonElement | null): Promise<void> {
-    let origHtml = '';
-    if (triggerBtn) {
-      origHtml = triggerBtn.innerHTML;
-      triggerBtn.disabled = true;
-      triggerBtn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i> <span>Redirecting...</span>';
-    }
-
-    const returnUrl = winAny().location.href.split('?')[0];
-    const payload: Record<string, any> = { plan: planKey, returnUrl: returnUrl };
-    if (planKey === 'donation_custom') {
-      payload.amountCents = amountCents;
-    }
-
-    try {
-      const res = await this.invoke('create-donation', payload);
-      if (!res.ok) throw new Error(res.error || 'checkout_failed');
-      if (res.url) {
-        winAny().location.assign(res.url);
-      } else {
-        throw new Error('missing_url');
-      }
-    } catch (err: any) {
-      if (triggerBtn) {
-        triggerBtn.disabled = false;
-        triggerBtn.innerHTML = origHtml;
-      }
-      const errCode = (err && err.message) || '';
-      if (errCode === 'donations_disabled') {
-        panel.innerHTML =
-          '<header class="gm-page-header"><div><h1 class="gm-page-title">Buy Me a Coffee</h1></div></header>' +
-          '<div class="gm-empty" style="padding:3rem 1.5rem; text-align:center; max-width:480px; margin:2rem auto; background:var(--bg-1); border-radius:var(--radius-xl); border:1px solid var(--border-soft);">' +
-            '<i class="ph-duotone ph-coffee gm-icon" style="font-size: var(--fs-5xl); color:var(--accent); margin-bottom:1rem; display:block;"></i>' +
-            '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg); margin-bottom:0.5rem;">Donations are disabled</div>' +
-            '<div class="gm-empty-sub" style="color:var(--fg-dim); font-size: var(--fs-md);">Donations are disabled on the demonstration server.</div>' +
-          '</div>';
-      } else if (errCode === 'invalid_amount') {
-        legacy.showToast('Please enter a valid amount between 2 and 100 EUR.', 'error');
-      } else {
-        legacy.showToast('Could not start donation checkout: ' + errCode, 'error');
-      }
-    }
   }
 }
 

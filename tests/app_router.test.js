@@ -72,7 +72,6 @@ afterEach(() => {
   delete window.GM_STATS;
   delete window.GM_ARMSRACE;
   delete window.GM_SHADOWFRONT;
-  delete window.GM_SUBSCRIPTION;
   delete window.GM_TICKETS;
   delete window.GM_PORTAL;
   delete window.GM_SHELL;
@@ -172,7 +171,6 @@ describe('triggerTabDataLoad — /src domain routing', () => {
     window.GM_STATS = { load: vi.fn() };
     window.GM_ARMSRACE = { load: vi.fn() };
     window.GM_SHADOWFRONT = { load: vi.fn() };
-    window.GM_SUBSCRIPTION = { load: vi.fn() };
     window.GM_TICKETS = { load: vi.fn() };
 
     await triggerTabDataLoad('overview');
@@ -185,7 +183,6 @@ describe('triggerTabDataLoad — /src domain routing', () => {
     await triggerTabDataLoad('event-history');
     await triggerTabDataLoad('stats-admin');
     await triggerTabDataLoad('tab-sanctions');
-    await triggerTabDataLoad('tab-subscription');
     await triggerTabDataLoad('tab-tickets');
 
     expect(window.GM_OVERVIEW.load).toHaveBeenCalledTimes(1);
@@ -198,7 +195,6 @@ describe('triggerTabDataLoad — /src domain routing', () => {
     expect(window.GM_HISTORY.load).toHaveBeenCalledTimes(1);
     expect(window.GM_STATS.load).toHaveBeenCalledTimes(1);
     expect(window.GM_SANCTIONS.load).toHaveBeenCalledTimes(1);
-    expect(window.GM_SUBSCRIPTION.load).toHaveBeenCalledTimes(1);
     expect(window.GM_TICKETS.load).toHaveBeenCalledTimes(1);
   });
 

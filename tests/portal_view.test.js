@@ -130,16 +130,13 @@ describe('PortalView — loadDashboard()', () => {
     expect(root().querySelector('[data-portal-drawer]')).toBeTruthy();
   });
 
-  it('renders the 7 panels and both donation nav entries', async () => {
+  it('renders the 6 panels', async () => {
     const view = newView();
     await view.loadDashboard();
 
-    ['dashboard', 'challenges', 'badges', 'events', 'absence', 'settings', 'donation'].forEach((name) => {
+    ['dashboard', 'challenges', 'badges', 'events', 'absence', 'settings'].forEach((name) => {
       expect(document.getElementById('portal-panel-' + name), name).toBeTruthy();
     });
-
-    const donateEntries = root().querySelectorAll('.gm-donate-nav-item');
-    expect(donateEntries.length).toBe(2);
   });
 
   it('shows the retry / reconnect error screen when the edge function fails', async () => {
@@ -160,7 +157,7 @@ describe('PortalView — loadDashboard()', () => {
 });
 
 describe('PortalView — gotoTab() lazy panels', () => {
-  it('switches panels and lazily loads challenges, badges, events, absence and donation', async () => {
+  it('switches panels and lazily loads challenges, badges, events, and absence', async () => {
     const view = newView();
     await view.loadDashboard();
 
@@ -185,10 +182,6 @@ describe('PortalView — gotoTab() lazy panels', () => {
     clickNav('absence');
     await tick();
     expect(document.getElementById('portal-absence-body').textContent).toContain('Declare a period');
-
-    clickNav('donation');
-    const donateBtns = document.querySelectorAll('[data-portal-donate-plan]');
-    expect(donateBtns.length).toBe(3);
   });
 });
 

@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { JSDOM } from 'jsdom';
-import { SubscriptionView } from '../src/modules/subscription/subscription-view.ts';
 import { loadingHtml as ticketsLoadingHtml } from '../src/modules/tickets/views/TicketsView.ts';
 
 const root = path.resolve(__dirname, '..');
@@ -81,34 +80,6 @@ describe('Ticket 3.1 — Skeleton Loaders UX Enhancement', () => {
 
             expect(container.querySelectorAll('.gm-skeleton').length).toBe(0);
             expect(container.textContent).toContain('TICKET-0001');
-        });
-    });
-
-    describe('3. Buy Me a Coffee Skeleton Loader (subscription-view.ts)', () => {
-        it('renders silhouettes for the 3 pre-defined donation tier buttons and custom amount card', () => {
-            const html = SubscriptionView.loadingHtml();
-
-            // Accessibility and wrapper
-            expect(html).toContain('class="gm-subscription-skeleton"');
-            expect(html).toContain('aria-busy="true"');
-            expect(html).toContain('aria-label="Loading donation options"');
-
-            // No raw loading text or spinner
-            expect(html).not.toContain('<div class="gm-empty-title">Loading…</div>');
-            expect(html).not.toContain('ph-circle-notch');
-
-            const dom = new JSDOM(`<!DOCTYPE html><html><body><div id="subscription-container">${html}</div></body></html>`);
-            const container = dom.window.document.getElementById('subscription-container');
-
-            // 3 donation tier button silhouettes in .gm-sub-plans-grid
-            const plansGrid = container.querySelector('.gm-sub-plans-grid');
-            expect(plansGrid).not.toBeNull();
-            const planCards = plansGrid.querySelectorAll('.gm-skeleton-card');
-            expect(planCards.length).toBe(3);
-
-            // Custom amount silhouette exists
-            const skeletons = container.querySelectorAll('.gm-skeleton');
-            expect(skeletons.length).toBeGreaterThan(10);
         });
     });
 

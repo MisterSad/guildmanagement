@@ -3,7 +3,6 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
-import { createDonationCheckoutSession, stripeSecretKey } from "../_shared/stripe.ts";
 import { getPlayer } from "../_shared/member-lookup.ts";
 import {
   MAX_ALLOWED_POWER,
@@ -146,21 +145,6 @@ export const SetPushPrefsSchema = z.object({
   event_types: z.array(z.string().trim().min(1).max(64)).min(1, "event_types cannot be empty")
 }).passthrough();
 
-export const CreateDonationSchema = z.object({
-  plan: z.string().trim().min(1, "plan is required").max(64),
-  amountCents: z.union([
-    z.number().int(),
-    z.string().regex(/^\d+$/).transform(v => parseInt(v, 10))
-  ]).optional(),
-  guildId: z.string().trim().max(64).optional(),
-  returnUrl: z.string().trim().max(512).optional(),
-}).passthrough().refine((data) => {
-  if (data.plan === "donation_custom") {
-    return typeof data.amountCents === "number" && data.amountCents >= 200 && data.amountCents <= 10000;
-  }
-  return true;
-}, { message: "amountCents must be an integer between 200 and 10000 for donation_custom" });
-
 export const ActionPayloadSchemas: Record<string, z.ZodType<any>> = {
   "submit-scores": SubmitScoresSchema,
   "update-power": UpdatePowerSchema,
@@ -173,7 +157,6 @@ export const ActionPayloadSchemas: Record<string, z.ZodType<any>> = {
   "update-timezone": UpdateTimezoneSchema,
   "confirm-discord-link": ConfirmDiscordLinkSchema,
   "set-push-prefs": SetPushPrefsSchema,
-  "create-donation": CreateDonationSchema,
 };
 
 function makeJson(req: Request) {
@@ -182,28 +165,6 @@ function makeJson(req: Request) {
       status,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
-}
-
-function buildReturnUrls(baseUrl?: string) {
-  const DEFAULT = "https://guildmanagement.vercel.app";
-  const raw = (baseUrl && baseUrl.trim()) || DEFAULT;
-  let origin: URL;
-  try {
-    origin = new URL(raw);
-  } catch {
-    origin = new URL(DEFAULT);
-  }
-  if (origin.protocol !== "https:" && origin.protocol !== "http:") {
-    origin = new URL(DEFAULT);
-  }
-  if (!origin.hostname || origin.hostname === "localhost") {
-    origin = new URL(DEFAULT);
-  }
-  const clean = origin.origin + origin.pathname;
-  return {
-    success: clean + "?checkout=success&session_id={CHECKOUT_SESSION_ID}",
-    cancel: clean + "?checkout=cancel",
-  };
 }
 
 interface PlayerIdentity {
@@ -1057,147 +1018,6 @@ export async function handleRequest(req: Request): Promise<Response> {
       });
 
       return json({ ok: true });
-    }
-
-    if (action === "create-donation") {
-      let targetGuild: string | null = null;
-      if (identity.role === "member") {
-        targetGuild = identity.guild;
-      } else if (identity.role === "guild_admin") {
-        const reqGuild = (payload?.guildId ?? "").toString().trim().toUpperCase();
-        if (reqGuild && reqGuild !== identity.guild) {
-          return json({ ok: false, error: "forbidden" }, 200);
-        }
-        targetGuild = identity.guild;
-      } else if (identity.role === "server_admin") {
-        const reqGuild = (payload?.guildId ?? "").toString().trim().toUpperCase();
-        if (reqGuild && reqGuild !== identity.guild) {
-          const { data: g } = await admin.from("guilds").select("id, server_number").eq("id", reqGuild).maybeSingle();
-          const { data: callerAcc } = await admin.from("accounts").select("server_number").eq("id", identity.accountId).maybeSingle();
-          if (!g || !callerAcc || String(g.server_number) !== String(callerAcc.server_number)) {
-            return json({ ok: false, error: "forbidden" }, 200);
-          }
-          targetGuild = reqGuild;
-        } else {
-          targetGuild = identity.guild;
-        }
-      } else if (identity.role === "super_admin") {
-        const reqGuild = (payload?.guildId ?? "").toString().trim().toUpperCase();
-        targetGuild = reqGuild || identity.guild || null;
-      } else {
-        targetGuild = identity.guild;
-      }
-
-      if (!targetGuild) {
-        return json({ ok: false, error: "invalid_guild" }, 200);
-      }
-
-      const { data: guildRow } = await admin
-        .from("guilds")
-        .select("id, payments_disabled")
-        .eq("id", targetGuild)
-        .maybeSingle();
-
-      if (!guildRow) {
-        return json({ ok: false, error: "guild_not_found" }, 200);
-      }
-      if (guildRow.payments_disabled) {
-        return json({ ok: false, error: "donations_disabled" }, 200);
-      }
-
-      const DONATION_TIERS: Record<string, number> = {
-        donation_2: 200,
-        donation_5: 500,
-        donation_10: 1000,
-      };
-
-      const planKey = (payload?.plan ?? "").toString().trim();
-      let amountCents = 0;
-
-      if (DONATION_TIERS[planKey]) {
-        amountCents = DONATION_TIERS[planKey];
-      } else if (planKey === "donation_custom") {
-        const amt = typeof payload?.amountCents === "number"
-          ? payload.amountCents
-          : parseInt(String(payload?.amountCents || ""), 10);
-        if (isNaN(amt) || !Number.isInteger(amt) || amt < 200 || amt > 10000) {
-          return json({ ok: false, error: "invalid_amount" }, 200);
-        }
-        amountCents = amt;
-      } else {
-        return json({ ok: false, error: "invalid_amount" }, 200);
-      }
-
-      if (!stripeSecretKey()) {
-        return json({ ok: false, error: "not_configured" }, 200);
-      }
-
-      const extRef = `gm_${crypto.randomUUID()}`;
-      const { success, cancel } = buildReturnUrls((payload?.returnUrl ?? "").toString());
-
-      let session: { id?: string; url?: string };
-      try {
-        session = await createDonationCheckoutSession({
-          amountCents,
-          currency: "eur",
-          productName: "FGF Guild Management — Donation",
-          successUrl: success,
-          cancelUrl: cancel,
-          metadata: {
-            guild_id: targetGuild,
-            plan_key: planKey,
-            client_reference_id: extRef,
-            account_id: identity.accountId,
-            uid: uid,
-          },
-        });
-      } catch (err) {
-        logger.error("Donation Checkout Session failed", err);
-        return json({ ok: false, error: "checkout_failed" }, 200);
-      }
-
-      const sessionId = (session?.id ?? "").toString();
-      const checkoutUrl = (session?.url ?? "").toString();
-      if (!sessionId || !checkoutUrl) {
-        return json({ ok: false, error: "checkout_failed" }, 200);
-      }
-
-      const { error: insErr } = await admin.from("gm_payments").insert({
-        order_id: sessionId,
-        token: sessionId,
-        merchant_order_ext_ref: extRef,
-        guild_id: targetGuild,
-        plan_key: planKey,
-        amount_cents: amountCents,
-        currency: "EUR",
-        days_added: null,
-        kind: "donation",
-      });
-
-      if (insErr) {
-        logger.error("Insert gm_payments failed for donation", insErr);
-        return json({ ok: false, error: "server_error" }, 200);
-      }
-
-      const member = await getPlayer(admin, uid, identity.guild);
-      await logPlayerAction(admin, {
-        action_type: "create-donation",
-        pseudo: member?.pseudo || uid,
-        uid,
-        guild: targetGuild,
-        message: `Created donation checkout session for €${(amountCents / 100).toFixed(2)} (${planKey})`,
-        metadata: {
-          amount_cents: amountCents,
-          plan_key: planKey,
-          guild_id: targetGuild,
-        },
-      });
-
-      return json({
-        ok: true,
-        url: checkoutUrl,
-        sessionId,
-      });
     }
 
     return json({ ok: false, error: "unknown_action" }, 400);

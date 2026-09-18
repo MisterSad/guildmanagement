@@ -14,7 +14,7 @@ describe('Mobile UX regression guards (v128.0)', () => {
   it('portal bottom nav renders 4 primary tabs + More sheet, not all 7 in one bar', () => {
     const portal = read('src/modules/portal/views/PortalView.ts');
     expect(portal).toContain("primaryNavIds = ['settings', 'dashboard', 'challenges', 'events']");
-    expect(portal).toContain("drawerNavIds = ['absence', 'badges', 'donation']");
+    expect(portal).toContain("drawerNavIds = ['absence', 'badges']");
     expect(portal).toContain('data-portal-more');
     expect(portal).toContain('data-portal-drawer');
     // The nav bar must render exactly the primary set + More (not navItems wholesale)

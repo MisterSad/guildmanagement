@@ -10,8 +10,8 @@ import { t, getLang, setLang, applyTranslations } from '../src/core/i18n/i18n';
 import { EN } from '../src/core/i18n/i18n.dictionary';
 
 describe('i18n dictionary (golden)', () => {
-  it('keeps the full 559-key English dictionary', () => {
-    expect(Object.keys(EN).length).toBe(559);
+  it('keeps the full 527-key English dictionary', () => {
+    expect(Object.keys(EN).length).toBe(527);
   });
 
   it('has no empty translation value', () => {
@@ -22,7 +22,7 @@ describe('i18n dictionary (golden)', () => {
     expect(t('login_title')).toBe('FGF GUILD MANAGEMENT');
     expect(t('ar_subtitle')).toBe('Track and manage Arms Race stages & scores');
     expect(t('footer_terms')).toBe('Terms & Conditions');
-    expect(t('gm_nav_subscription')).toBe('Buy Me a Coffee');
+    expect(t('gm_nav_more')).toBe('More');
   });
 
   it('provides an explicit config-save failure toast (RC1)', () => {

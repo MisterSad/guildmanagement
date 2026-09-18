@@ -194,7 +194,6 @@ import { parseOcrScore } from './modules/ocr/ocr.service';
 import { BaseComponent } from './components/ui/BaseComponent';
 import { ToastNotification } from './components/ui/Toast';
 import { PortalChart } from './modules/portal/components/PortalChart';
-import { SubscriptionView } from './modules/subscription/subscription-view';
 import { initPWA, promptPWAInstall, setAppNotificationBadge } from './core/pwa/pwa';
 import { initTooltips } from './components/ui/Tooltip';
 
@@ -522,17 +521,13 @@ if (typeof window !== 'undefined') {
   (window as any).GM.components = {
     BaseComponent,
     ToastNotification,
-    PortalChart,
-    SubscriptionView
+    PortalChart
   };
 
   (window as any).GM.pwa = {
     promptPWAInstall,
     setAppNotificationBadge
   };
-
-  // window.GM_SUBSCRIPTION is self-registered by importing SubscriptionView
-  // above (see subscription-view.ts) — replaces legacy subscription.js.
 
   document.addEventListener('DOMContentLoaded', () => {
     // Full cutover bootstrap order (app.js removed). gm-utils startup

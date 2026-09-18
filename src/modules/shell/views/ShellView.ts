@@ -60,8 +60,6 @@ export const NAV_ITEMS: ShellNavItem[] = [
   { id: 'discord', tabId: 'admin-discord', m3Icon: 'notifications', icon: 'ph-bell-ringing', labelKey: 'gm_nav_discord', section: 'admin', panels: ['admin-discord'] },
   { id: 'sanctions', tabId: 'tab-sanctions', m3Icon: 'gavel', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
   { id: 'banned', tabId: 'admin-banned', m3Icon: 'block', icon: 'ph-prohibit', labelKey: 'gm_nav_banned', section: 'admin', panels: ['admin-banned'] },
-  // section:'footer' — rendered as a lighter-weight link near the legal footer.
-  { id: 'subscription', tabId: 'tab-subscription', m3Icon: 'local_cafe', icon: 'ph-coffee', labelKey: 'gm_nav_donate', section: 'footer', adminOnly: true, panels: ['tab-subscription'] },
 
   { id: 'superadmin-accounts', tabId: 'admin-superadmin', m3Icon: 'admin_panel_settings', icon: 'ph-shield-check', labelKey: 'gm_nav_superadmin_accounts', section: 'superadmin', r5Only: true, panels: ['admin-superadmin'] },
   { id: 'tickets', tabId: 'tab-tickets', m3Icon: 'confirmation_number', icon: 'ph-ticket', labelKey: 'gm_nav_tickets', section: 'superadmin', r5Only: true, panels: ['tab-tickets'] }
@@ -273,14 +271,12 @@ export class ShellView {
   public visibleNavItems(): ShellNavItem[] {
     const role = this.getUserRole();
     const items: ShellNavItem[] = [];
-    const paymentsDisabled = legacy.isPaymentsDisabled();
     NAV_ITEMS.forEach((i) => {
       if (i.r5Only && role !== 'super_admin') return;
       // adminOnly means "any admin-side role, not a member" — exclude by role
       // instead of allowlisting roles (regression guard: server_admin was
       // silently excluded by the old allowlist).
       if (i.adminOnly && role === 'member') return;
-      if (i.id === 'subscription' && paymentsDisabled) return;
       items.push(Object.assign({}, i));
     });
     return items;
@@ -617,8 +613,7 @@ export class ShellView {
       '</nav>' +
       this.getSubscriptionCardHtml() +
       footerItems.map((item) => {
-        const donateCls = (item.id === 'subscription') ? ' gm-donate-nav-item' : '';
-        return '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug' + donateCls + '" data-gm-nav-item="' + item.id + '">' +
+        return '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-nav-item="' + item.id + '">' +
           '<span class="material-symbols-rounded" style="font-size: var(--fs-xl);">' + (item.m3Icon || 'circle') + '</span>' +
           '<span>' + legacy.t(item.labelKey) + '</span>' +
         '</button>';
@@ -1083,9 +1078,8 @@ export class ShellView {
       const isActive = this.state.active === item.id;
       const label = legacy.t(item.labelKey);
       const m3Icon = item.m3Icon || 'circle';
-      const donateCls = (item.id === 'subscription') ? ' gm-donate-nav-item' : '';
 
-      html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + donateCls + '" data-gm-nav-item="' + item.id + '">' +
+      html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
                   '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
                   '<span>' + label + '</span>' +
               '</button>';

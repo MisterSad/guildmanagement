@@ -97,8 +97,7 @@ afterEach(() => {
 describe('ShellView — structure & constants', () => {
   it('keeps the key constants (BREAKPOINT_MOBILE = 900, NAV_ITEMS) and does not write window.GM_SHELL', () => {
     expect(BREAKPOINT_MOBILE).toBe(900);
-    expect(NAV_ITEMS.find((i) => i.id === 'subscription').adminOnly).toBe(true);
-    expect(NAV_ITEMS.find((i) => i.id === 'subscription').section).toBe('footer');
+    expect(NAV_ITEMS.find((i) => i.id === 'subscription')).toBeUndefined();
 
     const { view } = boot('super_admin');
     view.init();
@@ -173,7 +172,7 @@ describe('ShellView — gotoItem()', () => {
 });
 
 describe('ShellView — nav visibility matrix', () => {
-  it('member: no super-admin items and no donation item', () => {
+  it('member: no super-admin items', () => {
     const { view } = boot('member');
     view.init();
     const ids = sidebarIds();
@@ -181,40 +180,30 @@ describe('ShellView — nav visibility matrix', () => {
     expect(ids).not.toContain('superadmin-accounts');
     expect(ids).not.toContain('settings');
     expect(ids).not.toContain('tickets');
-    expect(ids).not.toContain('subscription');
   });
 
-  it('guild_admin & server_admin: donation visible, super-admin items hidden', () => {
+  it('guild_admin & server_admin: super-admin items hidden', () => {
     const { view } = boot('guild_admin');
     view.init();
     let ids = sidebarIds();
-    expect(ids).toContain('subscription');
     expect(ids).not.toContain('settings');
+    expect(ids).not.toContain('superadmin-accounts');
 
     window.GM.roleFromStorage = () => 'server_admin';
     window.GM.isServerAdmin = () => true;
     view.renderSidebar();
     ids = sidebarIds();
-    expect(ids).toContain('subscription');
     expect(ids).not.toContain('settings');
+    expect(ids).not.toContain('superadmin-accounts');
   });
 
-  it('super_admin: sees every section including super-admin items and donation', () => {
+  it('super_admin: sees super-admin items', () => {
     const { view } = boot('super_admin');
     view.init();
     const ids = sidebarIds();
     expect(ids).toEqual(expect.arrayContaining([
-      'superadmin-accounts', 'tickets', 'subscription'
+      'superadmin-accounts', 'tickets'
     ]));
-  });
-
-  it('isPaymentsDisabled() hides the donation item for an admin', () => {
-    const { view } = boot('super_admin', { paymentsDisabled: true });
-    view.init();
-    const ids = sidebarIds();
-    expect(ids).not.toContain('subscription');
-    // The rest still renders.
-    expect(ids).toContain('tickets');
   });
 });
 
