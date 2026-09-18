@@ -35,6 +35,7 @@ export const VALID_METRICS = [
 ] as const;
 
 export const VALID_RANKS = ["R4", "R3", "R2", "R1"] as const;
+export const VALID_RANKS_SET = new Set<string>(VALID_RANKS);
 
 export const ImageItemSchema = z
   .object({
@@ -500,7 +501,7 @@ Deno.serve(async (req: Request) => {
         };
         if (isMembersRoster) {
           const rawRank = typeof p.rank === "string" ? p.rank.trim().toUpperCase() : null;
-          result.rank = rawRank && VALID_RANKS.has(rawRank) ? rawRank : null;
+          result.rank = rawRank && VALID_RANKS_SET.has(rawRank) ? rawRank : null;
         }
         return result;
       })
@@ -509,7 +510,7 @@ Deno.serve(async (req: Request) => {
     let endingRank: string | null = null;
     if (isMembersRoster) {
       const rawEnding = typeof parsed?.endingRank === "string" ? parsed.endingRank.trim().toUpperCase() : null;
-      endingRank = rawEnding && VALID_RANKS.has(rawEnding) ? rawEnding : null;
+      endingRank = rawEnding && VALID_RANKS_SET.has(rawEnding) ? rawEnding : null;
     }
 
     logger.info("OCR Extraction completed", { detectedCount: players.length, metricType, endingRank });

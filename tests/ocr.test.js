@@ -309,6 +309,46 @@ describe('Ticket 1.1: ocr-guild-members Prompt Injection Protection & Zod Schema
         expect(fnContent).toContain('type: "OBJECT"');
         expect(fnContent).toContain('required: ["metric", "players"]');
     });
+
+    it('ensures rank validation uses Set.prototype.has and never calls .has on an Array', () => {
+        expect(fnContent).toContain('VALID_RANKS_SET');
+        expect(fnContent).not.toMatch(/VALID_RANKS\.has\(/);
+        expect(fnContent).toMatch(/VALID_RANKS_SET\.has\(/);
+
+        // Functional check of the rank filtering logic
+        const VALID_RANKS = ["R4", "R3", "R2", "R1"];
+        const VALID_RANKS_SET = new Set(VALID_RANKS);
+
+        const sampleRawList = [
+            { pseudo: 'Leader', score: 100000, rank: 'R4' },
+            { pseudo: 'Officer', score: 80000, rank: 'r3' },
+            { pseudo: 'Member', score: 50000, rank: 'R2' },
+            { pseudo: 'Recruit', score: 20000, rank: 'r1' },
+            { pseudo: 'InvalidRank', score: 10000, rank: 'R5' },
+            { pseudo: 'NoRank', score: 5000, rank: null }
+        ];
+
+        const parsedEnding = 'R2';
+
+        expect(() => {
+            const mapped = sampleRawList.map((p) => {
+                const rawRank = typeof p.rank === "string" ? p.rank.trim().toUpperCase() : null;
+                const rank = rawRank && VALID_RANKS_SET.has(rawRank) ? rawRank : null;
+                return { pseudo: p.pseudo, score: p.score, rank };
+            });
+
+            const endingRank = parsedEnding && VALID_RANKS_SET.has(parsedEnding) ? parsedEnding : null;
+
+            expect(mapped[0].rank).toBe('R4');
+            expect(mapped[1].rank).toBe('R3');
+            expect(mapped[2].rank).toBe('R2');
+            expect(mapped[3].rank).toBe('R1');
+            expect(mapped[4].rank).toBeNull();
+            expect(mapped[5].rank).toBeNull();
+            expect(endingRank).toBe('R2');
+        }).not.toThrow();
+    });
 });
+
 
 

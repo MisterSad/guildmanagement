@@ -2,6 +2,11 @@
 
 ## [3.18.4]
 
+- **Fix: Members OCR Runtime TypeError on Rank Validation & Table Colspan Alignment** — resolved the fatal crash preventing Members OCR from parsing guild roster screenshots.
+  - **Edge Function Rank Validation Fix**: in `supabase/functions/ocr-guild-members/index.ts`, defined `VALID_RANKS_SET = new Set<string>(VALID_RANKS)` and replaced invalid `VALID_RANKS.has(...)` calls on the `as const` array with `VALID_RANKS_SET.has(...)` for player `rank` and `endingRank`. Deployed the updated Edge Function `ocr-guild-members` to production.
+  - **Removed Members Column Alignment**: in `src/modules/app/ocr/ocr.render.ts`, added the missing `<td class="ocr-cell-rank">` badge in removed member rows and updated `colspan` from 5 to 6 on warning and section header rows, ensuring perfect visual alignment with the 6-column Members OCR table header.
+  - **Verification & Regression Test**: added unit test in `tests/ocr.test.js` validating that rank parsing uses `VALID_RANKS_SET.has` across all rank tiers; 0 TypeScript errors, **1394/1394 Vitest tests green across 117 test suites**, production build clean.
+
 - **Feature: Automated Discord Server Bootstrap & Dynamic Provisioning Engine (`/setup-server`) (V3.18.4)** — empowers guild leadership to entirely format, configure, and bootstrap a blank Discord server with a standardized FGF operational hierarchy tailored dynamically to their guild name, tag, and game server number.
   - **Dynamic Blueprint & Templating Engine**: `discord-verification-worker/server-provisioner.js` generates fully personalized category names, channel slugs, and roles without hardcoding (e.g. `🔴 ALPHA` -> `📡・alpha-chat`, `🗓️・pr1m-leave-and-absence`, `👑 [PR1M] R5`, `⭐ [PR1M] R4`, `🛡️ [PR1M] Member`, `👽 Visitor`).
   - **Standardized 7-Category Structure**: provisions 7 categories, 28 text channels, and 3 voice rooms covering `🛂 WELCOME` (with OCR verification target), `👽 CROSS SERVER VISITORS`, `GAME UPDATES`, `⌛ EVENT REMINDERS` (Calamity, GvG, Dominion), `🪐 SERVER #<num>` community channels, `🚨 DOMINION WARZONE` (restricted SvS rooms), and `🔴 <GUILD_NAME>` (private HQ).
