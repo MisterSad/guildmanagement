@@ -1,89 +1,61 @@
 📢 **FGF Guild Management Tool Update — CHANG_V3.18.4**
 
-Welcome to V3.18.4! Over the recent releases, I have completely transformed our interactive Discord Bot from a simple verification worker into an all-in-one, automated guild management powerhouse directly inside your Discord server.
+Welcome to V3.18.4! I have just deployed a massive overhaul of the **Video & Screenshot OCR Scanner**, making guild roster audits, event tracking, and member syncs faster, virtually error-free, and safer than ever before!
 
-From zero-effort server setup to privacy-first OCR verification, live war check-ins, and leaderboards, here is a complete guide to all the bot's features and recent evolutions!
+Here is everything I updated in this release:
 
 ---
 
-### 🏗️ 1. Automated Discord Server Bootstrap (`/setup-server`)
+### 🎥 1. Rock-Solid Video OCR (No More Skipped Members!)
+- **What changed**: I completely rebuilt the video keyframe extraction pipeline from scratch. Instead of sampling blurry frames while the screen is scrolling, the engine now tracks motion gradients and pixel sharpness to capture clean frames during natural scroll pauses or steady movements. It also crops out the game's top header and bottom navigation bars, focusing 100% on the member list.
+- **The benefit**: Say goodbye to skipped players! Even with fast or uneven scrolling, every single member is captured in crisp detail without motion blur or missing rows.
+
+---
+
+### 📸 2. Massive 60-Screenshot Batches & Zero Upload Errors
+- **What changed**: I raised the screenshot upload limit from 25 to **60 captures per batch**! In addition, all images are now compressed in parallel directly inside your browser before upload (reducing heavy 4–10 MB phone screenshots to ~180 KB).
+- **The benefit**: You can easily scan 300+ players in a single go without ever hitting browser crashes or HTTP 413 "payload too large" errors. Uploads are lightning fast thanks to concurrent chunking.
+
+---
+
+### 🧩 3. Smart Multi-Frame Player Fusion
+- **What changed**: When players appear across overlapping frames or split across screenshot boundaries, the new fuzzy fusion engine matches and combines their entries using Levenshtein distance algorithms.
+- **The benefit**: Zero duplicate rows, zero cut-off names, and the system automatically preserves their highest recorded combat power, score, and rank across all frames.
+
+---
+
+### 🛡️ 4. Zero-Trust Safety: Partial Scan Protection
+- **What changed**: If you only scan a portion of your guild (for example, the top 20 members in a 60-person roster), the system detects a partial scan (< 75% coverage). Missing members are safely kept by default (`checked = false`), tagged with a `Kept (Partial Scan)` badge, and an amber alert banner advises you before committing.
+- **The benefit**: Total peace of mind! You will never accidentally delete absent or unscanned members from your guild roster by mistake.
+
+---
+
+### 🤖 5. Gemini 2.5 Flash Precision Tuning
+- **What changed**: I upgraded the backend AI prompt with strict top-to-bottom reading instructions, full support for special Unicode gaming symbols and emojis, and expanded the output token capacity to 8,192 tokens.
+- **The benefit**: Zero truncated responses on long rosters and flawless parsing of complex gamer tags and zero-score members.
+
+---
+
+### 🏗️ 6. Automated Discord Server Bootstrap (`/setup-server`)
 - **What it does**: Need to set up a brand new Discord server for your guild? With a single command, the bot completely formats and bootstraps a full, battle-ready command center in under 15 seconds!
-- **100% Dynamic Guild Customization**: Zero hardcoded values! The bot dynamically pulls your guild's data to tailor every name, slug, and role:
-  - **4 Custom Roles**: `👑 [TAG] R5` (Leader), `⭐ [TAG] R4` (Officer), `🛡️ [TAG] Member`, and `👽 Visitor`.
-  - **7 Standardized Categories**: `🛂 WELCOME`, `👽 CROSS SERVER VISITORS`, `GAME UPDATES`, `⌛ EVENT REMINDERS`, `🪐 SERVER #<num>`, `🚨 DOMINION WARZONE`, and `🔴 <GUILD_NAME>`.
-  - **31 Pre-Configured Channels**: 28 text channels and 3 voice rooms (including squad voice and classified officer conference).
-- **Zero-Trust Security & Confidentiality**:
-  - Non-verified members and visitors are strictly isolated from private guild channels and classified war rooms.
-  - `#👑・r4-chat` and `🔊 R4 VC` are locked strictly to R4 Officers and R5 Leaders.
-- **SaaS Auto-Wiring**: Automatically links the created `#🔐・verification`, `#👑・r4-chat`, and member role into your FGF database (`guild_config`).
-- **Safety Safeguards**:
-  - Requires native Discord **Administrator** permission.
-  - Interactive validation buttons (`[ 🚀 Confirmer et Déployer ]` / `[ ❌ Annuler ]`) prevent accidental executions.
-  - Live animated progress bar (`[████████░░░░░░░░] 50%`) with anti-rate-limit throttling.
-  - Optional `clean_mode: true` to delete default Discord channels (like `#general`) before building.
+- **100% Dynamic Customization**: Automatically sets up 4 custom roles (`👑 R5`, `⭐ R4`, `🛡️ Member`, `👽 Visitor`), 7 categories, and 31 pre-configured channels with strict zero-trust permission isolation.
+- **SaaS Auto-Wiring**: Automatically links created channels (`#verification`, `#r4-chat`) into your FGF database settings.
 
 ---
 
-### 🧹 2. Zero-Clutter OCR Profile Verification & Privacy
-- **What it does**: New members post their in-game profile screenshot into `#verification` to get verified and gain access.
-- **Auto-Delete for Privacy**: Once processed, the bot automatically deletes the uploaded screenshot after 3 seconds! This keeps your verification channel spotless and protects sensitive player data (UID, fleet levels, total power) from public view.
-- **Friendly DMs**: The bot sends a direct message to the player confirming their power, glory score, assigned nickname (`[TAG] Pseudo #Server`), and role. (If their DMs are disabled, a clean self-destructing notice is shown for 20 seconds).
-- **Officer Audit Archiving**: Every verification event is silently logged into your officer audit channel (`#r4-chat`) for easy historical tracking.
-- **Visitor Diplomacy**: If an ally or external player posts their profile, they receive the `[VISITOR]` role with a formatted nickname so they can access cross-server diplomacy channels.
-- **Error Cleanup**: If an image cannot be read, the message auto-deletes after 60 seconds to prevent channel clutter.
+### 📋 OCR & Bot Quick Reference
 
----
-
-### ⚔️ 3. Interactive Call to Arms War Check-In (`/call-to-arms`)
-- **What it does**: Officers can launch a live war attendance roll-call before any battle (e.g. `/call-to-arms event_name:SvS Invasion description:Defense starts at 20:00 UTC`).
-- **Live Interactive Buttons**: Members simply click **🟢 Present**, **🟡 Late (15-30m)**, or **🔴 Absent**.
-- **Real-Time Mobilization Stats**: The bot updates the message in real-time, listing participating commanders and dynamically calculating the **Total Mobilized Combat Power** and **Fleet Rating** ready for battle!
-
----
-
-### 🏆 4. Guild Leaderboards (`/top`)
-- **What it does**: Check who leads the guild across three competitive categories:
-  - `/top category:Overall Power` — Top 10 most powerful commanders in the roster.
-  - `/top category:Glory Score` — Top 10 weekly glory contributors.
-  - `/top category:Fleet Rating` — Top 10 highest fleet ratings.
-- **Podium Styling**: Top 3 commanders receive gold, silver, and bronze podium medals (`🥇`, `🥈`, `🥉`) with clean numerical formatting.
-
----
-
-### 🕐 5. Enriched Player Profiles (`/profile`)
-- **What it does**: Inspect any commander's combat stats via `/profile user:@Commander` or `/profile ingame_name:Pseudo`.
-- **Live Local Time**: The bot calculates their current local time based on their timezone offset (e.g. `16:30 (UTC+2)`), so officers know whether a player is awake before calling for urgent defenses.
-- **Live Absence Status**: Instantly shows whether the player is `🟢 Active` or `🔴 Absent until YYYY-MM-DD` with their note.
-
----
-
-### 📅 6. Absence Management & Instant Alerts (`/absent` & `/absences`)
-- **Player Declarations (`/absent`)**: Players declare absence periods with `/absent start_date:YYYY-MM-DD end_date:YYYY-MM-DD reason:...`.
-- **Officer Briefings (`/absences`)**: Officers can check `/absences scope:Today` to see who is unavailable right now, or `/absences scope:Upcoming` for planned leaves over the next 7 days.
-- **Officer Alerts**: Whenever an absence is registered, an alert is automatically dispatched to the leadership channel.
-
----
-
-### ⚡ 7. Quick Stats Update (`/update-stats`)
-- **What it does**: Verified commanders can quickly update their combat power or glory score directly via Discord without logging into the web platform.
-- **Delta Progression**: Shows the progression difference (`+15,000,000 Power`) and synchronizes the roster immediately.
-
----
-
-### 📋 Bot Commands Cheat Sheet
-
-| Command | Who Can Use | Description |
+| Feature | Capacity / Access | Benefit |
 | :--- | :--- | :--- |
-| `/setup-server` | 👑 Server Admin | Formats and provisions the entire Discord server structure. |
-| `/call-to-arms` | ⭐ Officers (R4/R5) | Launches interactive war roll-call with live power aggregation. |
-| `/absences` | ⭐ Officers (R4/R5) | Lists members currently absent today or in the next 7 days. |
-| `/top` | 👥 Everyone | Displays top 10 guild leaderboard (Power, Glory, Fleet). |
-| `/profile` | 👥 Everyone | Displays a commander's combat stats, local time, and status. |
-| `/absent` | 🛡️ Verified Members | Declares a temporary absence period in the guild roster. |
-| `/update-stats` | 🛡️ Verified Members | Updates your in-game power or glory score directly. |
-| `/link` | 👥 Everyone | Links your Discord account to your FGF player account. |
-| `/myinfo` | 🛡️ Verified Members | Displays your own linked player stats and timezone. |
+| **Screenshot Batch OCR** | Up to 60 images (300+ players) | Instant client compression, no payload errors |
+| **Video Scroll OCR** | MP4 / MOV (up to 35 sharp frames) | Zero motion blur, stillness peak detection |
+| **Partial Scan Shield** | Automatic on < 75% coverage | Prevents accidental roster deletions |
+| `/setup-server` | 👑 Server Admin | Instant Discord server setup in 15s |
+| `/call-to-arms` | ⭐ Officers (R4/R5) | Live war attendance & mobilized fleet rating |
+| `/top` | 👥 Everyone | Leaderboards (Power, Glory, Fleet) |
+| `/profile` | 👥 Everyone | Displays combat stats, local time, and status |
+| `/absent` & `/absences` | 🛡️ Members & ⭐ Officers | Declare and monitor absences in real-time |
 
 ---
 
-Enjoy the upgraded bot, and let me know if you need any additional features for your guild! 🚀⚔️🛡️
+Enjoy the rock-solid OCR scanning and server tools, and let me know if you have any feedback or ideas! 🚀⚔️🛡️

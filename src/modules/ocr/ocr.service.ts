@@ -202,6 +202,92 @@ export function ocrDownsampleEvenly<T>(items: T[], maxCount: number): T[] {
   return result;
 }
 
+/**
+ * Calculates a sharpness / high-frequency gradient metric for a frame's pixel data.
+ * Discriminates between blurry scrolling frames (low score) and crisp stationary frames (high score).
+ */
+export function ocrMeasureFrameSharpness(data: Uint8ClampedArray, width: number, height: number): number {
+  if (!data || width <= 2 || height <= 2) return 0;
+  let sumGrad = 0;
+  let count = 0;
+  const step = Math.max(1, Math.floor(width / 64));
+  for (let y = 0; y < height - step; y += step) {
+    const rowOffset = y * width * 4;
+    const nextRowOffset = (y + step) * width * 4;
+    for (let x = 0; x < width - step; x += step) {
+      const idx = rowOffset + x * 4;
+      const idxR = rowOffset + (x + step) * 4;
+      const idxD = nextRowOffset + x * 4;
+
+      const lum = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
+      const lumR = data[idxR] * 0.299 + data[idxR + 1] * 0.587 + data[idxR + 2] * 0.114;
+      const lumD = data[idxD] * 0.299 + data[idxD + 1] * 0.587 + data[idxD + 2] * 0.114;
+
+      sumGrad += Math.abs(lum - lumR) + Math.abs(lum - lumD);
+      count++;
+    }
+  }
+  return count > 0 ? (sumGrad / count) : 0;
+}
+
+/**
+ * Intelligent cross-frame deduplication and fusion for OCR extracted players.
+ * Resolves slight OCR typos, merges identical UIDs, correlates against existing members,
+ * and preserves highest/most complete scores.
+ */
+export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guildTag?: string | null): any[] {
+  if (!Array.isArray(rawPlayers) || rawPlayers.length === 0) return [];
+  const members = Array.isArray(existingMembers) ? existingMembers : [];
+  const tag = guildTag || null;
+
+  const fusedMap: Record<string, any> = {};
+
+  for (const p of rawPlayers) {
+    if (!p || !p.pseudo || !String(p.pseudo).trim()) continue;
+    const cleanPseudo = cleanPlayerPseudo(p.pseudo, tag) || String(p.pseudo).trim();
+    if (!cleanPseudo) continue;
+
+    let canonicalPseudo = cleanPseudo;
+    let memberMatch = null;
+    if (members.length > 0) {
+      const matchRes = findBestMatchingMember(cleanPseudo, members, tag);
+      if (matchRes && matchRes.score >= 0.80) {
+        canonicalPseudo = matchRes.member.pseudo;
+        memberMatch = matchRes.member;
+      }
+    }
+
+    const key = canonicalPseudo.toLowerCase().trim();
+    const pScore = p.score != null ? p.score : (p.overall_power || 0);
+    const pUid = p.uid ? String(p.uid).trim() : (memberMatch ? (memberMatch.uid || null) : null);
+    const pRank = p.rank || null;
+
+    const existing = fusedMap[key];
+    if (!existing) {
+      fusedMap[key] = {
+        pseudo: canonicalPseudo,
+        raw_pseudo: p.raw_pseudo || p.pseudo,
+        guild_tag: p.guild_tag || null,
+        score: pScore,
+        overall_power: pScore,
+        uid: pUid,
+        rank: pRank
+      };
+    } else {
+      if (pScore > (existing.score || 0)) {
+        existing.score = pScore;
+        existing.overall_power = pScore;
+      }
+      if (!existing.uid && pUid) existing.uid = pUid;
+      if (!existing.rank && pRank) existing.rank = pRank;
+      if (!existing.guild_tag && p.guild_tag) existing.guild_tag = p.guild_tag;
+    }
+  }
+
+  return Object.values(fusedMap);
+}
+
+
 /** Downscales + JPEG-compresses an image to a data URL (falls back to raw). */
 export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, quality?: number): Promise<string> {
   const maxDim = maxDimension || 1280;

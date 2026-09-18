@@ -187,6 +187,42 @@ describe('renderOcrResults — roster diff', () => {
     expect(document.getElementById('ocr-results-tbody').textContent).toContain('No player usernames');
     expect(document.getElementById('ocr-commit-btn').textContent).toBeTruthy();
   });
+
+  it('displays scan coverage badge and unchecks removals by default when partial scan (<75%) on a 5+ member roster', () => {
+    // Setup a 6-member roster
+    setGuildMembers([
+      { pseudo: 'P1', uid: '1001', role: 'R1', guild: 'ALPHA', overall_power: 100 },
+      { pseudo: 'P2', uid: '1002', role: 'R1', guild: 'ALPHA', overall_power: 100 },
+      { pseudo: 'P3', uid: '1003', role: 'R1', guild: 'ALPHA', overall_power: 100 },
+      { pseudo: 'P4', uid: '1004', role: 'R1', guild: 'ALPHA', overall_power: 100 },
+      { pseudo: 'P5', uid: '1005', role: 'R1', guild: 'ALPHA', overall_power: 100 },
+      { pseudo: 'P6', uid: '1006', role: 'R1', guild: 'ALPHA', overall_power: 100 }
+    ]);
+
+    // Partial OCR scan: only 2 of 6 members found (33% coverage)
+    setOcrExtractedPlayers([
+      { pseudo: 'P1', score: 120 },
+      { pseudo: 'P2', score: 110 }
+    ]);
+
+    renderOcrResults(getOcrExtractedPlayers());
+
+    // Check summary badge has coverage
+    const badges = document.getElementById('ocr-summary-badges');
+    expect(badges.textContent).toContain('Coverage');
+    expect(badges.textContent).toContain('33%');
+
+    // Partial scan warning is shown
+    const removedTbody = document.getElementById('ocr-results-tbody-removed');
+    expect(removedTbody.textContent).toContain('Partial scan detected');
+
+    // Missing members are unchecked by default for safety
+    const removalCheckboxes = removedTbody.querySelectorAll('.ocr-removal-cb');
+    expect(removalCheckboxes.length).toBe(4);
+    removalCheckboxes.forEach((cb) => {
+      expect(cb.checked).toBe(false);
+    });
+  });
 });
 
 describe('commitOcrUpdates — roster flow', () => {

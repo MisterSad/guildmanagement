@@ -350,5 +350,88 @@ describe('Ticket 1.1: ocr-guild-members Prompt Injection Protection & Zod Schema
     });
 });
 
+describe('2026 OCR Modernization: Sharpness, Fusion & Exhaustive Prompting', () => {
+    const fnPath = path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts');
+    const fnContent = fs.readFileSync(fnPath, 'utf-8');
 
+    it('enforces max_output_tokens: 8192 in generationConfig for exhaustive roster extraction', () => {
+        expect(fnContent).toContain('max_output_tokens: 8192');
+    });
 
+    it('contains exhaustive scanning and Unicode gamer symbol guidelines in system prompt', () => {
+        expect(fnContent).toContain('Exhaustiveness: Scan each image completely from top to bottom');
+        expect(fnContent).toContain('Preserve exact case, numbers, and gamer symbols');
+    });
+
+    it('measures frame sharpness: high for contrasting edges and zero for uniform data', () => {
+        // Uniform data (zero gradient)
+        const uniformData = new Uint8ClampedArray(16 * 16 * 4).fill(128);
+        const zeroSharpness = GM.ocrMeasureFrameSharpness(uniformData, 16, 16);
+        expect(zeroSharpness).toBe(0);
+
+        // High contrast alternating pixel grid (sharp edges)
+        const sharpData = new Uint8ClampedArray(16 * 16 * 4);
+        for (let i = 0; i < sharpData.length; i += 4) {
+            const pixelIndex = i / 4;
+            const isWhite = (pixelIndex % 2 === 0);
+            sharpData[i] = isWhite ? 255 : 0;
+            sharpData[i + 1] = isWhite ? 255 : 0;
+            sharpData[i + 2] = isWhite ? 255 : 0;
+            sharpData[i + 3] = 255;
+        }
+        const highSharpness = GM.ocrMeasureFrameSharpness(sharpData, 16, 16);
+        expect(highSharpness).toBeGreaterThan(50);
+    });
+
+    it('fuses cross-frame extracted players resolving slight OCR typos against roster', () => {
+        const roster = [
+            { pseudo: 'Commander_Shepard', uid: '900123', role: 'R4', overall_power: 150000000 },
+            { pseudo: 'Liara_TSoni', uid: '900124', role: 'R3', overall_power: 120000000 }
+        ];
+
+        const rawOcrList = [
+            // Frame 1: slight typo in Shepard
+            { pseudo: 'Commander_Shep4rd', score: 155000000, rank: 'R4' },
+            // Frame 2: accurate Shepard with UID
+            { pseudo: 'Commander_Shepard', score: 155000000, uid: '900123' },
+            // Frame 2: Liara with tag
+            { pseudo: '[PR1M] Liara_TSoni', score: 125000000, rank: 'R3' },
+            // Frame 3: brand new recruit
+            { pseudo: 'Garrus_Vakarian', score: 98000000, uid: '900125', rank: 'R2' }
+        ];
+
+        const fused = GM.fuseOcrPlayers(rawOcrList, roster, '[PR1M]');
+
+        // Exactly 3 unique players (Shepard merged, Liara merged, Garrus added)
+        expect(fused).toHaveLength(3);
+
+        const shepard = fused.find((p) => p.pseudo === 'Commander_Shepard');
+        expect(shepard).toBeDefined();
+        expect(shepard.score).toBe(155000000);
+        expect(shepard.uid).toBe('900123');
+        expect(shepard.rank).toBe('R4');
+
+        const liara = fused.find((p) => p.pseudo === 'Liara_TSoni');
+        expect(liara).toBeDefined();
+        expect(liara.score).toBe(125000000);
+        expect(liara.rank).toBe('R3');
+
+        const garrus = fused.find((p) => p.pseudo === 'Garrus_Vakarian');
+        expect(garrus).toBeDefined();
+        expect(garrus.uid).toBe('900125');
+    });
+
+    it('fuses cross-frame duplicates retaining highest score and preserving fields', () => {
+        const rawOcrList = [
+            { pseudo: 'AcePilot', score: 50000, rank: null },
+            { pseudo: 'AcePilot', score: 75000, rank: 'R2', uid: '555666' }
+        ];
+
+        const fused = GM.fuseOcrPlayers(rawOcrList, [], null);
+        expect(fused).toHaveLength(1);
+        expect(fused[0].pseudo).toBe('AcePilot');
+        expect(fused[0].score).toBe(75000);
+        expect(fused[0].rank).toBe('R2');
+        expect(fused[0].uid).toBe('555666');
+    });
+});

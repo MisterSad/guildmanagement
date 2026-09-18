@@ -232,20 +232,43 @@ export function renderOcrResults(players: any[]): void {
     if (tbodyNew) tbodyNew.innerHTML = newHtml;
 
     let removedHtml = '';
+    const totalRosterCount = members.length;
+    const existingDetectedCount = diff.existing.length;
+    const coverageRatio = totalRosterCount > 0 ? (existingDetectedCount / totalRosterCount) : 1;
+    // Partial scan detection: when roster has at least 5 members and less than 75% were detected
+    const isPartialRosterScan = isMembersMode && totalRosterCount >= 5 && coverageRatio < 0.75;
+    const removalDefaultChecked = !isPartialRosterScan;
+
+    if (isMembersMode && summaryBadges) {
+      const coveragePct = Math.round(coverageRatio * 100);
+      const coverageBadge = '<span class="gm-chip ' + (coveragePct >= 80 ? 'gm-chip-success' : 'gm-chip-warning') + '"><i class="ph ph-chart-pie"></i> ' + coveragePct + '% Coverage (' + existingDetectedCount + '/' + totalRosterCount + ')</span>';
+      summaryBadges.innerHTML =
+        coverageBadge +
+        '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:' + esc(meta.color) + '; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-users"></i> ' + diff.existing.length + ' Existing</span>' +
+        (diff.new.length > 0 ? '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + diff.new.length + ' New</span>' : '') +
+        (diff.removed.length > 0 ? '<span class="gm-chip gm-chip-danger"><i class="ph ph-user-minus"></i> ' + diff.removed.length + ' Removed</span>' : '');
+    }
+
     if (isMembersMode && diff.removed.length > 0) {
-      if (members.length > 0 && diff.removed.length > members.length * 0.5) {
+      if (isPartialRosterScan) {
+        removedHtml += '<tr class="ocr-warning-row"><td colspan="6"><div class="ocr-removed-warning" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); color:#fbbf24; padding:0.5rem 0.75rem; border-radius:6px; margin:0.35rem 0; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;"><i class="ph ph-shield-warning" style="font-size: var(--fs-xl); flex-shrink:0;"></i><span>Partial scan detected (' + Math.round(coverageRatio * 100) + '% coverage: ' + existingDetectedCount + '/' + totalRosterCount + ' members found). To protect active members, missing players are unchecked by default. Check members manually or click "Remove All" if departure is intentional.</span></div></td></tr>';
+      } else if (members.length > 0 && diff.removed.length > members.length * 0.5) {
         removedHtml += '<tr class="ocr-warning-row"><td colspan="6"><div class="ocr-removed-warning" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; padding:0.5rem 0.75rem; border-radius:6px; margin:0.35rem 0; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;"><i class="ph ph-warning" style="font-size: var(--fs-xl); flex-shrink:0;"></i><span>More than half your roster would be removed. If this screenshot is partial, uncheck the members to keep.</span></div></td></tr>';
       }
       removedHtml += '<tr class="ocr-section-header ocr-section-header--removed"><td colspan="6"><div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><div class="ocr-section-title"><i class="ph ph-user-minus"></i> Removed Members <span class="gm-badge gm-badge--danger">' + diff.removed.length + '</span></div><div style="font-size: var(--fs-sm); color:var(--text-muted);"><button type="button" class="gm-btn-text" id="ocr-btn-keep-all" style="font-size: var(--fs-sm); color:var(--accent); cursor:pointer; background:none; border:none; padding:0 0.4rem;">Keep All</button> | <button type="button" class="gm-btn-text" id="ocr-btn-remove-all" style="font-size: var(--fs-sm); color:#f87171; cursor:pointer; background:none; border:none; padding:0 0.4rem;">Remove All</button></div></div></td></tr>';
       diff.removed.forEach((item: any) => {
         const pseudo = item.pseudo;
         removedHtml += '<tr class="ocr-row ocr-row--removed" data-pseudo="' + esc(String(pseudo).toLowerCase()) + '" data-removal-pseudo="' + esc(pseudo) + '">' +
-          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' + esc(pseudo) + '" data-section="removed" checked></td>' +
+          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' + esc(pseudo) + '" data-section="removed"' + (removalDefaultChecked ? ' checked' : '') + '></td>' +
           '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' + esc(pseudo) + '</span></td>' +
           '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' + esc(item.uid || '—') + '</span></td>' +
           '<td class="ocr-cell-rank"><span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-size: var(--fs-xs); white-space:nowrap;">' + esc(item.role || 'R1') + '</span></td>' +
           '<td class="ocr-cell-metric"><span style="color:var(--text-muted); font-size: var(--fs-base);"><i class="ph ' + esc(meta.icon || 'ph-hash') + '"></i> ' + fmtNum(item.currentPower) + '</span></td>' +
-          '<td class="ocr-cell-status"><span class="ocr-removal-status-wrap"><span class="gm-chip ocr-chip-removal" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> To Remove</span></span></td>' +
+          '<td class="ocr-cell-status"><span class="ocr-removal-status-wrap">' +
+            (removalDefaultChecked
+              ? '<span class="gm-chip ocr-chip-removal" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> To Remove</span>'
+              : '<span class="gm-chip ocr-chip-kept" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-check"></i> Kept (Partial Scan)</span>') +
+          '</span></td>' +
         '</tr>';
       });
     }
@@ -409,7 +432,10 @@ export function updateCommitButtonCount(): void {
       const otherGuildCount = diff.new.filter((n: any) => n.status === 'other_guild').length;
       const unchangedCount = diff.existing.filter((e: any) => e.status === 'unchanged').length;
       const removalCount = diff.removed.length;
+      const coveragePct = members.length > 0 ? Math.round((diff.existing.length / members.length) * 100) : 100;
+      const coverageBadge = '<span class="gm-chip ' + (coveragePct >= 80 ? 'gm-chip-success' : 'gm-chip-warning') + '"><i class="ph ph-chart-pie"></i> ' + coveragePct + '% Coverage</span>';
       summaryBadges.innerHTML =
+        coverageBadge +
         '<span class="gm-chip gm-chip-accent" style="font-weight:700;"><i class="ph ph-users-three"></i> Roster: ' + delta.before + ' &rarr; ' + delta.after + '</span>' +
         (newCount > 0 ? '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>' : '') +
         (updateCount > 0 ? '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' + updateCount + ' Updates</span>' : '') +

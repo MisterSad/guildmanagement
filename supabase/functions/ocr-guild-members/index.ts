@@ -179,12 +179,14 @@ Analyze the provided screenshot image(s) and extract leaderboard or roster data 
 
 Core Guidelines:
 1. Extraction:
-   - "pseudo": Clean in-game player username. Strip any leading guild tag prefix (e.g. "[TAG]") and brackets so "pseudo" contains only the player name.
+   - Exhaustiveness: Scan each image completely from top to bottom. Do NOT skip or omit any player row, even if their score is zero, contains non-Latin or unusual gamer symbols, or appears partially scrolled.
+   - "pseudo": Clean in-game player username. Strip any leading guild tag prefix (e.g. "[TAG]") and brackets so "pseudo" contains only the player name. Preserve exact case, numbers, and gamer symbols.
    - "guild_tag": Guild tag if visible, otherwise null.
    - "score": Numerical value converted to an integer.
    - "raw_score": Exact score string visible on screen (e.g. "67,4T", "24,98T", "5.663", "145.2M", "500K").
    - "uid": Player UID if visible on screen (string of digits), otherwise null.
    - "rank": The player's rank section ("R4", "R3", "R2", "R1", or null if not applicable/undeterminable).
+   - Overlap / Boundary rows: If a row is partially visible at the bottom or top of an image, extract all visible parts; client deduplication will safely reconcile cross-image duplicates.
 
 2. Number Formatting, Multipliers & European/German Localizations:
    CRITICAL: In Foundation Galactic Frontier (FGF), player scores and powers NEVER reach trillions. Maximum scores are in millions or low billions (capped below 10 Billion).
@@ -420,6 +422,7 @@ Deno.serve(async (req: Request) => {
       response_mime_type: "application/json",
       response_schema: responseSchema,
       temperature: 0.1,
+      max_output_tokens: 8192,
     },
   };
 

@@ -19,7 +19,10 @@ import {
   ocrGridDiffRatio,
   upsertPlayerMetrics,
   categorizeOcrDiff,
-  parseOcrScore
+  parseOcrScore,
+  compressImageForUpload,
+  fuseOcrPlayers,
+  ocrMeasureFrameSharpness
 } from '../../ocr/ocr.service';
 import { fetchGuildMembers } from '../members/members.controller';
 import {
@@ -338,11 +341,20 @@ export function initOcrGeminiModule(): void {
 
 // ── Video → frames ───────────────────────────────────────────────────────────
 
-const OCR_VIDEO_GRID_SIZE = 12;
-const OCR_VIDEO_FRAME_DIFF_RATIO = 0.06;
+const OCR_VIDEO_GRID_SIZE = 16;
+const OCR_VIDEO_FRAME_DIFF_RATIO = 0.05;
 
+/** Captures a downscaled luminance grid restricted to the central scrollable ROI. */
 function ocrCaptureLuminanceGrid(gridCtx: CanvasRenderingContext2D, video: HTMLVideoElement, gridSize: number): number[] {
-  gridCtx.drawImage(video, 0, 0, gridSize, gridSize);
+  const vw = video.videoWidth || 1;
+  const vh = video.videoHeight || 1;
+  // Region of Interest: middle 72% height (skipping top 16% banner and bottom 12% footer/chat)
+  const sx = Math.round(vw * 0.05);
+  const sy = Math.round(vh * 0.16);
+  const sw = Math.max(1, Math.round(vw * 0.90));
+  const sh = Math.max(1, Math.round(vh * 0.72));
+
+  gridCtx.drawImage(video, sx, sy, sw, sh, 0, 0, gridSize, gridSize);
   const data = gridCtx.getImageData(0, 0, gridSize, gridSize).data;
   const out = new Array(gridSize * gridSize);
   for (let i = 0, p = 0; i < data.length; i += 4, p++) {
@@ -351,11 +363,15 @@ function ocrCaptureLuminanceGrid(gridCtx: CanvasRenderingContext2D, video: HTMLV
   return out;
 }
 
-export function extractFramesFromVideo(file: Blob, opts?: { stepMs?: number; maxDurationSec?: number; maxOutputWidth?: number }): Promise<Blob[]> {
+export function extractFramesFromVideo(
+  file: Blob,
+  opts?: { stepMs?: number; maxDurationSec?: number; maxOutputWidth?: number; maxFrames?: number }
+): Promise<Blob[]> {
   const o = opts || {};
-  const stepMs = o.stepMs || 200;
+  const stepMs = o.stepMs || 150;
   const maxDurationSec = o.maxDurationSec || 480;
   const maxOutputWidth = o.maxOutputWidth || 1600;
+  const maxFrames = o.maxFrames || 35;
   const gridSize = OCR_VIDEO_GRID_SIZE;
 
   return new Promise((resolve, reject) => {
@@ -405,35 +421,107 @@ export function extractFramesFromVideo(file: Blob, opts?: { stepMs?: number; max
       if (!ctx || !gridCtx) { fail(new Error('video_invalid')); return; }
 
       const seekTo = (t: number): Promise<void> => new Promise((res) => {
-        const onSeeked = (): void => { video.removeEventListener('seeked', onSeeked); res(); };
+        const onSeeked = (): void => {
+          video.removeEventListener('seeked', onSeeked);
+          // Allow GPU video decoding buffer to settle before canvas draw
+          if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => res());
+          } else {
+            setTimeout(res, 10);
+          }
+        };
         video.addEventListener('seeked', onSeeked);
         video.currentTime = t;
       });
 
+      const captureFrameBlob = async (): Promise<Blob | null> => {
+        ctx.drawImage(video, 0, 0, outW, outH);
+        return new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+      };
+
       void (async () => {
         try {
           const kept: Blob[] = [];
-          let lastGrid: number[] | null = null;
+          let lastSavedGrid: number[] | null = null;
+          let prevStepGrid: number[] | null = null;
+          let bestStepBlobInWindow: Blob | null = null;
+          let bestStepSharpnessInWindow = -1;
+          let bestStepGridInWindow: number[] | null = null;
+          let consecutiveMovingSteps = 0;
+
           const steps = Math.max(1, Math.ceil((duration * 1000) / stepMs));
+
           for (let s = 0; s <= steps; s++) {
             const t = Math.min(duration, (s * stepMs) / 1000);
             await seekTo(t);
+
             const grid = ocrCaptureLuminanceGrid(gridCtx, video, gridSize);
-            const isEdge = (s === 0) || (t >= duration - 0.05);
-            const ratio = lastGrid ? ocrGridDiffRatio(grid, lastGrid) : 1;
-            if (isEdge || ratio >= OCR_VIDEO_FRAME_DIFF_RATIO) {
-              ctx.drawImage(video, 0, 0, outW, outH);
-              const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+            const rawGridData = gridCtx.getImageData(0, 0, gridSize, gridSize).data;
+            const sharpness = ocrMeasureFrameSharpness(rawGridData, gridSize, gridSize);
+
+            const isStart = (s === 0);
+            const isEnd = (t >= duration - 0.08);
+            const diffFromPrev = prevStepGrid ? ocrGridDiffRatio(grid, prevStepGrid) : 1;
+            const diffFromSaved = lastSavedGrid ? ocrGridDiffRatio(grid, lastSavedGrid) : 1;
+
+            if (isStart) {
+              // Always capture the very first frame (top of leaderboard)
+              const blob = await captureFrameBlob();
               if (blob) kept.push(blob);
-              lastGrid = grid;
+              lastSavedGrid = grid;
+            } else if (isEnd) {
+              // Final frame of recording
+              if (diffFromSaved >= 0.04) {
+                const blob = await captureFrameBlob();
+                if (blob) kept.push(blob);
+              }
+            } else {
+              // Active scroll tracking:
+              const isMoving = diffFromPrev >= 0.04;
+              if (isMoving) {
+                consecutiveMovingSteps++;
+                // Track sharpest frame seen during movement
+                if (sharpness > bestStepSharpnessInWindow) {
+                  bestStepSharpnessInWindow = sharpness;
+                  bestStepBlobInWindow = await captureFrameBlob();
+                  bestStepGridInWindow = grid;
+                }
+
+                // If continuous scrolling has lasted > 1.2s and content shifted significantly,
+                // commit the sharpest frame seen so far to prevent missing intermediate players
+                if (consecutiveMovingSteps >= 8 && diffFromSaved >= 0.12 && bestStepBlobInWindow) {
+                  kept.push(bestStepBlobInWindow);
+                  lastSavedGrid = bestStepGridInWindow || grid;
+                  bestStepBlobInWindow = null;
+                  bestStepSharpnessInWindow = -1;
+                  consecutiveMovingSteps = 0;
+                }
+              } else {
+                // Screen stabilized / scroll slowed or stopped (crisp stationary text)
+                consecutiveMovingSteps = 0;
+                if (diffFromSaved >= OCR_VIDEO_FRAME_DIFF_RATIO) {
+                  const blob = await captureFrameBlob();
+                  if (blob) kept.push(blob);
+                  lastSavedGrid = grid;
+                  bestStepBlobInWindow = null;
+                  bestStepSharpnessInWindow = -1;
+                }
+              }
             }
+
+            prevStepGrid = grid;
             if (t >= duration) break;
           }
+
           if (settled) return;
           settled = true;
           cleanup();
+
           if (kept.length === 0) { reject(new Error('video_no_frames')); return; }
-          resolve(kept);
+
+          // Cap cleanly if recording was unusually long without blind drop
+          const finalKept = kept.length > maxFrames ? ocrDownsampleEvenly(kept, maxFrames) : kept;
+          resolve(finalKept);
         } catch (err) { fail(err); }
       })();
     });
@@ -495,9 +583,10 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
     }
   }
 
-  if (imageFiles.length > 25) {
-    showToast('Processing maximum 25 images per batch (200+ players).', 'info');
-    imageFiles = ocrDownsampleEvenly(imageFiles, 25);
+  const MAX_OCR_IMAGES = 60;
+  if (imageFiles.length > MAX_OCR_IMAGES) {
+    showToast('Processing maximum ' + MAX_OCR_IMAGES + ' images per batch (300+ players).', 'info');
+    imageFiles = ocrDownsampleEvenly(imageFiles, MAX_OCR_IMAGES);
   }
 
   const metric = getCurrentOcrMetric();
@@ -511,39 +600,77 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
 
   let allPlayers: any[] = [];
   try {
-    const imageItems: any[] = [];
-    for (let i = 0; i < imageFiles.length; i++) {
-      const b64 = await fileToBase64(imageFiles[i]);
-      imageItems.push({ mimeType: (imageFiles[i] as File).type, base64Data: b64 });
-    }
+    if (loadingP) loadingP.textContent = 'Optimizing ' + imageFiles.length + ' image(s) for AI processing...';
 
-    const chunkSize = 4;
+    // Compress all images in parallel to prevent 413 payload_too_large errors
+    const imageItems: any[] = await Promise.all(
+      imageFiles.map(async (file) => {
+        try {
+          const b64 = await compressImageForUpload(file, 1600, 0.82);
+          return { mimeType: 'image/jpeg', base64Data: b64 };
+        } catch (_) {
+          const b64 = await fileToBase64(file);
+          return { mimeType: (file as File).type || 'image/png', base64Data: b64 };
+        }
+      })
+    );
+
+    // Calibrated chunk size = 2 images per prompt to maximize Gemini vision accuracy
+    const chunkSize = 2;
     const chunks: any[][] = [];
     for (let c = 0; c < imageItems.length; c += chunkSize) chunks.push(imageItems.slice(c, c + chunkSize));
 
-    let carryRank: string | null = null;
-    for (let b = 0; b < chunks.length; b++) {
-      if (loadingP) loadingP.textContent = 'Processing screenshots batch ' + (b + 1) + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
-      const batchResult = await callGeminiOcrBatchApi(chunks[b], metric, activeGuildTag, carryRank, (statusMsg: string) => { if (loadingP) loadingP.textContent = statusMsg; });
-      allPlayers = allPlayers.concat(batchResult.players);
-      if (batchResult.endingRank) carryRank = batchResult.endingRank;
-      if (b < chunks.length - 1) await new Promise((r) => setTimeout(r, 1200));
+    const isMembersMode = metric === 'members';
+
+    if (isMembersMode) {
+      // In Members mode, rank headers ("Executive Manager", "Rank 3 Members", etc.)
+      // flow sequentially across batches via carryRank.
+      let carryRank: string | null = null;
+      for (let b = 0; b < chunks.length; b++) {
+        if (loadingP) {
+          loadingP.textContent = 'Processing screenshots batch ' + (b + 1) + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
+        }
+        const batchResult = await callGeminiOcrBatchApi(chunks[b], metric, activeGuildTag, carryRank, (statusMsg: string) => {
+          if (loadingP) loadingP.textContent = statusMsg;
+        });
+        allPlayers = allPlayers.concat(batchResult.players);
+        if (batchResult.endingRank) carryRank = batchResult.endingRank;
+        if (b < chunks.length - 1) await new Promise((r) => setTimeout(r, 250));
+      }
+    } else {
+      // Metric & Event modes: process with a concurrency pool of 3 parallel requests
+      const concurrency = 3;
+      let completedChunks = 0;
+      const batchResults = new Array(chunks.length);
+      let nextChunkIdx = 0;
+
+      const worker = async (): Promise<void> => {
+        while (nextChunkIdx < chunks.length) {
+          const idx = nextChunkIdx++;
+          const res = await callGeminiOcrBatchApi(chunks[idx], metric, activeGuildTag, null);
+          batchResults[idx] = res;
+          completedChunks++;
+          if (loadingP) {
+            loadingP.textContent = 'Processed batch ' + completedChunks + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
+          }
+        }
+      };
+
+      const workers = new Array(Math.min(concurrency, chunks.length)).fill(0).map(() => worker());
+      await Promise.all(workers);
+
+      for (const res of batchResults) {
+        if (res && Array.isArray(res.players)) {
+          allPlayers = allPlayers.concat(res.players);
+        }
+      }
     }
 
-    const x = gm();
-    const uniqueMap: Record<string, any> = {};
-    allPlayers.forEach((p) => {
-      if (!p || !p.pseudo) return;
-      const cleanPseudo = (x && typeof x.cleanPlayerPseudo === 'function') ? x.cleanPlayerPseudo(p.pseudo, activeGuildTag) : String(p.pseudo).trim();
-      const key = cleanPseudo.toLowerCase();
-      const pScore = p.score != null ? p.score : (p.overall_power || 0);
-      const prior = uniqueMap[key];
-      if (!prior || (pScore && pScore > (prior.score || 0))) {
-        uniqueMap[key] = { pseudo: cleanPseudo, raw_pseudo: p.pseudo, guild_tag: p.guild_tag || null, score: pScore, overall_power: pScore, uid: p.uid || null, rank: p.rank || (prior && prior.rank) || null };
-      }
-    });
+    // Multi-frame deduplication and fusion
+    const roster = members();
+    const fused = fuseOcrPlayers(allPlayers, roster, activeGuildTag);
 
-    setOcrExtractedPlayers(Object.values(uniqueMap));
+    setOcrExtractedPlayers(fused);
     renderOcrResults(getOcrExtractedPlayers());
   } catch (err: any) {
     console.error('OCR processing error:', err);
