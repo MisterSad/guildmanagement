@@ -122,5 +122,88 @@ describe('Migration Hub', () => {
       view.switchScope('guild');
       expect((view as any).filterState.scope).toBe('guild');
     });
+
+    it('toggles between empty and detail states without destroying DOM structure', () => {
+      document.body.innerHTML = `
+        <div id="migration-hub-view-card">
+          <div id="migration-hub-view-empty" style="display:none;">
+            <p id="migration-hub-empty-desc"></p>
+            <button id="migration-hub-empty-new-btn"></button>
+          </div>
+          <div id="migration-hub-view-detail" style="display:none;">
+            <span id="migration-hub-view-category-badge"></span>
+            <span id="migration-hub-view-pinned-badge" style="display:none;"></span>
+            <span id="migration-hub-view-scope-badge"></span>
+            <h2 id="migration-hub-view-title"></h2>
+            <div id="migration-hub-view-meta"></div>
+            <div id="migration-hub-view-content"></div>
+            <div id="migration-hub-view-gallery-section" style="display:none;">
+              <span id="migration-hub-view-attachments-count">0</span>
+              <div id="migration-hub-view-attachments"></div>
+            </div>
+          </div>
+        </div>
+        <div id="migration-hub-edit-card" style="display:none;"></div>
+      `;
+
+      // 1. Initial state: no active page -> empty state displayed
+      (view as any).pages = [];
+      (view as any).filterState.activePageId = null;
+      (view as any).renderActivePage();
+
+      const emptyEl = document.getElementById('migration-hub-view-empty');
+      const detailEl = document.getElementById('migration-hub-view-detail');
+      expect(emptyEl?.style.display).toBe('block');
+      expect(detailEl?.style.display).toBe('none');
+
+      // 2. Add page and select it -> detail state displayed, title & content rendered
+      (view as any).pages = [
+        {
+          id: 'test-page-1',
+          scope: 'server',
+          server_number: '1058',
+          guild_id: null,
+          category: 'recruitment',
+          title: '[MTLH] Metalhead #1061',
+          content: 'Test intel details',
+          is_pinned: false,
+          attachments: [],
+          created_by_account_id: 'acc1',
+          created_by_pseudo: 'HawkEye',
+          updated_by_account_id: 'acc1',
+          updated_by_pseudo: 'HawkEye',
+          created_at: '2026-09-19T20:00:00Z',
+          updated_at: '2026-09-19T20:00:00Z'
+        }
+      ];
+      (view as any).filterState.activePageId = 'test-page-1';
+      (view as any).renderActivePage();
+
+      expect(emptyEl?.style.display).toBe('none');
+      expect(detailEl?.style.display).toBe('block');
+
+      const titleEl = document.getElementById('migration-hub-view-title');
+      const contentEl = document.getElementById('migration-hub-view-content');
+      const catBadge = document.getElementById('migration-hub-view-category-badge');
+
+      expect(titleEl?.textContent).toBe('[MTLH] Metalhead #1061');
+      expect(contentEl?.innerHTML).toContain('Test intel details');
+      expect(catBadge?.textContent).toBe('Recruitment');
+
+      // 3. Clear active page again -> empty state displayed without errors
+      (view as any).filterState.activePageId = null;
+      (view as any).renderActivePage();
+
+      expect(emptyEl?.style.display).toBe('block');
+      expect(detailEl?.style.display).toBe('none');
+
+      // 4. Re-select page -> detail state works perfectly (elements were NOT destroyed)
+      (view as any).filterState.activePageId = 'test-page-1';
+      (view as any).renderActivePage();
+
+      expect(emptyEl?.style.display).toBe('none');
+      expect(detailEl?.style.display).toBe('block');
+      expect(titleEl?.textContent).toBe('[MTLH] Metalhead #1061');
+    });
   });
 });

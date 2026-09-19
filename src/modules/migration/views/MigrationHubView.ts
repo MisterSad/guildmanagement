@@ -128,6 +128,9 @@ export class MigrationHubView {
     const newPageBtn = document.getElementById('migration-hub-new-page-btn');
     newPageBtn?.addEventListener('click', () => this.startNewPage());
 
+    const emptyNewBtn = document.getElementById('migration-hub-empty-new-btn');
+    emptyNewBtn?.addEventListener('click', () => this.startNewPage());
+
     // Form submit & cancel
     const form = document.getElementById('migration-hub-form') as HTMLFormElement | null;
     form?.addEventListener('submit', (e) => {
@@ -434,6 +437,8 @@ export class MigrationHubView {
   private renderActivePage(): void {
     const viewCard = document.getElementById('migration-hub-view-card');
     const editCard = document.getElementById('migration-hub-edit-card');
+    const viewEmpty = document.getElementById('migration-hub-view-empty');
+    const viewDetail = document.getElementById('migration-hub-view-detail');
     if (!viewCard || !editCard) return;
 
     viewCard.style.display = 'block';
@@ -441,21 +446,19 @@ export class MigrationHubView {
 
     const activePage = this.pages.find((p) => p.id === this.filterState.activePageId);
     if (!activePage) {
-      viewCard.innerHTML = `
-        <div class="gm-empty" style="padding:4rem 1rem;">
-          <i class="ph-duotone ph-book-open gm-icon" style="font-size:3rem;"></i>
-          <div class="gm-empty-title" style="font-size:1.1rem; margin-top:0.75rem;">Select or create a page</div>
-          <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0.25rem;">
-            Capture intel, notes, and screenshots for your ${this.filterState.scope === 'guild' ? 'guild' : 'server'}.
-          </p>
-          <button type="button" class="gm-btn gm-btn-primary" id="migration-hub-empty-new-btn" style="margin-top:1rem;">
-            <i class="ph ph-plus"></i> <span>Create First Page</span>
-          </button>
-        </div>
-      `;
-      document.getElementById('migration-hub-empty-new-btn')?.addEventListener('click', () => this.startNewPage());
+      if (viewEmpty) {
+        viewEmpty.style.display = 'block';
+        const emptyDesc = document.getElementById('migration-hub-empty-desc');
+        if (emptyDesc) {
+          emptyDesc.textContent = `Capture intel, notes, and screenshots for your ${this.filterState.scope === 'guild' ? 'guild' : 'server'}.`;
+        }
+      }
+      if (viewDetail) viewDetail.style.display = 'none';
       return;
     }
+
+    if (viewEmpty) viewEmpty.style.display = 'none';
+    if (viewDetail) viewDetail.style.display = 'block';
 
     // Reset AI summary box
     const aiBox = document.getElementById('migration-hub-page-ai-box');

@@ -1455,62 +1455,79 @@
                         <div style="flex:1; min-width:0;">
                             <!-- View Card -->
                             <div class="gm-card gm-card-padded" id="migration-hub-view-card">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; gap:1rem; flex-wrap:wrap;">
-                                    <div>
-                                        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;" id="migration-hub-view-badges">
-                                            <span class="gm-chip" id="migration-hub-view-category-badge">General</span>
-                                            <span class="gm-chip gm-chip-warning" id="migration-hub-view-pinned-badge" style="display:none;"><i class="ph ph-push-pin"></i> Pinned</span>
-                                            <span class="gm-chip" id="migration-hub-view-scope-badge">Guild</span>
-                                        </div>
-                                        <h2 id="migration-hub-view-title" style="margin:0; font-size:1.4rem; font-weight:700; color:var(--fg);">Select a page</h2>
-                                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem;" id="migration-hub-view-meta"></div>
-                                    </div>
-                                    <div style="display:flex; gap:0.5rem; align-items:center;" id="migration-hub-view-actions">
-                                        <button type="button" class="gm-btn gm-btn-outline gm-btn-sm" id="migration-hub-ai-summary-btn" title="Summarize this page with Gemini AI" style="border-color:var(--accent); color:var(--accent);">
-                                            <i class="ph ph-sparkle"></i> <span>AI Summary</span>
-                                        </button>
-                                        <button type="button" class="gm-btn gm-btn-outline gm-btn-sm" id="migration-hub-edit-btn" title="Edit this page">
-                                            <i class="ph ph-note-pencil"></i> <span>Edit</span>
-                                        </button>
-                                        <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-pin-toggle-btn" title="Pin or unpin">
-                                            <i class="ph ph-push-pin"></i>
-                                        </button>
-                                        <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-export-discord-btn" title="Copy formatted text for Discord">
-                                            <i class="ph ph-discord-logo"></i> <span>Discord</span>
-                                        </button>
-                                        <button type="button" class="gm-btn gm-btn-danger gm-btn-sm" id="migration-hub-delete-btn" title="Delete page">
-                                            <i class="ph ph-trash"></i>
+                                <!-- Empty State -->
+                                <div id="migration-hub-view-empty" style="display:none; padding:4rem 1rem; text-align:center;">
+                                    <div class="gm-empty">
+                                        <i class="ph-duotone ph-book-open gm-icon" style="font-size:3rem;"></i>
+                                        <div class="gm-empty-title" style="font-size:1.1rem; margin-top:0.75rem;">Select or create a page</div>
+                                        <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0.25rem;" id="migration-hub-empty-desc">
+                                            Capture intel, notes, and screenshots for your guild.
+                                        </p>
+                                        <button type="button" class="gm-btn gm-btn-primary" id="migration-hub-empty-new-btn" style="margin-top:1rem;">
+                                            <i class="ph ph-plus"></i> <span>Create First Page</span>
                                         </button>
                                     </div>
                                 </div>
 
-                                <!-- AI Summary Box -->
-                                <div id="migration-hub-page-ai-box" style="display:none; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.3); border-radius:8px; padding:1rem; margin-bottom:1.25rem;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
-                                        <div style="font-weight:700; font-size:0.92rem; color:var(--accent); display:flex; align-items:center; gap:0.4rem;">
-                                            <i class="ph ph-sparkle"></i> <span>Gemini AI Summary</span>
+                                <!-- Detail State -->
+                                <div id="migration-hub-view-detail">
+                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; gap:1rem; flex-wrap:wrap;">
+                                        <div>
+                                            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;" id="migration-hub-view-badges">
+                                                <span class="gm-chip" id="migration-hub-view-category-badge">General</span>
+                                                <span class="gm-chip gm-chip-warning" id="migration-hub-view-pinned-badge" style="display:none;"><i class="ph ph-push-pin"></i> Pinned</span>
+                                                <span class="gm-chip" id="migration-hub-view-scope-badge">Guild</span>
+                                            </div>
+                                            <h2 id="migration-hub-view-title" style="margin:0; font-size:1.4rem; font-weight:700; color:var(--fg);">Select a page</h2>
+                                            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem;" id="migration-hub-view-meta"></div>
                                         </div>
-                                        <div style="display:flex; gap:0.35rem;">
-                                            <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-copy-ai-summary-btn" title="Copy AI summary" style="font-size:0.75rem; padding:2px 8px;">
-                                                <i class="ph ph-copy"></i> <span>Copy</span>
+                                        <div style="display:flex; gap:0.5rem; align-items:center;" id="migration-hub-view-actions">
+                                            <button type="button" class="gm-btn gm-btn-outline gm-btn-sm" id="migration-hub-ai-summary-btn" title="Summarize this page with Gemini AI" style="border-color:var(--accent); color:var(--accent);">
+                                                <i class="ph ph-sparkle"></i> <span>AI Summary</span>
                                             </button>
-                                            <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-close-ai-summary-btn" title="Close summary" style="font-size:0.75rem; padding:2px 6px;">
-                                                <i class="ph ph-x"></i>
+                                            <button type="button" class="gm-btn gm-btn-outline gm-btn-sm" id="migration-hub-edit-btn" title="Edit this page">
+                                                <i class="ph ph-note-pencil"></i> <span>Edit</span>
+                                            </button>
+                                            <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-pin-toggle-btn" title="Pin or unpin">
+                                                <i class="ph ph-push-pin"></i>
+                                            </button>
+                                            <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-export-discord-btn" title="Copy formatted text for Discord">
+                                                <i class="ph ph-discord-logo"></i> <span>Discord</span>
+                                            </button>
+                                            <button type="button" class="gm-btn gm-btn-danger gm-btn-sm" id="migration-hub-delete-btn" title="Delete page">
+                                                <i class="ph ph-trash"></i>
                                             </button>
                                         </div>
                                     </div>
-                                    <div id="migration-hub-page-ai-content" style="font-size:0.88rem; line-height:1.55; color:var(--text-normal);"></div>
-                                </div>
 
-                                <div id="migration-hub-view-content" class="gm-wiki-content" style="line-height:1.65; font-size:0.92rem; color:var(--text-normal); margin-bottom:1.5rem; min-height:120px;">
-                                </div>
+                                    <!-- AI Summary Box -->
+                                    <div id="migration-hub-page-ai-box" style="display:none; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.3); border-radius:8px; padding:1rem; margin-bottom:1.25rem;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                                            <div style="font-weight:700; font-size:0.92rem; color:var(--accent); display:flex; align-items:center; gap:0.4rem;">
+                                                <i class="ph ph-sparkle"></i> <span>Gemini AI Summary</span>
+                                            </div>
+                                            <div style="display:flex; gap:0.35rem;">
+                                                <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-copy-ai-summary-btn" title="Copy AI summary" style="font-size:0.75rem; padding:2px 8px;">
+                                                    <i class="ph ph-copy"></i> <span>Copy</span>
+                                                </button>
+                                                <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-close-ai-summary-btn" title="Close summary" style="font-size:0.75rem; padding:2px 6px;">
+                                                    <i class="ph ph-x"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="migration-hub-page-ai-content" style="font-size:0.88rem; line-height:1.55; color:var(--text-normal);"></div>
+                                    </div>
 
-                                <div id="migration-hub-view-gallery-section" style="border-top:1px solid var(--border-soft); padding-top:1.25rem;">
-                                    <h4 style="font-size:0.9rem; font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
-                                        <i class="ph ph-image"></i> <span>Screenshots &amp; Intel Attachments</span>
-                                        <span class="gm-count" id="migration-hub-view-attachments-count">0</span>
-                                    </h4>
-                                    <div id="migration-hub-view-attachments" style="display:flex; flex-wrap:wrap; gap:0.75rem;"></div>
+                                    <div id="migration-hub-view-content" class="gm-wiki-content" style="line-height:1.65; font-size:0.92rem; color:var(--text-normal); margin-bottom:1.5rem; min-height:120px;">
+                                    </div>
+
+                                    <div id="migration-hub-view-gallery-section" style="border-top:1px solid var(--border-soft); padding-top:1.25rem;">
+                                        <h4 style="font-size:0.9rem; font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                                            <i class="ph ph-image"></i> <span>Screenshots &amp; Intel Attachments</span>
+                                            <span class="gm-count" id="migration-hub-view-attachments-count">0</span>
+                                        </h4>
+                                        <div id="migration-hub-view-attachments" style="display:flex; flex-wrap:wrap; gap:0.75rem;"></div>
+                                    </div>
                                 </div>
                             </div>
 
