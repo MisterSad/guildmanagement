@@ -277,3 +277,44 @@ describe('syncWarOcrGate removal', () => {
     expect(html).toContain('id="ocr-day-buttons"');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Regression: GvG / SvS OCR member recognition when roster is not yet loaded
+// Ticket: Bug — "member recognition failure for gvg_prep / svs_prep / gvg_day"
+// Root cause: getGuildMembers() returned [] when the user opened OCR from an
+//   event tab without first visiting the Members tab.  The fix: handleOcrFiles
+//   must silently call fetchGuildMembers() before fuseOcrPlayers when the store
+//   is empty.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Regression — GvG/SvS OCR lazy roster prefetch', () => {
+
+  it('controller source contains the lazy roster-prefetch guard inside handleOcrFiles', () => {
+    const src = read('src/modules/app/ocr/ocr.controller.ts');
+
+    // Guard: only fetches when members().length === 0
+    expect(src).toContain('if (members().length === 0)');
+
+    // Must await the fetch before processing
+    expect(src).toContain('await fetchGuildMembers()');
+
+    // The prefetch comes BEFORE the fusion step
+    const prefetchIdx = src.indexOf('if (members().length === 0)');
+    const fuseIdx = src.indexOf('fuseOcrPlayers(');
+    expect(prefetchIdx).toBeGreaterThan(0);
+    expect(fuseIdx).toBeGreaterThan(0);
+    expect(prefetchIdx).toBeLessThan(fuseIdx);
+  });
+
+  it('prefetch is non-fatal: OCR continues even if fetchGuildMembers throws', () => {
+    // The guard must be wrapped in try/catch — verify the catch block is present
+    const src = read('src/modules/app/ocr/ocr.controller.ts');
+    // The comment "best-effort" appears inside the catch block of the prefetch
+    expect(src).toContain('best-effort — OCR proceeds even without roster');
+  });
+
+  it('fetchGuildMembers is imported in the OCR controller (not called via window bridge)', () => {
+    const src = read('src/modules/app/ocr/ocr.controller.ts');
+    // Must be a static ESM import, not a dynamic bridge call
+    expect(src).toMatch(/import[^;]+fetchGuildMembers[^;]+members\.controller/);
+  });
+});

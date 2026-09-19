@@ -596,6 +596,18 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
   if (tagInput && tagInput.value.trim()) activeGuildTag = tagInput.value.trim();
   else { const x = gm(); if (x && typeof x.getGuildTag === 'function') activeGuildTag = await x.getGuildTag(); }
 
+  // Lazy roster prefetch: if the in-memory store is empty (user opened OCR
+  // from an event/GvG/SvS tab without first visiting the Members tab), we
+  // silently fetch the roster so that fuseOcrPlayers and renderOcrResults
+  // can match member pseudos correctly against guild members.
+  // This is a no-op when the roster is already loaded (normal flow).
+  if (members().length === 0) {
+    try {
+      if (loadingP) loadingP.textContent = 'Loading guild roster for member matching…';
+      await fetchGuildMembers();
+    } catch (_) { /* best-effort — OCR proceeds even without roster */ }
+  }
+
   if (loadingH4) loadingH4.textContent = 'Analyzing screenshots with AI OCR (' + meta.header + ')...';
 
   let allPlayers: any[] = [];
