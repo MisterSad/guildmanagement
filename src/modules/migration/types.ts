@@ -48,3 +48,15 @@ export interface MigrationHubFilterState {
   searchQuery: string;
   activePageId: string | null;
 }
+
+export interface MigrationWikiComment {
+  id: string;
+  page_id: string;
+  content: string;
+  author_account_id: string | null;
+  author_pseudo: string;
+  author_guild_id: string | null;
+  author_role: string;
+  created_at: string;
+  updated_at: string;
+}

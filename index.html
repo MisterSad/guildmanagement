@@ -1528,6 +1528,31 @@
                                         </h4>
                                         <div id="migration-hub-view-attachments" style="display:flex; flex-wrap:wrap; gap:0.75rem;"></div>
                                     </div>
+
+                                    <!-- Comments Section -->
+                                    <div id="migration-hub-view-comments-section" style="border-top:1px solid var(--border-soft); padding-top:1.5rem; margin-top:1.25rem;">
+                                        <h4 style="font-size:0.92rem; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:0.4rem;">
+                                            <i class="ph ph-chat-teardrop-text" style="color:var(--accent); font-size:1.1rem;"></i>
+                                            <span>Comments &amp; Leadership Intel</span>
+                                            <span class="gm-count" id="migration-hub-comments-count">0</span>
+                                        </h4>
+
+                                        <!-- Comments Thread List -->
+                                        <div id="migration-hub-comments-list" style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.25rem;">
+                                            <div style="font-size:0.8rem; color:var(--text-muted); font-style:italic;">No comments yet. Be the first leader to add intel.</div>
+                                        </div>
+
+                                        <!-- New Comment Form -->
+                                        <form id="migration-hub-comment-form" style="background:rgba(0,0,0,0.12); border:1px solid var(--border-soft); border-radius:8px; padding:0.75rem;">
+                                            <textarea id="migration-hub-comment-input" class="gm-input" style="width:100%; min-height:65px; resize:vertical; font-size:0.85rem; padding:0.5rem; margin-bottom:0.5rem;" placeholder="Add a comment or intel update (e.g. 'Spoke to their R5, they might join after SvS')..." required maxlength="2000"></textarea>
+                                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                                                <div style="font-size:0.72rem; color:var(--text-muted);" id="migration-hub-comment-author-hint">Posting as Leader</div>
+                                                <button type="submit" class="gm-btn gm-btn-primary gm-btn-sm" id="migration-hub-comment-submit-btn" style="gap:0.35rem;">
+                                                    <i class="ph ph-paper-plane-right"></i> <span>Send Comment</span>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
 

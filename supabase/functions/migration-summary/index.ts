@@ -108,6 +108,13 @@ serve(async (req: Request) => {
       return json({ ok: false, error: "page_not_found" }, 404);
     }
 
+    const { data: comments } = await adminClient
+      .from("migration_wiki_comments")
+      .select("author_pseudo, author_guild_id, author_role, content, created_at")
+      .eq("page_id", pageId)
+      .order("created_at", { ascending: true })
+      .limit(50);
+
     intelData = {
       mode: "single_page",
       page: {
@@ -119,6 +126,11 @@ serve(async (req: Request) => {
         content: page.content,
         last_updated: page.updated_at,
         author: page.updated_by_pseudo || page.created_by_pseudo,
+        comments: (comments || []).map((c) => ({
+          author: `${c.author_pseudo}${c.author_guild_id ? ` [${c.author_guild_id}]` : ""}`,
+          content: c.content,
+          date: c.created_at,
+        })),
       },
     };
   } else {
@@ -145,6 +157,24 @@ serve(async (req: Request) => {
       return json({ ok: true, summary: "No migration notes found to summarize for this scope.", mode });
     }
 
+    const pageIds = pages.map((p) => p.id);
+    const { data: comments } = await adminClient
+      .from("migration_wiki_comments")
+      .select("page_id, author_pseudo, author_guild_id, content, created_at")
+      .in("page_id", pageIds)
+      .order("created_at", { ascending: true })
+      .limit(100);
+
+    const commentsByPage = new Map<string, Array<{ author: string; content: string }>>();
+    (comments || []).forEach((c) => {
+      const list = commentsByPage.get(c.page_id) || [];
+      list.push({
+        author: `${c.author_pseudo}${c.author_guild_id ? ` [${c.author_guild_id}]` : ""}`,
+        content: c.content,
+      });
+      commentsByPage.set(c.page_id, list);
+    });
+
     intelData = {
       mode: "scope_digest",
       scope,
@@ -157,6 +187,7 @@ serve(async (req: Request) => {
         is_pinned: p.is_pinned,
         author: p.created_by_pseudo,
         content: p.content,
+        comments: commentsByPage.get(p.id) || [],
       })),
     };
   }

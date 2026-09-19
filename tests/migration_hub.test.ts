@@ -206,4 +206,95 @@ describe('Migration Hub', () => {
       expect(titleEl?.textContent).toBe('[MTLH] Metalhead #1061');
     });
   });
+
+  describe('Comments Thread System', () => {
+    beforeEach(() => {
+      document.body.innerHTML = `
+        <div id="migration-hub-view-comments-section">
+          <span id="migration-hub-comments-count">0</span>
+          <div id="migration-hub-comments-list"></div>
+          <form id="migration-hub-comment-form">
+            <textarea id="migration-hub-comment-input"></textarea>
+            <div id="migration-hub-comment-author-hint"></div>
+            <button type="submit" id="migration-hub-comment-submit-btn"></button>
+          </form>
+        </div>
+      `;
+    });
+
+    it('renders empty message when there are no comments', () => {
+      (view as any).activeComments = [];
+      (view as any).renderComments();
+
+      const listEl = document.getElementById('migration-hub-comments-list');
+      const countEl = document.getElementById('migration-hub-comments-count');
+
+      expect(countEl?.textContent).toBe('0');
+      expect(listEl?.innerHTML).toContain('No comments yet');
+    });
+
+    it('renders comments with author pseudo, guild badge, role, and content', () => {
+      (view as any).activeComments = [
+        {
+          id: 'comment-1',
+          page_id: 'page-1',
+          content: 'Spoke to their R5, they might join after SvS.',
+          author_account_id: 'acc-1',
+          author_pseudo: 'HawkEye',
+          author_guild_id: 'ALPHA',
+          author_role: 'guild_admin',
+          created_at: '2026-09-19T20:45:00Z',
+          updated_at: '2026-09-19T20:45:00Z'
+        },
+        {
+          id: 'comment-2',
+          page_id: 'page-1',
+          content: 'Agreed on territory limits.',
+          author_account_id: 'acc-2',
+          author_pseudo: 'Valkyrie',
+          author_guild_id: 'BABE',
+          author_role: 'server_admin',
+          created_at: '2026-09-19T20:50:00Z',
+          updated_at: '2026-09-19T20:50:00Z'
+        }
+      ];
+
+      (view as any).renderComments();
+
+      const listEl = document.getElementById('migration-hub-comments-list');
+      const countEl = document.getElementById('migration-hub-comments-count');
+
+      expect(countEl?.textContent).toBe('2');
+      expect(listEl?.innerHTML).toContain('HawkEye');
+      expect(listEl?.innerHTML).toContain('[ALPHA]');
+      expect(listEl?.innerHTML).toContain('Spoke to their R5, they might join after SvS.');
+      expect(listEl?.innerHTML).toContain('Valkyrie');
+      expect(listEl?.innerHTML).toContain('[BABE]');
+      expect(listEl?.innerHTML).toContain('Agreed on territory limits.');
+    });
+
+    it('sanitizes malicious script injections in comment content', () => {
+      (view as any).activeComments = [
+        {
+          id: 'comment-xss',
+          page_id: 'page-1',
+          content: '<script>alert("hack")</script><b>Bold Text</b>',
+          author_account_id: 'acc-1',
+          author_pseudo: '<img src=x onerror=alert(1)>',
+          author_guild_id: 'ALPHA',
+          author_role: 'guild_admin',
+          created_at: '2026-09-19T20:45:00Z',
+          updated_at: '2026-09-19T20:45:00Z'
+        }
+      ];
+
+      (view as any).renderComments();
+
+      const listEl = document.getElementById('migration-hub-comments-list');
+      expect(listEl?.innerHTML).not.toContain('<script>');
+      expect(listEl?.innerHTML).toContain('&lt;script&gt;');
+      expect(listEl?.innerHTML).not.toContain('<img src=x onerror=alert(1)>');
+      expect(listEl?.innerHTML).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    });
+  });
 });

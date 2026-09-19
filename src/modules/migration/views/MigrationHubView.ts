@@ -20,7 +20,8 @@ import {
   MigrationWikiAttachment,
   MigrationWikiScope,
   MigrationWikiCategory,
-  MigrationHubFilterState
+  MigrationHubFilterState,
+  MigrationWikiComment
 } from '../types';
 
 function winAny(): any {
@@ -78,6 +79,7 @@ const CATEGORY_CHIP_CLASSES: Record<MigrationWikiCategory, string> = {
 
 export class MigrationHubView {
   private pages: MigrationWikiPage[] = [];
+  private activeComments: MigrationWikiComment[] = [];
   private filterState: MigrationHubFilterState = {
     scope: 'guild',
     category: 'all',
@@ -88,6 +90,7 @@ export class MigrationHubView {
   private editingPageId: string | null = null;
   private pendingAttachments: MigrationWikiAttachment[] = [];
   private realtimeChannel: any = null;
+  private commentsRealtimeChannel: any = null;
   private initialized = false;
 
   /**
@@ -140,6 +143,13 @@ export class MigrationHubView {
 
     const cancelBtn = document.getElementById('migration-hub-form-cancel-btn');
     cancelBtn?.addEventListener('click', () => this.cancelEditing());
+
+    // Comment form submit
+    const commentForm = document.getElementById('migration-hub-comment-form') as HTMLFormElement | null;
+    commentForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.handleCommentSubmit();
+    });
 
     // Page action buttons
     const editBtn = document.getElementById('migration-hub-edit-btn');
@@ -315,21 +325,38 @@ export class MigrationHubView {
    * Subscribes to Supabase Realtime channel for collaborative updates.
    */
   private subscribeRealtime(): void {
-    if (this.realtimeChannel) return;
     const db = legacy.getDb();
     if (!db || typeof db.channel !== 'function') return;
 
-    this.realtimeChannel = db
-      .channel('public:migration_wiki_pages')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'migration_wiki_pages' },
-        () => {
-          // Refresh data quietly on remote changes
-          this.load();
-        }
-      )
-      .subscribe();
+    if (!this.realtimeChannel) {
+      this.realtimeChannel = db
+        .channel('public:migration_wiki_pages')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'migration_wiki_pages' },
+          () => {
+            // Refresh data quietly on remote changes
+            this.load();
+          }
+        )
+        .subscribe();
+    }
+
+    if (!this.commentsRealtimeChannel) {
+      this.commentsRealtimeChannel = db
+        .channel('public:migration_wiki_comments')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'migration_wiki_comments' },
+          (payload: any) => {
+            const activePageId = this.filterState.activePageId;
+            if (activePageId && (payload.new?.page_id === activePageId || payload.old?.page_id === activePageId)) {
+              this.loadComments(activePageId);
+            }
+          }
+        )
+        .subscribe();
+    }
   }
 
   /**
@@ -446,6 +473,7 @@ export class MigrationHubView {
 
     const activePage = this.pages.find((p) => p.id === this.filterState.activePageId);
     if (!activePage) {
+      this.activeComments = [];
       if (viewEmpty) {
         viewEmpty.style.display = 'block';
         const emptyDesc = document.getElementById('migration-hub-empty-desc');
@@ -535,6 +563,15 @@ export class MigrationHubView {
         });
       }
     }
+
+    // Load and render comments for the active page
+    const authorHint = document.getElementById('migration-hub-comment-author-hint');
+    if (authorHint) {
+      const currentG = getActiveGuild();
+      const pseudo = getCurrentPseudo() || currentAccountId() || 'Leader';
+      authorHint.textContent = `Posting as ${pseudo} [${currentG}]`;
+    }
+    this.loadComments(activePage.id);
   }
 
   /**
@@ -795,6 +832,175 @@ export class MigrationHubView {
     } catch {
       legacy.showToast('Failed to copy to clipboard', 'error');
     }
+  }
+
+  // --- Comments Thread System ---
+
+  /**
+   * Loads comments for a specific wiki page.
+   */
+  public async loadComments(pageId: string): Promise<void> {
+    const db = legacy.getDb();
+    if (!db) return;
+
+    try {
+      const { data, error } = await db
+        .from('migration_wiki_comments')
+        .select('*')
+        .eq('page_id', pageId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('[MigrationHub] Failed to fetch comments', error);
+        return;
+      }
+
+      this.activeComments = (data || []) as MigrationWikiComment[];
+      this.renderComments();
+    } catch (err) {
+      console.error('[MigrationHub] loadComments error', err);
+    }
+  }
+
+  /**
+   * Renders the comments list and counter in the UI.
+   */
+  private renderComments(): void {
+    const listEl = document.getElementById('migration-hub-comments-list');
+    const countEl = document.getElementById('migration-hub-comments-count');
+    if (countEl) countEl.textContent = String(this.activeComments.length);
+    if (!listEl) return;
+
+    if (this.activeComments.length === 0) {
+      listEl.innerHTML = `
+        <div style="font-size:0.8rem; color:var(--text-muted); font-style:italic; padding:0.5rem 0;">
+          No comments yet. Be the first leader to add intel.
+        </div>
+      `;
+      return;
+    }
+
+    const currentAccId = currentAccountId();
+    const isSuperAdmin = roleFromStorage() === 'super_admin';
+
+    let html = '';
+    this.activeComments.forEach((c) => {
+      const dateStr = new Date(c.created_at).toLocaleString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      const canDelete = isSuperAdmin || (c.author_account_id && c.author_account_id === currentAccId);
+      const guildBadge = c.author_guild_id ? `<span class="gm-chip gm-chip-blue" style="font-size:0.68rem; padding:1px 5px;">[${escapeHTML(c.author_guild_id)}]</span>` : '';
+      const roleLabel = c.author_role ? `<span style="font-size:0.7rem; color:var(--text-muted);">(${escapeHTML(c.author_role.replace('_', ' '))})</span>` : '';
+
+      html += `
+        <div class="gm-card" style="padding:0.75rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:6px;" data-comment-id="${escapeHTML(c.id)}">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.4rem;">
+            <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+              <div style="width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.72rem; font-weight:700;">
+                ${escapeHTML((c.author_pseudo || 'L').charAt(0).toUpperCase())}
+              </div>
+              <span style="font-weight:700; font-size:0.85rem; color:var(--fg);">${escapeHTML(c.author_pseudo)}</span>
+              ${guildBadge}
+              ${roleLabel}
+              <span style="font-size:0.72rem; color:var(--text-muted); margin-left:0.25rem;">· ${escapeHTML(dateStr)}</span>
+            </div>
+            ${canDelete ? `
+              <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm btn-delete-comment" data-id="${escapeHTML(c.id)}" title="Delete comment" style="color:var(--danger); padding:2px 6px; font-size:0.75rem;">
+                <i class="ph ph-trash"></i>
+              </button>
+            ` : ''}
+          </div>
+          <div style="font-size:0.85rem; line-height:1.5; color:var(--text-normal); white-space:pre-wrap; word-break:break-word; padding-left:1.8rem;">${escapeHTML(c.content)}</div>
+        </div>
+      `;
+    });
+
+    listEl.innerHTML = html;
+
+    listEl.querySelectorAll('.btn-delete-comment').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const cid = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        if (cid) this.deleteComment(cid);
+      });
+    });
+  }
+
+  /**
+   * Submits a new comment on the currently active page.
+   */
+  private async handleCommentSubmit(): Promise<void> {
+    const activePageId = this.filterState.activePageId;
+    if (!activePageId) return;
+
+    const input = document.getElementById('migration-hub-comment-input') as HTMLTextAreaElement | null;
+    const submitBtn = document.getElementById('migration-hub-comment-submit-btn') as HTMLButtonElement | null;
+    const content = (input?.value || '').trim();
+
+    if (!content) {
+      legacy.showToast('Please enter a comment', 'error');
+      return;
+    }
+
+    const db = legacy.getDb();
+    if (!db) return;
+
+    const currentG = getActiveGuild();
+    const pseudo = getCurrentPseudo() || currentAccountId() || 'Leader';
+    const accId = currentAccountId();
+    const role = roleFromStorage() || 'guild_admin';
+
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      const { error } = await db.from('migration_wiki_comments').insert({
+        page_id: activePageId,
+        content,
+        author_account_id: accId,
+        author_pseudo: pseudo,
+        author_guild_id: currentG,
+        author_role: role
+      });
+
+      if (error) {
+        console.error('[MigrationHub] Comment submit error', error);
+        legacy.showToast('Failed to post comment: ' + (error.message || 'Error'), 'error');
+        return;
+      }
+
+      if (input) input.value = '';
+      legacy.showToast('Comment posted!', 'success');
+      await this.loadComments(activePageId);
+    } catch (err) {
+      console.error('[MigrationHub] handleCommentSubmit error', err);
+      legacy.showToast('Failed to submit comment', 'error');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  }
+
+  /**
+   * Deletes a comment with confirmation.
+   */
+  private async deleteComment(commentId: string): Promise<void> {
+    legacy.showConfirm('Delete Comment', 'Are you sure you want to delete this comment?', async () => {
+      const db = legacy.getDb();
+      if (!db) return;
+
+      const { error } = await db.from('migration_wiki_comments').delete().eq('id', commentId);
+      if (error) {
+        console.error('[MigrationHub] delete comment error', error);
+        legacy.showToast('Failed to delete comment: ' + (error.message || 'Forbidden'), 'error');
+        return;
+      }
+
+      legacy.showToast('Comment deleted', 'info');
+      if (this.filterState.activePageId) {
+        await this.loadComments(this.filterState.activePageId);
+      }
+    });
   }
 
   /**
@@ -1154,12 +1360,18 @@ export class MigrationHubView {
    * Cleanup on view destruction.
    */
   public destroy(): void {
+    const db = legacy.getDb();
     if (this.realtimeChannel) {
-      const db = legacy.getDb();
       if (db && typeof db.removeChannel === 'function') {
         db.removeChannel(this.realtimeChannel);
       }
       this.realtimeChannel = null;
+    }
+    if (this.commentsRealtimeChannel) {
+      if (db && typeof db.removeChannel === 'function') {
+        db.removeChannel(this.commentsRealtimeChannel);
+      }
+      this.commentsRealtimeChannel = null;
     }
     this.initialized = false;
   }
