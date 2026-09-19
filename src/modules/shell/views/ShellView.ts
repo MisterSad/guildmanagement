@@ -77,15 +77,15 @@ const EVENT_TABS = [
 
 // ── Legacy adapter (call-time reads, no writes) ───────────────────────────────
 
+import { escapeHTML } from '../../../core/utils/text';
+
 const legacy = {
   t(key: string): string {
     const g = gm();
     return g && typeof g.t === 'function' ? g.t(key) : key;
   },
   esc(value: unknown): string {
-    const g = gm();
-    if (g && typeof g.escapeHTML === 'function') return g.escapeHTML(value);
-    return value === null || value === undefined ? '' : String(value);
+    return escapeHTML(value);
   },
   roleFromStorage(): ShellRole {
     const g = gm();

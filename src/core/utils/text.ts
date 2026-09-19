@@ -47,12 +47,14 @@ export function validateUid(uid: unknown): string | null {
   return null;
 }
 
-/** Normalizes legacy role labels (R5/admin/R4/...) to the canonical role set. */
+/** Strict canonical role normalization: only canonical roles recognized; legacy ranks fall back to member. */
 export function normalizeRole(r?: string | null): AppRole {
-  if (r === 'R5' || r === 'admin') return 'super_admin';
-  if (r === 'server_admin') return 'server_admin';
-  if (r === 'R4') return 'guild_admin';
-  if (r === 'super_admin' || r === 'guild_admin' || r === 'member') return r;
+  if (!r) return 'member';
+  const s = String(r).toLowerCase().trim();
+  if (s === 'super_admin') return 'super_admin';
+  if (s === 'server_admin') return 'server_admin';
+  if (s === 'guild_admin') return 'guild_admin';
+  if (s === 'member') return 'member';
   return 'member';
 }
 

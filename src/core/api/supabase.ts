@@ -92,6 +92,23 @@ export interface SessionInfo {
   accountId: string | null;
 }
 
+export type SessionVerifiedListener = (info: SessionInfo | null) => void;
+const sessionVerifiedListeners: SessionVerifiedListener[] = [];
+
+export function addSessionVerifiedListener(listener: SessionVerifiedListener): () => void {
+  sessionVerifiedListeners.push(listener);
+  return () => {
+    const idx = sessionVerifiedListeners.indexOf(listener);
+    if (idx !== -1) sessionVerifiedListeners.splice(idx, 1);
+  };
+}
+
+export function notifySessionVerified(info: SessionInfo | null): void {
+  for (const listener of sessionVerifiedListeners) {
+    try { listener(info); } catch (_) { /* defensive */ }
+  }
+}
+
 /**
  * Recovers the real body of an Edge Function invocation even when the platform
  * gateway rejected it with a non-2xx status (rate limit, auth, ...): supabase-js
@@ -189,6 +206,7 @@ export function resetSessionInvalidationFlag(): void {
 export function handleSessionInvalidation(): void {
   if (sessionInvalidFlag) return;
   sessionInvalidFlag = true;
+  notifySessionVerified(null);
   purgeInvalidSessionStorage();
   if (typeof window !== 'undefined') {
     try {
@@ -244,7 +262,9 @@ export async function forceRefreshPortalSession(): Promise<PortalSessionInfo | n
     const jsonStr = atob(padded).split('').map((ch: string) => '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2)).join('');
     const claims = JSON.parse(decodeURIComponent(jsonStr));
     const am = claims.app_metadata || {};
-    return { role: normalizeRole(am.app_role || 'member'), accountId: am.account_id || null };
+    const res: PortalSessionInfo = { role: normalizeRole(am.app_role || 'member'), accountId: am.account_id || null };
+    notifySessionVerified(res);
+    return res;
   } catch (_) {
     return null;
   }
@@ -255,18 +275,30 @@ export async function sessionInfo(): Promise<SessionInfo | null> {
   const c = getClient();
   if (!c) return null;
   let res: any;
-  try { res = await c.auth.getSession(); } catch (_) { return null; }
+  try { res = await c.auth.getSession(); } catch (_) {
+    notifySessionVerified(null);
+    return null;
+  }
   const session = res && res.data && res.data.session;
-  if (!session || !session.access_token) return null;
+  if (!session || !session.access_token) {
+    notifySessionVerified(null);
+    return null;
+  }
   try {
     const p = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     const padded = p + '='.repeat((4 - p.length % 4) % 4);
     const jsonStr = atob(padded).split('').map((ch: string) => '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2)).join('');
     const claims = JSON.parse(decodeURIComponent(jsonStr));
     const am = claims.app_metadata || {};
-    if (!am.app_role) return null;
-    return { role: normalizeRole(am.app_role), accountId: am.account_id || null };
+    if (!am.app_role) {
+      notifySessionVerified(null);
+      return null;
+    }
+    const verified: SessionInfo = { role: normalizeRole(am.app_role), accountId: am.account_id || null };
+    notifySessionVerified(verified);
+    return verified;
   } catch (e) {
+    notifySessionVerified(null);
     return null;
   }
 }

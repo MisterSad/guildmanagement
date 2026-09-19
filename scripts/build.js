@@ -41,7 +41,20 @@ const files = fs.readdirSync(rootDir);
 // /src/main.ts reference back — the browser can't execute raw .ts syntax,
 // so every /src module (including this one) has been dead code in
 // production: it 404s/fails to parse and never runs a single line.
-const EXCLUDED_FILES = ['package.json', 'package-lock.json', 'tsconfig.json', 'vercel.json', 'vitest.config.ts', 'index.html'];
+const EXCLUDED_FILES = [
+  'package.json',
+  'package-lock.json',
+  'tsconfig.json',
+  'vercel.json',
+  'vitest.config.js',
+  'playwright.config.js',
+  'index.html',
+  'tokens.css',
+  'theme.css',
+  'styles.css',
+  'components.css',
+  'shell.css',
+];
 
 // The legacy root-level .js/.css files are served as-is (no bundler touches
 // them — they're plain <script>/<link> tags relying on load order and

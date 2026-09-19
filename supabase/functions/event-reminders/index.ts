@@ -404,13 +404,13 @@ serve(async (req) => {
         let trigger = false;
         let reminderType = '';
 
-        if (roundedMins <= 30 && roundedMins >= 26) {
+        if (roundedMins <= 30 && roundedMins >= 25) {
           trigger = true;
           reminderType = 'reminder_30';
         } else if (roundedMins <= 5 && roundedMins >= 1) {
           trigger = true;
           reminderType = 'reminder_5';
-        } else if (roundedMins <= 0 && roundedMins >= -4) {
+        } else if (roundedMins <= 0 && roundedMins >= -5) {
           trigger = true;
           reminderType = 'start';
         }
@@ -590,7 +590,7 @@ serve(async (req) => {
         // Monday (1) to Saturday (6)
         if (curDay >= 1 && curDay <= 6) {
           const diff = getMinutesDiff(curDay, curHour, curMin, curDay, 0, 1);
-          const shouldRunSlot = (diff >= 0 && diff <= 5) || forceGvg;
+          const shouldRunSlot = (diff >= 0 && diff <= 6) || forceGvg;
 
           if (shouldRunSlot) {
             const slotDate = dateUtc.toISOString().split('T')[0];

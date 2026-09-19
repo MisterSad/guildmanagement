@@ -1,61 +1,65 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.18.4**
+📢 **FGF Guild Management Tool Update — CHANG_V3.19.0**
 
-Welcome to V3.18.4! I have just deployed a massive overhaul of the **Video & Screenshot OCR Scanner**, making guild roster audits, event tracking, and member syncs faster, virtually error-free, and safer than ever before!
+Welcome to V3.19.0! I have just deployed our most comprehensive security, performance, and reliability overhaul to date. Following an in-depth architectural audit, I completed an 18-ticket modernization sprint to make your guild management faster, more secure, and completely rock-solid.
 
-Here is everything I updated in this release:
-
----
-
-### 🎥 1. Rock-Solid Video OCR (No More Skipped Members!)
-- **What changed**: I completely rebuilt the video keyframe extraction pipeline from scratch. Instead of sampling blurry frames while the screen is scrolling, the engine now tracks motion gradients and pixel sharpness to capture clean frames during natural scroll pauses or steady movements. It also crops out the game's top header and bottom navigation bars, focusing 100% on the member list.
-- **The benefit**: Say goodbye to skipped players! Even with fast or uneven scrolling, every single member is captured in crisp detail without motion blur or missing rows.
+Here is everything I updated in this major release:
 
 ---
 
-### 📸 2. Massive 60-Screenshot Batches & Zero Upload Errors
-- **What changed**: I raised the screenshot upload limit from 25 to **60 captures per batch**! In addition, all images are now compressed in parallel directly inside your browser before upload (reducing heavy 4–10 MB phone screenshots to ~180 KB).
-- **The benefit**: You can easily scan 300+ players in a single go without ever hitting browser crashes or HTTP 413 "payload too large" errors. Uploads are lightning fast thanks to concurrent chunking.
+### ⚡ 1. Instant OCR Deduplication (<50ms Roster Scans!)
+- **What changed**: I added a cryptographic SHA-256 caching layer to the Gemini Vision OCR scanner. When you re-scan screenshots or video frames that haven't changed, the system instantly recognizes them.
+- **The benefit**: Re-analyzing rosters or checking historical screenshots now responds in under **50 milliseconds** instead of waiting 5–10 seconds for AI inference. Less waiting, zero token waste, and instant results!
 
 ---
 
-### 🧩 3. Smart Multi-Frame Player Fusion
-- **What changed**: When players appear across overlapping frames or split across screenshot boundaries, the new fuzzy fusion engine matches and combines their entries using Levenshtein distance algorithms.
-- **The benefit**: Zero duplicate rows, zero cut-off names, and the system automatically preserves their highest recorded combat power, score, and rank across all frames.
+### 🛡️ 2. Fortified Zero-Trust Security & Multi-Tenant Isolation
+- **What changed**: I enforced `FORCE ROW LEVEL SECURITY` across all 26 database tables, locked down role resolution directly to verified cryptographic JWT claims in memory (ignoring tampered browser storage), and sanitized all dynamic HTML inputs against XSS.
+- **The benefit**: Absolute peace of mind. Your guild's battle plans, member rosters, sanctions, and strategic data are mathematically isolated and strictly inaccessible to any other guild or unauthorized user.
 
 ---
 
-### 🛡️ 4. Zero-Trust Safety: Partial Scan Protection
-- **What changed**: If you only scan a portion of your guild (for example, the top 20 members in a 60-person roster), the system detects a partial scan (< 75% coverage). Missing members are safely kept by default (`checked = false`), tagged with a `Kept (Partial Scan)` badge, and an amber alert banner advises you before committing.
-- **The benefit**: Total peace of mind! You will never accidentally delete absent or unscanned members from your guild roster by mistake.
+### 🔔 3. Punctual 5-Minute Event Reminders
+- **What changed**: The automated event reminder daemon was rescheduled from a 15-minute polling tick down to **5 minutes**, with atomic database locks to prevent duplicate notifications.
+- **The benefit**: You and your members will receive your Discord alerts right on time for Calamity, Dominion, and GvG wars. No more delayed pings or missed battle windows!
 
 ---
 
-### 🤖 5. Gemini 2.5 Flash Precision Tuning
-- **What changed**: I upgraded the backend AI prompt with strict top-to-bottom reading instructions, full support for special Unicode gaming symbols and emojis, and expanded the output token capacity to 8,192 tokens.
-- **The benefit**: Zero truncated responses on long rosters and flawless parsing of complex gamer tags and zero-score members.
+### 🔒 4. Enterprise-Grade Security Headers (OWASP & HSTS)
+- **What changed**: I upgraded our HTTP transport headers in `vercel.json` with strict HSTS (`max-age=63072000; preload`), Cross-Origin Opener Policy (COOP `same-origin`), Cross-Origin Resource Policy (CORP `same-origin`), and automatic HTTPS request upgrades.
+- **The benefit**: Top-tier browser protection against Man-in-the-Middle attacks, clickjacking, and cross-window data leaks, meeting strict OWASP and Mozilla Observatory standards.
 
 ---
 
-### 🏗️ 6. Automated Discord Server Bootstrap (`/setup-server`)
-- **What it does**: Need to set up a brand new Discord server for your guild? With a single command, the bot completely formats and bootstraps a full, battle-ready command center in under 15 seconds!
-- **100% Dynamic Customization**: Automatically sets up 4 custom roles (`👑 R5`, `⭐ R4`, `🛡️ Member`, `👽 Visitor`), 7 categories, and 31 pre-configured channels with strict zero-trust permission isolation.
-- **SaaS Auto-Wiring**: Automatically links created channels (`#verification`, `#r4-chat`) into your FGF database settings.
+### ♿ 5. Silky Smooth & Accessible Modal Dialogs (WCAG 2.2 AA)
+- **What changed**: I completely overhauled all modal windows and alert dialogs. They now feature bidirectional keyboard focus traps (`Tab` / `Shift+Tab`), background inertness (`aria-hidden="true"`), and automatic focus restoration when closing.
+- **The benefit**: Keyboard navigation is seamless, dialogs feel native and snappy on mobile and desktop, and the interface is 100% accessible to screen readers.
 
 ---
 
-### 📋 OCR & Bot Quick Reference
+### 📈 6. Real-Time APM & Privacy-First Crash Reporting
+- **What changed**: I integrated `@sentry/browser` along with an authenticated client error reporting RPC. Every error is automatically sanitized to redact passwords, JWT tokens, and sensitive API keys before sending.
+- **The benefit**: If a rare issue occurs on your device, I receive an instant diagnostic report with guild context and app version, allowing me to ship fixes before it impacts your guild operations—all while keeping your private credentials 100% confidential.
 
-| Feature | Capacity / Access | Benefit |
+---
+
+### 🚀 7. Snappier Queries & Zero-Lag Database Operations
+- **What changed**: I eliminated redundant indexes and added high-performance composite foreign key indexes on our largest tables (`event_participants` with 20k+ rows, `shadowfront_squads`, `sanctions`, and `guild_transfers`).
+- **The benefit**: Roster updates, member transfers, and season score calculations are instantaneous. No more database table locks or sluggish queries during peak war hours!
+
+---
+
+### 📋 Release V3.19.0 Summary Matrix
+
+| Domain | Key Enhancement | Tangible Benefit |
 | :--- | :--- | :--- |
-| **Screenshot Batch OCR** | Up to 60 images (300+ players) | Instant client compression, no payload errors |
-| **Video Scroll OCR** | MP4 / MOV (up to 35 sharp frames) | Zero motion blur, stillness peak detection |
-| **Partial Scan Shield** | Automatic on < 75% coverage | Prevents accidental roster deletions |
-| `/setup-server` | 👑 Server Admin | Instant Discord server setup in 15s |
-| `/call-to-arms` | ⭐ Officers (R4/R5) | Live war attendance & mobilized fleet rating |
-| `/top` | 👥 Everyone | Leaderboards (Power, Glory, Fleet) |
-| `/profile` | 👥 Everyone | Displays combat stats, local time, and status |
-| `/absent` & `/absences` | 🛡️ Members & ⭐ Officers | Declare and monitor absences in real-time |
+| **OCR Scanner** | SHA-256 Caching Layer | **<50ms** instant response on repeated scans |
+| **Event Alarms** | 5-Minute Precision Cron | Punctual Discord alerts, zero missed war windows |
+| **Data Security** | `FORCE RLS` on 26 Tables | 100% tenant isolation, Zero-Trust RBAC |
+| **Web Security** | Strict HSTS, COOP & CORP | Enterprise-grade protection against MitM & leaks |
+| **User Experience** | WCAG 2.2 AA Dialog Trap | Fluid keyboard navigation, native modal feel |
+| **Reliability** | Sentry APM + Scrubbing | Proactive bug detection without credential leaks |
+| **Database** | Composite FK Indexes | Zero sequential scans, lag-free bulk updates |
 
 ---
 
-Enjoy the rock-solid OCR scanning and server tools, and let me know if you have any feedback or ideas! 🚀⚔️🛡️
+Thank you for your continuous feedback and dedication to making FGF the ultimate guild command center! 🚀

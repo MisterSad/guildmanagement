@@ -250,14 +250,9 @@ describe('Audit Remediation Verification Suite', () => {
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("worker-src 'self' blob:");
     expect(csp).toContain("connect-src 'self' https://vgweufzwmfwplusskmuf.supabase.co wss://vgweufzwmfwplusskmuf.supabase.co");
-
     const htmlContent = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-    expect(htmlContent).toMatch(/<script\s+src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@\d+\.\d+\.\d+[^"]*"\s+integrity="sha384-[^"]+"\s+crossorigin="anonymous"><\/script>/);
-    expect(htmlContent).toMatch(/<script\s+src="https:\/\/unpkg\.com\/@phosphor-icons\/web@\d+\.\d+\.\d+[^"]*"\s+integrity="sha384-[^"]+"\s+crossorigin="anonymous"><\/script>/);
-
-    // Verify all CDN scripts have integrity attributes
+    // Vendored locally via Vite: if any third-party CDN scripts are ever added, they MUST have SRI attributes
     const scriptTags = htmlContent.match(/<script[^>]*src="https:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com)[^"]*"[^>]*>/g) || [];
-    expect(scriptTags.length).toBeGreaterThan(0);
     for (const tag of scriptTags) {
       expect(tag).toContain('integrity="sha384-');
       expect(tag).toContain('crossorigin="anonymous"');

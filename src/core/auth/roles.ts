@@ -5,18 +5,50 @@
  */
 
 import { AccountRole } from '../../types/database';
-import { getClient, sessionInfo } from '../api/supabase';
+import { getClient, sessionInfo, addSessionVerifiedListener, SessionInfo } from '../api/supabase';
 import { APP_VERSION } from '../config/constants';
+
+let verifiedRole: AccountRole | null = null;
+let verifiedAccountId: string | null = null;
+
+export function setVerifiedRole(role: AccountRole | null, accountId?: string | null): void {
+  verifiedRole = role;
+  verifiedAccountId = accountId ?? null;
+}
+
+export function getVerifiedRole(): AccountRole | null {
+  return verifiedRole;
+}
+
+export function getVerifiedAccountId(): string | null {
+  return verifiedAccountId;
+}
+
+// Automatically sync verifiedRole with session verification events
+addSessionVerifiedListener((info: SessionInfo | null) => {
+  if (info) {
+    setVerifiedRole(normalizeRole(info.role), info.accountId);
+  } else {
+    setVerifiedRole(null, null);
+  }
+});
 
 export function normalizeRole(roleRaw: string | null | undefined): AccountRole {
   if (!roleRaw) return 'member';
-  if (roleRaw === 'R5' || roleRaw === 'admin' || roleRaw === 'super_admin') return 'super_admin';
-  if (roleRaw === 'server_admin') return 'server_admin';
-  if (roleRaw === 'R4' || roleRaw === 'guild_admin') return 'guild_admin';
+  const s = String(roleRaw).toLowerCase().trim();
+  if (s === 'super_admin') return 'super_admin';
+  if (s === 'server_admin') return 'server_admin';
+  if (s === 'guild_admin') return 'guild_admin';
+  if (s === 'member') return 'member';
   return 'member';
 }
 
 export function roleFromStorage(): AccountRole {
+  // Verified role from Supabase JWT/session takes absolute precedence over localStorage
+  // to prevent client-side privilege escalation via DevTools/localStorage manipulation.
+  if (verifiedRole !== null) {
+    return verifiedRole;
+  }
   try {
     const role = normalizeRole(localStorage.getItem('gm_role'));
     const serverRestriction = localStorage.getItem('gm_server_restriction');
@@ -98,8 +130,11 @@ export function getCurrentPseudo(): string | null {
   return store.getItem('gm_user') || store.getItem('gm_pseudo') || null;
 }
 
-/** Canonical account id (window.GM.currentAccountId → gm_user). */
+/** Canonical account id (verifiedAccountId → window.GM.currentAccountId → gm_user). */
 export function currentAccountId(): string | null {
+  if (verifiedAccountId !== null) {
+    return verifiedAccountId;
+  }
   const w = winAny();
   const fromGm = w.GM && w.GM.currentAccountId;
   const store = ls();

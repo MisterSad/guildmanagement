@@ -145,29 +145,33 @@ describe('parseFunctionsInvokeResult', () => {
 
 describe('RBAC — roles & write access', () => {
   it('roleFromStorage normalizes and promotes restricted members', () => {
-    localStorage.setItem('gm_role', 'R5');
+    localStorage.setItem('gm_role', 'super_admin');
     expect(roles.roleFromStorage()).toBe('super_admin');
-    localStorage.setItem('gm_role', 'R4');
+    localStorage.setItem('gm_role', 'guild_admin');
     expect(roles.roleFromStorage()).toBe('guild_admin');
+    localStorage.setItem('gm_role', 'R5');
+    expect(roles.roleFromStorage()).toBe('member');
+    localStorage.setItem('gm_role', 'R4');
+    expect(roles.roleFromStorage()).toBe('member');
     localStorage.setItem('gm_role', 'member');
     localStorage.setItem('gm_server_restriction', '1234');
     expect(roles.roleFromStorage()).toBe('server_admin');
   });
 
   it('isSuperAdmin / isServerAdmin / isGuildAdmin follow the stored role', () => {
-    localStorage.setItem('gm_role', 'R4');
+    localStorage.setItem('gm_role', 'guild_admin');
     expect(roles.isGuildAdmin()).toBe(true);
     expect(roles.isSuperAdmin()).toBe(false);
-    localStorage.setItem('gm_role', 'R5');
+    localStorage.setItem('gm_role', 'super_admin');
     expect(roles.isSuperAdmin()).toBe(true);
     expect(roles.isServerAdmin()).toBe(true);
   });
 
   it('canWriteGuild: super_admin always, guild_admin only on its guild', () => {
-    localStorage.setItem('gm_role', 'R5');
+    localStorage.setItem('gm_role', 'super_admin');
     expect(roles.canWriteGuild('ANY')).toBe(true);
 
-    localStorage.setItem('gm_role', 'R4');
+    localStorage.setItem('gm_role', 'guild_admin');
     window.currentGuildRestriction = 'ALPHA';
     expect(roles.canWriteGuild('ALPHA')).toBe(true);
     expect(roles.canWriteGuild('BETA')).toBe(false);

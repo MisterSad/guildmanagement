@@ -16,6 +16,11 @@ Whenever major design decisions, patterns, or critical bug resolutions are estab
 | [ADR-007](./ADR-007-accounts-only-role-resolution.md) | Accounts-Only Role Resolution & JWT Metadata Deprecation | **Accepted** | 2026-08-23 |
 | [ADR-008](./ADR-008-migration-protocol-v2.md) | Database Migration Protocol v2 & Clean Replay Guarantees | **Accepted** | 2026-08-23 |
 | [ADR-009](./ADR-009-secrets-vault-only-policy.md) | Secrets Vault-Only Storage & Zero-Commit Rotation Policy | **Accepted** | 2026-08-23 |
+| [ADR-010](./ADR-010-force-row-level-security-all-public-tables.md) | FORCE ROW LEVEL SECURITY Across All Public Tables | **Accepted** | 2026-09-20 |
+| [ADR-011](./ADR-011-client-error-reporting-and-sentry-apm.md) | Client Error Reporting RPC, Sentry APM & CSP Hardening | **Accepted** | 2026-09-20 |
+| [ADR-012](./ADR-012-sha256-ocr-deduplication-cache.md) | SHA-256 OCR Deduplication Cache for Gemini Vision | **Accepted** | 2026-09-20 |
+| [ADR-013](./ADR-013-wcag-2-2-aa-dialog-accessibility-and-focus-trap.md) | WCAG 2.2 AA Modal Dialog Accessibility & Focus Trap | **Accepted** | 2026-09-20 |
+| [ADR-014](./ADR-014-root-scripts-hygiene-and-discord-webhook-resilience.md) | Root Scripts Hygiene, Build Exclusion & Discord Webhook Rate-Limiting | **Accepted** | 2026-09-20 |
 
 ---
 

@@ -28,11 +28,11 @@ afterEach(() => {
 });
 
 describe('normalizeRole', () => {
-    it('maps legacy values to semantic roles', () => {
-        expect(GM.normalizeRole('R5')).toBe('super_admin');
-        expect(GM.normalizeRole('admin')).toBe('super_admin');
+    it('strictly normalizes to canonical roles (H1 remediation: legacy ranks cannot elevate)', () => {
+        expect(GM.normalizeRole('R5')).toBe('member');
+        expect(GM.normalizeRole('admin')).toBe('member');
         expect(GM.normalizeRole('server_admin')).toBe('server_admin');
-        expect(GM.normalizeRole('R4')).toBe('guild_admin');
+        expect(GM.normalizeRole('R4')).toBe('member');
         expect(GM.normalizeRole('super_admin')).toBe('super_admin');
         expect(GM.normalizeRole('guild_admin')).toBe('guild_admin');
         expect(GM.normalizeRole('member')).toBe('member');
@@ -53,13 +53,13 @@ describe('roleFromStorage', () => {
         localStorage.setItem('gm_role', 'member');
         expect(GM.roleFromStorage()).toBe('member');
     });
-    it('maps legacy storage values', () => {
+    it('strictly maps legacy values to member (no elevation)', () => {
         localStorage.setItem('gm_role', 'admin');
-        expect(GM.roleFromStorage()).toBe('super_admin');
+        expect(GM.roleFromStorage()).toBe('member');
         localStorage.setItem('gm_role', 'R5');
-        expect(GM.roleFromStorage()).toBe('super_admin');
+        expect(GM.roleFromStorage()).toBe('member');
         localStorage.setItem('gm_role', 'R4');
-        expect(GM.roleFromStorage()).toBe('guild_admin');
+        expect(GM.roleFromStorage()).toBe('member');
     });
     it('upgrades legacy member-with-restriction to guild_admin or server_admin', () => {
         localStorage.setItem('gm_role', 'member');
@@ -74,8 +74,8 @@ describe('roleFromStorage', () => {
 });
 
 describe('sessionInfo role normalization', () => {
-    it('normalizes legacy JWT app_role claims', async () => {
-        mockSession(makeJwt('R5', 'hawkeye'));
+    it('normalizes legacy JWT app_role claims to member without elevation', async () => {
+        mockSession(makeJwt('super_admin', 'hawkeye'));
         let info = await GM.sessionInfo();
         expect(info.role).toBe('super_admin');
         expect(info.accountId).toBe('hawkeye');
@@ -85,9 +85,17 @@ describe('sessionInfo role normalization', () => {
         expect(info.role).toBe('server_admin');
         expect(info.accountId).toBe('overlord');
 
-        mockSession(makeJwt('R4', 'officer'));
+        mockSession(makeJwt('guild_admin', 'officer'));
         info = await GM.sessionInfo();
         expect(info.role).toBe('guild_admin');
+
+        mockSession(makeJwt('R5', 'rogue'));
+        info = await GM.sessionInfo();
+        expect(info.role).toBe('member');
+
+        mockSession(makeJwt('R4', 'officer_legacy'));
+        info = await GM.sessionInfo();
+        expect(info.role).toBe('member');
     });
     it('passes through semantic claims', async () => {
         mockSession(makeJwt('guild_admin', 'x'));
@@ -175,8 +183,8 @@ describe('canWriteGuild (server-agnostic client rules)', () => {
         window.guildsData = { OMEGA: { type: 'Unlimited' } };
         expect(GM.canWriteGuild('OMEGA')).toBe(true);
     });
-    it('legacy admin storage value is honored', () => {
-        localStorage.setItem('gm_role', 'admin');
+    it('super_admin storage value is honored', () => {
+        localStorage.setItem('gm_role', 'super_admin');
         expect(GM.canWriteGuild('ALPHA')).toBe(true);
     });
 });

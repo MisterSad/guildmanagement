@@ -19,6 +19,7 @@ import {
   removePasskey,
   regenerateBackupCodes
 } from '../../core/auth/webauthn.service';
+import { escapeHTML } from '../../core/utils/text';
 
 export interface PasskeysPanelConfig {
   listEl: HTMLElement | null;
@@ -40,9 +41,7 @@ function gm(): any {
 }
 
 function esc(value: unknown): string {
-  const g = gm();
-  if (g && typeof g.escapeHTML === 'function') return g.escapeHTML(value);
-  return value === null || value === undefined ? '' : String(value);
+  return escapeHTML(value);
 }
 
 function toast(msg: string, type: string): void {

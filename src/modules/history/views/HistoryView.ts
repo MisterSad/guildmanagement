@@ -33,6 +33,7 @@ import { EventsService, type WarEventName } from '../../events/events.service';
 import { resolveChestsForScore, resolvePrepChests, WAR_AGGREGATE_DAY } from '../../../core/scoring/chests';
 import { openDialog, closeDialog } from '../../../components/ui/Dialog';
 import type { ChestTier } from '../../../types/database';
+import { escapeHTML } from '../../../core/utils/text';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -52,9 +53,7 @@ const legacy = {
     return g && typeof g.t === 'function' ? g.t(key) : key;
   },
   esc(value: unknown): string {
-    const g = gm();
-    if (g && typeof g.escapeHTML === 'function') return g.escapeHTML(value);
-    return value === null || value === undefined ? '' : String(value);
+    return escapeHTML(value);
   },
   fmt(num: unknown): string {
     const g = gm();

@@ -14,6 +14,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { escapeHTML } from '../../../core/utils/text';
+
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
 }
@@ -32,9 +34,7 @@ const legacy = {
     return g && typeof g.t === 'function' ? g.t(key) : key;
   },
   esc(value: unknown): string {
-    const g = gm();
-    if (g && typeof g.escapeHTML === 'function') return g.escapeHTML(value);
-    return value === null || value === undefined ? '' : String(value);
+    return escapeHTML(value);
   },
   getActiveGuild(): string {
     const g = gm();

@@ -1,8 +1,38 @@
 import { z } from "https://esm.sh/zod@3.23.8";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
+
+export interface OcrImageItem {
+  base64Data: string;
+  mimeType?: string;
+}
+
+export interface OcrHashMetadata {
+  metricType: string;
+  guildTag?: string | null;
+  rankHint?: string | null;
+  scanDay?: number | null;
+}
+
+export async function computeOcrPayloadHash(
+  images: OcrImageItem[],
+  metadata: OcrHashMetadata
+): Promise<string> {
+  const payload = JSON.stringify({
+    images: images.map((img) => img.base64Data),
+    metricType: metadata.metricType,
+    guildTag: metadata.guildTag || null,
+    rankHint: metadata.rankHint || null,
+    scanDay: metadata.scanDay || null,
+  });
+  const encoded = new TextEncoder().encode(payload);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 const env = getValidatedEnv();
 const GEMINI_API_KEY = env.GEMINI_API_KEY || "";
@@ -297,6 +327,41 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "missing_image" }, 400);
   }
 
+  const normalizedImages: OcrImageItem[] = imagesArray.length > 0
+    ? imagesArray
+    : [{ base64Data: imageBase64, mimeType }];
+
+  const cacheKey = await computeOcrPayloadHash(normalizedImages, {
+    metricType,
+    guildTag,
+    rankHint,
+    scanDay: scanDay ?? null,
+  });
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  try {
+    const { data: cached } = await admin
+      .from("ocr_cache")
+      .select("metric_type, players, ending_rank, expires_at")
+      .eq("hash", cacheKey)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+
+    if (cached && Array.isArray(cached.players)) {
+      logger.info("OCR cache hit - returning cached result", { hash: cacheKey, metricType, count: cached.players.length });
+      return json({
+        ok: true,
+        metricType: cached.metric_type,
+        players: cached.players,
+        count: cached.players.length,
+        endingRank: cached.ending_rank,
+        cached: true,
+      });
+    }
+  } catch (cacheLookupErr: any) {
+    logger.warn("OCR cache lookup failed, continuing to live extraction", { error: cacheLookupErr?.message });
+  }
+
   const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp", "svs_day", "gvg_day"].includes(metricType);
   const isMembersRoster = metricType === "members";
 
@@ -517,7 +582,23 @@ Deno.serve(async (req: Request) => {
     }
 
     logger.info("OCR Extraction completed", { detectedCount: players.length, metricType, endingRank });
-    return json({ ok: true, metricType, players, count: players.length, endingRank });
+
+    // Persist to cache (best-effort, non-blocking)
+    try {
+      await admin.from("ocr_cache").upsert({
+        hash: cacheKey,
+        guild_id: caller.guild || null,
+        metric_type: metricType,
+        players,
+        ending_rank: endingRank,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+      logger.info("OCR result cached successfully", { hash: cacheKey });
+    } catch (cacheWriteErr: any) {
+      logger.warn("Failed to write OCR result to cache", { error: cacheWriteErr?.message });
+    }
+
+    return json({ ok: true, metricType, players, count: players.length, endingRank, cached: false });
   } catch (e: any) {
     logger.error("Failed to parse Gemini OCR JSON response", e, { raw: geminiResultRaw });
     return json(

@@ -18,6 +18,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { renderToast } from '../../../core/dom/toast';
+import { escapeHTML } from '../../../core/utils/text';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -36,15 +37,7 @@ function t(key: string): string {
 }
 
 function esc(value: unknown): string {
-  const g = gm();
-  if (g && typeof g.escapeHTML === 'function') return g.escapeHTML(value);
-  if (value === null || value === undefined) return '';
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+  return escapeHTML(value);
 }
 
 

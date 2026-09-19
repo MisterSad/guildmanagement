@@ -91,9 +91,11 @@ function focusableElements(card: HTMLElement): HTMLElement[] {
 export function createDialog(opts: DialogOptions): HTMLElement {
   const id = opts.id || nextUid();
   const titleId = titleIdFor(id);
+  const subtitleId = opts.subtitle ? (id + '-subtitle') : '';
   const bodyId = opts.bodyId || (id + '-body');
   const title = escapeHTML(opts.title);
   const cls = cn(dialogRecipe({ tone: opts.tone, size: opts.size }), 'gm-ui-dialog-wrap');
+  const role = opts.tone === 'danger' ? 'alertdialog' : 'dialog';
 
   const headerCloseId = opts.headerCloseId || (id + '-close');
   const iconHtml = opts.iconClass && /^[a-z0-9 _-]+$/i.test(opts.iconClass)
@@ -102,12 +104,12 @@ export function createDialog(opts: DialogOptions): HTMLElement {
   const headingText =
     '<div class="gm-ui-dialog-heading-text">' +
       '<h2 class="gm-ui-dialog-title" id="' + titleId + '">' + title + '</h2>' +
-      (opts.subtitle ? '<div class="gm-ui-dialog-subtitle">' + opts.subtitle + '</div>' : '') +
+      (opts.subtitle ? '<div class="gm-ui-dialog-subtitle" id="' + subtitleId + '">' + opts.subtitle + '</div>' : '') +
     '</div>';
   const headerHtml =
     '<div class="gm-ui-dialog-header">' +
       '<div class="gm-ui-dialog-heading">' + iconHtml + headingText + '</div>' +
-      '<button type="button" class="gm-ui-dialog-header-close gm-btn gm-btn-ghost gm-btn-icon" id="' + headerCloseId + '" aria-label="' + escapeHTML(opts.cancelLabel || 'Close') + '"><i class="ph ph-x"></i></button>' +
+      '<button type="button" class="gm-ui-dialog-header-close gm-btn gm-btn-ghost gm-btn-icon" id="' + headerCloseId + '" aria-label="' + escapeHTML(opts.cancelLabel || 'Close') + '"><i class="ph ph-x" aria-hidden="true"></i></button>' +
     '</div>';
 
   const bodyHtml = typeof opts.body === 'string'
@@ -136,9 +138,10 @@ export function createDialog(opts: DialogOptions): HTMLElement {
   backdrop.className = 'gm-ui-dialog-backdrop';
   if (id && id !== '') backdrop.id = id;
 
-  const describedBy = opts.describedBy ? ' aria-describedby="' + escapeHTML(opts.describedBy) + '"' : '';
+  const describedById = opts.describedBy || subtitleId || '';
+  const describedByAttr = describedById ? ' aria-describedby="' + escapeHTML(describedById) + '"' : '';
   backdrop.innerHTML =
-    '<div class="' + cn(cls) + '" role="dialog" aria-modal="true" aria-labelledby="' + titleId + '"' + describedBy + ' tabindex="-1">' +
+    '<div class="' + cn(cls) + '" role="' + role + '" aria-modal="true" aria-labelledby="' + titleId + '"' + describedByAttr + ' tabindex="-1">' +
       headerHtml +
       bodyHtml +
       footerHtml +
@@ -166,6 +169,16 @@ export function dialogCard(dialog: HTMLElement): HTMLElement | null {
  * focusable) and returns the root element.
  */
 export function openDialog(opts: DialogOptions): HTMLElement {
+  const previouslyFocused = typeof document !== 'undefined'
+    ? (document.activeElement as HTMLElement | null)
+    : null;
+
+  const appRoot = typeof document !== 'undefined' ? document.getElementById('app') : null;
+  const prevAriaHidden = appRoot ? appRoot.getAttribute('aria-hidden') : null;
+  if (appRoot) {
+    appRoot.setAttribute('aria-hidden', 'true');
+  }
+
   const dialog = createDialog(opts);
   const card = dialogCard(dialog);
   document.body.appendChild(dialog);
@@ -181,7 +194,11 @@ export function openDialog(opts: DialogOptions): HTMLElement {
     }
     if (e.key !== 'Tab') return;
     const items = focusableElements(card as HTMLElement);
-    if (items.length === 0) return;
+    if (items.length === 0) {
+      e.preventDefault();
+      card?.focus();
+      return;
+    }
     const active = document.activeElement;
     const activeIdx = items.indexOf(active as HTMLElement);
     if (e.shiftKey) {
@@ -241,6 +258,16 @@ export function openDialog(opts: DialogOptions): HTMLElement {
   cleanupRegistry.set(dialog, () => {
     document.removeEventListener('keydown', onKeydown, true);
     dialog.removeEventListener('click', onBackdropClick);
+    if (appRoot) {
+      if (prevAriaHidden !== null) {
+        appRoot.setAttribute('aria-hidden', prevAriaHidden);
+      } else {
+        appRoot.removeAttribute('aria-hidden');
+      }
+    }
+    if (previouslyFocused && typeof previouslyFocused.focus === 'function' && document.contains(previouslyFocused)) {
+      try { previouslyFocused.focus(); } catch { /* best effort */ }
+    }
     opts.onClose?.();
   });
 

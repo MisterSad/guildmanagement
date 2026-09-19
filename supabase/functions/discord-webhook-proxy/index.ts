@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -197,6 +198,15 @@ serve(async (req: Request) => {
     return json({ ok: false, error: "invalid_discord_webhook_url" }, 400);
   }
 
+  // Rate-limiting: max 30 dispatches per minute per client IP
+  const clientIp = extractClientIp(req.headers);
+  const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const rateLimitResult = await checkAndRecordIpAttempt(adminClient, clientIp, { limit: 30, windowMs: 60000 });
+  if (!rateLimitResult.allowed) {
+    logger.warn("Rate limit exceeded for discord webhook proxy", { clientIp, guild: requestedGuild });
+    return json({ ok: false, error: "rate_limit_exceeded", retry_after: 60 }, 429);
+  }
+
   try {
     logger.info("Dispatching Discord webhook", {
       guild: requestedGuild,
@@ -230,6 +240,12 @@ serve(async (req: Request) => {
 
     if (discordRes.ok || discordRes.status === 204 || discordRes.status === 200) {
       return json({ ok: true, status: discordRes.status });
+    }
+
+    if (discordRes.status === 429) {
+      const retryAfter = discordRes.headers.get("retry-after") || "5";
+      logger.warn("Discord returned 429 Rate Limit", { retryAfter, guild: requestedGuild });
+      return json({ ok: false, error: "discord_rate_limited", retry_after: Number(retryAfter) || 5 }, 429);
     }
 
     const errText = await discordRes.text().catch(() => "");

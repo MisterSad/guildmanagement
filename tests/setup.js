@@ -2,6 +2,8 @@
 // replicate the src/main.ts bridges for the test environment.
 import { t as i18nT, getLang as i18nGetLang, setLang as i18nSetLang, applyTranslations as i18nApplyTranslations } from '../src/core/i18n/i18n';
 import { installGmBridge } from '../src/core/gm-bridge';
+import { beforeEach } from 'vitest';
+import { setVerifiedRole } from '../src/core/auth/roles';
 
 if (typeof window !== 'undefined') {
     window.GM_I18N = { t: i18nT, getLang: i18nGetLang, setLang: i18nSetLang, applyTranslations: i18nApplyTranslations };
@@ -11,6 +13,10 @@ if (typeof window !== 'undefined') {
     installGmBridge();
     if (!window.currentGuild) window.currentGuild = 'ALPHA';
 }
+
+beforeEach(() => {
+    setVerifiedRole(null, null);
+});
 
 // Node 26 ships an experimental global `localStorage` (gated behind
 // --localstorage-file), which makes vitest's jsdom environment skip the real

@@ -1,5 +1,34 @@
 # Changelog
 
+## [3.19.0] - 2026-09-19
+
+- **Platform Overhaul: Comprehensive Audit Remediation & Modernization (V3.19.0)** — full execution of the 18-ticket backlog derived from the September 2026 comprehensive audit of the FGF Guild Management Tool production PWA, strengthening security, database performance, client observability, accessibility, and architectural resilience.
+  - **Security & Zero-Trust Row Level Security (RLS)**:
+    - `[TICKET-01] [SEC-01]`: Applied `FORCE ROW LEVEL SECURITY` across all 26 active public Postgres tables (`20260920100000_force_rls_all_tables.sql`), guaranteeing that table owners (`postgres`) and background scripts cannot bypass tenant isolation policies.
+    - `[TICKET-02] [SEC-02]`: Harmonized `normalizeRole()` to canonical roles only (`super_admin`, `server_admin`, `guild_admin`, `member`) across `src/core/auth/roles.ts` and `src/core/utils/text.ts`, eliminating ambiguous legacy fallbacks.
+    - `[TICKET-03] [SEC-03]`: Hardened HTML injection defense across 15 views and helpers with static imports of `escapeHTML()` / `esc()`, preventing XSS on player nicknames and user inputs.
+    - `[TICKET-09] [SEC-05]`: Hardened role resolution to prioritize verified GoTrue JWT claims in memory over unverified `localStorage` data across `supabase.ts`, `auth.controller.ts`, `gm-bridge.ts`, and `router.ts`.
+    - `[TICKET-17] [SEC-06]`: Upgraded HTTP security headers in `vercel.json` with strict `Strict-Transport-Security` (HSTS 2 years + preload), `Cross-Origin-Opener-Policy` (COOP `same-origin`), `Cross-Origin-Resource-Policy` (CORP `same-origin`), and CSP `upgrade-insecure-requests;`.
+  - **Performance & Database Optimization**:
+    - `[TICKET-06] [PERF-01]`: Rescheduled `fgf-event-reminders` pg_cron job to 5-minute ticks (`*/5 * * * *`) (`20260920120000_reschedule_event_reminders_cron.sql`) to prevent notification loss and bounded execution windows.
+    - `[TICKET-07] [PERF-02]`: Bundled all 5 external CSS stylesheets into Vite via `src/main.ts`, eliminating unminified link tags and duplicate distribution files.
+    - `[TICKET-08] [SEC-04]`: Packaged `@phosphor-icons/web` locally via npm, purged external CDN scripts from `index.html`, and removed `cdn.jsdelivr.net` / `unpkg.com` from `vercel.json` CSP.
+    - `[TICKET-10] [PERF-03]`: Implemented SHA-256 deduplication cache for Gemini Vision OCR (`public.ocr_cache` with 7-day TTL, <50ms response on cache hits) in `supabase/functions/ocr-guild-members/index.ts`.
+    - `[TICKET-16] [PERF-04]`: Added composite foreign key coverage indexes on high-volume tables (`event_participants(guild, pseudo)`, `shadowfront_squads(guild, pseudo)`, `sanctions(guild, pseudo)`, `guild_transfers(source_guild, target_guild, resolved_by)`) and dropped redundant indexes on `event_status` (`20260920140000_fk_indexes_and_perf_optimizations.sql`).
+  - **Observability & Error Reporting**:
+    - `[TICKET-04] [OBS-01]`: Created client-side error reporting RPC `public.gm_report_client_error` with IP rate limiting and tenant isolation (`20260920110000_client_error_logging_rpc.sql`) wired into `src/core/logger/logger.ts`.
+    - `[TICKET-05] [OBS-02]`: Integrated `@sentry/browser` client monitoring in `src/core/monitoring/sentry.ts` with comprehensive PII, password, and JWT token scrubbing.
+  - **Accessibility & UX**:
+    - `[TICKET-11] [A11Y-01]`: Hardened `src/components/ui/Dialog.ts` to full WCAG 2.2 AA compliance: bidirectional focus trap, `#app[aria-hidden="true"]` background inertness, semantic `dialog`/`alertdialog` roles, and focus restoration on dismiss.
+  - **Testing, Quality & Build Hygiene**:
+    - `[TICKET-12] [MAINT-01]`: Excluded test configs (`playwright.config.js`, `vitest.config.js`) from `dist/`, purged orphaned files, and archived obsolete maintenance scripts to `scripts/archive/`.
+    - `[TICKET-13] [TEST-01]`: Consolidated Playwright E2E testing suite with optimized `serve` command and 3 new end-to-end specifications (Dialog a11y, Custom Message Modal, Session Lifecycle).
+    - `[TICKET-14] [TEST-02]`: Hardened `discord-webhook-proxy` Edge Function with IP sliding-window rate limiting (30 req/min) and Discord 429 `Retry-After` propagation, backed by load test suite.
+  - **Architecture Documentation**:
+    - `[TICKET-15] [DOC-01]`: Authored 5 new Architecture Decision Records (`ADR-010` to `ADR-014`), updated `docs/adr/README.md` index, and modernized `ARCHITECTURE.md`.
+    - `[TICKET-18] [REL-01]`: Bumped application version to `v3.19.0`, synchronized `package.json`, `package-lock.json`, and `constants.ts`, and published dual changelogs.
+  - **Verification**: `npm run type-check` (0 TS errors), 129 Vitest test suites green (1,446 tests passed), and 100% clean production build.
+
 ## [3.18.4]
 
 - **Feature: Video & Screenshot OCR Overhaul — 60-Image Upload Pipeline, Sharpness Keyframing & Zero-Trust Roster Guardrails (V3.18.4)** — modernizes the OCR engine for video screen-recordings and large screenshot batches to eliminate missing players, prevent HTTP 413 upload errors, and safeguard roster integrity.

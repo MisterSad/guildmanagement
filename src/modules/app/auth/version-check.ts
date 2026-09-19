@@ -13,15 +13,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { APP_VERSION } from '../../../core/config/constants';
+import { escapeHTML } from '../../../core/utils/text';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
 }
 
 function esc(value: unknown): string {
-  const g = winAny().GM;
-  if (g && typeof g.escapeHTML === 'function') return g.escapeHTML(value);
-  return value === null || value === undefined ? '' : String(value);
+  return escapeHTML(value);
 }
 
 let newVersionBannerShown = false;

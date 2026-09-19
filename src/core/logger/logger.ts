@@ -157,15 +157,15 @@ class ClientLogger {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) return;
-      await supabase.from('system_audit_logs').insert({
-        level: entry.level,
-        service: entry.service,
-        correlation_id: entry.correlationId,
-        guild: entry.tenantId,
-        user_identifier: entry.userId,
-        message: entry.message,
-        metadata: entry.metadata ?? {},
-        error_details: entry.error ?? null,
+      await supabase.rpc('gm_report_client_error', {
+        p_level: entry.level,
+        p_service: entry.service,
+        p_correlation_id: entry.correlationId,
+        p_guild: entry.tenantId,
+        p_user_identifier: entry.userId,
+        p_message: entry.message,
+        p_metadata: entry.metadata ?? {},
+        p_error_details: entry.error ?? null,
       });
     } catch (_) {
       // Best-effort remote logging

@@ -275,8 +275,18 @@ The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild l
 ### 8. Deployment & Infrastructure Topology
 
 - **Production Frontend**: Hosted on Vercel at `https://guildmanagement.vercel.app` (branch `main`).
-- **Content Security Policy (CSP)**: Hardened policy with `frame-ancestors 'none'`, `object-src 'none'`, `media-src 'self' blob:` (see §6 — omitting this blocks any blob-backed `<video>`/`<audio>` identically on every browser), and SRI-pinned CDN resources (`https://cdn.jsdelivr.net`, `https://unpkg.com`).
+- **Content Security Policy (CSP)**: Hardened policy with `frame-ancestors 'none'`, `object-src 'none'`, `media-src 'self' blob:` (see §6 — omitting this blocks any blob-backed `<video>`/`<audio>` identically on every browser), Sentry APM ingest (`*.ingest.sentry.io`), and **zero external CDN scripts** (`cdn.jsdelivr.net` and `unpkg.com` eliminated; `@phosphor-icons/web` packaged locally).
 - **CORS Allowlist**: Strictly locked to `https://guildmanagement.vercel.app`, `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:3000`, and authorized `https://*.vercel.app` preview environments.
+
+---
+
+### 9. Production Security & Quality Hardening (September 2026)
+
+- **FORCE ROW LEVEL SECURITY across 100% of public tables** ([ADR-010](./docs/adr/ADR-010-force-row-level-security-all-public-tables.md)): Multi-tenant isolation is enforced even against table owners and superusers via `FORCE ROW LEVEL SECURITY` on all 26 active public tables and any new tables (`ocr_cache`).
+- **Client Error Reporting & Sentry APM** ([ADR-011](./docs/adr/ADR-011-client-error-reporting-and-sentry-apm.md)): `ClientLogger` routes crash telemetry through the rate-limited `public.gm_report_client_error` RPC (`search_path = ''`). Production runtime crashes are captured by `@sentry/browser` with strict PII and token scrubbers.
+- **SHA-256 OCR Deduplication Cache** ([ADR-012](./docs/adr/ADR-012-sha256-ocr-deduplication-cache.md)): Gemini Vision roster analysis computes a canonical SHA-256 fingerprint over image buffers and scan metadata, serving cache hits in <50ms with `cached: true` and persisting entries in `public.ocr_cache` with a 7-day TTL.
+- **WCAG 2.2 Level AA Modal Accessibility** ([ADR-013](./docs/adr/ADR-013-wcag-2-2-aa-dialog-accessibility-and-focus-trap.md)): `Dialog.ts` applies dynamic semantic roles (`alertdialog` for `tone: 'danger'`, `dialog` otherwise), traps keyboard focus bidirectionally, sets `aria-hidden="true"` on `#app` during modal display, and restores focus to `previouslyFocused` on dismissal.
+- **Root Scripts Hygiene & Discord Webhook Resilience** ([ADR-014](./docs/adr/ADR-014-root-scripts-hygiene-and-discord-webhook-resilience.md)): `scripts/build.js` strictly excludes test configs (`playwright.config.js`, `vitest.config.js`) from `dist/`, legacy maintenance scripts are archived in `scripts/archive/`, and `discord-webhook-proxy` enforces 30 req/min IP rate limiting and natively propagates Discord HTTP 429 `Retry-After` delays.
 
 ---
 
@@ -286,7 +296,7 @@ The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild l
 - **Reactive State Store** (`src/core/store/store.ts`): Centralized Pub/Sub state store with subscription disposers.
 - **Web Worker Engine** (`src/workers/matchup.worker.ts`): Offloaded combinatorial computation for GvG/SvS dangerosity and draft mercato simulations.
 - **BaseComponent Framework** (`src/components/ui/BaseComponent.ts`): Encapsulated UI component lifecycle with automatic listener cleanup.
-- **i18n**: `src/core/i18n/i18n.ts` exists but is intentionally **not** the active dictionary — `main.ts` prefers the legacy `i18n.js`'s `GM_I18N.t`, since the `/src` dictionary only covers strings authored so far and would silently blank out every string outside it. Migrating i18n itself is unstarted.
+- **i18n**: Fully served by `/src/core/i18n/i18n.ts` (Strangler cutover), bridging the complete dictionary to `window.GM_I18N` and `window.GM.t`.
 - **Incident, resolved 2026-08-31 / feature removed 2026-09**: `svs-matchup.ts`/`gvg-matchup.ts` existed as 50-line stubs (hardcoded fake server/guild IDs, no real table render) that risked silently shadowing the complete legacy `svs-matchup.js`/`gvg-matchup.js` (700+ lines each) the moment `main.ts` started executing in production, since both write into the same DOM containers. The stubs were deleted first, then the whole Settings tab (Draft Mercato / SvS / GvG matchup) was removed entirely, so `svs-matchup.js`, `gvg-matchup.js`, `cross-rank.js` and `#tab-settings` no longer exist.
 
 ### Frontend Resilience & Main-Thread Performance (added 2026-09-13)

@@ -36,7 +36,8 @@ import {
 } from './api/supabase';
 import {
   roleFromStorage, isSuperAdmin, isServerAdmin, isGuildAdmin, getActiveGuild, getCurrentPseudo,
-  isPaymentsDisabled, isGuildSubscriptionExpired, canWriteGuild, ensureGuildRestriction, detectClientEnvironment
+  isPaymentsDisabled, isGuildSubscriptionExpired, canWriteGuild, ensureGuildRestriction, detectClientEnvironment,
+  setVerifiedRole, getVerifiedRole, getVerifiedAccountId
 } from './auth/roles';
 import { showToast } from './dom/toast';
 import { attachNumberFormatter, pickEventStart, openTermsModal, closeTermsModal, drawScoreTrendChart } from './dom/ui';
@@ -104,7 +105,7 @@ export function installGmBridge(): void {
     // Roles / context
     roleFromStorage, isSuperAdmin, isServerAdmin, isGuildAdmin, getActiveGuild, getCurrentPseudo,
     isPaymentsDisabled, isGuildSubscriptionExpired, canWriteGuild, ensureGuildRestriction,
-    detectClientEnvironment,
+    detectClientEnvironment, setVerifiedRole, getVerifiedRole, getVerifiedAccountId,
 
     // DOM / UI
     showToast, attachNumberFormatter, pickEventStart, openTermsModal, closeTermsModal, drawScoreTrendChart,

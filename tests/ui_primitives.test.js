@@ -106,12 +106,11 @@ describe('theme.css — semantic shadcn token layer over tokens.css', () => {
     expect(theme).not.toContain('[data-theme="light"]');
   });
 
-  it('is served right after tokens.css in index.html', () => {
-    const html = read('index.html');
-    const tokensIdx = html.indexOf('href="tokens.css?v=6"');
-    const themeIdx = html.indexOf('href="theme.css?v=1"');
+  it('is loaded right after tokens.css in src/main.ts cascade order', () => {
+    const mainTs = read('src/main.ts');
+    const tokensIdx = mainTs.indexOf("import '../tokens.css';");
+    const themeIdx = mainTs.indexOf("import '../theme.css';");
     expect(tokensIdx).toBeGreaterThan(-1);
     expect(themeIdx).toBeGreaterThan(tokensIdx);
-    expect(html.slice(tokensIdx, themeIdx)).not.toContain('rel="stylesheet" href="');
   });
 });

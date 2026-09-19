@@ -5,6 +5,15 @@
  * Bootstraps i18n, Supabase bridge, reactive Store, Workers, Services, PWA, and UI Components.
  */
 
+// Core styles bundled & minified by Vite (cascade order: tokens -> theme -> styles -> components -> shell)
+import '../tokens.css';
+import '../theme.css';
+import '../styles.css';
+import '../components.css';
+import '../shell.css';
+import '@phosphor-icons/web/regular';
+import '@phosphor-icons/web/duotone';
+
 import { t, getLang, setLang, applyTranslations } from './core/i18n/i18n';
 import { getSupabaseClient, escapeHTML, handleSessionInvalidation, resetSessionInvalidationFlag } from './core/api/supabase';
 import { configureFetchErrorRuntime } from './core/api/fetch-errors';
@@ -196,6 +205,10 @@ import { ToastNotification } from './components/ui/Toast';
 import { PortalChart } from './modules/portal/components/PortalChart';
 import { initPWA, promptPWAInstall, setAppNotificationBadge } from './core/pwa/pwa';
 import { initTooltips } from './components/ui/Tooltip';
+import { initSentry } from './core/monitoring/sentry';
+
+// Initialize Sentry APM & crash reporting early
+initSentry();
 
 // Initialize global window.GM bridge for full backward compatibility
 if (typeof window !== 'undefined') {
@@ -212,6 +225,7 @@ if (typeof window !== 'undefined') {
   const rawClient = wAny.GM.db || (typeof wAny.supabase?.createClient === 'function'
     ? wAny.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
     : createClient(SUPABASE_URL, SUPABASE_KEY));
+  wAny.supabase = wAny.supabase || { createClient };
   wAny.GM.db = installDbWriteGuard(rawClient);
   // Assemble the full legacy window.GM surface (~108 members) from the typed
   // /src modules (gm-utils Strangler cutover).

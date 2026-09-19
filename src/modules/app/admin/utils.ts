@@ -6,6 +6,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { escapeHTML } from '../../../core/utils/text';
+
 export function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
 }
@@ -20,9 +22,7 @@ export function t(key: string): string {
 }
 
 export function esc(value: unknown): string {
-  const g = gm();
-  if (g && typeof g.escapeHTML === 'function') return g.escapeHTML(value);
-  return value === null || value === undefined ? '' : String(value);
+  return escapeHTML(value);
 }
 
 export function getDb(): any {

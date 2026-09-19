@@ -19,6 +19,7 @@
 
 import { patchAppState, resetAppState } from '../state/app-state';
 import { showToast } from '../dialogs/dialogs.service';
+import { setVerifiedRole } from '../../../core/auth/roles';
 
 export type AuthTab = 'signin' | 'register' | 'guild-request' | 'login' | 'request';
 
@@ -168,12 +169,14 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
   }
 
   if (!info) {
+    setVerifiedRole(null, null);
     if (localRole || localUser) await doLogout();
     return { restored: false };
   }
 
   // Player-portal session: restore the portal directly, full page.
   if (info.role === 'member') {
+    setVerifiedRole('member', info.accountId);
     if (store) {
       store.setItem('gm_role', 'member');
       store.setItem('gm_portal_session', '1');
@@ -238,6 +241,7 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
   }
 
   const role = info.role;
+  setVerifiedRole(normalizeRole(role) as any, info.accountId);
   if (store) {
     store.setItem('gm_role', role);
     if (info.accountId) store.setItem('gm_user', info.accountId);
@@ -272,6 +276,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
 
   const role = normalizeRole(resp.role);
   const store = ls();
+  setVerifiedRole(role as any, canonicalUser);
 
   if (role === 'member') {
     patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
@@ -354,6 +359,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
 // ── Logout / login screens ───────────────────────────────────────────────────
 
 export async function doLogout(): Promise<void> {
+  setVerifiedRole(null, null);
   const x = g();
   if (x && typeof x.logout === 'function') {
     try {

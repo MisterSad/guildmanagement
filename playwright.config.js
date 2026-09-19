@@ -22,8 +22,8 @@ export default defineConfig({
   webServer: {
     // Build the production bundle, then serve dist/ at the root so `/sw.js`,
     // `/terms.html` and `/assets/*` all resolve exactly as in production.
-    command: 'npm run build && npx serve dist -l 4173 --no-clipboard',
-    port: 4173,
+    command: 'npm run build && npx --no-install serve dist -l 4173 --no-clipboard',
+    url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     stdout: 'ignore',

@@ -10,6 +10,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getDomRefs, getDomRef } from './dom-refs';
+import { getVerifiedRole } from '../../core/auth/roles';
 
 function w(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -161,7 +162,7 @@ function activateTabVisual(tabId: string, viewId?: string | null): void {
 export async function onTabActivated(tabId: string, viewId?: string | null): Promise<void> {
   if (!tabId) return;
   const store = ls();
-  const role = store ? store.getItem('gm_role') : null;
+  const role = getVerifiedRole() || (store ? store.getItem('gm_role') : null);
   if (role === 'member' && tabId !== 'player-portal-view' && tabId !== 'portal') {
     return;
   }
@@ -207,7 +208,7 @@ export function showLogin(): void {
  */
 export function restoreSavedTab(defaultTab = 'overview'): void {
   const store = ls();
-  const role = store ? store.getItem('gm_role') : null;
+  const role = getVerifiedRole() || (store ? store.getItem('gm_role') : null);
   if (role === 'member') return;
 
   const saved = (store ? store.getItem('gm_active_tab') : null)
