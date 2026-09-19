@@ -108,6 +108,7 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
     }
 
     // ── Migrated /src-backed view modules ────────────────────────────────────
+    if (tabId === 'admin-migration-hub' || tabId === 'migration-hub') { await invokeMethod('GM_MIGRATION_HUB', 'load'); }
     if (tabId === 'tab-tickets') { await invokeMethod('GM_TICKETS', 'load'); }
     if (tabId === 'tab-sanctions' || tabId === 'sanctions') { await invokeMethod('GM_SANCTIONS', 'load'); }
     if (tabId === 'gm-overview' || tabId === 'overview') { await invokeMethod('GM_OVERVIEW', 'load'); }

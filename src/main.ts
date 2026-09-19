@@ -80,6 +80,7 @@ import * as badgesService from './modules/badges/badges.service';
 import { pushService } from './modules/push/PushService';
 import { helpView } from './modules/help/HelpView';
 import { ticketsView } from './modules/tickets/views/TicketsView';
+import { migrationHubView } from './modules/migration/views/MigrationHubView';
 import { gloryView } from './modules/glory/views/GloryView';
 import { sanctionsView } from './modules/sanctions/views/SanctionsView';
 import { historyView } from './modules/history/views/HistoryView';
@@ -499,6 +500,9 @@ if (typeof window !== 'undefined') {
   (window as any).GM_TICKETS = {
     load: () => ticketsView.load(),
     loadingHtml: () => ticketsView.loadingHtml()
+  };
+  (window as any).GM_MIGRATION_HUB = {
+    load: () => migrationHubView.load()
   };
 
   // Wave 2 Strangler bridges (glory / sanctions / history).

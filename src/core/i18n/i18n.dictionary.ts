@@ -423,6 +423,7 @@ export const EN: Record<string, string> = {
             gm_nav_stats:          'Stats',
             gm_nav_sanctions:      'Sanctions',
             gm_nav_banned:         'Banned players',
+            gm_nav_migration_hub:  'Migration Hub',
             /* ── Bug-report ticketing ── */
             gm_nav_tickets:        'Tickets',
             ticket_report_bug:     'Report a bug',

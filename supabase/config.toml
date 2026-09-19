@@ -472,3 +472,7 @@ verify_jwt = true
 
 [functions.tickets]
 verify_jwt = true
+
+[functions.migration-summary]
+verify_jwt = true
+

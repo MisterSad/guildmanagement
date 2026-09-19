@@ -1,3 +1,39 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.20.0**
+
+Hey everyone! With the inter-server migration season heating up, I just released a brand new major feature to give our leadership teams a decisive strategic edge: the **Migration Hub**! 🗺️⚔️
+
+Managing intel across alliances and rival servers used to mean scattered Discord notes, lost screenshots, and endless back-and-forth. The Migration Hub solves this with a dedicated, top-end collaborative wiki built directly into the Admin dashboard:
+
+---
+
+### 🏛️ 1. Dual-Scope Intel: Guild & Server Spaces
+- **What changed**: The Migration Hub is split into two secure operational scopes:
+  - **Guild Intel**: Private space for your alliance officers to track confidential recruit inquiries, internal diplomacy, and target rosters.
+  - **Server Intel**: Shared state-level intelligence room for authorized cross-alliance leaders to align on defense pacts, incoming/outgoing whales, and server migration balance.
+- **The benefit**: Clear separation between alliance secrets and state-wide cooperation. Zero data leakage, backed by rigorous Zero-Trust database security policies!
+
+---
+
+### 📸 2. Instant Screenshot Paste & Smart Client Compression
+- **What changed**: You can paste screenshots directly into notes with `Ctrl+V` or drag-and-drop them into the editor. I built an automatic client-side compressor that optimizes images to clean WebP format before upload.
+- **The benefit**: Bulky 5–10MB mobile screenshots are instantly compressed down to ~100KB without visible quality loss. Uploads are lightning-fast, storage is conserved, and you can inspect full-size captures anytime using the built-in lightbox viewer.
+
+---
+
+### 🧠 3. Gemini AI Note Summaries & Scope Briefings
+- **What changed**: Powered by Google's Gemini 2.5 Flash API, I added instant AI intelligence summaries:
+  - **Single Page Summary**: Quickly condenses lengthy meeting notes, candidate stats, or negotiation logs into key takeaways.
+  - **Executive Briefing**: Synthesizes all active notes across the entire Guild or Server scope into an executive briefing covering ongoing discussions, key candidates, identified risks, and recommended next steps.
+- **The benefit**: Catch up on days of complex diplomatic talks in 5 seconds. Perfect for busy officers jumping in before war calls.
+
+---
+
+### ⚡ 4. Real-Time Collaboration & Discord Export
+- **What changed**: The wiki syncs in real-time across all active officer sessions. When an officer creates or updates a note, your page list refreshes immediately. Plus, I added a one-click **"Export Discord"** button that formats your intel notes into beautiful Discord markdown.
+- **The benefit**: Seamless live coordination and zero copy-paste friction when sharing public updates with your guild!
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.19.1**
 
 Hey everyone! I just rolled out a quality-of-life update addressing international guild coordination: **Automated IANA Timezones & Dynamic Officer Clocks**! 🌍⏰

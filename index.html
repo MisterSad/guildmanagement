@@ -1393,6 +1393,219 @@
                 </div>
             </main>
 
+            <!-- ─ Tab: Migration Hub (Admin & Server Intel Wiki) ─────────── -->
+            <main class="dashboard-content tab-panel" id="admin-migration-hub">
+                <div class="gm-page">
+                    <header class="gm-page-header">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; width:100%;">
+                            <div>
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+                                    <h1 class="gm-page-title">Migration Hub</h1>
+                                    <span class="gm-badge gm-badge-blue" style="font-size:0.75rem; padding:2px 8px; border-radius:12px;">Admin Intel</span>
+                                </div>
+                                <p class="gm-page-subtitle">Collaborative wiki and strategic notes for cross-server migrations</p>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                                <div class="gm-segmented" id="migration-hub-scope-toggle" style="display:inline-flex; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:2px;">
+                                    <button type="button" class="gm-seg-btn active" data-scope="guild" id="migration-hub-scope-guild-btn" style="padding:0.4rem 0.85rem; border-radius:4px; font-size:0.82rem; font-weight:600; cursor:pointer; border:none; background:var(--accent); color:#fff; display:inline-flex; align-items:center; gap:0.4rem;">
+                                        <i class="ph ph-shield"></i> <span id="migration-hub-guild-label">Guild Intel</span>
+                                    </button>
+                                    <button type="button" class="gm-seg-btn" data-scope="server" id="migration-hub-scope-server-btn" style="padding:0.4rem 0.85rem; border-radius:4px; font-size:0.82rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.4rem;">
+                                        <i class="ph ph-globe"></i> <span id="migration-hub-server-label">Server Intel</span>
+                                    </button>
+                                </div>
+                                <button type="button" class="gm-btn gm-btn-outline" id="migration-hub-ai-digest-btn" style="display:inline-flex; align-items:center; gap:0.4rem; border-color:var(--accent); color:var(--accent);" title="Generate an AI executive briefing across all notes in this scope">
+                                    <i class="ph ph-sparkle"></i> <span>AI Digest</span>
+                                </button>
+                                <button type="button" class="gm-btn gm-btn-primary" id="migration-hub-new-page-btn" style="display:inline-flex; align-items:center; gap:0.4rem;">
+                                    <i class="ph ph-plus"></i> <span>New Wiki Page</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- Two-column Wiki layout -->
+                    <div class="gm-row" style="gap:1.25rem; align-items:flex-start; margin-top:1.25rem;">
+                        <!-- Left column: Navigation & page list -->
+                        <div style="width:340px; min-width:300px; max-width:380px; flex-shrink:0;">
+                            <div class="gm-card gm-card-padded" style="margin-bottom:1rem; padding:0.85rem;">
+                                <div class="gm-input-with-icon" style="margin-bottom:0.75rem;">
+                                    <i class="ph ph-magnifying-glass gm-icon"></i>
+                                    <input type="text" id="migration-hub-search" class="gm-input" placeholder="Search pages, intel...">
+                                </div>
+                                <div style="display:flex; flex-wrap:wrap; gap:0.35rem;" id="migration-hub-category-filters">
+                                    <button type="button" class="gm-chip gm-chip-active" data-cat="all" style="cursor:pointer;">All</button>
+                                    <button type="button" class="gm-chip" data-cat="strategy" style="cursor:pointer;">Strategy</button>
+                                    <button type="button" class="gm-chip" data-cat="agreements" style="cursor:pointer;">Agreements</button>
+                                    <button type="button" class="gm-chip" data-cat="recruitment" style="cursor:pointer;">Recruitment</button>
+                                    <button type="button" class="gm-chip" data-cat="blacklist" style="cursor:pointer;">Blacklist</button>
+                                    <button type="button" class="gm-chip" data-cat="general" style="cursor:pointer;">General</button>
+                                </div>
+                            </div>
+
+                            <div id="migration-hub-pages-container" style="display:flex; flex-direction:column; gap:0.6rem;">
+                                <div class="gm-empty">
+                                    <i class="ph-duotone ph-ghost gm-icon"></i>
+                                    <div class="gm-empty-title">Loading pages...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right column: View / Edit -->
+                        <div style="flex:1; min-width:0;">
+                            <!-- View Card -->
+                            <div class="gm-card gm-card-padded" id="migration-hub-view-card">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; gap:1rem; flex-wrap:wrap;">
+                                    <div>
+                                        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;" id="migration-hub-view-badges">
+                                            <span class="gm-chip" id="migration-hub-view-category-badge">General</span>
+                                            <span class="gm-chip gm-chip-warning" id="migration-hub-view-pinned-badge" style="display:none;"><i class="ph ph-push-pin"></i> Pinned</span>
+                                            <span class="gm-chip" id="migration-hub-view-scope-badge">Guild</span>
+                                        </div>
+                                        <h2 id="migration-hub-view-title" style="margin:0; font-size:1.4rem; font-weight:700; color:var(--fg);">Select a page</h2>
+                                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem;" id="migration-hub-view-meta"></div>
+                                    </div>
+                                    <div style="display:flex; gap:0.5rem; align-items:center;" id="migration-hub-view-actions">
+                                        <button type="button" class="gm-btn gm-btn-outline gm-btn-sm" id="migration-hub-ai-summary-btn" title="Summarize this page with Gemini AI" style="border-color:var(--accent); color:var(--accent);">
+                                            <i class="ph ph-sparkle"></i> <span>AI Summary</span>
+                                        </button>
+                                        <button type="button" class="gm-btn gm-btn-outline gm-btn-sm" id="migration-hub-edit-btn" title="Edit this page">
+                                            <i class="ph ph-note-pencil"></i> <span>Edit</span>
+                                        </button>
+                                        <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-pin-toggle-btn" title="Pin or unpin">
+                                            <i class="ph ph-push-pin"></i>
+                                        </button>
+                                        <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-export-discord-btn" title="Copy formatted text for Discord">
+                                            <i class="ph ph-discord-logo"></i> <span>Discord</span>
+                                        </button>
+                                        <button type="button" class="gm-btn gm-btn-danger gm-btn-sm" id="migration-hub-delete-btn" title="Delete page">
+                                            <i class="ph ph-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- AI Summary Box -->
+                                <div id="migration-hub-page-ai-box" style="display:none; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.3); border-radius:8px; padding:1rem; margin-bottom:1.25rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                                        <div style="font-weight:700; font-size:0.92rem; color:var(--accent); display:flex; align-items:center; gap:0.4rem;">
+                                            <i class="ph ph-sparkle"></i> <span>Gemini AI Summary</span>
+                                        </div>
+                                        <div style="display:flex; gap:0.35rem;">
+                                            <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-copy-ai-summary-btn" title="Copy AI summary" style="font-size:0.75rem; padding:2px 8px;">
+                                                <i class="ph ph-copy"></i> <span>Copy</span>
+                                            </button>
+                                            <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="migration-hub-close-ai-summary-btn" title="Close summary" style="font-size:0.75rem; padding:2px 6px;">
+                                                <i class="ph ph-x"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="migration-hub-page-ai-content" style="font-size:0.88rem; line-height:1.55; color:var(--text-normal);"></div>
+                                </div>
+
+                                <div id="migration-hub-view-content" class="gm-wiki-content" style="line-height:1.65; font-size:0.92rem; color:var(--text-normal); margin-bottom:1.5rem; min-height:120px;">
+                                </div>
+
+                                <div id="migration-hub-view-gallery-section" style="border-top:1px solid var(--border-soft); padding-top:1.25rem;">
+                                    <h4 style="font-size:0.9rem; font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                                        <i class="ph ph-image"></i> <span>Screenshots &amp; Intel Attachments</span>
+                                        <span class="gm-count" id="migration-hub-view-attachments-count">0</span>
+                                    </h4>
+                                    <div id="migration-hub-view-attachments" style="display:flex; flex-wrap:wrap; gap:0.75rem;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Edit Card -->
+                            <div class="gm-card gm-card-padded" id="migration-hub-edit-card" style="display:none;">
+                                <h3 id="migration-hub-form-title" style="margin-top:0; margin-bottom:1rem; font-size:1.15rem; font-weight:700;">Edit Page</h3>
+                                <form id="migration-hub-form">
+                                    <div class="gm-row" style="gap:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap;">
+                                        <div style="flex:2; min-width:200px;">
+                                            <label class="gm-label" style="font-size:0.8rem; font-weight:600; margin-bottom:0.25rem; display:block;">Title</label>
+                                            <input type="text" id="migration-hub-form-title-input" class="gm-input" placeholder="e.g. State 1089 NAP Agreement or Target Whale Bio" required>
+                                        </div>
+                                        <div style="width:160px;">
+                                            <label class="gm-label" style="font-size:0.8rem; font-weight:600; margin-bottom:0.25rem; display:block;">Category</label>
+                                            <select id="migration-hub-form-category-select" class="gm-input">
+                                                <option value="general">General</option>
+                                                <option value="strategy">Strategy</option>
+                                                <option value="agreements">Agreements</option>
+                                                <option value="recruitment">Recruitment</option>
+                                                <option value="blacklist">Blacklist</option>
+                                            </select>
+                                        </div>
+                                        <div style="display:flex; align-items:flex-end; padding-bottom:0.4rem;">
+                                            <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; cursor:pointer;">
+                                                <input type="checkbox" id="migration-hub-form-pinned-check">
+                                                <span><i class="ph ph-push-pin"></i> Pin to top</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Markdown Toolbar -->
+                                    <div style="display:flex; gap:0.35rem; margin-bottom:0.4rem; flex-wrap:wrap;" class="gm-wiki-toolbar">
+                                        <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-action="h2" title="Heading 2"><b>H2</b></button>
+                                        <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-action="h3" title="Heading 3"><b>H3</b></button>
+                                        <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-action="bold" title="Bold"><i class="ph ph-text-b"></i></button>
+                                        <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-action="italic" title="Italic"><i class="ph ph-text-italic"></i></button>
+                                        <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-action="list" title="Bullet List"><i class="ph ph-list-bullets"></i></button>
+                                        <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-action="quote" title="Quote"><i class="ph ph-quotes"></i></button>
+                                        <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-action="table" title="Table template"><i class="ph ph-table"></i></button>
+                                    </div>
+
+                                    <textarea id="migration-hub-form-content-input" class="gm-input" style="width:100%; min-height:260px; font-family:var(--font-mono, monospace); font-size:0.88rem; line-height:1.5; resize:vertical; padding:0.75rem; margin-bottom:1rem;" placeholder="Write your wiki notes in Markdown here...&#10;Tip: Paste screenshots directly with Ctrl+V / Cmd+V anywhere in this form!"></textarea>
+
+                                    <!-- Screenshots Dropzone -->
+                                    <div id="migration-hub-dropzone" style="border:2px dashed var(--border-soft); border-radius:8px; padding:1.25rem; text-align:center; background:rgba(0,0,0,0.15); margin-bottom:1rem; cursor:pointer; transition:border-color 0.2s;">
+                                        <i class="ph ph-cloud-arrow-up" style="font-size:2rem; color:var(--accent); display:block; margin-bottom:0.5rem;"></i>
+                                        <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.25rem;">Drag &amp; drop screenshots here, or click to browse</div>
+                                        <div style="font-size:0.78rem; color:var(--text-muted);">Screenshots are automatically compressed to WebP (~150KB) on upload. You can also paste directly (Ctrl+V / Cmd+V).</div>
+                                        <input type="file" id="migration-hub-file-input" accept="image/*" multiple style="display:none;">
+                                    </div>
+
+                                    <!-- Pending Attachments Preview -->
+                                    <div id="migration-hub-pending-attachments" style="display:flex; flex-wrap:wrap; gap:0.6rem; margin-bottom:1rem;"></div>
+
+                                    <!-- Actions -->
+                                    <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                                        <button type="button" class="gm-btn gm-btn-ghost" id="migration-hub-form-cancel-btn">Cancel</button>
+                                        <button type="submit" class="gm-btn gm-btn-primary" id="migration-hub-form-save-btn">
+                                            <i class="ph ph-floppy-disk"></i> <span>Save Page</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lightbox Modal for Fullscreen Screenshots -->
+                    <div id="migration-hub-lightbox" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:99999; justify-content:center; align-items:center; backdrop-filter:blur(4px); padding:1.5rem;">
+                        <button type="button" id="migration-hub-lightbox-close" style="position:absolute; top:1.25rem; right:1.5rem; background:transparent; border:none; color:#fff; font-size:2rem; cursor:pointer;" aria-label="Close image"><i class="ph ph-x"></i></button>
+                        <img id="migration-hub-lightbox-img" src="" style="max-width:90vw; max-height:85vh; object-fit:contain; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.6);" alt="Full size screenshot">
+                    </div>
+
+                    <!-- AI Digest Modal for Scope-Wide Briefing -->
+                    <div id="migration-hub-ai-digest-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:99998; justify-content:center; align-items:center; backdrop-filter:blur(4px); padding:1.5rem;">
+                        <div class="gm-card gm-card-padded" style="width:100%; max-width:760px; max-height:88vh; display:flex; flex-direction:column; background:var(--bg-card); border:1px solid var(--border-soft); box-shadow:0 12px 40px rgba(0,0,0,0.6); border-radius:10px; overflow:hidden;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-soft); padding-bottom:0.75rem;">
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <span class="material-symbols-rounded" style="color:var(--accent); font-size:1.5rem;">auto_awesome</span>
+                                    <div>
+                                        <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--fg);" id="migration-hub-digest-modal-title">Executive Migration Briefing</h3>
+                                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Synthesized by Gemini AI across all active notes</div>
+                                    </div>
+                                </div>
+                                <button type="button" id="migration-hub-digest-modal-close" style="background:transparent; border:none; color:var(--text-muted); font-size:1.25rem; cursor:pointer;" aria-label="Close modal"><i class="ph ph-x"></i></button>
+                            </div>
+                            <div id="migration-hub-digest-modal-content" style="flex:1; overflow-y:auto; line-height:1.65; font-size:0.9rem; color:var(--text-normal); padding-right:0.5rem; margin-bottom:1rem;"></div>
+                            <div style="display:flex; justify-content:flex-end; gap:0.5rem; border-top:1px solid var(--border-soft); padding-top:0.75rem;">
+                                <button type="button" class="gm-btn gm-btn-ghost" id="migration-hub-digest-copy-btn"><i class="ph ph-copy"></i> <span>Copy Briefing</span></button>
+                                <button type="button" class="gm-btn gm-btn-primary" id="migration-hub-digest-close-btn">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
             <!-- ─ Tab: Bug Tickets (Super Admin only) ────────────────────── -->
             <main class="dashboard-content tab-panel" id="tab-tickets">
                 <div class="gm-page">

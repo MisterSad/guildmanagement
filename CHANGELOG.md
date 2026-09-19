@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.20.0] - 2026-09-19
+
+- **Feature: Migration Hub — Collaborative Intel Wiki, Compressed Screenshots & Gemini AI Summaries (V3.20.0)** — empowers guild and server leadership to track, analyze, and coordinate inter-server migrations with a dedicated high-end intel wiki.
+  - **Dual-Scope Wiki Architecture (Guild & Server Intel)**:
+    - Created `public.migration_wiki_pages` table (`20260920000000_migration_hub_wiki.sql`) with dual scopes: `guild` (alliance-level confidential diplomacy) and `server` (cross-alliance state leadership and war coordination).
+    - Enforced Zero-Trust Row Level Security (`FORCE ROW LEVEL SECURITY`) with `gm_can_access_server_wiki(text)` security definer function and tenant-isolated policies preventing cross-tenant data leakage.
+  - **Rich Markdown Editor & Client-Side Image Compression**:
+    - Implemented `src/core/utils/image-compressor.ts` utilizing HTML5 Canvas for proportional resizing (max 1440px) and WebP/JPEG conversion (0.78 quality), shrinking 4–10MB screenshots to ~80–180KB with drag-and-drop and `Ctrl+V` clipboard paste.
+    - Integrated client-side XSS sanitization (`src/modules/migration/views/MigrationHubView.ts`) with custom lightweight Markdown parsing (headers, lists, blockquotes, code blocks, bold/italic, tables), attachment galleries, and full-screen image lightbox.
+  - **Gemini AI Intel Summaries & Executive Briefings**:
+    - Deployed `supabase/functions/migration-summary/index.ts` Edge Function powered by Gemini 2.5 Flash (`google-genai` SDK).
+    - Supports two operational modes: single-page concise executive summaries and scope-wide intel briefings synthesizing active discussions, incoming players, risks, and recommended actions.
+    - Prompt Injection Defense: raw wiki content is isolated inside JSON data blocks with strict administrative system instructions.
+  - **Realtime Sync & Discord Integration**:
+    - Supabase Realtime channel subscription updates the wiki page list and active notes live across all connected leadership sessions.
+    - One-click Discord exporter formats wiki pages into clean Markdown ready for announcement channels.
+  - **Verification**: `npm run type-check` (0 TS errors), 130 Vitest suites green (1,464 tests passed), production build clean.
+
 ## [3.19.0] - 2026-09-19
 
 - **Feature: Robust IANA Timezone Engine & Automated Overview Clocks** — introduces Daylight Saving Time (DST) resilient timezone management and automatic officer clocks across the platform.

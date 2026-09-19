@@ -56,6 +56,7 @@ export const NAV_ITEMS: ShellNavItem[] = [
   { id: 'history', tabId: 'event-history', m3Icon: 'history', icon: 'ph-clock-counter-clockwise', labelKey: 'gm_nav_history', section: 'play', panels: ['event-history'] },
   { id: 'stats', tabId: 'stats-admin', m3Icon: 'leaderboard', icon: 'ph-chart-bar', labelKey: 'gm_nav_stats', section: 'play', panels: ['stats-admin'] },
 
+  { id: 'migration-hub', tabId: 'admin-migration-hub', m3Icon: 'hub', icon: 'ph-arrows-left-right', labelKey: 'gm_nav_migration_hub', section: 'admin', adminOnly: true, panels: ['admin-migration-hub'] },
   { id: 'accounts', tabId: 'admin-home', m3Icon: 'manage_accounts', icon: 'ph-key', labelKey: 'gm_nav_accounts', section: 'admin', panels: ['admin-home'] },
   { id: 'discord', tabId: 'admin-discord', m3Icon: 'notifications', icon: 'ph-bell-ringing', labelKey: 'gm_nav_discord', section: 'admin', panels: ['admin-discord'] },
   { id: 'sanctions', tabId: 'tab-sanctions', m3Icon: 'gavel', icon: 'ph-warning-octagon', labelKey: 'gm_nav_sanctions', section: 'admin', panels: ['tab-sanctions'] },
