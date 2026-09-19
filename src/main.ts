@@ -93,6 +93,7 @@ import {
   showToast as showAppToast,
   showPlayerHistoryDialog
 } from './modules/app/dialogs/dialogs.service';
+import { openDialog, closeDialog } from './components/ui/Dialog';
 import {
   initAppState,
   getAppState,
@@ -239,6 +240,9 @@ if (typeof window !== 'undefined') {
   wAny.GM_APP = wAny.GM_APP || {};
   wAny.GM_APP.showToast = showAppToast;
   wAny.GM_APP.showPlayerHistory = showPlayerHistoryDialog;
+  wAny.GM = wAny.GM || {};
+  wAny.GM.components = { openDialog, closeDialog };
+  wAny.GM_COMPONENTS_DIALOG = { openDialog, closeDialog };
 
   // Sous-lot 6.2 (Strangler): unified cross-cutting state. Init before the
   // bootstrap and expose typed accessors for /src modules; every write is
@@ -535,7 +539,9 @@ if (typeof window !== 'undefined') {
   (window as any).GM.components = {
     BaseComponent,
     ToastNotification,
-    PortalChart
+    PortalChart,
+    openDialog,
+    closeDialog
   };
 
   (window as any).GM.pwa = {

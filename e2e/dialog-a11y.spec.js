@@ -25,40 +25,32 @@ test('opens standard dialog with role="dialog" and sets aria-hidden on #app', as
     document.body.appendChild(trigger);
     trigger.focus();
 
-    window.GM.components.openDialog = window.GM.components.openDialog || function(opts) {
-      return (window).GM_COMPONENTS_DIALOG.openDialog(opts);
-    };
-  });
-
-  const dialogHandle = await page.evaluate(() => {
-    return window.GM.components.openDialog
-      ? window.GM.components.openDialog({
-          title: 'Standard Info',
-          body: '<p>This is a standard dialog body.</p>',
-          tone: 'default',
-        })
-      : null;
+    if (window.GM?.components?.openDialog) {
+      window.GM.components.openDialog({
+        title: 'Standard Info',
+        body: '<p>This is a standard dialog body.</p>',
+        tone: 'default',
+      });
+    }
   });
 
   // Verify modal exists
-  const modal = page.locator('[role="dialog"][aria-modal="true"]');
-  if (await modal.count() > 0) {
-    await expect(modal).toBeVisible();
+  const modal = page.locator('.gm-ui-dialog[role="dialog"][aria-modal="true"]');
+  await expect(modal).toBeVisible();
 
-    // Verify background #app is inert / aria-hidden
-    const appContainer = page.locator('#app');
-    if (await appContainer.count() > 0) {
-      await expect(appContainer).toHaveAttribute('aria-hidden', 'true');
-    }
+  // Verify background #app is inert / aria-hidden
+  const appContainer = page.locator('#app');
+  if (await appContainer.count() > 0) {
+    await expect(appContainer).toHaveAttribute('aria-hidden', 'true');
+  }
 
-    // Close via Escape
-    await page.keyboard.press('Escape');
-    await expect(modal).toBeHidden({ timeout: 5000 });
+  // Close via Escape
+  await page.keyboard.press('Escape');
+  await expect(modal).toBeHidden({ timeout: 5000 });
 
-    // Verify #app aria-hidden is restored
-    if (await appContainer.count() > 0) {
-      await expect(appContainer).not.toHaveAttribute('aria-hidden', 'true');
-    }
+  // Verify #app aria-hidden is restored
+  if (await appContainer.count() > 0) {
+    await expect(appContainer).not.toHaveAttribute('aria-hidden', 'true');
   }
 });
 
@@ -76,11 +68,9 @@ test('opens danger dialog with role="alertdialog"', async ({ page }) => {
   });
 
   const alertDialog = page.locator('[role="alertdialog"][aria-modal="true"]');
-  if (await alertDialog.count() > 0) {
-    await expect(alertDialog).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(alertDialog).toBeHidden({ timeout: 5000 });
-  }
+  await expect(alertDialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(alertDialog).toBeHidden({ timeout: 5000 });
 });
 
 test('OCR modal has valid accessible name and dialog role', async ({ page }) => {
@@ -95,7 +85,7 @@ test('OCR modal has valid accessible name and dialog role', async ({ page }) => 
   await expect(card).toHaveAttribute('aria-labelledby', 'ocr-modal-title');
   await expect(card).toHaveAttribute('aria-describedby', 'ocr-modal-subtitle');
 
-  // Close via Escape or cancel
-  await page.keyboard.press('Escape');
+  // Close via Cancel button
+  await page.locator('#ocr-modal-cancel').click();
   await expect(overlay).toBeHidden({ timeout: 5000 });
 });

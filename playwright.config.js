@@ -12,7 +12,7 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
   fullyParallel: true,
-  reporter: 'list',
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]] : 'list',
   use: {
     baseURL: 'http://localhost:4173',
     headless: true,
