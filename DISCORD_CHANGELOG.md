@@ -1,3 +1,35 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.19.1**
+
+Hey everyone! I just rolled out a quality-of-life update addressing international guild coordination: **Automated IANA Timezones & Dynamic Officer Clocks**! 🌍⏰
+
+Coordinating wars, events, and rosters across multiple continents is now effortless and completely error-free:
+
+---
+
+### 🌍 1. True IANA Timezones & Automatic Daylight Saving Time (DST)
+- **What changed**: Instead of relying on static numerical UTC offsets that break every time countries change their clocks, you can now select real geographic timezones (e.g. `Europe/Paris`, `America/New_York`, `Asia/Tokyo`, `Australia/Sydney`).
+- **The benefit**: Automatic summer/winter time handling! The system dynamically calculates the exact live offset and local time with zero maintenance required.
+
+---
+
+### 🎯 2. One-Click "Auto-Detect" in Player Portal & Member Roster
+- **What changed**: I added a one-click **"Auto"** detection button in both the Player Portal ("My Timezone" card) and the Admin Roster edit dialog.
+- **The benefit**: Players can set their timezone in a single tap without needing to calculate their UTC offset. Officers can also easily configure timezones for mobile members.
+
+---
+
+### ⏰ 3. Dynamic Overview Clocks (Synced with Officers)
+- **What changed**: The Command Center Overview now automatically derives live clocks from your **R4 and R5 guild officers** who have set their timezone. I also added an **"Auto-sync with Officers"** button in the Clock Management modal.
+- **The benefit**: No more manually configuring clocks in a JSON list! Your dashboard immediately shows when your leadership team is awake and available for war calls.
+
+---
+
+### 🛡️ 4. Zero-Pollution Invariant for Pseudos & OCR
+- **What changed**: Timezones are stored in a dedicated database column and displayed using elegant UI chips and rich tooltips.
+- **The benefit**: Player nicknames in the database remain completely untouched—no messy `[UTC+2]` tags that could break OCR screenshot imports or combat logs.
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.19.0**
 
 Welcome to V3.19.0! I have just deployed our most comprehensive security, performance, and reliability overhaul to date. Following an in-depth architectural audit, I completed an 18-ticket modernization sprint to make your guild management faster, more secure, and completely rock-solid.

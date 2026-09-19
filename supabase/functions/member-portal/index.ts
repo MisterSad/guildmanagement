@@ -134,7 +134,8 @@ export const UpdateTimezoneSchema = z.object({
     z.number().int().min(-12).max(14),
     z.string().regex(/^-?\d+$/).transform(v => parseInt(v, 10))
       .refine(v => v >= -12 && v <= 14, { message: "Offset must be between -12 and 14" })
-  ])
+  ]),
+  timezone: z.string().trim().max(64).optional()
 }).passthrough();
 
 export const ConfirmDiscordLinkSchema = z.object({
@@ -412,6 +413,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         glory_score: member.glory_score ?? 0,
         role: member.role ?? "R1",
         timezone_offset: member.timezone_offset ?? null,
+        timezone: member.timezone ?? null,
         power_updated_at: member.power_updated_at ?? null,
         metrics_updated_at: member.metrics_updated_at ?? null,
         guild_averages: guildAverages
@@ -924,10 +926,11 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     if (action === "update-timezone") {
       const offset = parseInt(payload?.offset, 10);
-      const res = await updatePlayerTimezone(admin, uid, identity.guild, offset);
+      const timezone = payload?.timezone ? String(payload.timezone).trim() : null;
+      const res = await updatePlayerTimezone(admin, uid, identity.guild, offset, timezone);
       if (!res.ok) {
         const status = res.error === "invalid_offset" ? 400 : 200;
-        logger.error("Failed to update player timezone", res.error, { uid, offset });
+        logger.error("Failed to update player timezone", res.error, { uid, offset, timezone });
         return json(res, status);
       }
       return json(res);

@@ -21,6 +21,7 @@ import {
 } from './members.store';
 import { deleteGuildMember, showEditMemberDialog, showTransferMemberDialog, fetchGuildMembers } from './members.controller';
 import { showToast } from '../dialogs/dialogs.service';
+import { formatTimezoneDisplay, getTimezoneOffset } from '../../../utils/timezone';
 
 function g(): any {
   return (typeof window !== 'undefined' ? (window as any).GM : null);
@@ -180,11 +181,9 @@ export function absenceBadgeHtml(m: GuildMember): string {
 }
 
 export function timezoneChipHtml(m: GuildMember): string {
-  const offset = m.timezone_offset;
-  if (offset == null || isNaN(Number(offset))) return '';
-  const n = Number(offset);
-  const label = 'UTC' + (n === 0 ? '' : (n > 0 ? '+' + n : String(n)));
-  return '<span class="gm-tz-chip" title="Local timezone (declared by the player)"><i class="ph ph-clock"></i> ' + esc(label) + '</span>';
+  const display = formatTimezoneDisplay(m.timezone, m.timezone_offset);
+  if (!display) return '';
+  return '<span class="gm-tz-chip" title="' + esc(display.tooltip) + '"><i class="ph ph-clock"></i> ' + esc(display.offsetText) + '</span>';
 }
 
 const ROLE_STYLES: Record<string, { color: string; bg: string; border: string; icon: string }> = {
@@ -526,16 +525,21 @@ export function renderTimezoneCoverage(): void {
 
   const currentG = currentGuild();
   const members = getGuildMembers();
-  const withTz = members.filter((m) => m.timezone_offset != null && !isNaN(Number(m.timezone_offset)) && (m.guild || 'ALPHA') === currentG);
+  const withTz = members.filter((m) => {
+    if ((m.guild || 'ALPHA') !== currentG) return false;
+    return !!m.timezone || (m.timezone_offset != null && !isNaN(Number(m.timezone_offset)));
+  });
   if (withTz.length === 0) { section.style.display = 'none'; return; }
 
   section.style.display = '';
   countEl.textContent = withTz.length + '/' + members.length;
 
-  const nowUtcHours = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
+  const now = new Date();
+  const nowUtcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
   const buckets: Record<number, GuildMember[]> = {};
   withTz.forEach((m) => {
-    const localHour = Math.floor(((nowUtcHours + Number(m.timezone_offset)) % 24 + 24) % 24);
+    const offset = m.timezone ? getTimezoneOffset(m.timezone, now) : Number(m.timezone_offset);
+    const localHour = Math.floor(((nowUtcHours + offset) % 24 + 24) % 24);
     if (!buckets[localHour]) buckets[localHour] = [];
     buckets[localHour].push(m);
   });

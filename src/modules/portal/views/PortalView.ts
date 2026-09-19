@@ -19,6 +19,7 @@
 
 import { PortalService } from '../portal.service';
 import { escapeHTML } from '../../../core/utils/text';
+import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -244,6 +245,7 @@ export class PortalView {
       glory_score: profile.glory_score || (profile.glory != null ? profile.glory : 0),
       metrics_updated_at: profile.metrics_updated_at || null,
       timezone_offset: profile.timezone_offset != null ? profile.timezone_offset : null,
+      timezone: profile.timezone || null,
       glory: profile.glory != null ? profile.glory : null
     };
     this.state.sessions = profile.sessions || [];
@@ -1140,7 +1142,7 @@ export class PortalView {
 
         '<div class="portal-card">' +
           '<div class="portal-card-title"><i class="ph ph-clock"></i> My Timezone<button class="gm-help-btn" data-help-id="help-portal-timezone" aria-label="Help: My Timezone"><i class="ph ph-info"></i></button></div>' +
-          '<div class="portal-row"><select id="portal-timezone-select" class="gm-input"></select><button type="button" id="portal-timezone-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button></div>' +
+          '<div class="portal-row"><select id="portal-timezone-select" class="gm-input"></select><button type="button" id="portal-timezone-detect-btn" class="gm-btn gm-btn-ghost gm-btn-sm" title="Detect my timezone"><i class="ph ph-crosshair"></i><span>Auto</span></button><button type="button" id="portal-timezone-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button></div>' +
           '<div class="portal-msg" id="portal-timezone-msg"></div>' +
           '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Helps officers plan events when most players are available.</div>' +
         '</div>' +
@@ -1268,30 +1270,65 @@ export class PortalView {
 
     // Timezone
     const tzSelect = document.getElementById('portal-timezone-select') as HTMLSelectElement | null;
+    const tzDetectBtn = document.getElementById('portal-timezone-detect-btn') as HTMLButtonElement | null;
     const tzBtn = document.getElementById('portal-timezone-btn') as HTMLButtonElement | null;
     const tzMsg = document.getElementById('portal-timezone-msg');
     if (tzSelect) {
-      let tzOptions = '';
-      for (let o = -12; o <= 14; o++) {
-        const label = 'UTC' + (o === 0 ? '' : (o > 0 ? '+' + o : o));
-        tzOptions += '<option value="' + o + '">' + label + '</option>';
+      const currentTz = (this.state.player && this.state.player.timezone) || '';
+      const tzRegions = Array.from(new Set(COMMON_TIMEZONES.map((z) => z.region)));
+      let tzOptions = '<option value="">-- Select your timezone --</option>';
+      tzRegions.forEach((region) => {
+        const zones = COMMON_TIMEZONES.filter((z) => z.region === region);
+        tzOptions += '<optgroup label="' + legacy.esc(region) + '">';
+        zones.forEach((z) => {
+          const selected = currentTz === z.zone ? ' selected' : '';
+          tzOptions += '<option value="' + legacy.esc(z.zone) + '"' + selected + '>' + legacy.esc(z.label) + '</option>';
+        });
+        tzOptions += '</optgroup>';
+      });
+      if (currentTz && !COMMON_TIMEZONES.some((z) => z.zone === currentTz)) {
+        tzOptions += '<optgroup label="Custom"><option value="' + legacy.esc(currentTz) + '" selected>' + legacy.esc(currentTz) + '</option></optgroup>';
       }
       tzSelect.innerHTML = tzOptions;
-      const currentTz = (this.state.player.timezone_offset != null) ? this.state.player.timezone_offset : null;
-      if (currentTz != null) tzSelect.value = String(currentTz);
     }
+
+    if (tzDetectBtn && tzSelect) {
+      tzDetectBtn.addEventListener('click', () => {
+        const detected = detectUserTimezone();
+        let exists = false;
+        for (let i = 0; i < tzSelect.options.length; i++) {
+          if (tzSelect.options[i].value === detected) {
+            tzSelect.selectedIndex = i;
+            exists = true;
+            break;
+          }
+        }
+        if (!exists && detected) {
+          const opt = document.createElement('option');
+          opt.value = detected;
+          opt.textContent = detected + ' (Detected)';
+          opt.selected = true;
+          tzSelect.appendChild(opt);
+        }
+        legacy.showToast('Detected timezone: ' + detected, 'info');
+      });
+    }
+
     if (tzBtn && tzSelect) {
       tzBtn.addEventListener('click', async () => {
-        const offset = parseInt(tzSelect.value, 10);
-        if (isNaN(offset)) return;
+        const tzValue = tzSelect.value.trim();
+        const offset = tzValue ? getTimezoneOffset(tzValue) : (this.state.player && this.state.player.timezone_offset != null ? this.state.player.timezone_offset : 0);
         tzBtn.disabled = true;
         const span = tzBtn.querySelector('span');
         const origText = span ? span.textContent : '';
         if (span) span.textContent = 'Saving...';
         try {
-          const res = await this.invoke('update-timezone', { offset });
+          const res = await this.invoke('update-timezone', { offset, timezone: tzValue || null });
           if (!res.ok) throw new Error(res.error || 'update_failed');
-          this.state.player.timezone_offset = offset;
+          if (this.state.player) {
+            this.state.player.timezone_offset = offset;
+            this.state.player.timezone = tzValue || null;
+          }
           if (tzMsg) {
             tzMsg.textContent = 'Timezone saved. Your officers can now see when you are available.';
             (tzMsg as HTMLElement).style.color = 'var(--success)';

@@ -269,7 +269,7 @@ describe('Regression: member-portal reuses _shared/player-actions.ts instead of 
   it('update-power/update-glory/update-timezone/get-weekly-challenges/absence actions delegate to the shared functions', () => {
     expect(memberPortalSrc).toContain('await updatePlayerPower(admin, uid, identity.guild, payload?.power)');
     expect(memberPortalSrc).toContain('await updatePlayerGlory(admin, uid, identity.guild, payload?.glory)');
-    expect(memberPortalSrc).toContain('await updatePlayerTimezone(admin, uid, identity.guild, offset)');
+    expect(memberPortalSrc).toContain('await updatePlayerTimezone(admin, uid, identity.guild, offset');
     expect(memberPortalSrc).toContain('await getPlayerChallenges(admin, uid, identity.guild)');
     expect(memberPortalSrc).toContain('await listPlayerAbsences(admin, uid)');
     expect(memberPortalSrc).toContain('await setPlayerAbsence(admin, uid, identity.guild,');

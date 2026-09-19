@@ -16,7 +16,7 @@ describe('Player Portal military metrics response (v127.1)', () => {
     // 1) so discord-bot-interactions can reuse the exact same query for
     // /myinfo instead of duplicating it -- member-portal now imports it.
     const content = fs.readFileSync(memberLookupPath, 'utf-8');
-    const selectMatch = content.match(/\.select\("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset"\)/);
+    const selectMatch = content.match(/\.select\("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset(?:,\s*timezone)?"\)/);
     expect(selectMatch).not.toBeNull();
   });
 

@@ -15,6 +15,7 @@ import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOu
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
 import { toastFetchError, isAbortError } from '../../../core/api/fetch-errors';
+import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
 
 function g(): any {
   return winAny().GM;
@@ -566,8 +567,10 @@ export async function renameGuildMember(
   const metricsChanged = extraMetrics.tech_power !== undefined || extraMetrics.champion_power !== undefined ||
     extraMetrics.crew_power !== undefined || extraMetrics.flagship_power !== undefined ||
     extraMetrics.fleet_rating !== undefined || extraMetrics.glory_score !== undefined;
+  const tzChanged = extraMetrics.timezone !== undefined && (member ? (member.timezone || null) !== (extraMetrics.timezone || null) : true);
+  const offsetChanged = extraMetrics.timezone_offset !== undefined && (member ? member.timezone_offset !== extraMetrics.timezone_offset : true);
 
-  if (!pseudoChanged && !uidChanged && !powerChanged && !roleChanged && !metricsChanged) return true;
+  if (!pseudoChanged && !uidChanged && !powerChanged && !roleChanged && !metricsChanged && !tzChanged && !offsetChanged) return true;
 
   if (pseudoChanged && members.some((m) => String(m.pseudo).toLowerCase() === newPseudo.toLowerCase() && (member ? m.pseudo !== member.pseudo : true))) {
     showToast(t('toast_duplicate_member'), 'error'); return false;
@@ -607,6 +610,8 @@ export async function renameGuildMember(
     if (extraMetrics.flagship_power !== undefined) update.flagship_power = parseInt(extraMetrics.flagship_power) || 0;
     if (extraMetrics.fleet_rating !== undefined) update.fleet_rating = parseInt(extraMetrics.fleet_rating) || 0;
     if (extraMetrics.glory_score !== undefined) update.glory_score = parseInt(extraMetrics.glory_score) || 0;
+    if (extraMetrics.timezone !== undefined) update.timezone = extraMetrics.timezone || null;
+    if (extraMetrics.timezone_offset !== undefined) update.timezone_offset = extraMetrics.timezone_offset;
     update.power_updated_at = new Date().toISOString();
     update.metrics_updated_at = new Date().toISOString();
 
@@ -777,6 +782,20 @@ export async function showEditMemberDialog(member: any): Promise<void> {
     '<div class="input-group"><label for="' + id + '" style="font-size: var(--fs-sm);">' + label + '</label>' +
     '<input type="number" id="' + id + '" class="gm-input" value="' + esc(value || '') + '" placeholder="' + placeholder + '" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);"></div>';
 
+  const memberTz = member.timezone || '';
+  const tzRegions = Array.from(new Set(COMMON_TIMEZONES.map((z) => z.region)));
+  const tzOptionsHtml =
+    '<option value="">-- No timezone set --</option>' +
+    tzRegions.map((region) => {
+      const zones = COMMON_TIMEZONES.filter((z) => z.region === region);
+      return '<optgroup label="' + esc(region) + '">' +
+        zones.map((z) => '<option value="' + esc(z.zone) + '"' + (memberTz === z.zone ? ' selected' : '') + '>' + esc(z.label) + '</option>').join('') +
+        '</optgroup>';
+    }).join('') +
+    (memberTz && !COMMON_TIMEZONES.some((z) => z.zone === memberTz)
+      ? '<optgroup label="Custom"><option value="' + esc(memberTz) + '" selected>' + esc(memberTz) + '</option></optgroup>'
+      : '');
+
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 480px; width: 95vw;">' +
       '<div class="confirm-icon"><i class="ph-fill ph-pencil-simple text-accent"></i></div>' +
@@ -793,6 +812,18 @@ export async function showEditMemberDialog(member: any): Promise<void> {
           '<div class="input-group" style="flex: 1;"><label for="edit-role"><i class="ph ph-crown"></i> Role</label>' +
             '<select id="edit-role" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
               ['R1', 'R2', 'R3', 'R4', 'R5'].map((r) => '<option value="' + r + '"' + (member.role === r ? ' selected' : '') + '>' + r + '</option>').join('') +
+            '</select></div>' +
+        '</div>' +
+        '<div class="input-group">' +
+          '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">' +
+            '<label for="edit-timezone" style="font-size: var(--fs-sm);"><i class="ph ph-clock"></i> Timezone</label>' +
+            '<button type="button" id="edit-detect-tz-btn" class="gm-btn gm-btn-ghost" style="padding: 0.15rem 0.4rem; font-size: var(--fs-xs); display: inline-flex; align-items: center; gap: 0.25rem;" title="Detect browser timezone">' +
+              '<i class="ph ph-crosshair"></i> Auto-detect' +
+            '</button>' +
+          '</div>' +
+          '<div class="input-wrapper"><i class="ph ph-globe"></i>' +
+            '<select id="edit-timezone" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
+              tzOptionsHtml +
             '</select></div>' +
         '</div>' +
         '<div style="background: var(--bg-dim); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">' +
@@ -835,6 +866,30 @@ export async function showEditMemberDialog(member: any): Promise<void> {
     });
   }
 
+  const detectTzBtn = byId<HTMLButtonElement>('edit-detect-tz-btn');
+  const editTzSelect = byId<HTMLSelectElement>('edit-timezone');
+  if (detectTzBtn && editTzSelect) {
+    detectTzBtn.addEventListener('click', () => {
+      const detected = detectUserTimezone();
+      let exists = false;
+      for (let i = 0; i < editTzSelect.options.length; i++) {
+        if (editTzSelect.options[i].value === detected) {
+          editTzSelect.selectedIndex = i;
+          exists = true;
+          break;
+        }
+      }
+      if (!exists && detected) {
+        const opt = document.createElement('option');
+        opt.value = detected;
+        opt.textContent = detected + ' (Detected)';
+        opt.selected = true;
+        editTzSelect.appendChild(opt);
+      }
+      showToast('Detected timezone: ' + detected, 'info');
+    });
+  }
+
   overlay.querySelectorAll('.delete-history-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-id') || '';
@@ -848,14 +903,18 @@ export async function showEditMemberDialog(member: any): Promise<void> {
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const val = (id: string): string => { const el = byId<HTMLInputElement>(id); return el ? el.value : ''; };
+      const val = (id: string): string => { const el = byId<HTMLInputElement | HTMLSelectElement>(id); return el ? el.value : ''; };
+      const tzVal = val('edit-timezone').trim();
+      const tzOffset = tzVal ? getTimezoneOffset(tzVal) : (member.timezone_offset != null ? member.timezone_offset : null);
       const extraMetrics = {
         fleet_rating: parseInt(val('edit-fleet')) || 0,
         tech_power: parseInt(val('edit-tech')) || 0,
         flagship_power: parseInt(val('edit-flagship')) || 0,
         champion_power: parseInt(val('edit-champ')) || 0,
         crew_power: parseInt(val('edit-crew')) || 0,
-        glory_score: parseInt(val('edit-glory')) || 0
+        glory_score: parseInt(val('edit-glory')) || 0,
+        timezone: tzVal || null,
+        timezone_offset: tzOffset
       };
       const ok = await renameGuildMember(member.pseudo, val('edit-pseudo'), val('edit-uid'), val('edit-power'), val('edit-role'), extraMetrics);
       if (ok) close();

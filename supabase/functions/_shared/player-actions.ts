@@ -174,13 +174,18 @@ export async function updatePlayerTimezone(
   admin: ReturnType<typeof createClient>,
   uid: string,
   guildContext: string | null,
-  offset: number
+  offset: number,
+  timezone?: string | null
 ): Promise<{ ok: boolean; error?: string }> {
   if (isNaN(offset) || offset < -12 || offset > 14) return { ok: false, error: "invalid_offset" };
 
   const member = await getPlayer(admin, uid, guildContext);
 
-  const { data, error } = await admin.rpc("gm_update_player_timezone", { p_uid: uid, p_offset: offset });
+  const { data, error } = await admin.rpc("gm_update_player_timezone", {
+    p_uid: uid,
+    p_offset: offset,
+    p_timezone: timezone || null
+  });
   if (error) return { ok: false, error: "db_error" };
   const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
   if (!row || !row.ok) return { ok: false, error: row?.error || "update_failed" };
@@ -190,8 +195,8 @@ export async function updatePlayerTimezone(
     pseudo: member?.pseudo || uid,
     uid,
     guild: member?.guild || guildContext || "UNKNOWN",
-    message: `Updated timezone offset to UTC${offset >= 0 ? "+" : ""}${offset}`,
-    metadata: { offset },
+    message: `Updated timezone offset to UTC${offset >= 0 ? "+" : ""}${offset}${timezone ? ` (${timezone})` : ""}`,
+    metadata: { offset, timezone: timezone || null },
   });
 
   return { ok: true };

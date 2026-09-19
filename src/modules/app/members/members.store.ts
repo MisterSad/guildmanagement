@@ -21,6 +21,7 @@ export interface GuildMember {
   crew_power?: number | null;
   glory_score?: number | null;
   timezone_offset?: number | null;
+  timezone?: string | null;
   created_at?: string;
   [key: string]: any;
 }

@@ -2,6 +2,13 @@
 
 ## [3.19.0] - 2026-09-19
 
+- **Feature: Robust IANA Timezone Engine & Automated Overview Clocks** — introduces Daylight Saving Time (DST) resilient timezone management and automatic officer clocks across the platform.
+  - **Database Migration**: added `timezone text` column to `public.guild_members` (`20260919190000_member_iana_timezone.sql`) and updated `gm_update_player_timezone` RPC with `SECURITY DEFINER` and Zero-Trust service-role permissions.
+  - **Core Timezone Engine**: created `src/utils/timezone.ts` utilizing native `Intl.DateTimeFormat` for live UTC offset calculation, browser auto-detection, local time formatting, and curated regional timezone groupings.
+  - **Admin Roster & Player Portal**: added regional timezone selector with "Auto-detect" button in `showEditMemberDialog` and the Player Portal settings card, updating live badges and coverage histograms without modifying player pseudos.
+  - **Command Center Automation**: upgraded `OverviewView.ts` and `overview.service.ts` to automatically populate timezone clocks for active R4/R5 officers, with real-time ticker and "Auto-sync with Officers" control.
+  - **Testing & Verification**: added 17 unit tests in `tests/timezone.test.js` covering DST shifts, half-hour offsets, and officer clock generation; 130/130 Vitest suites green (1,463 tests).
+
 - **Platform Overhaul: Comprehensive Audit Remediation & Modernization (V3.19.0)** — full execution of the 18-ticket backlog derived from the September 2026 comprehensive audit of the FGF Guild Management Tool production PWA, strengthening security, database performance, client observability, accessibility, and architectural resilience.
   - **Security & Zero-Trust Row Level Security (RLS)**:
     - `[TICKET-01] [SEC-01]`: Applied `FORCE ROW LEVEL SECURITY` across all 26 active public Postgres tables (`20260920100000_force_rls_all_tables.sql`), guaranteeing that table owners (`postgres`) and background scripts cannot bypass tenant isolation policies.

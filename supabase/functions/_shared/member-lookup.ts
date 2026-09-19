@@ -23,6 +23,7 @@ export interface MemberSnapshot {
   glory_score?: number;
   role?: string;
   timezone_offset?: number | null;
+  timezone?: string | null;
 }
 
 export async function getPlayer(
@@ -32,7 +33,7 @@ export async function getPlayer(
 ): Promise<MemberSnapshot | null> {
   let query = admin
     .from("guild_members")
-    .select("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset")
+    .select("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset, timezone")
     .eq("uid", uid);
 
   if (guildContext) {

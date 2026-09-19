@@ -6,10 +6,51 @@
  * persistence shape). No DOM, no globals.
  */
 
+import { getTimezoneOffset } from '../../utils/timezone';
+
 export interface ClockMember {
   name: string;
   offset: number;
   color: string;
+  timezone?: string | null;
+  role?: string | null;
+}
+
+export function buildOfficerClocks(
+  members: Array<{
+    pseudo: string;
+    role?: string | null;
+    timezone?: string | null;
+    timezone_offset?: number | null;
+  }>,
+  date: Date = new Date()
+): ClockMember[] {
+  const officers = members.filter((m) => {
+    const isOfficer = m.role === 'R5' || m.role === 'R4';
+    const hasTz = !!m.timezone || (m.timezone_offset != null && !isNaN(Number(m.timezone_offset)));
+    return isOfficer && hasTz;
+  });
+
+  const roleOrder: Record<string, number> = { R5: 0, R4: 1 };
+  officers.sort((a, b) => {
+    const roA = roleOrder[a.role || ''] ?? 99;
+    const roB = roleOrder[b.role || ''] ?? 99;
+    if (roA !== roB) return roA - roB;
+    return a.pseudo.localeCompare(b.pseudo);
+  });
+
+  const colors = ['accent', 'warning', 'info', 'success', 'danger'];
+  return officers.map((m, idx) => {
+    const offset = m.timezone ? getTimezoneOffset(m.timezone, date) : Number(m.timezone_offset);
+    const color = m.role === 'R5' ? 'warning' : colors[idx % colors.length];
+    return {
+      name: m.pseudo,
+      offset,
+      color,
+      timezone: m.timezone || null,
+      role: m.role || null
+    };
+  });
 }
 
 export function prettyEventName(n?: string | null): string {

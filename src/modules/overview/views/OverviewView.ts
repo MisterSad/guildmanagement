@@ -21,9 +21,17 @@ import {
   formatBigNumber,
   getDefaultClocks,
   parseTimezoneClocks,
-  serializeTimezoneClocks
+  serializeTimezoneClocks,
+  buildOfficerClocks
 } from '../overview.service';
 import { escapeHTML } from '../../../core/utils/text';
+import {
+  COMMON_TIMEZONES,
+  formatOffsetLabel,
+  formatTimeInZone,
+  isValidTimezone,
+  getTimezoneOffset
+} from '../../../utils/timezone';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -149,6 +157,7 @@ export class OverviewView {
       let recentMemQ = db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5);
       const transfersQ = db.from('guild_transfers').select('pseudo, source_guild, target_guild, resolved_at').eq('status', 'approved').or('source_guild.eq.' + currentG + ',target_guild.eq.' + currentG).order('resolved_at', { ascending: false }).limit(5);
       let powerQ = db.from('guild_members').select('overall_power');
+      let officersQ = db.from('guild_members').select('pseudo, role, timezone, timezone_offset');
 
       memCountQ = memCountQ.eq('guild', currentG);
       statusQ = statusQ.eq('guild', currentG);
@@ -157,10 +166,19 @@ export class OverviewView {
       sanctionsQ = sanctionsQ.eq('guild', currentG);
       recentMemQ = recentMemQ.eq('guild', currentG);
       powerQ = powerQ.eq('guild', currentG);
+      officersQ = officersQ.eq('guild', currentG);
 
-      const [memCount, statusRows, gloryRows, gloryPrevRows, sanctionsRows, recentMembers, transfersRows, powerRows] = await Promise.all([
-        memCountQ, statusQ, gloryQ, gloryPrevQ, sanctionsQ, recentMemQ, transfersQ, powerQ
+      const [memCount, statusRows, gloryRows, gloryPrevRows, sanctionsRows, recentMembers, transfersRows, powerRows, officersRows] = await Promise.all([
+        memCountQ, statusQ, gloryQ, gloryPrevQ, sanctionsQ, recentMemQ, transfersQ, powerQ, officersQ
       ]);
+
+      if (this.clockMembers.length === 0 && officersRows && officersRows.data) {
+        const officerClocks = buildOfficerClocks(officersRows.data);
+        if (officerClocks.length > 0) {
+          this.clockMembers = officerClocks;
+          this.renderTimezoneClocks(panel);
+        }
+      }
 
       // Glory is cumulative per player: "this week" is the gain,
       // sum of (current week score - previous week score) per member.
@@ -296,12 +314,13 @@ export class OverviewView {
     let html = '';
     this.clockMembers.forEach((m) => {
       const initials = legacy.avatarInit(m.name);
-      const offsetText = 'UTC' + (m.offset >= 0 ? '+' + m.offset : m.offset);
+      const offsetText = formatOffsetLabel(m.offset);
+      const roleBadge = m.role ? ' <span style="font-size: var(--fs-xs); opacity: 0.8;">(' + legacy.esc(m.role) + ')</span>' : '';
       html +=
-        '<div class="gm-clock-card" data-offset="' + m.offset + '">' +
+        '<div class="gm-clock-card" data-offset="' + m.offset + '" data-timezone="' + legacy.esc(m.timezone || '') + '">' +
           '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '">' + legacy.esc(initials) + '</div>' +
           '<div class="gm-clock-info">' +
-            '<div class="gm-clock-name">' + legacy.esc(m.name) + '</div>' +
+            '<div class="gm-clock-name">' + legacy.esc(m.name) + roleBadge + '</div>' +
             '<div class="gm-clock-meta">' +
               '<span>' + offsetText + '</span>' +
               '<span class="gm-clock-icon-slot"></span>' +
@@ -323,14 +342,24 @@ export class OverviewView {
     const utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
 
     cards.forEach((card) => {
+      const tz = card.getAttribute('data-timezone');
       const offset = parseFloat(card.getAttribute('data-offset') || '0');
-      const targetDate = new Date(utcMs + (3600000 * offset));
+      let timeStr: string;
+      let hour: number;
 
-      const timeStr = pad2(targetDate.getHours()) + ':' + pad2(targetDate.getMinutes()) + ':' + pad2(targetDate.getSeconds());
+      if (tz && isValidTimezone(tz)) {
+        timeStr = formatTimeInZone(tz, now, true);
+        const parts = timeStr.split(':');
+        hour = parseInt(parts[0], 10) || 0;
+      } else {
+        const targetDate = new Date(utcMs + (3600000 * offset));
+        timeStr = pad2(targetDate.getHours()) + ':' + pad2(targetDate.getMinutes()) + ':' + pad2(targetDate.getSeconds());
+        hour = targetDate.getHours();
+      }
+
       const timeEl = card.querySelector('.gm-clock-time');
       if (timeEl) timeEl.textContent = timeStr;
 
-      const hour = targetDate.getHours();
       const isDay = hour >= 6 && hour < 18;
 
       const iconSlot = card.querySelector('.gm-clock-icon-slot');
@@ -560,6 +589,17 @@ export class OverviewView {
     overlay.id = 'gm-clocks-overlay';
     overlay.className = 'gm-modal-overlay';
 
+    let tzOptions = '<option value="">-- Or choose Timezone (IANA) --</option>';
+    const tzRegions = Array.from(new Set(COMMON_TIMEZONES.map((z) => z.region)));
+    tzRegions.forEach((region) => {
+      const zones = COMMON_TIMEZONES.filter((z) => z.region === region);
+      tzOptions += '<optgroup label="' + legacy.esc(region) + '">';
+      zones.forEach((z) => {
+        tzOptions += '<option value="' + legacy.esc(z.zone) + '">' + legacy.esc(z.label) + '</option>';
+      });
+      tzOptions += '</optgroup>';
+    });
+
     let offsetOptions = '';
     for (let o = -12; o <= 14; o += 0.5) {
       const sign = o >= 0 ? '+' : '';
@@ -569,11 +609,17 @@ export class OverviewView {
     overlay.innerHTML =
       '<div class="gm-modal-card" style="max-width: 450px; width: 95%; text-align: left; padding: 1.5rem;">' +
         '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: var(--fs-xl);">' + legacy.t('modal_manage_clocks_title') + '</h3>' +
+        '<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">' +
+          '<button type="button" id="gm-sync-officers-clocks-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">' +
+            '<i class="ph ph-arrows-clockwise"></i> Auto-sync with Officers (R4/R5)' +
+          '</button>' +
+        '</div>' +
         '<div id="gm-clocks-list-container" class="gm-col" style="gap: .6rem; max-height: 220px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 4px;"></div>' +
         '<div style="border-top: 1px solid var(--border-soft); padding-top: 1.2rem;">' +
           '<h4 style="font-size: var(--fs-base); font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' + legacy.t('modal_add_clock_section') + '</h4>' +
           '<div class="gm-col" style="gap: 0.6rem;">' +
             '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' + legacy.t('modal_add_clock_name_placeholder') + '" maxlength="20">' +
+            '<select id="gm-new-clock-tz" class="gm-select" style="padding: .55rem .75rem;">' + tzOptions + '</select>' +
             '<div style="display: flex; gap: 0.5rem;">' +
               '<select id="gm-new-clock-offset" class="gm-select" style="flex: 1; padding: .55rem .75rem;">' + offsetOptions + '</select>' +
               '<button id="gm-add-clock-btn" class="gm-btn gm-btn-primary" style="flex-shrink: 0;"><i class="ph ph-plus"></i> ' + legacy.t('modal_add_clock_btn') + '</button>' +
@@ -609,14 +655,14 @@ export class OverviewView {
       let html = '';
       this.clockMembers.forEach((m, idx) => {
         const initials = legacy.avatarInit(m.name);
-        const offsetText = 'UTC' + (m.offset >= 0 ? '+' + m.offset : m.offset);
+        const offsetText = formatOffsetLabel(m.offset) + (m.timezone ? ' (' + m.timezone + ')' : '');
         html +=
           '<div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-1); border: 1px solid var(--border-soft); padding: 0.5rem 0.75rem; border-radius: 8px; gap: 0.5rem;">' +
             '<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">' +
               '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '" style="flex-shrink:0;">' + legacy.esc(initials) + '</div>' +
               '<div style="min-width: 0;">' +
                 '<div style="font-weight: 600; font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + legacy.esc(m.name) + '</div>' +
-                '<div style="font-size: var(--fs-xs); color: var(--fg-dim);">' + offsetText + '</div>' +
+                '<div style="font-size: var(--fs-xs); color: var(--fg-dim);">' + legacy.esc(offsetText) + '</div>' +
               '</div>' +
             '</div>' +
             '<button class="gm-mini-btn gm-danger delete-clock-btn" data-index="' + idx + '" title="Delete" style="flex-shrink:0;"><i class="ph ph-trash"></i></button>' +
@@ -636,6 +682,39 @@ export class OverviewView {
       });
     };
 
+    const syncBtn = overlay.querySelector('#gm-sync-officers-clocks-btn');
+    if (syncBtn) {
+      syncBtn.addEventListener('click', async () => {
+        const db = legacy.getDb();
+        if (!db) return;
+        const currentG = legacy.getActiveGuild();
+        try {
+          const res = await db.from('guild_members').select('pseudo, role, timezone, timezone_offset').eq('guild', currentG);
+          if (res.error) throw res.error;
+          const officerClocks = buildOfficerClocks(res.data || []);
+          this.clockMembers = officerClocks;
+          await legacy.configSet('timezone_clocks', serializeTimezoneClocks(this.clockMembers));
+          legacy.showToast('Clocks synced with guild officers!', 'success');
+          renderModalClocks();
+          this.renderTimezoneClocks(panel);
+        } catch (err: any) {
+          legacy.showToast('Failed to sync officer clocks: ' + err.message, 'error');
+        }
+      });
+    }
+
+    const tzSelect = document.getElementById('gm-new-clock-tz') as HTMLSelectElement | null;
+    const offsetSelect = document.getElementById('gm-new-clock-offset') as HTMLSelectElement | null;
+    if (tzSelect && offsetSelect) {
+      tzSelect.addEventListener('change', () => {
+        const zone = tzSelect.value;
+        if (zone) {
+          const off = getTimezoneOffset(zone);
+          offsetSelect.value = String(off);
+        }
+      });
+    }
+
     const addBtn = document.getElementById('gm-add-clock-btn');
     if (addBtn) {
       addBtn.addEventListener('click', async () => {
@@ -645,13 +724,13 @@ export class OverviewView {
           legacy.showToast(legacy.t('toast_clock_name_empty'), 'error');
           return;
         }
-        const offsetSelect = document.getElementById('gm-new-clock-offset') as HTMLSelectElement | null;
-        const offset = parseFloat(offsetSelect ? offsetSelect.value : '0');
+        const tzVal = tzSelect && tzSelect.value ? tzSelect.value : null;
+        const offset = tzVal ? getTimezoneOffset(tzVal) : parseFloat(offsetSelect ? offsetSelect.value : '0');
 
         const colors = ['accent', 'info', 'success', 'warning', 'danger'];
         const color = colors[this.clockMembers.length % colors.length];
 
-        this.clockMembers.push({ name, offset, color });
+        this.clockMembers.push({ name, offset, color, timezone: tzVal || null });
         await legacy.configSet('timezone_clocks', serializeTimezoneClocks(this.clockMembers));
         legacy.showToast(legacy.t('toast_clock_added'), 'success');
         if (nameInput) nameInput.value = '';

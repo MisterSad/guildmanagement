@@ -177,7 +177,13 @@ Deno.serve(async (req: Request) => {
         { name: "Role", value: member.role || "—", inline: true },
         { name: "Fleet Rating", value: member.fleet_rating != null ? member.fleet_rating.toLocaleString("en-US") : "—", inline: true },
         { name: "Tech Power", value: member.tech_power != null ? member.tech_power.toLocaleString("en-US") : "—", inline: true },
-        { name: "Timezone", value: member.timezone_offset != null ? `UTC${member.timezone_offset >= 0 ? "+" : ""}${member.timezone_offset}` : "—", inline: true },
+        {
+          name: "Timezone",
+          value: member.timezone
+            ? `${member.timezone} (UTC${(member.timezone_offset ?? 0) >= 0 ? "+" : ""}${member.timezone_offset ?? 0})`
+            : (member.timezone_offset != null ? `UTC${member.timezone_offset >= 0 ? "+" : ""}${member.timezone_offset}` : "—"),
+          inline: true
+        },
       ],
     };
     return ephemeral("", [embed]);
