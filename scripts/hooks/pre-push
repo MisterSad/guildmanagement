@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+# .git/hooks/pre-push
+#
+# Auto-deploy Supabase Edge Functions when pushing to main.
+#
+# Logic:
+#   1. Only activates on pushes targeting the 'main' branch.
+#   2. Collects all changed files across every commit being pushed.
+#   3. If ANY file under supabase/functions/_shared/ was changed → deploy ALL
+#      functions (safe, atomic: guarantees every function gets the latest shared
+#      code and avoids the "version drift" bug that caused Discord link to fail).
+#   4. Otherwise → deploy only the individual functions whose own index.ts
+#      was changed.
+#   5. If no function files changed at all → skip silently (no-op).
+#
+# Exit codes:
+#   0  → push proceeds (deploy succeeded or nothing to deploy)
+#   1  → deploy failed (push is BLOCKED to avoid pushing broken state)
+#
+# Requires: npx supabase (project already linked via supabase link)
+
+set -euo pipefail
+
+REMOTE="$1"   # remote name (e.g. "origin")
+# $2 is the remote URL — unused here but available
+
+MAIN_BRANCH="main"
+FUNCTIONS_DIR="supabase/functions"
+SHARED_DIR="${FUNCTIONS_DIR}/_shared"
+
+# ── 1. Collect pushed commits ────────────────────────────────────────────────
+# Read from stdin: "<local-sha> <local-ref> <remote-sha> <remote-ref>"
+CHANGED_FILES=""
+while read local_sha local_ref remote_sha remote_ref; do
+  # Only process pushes to main
+  if [[ "$local_ref" != "refs/heads/${MAIN_BRANCH}" ]]; then
+    continue
+  fi
+
+  # Determine the range of commits being pushed
+  if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
+    # First push to this branch — diff against the initial empty tree
+    RANGE="$local_sha"
+    FILES=$(git diff-tree --no-commit-id -r --name-only "$RANGE" 2>/dev/null || true)
+  else
+    RANGE="${remote_sha}..${local_sha}"
+    FILES=$(git diff --name-only "$RANGE" 2>/dev/null || true)
+  fi
+
+  CHANGED_FILES="${CHANGED_FILES}${FILES}"$'\n'
+done
+
+# Nothing targeted main → skip
+if [[ -z "${CHANGED_FILES// /}" ]]; then
+  exit 0
+fi
+
+# ── 2. Detect which functions are affected ───────────────────────────────────
+DEPLOY_ALL=false
+DEPLOY_FUNCTIONS=()
+
+while IFS= read -r f; do
+  [[ -z "$f" ]] && continue
+
+  # _shared/ touched → must redeploy everything
+  if [[ "$f" == ${SHARED_DIR}/* ]]; then
+    DEPLOY_ALL=true
+    break
+  fi
+
+  # Individual function index.ts changed
+  if [[ "$f" == ${FUNCTIONS_DIR}/*/index.ts ]]; then
+    # Extract function name (the directory between functions/ and /index.ts)
+    fn_name=$(echo "$f" | sed "s|${FUNCTIONS_DIR}/||" | cut -d'/' -f1)
+    if [[ "$fn_name" != "_shared" ]]; then
+      DEPLOY_FUNCTIONS+=("$fn_name")
+    fi
+  fi
+done <<< "$CHANGED_FILES"
+
+# ── 3. Nothing to deploy ─────────────────────────────────────────────────────
+if [[ "$DEPLOY_ALL" == false && "${#DEPLOY_FUNCTIONS[@]}" -eq 0 ]]; then
+  exit 0
+fi
+
+# ── 4. Deploy ────────────────────────────────────────────────────────────────
+echo ""
+echo "╔══════════════════════════════════════════════════════════╗"
+echo "║  🚀  Supabase Edge Function auto-deploy (pre-push)       ║"
+echo "╚══════════════════════════════════════════════════════════╝"
+
+if [[ "$DEPLOY_ALL" == true ]]; then
+  echo "  → _shared/ changed — deploying ALL functions"
+  echo ""
+
+  # All known functions (update this list when adding a new function)
+  ALL_FUNCTIONS=(
+    admin-accounts
+    auth-login
+    auth-passkey
+    discord-bot-interactions
+    discord-profile-verification
+    discord-webhook-proxy
+    event-reminders
+    gm-create-order
+    gm-order-status
+    gm-stripe-webhook
+    guild-data-export
+    guild-request
+    member-portal
+    migration-summary
+    ocr-guild-members
+    player-register
+    tickets
+  )
+
+  FAILED=()
+  for fn in "${ALL_FUNCTIONS[@]}"; do
+    printf "  Deploying %-35s" "${fn}..."
+    if npx supabase functions deploy "$fn" --no-verify-jwt 2>/dev/null 1>/dev/null; then
+      echo "✅"
+    else
+      # Retry once (cold network, transient error)
+      sleep 2
+      if npx supabase functions deploy "$fn" --no-verify-jwt 2>/dev/null 1>/dev/null; then
+        echo "✅ (retry)"
+      else
+        echo "❌ FAILED"
+        FAILED+=("$fn")
+      fi
+    fi
+  done
+
+  if [[ "${#FAILED[@]}" -gt 0 ]]; then
+    echo ""
+    echo "  ❌ Deploy failed for: ${FAILED[*]}"
+    echo "  Push blocked. Fix the deploy errors and push again."
+    echo "  Run:  npx supabase functions deploy ${FAILED[0]}"
+    echo ""
+    exit 1
+  fi
+
+else
+  # Deduplicate
+  mapfile -t DEPLOY_FUNCTIONS < <(printf '%s\n' "${DEPLOY_FUNCTIONS[@]}" | sort -u)
+
+  echo "  → Deploying ${#DEPLOY_FUNCTIONS[@]} function(s): ${DEPLOY_FUNCTIONS[*]}"
+  echo ""
+
+  FAILED=()
+  for fn in "${DEPLOY_FUNCTIONS[@]}"; do
+    printf "  Deploying %-35s" "${fn}..."
+    if npx supabase functions deploy "$fn" --no-verify-jwt 2>/dev/null 1>/dev/null; then
+      echo "✅"
+    else
+      sleep 2
+      if npx supabase functions deploy "$fn" --no-verify-jwt 2>/dev/null 1>/dev/null; then
+        echo "✅ (retry)"
+      else
+        echo "❌ FAILED"
+        FAILED+=("$fn")
+      fi
+    fi
+  done
+
+  if [[ "${#FAILED[@]}" -gt 0 ]]; then
+    echo ""
+    echo "  ❌ Deploy failed for: ${FAILED[*]}"
+    echo "  Push blocked. Fix the deploy errors and push again."
+    echo ""
+    exit 1
+  fi
+fi
+
+echo ""
+echo "  ✅ All functions deployed successfully."
+echo ""
+exit 0

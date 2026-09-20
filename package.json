@@ -15,7 +15,8 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "setup:hooks": "bash scripts/setup-hooks.sh"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
