@@ -1209,8 +1209,8 @@ export class MigrationHubView {
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
-    // Step 6: Inline code
-    html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.25); padding:2px 5px; border-radius:4px; font-family:monospace; font-size:0.85em; color:var(--accent);">$1</code>');
+    // Step 6: Inline code (handles both raw and escaped backticks from escapeHTML)
+    html = html.replace(/(?:`|&#96;)(.*?)(?:`|&#96;)/g, '<code style="background:rgba(0,0,0,0.25); padding:2px 5px; border-radius:4px; font-family:monospace; font-size:0.85em; color:var(--accent);">$1</code>');
 
     // Step 7: Bullet lists
     html = html.replace(/^\- (.*$)/gim, '<li style="margin-left:1.25rem; margin-bottom:0.25rem;">$1</li>');

@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
@@ -46,7 +45,7 @@ Guidelines:
 4. If analyzing multiple pages (scope digest), synthesize common themes, conflicts, and overall status.
 5. Format strictly in clean GitHub-Flavored Markdown. Be objective, concise, and professional.`;
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   const logger = new EdgeLogger("migration-summary", req);
   const json = makeJson(req);
 
@@ -215,9 +214,9 @@ serve(async (req: Request) => {
 
   const modelsToTry = [
     "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
     "gemini-flash-latest",
-    "gemini-1.5-flash",
-    "gemini-flash-lite-latest",
   ];
 
   let summaryText = "";

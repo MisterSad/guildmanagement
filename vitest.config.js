@@ -8,7 +8,7 @@ export default defineConfig({
       jsdom: { url: 'http://localhost:3000/' }
     },
     setupFiles: ['tests/setup.js'],
-    include: ['tests/**/*.test.js']
+    include: ['tests/**/*.{test,spec}.{js,ts}']
   },
   resolve: {
     alias: [

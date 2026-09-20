@@ -28,8 +28,40 @@ export interface EnvValidationOptions {
 }
 
 function getRawEnv(): Record<string, string | undefined> {
-  if (typeof Deno !== "undefined" && Deno.env && typeof Deno.env.toObject === "function") {
-    return Deno.env.toObject();
+  const env: Record<string, string | undefined> = {};
+  if (typeof Deno !== "undefined" && Deno.env) {
+    if (typeof Deno.env.toObject === "function") {
+      try {
+        Object.assign(env, Deno.env.toObject());
+      } catch {
+        // Deno permissions or runtime may restrict toObject()
+      }
+    }
+    const explicitKeys = [
+      "SUPABASE_URL",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SUPABASE_ANON_KEY",
+      "GEMINI_API_KEY",
+      "CRON_SECRET",
+      "DISCORD_BOT_TOKEN",
+      "DISCORD_APPLICATION_ID",
+      "DISCORD_PUBLIC_KEY",
+      "DISCORD_WORKER_SECRET",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_PUBLISHABLE_KEY",
+      "STRIPE_WEBHOOK_SIGNING_SECRET",
+    ];
+    for (const key of explicitKeys) {
+      if (!env[key]) {
+        try {
+          const val = Deno.env.get(key);
+          if (val !== undefined) env[key] = val;
+        } catch {
+          // ignore permission errors
+        }
+      }
+    }
+    return env;
   }
   if (typeof process !== "undefined" && process.env) {
     return process.env as Record<string, string | undefined>;
@@ -45,11 +77,23 @@ function getRawEnv(): Record<string, string | undefined> {
  * @param options Optional validation options (e.g., requireGemini to enforce non-empty GEMINI_API_KEY).
  */
 export function getValidatedEnv(
-  source?: Record<string, unknown>,
+  sourceOrOptions?: Record<string, unknown> | EnvValidationOptions,
   options?: EnvValidationOptions
 ): ValidatedEnv {
+  let source: Record<string, unknown> | undefined;
+  let opts: EnvValidationOptions | undefined = options;
+
+  if (sourceOrOptions && typeof sourceOrOptions === "object") {
+    if ("requireGemini" in sourceOrOptions && !("SUPABASE_URL" in sourceOrOptions)) {
+      opts = sourceOrOptions as EnvValidationOptions;
+      source = undefined;
+    } else {
+      source = sourceOrOptions as Record<string, unknown>;
+    }
+  }
+
   const raw = source ?? getRawEnv();
-  const schema = options?.requireGemini
+  const schema = opts?.requireGemini
     ? EnvSchema.extend({
         GEMINI_API_KEY: z
           .string({ required_error: "GEMINI_API_KEY is required" })
