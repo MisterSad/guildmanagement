@@ -66,7 +66,7 @@ function installDb() {
 
 function installGM() {
   window.GM = {
-    t: (k) => k,
+    t: (k) => (window.GM_I18N ? window.GM_I18N.t(k) : k),
     escapeHTML: (s) => String(s ?? ''),
     formatNumber: (n) => String(n ?? ''),
     getActiveGuild: () => 'ALPHA',
@@ -146,5 +146,21 @@ describe('OverviewView — cutover guard', () => {
     const view = new OverviewView();
     await view.load();
     expect(window.GM_OVERVIEW).toBeUndefined();
+  });
+});
+
+describe('OverviewView — Clocks modal', () => {
+  it('renders the add clock button with localized text instead of placeholder', async () => {
+    const view = new OverviewView();
+    await view.load();
+
+    const manageBtn = document.getElementById('gm-manage-clocks-btn');
+    expect(manageBtn).toBeTruthy();
+    manageBtn.click();
+
+    const addBtn = document.getElementById('gm-add-clock-btn');
+    expect(addBtn).toBeTruthy();
+    expect(addBtn.textContent.trim()).toBe('Add Clock');
+    expect(addBtn.textContent).not.toContain('modal_add_clock_btn');
   });
 });

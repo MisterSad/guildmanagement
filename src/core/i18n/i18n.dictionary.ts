@@ -480,6 +480,7 @@ export const EN: Record<string, string> = {
             modal_manage_clocks_title:        'Clocks Configuration',
             modal_add_clock_section:          'Add a Clock',
             modal_add_clock_name_placeholder: 'Member name (e.g. Natalie)',
+            modal_add_clock_btn:              'Add Clock',
             modal_clocks_close:               'Close',
             toast_clock_added:                'Clock added successfully!',
             toast_clock_deleted:              'Clock deleted.',
