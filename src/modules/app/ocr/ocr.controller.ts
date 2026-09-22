@@ -193,6 +193,10 @@ export function closeOcrModal(): void {
     modal.classList.remove('visible');
     modal.style.display = 'none';
   }
+  const confirmOverlay = typeof document !== 'undefined' ? document.getElementById('confirm-overlay') : null;
+  if (confirmOverlay) {
+    confirmOverlay.remove();
+  }
 }
 
 // ── Dropdown + timezone collapsible ──────────────────────────────────────────
@@ -925,8 +929,23 @@ export async function commitOcrUpdates(): Promise<void> {
     const listPreview = checkedRemovalPseudos.slice(0, 8).map((p) => esc(p)).join(', ') + (checkedRemovalPseudos.length > 8 ? ' and ' + (checkedRemovalPseudos.length - 8) + ' more' : '');
     const confirmMsg = 'Are you sure you want to permanently remove <strong>' + checkedRemovalPseudos.length + ' member(s)</strong> (' + listPreview + ')?<br><br><span style="color:#f87171; font-size: var(--fs-base);">This permanently deletes the member and their event participations, shadowfront squads, weekly scores and sanctions.</span>';
     const confirm = w().showConfirm;
-    if (typeof confirm === 'function') confirm('Confirm Roster Removals', confirmMsg, () => { void run(); });
-    else await run();
+    if (typeof confirm === 'function') {
+      if (btnCommit) btnCommit.disabled = true;
+      confirm(
+        'Confirm Roster Removals',
+        confirmMsg,
+        () => { void run(); },
+        () => {
+          if (btnCommit) {
+            btnCommit.disabled = false;
+            const span = btnCommit.querySelector('span');
+            if (span) span.textContent = 'Validate & Apply Updates';
+          }
+        }
+      );
+    } else {
+      await run();
+    }
   } else {
     await run();
   }

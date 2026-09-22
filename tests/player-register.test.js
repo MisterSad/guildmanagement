@@ -61,6 +61,28 @@ describe('registerPlayer (player self-registration)', () => {
         expect(await GM.registerPlayer('a', 'b', 'c', 'd')).toEqual({ ok: false, error: 'invalid_code' });
     });
 
+    it('recovers edge function error codes from non-2xx responses via parseFunctionsInvokeResult', async () => {
+        GM.db = {
+            functions: {
+                invoke: async () => ({
+                    data: null,
+                    error: {
+                        message: 'Edge Function returned a non-2xx status code',
+                        context: {
+                            clone: () => ({
+                                json: async () => ({ ok: false, error: 'uid_not_in_guild' })
+                            })
+                        }
+                    }
+                }),
+            },
+        };
+        expect(await GM.registerPlayer('a', 'b', '12345678', 'FGF-ABCD-EFGH')).toEqual({
+            ok: false,
+            error: 'uid_not_in_guild'
+        });
+    });
+
     it('returns request_failed when the invoke throws', async () => {
         GM.db = {
             functions: {

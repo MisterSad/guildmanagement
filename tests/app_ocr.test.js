@@ -131,6 +131,17 @@ describe('modal lifecycle', () => {
     expect(overlay.classList.contains('visible')).toBe(false);
   });
 
+  it('closeOcrModal dismisses any active confirm-overlay', async () => {
+    await openOcrModal('members');
+    const confirmOverlay = document.createElement('div');
+    confirmOverlay.id = 'confirm-overlay';
+    document.body.appendChild(confirmOverlay);
+    expect(document.getElementById('confirm-overlay')).toBeTruthy();
+
+    closeOcrModal();
+    expect(document.getElementById('confirm-overlay')).toBeNull();
+  });
+
   it('setOcrMetric updates titles/headers and keeps members rank header visible', async () => {
     await setOcrMetric('members');
     expect(document.getElementById('ocr-modal-title').textContent).toContain('Members OCR');

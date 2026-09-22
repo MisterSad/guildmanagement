@@ -161,7 +161,7 @@ export async function registerPlayer(id: string, password: string, uid: string, 
   } catch (e) {
     return { ok: false, error: 'request_failed' };
   }
-  const data = r && r.data;
+  const data = await parseFunctionsInvokeResult(r);
   if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'registration_failed' };
   return { ok: true, status: data.status || 'pending' };
 }

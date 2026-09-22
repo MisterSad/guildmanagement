@@ -38,6 +38,7 @@ describe('showConfirm', () => {
     const overlay = document.getElementById('confirm-overlay');
     expect(overlay).toBeTruthy();
     expect(overlay.className).toContain('gm-modal-overlay');
+    expect(overlay.style.zIndex).toBe('1000001');
 
     const title = overlay.querySelector('h3');
     // Title is escaped: no live <b> element, literal text preserved.
