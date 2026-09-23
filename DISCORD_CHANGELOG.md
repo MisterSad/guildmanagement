@@ -1,3 +1,32 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.20.1**
+
+Hey everyone! I just pushed an important quality-of-life update to our Discord verification bot (`#verification`) to eliminate notification spam, support multi-guild server setups, and keep the channel completely spotless! 🤖✨
+
+---
+
+### 🔇 1. Zero Role Pings & Silent Notifications
+- **What changed**: The bot will no longer ping or tag the `@VISITOR` role (or any guild role) when posting verification messages. All role names are now displayed in clean bold text, and outgoing messages enforce Discord mention suppression (`allowed_mentions`).
+- **The benefit**: No more annoying server-wide pings when new members verify!
+
+---
+
+### 🛡️ 2. Smart Multi-Guild Support ([PR1M], [OMG], [IMK])
+- **What changed**: The verification engine now automatically recognizes all active guilds sharing the server:
+  - Players with **`[PR1M]`**, **`[OMG]`**, or **`[IMK]`** screenshots are automatically routed to their proper guild role and roster, with their nickname formatted to `[TAG] Pseudo #Server`.
+  - If a player previously had the `VISITOR` role, it is automatically removed upon receiving their guild role.
+  - **All external guilds** (or unrecognized tags) are strictly assigned the **`VISITOR`** role and renamed with the **`[VISITOR]`** tag prefix (e.g. `[VISITOR] Player #1058`), without touching guild rosters.
+- **The benefit**: Smooth, fully automated onboarding for all allied guilds on the server while keeping alliance rosters isolated and accurate!
+
+---
+
+### 🧹 3. Zero-Clutter Auto-Cleanup in `#verification`
+- **What changed**:
+  - Uploaded player screenshots are automatically deleted after 5 seconds.
+  - Bot verification replies are automatically deleted after 15 seconds.
+- **The benefit**: The verification channel stays completely clean and readable at all times!
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.20.0**
 
 Hey everyone! With the inter-server migration season heating up, I just released a brand new major feature to give our leadership teams a decisive strategic edge: the **Migration Hub**! 🗺️⚔️

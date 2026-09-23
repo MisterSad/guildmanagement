@@ -1491,41 +1491,64 @@ client.on("messageCreate", async (message) => {
       result = null;
     }
 
+    const activeGuild = result?.target_guild || fgfGuild;
+
     if (res.ok && result?.ok === true) {
       await settleFeedback(message, true);
       // Best-effort: add the verified-member role now that the profile is confirmed.
-      await addVerifiedRole(message, fgfGuild);
+      await addVerifiedRole(message, activeGuild);
 
       // 1. Send Welcome DM
-      const dmSent = await sendVerificationDm(message.author, result, fgfGuild);
+      const dmSent = await sendVerificationDm(message.author, result, activeGuild);
       if (!dmSent) {
-        const fallbackNotice = await message.channel.send(
-          `✅ <@${message.author.id}> Verified: **${result.nickname || result.pseudo}**! Welcome to **${fgfGuild}**.`
-        ).catch(() => null);
-        if (fallbackNotice) setTimeout(() => fallbackNotice.delete().catch(() => {}), 20000);
+        const fallbackNotice = await message.channel.send({
+          content: `✅ <@${message.author.id}> Verified: **${result.nickname || result.pseudo}**! Welcome to **${activeGuild}**.`,
+          allowedMentions: { users: [message.author.id], roles: [] },
+        }).catch(() => null);
+        if (fallbackNotice) setTimeout(() => fallbackNotice.delete().catch(() => {}), 15000);
       }
 
       // 2. Post to officer audit log if configured
-      const auditChannelId = result.audit_channel_id || auditChannelByGuild.get(fgfGuild);
+      const auditChannelId = result.audit_channel_id || auditChannelByGuild.get(activeGuild) || auditChannelByGuild.get(fgfGuild);
       if (auditChannelId && message.guild) {
-        await postVerificationAuditLog(message.guild, auditChannelId, message.author, result, fgfGuild);
+        await postVerificationAuditLog(message.guild, auditChannelId, message.author, result, activeGuild);
       }
 
-      // 3. Auto-delete user's screenshot message after 3s for privacy & zero-clutter
+      // 3. Auto-delete user's screenshot message after 5s for privacy & clean channel
       setTimeout(() => {
         message.delete().catch((delErr) => {
           console.warn(`Could not delete verification screenshot in ${message.channel.id} (needs Manage Messages permission):`, delErr.message);
         });
-      }, 3000);
+      }, 5000);
+
+      // 4. Auto-delete bot's channel confirmation message after 15s to keep #verification clean
+      if (result?.bot_message_id) {
+        setTimeout(async () => {
+          try {
+            const botMsg = await message.channel.messages.fetch(result.bot_message_id).catch(() => null);
+            if (botMsg) await botMsg.delete().catch(() => {});
+          } catch (_) {}
+        }, 15000);
+      }
     } else {
       const error = (result && result.error) || `http_${res.status}`;
       console.warn(`discord-profile-verification returned ${res.status} (${error}) for user ${message.author.id}`);
       await settleFeedback(message, false);
 
-      // Auto-delete failed screenshot after 60s to prevent clutter
+      // Auto-delete failed screenshot after 15s to prevent clutter
       setTimeout(() => {
         message.delete().catch(() => {});
-      }, 60000);
+      }, 15000);
+
+      // Auto-delete bot's error message after 15s as well
+      if (result?.bot_message_id) {
+        setTimeout(async () => {
+          try {
+            const botMsg = await message.channel.messages.fetch(result.bot_message_id).catch(() => null);
+            if (botMsg) await botMsg.delete().catch(() => {});
+          } catch (_) {}
+        }, 15000);
+      }
     }
   } catch (e) {
     console.error("Error handling messageCreate for profile verification:", e);

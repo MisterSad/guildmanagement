@@ -70,12 +70,32 @@ async function discordFetch(path: string, init: RequestInit): Promise<Response> 
   });
 }
 
-async function postChannelMessage(channelId: string, content: string): Promise<void> {
+async function postChannelMessage(channelId: string, content: string): Promise<string | null> {
   try {
-    await discordFetch(`/channels/${channelId}/messages`, { method: "POST", body: JSON.stringify({ content }) });
+    const res = await discordFetch(`/channels/${channelId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({
+        content,
+        allowed_mentions: { parse: [] }, // Never tag/ping any role, user, or @everyone
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const messageId = typeof data?.id === "string" ? data.id : null;
+      if (messageId && typeof (globalThis as any).EdgeRuntime?.waitUntil === "function") {
+        // Auto-cleanup bot verification message after 15s to keep the verification channel clean
+        (globalThis as any).EdgeRuntime.waitUntil(
+          new Promise((resolve) => setTimeout(resolve, 15000))
+            .then(() => discordFetch(`/channels/${channelId}/messages/${messageId}`, { method: "DELETE" }))
+            .catch(() => {})
+        );
+      }
+      return messageId;
+    }
   } catch (_) {
     // Best-effort -- a failed confirmation message shouldn't fail the request.
   }
+  return null;
 }
 
 interface DiscordRole {
@@ -103,7 +123,8 @@ async function assignRoleAndNickname(
   discordUserId: string,
   roleId: string,
   nickname: string | null,
-  logger: EdgeLogger
+  logger: EdgeLogger,
+  removeRoleId?: string | null
 ): Promise<boolean> {
   const patchBody: Record<string, unknown> = {};
   if (nickname) patchBody.nick = nickname;
@@ -112,7 +133,10 @@ async function assignRoleAndNickname(
     const memberRes = await discordFetch(`/guilds/${discordServerId}/members/${discordUserId}`, { method: "GET" });
     if (memberRes.ok) {
       const memberData = await memberRes.json();
-      const currentRoles: string[] = Array.isArray(memberData?.roles) ? memberData.roles : [];
+      let currentRoles: string[] = Array.isArray(memberData?.roles) ? memberData.roles : [];
+      if (removeRoleId) {
+        currentRoles = currentRoles.filter((id) => id !== removeRoleId);
+      }
       patchBody.roles = currentRoles.includes(roleId) ? currentRoles : [...currentRoles, roleId];
     } else {
       patchBody.roles = [roleId];
@@ -199,8 +223,8 @@ Deno.serve(async (req: Request) => {
     windowMs: 10 * 60 * 1000, // 5 attempts per 10 minutes -- a one-time action, not a chat command
   });
   if (!throttle.allowed) {
-    await postChannelMessage(channelId, "⏳ Too many verification attempts. Please wait a few minutes and try again.");
-    return json({ ok: false, error: "rate_limited" }, 429);
+    const botMsgId = await postChannelMessage(channelId, "⏳ Too many verification attempts. Please wait a few minutes and try again.");
+    return json({ ok: false, error: "rate_limited", bot_message_id: botMsgId }, 429);
   }
 
   // OCR extraction -- single-profile prompt, calibrated against the app's
@@ -212,12 +236,13 @@ Deno.serve(async (req: Request) => {
 
 Extract:
 1. "pseudo": the username at the top.
-2. "guild_tag": only the tag portion inside the brackets of the "[TAG] GuildName" pill (e.g. "PR1M", not "PR1M ALPHA" and not including the brackets), or null if no such pill is visible.
-3. "power": the Power stat converted to a pure integer, stripping commas (e.g. "111,161,059" -> 111161059) and expanding abbreviations (e.g. "145.2M" -> 145200000, "500K" -> 500000).
-4. "glory": the Total Glory stat, converted the same way, or null if not visible.
-5. "uid": the digits after "UID:" at the bottom of the screen, or null if not visible.
+2. "guild_tag": only the tag portion inside the brackets of the "[TAG] GuildName" pill (e.g. "PR1M", not "PR1M ALPHA" and not including the brackets). CRITICAL: Read the exact characters inside the brackets verbatim. External guilds have varied tags (e.g. "SB", "WAR", "SOL", etc.). Do NOT guess, auto-complete, or substitute with "IMK", "PR1M", or "OMG" if the letters are different. If no pill or brackets are visible, return null.
+3. "server_number": only the digits after "#" at the bottom of the screen (e.g. "#1058" -> "1058"), or null if not visible.
+4. "power": the Power stat converted to a pure integer, stripping commas (e.g. "111,161,059" -> 111161059) and expanding abbreviations (e.g. "145.2M" -> 145200000, "500K" -> 500000).
+5. "glory": the Total Glory stat, converted the same way, or null if not visible.
+6. "uid": the digits after "UID:" at the bottom of the screen, or null if not visible.
 
-Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "power": number, "glory": number or null, "uid": "string or null"}`;
+Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "server_number": "string or null", "power": number, "glory": number or null, "uid": "string or null"}`;
 
   let b64 = imageBase64;
   let mType = mimeType;
@@ -230,85 +255,85 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
   const visionResult = await callGeminiVision(GEMINI_API_KEY, prompt, [{ mimeType: mType, base64Data: b64 }]);
   if (!visionResult.ok || !visionResult.raw) {
     logger.error("Gemini OCR failed for profile verification", undefined, { error: visionResult.error });
-    await postChannelMessage(channelId, "❌ Couldn't read your screenshot. Please try again with a clearer, uncropped image of your profile.");
-    return json({ ok: false, error: "ocr_failed" }, 500);
+    const botMsgId = await postChannelMessage(channelId, "❌ Couldn't read your screenshot. Please try again with a clearer, uncropped image of your profile.");
+    return json({ ok: false, error: "ocr_failed", bot_message_id: botMsgId }, 500);
   }
 
   let rawExtracted: any;
   try {
     rawExtracted = JSON.parse(visionResult.raw);
   } catch {
-    await postChannelMessage(channelId, "❌ Couldn't read your screenshot. Please try again with a clearer, uncropped image of your profile.");
-    return json({ ok: false, error: "json_parse_failed" }, 500);
+    const botMsgId = await postChannelMessage(channelId, "❌ Couldn't read your screenshot. Please try again with a clearer, uncropped image of your profile.");
+    return json({ ok: false, error: "json_parse_failed", bot_message_id: botMsgId }, 500);
   }
 
   const pseudo = String(rawExtracted?.pseudo || "").trim();
   const extractedUid = rawExtracted?.uid ? String(rawExtracted.uid).trim() : "";
   const power = Number.isFinite(Number(rawExtracted?.power)) ? Math.max(0, Math.round(Number(rawExtracted.power))) : 0;
   const glory = rawExtracted?.glory != null && Number.isFinite(Number(rawExtracted.glory)) ? Math.max(0, Math.round(Number(rawExtracted.glory))) : null;
+  const extractedServerNumber = rawExtracted?.server_number ? String(rawExtracted.server_number).replace(/[^0-9]/g, "").trim() : null;
   const extractedTagNormalized = normalizeTag(rawExtracted?.guild_tag);
 
   if (!pseudo || !extractedUid) {
-    await postChannelMessage(channelId, "❌ Couldn't find your pseudo and UID on that screenshot. Please try again with your full profile visible.");
-    return json({ ok: false, error: "missing_fields_in_ocr" }, 200);
+    const botMsgId = await postChannelMessage(channelId, "❌ Couldn't find your pseudo and UID on that screenshot. Please try again with your full profile visible.");
+    return json({ ok: false, error: "missing_fields_in_ocr", bot_message_id: botMsgId }, 200);
   }
 
-  // Role decision: does the extracted tag match THIS channel's guild, AND
-  // does a Discord role named after that tag already exist on the server?
-  // Both must hold for the "real guild member" path -- otherwise Visitor.
-  const expectedTagDisplay = await resolveExpectedTag(admin, fgfGuild);
-  const expectedTagNormalized = normalizeTag(expectedTagDisplay);
-  const tagMatchesThisChannel = !!extractedTagNormalized && extractedTagNormalized === expectedTagNormalized;
-
+  // Multi-tenant role decision: Does the extracted tag resolve to any known
+  // FGF guild (e.g. [PR1M] -> ALPHA, [OMG] -> OMEGA, [IMK] -> IMK), AND does
+  // a Discord role matching that tag exist on this server?
+  // If yes: real guild member path for that guild.
+  // Otherwise: Visitor path.
   const serverRoles = await fetchServerRoles(discordServerId);
-  const matchedGuildRole = tagMatchesThisChannel ? findRoleByNormalizedName(serverRoles, expectedTagNormalized) : null;
+  const visitorRole = findRoleByNormalizedName(serverRoles, VISITOR_ROLE_NAME);
+
+  const tagMatch = await resolveTagToGuild(admin, extractedTagNormalized);
+  const matchedGuildRole = tagMatch ? findRoleByNormalizedName(serverRoles, normalizeTag(tagMatch.tagDisplay)) : null;
 
   if (!matchedGuildRole) {
-    const visitorRole = findRoleByNormalizedName(serverRoles, VISITOR_ROLE_NAME);
     if (!visitorRole) {
-      logger.warn(`Neither the guild-tag role nor a ${VISITOR_ROLE_NAME} role exists on this server`, { discordServerId, expectedTagDisplay });
-      await postChannelMessage(
+      const expectedTagDisplay = await resolveExpectedTag(admin, fgfGuild);
+      logger.warn(`Neither a matching guild role nor a ${VISITOR_ROLE_NAME} role exists on this server`, { discordServerId, expectedTagDisplay });
+      const botMsgId = await postChannelMessage(
         channelId,
-        `⚠️ I couldn't find a "${expectedTagDisplay}" role or a "[${VISITOR_ROLE_NAME}]" role on this server -- ask an officer to create one of them (role names must match the bracketed guild tag format, e.g. "${expectedTagDisplay}"), then try again.`
+        `⚠️ I couldn't find a matching guild role or a "[${VISITOR_ROLE_NAME}]" role on this server -- ask an officer to create one, then try again.`
       );
-      return json({ ok: false, error: "no_matching_role" }, 200);
+      return json({ ok: false, error: "no_matching_role", bot_message_id: botMsgId }, 200);
     }
-    // Still set "[TAG] Pseudo #Server" on the Visitor path when the
-    // screenshot's tag resolves to SOME known FGF guild (even if it's not
-    // this channel's own, or its role just isn't created yet) -- gives a
-    // trackable identity instead of leaving Visitors unnamed. If the tag
-    // doesn't match any known guild at all, there's no trustworthy server
-    // number to attach, so the nickname is left untouched rather than
-    // stamping raw, unverified OCR text onto it.
-    const tagMatch = await resolveTagToGuild(admin, extractedTagNormalized);
-    const visitorNickname = tagMatch ? buildNickname(tagMatch.tagDisplay, pseudo, tagMatch.serverNumber) : null;
 
-    // Mention the role by ID rather than hardcoding its display text, so the
-    // message always reflects the role's real name/formatting on this server.
+    // Visitor path: All external or unrecognized guilds MUST be tagged [VISITOR].
+    const { data: channelGuildRow } = await admin.from("guilds").select("server_number").eq("id", fgfGuild).maybeSingle();
+    const serverNum = extractedServerNumber || (channelGuildRow as { server_number?: string } | null)?.server_number || null;
+    const visitorTagDisplay = `[${VISITOR_ROLE_NAME}]`;
+    const visitorNickname = buildNickname(visitorTagDisplay, pseudo, serverNum);
+
     const patched = await assignRoleAndNickname(discordServerId, discordUserId, visitorRole.id, visitorNickname, logger);
-    const reason = tagMatchesThisChannel
-      ? `the "${expectedTagDisplay}" role hasn't been created on this server yet`
-      : `this looks like a "${rawExtracted?.guild_tag || "different"}" screenshot, not ${expectedTagDisplay}`;
+    const reason = rawExtracted?.guild_tag
+      ? `external guild [${rawExtracted.guild_tag}]`
+      : "no guild tag detected";
     const auditChannelId = await resolveAuditChannelId(admin, fgfGuild);
-    await postChannelMessage(
+    const botMsgId = await postChannelMessage(
       channelId,
       patched
-        ? `👋 Assigned the <@&${visitorRole.id}> role${visitorNickname ? ` (**${visitorNickname}**)` : ""} (${reason}). No roster changes were made.`
-        : `⚠️ Tried to assign the <@&${visitorRole.id}> role but couldn't -- an officer may need to check my role position in Server Settings > Roles.`
+        ? `👋 Assigned the **${visitorRole.name}** role (**${visitorNickname}**) (${reason}). No roster changes were made.`
+        : `⚠️ Tried to assign the **${visitorRole.name}** role but couldn't -- an officer may need to check my role position in Server Settings > Roles.`
     );
     return json({
       ok: true,
       role: "visitor",
-      tag_matches_channel: tagMatchesThisChannel,
+      tag_matches_channel: false,
       nickname: visitorNickname,
       assigned_role_id: visitorRole.id,
       audit_channel_id: auditChannelId,
+      bot_message_id: botMsgId,
     }, 200);
   }
 
-  // Real guild member: run every ban / cross-guild / roster decision.
-  const extracted: ExtractedProfile = { pseudo, uid: extractedUid, power, glory };
-  const result = await evaluateVerification(admin, fgfGuild, discordUserId, extracted);
+  // Real guild member (matched PR1M -> ALPHA, OMG -> OMEGA, IMK -> IMK, etc.):
+  // Run every ban / cross-guild / roster decision for the resolved guild.
+  const targetGuild = tagMatch!.fgfGuild;
+  const extracted: ExtractedProfile = { pseudo, uid: extractedUid, power, glory, serverNumber: extractedServerNumber };
+  const result = await evaluateVerification(admin, targetGuild, discordUserId, extracted);
 
   if (!result.ok) {
     const messages: Record<string, string> = {
@@ -316,27 +341,30 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
       uid_registered_elsewhere: "❌ This UID is already registered under a different guild. If you transferred guilds, ask an officer to update your roster entry.",
       db_error: "❌ Something went wrong updating your roster entry. Please try again later.",
     };
-    await postChannelMessage(channelId, messages[result.error] || "❌ Something went wrong. Please try again later.");
-    return json({ ok: false, error: result.error }, result.error === "db_error" ? 500 : 200);
+    const botMsgId = await postChannelMessage(channelId, messages[result.error] || "❌ Something went wrong. Please try again later.");
+    return json({ ok: false, error: result.error, bot_message_id: botMsgId }, result.error === "db_error" ? 500 : 200);
   }
 
-  const { data: guildRow } = await admin.from("guilds").select("server_number").eq("id", fgfGuild).maybeSingle();
-  const nickname = buildNickname(expectedTagDisplay, result.finalPseudo, (guildRow as { server_number?: string } | null)?.server_number || null);
+  const effectiveServerNumber = tagMatch!.serverNumber || extractedServerNumber || null;
+  const nickname = buildNickname(tagMatch!.tagDisplay, result.finalPseudo, effectiveServerNumber);
 
-  const patched = await assignRoleAndNickname(discordServerId, discordUserId, matchedGuildRole.id, nickname, logger);
+  // Assign matched guild role and strip visitor role if previously assigned
+  const patched = await assignRoleAndNickname(discordServerId, discordUserId, matchedGuildRole.id, nickname, logger, visitorRole?.id);
   const summary = result.isNewPlayer ? "added to the roster" : "roster updated";
 
-  if (patched) {
-    await postChannelMessage(channelId, `✅ Verified: **${nickname}** — ${summary}, <@&${matchedGuildRole.id}> assigned.`);
-  } else {
-    await postChannelMessage(channelId, `✅ Verified and ${summary} (**${result.finalPseudo}**), but I couldn't update your nickname/role automatically -- an officer may need to check my role position in Server Settings > Roles.`);
-  }
+  const botMsgId = await postChannelMessage(
+    channelId,
+    patched
+      ? `✅ Verified: **${nickname}** — ${summary}, role **${matchedGuildRole.name}** assigned.`
+      : `✅ Verified and ${summary} (**${result.finalPseudo}**), but I couldn't update your nickname/role automatically -- an officer may need to check my role position in Server Settings > Roles.`
+  );
 
-  const auditChannelId = await resolveAuditChannelId(admin, fgfGuild);
+  const auditChannelId = (await resolveAuditChannelId(admin, targetGuild)) || (await resolveAuditChannelId(admin, fgfGuild));
 
   return json({
     ok: true,
     role: "guild_member",
+    target_guild: targetGuild,
     pseudo: result.finalPseudo,
     uid: extractedUid,
     is_new_player: result.isNewPlayer,
@@ -347,5 +375,6 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     assigned_role_id: matchedGuildRole.id,
     audit_channel_id: auditChannelId,
     discord_actions_ok: patched,
+    bot_message_id: botMsgId,
   });
 });

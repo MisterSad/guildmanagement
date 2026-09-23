@@ -1,5 +1,27 @@
 # Changelog
 
+## [3.20.1] - 2026-09-23
+
+- **Bug Fix & Hardening: Discord Profile Verification — Multi-Guild Routing, Mention Suppression & Zero-Clutter Channel Cleanup (V3.20.1)**
+  - **Mention & Role Ping Suppression**:
+    - Eliminated raw role tags `<@&role_id>` in bot messages across all verification flows; converted to plain bold role labels (`**${role.name}**`).
+    - Enforced `allowed_mentions: { parse: [] }` on channel message payloads sent via Discord REST API, preventing accidental `@everyone`, `@here`, role mentions, and member notification spam.
+  - **Multi-Tenant Guild Verification Routing**:
+    - Replaced single-channel guild constraint with dynamic `resolveTagToGuild()` lookup across configured server tenants (`[PR1M]` -> `ALPHA`, `[OMG]` -> `OMEGA`, `[IMK]` -> `IMK`).
+    - Verified players receive their respective guild's Discord role, clean `[TAG] Pseudo #Server` nickname, and automatic roster insertion/updates.
+    - Added automated stripping of the `VISITOR` role when a member transitions to a verified guild role.
+  - **Strict Visitor Tagging for External Guilds**:
+    - Any non-member or external alliance tag (e.g. `[SB]`, etc.) is strictly tagged with `[VISITOR]` nickname prefix (`[VISITOR] <pseudo> #<serverNumber>`) and assigned the `VISITOR` role without altering guild rosters.
+  - **Calibrated Gemini Vision OCR**:
+    - Refined OCR system prompt with strict verbatim bracket matching instructions to prevent model hallucinations from misreading external guild tags as `IMK`.
+    - Added automated extraction of bottom-screen server numbers (`#<digits>`).
+  - **Automated `#verification` Channel Cleanup**:
+    - Player screenshot uploads are scheduled for auto-deletion after 5 seconds (15 seconds on OCR failure).
+    - Bot verification replies are scheduled for auto-deletion after 15 seconds via persistent worker timers and `EdgeRuntime.waitUntil` fallback, maintaining a pristine, zero-clutter channel.
+  - **Verification & Test Coverage**:
+    - Updated regression suite in `tests/discord_verification.test.js` (27/27 tests green).
+    - Full quality gate validated: `npm run type-check` (0 TS errors), 133 Vitest suites green (1,500 tests passed), production build clean.
+
 ## [3.20.0] - 2026-09-19
 
 - **Feature: Migration Hub — Collaborative Intel Wiki, Compressed Screenshots & Gemini AI Summaries (V3.20.0)** — empowers guild and server leadership to track, analyze, and coordinate inter-server migrations with a dedicated high-end intel wiki.

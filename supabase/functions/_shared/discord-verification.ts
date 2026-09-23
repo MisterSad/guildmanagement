@@ -118,6 +118,7 @@ export interface ExtractedProfile {
   uid: string;
   power: number;
   glory: number | null;
+  serverNumber?: string | null;
 }
 
 export type VerificationResult =

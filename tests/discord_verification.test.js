@@ -220,7 +220,7 @@ describe('Regression: discord-profile-verification role decision (Visitor fallba
 
   it('only calls evaluateVerification (and only touches guild_members) once a matching guild role was found', () => {
     const roleCheckIdx = fnSrc.indexOf('const matchedGuildRole');
-    const evalIdx = fnSrc.indexOf('evaluateVerification(admin, fgfGuild, discordUserId, extracted)');
+    const evalIdx = fnSrc.indexOf('evaluateVerification(admin, targetGuild, discordUserId, extracted)');
     expect(roleCheckIdx).toBeGreaterThan(-1);
     expect(evalIdx).toBeGreaterThan(roleCheckIdx);
     // The Visitor branch returns before reaching evaluateVerification.
@@ -229,19 +229,23 @@ describe('Regression: discord-profile-verification role decision (Visitor fallba
     expect(visitorBranchIdx).toBeLessThan(evalIdx);
   });
 
-  it('requires BOTH the tag to match this channel\'s guild AND a same-named role to exist, else falls back to Visitor', () => {
-    expect(fnSrc).toContain('tagMatchesThisChannel ? findRoleByNormalizedName(serverRoles, expectedTagNormalized) : null');
+  it('resolves the guild via resolveTagToGuild and requires a same-named role to exist on server, else falls back to Visitor', () => {
+    expect(fnSrc).toContain('tagMatch ? findRoleByNormalizedName(serverRoles, normalizeTag(tagMatch.tagDisplay)) : null');
     expect(fnSrc).toContain('findRoleByNormalizedName(serverRoles, VISITOR_ROLE_NAME)');
   });
 
-  it('still resolves a "[TAG] Pseudo #Server" nickname on the Visitor path via resolveTagToGuild, never from raw unverified OCR text', () => {
+  it('tags all external or unrecognized guilds with [VISITOR] nickname prefix', () => {
     const visitorIdx = fnSrc.indexOf('if (!matchedGuildRole)');
     const guildMemberIdx = fnSrc.indexOf('Real guild member');
     const visitorBlock = fnSrc.slice(visitorIdx, guildMemberIdx);
-    expect(visitorBlock).toContain('resolveTagToGuild(admin, extractedTagNormalized)');
+    expect(visitorBlock).toContain('visitorTagDisplay = `[${VISITOR_ROLE_NAME}]`');
+    expect(visitorBlock).toContain('buildNickname(visitorTagDisplay, pseudo, serverNum)');
     expect(visitorBlock).toContain('assignRoleAndNickname(discordServerId, discordUserId, visitorRole.id, visitorNickname, logger)');
-    // No nickname at all when the tag doesn't resolve to any known guild.
-    expect(visitorBlock).toContain('tagMatch ? buildNickname(tagMatch.tagDisplay, pseudo, tagMatch.serverNumber) : null');
+  });
+
+  it('suppresses role mentions by never outputting <@& and enforcing allowed_mentions: { parse: [] }', () => {
+    expect(fnSrc).not.toContain('<@&');
+    expect(fnSrc).toContain('allowed_mentions: { parse: [] }');
   });
 });
 
@@ -252,7 +256,7 @@ describe('Regression: discord-profile-verification stays a thin caller', () => {
   );
 
   it('delegates every guild_members / ban / cross-guild decision to the shared module', () => {
-    expect(fnSrc).toContain('evaluateVerification(admin, fgfGuild, discordUserId, extracted)');
+    expect(fnSrc).toContain('evaluateVerification(admin, targetGuild, discordUserId, extracted)');
     expect(fnSrc).not.toMatch(/from\(["']guild_members["']\)\.insert/);
     expect(fnSrc).not.toMatch(/from\(["']banned_players["']\)/);
   });
@@ -299,5 +303,10 @@ describe('Regression: discord-verification-worker keeps business writes out', ()
     expect(workerSrc).toContain("eq(\"key\", \"discord_verification_channel_id\")");
     expect(workerSrc).toContain('VERIFICATION_FUNCTION_URL');
     expect(workerSrc).toContain('DISCORD_WORKER_SECRET');
+  });
+
+  it('schedules auto-deletion for screenshots and bot replies to keep verification clean', () => {
+    expect(workerSrc).toContain('message.delete()');
+    expect(workerSrc).toContain('result?.bot_message_id');
   });
 });
