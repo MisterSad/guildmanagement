@@ -1,3 +1,29 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.20.2**
+
+Hey everyone! I just pushed a targeted fix and ergonomics update for manual war score entry (SvS and GvG) and the event history review modal! ⚔️📊
+
+---
+
+### 💾 1. Reliable Manual Score Saving on Active Events (SvS & GvG)
+- **What changed**:
+  - Fixed an issue where manual score entries on the active SvS/GvG page failed to save when some day columns were left blank.
+  - Saisies now save immediately when you press Enter or navigate away from the input, in addition to the standard 700ms typing debounce.
+  - When saving scores, a clear confirmation toast (*"Daily scores saved."*) now pops up so you always know your changes were securely recorded.
+  - Entering a positive score automatically ticks the player's participation checkbox and updates the live overview stats.
+- **The benefit**: Fast, smooth, and 100% reliable score tracking during daily SvS and GvG wars without lost inputs or silent failures!
+
+---
+
+### 📜 2. History Modal: Permanent Bottom Scrollbar & Sticky Headers
+- **What changed**:
+  - Expanded the large modal dialog width to 1080px so all 9 war columns fit comfortably on desktop screens.
+  - Pinned the horizontal scrollbar directly above the modal footer. You no longer have to scroll through 100 players just to reach the horizontal scrollbar at the bottom!
+  - Made table headers sticky at the top with an opaque background, keeping column titles clearly in view as you scroll down the roster.
+  - Fixed a column alignment bug in granular history mode where the participation column was missing from member rows, ensuring every score lines up perfectly under its correct day.
+- **The benefit**: Reviewing and editing past war sessions is now effortless, whether on a desktop monitor or on mobile!
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.20.1**
 
 Hey everyone! I just pushed an important quality-of-life update to our Discord verification bot (`#verification`) to eliminate notification spam, support multi-guild server setups, and keep the channel completely spotless! 🤖✨

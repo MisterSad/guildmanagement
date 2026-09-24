@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.20.2] - 2026-09-24
+
+- **Bug Fix & Ergonomics: War Manual Score Saving & History Modal Table Scrolling (V3.20.2)**
+  - **Manual Score Saving on Active Events (SvS & GvG)**:
+    - Fixed empty string score values in participant rows evaluating to `null` via `legacy.parseNumber()`, which triggered PostgreSQL RPC `public.gm_upsert_daily_scores` input validation failure (`invalid_input`).
+    - Hardened score parsing to strictly emit valid non-null numbers (`Number(legacy.parseNumber(v) || 0)`), ensuring blank/unplayed days are omitted or safely zeroed without failing the entire participant batch.
+    - Wired `change` event listeners alongside 700ms debounced `input` events on all score inputs across `EventsView.ts`, ensuring immediate save triggers on Enter/blur.
+    - Added user feedback toasts: `legacy.t('war_save_daily_success')` ("Daily scores saved.") on successful row save, and explicit error notifications on RPC failures.
+    - Automatically synced row participation checkboxes and in-memory participant state (`participated = 1`) whenever a positive score is saved.
+  - **History Modal Column Synchronization & Horizontal Scrolling**:
+    - Decoupled participant status cells (`col_participated`, `late`, `excused`, `sub_present`, `appointed`) from score cells in `HistoryView.ts`. Fixed granular war sessions missing the `participated` cell, resolving the 1-column shift where Day 1 scores misaligned under the "Participated" header.
+    - Expanded `.gm-ui-dialog-lg` from `860px` to `1080px` (`width: 95vw`), allowing wide 9-column war tables to display naturally on desktop viewports.
+    - Constrained `.gm-ui-dialog-body .gm-table-scroll` to `max-height: 52vh; overflow: auto;`, pinning the horizontal scrollbar directly above the modal footer where it remains permanently accessible regardless of row count.
+    - Added sticky table headers (`thead th` with `position: sticky; top: 0; z-index: 2; background: var(--card);`) preventing text bleed-through during vertical scrolling.
+    - Added responsive `data-label` attributes across all granular and status table cells.
+  - **Quality & Verification**:
+    - Added comprehensive regression suite in `tests/war_manual_score_entry_and_history_scroll.test.js` (4/4 tests green).
+    - Full quality gate validated: `npm run type-check` (0 TS errors), 134 Vitest suites green (1,504 tests passed), production build clean.
+
 ## [3.20.1] - 2026-09-23
 
 - **Bug Fix & Hardening: Discord Profile Verification — Multi-Guild Routing, Mention Suppression & Zero-Clutter Channel Cleanup (V3.20.1)**

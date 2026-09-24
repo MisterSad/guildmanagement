@@ -90,7 +90,8 @@ const legacy = {
   },
   parseNumber(value: unknown): number {
     const g = gm();
-    return g && typeof g.parseNumber === 'function' ? g.parseNumber(value) : (parseInt(String(value).replace(/[^0-9]/g, ''), 10) || 0);
+    const parsed = g && typeof g.parseNumber === 'function' ? g.parseNumber(value) : (parseInt(String(value).replace(/[^0-9]/g, ''), 10) || 0);
+    return typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0;
   },
   roleFromStorage(): string {
     const g = gm();
@@ -540,6 +541,32 @@ export class HistoryView {
       const initial = legacy.avatarInit(r.pseudo);
       let participatedCell = '', lateCell = '', excusedCell = '', subPresentCell = '', appointedCell = '', scoreCells = '';
 
+      if (hasParticipated) {
+        if (isAdmin) {
+          participatedCell = '<td class="gm-center" data-label="' + legacy.t('col_participated') + '"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
+        } else {
+          participatedCell = '<td class="gm-center" data-label="' + legacy.t('col_participated') + '">' + (r.participated > 0 ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+        }
+      }
+      if (eventName === 'Shadowfront') {
+        if (isAdmin) {
+          lateCell = '<td class="gm-center" data-label="Late"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.late ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
+          excusedCell = '<td class="gm-center" data-label="Excused"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.excused ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
+          subPresentCell = '<td class="gm-center" data-label="Sub Present"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.sub_present ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
+        } else {
+          lateCell = '<td class="gm-center" data-label="Late">' + (r.late ? '<i class="ph-fill ph-check-circle text-warning"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+          excusedCell = '<td class="gm-center" data-label="Excused">' + (r.excused ? '<i class="ph-fill ph-check-circle text-info"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+          subPresentCell = '<td class="gm-center" data-label="Sub Present">' + (r.sub_present ? '<i class="ph-fill ph-check-circle text-accent"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+        }
+      }
+      if (isDtr) {
+        if (isAdmin) {
+          appointedCell = '<td class="gm-center" data-label="Appointed"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="appointed" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.appointed ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
+        } else {
+          appointedCell = '<td class="gm-center" data-label="Appointed">' + (r.appointed ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+        }
+      }
+
       // Granular SvS/GvG: six per-day columns (+ chests) instead of the
       // aggregated score_prep / score_pvp fields. A player in aggregate mode
       // (day-0 row) renders a single cumulative "Total D1–D5" cell instead of
@@ -561,22 +588,22 @@ export class HistoryView {
           }
           const d6 = dayOf[6];
           if (isAdmin) {
-            dayCells += '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + legacy.esc(r.pseudo) + '" data-day="6" value="' + (d6 != null ? legacy.fmt(d6) : '') + '"></td>';
+            dayCells += '<td class="gm-right" data-label="Day 6"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + legacy.esc(r.pseudo) + '" data-day="6" value="' + (d6 != null ? legacy.fmt(d6) : '') + '"></td>';
           } else {
-            dayCells += '<td class="gm-right">' + (d6 != null ? legacy.fmt(d6) : '-') + '</td>';
+            dayCells += '<td class="gm-right" data-label="Day 6">' + (d6 != null ? legacy.fmt(d6) : '-') + '</td>';
           }
           if (hasGrid && warExtra) {
             const chestTotal = resolvePrepChests(warExtra.grid, dayOf, total) +
               resolveChestsForScore(warExtra.grid.filter((g) => g.day === 6), dayOf[6]);
-            dayCells += '<td class="gm-right">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
+            dayCells += '<td class="gm-right" data-label="' + legacy.t('war_col_chests') + '">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
           }
         } else {
           for (let d = 1; d <= 6; d++) {
             const v = dayOf[d];
             if (isAdmin) {
-              dayCells += '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + legacy.esc(r.pseudo) + '" data-day="' + d + '" value="' + (v != null ? legacy.fmt(v) : '') + '"></td>';
+              dayCells += '<td class="gm-right" data-label="Day ' + d + '"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + legacy.esc(r.pseudo) + '" data-day="' + d + '" value="' + (v != null ? legacy.fmt(v) : '') + '"></td>';
             } else {
-              dayCells += '<td class="gm-right">' + (v != null ? legacy.fmt(v) : '-') + '</td>';
+              dayCells += '<td class="gm-right" data-label="Day ' + d + '">' + (v != null ? legacy.fmt(v) : '-') + '</td>';
             }
           }
           if (hasGrid && warExtra) {
@@ -584,45 +611,23 @@ export class HistoryView {
             for (let d = 1; d <= 6; d++) {
               chestTotal += resolveChestsForScore(warExtra.grid.filter((g) => g.day === d), dayOf[d]);
             }
-            dayCells += '<td class="gm-right">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
+            dayCells += '<td class="gm-right" data-label="' + legacy.t('war_col_chests') + '">' + (chestTotal ? legacy.fmt(chestTotal) : '-') + '</td>';
           }
         }
         scoreCells = dayCells;
       } else if (isAdmin) {
-        if (hasParticipated) {
-          participatedCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-        }
-        if (eventName === 'Shadowfront') {
-          lateCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.late ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-          excusedCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.excused ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-          subPresentCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.sub_present ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-        }
-        if (isDtr) {
-          appointedCell = '<td class="gm-center"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="appointed" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.appointed ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-        }
         if (isDualScore) {
-          scoreCells = '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_prep" data-pseudo="' + legacy.esc(r.pseudo) + '" value="' + (r.score_prep != null ? legacy.fmt(r.score_prep) : '') + '"></td>' +
-            '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_pvp" data-pseudo="' + legacy.esc(r.pseudo) + '" value="' + (r.score_pvp != null ? legacy.fmt(r.score_pvp) : '') + '"></td>';
+          scoreCells = '<td class="gm-right" data-label="' + legacy.t('col_score_prep') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_prep" data-pseudo="' + legacy.esc(r.pseudo) + '" value="' + (r.score_prep != null ? legacy.fmt(r.score_prep) : '') + '"></td>' +
+            '<td class="gm-right" data-label="' + legacy.t('col_score_pvp') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_pvp" data-pseudo="' + legacy.esc(r.pseudo) + '" value="' + (r.score_pvp != null ? legacy.fmt(r.score_pvp) : '') + '"></td>';
         } else if (meta.hasScore) {
-          scoreCells = '<td class="gm-right"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score" data-pseudo="' + legacy.esc(r.pseudo) + '" value="' + (r.score != null ? legacy.fmt(r.score) : '') + '"></td>';
+          scoreCells = '<td class="gm-right" data-label="' + legacy.t('col_score') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score" data-pseudo="' + legacy.esc(r.pseudo) + '" value="' + (r.score != null ? legacy.fmt(r.score) : '') + '"></td>';
         }
       } else {
-        if (hasParticipated) {
-          participatedCell = '<td class="gm-center">' + (r.participated > 0 ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
-        }
-        if (eventName === 'Shadowfront') {
-          lateCell = '<td class="gm-center">' + (r.late ? '<i class="ph-fill ph-check-circle text-warning"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
-          excusedCell = '<td class="gm-center">' + (r.excused ? '<i class="ph-fill ph-check-circle text-info"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
-          subPresentCell = '<td class="gm-center">' + (r.sub_present ? '<i class="ph-fill ph-check-circle text-accent"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
-        }
-        if (isDtr) {
-          appointedCell = '<td class="gm-center">' + (r.appointed ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
-        }
         if (isDualScore) {
-          scoreCells = '<td class="gm-right">' + (r.score_prep != null ? legacy.fmt(r.score_prep) : '-') + '</td>' +
-            '<td class="gm-right">' + (r.score_pvp != null ? legacy.fmt(r.score_pvp) : '-') + '</td>';
+          scoreCells = '<td class="gm-right" data-label="' + legacy.t('col_score_prep') + '">' + (r.score_prep != null ? legacy.fmt(r.score_prep) : '-') + '</td>' +
+            '<td class="gm-right" data-label="' + legacy.t('col_score_pvp') + '">' + (r.score_pvp != null ? legacy.fmt(r.score_pvp) : '-') + '</td>';
         } else if (meta.hasScore) {
-          scoreCells = '<td class="gm-right">' + (r.score != null ? legacy.fmt(r.score) : '-') + '</td>';
+          scoreCells = '<td class="gm-right" data-label="' + legacy.t('col_score') + '">' + (r.score != null ? legacy.fmt(r.score) : '-') + '</td>';
         }
       }
 
@@ -653,8 +658,8 @@ export class HistoryView {
         '</div>' +
         (sorted.length === 0
           ? '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('history_empty_session') + '</div></div>'
-          : '<div class="gm-table-wrap"><div class="gm-table-scroll">' +
-              '<table class="gm-table gm-resp-table">' +
+          : '<div class="gm-table-wrap gm-ui-table-wrap"><div class="gm-table-scroll">' +
+              '<table class="gm-table gm-resp-table gm-ui-table-el gm-ui-table-sticky">' +
                 '<thead><tr>' + headerCols + '</tr></thead>' +
                 '<tbody>' + rowsHtml + '</tbody>' +
               '</table>' +
@@ -686,8 +691,18 @@ export class HistoryView {
         input.addEventListener('change', () => {
           const pseudo = input.getAttribute('data-pseudo') || '';
           const field = input.getAttribute('data-field') || '';
-          const val = legacy.parseNumber(input.value);
+          const val = Number(legacy.parseNumber(input.value) || 0);
           void this.updateParticipantField(eventName, sessionId, weekStart, pseudo, field, val);
+          if (val > 0) {
+            const row = input.closest('tr');
+            if (row) {
+              const cb = row.querySelector('.hist-edit-check[data-field="participated"]') as HTMLInputElement | null;
+              if (cb && !cb.checked) {
+                cb.checked = true;
+                void this.updateParticipantField(eventName, sessionId, weekStart, pseudo, 'participated', 1);
+              }
+            }
+          }
         });
       });
       overlay.querySelectorAll('.hist-day-input').forEach((el) => {
@@ -696,8 +711,18 @@ export class HistoryView {
         input.addEventListener('change', () => {
           const pseudo = input.getAttribute('data-pseudo') || '';
           const day = Number(input.getAttribute('data-day'));
-          const val = legacy.parseNumber(input.value);
+          const val = Number(legacy.parseNumber(input.value) || 0);
           if (sessionId) void this.updateGranularDayField(eventName, sessionId, pseudo, day, val);
+          if (val > 0) {
+            const row = input.closest('tr');
+            if (row) {
+              const cb = row.querySelector('.hist-edit-check[data-field="participated"]') as HTMLInputElement | null;
+              if (cb && !cb.checked) {
+                cb.checked = true;
+                void this.updateParticipantField(eventName, sessionId, weekStart, pseudo, 'participated', 1);
+              }
+            }
+          }
         });
       });
     }

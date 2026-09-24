@@ -69,7 +69,8 @@ const legacy = {
   },
   parseNumber(value: unknown): number {
     const g = gm();
-    return g && typeof g.parseNumber === 'function' ? g.parseNumber(value) : (parseInt(String(value).replace(/[^0-9]/g, ''), 10) || 0);
+    const parsed = g && typeof g.parseNumber === 'function' ? g.parseNumber(value) : (parseInt(String(value).replace(/[^0-9]/g, ''), 10) || 0);
+    return typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0;
   },
   attachNumberFormatter(input: unknown): void {
     const g = gm();
@@ -661,6 +662,16 @@ export class EventsView {
       const inp = node as HTMLInputElement;
       legacy.attachNumberFormatter(inp);
       const pseudo = inp.getAttribute('data-pseudo') || '';
+      const triggerSave = (): void => {
+        const row = inp.closest('.participant-row');
+        if (row) this.updateChestCell(row, tabKey);
+        const timerKey = tabKey + '::' + pseudo;
+        if (this.warSaveTimers[timerKey]) {
+          clearTimeout(this.warSaveTimers[timerKey]);
+          delete this.warSaveTimers[timerKey];
+        }
+        void this.saveGranularRow(tabKey, pseudo, row);
+      };
       inp.addEventListener('input', () => {
         const row = inp.closest('.participant-row');
         if (row) this.updateChestCell(row, tabKey);
@@ -669,6 +680,9 @@ export class EventsView {
         this.warSaveTimers[timerKey] = setTimeout(() => {
           void this.saveGranularRow(tabKey, pseudo, row);
         }, 700);
+      });
+      inp.addEventListener('change', () => {
+        triggerSave();
       });
     });
   }
@@ -746,21 +760,28 @@ export class EventsView {
     }
     if (inputs.length === 0) return;
 
+    const war = this.getWar(tabKey);
+    const existing = war.daily[pseudo] || [];
     const rows: Array<{ pseudo: string; day: number; score: number }> = [];
     inputs.forEach((inp) => {
       if (inp.getAttribute('data-pseudo') !== pseudo) return;
       const day = Number(inp.getAttribute('data-day'));
       if (!(day >= 0 && day <= 6)) return;
-      rows.push({ pseudo, day, score: legacy.parseNumber(inp.value) });
+      const raw = (inp.value || '').trim();
+      const hadPrevious = existing.some((e) => e.day === day && (Number(e.score) || 0) > 0);
+      if (raw !== '') {
+        const score = Number(legacy.parseNumber(raw) || 0);
+        rows.push({ pseudo, day, score });
+      } else if (hadPrevious) {
+        rows.push({ pseudo, day, score: 0 });
+      }
     });
     if (rows.length === 0) return;
 
-    const war = this.getWar(tabKey);
-    const existing = war.daily[pseudo] || [];
     const prevHasDaily = existing.some((e) => PREP_DAYS.indexOf(e.day) !== -1 && (Number(e.score) || 0) > 0);
     const prevHasAgg = existing.some((e) => e.day === WAR_AGGREGATE_DAY);
-    const wroteAgg = rows.some((r) => r.day === WAR_AGGREGATE_DAY);
-    const wroteDaily = rows.some((r) => PREP_DAYS.indexOf(r.day) !== -1);
+    const wroteAgg = rows.some((r) => r.day === WAR_AGGREGATE_DAY && r.score > 0);
+    const wroteDaily = rows.some((r) => PREP_DAYS.indexOf(r.day) !== -1 && r.score > 0);
 
     // Destructive conversion (aggregate on top of existing D1..D5): the RPC
     // clears the player's per-day scores, so require an explicit confirmation.
@@ -778,20 +799,59 @@ export class EventsView {
       s.sessionId,
       rows
     );
-    if (!res.ok) return;
+    if (!res.ok) {
+      legacy.showToast(legacy.t('war_save_tiers_error') + (res.error && res.error !== 'rpc_failed' ? ' ' + res.error : ''), 'error');
+      return;
+    }
 
-    war.daily[pseudo] = rows.map((r) => ({
-      day: r.day,
-      score: r.score,
-      chests_unlocked: r.day === WAR_AGGREGATE_DAY
+    const isNowAgg = rows.some((r) => r.day === WAR_AGGREGATE_DAY && r.score > 0);
+    const isNowDaily = rows.some((r) => PREP_DAYS.indexOf(r.day) !== -1 && r.score > 0);
+
+    let nextDaily: Array<{ day: number; score: number; chests_unlocked: number }> = [];
+    if (isNowAgg) {
+      nextDaily = existing.filter((d) => PREP_DAYS.indexOf(d.day) === -1);
+    } else if (isNowDaily) {
+      nextDaily = existing.filter((d) => d.day !== WAR_AGGREGATE_DAY);
+    } else {
+      nextDaily = [...existing];
+    }
+    rows.forEach((r) => {
+      const chests = r.day === WAR_AGGREGATE_DAY
         ? resolveChestsForScore(aggregateTierSlice(war.grid), r.score)
-        : resolveChestsForScore(war.grid.filter((g) => g.day === r.day), r.score)
-    }));
+        : resolveChestsForScore(war.grid.filter((g) => g.day === r.day), r.score);
+      const idx = nextDaily.findIndex((d) => d.day === r.day);
+      if (idx >= 0) {
+        nextDaily[idx] = { day: r.day, score: r.score, chests_unlocked: chests };
+      } else {
+        nextDaily.push({ day: r.day, score: r.score, chests_unlocked: chests });
+      }
+    });
+    war.daily[pseudo] = nextDaily;
+
+    const pp = s.participants.find((x) => x.pseudo === pseudo);
+    if (pp) {
+      const dailyList = war.daily[pseudo] || [];
+      const prepSum = dailyList.reduce((acc, d) => (d.day >= 0 && d.day <= 5 ? acc + (Number(d.score) || 0) : acc), 0);
+      const pvpSum = dailyList.reduce((acc, d) => (d.day === 6 ? acc + (Number(d.score) || 0) : acc), 0);
+      pp.score_prep = prepSum;
+      pp.score_pvp = pvpSum;
+      if (prepSum > 0 || pvpSum > 0) pp.participated = 1;
+    }
+
+    if (row) {
+      const partCb = row.querySelector('.participation-checkbox:not(.appointed-checkbox)') as HTMLInputElement | null;
+      if (partCb && !partCb.checked && rows.some((r) => r.score > 0)) {
+        partCb.checked = true;
+        row.classList.add('participated');
+      }
+    }
 
     if (wroteAgg && prevHasDaily) {
       legacy.showToast(legacy.t('war_toast_total_replaced_days'), 'success');
     } else if (wroteDaily && prevHasAgg) {
       legacy.showToast(legacy.t('war_toast_days_replaced_total'), 'info');
+    } else {
+      legacy.showToast(legacy.t('war_save_daily_success'), 'success');
     }
 
     const contentEl = this.getContentEl(tabKey);
@@ -829,14 +889,22 @@ export class EventsView {
     if (!db) return;
     const s = this.state[tabKey];
     const currentG = this.currentGuild();
-    const num = legacy.parseNumber(value);
+    const num = Number(legacy.parseNumber(value) || 0);
     const update: Record<string, unknown> = {};
     update[field] = num;
-    await db.from('event_participants').update(update)
+    if (num > 0) {
+      update.participated = 1;
+    }
+    const updateRes = await db.from('event_participants').update(update)
       .eq('guild', currentG)
       .eq('event_name', s.activeEventName)
       .eq('session_id', s.sessionId)
       .eq('pseudo', pseudo);
+    if (updateRes.error) {
+      legacy.showToast('Error: ' + updateRes.error.message, 'error');
+    } else {
+      legacy.showToast(legacy.t('toast_member_updated') || 'Updated successfully', 'success');
+    }
   }
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -1229,16 +1297,35 @@ export class EventsView {
         const inp = el2 as HTMLInputElement;
         legacy.attachNumberFormatter(inp);
         let timer: ReturnType<typeof setTimeout> | undefined;
+        const triggerSave = (): void => {
+          clearTimeout(timer);
+          const pseudo = inp.getAttribute('data-pseudo') || '';
+          void this.saveScoreField(tabKey, pseudo, field, inp.value).then(() => {
+            const pp = this.state[tabKey].participants.find((x) => x.pseudo === pseudo);
+            const num = Number(legacy.parseNumber(inp.value) || 0);
+            if (pp) {
+              pp[stateKey] = num;
+              if (num > 0) pp.participated = 1;
+            }
+            const row = inp.closest('.participant-row');
+            if (row && num > 0) {
+              const cb = row.querySelector('.participation-checkbox:not(.appointed-checkbox)') as HTMLInputElement | null;
+              if (cb && !cb.checked) {
+                cb.checked = true;
+                row.classList.add('participated');
+              }
+            }
+            this.refreshStats(el, tabKey);
+          });
+        };
         inp.addEventListener('input', () => {
           clearTimeout(timer);
           timer = setTimeout(() => {
-            const pseudo = inp.getAttribute('data-pseudo') || '';
-            void this.saveScoreField(tabKey, pseudo, field, inp.value).then(() => {
-              const pp = this.state[tabKey].participants.find((x) => x.pseudo === pseudo);
-              if (pp) pp[stateKey] = legacy.parseNumber(inp.value);
-              this.refreshStats(el, tabKey);
-            });
+            triggerSave();
           }, 700);
+        });
+        inp.addEventListener('change', () => {
+          triggerSave();
         });
       });
     };

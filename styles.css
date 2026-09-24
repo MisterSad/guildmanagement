@@ -1268,7 +1268,7 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 }
 .gm-ui-dialog-sm { max-width: 420px; width: 90vw; }
 .gm-ui-dialog-md { max-width: 640px; width: 92vw; }
-.gm-ui-dialog-lg { max-width: 860px; width: 95vw; }
+.gm-ui-dialog-lg { max-width: 1080px; width: 95vw; }
 .gm-ui-dialog-full { width: 98vw; height: 96vh; }
 .gm-ui-dialog-danger .gm-ui-dialog-title { color: var(--danger); }
 
@@ -1298,7 +1298,18 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 }
 .gm-ui-dialog-header-close { flex: 0 0 auto; }
 .gm-ui-dialog-body { }
-.gm-ui-dialog-scroll { max-height: 62vh; overflow-y: auto; }
+.gm-ui-dialog-scroll { max-height: 64vh; overflow-y: auto; }
+.gm-ui-dialog-body .gm-table-wrap { position: relative; }
+.gm-ui-dialog-body .gm-table-scroll {
+    overflow: auto;
+    max-height: 52vh;
+}
+.gm-ui-dialog-body .gm-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--card);
+}
 .gm-ui-dialog-footer {
     display: flex;
     justify-content: space-between;
