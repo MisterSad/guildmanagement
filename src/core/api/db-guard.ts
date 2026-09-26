@@ -6,12 +6,26 @@
  *   a) blocks delete/update/insert/upsert when the caller cannot write the
  *      active guild, returning a "Read-only access" error;
  *   b) injects `guild: <activeGuild>` on insert/upsert;
- *   c) appends `.eq('guild', activeGuild)` on delete/update.
+ *   c) appends `.eq('guild', activeGuild)` on delete/update;
+ *   d) invalidates the Stats/History freshness markers for that guild.
+ *
+ * (d) is here rather than at each mutation site because there are 55 write call
+ * sites across the event views and none of them invalidated anything: editing a
+ * war score and switching to Stats within the 15s TTL showed the pre-edit
+ * numbers. The guard is the one place every tenant write must pass through, so
+ * the invalidation cannot be forgotten or drift.
+ *
+ * Invalidation happens when the write is *issued*, not when it resolves. That
+ * is deliberate: it avoids wrapping the returned builder (whose chain is
+ * delicate -- `.eq()` is appended after `.delete()`), and the failure mode is
+ * harmless. A write that later fails has merely dropped a freshness marker, so
+ * the next visit refetches identical data.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { canWriteGuild, getActiveGuild } from '../auth/roles';
+import { invalidateGuildViews } from '../cache/cache';
 
 export const TENANT_TABLES = [
   'guild_members',
@@ -54,6 +68,7 @@ export function installDbWriteGuard(db: any): any {
     builder.delete = function (...args: any[]): any {
       const currentG = getActiveGuild();
       if (!canWriteGuild(currentG)) return readOnlyResult();
+      invalidateGuildViews(currentG);
       return originalDelete.apply(this, args).eq('guild', currentG);
     };
 
@@ -61,6 +76,7 @@ export function installDbWriteGuard(db: any): any {
     builder.update = function (values: any, options?: any): any {
       const currentG = getActiveGuild();
       if (!canWriteGuild(currentG)) return readOnlyResult();
+      invalidateGuildViews(currentG);
       return originalUpdate.call(this, values, options).eq('guild', currentG);
     };
 
@@ -68,6 +84,7 @@ export function installDbWriteGuard(db: any): any {
     builder.insert = function (values: any, options?: any): any {
       const currentG = getActiveGuild();
       if (!canWriteGuild(currentG)) return readOnlyResult();
+      invalidateGuildViews(currentG);
       let v = values;
       if (Array.isArray(v)) {
         v = v.map((x) => Object.assign({}, x, { guild: x && x.guild ? x.guild : currentG }));
@@ -81,6 +98,7 @@ export function installDbWriteGuard(db: any): any {
     builder.upsert = function (values: any, options?: any): any {
       const currentG = getActiveGuild();
       if (!canWriteGuild(currentG)) return readOnlyResult();
+      invalidateGuildViews(currentG);
       let v = values;
       if (Array.isArray(v)) {
         v = v.map((x) => Object.assign({}, x, { guild: x && x.guild ? x.guild : currentG }));

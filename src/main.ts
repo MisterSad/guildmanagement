@@ -498,12 +498,19 @@ if (typeof window !== 'undefined') {
     loadingHtml: () => ticketsView.loadingHtml()
   };
   (window as any).GM_MIGRATION_HUB = {
-    load: () => migrationHubView.load()
+    load: () => migrationHubView.load(),
+    // Called by the router when navigating away: releases two Realtime
+    // WebSocket channels that otherwise lived for the whole session and
+    // re-fetched the entire wiki table on every remote edit.
+    destroy: () => migrationHubView.destroy()
   };
 
   // Wave 2 Strangler bridges (glory / sanctions / history).
   (window as any).GM_GLORY = { load: () => gloryView.load() };
-  (window as any).GM_SANCTIONS = { load: () => sanctionsView.load() };
+  (window as any).GM_SANCTIONS = {
+    load: () => sanctionsView.load(),
+    destroy: () => sanctionsView.destroy()
+  };
   (window as any).GM_HISTORY = { load: () => historyView.load() };
 
   // Wave 3 Strangler bridges (events / overview).
@@ -513,7 +520,10 @@ if (typeof window !== 'undefined') {
     removeMemberFromActiveEvents: (pseudo: string) => eventsView.removeMemberFromActiveEvents(pseudo)
   };
   (window as any).GM_OVERVIEW = {
-    load: () => overviewView.load()
+    load: () => overviewView.load(),
+    // Releases the countdown and timezone-clock intervals, which otherwise kept
+    // firing against a hidden tab for the rest of the session.
+    destroy: () => overviewView.destroy()
   };
 
   // Wave 4 Strangler bridge: WebAuthn is nested under window.GM (not a GM_*

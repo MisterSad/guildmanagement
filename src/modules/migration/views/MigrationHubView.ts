@@ -8,6 +8,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeHTML } from '../../../core/utils/text';
+import { debounce } from '../../../core/utils/async';
 import { getActiveGuild, currentAccountId, getCurrentPseudo, roleFromStorage } from '../../../core/auth/roles';
 import { getClient } from '../../../core/api/supabase';
 import {
@@ -92,6 +93,19 @@ export class MigrationHubView {
   private realtimeChannel: any = null;
   private commentsRealtimeChannel: any = null;
   private initialized = false;
+  /**
+   * Collapses a burst of remote wiki edits into a single refetch.
+   *
+   * The guard matters: `debounce` exposes no cancel, so a reload scheduled just
+   * before the user navigates away would otherwise fire AFTER `destroy()` and
+   * re-subscribe the very channels it had just removed -- reintroducing the leak
+   * this teardown exists to close. `realtimeChannel` is precisely the "still
+   * mounted" condition: `subscribeRealtime()` sets it, `destroy()` nulls it.
+   */
+  private readonly reloadFromRealtime = debounce(() => {
+    if (!this.realtimeChannel) return;
+    void this.load();
+  }, 800);
 
   /**
    * Initializes DOM listeners for the Migration Hub view. Idempotent.
@@ -335,8 +349,12 @@ export class MigrationHubView {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'migration_wiki_pages' },
           () => {
-            // Refresh data quietly on remote changes
-            this.load();
+            // Any remote change re-runs a full select('*') of the wiki table,
+            // so an unthrottled handler meant that with n admins editing, each
+            // edit cost n full refetches. Debounced: a burst of edits (a rename
+            // followed by a body save, or several people typing) collapses into
+            // one refetch instead of one per event.
+            this.reloadFromRealtime();
           }
         )
         .subscribe();

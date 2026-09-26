@@ -883,7 +883,26 @@ export async function commitOcrUpdates(): Promise<void> {
     const client = db();
     const collidingUidInfo: Record<string, any> = {};
     const bannedUidSet = new Set<string>();
-    for (const targetUid of Array.from(newUidSeen)) {
+    const targetUids = Array.from(newUidSeen);
+
+    // This used to be a strictly sequential `for` loop doing THREE round trips
+    // per UID (collision probe, player lookup, ban check). A 100-player roster
+    // import meant 200-300 serialised requests -- roughly 16-24s of frozen UI
+    // behind a "Checking UIDs…" label, growing linearly with the batch.
+    //
+    // The ban check is one query for the whole batch, and the collision probes
+    // run 10 at a time through the same `runInChunks` helper this file already
+    // uses in five other places. Same results, same error tolerance (a failed
+    // probe is still swallowed per UID, never failing the whole commit).
+    try {
+      const banRes = await client.from('banned_players').select('uid').in('uid', targetUids);
+      ((banRes && banRes.data) || []).forEach((row: any) => {
+        const u = String(row && row.uid ? row.uid : '').trim();
+        if (u) bannedUidSet.add(u);
+      });
+    } catch (_) { /* warned */ }
+
+    await runInChunks(targetUids, 10, async (targetUid: string) => {
       try {
         const chkRes = await client.rpc('check_uid_exists_globally', { p_uid: targetUid });
         if (chkRes && chkRes.data === true) {
@@ -891,9 +910,7 @@ export async function commitOcrUpdates(): Promise<void> {
           catch (_) { collidingUidInfo[targetUid] = null; }
         }
       } catch (_) { /* warned in legacy */ }
-      try { const banRes = await client.from('banned_players').select('uid').eq('uid', targetUid); if (banRes.data && banRes.data.length > 0) bannedUidSet.add(targetUid); }
-      catch (_) { /* warned */ }
-    }
+    });
     const collidingLabels: string[] = [];
     const bannedLabels: string[] = [];
     if (Object.keys(collidingUidInfo).length > 0 || bannedUidSet.size > 0) {

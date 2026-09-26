@@ -46,6 +46,60 @@ function resetTabChrome(): void {
 }
 
 /**
+ * Views that hold resources beyond their DOM and must be torn down when the
+ * user navigates away from them.
+ *
+ * Seven views define a `destroy()`; before this, **none of them was ever
+ * called**, so everything they allocate leaked for the lifetime of the session:
+ *
+ *  - `GM_MIGRATION_HUB` holds two Realtime WebSocket channels. Worse than a
+ *    leak: its page handler listens for `event: '*'` and re-runs a full
+ *    `select('*')` of the wiki table on any remote change, so with *n* admins
+ *    editing, each edit triggered *n* full refetches -- including for the n-1
+ *    users sitting on a completely different tab.
+ *  - `GM_OVERVIEW` holds two `setInterval`s (event countdowns and the timezone
+ *    clocks) that kept firing and touching the DOM of a hidden tab forever.
+ *  - `GM_SANCTIONS` holds a `rad-lang-change` window listener.
+ *
+ * Deliberately NOT listed: `ShellView` and `HelpView` are global chrome, not
+ * tabs -- destroying them on a tab switch would dismantle the navigation and
+ * the help popover. `PortalView` is the player portal, which is the whole app
+ * for a member rather than one tab among others.
+ *
+ * Both listed views re-arm their resources inside `load()` (OverviewView
+ * re-creates its timers, MigrationHubView re-subscribes once `destroy()` has
+ * nulled the channels), so destroy-then-load is safe and idempotent.
+ */
+const TEARDOWN_BY_TAB: Record<string, string> = {
+  'admin-migration-hub': 'GM_MIGRATION_HUB',
+  'migration-hub': 'GM_MIGRATION_HUB',
+  'gm-overview': 'GM_OVERVIEW',
+  'overview': 'GM_OVERVIEW',
+  'tab-sanctions': 'GM_SANCTIONS',
+  'sanctions': 'GM_SANCTIONS',
+};
+
+/** Tears down the view we are navigating away from. Never throws. */
+function teardownPreviousTab(previousTabId: string, nextTabId: string): void {
+  if (!previousTabId || previousTabId === nextTabId) return;
+  const namespaceName = TEARDOWN_BY_TAB[previousTabId];
+  if (!namespaceName) return;
+  // Two ids can map to the same namespace (e.g. 'overview' / 'gm-overview');
+  // do not tear down when we are merely switching between those aliases.
+  if (TEARDOWN_BY_TAB[nextTabId] === namespaceName) return;
+  const ns = w()[namespaceName];
+  if (!ns || typeof ns.destroy !== 'function') return;
+  try {
+    ns.destroy();
+  } catch (err) {
+    console.error(namespaceName + '.destroy failed:', err);
+  }
+}
+
+/** The tab whose view is currently mounted, for teardown on the next switch. */
+let mountedTabId = '';
+
+/**
  * Routes a tab id to its data loader. Every branch is defensive (missing
  * module/function = no-op).
  */
@@ -61,6 +115,11 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
 
   // Ignore redundant activation of the SAME tab while its batch is in flight.
   if (activeLoadTabId === tabId && loadingTab) return;
+
+  // Release the previous view's timers / Realtime channels / listeners before
+  // mounting the next one.
+  teardownPreviousTab(mountedTabId, tabId);
+  mountedTabId = tabId;
 
   resetTabChrome();
 

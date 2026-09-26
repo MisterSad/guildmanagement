@@ -117,6 +117,20 @@ describe('Batched per-row Supabase calls (previously sequential for-loops)', () 
     expect(ocrFn).not.toMatch(/for \(var i = 0; i < selected(Players|Existing)\.length; i\+\+\)/);
   });
 
+  it('the UID pre-check no longer makes three serial round trips per player', () => {
+    // It was a sequential `for (const targetUid of ...)` doing a collision
+    // probe, a player lookup and a ban check per UID: 200-300 serialised
+    // requests for a 100-player import, ~16-24s of frozen UI.
+    expect(ocrJs).not.toMatch(/for \(const targetUid of Array\.from\(newUidSeen\)\)/);
+    // The ban check is now one query for the whole batch...
+    expect(ocrJs).toMatch(/from\('banned_players'\)\.select\('uid'\)\.in\('uid', targetUids\)/);
+    // ...and the collision probes run 10 at a time.
+    expect(ocrJs).toContain('runInChunks(targetUids, 10');
+    // A single UID failing must still not fail the whole commit.
+    const probe = ocrJs.slice(ocrJs.indexOf('runInChunks(targetUids, 10'));
+    expect(probe).toContain('catch (_)');
+  });
+
   it('EventsView batches the "Approve All" loop via runInChunks', () => {
     expect(eventsJs).toContain('runInChunks(pendingPseudos, 10');
     expect(eventsJs).not.toMatch(/for \(var pi = 0; pi < pendingPseudos\.length; pi\+\+\)/);
