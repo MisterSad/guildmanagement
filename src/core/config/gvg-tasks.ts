@@ -323,9 +323,10 @@ export function buildGvgDailyTaskEmbed(dayNumber: number, roleMention = "@everyo
   };
 }
 
-if (typeof window !== "undefined") {
-  (window as any).GM_GVG_TASKS = {
-    GVG_DAILY_TASKS,
-    buildGvgDailyTaskEmbed,
-  };
-}
+/*
+ * PHASE 7. This module used to install `window.GM_GVG_TASKS` itself, as an
+ * import side effect. `gm-bridge.ts` installs the very same object, so the
+ * global had two owners and importing this file for its pure data silently
+ * mutated `window`. A config module in `core/` has no business doing either.
+ * The bridge remains the single installer.
+ */

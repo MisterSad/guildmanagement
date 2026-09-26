@@ -21,7 +21,10 @@ describe('Members accordion collapse (v128.1)', () => {
   it('the accordion JS wiring is intact (header click toggles collapse state)', () => {
     const app = read('src/modules/app/members/members.render.ts');
     expect(app).toContain('.gm-role-group-header');
-    expect(app).toMatch(/GM_COLLAPSED_ROLES\[role\] = !\w*\.?GM_COLLAPSED_ROLES\[role\]/);
+    // Phase 7: the toggle goes through the typed store instead of poking the
+    // `window` mirror, which used to leave getAppState() stale.
+    expect(app).toContain('patchAppState({ collapsedRoles:');
+    expect(app).toContain('!current[key]');
     expect(app).toMatch(/gm-role-group' \+ \(collapsed \? ' is-collapsed' : ''\)/);
   });
 });

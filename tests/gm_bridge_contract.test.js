@@ -157,7 +157,9 @@ describe('M8 — namespaces phase 7 has already disconnected', () => {
     'GM_SANCTIONS',
     'GM_MIGRATION_HUB',
     'GM_PORTAL',
-    'GM_OVERVIEW'
+    'GM_OVERVIEW',
+    'GM_BADGES',
+    'GM_GVG_TASKS'
   ];
 
   for (const ns of disconnected) {
@@ -179,8 +181,12 @@ describe('M8 — namespaces phase 7 has already disconnected', () => {
     //   GM_APP / GM_I  — `core/` must not import `modules/`. `core/dom/toast.ts`
     //     is the very implementation `GM_APP.showToast` points at, so importing
     //     the app's renderer here would invert the layering (and recurse).
-    //   GM_COLLAPSED_ROLES — a mirrored state global, not a method bridge; it
-    //     belongs to the `window`-mirror collapse (finding M7, phase 3).
+    //   GM_COLLAPSED_ROLES — only `app-state.ts` still names it, and only to
+    //     WRITE its own mirror. No module reaches across for it any more:
+    //     `members.render` read and wrote the mirror directly, which left
+    //     `getAppState()` reporting the previous value until something
+    //     re-hydrated it, and it goes through the store now. Retiring the
+    //     mirror itself is the window-mirror collapse (finding M7, phase 3).
     const remaining = new Set();
     for (const f of walk('src')) {
       if (f === 'src/main.ts' || f === 'src/core/gm-bridge.ts') continue;
@@ -189,9 +195,7 @@ describe('M8 — namespaces phase 7 has already disconnected', () => {
     }
     expect([...remaining].sort()).toEqual([
       'GM_APP',
-      'GM_BADGES',
       'GM_COLLAPSED_ROLES',
-      'GM_GVG_TASKS',
       'GM_I'
     ]);
   });

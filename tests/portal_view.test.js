@@ -8,6 +8,14 @@
  * invariant.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Phase 7: PortalView imports the badges service instead of probing
+// `window.GM_BADGES`, so the stub below no longer intercepts it.
+vi.mock('../src/modules/badges/badges.service', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, computeBadges: vi.fn() };
+});
+import { computeBadges } from '../src/modules/badges/badges.service';
 import { PortalView } from '../src/modules/portal/views/PortalView';
 import { resetSupabaseClient } from '../src/core/api/supabase';
 
@@ -70,14 +78,13 @@ function installGlobals() {
   g.calculateRallyGrade = () => 90;
   g.webauthn = { mountPasskeysPanel: vi.fn(() => ({ reload: vi.fn() })) };
 
-  window.GM_BADGES = {
-    computeBadges: vi.fn(() => ({
-      earned: 1, total: 1,
-      categories: [{ key: 'power', label: 'Power', icon: 'ph-lightning', color: '#ffe088', badges: [
-        { category: 'power', earned: true, current: 80000000, target: 100000000, progress: 100, color: '#ffe088', icon: 'ph-lightning', name: 'High Power', desc: 'Reach 100M power' }
-      ] }]
-    }))
-  };
+  vi.mocked(computeBadges).mockReturnValue({
+    earned: 1,
+    total: 1,
+    categories: [{ key: 'power', label: 'Power', icon: 'ph-lightning', color: '#ffe088', badges: [
+      { category: 'power', earned: true, current: 80000000, target: 100000000, progress: 100, color: '#ffe088', icon: 'ph-lightning', name: 'High Power', desc: 'Reach 100M power' }
+    ] }]
+  });
   window.GM_PUSH = { mount: vi.fn() };
 }
 
@@ -110,7 +117,6 @@ afterEach(() => {
   delete window.requestAnimationFrame;
   resetSupabaseClient();
   delete window.GM.db;
-  delete window.GM_BADGES;
   delete window.GM_PUSH;
   localStorage.clear();
   document.body.innerHTML = '';
@@ -172,7 +178,7 @@ describe('PortalView — gotoTab() lazy panels', () => {
 
     clickNav('badges');
     await tick();
-    expect(window.GM_BADGES.computeBadges).toHaveBeenCalled();
+    expect(computeBadges).toHaveBeenCalled();
     expect(document.getElementById('portal-badges-body').textContent).toContain('High Power');
 
     clickNav('events');

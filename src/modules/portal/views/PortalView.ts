@@ -8,7 +8,7 @@
  *
  * - Network calls go through `PortalService.invokeAction` (extended to recover
  *   the real {ok,error} body via window.GM.parseFunctionsInvokeResult).
- * - All `window.GM*` / `window.GM_I18N` / `window.GM_BADGES` / `window.GM_PUSH`
+ * - All `window.GM*` / `window.GM_I18N` / `window.GM_PUSH`
  *   reads happen at call time through a typed adapter.
  * - Chart drawing stays delegated to `window.GM.drawScoreTrendChart`.
  * - The global resize listener is tracked so `destroy()` cleans it up.
@@ -20,6 +20,7 @@
 import { PortalService } from '../portal.service';
 import { escapeHTML } from '../../../core/utils/text';
 import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
+import { computeBadges as computeBadgesService } from '../../badges/badges.service';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -105,8 +106,9 @@ const legacy = {
     return g && g.webauthn && typeof g.webauthn.mountPasskeysPanel === 'function' ? g.webauthn.mountPasskeysPanel(opts) : null;
   },
   computeBadges(payload: unknown): any {
-    const badges = winAny().GM_BADGES;
-    return badges && typeof badges.computeBadges === 'function' ? badges.computeBadges(payload) : null;
+    // Phase 7: imported. The `window` probe returned null whenever the
+    // namespace name drifted, and the portal simply rendered no badges.
+    return computeBadgesService(payload as never);
   }
 };
 

@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "esbuild": "0.28.2",
     "jsdom": "25.0.1",
     "serve": "14.2.6",

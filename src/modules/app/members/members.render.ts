@@ -11,7 +11,7 @@
 
 import { t, esc, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
-import { getAppState } from '../state/app-state';
+import { getAppState, patchAppState, type CollapsedRoles } from '../state/app-state';
 import { getAccounts } from '../admin/admin-store';
 import { filterBulkEligibleMembers, isRoleAllowedForBulk } from '../../members/members.service';
 import {
@@ -301,7 +301,10 @@ export function buildGroupedListHtml(
     const membersInRole = grouped[role] || [];
     if (membersInRole.length === 0) return;
     hasAny = true;
-    const collapsed = !!(w().GM_COLLAPSED_ROLES && w().GM_COLLAPSED_ROLES[role]);
+    // Phase 7: read the typed store rather than the `window` mirror it writes
+    // to. Both sides were reading the same object, but only one of them was
+    // checked by the compiler.
+    const collapsed = !!getAppState().collapsedRoles[role as keyof CollapsedRoles];
     const sorted = sortMembers(membersInRole, sortVal);
 
     html +=
@@ -788,9 +791,12 @@ function bindRosterDelegation(): void {
     if (roleHeader) {
       const role = roleHeader.getAttribute('data-role');
       if (!role) return;
-      const ww = w();
-      if (!ww.GM_COLLAPSED_ROLES) ww.GM_COLLAPSED_ROLES = {};
-      ww.GM_COLLAPSED_ROLES[role] = !ww.GM_COLLAPSED_ROLES[role];
+      // Phase 7: go through the store, which mirrors onto `window` itself.
+      // Poking the mirror directly left `getAppState()` reporting the previous
+      // value until something else happened to re-hydrate it.
+      const key = role as keyof CollapsedRoles;
+      const current = getAppState().collapsedRoles;
+      patchAppState({ collapsedRoles: { ...current, [key]: !current[key] } });
       renderGuildMembers();
       return;
     }
