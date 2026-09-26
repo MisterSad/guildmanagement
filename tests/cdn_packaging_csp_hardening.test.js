@@ -43,7 +43,9 @@ describe('TICKET-08 [SEC-04]: CDN Packaging & CSP Hardening', () => {
 
   it('verifies that src/main.ts imports Phosphor icon styles and bridges window.supabase', () => {
     expect(mainTs).toContain("import '@phosphor-icons/web/regular';");
-    expect(mainTs).toContain("import '@phosphor-icons/web/duotone';");
+    // The duotone family was dropped: 231 KB of CSS and a 164 KB woff2 for the
+    // 56 icons that used it, all of which exist in the regular set.
+    expect(mainTs).not.toContain("@phosphor-icons/web/duotone");
     expect(mainTs).toContain('wAny.supabase = wAny.supabase || { createClient };');
   });
 });

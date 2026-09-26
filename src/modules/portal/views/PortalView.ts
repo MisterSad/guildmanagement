@@ -200,7 +200,7 @@ export class PortalView {
   public async loadDashboard(): Promise<void> {
     const root = document.getElementById('portal-dashboard-root');
     if (!root) return;
-    root.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading your portal...</div></div>';
+    root.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading your portal...</div></div>';
 
     const [profile, history, kpis] = await Promise.all([
       this.invoke('get-active-sessions', {}),
@@ -562,7 +562,7 @@ export class PortalView {
     const chartKeys = keys.filter((k) => hist[k].has_score);
 
     if (chartKeys.length === 0) {
-      chartsHtml = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-chart-bar gm-icon"></i><div class="gm-empty-title">No scored events for this period.</div><div class="gm-empty-sub">Progression charts appear for events with scores (SvS, GvG, Glory).</div></div>';
+      chartsHtml = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-chart-bar gm-icon"></i><div class="gm-empty-title">No scored events for this period.</div><div class="gm-empty-sub">Progression charts appear for events with scores (SvS, GvG, Glory).</div></div>';
     } else {
       chartKeys.forEach((key, idx) => {
         chartsHtml += this.renderChartCard(key, hist[key], idx);
@@ -593,7 +593,7 @@ export class PortalView {
       '<div class="portal-card" style="margin-bottom: 1.25rem; background: var(--md-sys-color-surface-container, #1e1f20); border: 1px solid var(--md-sys-color-outline-variant, rgba(255, 255, 255, 0.08)); border-radius: var(--md-sys-shape-corner-large, 16px); padding: 1.35rem; box-shadow: var(--md-sys-elevation-level1, 0 1px 3px rgba(0,0,0,0.2));">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.15rem; flex-wrap:wrap; gap:0.6rem;">' +
           '<div style="display:flex; align-items:center; gap:0.55rem;">' +
-            '<span class="material-symbols-rounded" style="color:var(--md-sys-color-primary, #a8c7fa); font-size: var(--fs-3xl);">swords</span>' +
+            '<i class="ph ph-sword" style="color:var(--md-sys-color-primary, #a8c7fa); font-size: var(--fs-3xl);"></i>' +
             '<span style="font-weight:800; font-size: var(--fs-xl); color:var(--md-sys-color-on-surface, #e3e3e3);">Military Force Breakdown &amp; Guild Benchmarks</span>' +
           '</div>' +
           '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
@@ -666,7 +666,7 @@ export class PortalView {
               '</div>' +
               '<div class="portal-military-tile-value" style="color:' + color + ';">' + legacy.esc(legacy.formatPower(pVal)) + '</div>' +
               '<div class="portal-military-tile-footer">' +
-                '<span class="material-symbols-rounded">groups</span>' +
+                '<i class="ph ph-users-three"></i>' +
                 '<span class="portal-military-tile-avg-label">Guild Avg:</span>' +
                 '<span class="portal-military-tile-avg-val">' + legacy.esc(avgFormatted) + '</span>' +
               '</div>' +
@@ -741,7 +741,7 @@ export class PortalView {
           '<p class="gm-page-subtitle">Weekly goals and your season progress</p>' +
         '</div>' +
       '</header>' +
-      '<div id="portal-challenges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading challenges...</div></div></div>';
+      '<div id="portal-challenges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading challenges...</div></div></div>';
     this.loadChallengesPanel();
   }
 
@@ -799,7 +799,7 @@ export class PortalView {
           '<p class="gm-page-subtitle">Achievements that unlock as you grow in the guild</p>' +
         '</div>' +
       '</header>' +
-      '<div id="portal-badges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading badges...</div></div></div>';
+      '<div id="portal-badges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading badges...</div></div></div>';
     this.loadBadgesPanel();
   }
 
@@ -904,7 +904,7 @@ export class PortalView {
       '</header>';
 
     if (!sessions || sessions.length === 0) {
-      panel.innerHTML = headerHtml + '<div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, it will show up here for you to fill in.</div></div>';
+      panel.innerHTML = headerHtml + '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, it will show up here for you to fill in.</div></div>';
       return;
     }
 
@@ -1168,7 +1168,7 @@ export class PortalView {
           '<div class="portal-settings-sub" style="font-size: var(--fs-base); color:var(--text-muted); margin-bottom:1rem;">' +
             'Sign in faster, without typing your password, using your device\'s fingerprint, face, or PIN.' +
           '</div>' +
-          '<div id="portal-passkeys-list"><div class="gm-empty"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading…</div></div></div>' +
+          '<div id="portal-passkeys-list"><div class="gm-empty"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading…</div></div></div>' +
           '<div class="portal-row" style="margin-top:1rem;">' +
             '<button type="button" id="portal-add-passkey-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-plus"></i><span>Add a Passkey</span></button>' +
             '<button type="button" id="portal-regen-backup-codes-btn" class="gm-btn gm-btn-ghost gm-btn-sm hidden"><i class="ph ph-arrows-clockwise"></i><span id="portal-backup-codes-btn-label">Regenerate Backup Codes</span></button>' +
@@ -1476,7 +1476,7 @@ export class PortalView {
           '<p class="gm-page-subtitle">Let your officers know you will be away or less active. This is visible to your guild admins.</p>' +
         '</div>' +
       '</header>' +
-      '<div id="portal-absence-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading...</div></div></div>';
+      '<div id="portal-absence-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading...</div></div></div>';
 
     this.loadAbsencePanel();
   }
@@ -1515,7 +1515,7 @@ export class PortalView {
 
     let listHtml = '';
     if (absences.length === 0) {
-      listHtml = '<div class="gm-empty" style="padding:1.5rem 0;"><i class="ph-duotone ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No declared absences.</div></div>';
+      listHtml = '<div class="gm-empty" style="padding:1.5rem 0;"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No declared absences.</div></div>';
     } else {
       listHtml = '<div class="portal-absence-list">' + absences.map((a: any) => {
         const start = new Date(a.start_date + 'T00:00:00');

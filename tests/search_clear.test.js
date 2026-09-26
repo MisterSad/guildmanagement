@@ -16,7 +16,8 @@ describe('Search Input Clear Button Feature', () => {
     const adminSearchSnippet = html.slice(html.indexOf('id="member-search-admin"'), html.indexOf('id="member-search-admin"') + 500);
     expect(adminSearchSnippet).toContain('gm-search-clear-btn');
     expect(adminSearchSnippet).toContain('data-gm-search-clear');
-    expect(adminSearchSnippet).toContain('cancel');
+    // 'cancel' was a Material Symbols ligature; that font is gone.
+    expect(adminSearchSnippet).toContain('ph-x-circle');
   });
 
   it('shell.css and components.css define .gm-search-clear-btn styles', () => {

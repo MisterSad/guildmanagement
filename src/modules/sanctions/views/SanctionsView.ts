@@ -156,7 +156,7 @@ export class SanctionsView {
     if (count) count.textContent = String(this.sanctions.length);
 
     if (this.sanctions.length === 0) {
-      list.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('empty_sanctions') + '</div></div>';
+      list.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('empty_sanctions') + '</div></div>';
       return;
     }
 

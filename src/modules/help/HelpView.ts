@@ -67,7 +67,7 @@ export const HELP_DB: Record<string, HelpEntry> = {
     body: '<p>When the game opens a temporary migration window grouping several servers together, a super admin opens a group here listing those server numbers.</p><p>While a group is <strong>open</strong>, admins on any linked server can transfer players to a guild on any other linked server, in addition to the usual same-server transfers.</p><p>Close the group once the game\'s migration window ends - this immediately turns off eligibility for further cross-server transfers, and even a transfer request that was made while the group was open cannot be approved after it closes.</p>'
   },
   'help-webhooks': {
-    icon: 'ph-webhook',
+    icon: 'ph-webhooks-logo',
     title: 'Notification Webhooks',
     body: '<p>Webhooks let the tool post event announcements directly into your Discord channels. To create one:</p><ol><li>Open Discord → channel settings → <strong>Integrations</strong> → <strong>Webhooks</strong>.</li><li>Click <strong>New Webhook</strong>, give it a name and select the channel.</li><li>Copy the webhook URL and paste it into the field here.</li></ol><p>Each event type can have its own dedicated channel webhook.</p>'
   },

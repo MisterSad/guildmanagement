@@ -7,8 +7,7 @@
     <meta name="description" content="Guild Management Tool for Foundation Galactic Frontier">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=3">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png?v=3">
     <meta name="theme-color" content="#141416">
@@ -37,15 +36,15 @@
                         <!-- Segmented Pill Switcher (M3 / Apple Pill) -->
                         <div class="gm-auth-segmented-switch">
                             <button type="button" class="gm-auth-segment-btn active" id="auth-tab-signin" data-auth-tab="signin">
-                                <span class="material-symbols-rounded">login</span>
+                                <i class="ph ph-sign-in"></i>
                                 <span>Sign In</span>
                             </button>
                             <button type="button" class="gm-auth-segment-btn" id="auth-tab-register" data-auth-tab="register">
-                                <span class="material-symbols-rounded">person_add</span>
+                                <i class="ph ph-user-plus"></i>
                                 <span>Register Player</span>
                             </button>
                             <button type="button" class="gm-auth-segment-btn" id="auth-tab-guild-request" data-auth-tab="guild-request">
-                                <span class="material-symbols-rounded">shield_person</span>
+                                <i class="ph ph-shield-check"></i>
                                 <span>Request a Guild</span>
                             </button>
                         </div>
@@ -62,7 +61,7 @@
                                 <div class="gm-login-field">
                                     <label for="username" data-i18n="login_label_id">Identifier</label>
                                     <div class="gm-input-with-icon">
-                                        <span class="material-symbols-rounded gm-icon">person</span>
+                                        <i class="ph ph-user gm-icon"></i>
                                         <input type="text" id="username" class="gm-input" required
                                             data-i18n-placeholder="login_placeholder_id"
                                             placeholder="Your identifier" autocomplete="username webauthn">
@@ -72,22 +71,22 @@
                                 <div class="gm-login-field">
                                     <label for="password" data-i18n="login_label_pass">Password</label>
                                     <div class="gm-input-with-icon gm-login-pwd-wrap">
-                                        <span class="material-symbols-rounded gm-icon">lock</span>
+                                        <i class="ph ph-lock gm-icon"></i>
                                         <input type="password" id="password" class="gm-input" required
                                             data-i18n-placeholder="login_placeholder_pass"
                                             placeholder="Your password" autocomplete="current-password">
                                         <span class="gm-input-focus-line"></span>
                                         <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
-                                            <span class="material-symbols-rounded">visibility</span>
+                                            <i class="ph ph-eye"></i>
                                         </button>
                                     </div>
                                 </div>
                                 <div id="login-error" class="gm-login-error hidden">
-                                    <span class="material-symbols-rounded">error</span>
+                                    <i class="ph ph-warning-circle"></i>
                                     <span data-i18n="login_error">Invalid credentials.</span>
                                 </div>
                                 <button type="submit" id="login-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                                    <span class="material-symbols-rounded">login</span>
+                                    <i class="ph ph-sign-in"></i>
                                     <span data-i18n="login_btn">Sign in</span>
                                 </button>
                                 <button type="button" id="login-passkey-btn" class="gm-btn gm-btn-ghost gm-login-submit" style="margin-top:.5rem;">
@@ -112,7 +111,7 @@
                                 <div class="gm-login-field">
                                     <label for="register-id">Identifier</label>
                                     <div class="gm-input-with-icon">
-                                        <span class="material-symbols-rounded gm-icon">badge</span>
+                                        <i class="ph ph-identification-badge gm-icon"></i>
                                         <input type="text" id="register-id" class="gm-input" required
                                             placeholder="Choose an identifier" autocomplete="username">
                                         <span class="gm-input-focus-line"></span>
@@ -121,19 +120,19 @@
                                 <div class="gm-login-field">
                                     <label for="register-password">Password</label>
                                     <div class="gm-input-with-icon gm-login-pwd-wrap">
-                                        <span class="material-symbols-rounded gm-icon">lock</span>
+                                        <i class="ph ph-lock gm-icon"></i>
                                         <input type="password" id="register-password" class="gm-input" required
                                             placeholder="At least 8 characters" autocomplete="new-password">
                                         <span class="gm-input-focus-line"></span>
                                         <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
-                                            <span class="material-symbols-rounded">visibility</span>
+                                            <i class="ph ph-eye"></i>
                                         </button>
                                     </div>
                                 </div>
                                 <div class="gm-login-field">
                                     <label for="register-uid">In-Game UID</label>
                                     <div class="gm-input-with-icon">
-                                        <span class="material-symbols-rounded gm-icon">fingerprint</span>
+                                        <i class="ph ph-fingerprint gm-icon"></i>
                                         <input type="text" id="register-uid" class="gm-input" required
                                             inputmode="numeric" placeholder="Your 8-digit in-game UID">
                                         <span class="gm-input-focus-line"></span>
@@ -143,22 +142,22 @@
                                 <div class="gm-login-field">
                                     <label for="register-code">Guild Join Code</label>
                                     <div class="gm-input-with-icon">
-                                        <span class="material-symbols-rounded gm-icon">key</span>
+                                        <i class="ph ph-key gm-icon"></i>
                                         <input type="text" id="register-code" class="gm-input" required
                                             placeholder="e.g. FGF-7K2M-X9Q4" autocomplete="off">
                                         <span class="gm-input-focus-line"></span>
                                     </div>
                                 </div>
                                 <div id="register-error" class="gm-login-error hidden">
-                                    <span class="material-symbols-rounded">error</span>
+                                    <i class="ph ph-warning-circle"></i>
                                     <span>Registration failed.</span>
                                 </div>
                                 <button type="submit" id="register-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                                    <span class="material-symbols-rounded">person_add</span>
+                                    <i class="ph ph-user-plus"></i>
                                     <span>Create account</span>
                                 </button>
                                 <button type="button" id="register-back-btn" class="gm-btn gm-btn-ghost" style="margin-top: 0.5rem; width: 100%;">
-                                    <span class="material-symbols-rounded">arrow_back</span>
+                                    <i class="ph ph-arrow-left"></i>
                                     <span>Back to Sign In</span>
                                 </button>
                             </div>
@@ -176,7 +175,7 @@
                                 <div class="gm-login-field">
                                     <label for="guild-request-tag">Guild Tag</label>
                                     <div class="gm-input-with-icon">
-                                        <span class="material-symbols-rounded gm-icon">shield</span>
+                                        <i class="ph ph-shield gm-icon"></i>
                                         <input type="text" id="guild-request-tag" class="gm-input" required
                                             maxlength="12" placeholder="e.g. SIGMA" autocomplete="off">
                                         <span class="gm-input-focus-line"></span>
@@ -185,7 +184,7 @@
                                 <div class="gm-login-field">
                                     <label for="guild-request-server">Server Number</label>
                                     <div class="gm-input-with-icon">
-                                        <span class="material-symbols-rounded gm-icon">tag</span>
+                                        <i class="ph ph-tag gm-icon"></i>
                                         <input type="text" id="guild-request-server" class="gm-input" required
                                             maxlength="4" pattern="\d{4}" inputmode="numeric" placeholder="e.g. 1089" autocomplete="off">
                                         <span class="gm-input-focus-line"></span>
@@ -194,7 +193,7 @@
                                 <div class="gm-login-field">
                                     <label for="guild-request-admin-id">Your Desired Admin Login</label>
                                     <div class="gm-input-with-icon">
-                                        <span class="material-symbols-rounded gm-icon">badge</span>
+                                        <i class="ph ph-identification-badge gm-icon"></i>
                                         <input type="text" id="guild-request-admin-id" class="gm-input" required
                                             placeholder="Identifier you'll sign in with" autocomplete="off">
                                         <span class="gm-input-focus-line"></span>
@@ -212,26 +211,26 @@
                                 <div class="gm-login-field">
                                     <label for="guild-request-note">Note (optional)</label>
                                     <div class="gm-input-with-icon">
-                                        <span class="material-symbols-rounded gm-icon">edit_note</span>
+                                        <i class="ph ph-note-pencil gm-icon"></i>
                                         <input type="text" id="guild-request-note" class="gm-input"
                                             maxlength="500" placeholder="Anything else we should know?" autocomplete="off">
                                         <span class="gm-input-focus-line"></span>
                                     </div>
                                 </div>
                                 <div id="guild-request-error" class="gm-login-error hidden">
-                                    <span class="material-symbols-rounded">error</span>
+                                    <i class="ph ph-warning-circle"></i>
                                     <span>Request failed.</span>
                                 </div>
                                 <div id="guild-request-success" class="gm-login-error hidden" style="background:rgba(34,197,94,0.12); border-color:rgba(34,197,94,0.4); color:#4ade80;">
-                                    <span class="material-symbols-rounded">check_circle</span>
+                                    <i class="ph ph-check-circle"></i>
                                     <span>Request submitted! A super admin will review it and reach out on Discord.</span>
                                 </div>
                                 <button type="submit" id="guild-request-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                                    <span class="material-symbols-rounded">send</span>
+                                    <i class="ph ph-paper-plane-tilt"></i>
                                     <span>Submit Request</span>
                                 </button>
                                 <button type="button" id="guild-request-back-btn" class="gm-btn gm-btn-ghost" style="margin-top: 0.5rem; width: 100%;">
-                                    <span class="material-symbols-rounded">arrow_back</span>
+                                    <i class="ph ph-arrow-left"></i>
                                     <span>Back to Sign In</span>
                                 </button>
                             </div>
@@ -357,45 +356,45 @@
                 <div class="sub-navbar glass-nav">
                     <div class="nav-tabs">
                         <button class="nav-tab active" data-tab="admin-home" data-view="dashboard-view">
-                            <span class="material-symbols-rounded">manage_accounts</span>
+                            <i class="ph ph-user-gear"></i>
                             <span data-i18n="nav_dashboard">Command Center</span>
                         </button>
                         <button class="nav-tab" data-tab="admin-members" data-view="dashboard-view">
-                            <span class="material-symbols-rounded">group</span>
+                            <i class="ph ph-users"></i>
                             <span data-i18n="nav_members">Members</span>
                         </button>
                         <button class="nav-tab" data-tab="event-svs" data-view="dashboard-view" data-event-tab="SvS">
-                            <span class="material-symbols-rounded" style="color:var(--gm-event-svs);">rocket_launch</span> SvS
+                            <i class="ph ph-rocket-launch" style="color:var(--gm-event-svs);"></i> SvS
                         </button>
                         <button class="nav-tab" data-tab="event-gvg" data-view="dashboard-view" data-event-tab="GvG">
-                            <span class="material-symbols-rounded" style="color:var(--gm-event-gvg);">swords</span> GvG
+                            <i class="ph ph-sword" style="color:var(--gm-event-gvg);"></i> GvG
                         </button>
                         <button class="nav-tab" data-tab="event-shadowfront" data-view="dashboard-view" data-event-tab="Shadowfront">
-                            <span class="material-symbols-rounded" style="color:var(--gm-event-shadowfront);">radar</span> Shadowfront
+                            <i class="ph ph-broadcast" style="color:var(--gm-event-shadowfront);"></i> Shadowfront
                         </button>
                         <button class="nav-tab" data-tab="event-dtr" data-view="dashboard-view" data-event-tab="Defend Trade Route">
-                            <span class="material-symbols-rounded" style="color:var(--gm-event-dtr);">local_shipping</span> DTR
+                            <i class="ph ph-truck" style="color:var(--gm-event-dtr);"></i> DTR
                         </button>
                         <button class="nav-tab" data-tab="event-arms-race" data-view="dashboard-view" data-event-tab="ARMS RACE">
-                            <span class="material-symbols-rounded" style="color:var(--gm-event-armsrace);">bolt</span> Arms Race
+                            <i class="ph ph-lightning" style="color:var(--gm-event-armsrace);"></i> Arms Race
                         </button>
                         <button class="nav-tab" data-tab="event-glory" data-view="dashboard-view" data-event-tab="glory">
-                            <span class="material-symbols-rounded" style="color:var(--gm-event-glory);">trophy</span> Glory
+                            <i class="ph ph-trophy" style="color:var(--gm-event-glory);"></i> Glory
                         </button>
                         <button class="nav-tab" data-tab="event-history" data-view="dashboard-view" data-event-tab="history">
-                            <span class="material-symbols-rounded">history</span>
+                            <i class="ph ph-clock-counter-clockwise"></i>
                             <span data-i18n="nav_history">History</span>
                         </button>
                         <button class="nav-tab" data-tab="stats-admin" data-view="dashboard-view" data-event-tab="stats">
-                            <span class="material-symbols-rounded">leaderboard</span>
+                            <i class="ph ph-ranking"></i>
                             <span data-i18n="nav_stats">Stats</span>
                         </button>
                         <button class="nav-tab" data-tab="tab-sanctions" data-view="dashboard-view" data-event-tab="sanctions">
-                            <span class="material-symbols-rounded" style="color:var(--gm-status-sanctions);">gavel</span>
+                            <i class="ph ph-gavel" style="color:var(--gm-status-sanctions);"></i>
                             <span data-i18n="nav_sanctions">Sanctions</span>
                         </button>
                         <button class="nav-tab" data-tab="admin-banned" data-view="dashboard-view">
-                            <span class="material-symbols-rounded">block</span>
+                            <i class="ph ph-prohibit"></i>
                             <span data-i18n="nav_banned_players">Banned Players</span>
                         </button>
                     </div>
@@ -420,7 +419,7 @@
                         <p class="gm-page-subtitle" style="margin-bottom:1rem;">Sign in to your own account faster, without typing a password, using your device's fingerprint, face, or PIN.</p>
                         <div id="my-passkeys-list">
                             <div class="gm-empty">
-                                <i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i>
+                                <i class="ph ph-circle-notch ph-spin gm-icon"></i>
                                 <div class="gm-empty-title">Loading…</div>
                             </div>
                         </div>
@@ -468,7 +467,7 @@
                         </div>
                         <div id="admin-pending-account-list">
                             <div class="gm-empty" style="padding:1.25rem;">
-                                <i class="ph-duotone ph-hourglass gm-icon"></i>
+                                <i class="ph ph-hourglass gm-icon"></i>
                                 <div class="gm-empty-title">No pending registrations</div>
                             </div>
                         </div>
@@ -484,7 +483,7 @@
                         </div>
                         <div id="account-list">
                             <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <i class="ph ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title" data-i18n="empty_accounts">No accounts generated</div>
                             </div>
                         </div>
@@ -500,7 +499,7 @@
                         </div>
                         <div id="member-account-list">
                             <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <i class="ph ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title">No member accounts generated</div>
                             </div>
                         </div>
@@ -883,7 +882,7 @@
                                 <!-- SvS PvP -->
                                 <div class="notification-group event-svs" id="notification-group-svs">
                                     <div class="notification-group-title">
-                                        <i class="ph ph-swords"></i>
+                                        <i class="ph ph-sword"></i>
                                         <span data-i18n="label_svs_notifications">SvS</span>
                                         <button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" style="margin-left: auto; padding: 0.25rem;" data-custom-msg="svs" title="Customize messages" aria-label="Customize messages">
                                             <i class="ph ph-note-pencil" aria-hidden="true"></i>
@@ -1000,7 +999,7 @@
                         </div>
                         <div id="guilds-list-container">
                             <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <i class="ph ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title">Loading subscriptions...</div>
                             </div>
                         </div>
@@ -1031,7 +1030,7 @@
                         </form>
                         <div id="migration-groups-list-container">
                             <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <i class="ph ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title">Loading migration groups...</div>
                             </div>
                         </div>
@@ -1079,7 +1078,7 @@
                         </div>
                         <div id="superadmin-account-list">
                             <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <i class="ph ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title" data-i18n="empty_accounts">No accounts generated</div>
                             </div>
                         </div>
@@ -1107,14 +1106,14 @@
                         <div class="gm-ocr-toolbar" style="display:flex; align-items:center; justify-content:flex-start; margin-bottom:1rem;">
                             <div class="gm-dropdown gm-ocr-dropdown" id="ocr-scanners-dropdown" style="position:relative; display:inline-block;">
                                 <button type="button" id="ocr-dropdown-trigger" class="gm-btn gm-btn-sm ocr-dropdown-trigger" aria-haspopup="true" aria-expanded="false" style="gap:0.45rem; background:rgba(99,102,241,0.12); color:var(--accent); border:1px solid rgba(99,102,241,0.35); font-size:0.82rem; font-weight:600; cursor:pointer;">
-                                    <i class="ph-duotone ph-sparkle" style="font-size:1.05rem; color:var(--accent);"></i>
+                                    <i class="ph ph-sparkle" style="font-size:1.05rem; color:var(--accent);"></i>
                                     <span data-i18n="ocr_ai_metric_scanners">AI Metric Scanners</span>
                                     <i class="ph ph-caret-down ocr-dropdown-caret" style="font-size:0.8rem; margin-left:0.15rem; transition:transform 0.2s ease;"></i>
                                 </button>
                                 <div class="gm-dropdown-menu gm-ocr-menu" id="ocr-dropdown-menu" style="display:none; position:absolute; top:calc(100% + 6px); left:0; min-width:220px; background:var(--bg-1, #181926); border:1px solid var(--border-soft); border-radius:var(--radius-md); box-shadow:0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.4); padding:0.35rem; z-index:100;">
                                     <button type="button" class="btn-ocr-trigger gm-dropdown-item" data-metric="members" style="gap:0.5rem; padding:0.45rem 0.65rem; border:none; background:transparent; color:var(--fg); font-size:0.8rem; font-weight:500; cursor:pointer; width:100%; text-align:left; display:flex; align-items:center; border-radius:var(--radius-sm);"><i class="ph ph-users" style="color:#10b981; font-size:1rem; flex-shrink:0;"></i> 1. Members OCR</button>
                                     <button type="button" class="btn-ocr-trigger gm-dropdown-item" data-metric="power" style="gap:0.5rem; padding:0.45rem 0.65rem; border:none; background:transparent; color:var(--fg); font-size:0.8rem; font-weight:500; cursor:pointer; width:100%; text-align:left; display:flex; align-items:center; border-radius:var(--radius-sm);"><i class="ph ph-sword" style="color:#818cf8; font-size:1rem; flex-shrink:0;"></i> 2. Power OCR</button>
-                                    <button type="button" class="btn-ocr-trigger gm-dropdown-item" data-metric="fleet" style="gap:0.5rem; padding:0.45rem 0.65rem; border:none; background:transparent; color:var(--fg); font-size:0.8rem; font-weight:500; cursor:pointer; width:100%; text-align:left; display:flex; align-items:center; border-radius:var(--radius-sm);"><i class="ph ph-swords" style="color:#60a5fa; font-size:1rem; flex-shrink:0;"></i> 3. Fleet OCR</button>
+                                    <button type="button" class="btn-ocr-trigger gm-dropdown-item" data-metric="fleet" style="gap:0.5rem; padding:0.45rem 0.65rem; border:none; background:transparent; color:var(--fg); font-size:0.8rem; font-weight:500; cursor:pointer; width:100%; text-align:left; display:flex; align-items:center; border-radius:var(--radius-sm);"><i class="ph ph-shooting-star" style="color:#60a5fa; font-size:1rem; flex-shrink:0;"></i> 3. Fleet OCR</button>
                                     <button type="button" class="btn-ocr-trigger gm-dropdown-item" data-metric="tech" style="gap:0.5rem; padding:0.45rem 0.65rem; border:none; background:transparent; color:var(--fg); font-size:0.8rem; font-weight:500; cursor:pointer; width:100%; text-align:left; display:flex; align-items:center; border-radius:var(--radius-sm);"><i class="ph ph-atom" style="color:#a78bfa; font-size:1rem; flex-shrink:0;"></i> 4. Tech OCR</button>
                                     <button type="button" class="btn-ocr-trigger gm-dropdown-item" data-metric="flagship" style="gap:0.5rem; padding:0.45rem 0.65rem; border:none; background:transparent; color:var(--fg); font-size:0.8rem; font-weight:500; cursor:pointer; width:100%; text-align:left; display:flex; align-items:center; border-radius:var(--radius-sm);"><i class="ph ph-rocket" style="color:#fbbf24; font-size:1rem; flex-shrink:0;"></i> 5. Flagship OCR</button>
                                     <button type="button" class="btn-ocr-trigger gm-dropdown-item" data-metric="champs" style="gap:0.5rem; padding:0.45rem 0.65rem; border:none; background:transparent; color:var(--fg); font-size:0.8rem; font-weight:500; cursor:pointer; width:100%; text-align:left; display:flex; align-items:center; border-radius:var(--radius-sm);"><i class="ph ph-crown" style="color:#f472b6; font-size:1rem; flex-shrink:0;"></i> 6. Champs OCR</button>
@@ -1263,7 +1262,7 @@
                                     <i class="ph ph-magnifying-glass gm-icon"></i>
                                     <input type="text" id="member-search-admin" class="gm-input" data-i18n-placeholder="search_placeholder" placeholder="Search username, UID...">
                                     <button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1">
-                                        <span class="material-symbols-rounded">cancel</span>
+                                        <i class="ph ph-x-circle"></i>
                                     </button>
                                 </div>
                                 <select id="member-tier-filter-admin" class="gm-input" style="flex: 1; min-width: 120px; padding: 0.25rem 0.5rem; background: var(--bg-1); border: 1px solid var(--border-soft); border-radius: var(--radius-md); color: var(--text-normal);">
@@ -1294,7 +1293,7 @@
                         </div>
                         <div id="guild-member-list">
                             <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <i class="ph ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title" data-i18n="empty_members">No members registered</div>
                             </div>
                         </div>
@@ -1378,13 +1377,13 @@
                                     data-i18n-placeholder="search_placeholder"
                                     placeholder="Search username, UID...">
                                 <button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1">
-                                    <span class="material-symbols-rounded">cancel</span>
+                                    <i class="ph ph-x-circle"></i>
                                 </button>
                             </div>
                         </div>
                         <div id="banned-list-container">
                             <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <i class="ph ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title" data-i18n="empty_banned">No banned players</div>
                             </div>
                         </div>
@@ -1444,7 +1443,7 @@
 
                             <div id="migration-hub-pages-container" style="display:flex; flex-direction:column; gap:0.6rem;">
                                 <div class="gm-empty">
-                                    <i class="ph-duotone ph-ghost gm-icon"></i>
+                                    <i class="ph ph-ghost gm-icon"></i>
                                     <div class="gm-empty-title">Loading pages...</div>
                                 </div>
                             </div>
@@ -1457,7 +1456,7 @@
                                 <!-- Empty State -->
                                 <div id="migration-hub-view-empty" style="display:none; padding:4rem 1rem; text-align:center;">
                                     <div class="gm-empty">
-                                        <i class="ph-duotone ph-book-open gm-icon" style="font-size:3rem;"></i>
+                                        <i class="ph ph-book-open gm-icon" style="font-size:3rem;"></i>
                                         <div class="gm-empty-title" style="font-size:1.1rem; margin-top:0.75rem;">Select or create a page</div>
                                         <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0.25rem;" id="migration-hub-empty-desc">
                                             Capture intel, notes, and screenshots for your guild.
@@ -1629,7 +1628,7 @@
                         <div class="gm-card gm-card-padded" style="width:100%; max-width:760px; max-height:88vh; display:flex; flex-direction:column; background:var(--bg-card); border:1px solid var(--border-soft); box-shadow:0 12px 40px rgba(0,0,0,0.6); border-radius:10px; overflow:hidden;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-soft); padding-bottom:0.75rem;">
                                 <div style="display:flex; align-items:center; gap:0.5rem;">
-                                    <span class="material-symbols-rounded" style="color:var(--accent); font-size:1.5rem;">auto_awesome</span>
+                                    <i class="ph ph-sparkle" style="color:var(--accent); font-size:1.5rem;"></i>
                                     <div>
                                         <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--fg);" id="migration-hub-digest-modal-title">Executive Migration Briefing</h3>
                                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Synthesized by Gemini AI across all active notes</div>
@@ -1750,7 +1749,7 @@
                         </div>
                         <div id="sanctions-list">
                             <div class="gm-empty">
-                                <i class="ph-duotone ph-ghost gm-icon"></i>
+                                <i class="ph ph-ghost gm-icon"></i>
                                 <div class="gm-empty-title" data-i18n="empty_members">No history</div>
                             </div>
                         </div>
@@ -1775,7 +1774,7 @@
                             <i class="ph ph-calendar-dots"></i> 📅 GvG Day N OCR
                         </button>
                         <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="gvg_pvp" style="gap:0.35rem; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.35); font-size:0.78rem; font-weight:600; cursor:pointer;">
-                            <i class="ph ph-swords"></i> 💥 GvG Day 6 OCR
+                            <i class="ph ph-sword"></i> 💥 GvG Day 6 OCR
                         </button>
                     </div>
                     <div class="gm-event-banner">
@@ -1865,7 +1864,7 @@
                     <div data-gm-events-tabs></div>
                     <div class="gm-event-ocr-toolbar" style="display:flex; gap:0.45rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
                         <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="armsrace_sa" style="gap:0.35rem; background:rgba(244,63,94,0.15); color:#fb7185; border:1px solid rgba(244,63,94,0.35); font-size:0.78rem; font-weight:600; cursor:pointer;">
-                            <i class="ph ph-bolt"></i> ⚡ Arms Race SA OCR
+                            <i class="ph ph-lightning"></i> ⚡ Arms Race SA OCR
                         </button>
                         <button type="button" class="btn-ocr-trigger gm-btn gm-btn-sm" data-metric="armsrace_sb" style="gap:0.35rem; background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.35); font-size:0.78rem; font-weight:600; cursor:pointer;">
                             <i class="ph ph-crosshair"></i> ⚡ Arms Race SB OCR
@@ -1942,7 +1941,7 @@
                 <div id="ocr-metric-tabs" class="gm-segmented" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:0.35rem; margin-bottom:1rem; padding:0.35rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-md);">
                     <button type="button" class="gm-seg-btn active" data-metric="members" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:#10b981; color:#fff; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-users"></i> 1. Members</button>
                     <button type="button" class="gm-seg-btn" data-metric="power" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-sword"></i> 2. Power</button>
-                    <button type="button" class="gm-seg-btn" data-metric="fleet" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-swords"></i> 3. Fleet</button>
+                    <button type="button" class="gm-seg-btn" data-metric="fleet" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-sword"></i> 3. Fleet</button>
                     <button type="button" class="gm-seg-btn" data-metric="tech" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-atom"></i> 4. Tech</button>
                     <button type="button" class="gm-seg-btn" data-metric="flagship" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-rocket"></i> 5. Flagship</button>
                     <button type="button" class="gm-seg-btn" data-metric="champs" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-crown"></i> 6. Champs</button>
@@ -1953,11 +1952,11 @@
                     <button type="button" class="gm-seg-btn" data-metric="svs_pvp" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-fire"></i> SvS D6</button>
                     <button type="button" class="gm-seg-btn" data-metric="gvg_prep" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-flag-banner"></i> GvG D1-5</button>
                     <button type="button" class="gm-seg-btn" data-metric="gvg_day" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-calendar-dots"></i> GvG Day N</button>
-                    <button type="button" class="gm-seg-btn" data-metric="gvg_pvp" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-swords"></i> GvG D6</button>
+                    <button type="button" class="gm-seg-btn" data-metric="gvg_pvp" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-sword"></i> GvG D6</button>
                     <button type="button" class="gm-seg-btn" data-metric="shadowfront_s1" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-users-three"></i> SF S1</button>
                     <button type="button" class="gm-seg-btn" data-metric="shadowfront_s2" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-users-three"></i> SF S2</button>
                     <button type="button" class="gm-seg-btn" data-metric="dtr" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-truck"></i> DTR</button>
-                    <button type="button" class="gm-seg-btn" data-metric="armsrace_sa" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-bolt"></i> AR Stage A</button>
+                    <button type="button" class="gm-seg-btn" data-metric="armsrace_sa" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-lightning"></i> AR Stage A</button>
                     <button type="button" class="gm-seg-btn" data-metric="armsrace_sb" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.78rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-crosshair"></i> AR Stage B</button>
                 </div>
 
@@ -2023,7 +2022,7 @@
                             <i class="ph ph-magnifying-glass" style="position: absolute; left: 0.75rem; color: var(--text-muted); font-size: 0.95rem; pointer-events: none;"></i>
                             <input type="text" id="ocr-filter-search" class="gm-input" placeholder="Quick search player name (e.g. Trader)..." style="width: 100%; padding: 0.4rem 2.2rem 0.4rem 2.2rem; font-size: 0.82rem; border-radius: var(--radius-md);">
                             <button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1">
-                                <span class="material-symbols-rounded">cancel</span>
+                                <i class="ph ph-x-circle"></i>
                             </button>
                         </div>
                     </div>

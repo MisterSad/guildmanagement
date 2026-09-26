@@ -121,7 +121,7 @@ export class GloryView {
     if (!area) return;
 
     if (!members.length) {
-      area.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('empty_members') + '</div></div>';
+      area.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('empty_members') + '</div></div>';
       return;
     }
 
@@ -147,7 +147,7 @@ export class GloryView {
         '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
           '<i class="ph ph-magnifying-glass gm-icon"></i>' +
           '<input type="text" class="gm-input glory-search-input" placeholder="' + legacy.t('search_placeholder') + '">' +
-          '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><span class="material-symbols-rounded">cancel</span></button>' +
+          '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
         '</div>' +
       '</div>' +
       '<div class="gm-table-wrap">' +

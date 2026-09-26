@@ -473,7 +473,7 @@ export class ArmsRaceView {
     if (!isActive) {
       html +=
         '<div class="gm-empty" style="margin-top: 2rem;">' +
-          '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
+          '<i class="ph ph-rocket-launch gm-icon"></i>' +
           '<div class="gm-empty-title">' + legacy.t('event_not_active') + '</div>' +
           '<div class="gm-empty-hint">' + legacy.t('event_not_active_hint') + '</div>' +
         '</div>';
@@ -484,7 +484,7 @@ export class ArmsRaceView {
 
     const participants = stg.participants;
     if (!participants.length) {
-      html += '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('empty_members') + '</div></div>';
+      html += '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('empty_members') + '</div></div>';
       area.innerHTML = html;
       this.attachARListeners(area);
       return;
@@ -502,7 +502,7 @@ export class ArmsRaceView {
         '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
           '<i class="ph ph-magnifying-glass gm-icon"></i>' +
           '<input type="text" class="gm-input event-search-input" placeholder="' + legacy.t('search_placeholder') + '">' +
-          '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><span class="material-symbols-rounded">cancel</span></button>' +
+          '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
         '</div>' +
       '</div>' +
       '<div class="gm-table-wrap"><div class="gm-table-scroll">' +

@@ -69,7 +69,7 @@ export const NAV_ITEMS: ShellNavItem[] = [
 export const BREAKPOINT_MOBILE = 900;
 
 const EVENT_TABS = [
-  { id: 'event-svs', m3Icon: 'rocket_launch', icon: 'ph-swords', label: 'SvS', colorVar: 'var(--gm-event-svs)' },
+  { id: 'event-svs', m3Icon: 'rocket_launch', icon: 'ph-sword', label: 'SvS', colorVar: 'var(--gm-event-svs)' },
   { id: 'event-gvg', m3Icon: 'swords', icon: 'ph-flag-banner', label: 'GvG', colorVar: 'var(--gm-event-gvg)' },
   { id: 'event-shadowfront', m3Icon: 'radar', icon: 'ph-ghost', label: 'Shadowfront', colorVar: 'var(--gm-event-shadowfront)' },
   { id: 'event-dtr', m3Icon: 'local_shipping', icon: 'ph-truck', label: 'DTR', colorVar: 'var(--gm-event-dtr)' },
@@ -291,10 +291,10 @@ export class ShellView {
       let html = '<div class="gm-tabs-pill" style="margin-bottom:1rem; flex-wrap:nowrap; overflow-x:auto;">';
       EVENT_TABS.forEach((e) => {
         const active = e.id === ownerId;
-        const m3Icon = e.m3Icon || 'swords';
+        const phIcon = e.icon || 'ph-sword';
         const iconStyle = active ? ('style="color:' + e.colorVar + '; font-size: var(--fs-xl); margin-right:0.35rem; vertical-align:middle;"') : 'style="font-size: var(--fs-xl); margin-right:0.35rem; vertical-align:middle;"';
         html += '<button class="gm-tab-pill' + (active ? ' gm-active' : '') + '" data-gm-event-tab="' + e.id + '">' +
-          '<span class="material-symbols-rounded gm-icon" ' + iconStyle + '>' + m3Icon + '</span> ' + e.label +
+          '<i class="ph ' + phIcon + ' gm-icon" ' + iconStyle + '></i> ' + e.label +
         '</button>';
       });
       html += '</div>';
@@ -336,8 +336,6 @@ export class ShellView {
         input.type = isPwd ? 'text' : 'password';
         const icon = btn.querySelector('i');
         if (icon) icon.className = isPwd ? 'ph ph-eye-slash' : 'ph ph-eye';
-        const matIcon = btn.querySelector('.material-symbols-rounded');
-        if (matIcon) matIcon.textContent = isPwd ? 'visibility_off' : 'visibility';
       });
     });
   }
@@ -413,7 +411,7 @@ export class ShellView {
             '</div>' +
           '</header>' +
           '<div class="gm-empty">' +
-            '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
+            '<i class="ph ph-rocket-launch gm-icon"></i>' +
             '<div class="gm-empty-title">' + legacy.t('gm_overview_soon') + '</div>' +
             '<div class="gm-empty-hint">' + legacy.t('gm_overview_soon_hint') + '</div>' +
           '</div>' +
@@ -537,7 +535,7 @@ export class ShellView {
             cardDesc = 'Subscription expired. Read-only mode active.';
             pillLabel = 'Expired';
             pillClass = 'gm-sub-expired';
-            icon = 'ph-lock-keyhole';
+            icon = 'ph-lock-key';
           } else {
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
             const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -551,7 +549,7 @@ export class ShellView {
           cardDesc = 'Subscription expired.';
           pillLabel = 'Expired';
           pillClass = 'gm-sub-expired';
-          icon = 'ph-lock-keyhole';
+          icon = 'ph-lock-key';
         }
       }
     }
@@ -605,7 +603,7 @@ export class ShellView {
             '<div class="gm-sidebar-user-role">' + this.getUserRoleLong() + '</div>' +
           '</div>' +
           '<button class="gm-sidebar-logout" data-gm-logout title="' + legacy.t('nav_logout_title') + '">' +
-            '<span class="material-symbols-rounded">logout</span>' +
+            '<i class="ph ph-sign-out"></i>' +
           '</button>' +
         '</div>' +
       '</div>' +
@@ -615,13 +613,13 @@ export class ShellView {
       this.getSubscriptionCardHtml() +
       footerItems.map((item) => {
         return '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-nav-item="' + item.id + '">' +
-          '<span class="material-symbols-rounded" style="font-size: var(--fs-xl);">' + (item.m3Icon || 'circle') + '</span>' +
+          '<i class="ph ' + (item.icon || 'ph-circle') + '" style="font-size: var(--fs-xl);"></i>' +
           '<span>' + legacy.t(item.labelKey) + '</span>' +
         '</button>';
       }).join('') +
       (canReportBug
         ? '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-report-bug>' +
-            '<span class="material-symbols-rounded" style="font-size: var(--fs-xl);">bug_report</span>' +
+            '<i class="ph ph-bug" style="font-size: var(--fs-xl);"></i>' +
             '<span>' + legacy.t('ticket_report_bug') + '</span>' +
           '</button>'
         : '') +
@@ -665,10 +663,10 @@ export class ShellView {
   private navItemHtml(item: ShellNavItem): string {
     const isActive = this.state.active === item.id;
     const label = legacy.t(item.labelKey);
-    const m3Icon = item.m3Icon || 'circle';
+    const phIcon = item.icon || 'ph-circle';
 
     return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
-        '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
+        '<i class="ph ' + phIcon + ' gm-icon"></i>' +
         '<span>' + label + '</span>' +
       '</button>';
   }
@@ -723,12 +721,12 @@ export class ShellView {
         '</select>' +
         (canReportBug
           ? '<button class="gm-btn gm-btn-ghost gm-btn-sm" data-gm-report-bug title="' + legacy.t('ticket_report_bug') + '" style="gap:0.3rem;">' +
-              '<span class="material-symbols-rounded" style="font-size: var(--fs-lg);">bug_report</span>' +
+              '<i class="ph ph-bug" style="font-size: var(--fs-lg);"></i>' +
               '<span class="gm-report-bug-label" style="font-size: var(--fs-sm); font-weight:600;">' + legacy.t('ticket_report_bug') + '</span>' +
             '</button>'
           : '') +
         '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + legacy.t('nav_logout_title') + '">' +
-          '<span class="material-symbols-rounded">logout</span>' +
+          '<i class="ph ph-sign-out"></i>' +
         '</button>' +
       '</div>';
     el.innerHTML = html;
@@ -910,7 +908,7 @@ export class ShellView {
         })();
 
         submit.disabled = true;
-        submit.innerHTML = '<span class="material-symbols-rounded" style="font-size: var(--fs-lg);">sync</span> ' + t_('ticket_submitting');
+        submit.innerHTML = '<i class="ph ph-arrows-clockwise" style="font-size: var(--fs-lg);"></i> ' + t_('ticket_submitting');
         if (msgEl) msgEl.textContent = '';
         try {
           const db = legacy.db();
@@ -958,10 +956,10 @@ export class ShellView {
     return '<div class="gm-modal-card" style="max-width:580px; width:94%; max-height:90vh; overflow-y:auto; text-align:left;">' +
         '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.9rem; position:sticky; top:0; background:var(--bg-card); z-index:2; padding-bottom:0.4rem; border-bottom:1px solid var(--border-soft);">' +
           '<div style="display:flex; align-items:center; gap:0.55rem;">' +
-            '<span class="material-symbols-rounded" style="color:var(--accent); font-size: var(--fs-2xl);">bug_report</span>' +
+            '<i class="ph ph-bug" style="color:var(--accent); font-size: var(--fs-2xl);"></i>' +
             '<strong style="font-size: var(--fs-xl);">' + t_('ticket_report_bug') + '</strong>' +
           '</div>' +
-          '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm bug-report-close" title="Close"><span class="material-symbols-rounded">close</span></button>' +
+          '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm bug-report-close" title="Close"><i class="ph ph-x"></i></button>' +
         '</div>' +
         '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:0.85rem;">' +
           '<div class="gm-form-group">' +
@@ -1011,7 +1009,7 @@ export class ShellView {
             '<div id="ticket-dropzone" style="border:1px dashed var(--border-soft); border-radius:var(--radius-sm); padding:0.75rem; text-align:center; cursor:pointer; background:rgba(255,255,255,0.02); transition:border-color 0.2s, background 0.2s;">' +
               '<input type="file" id="ticket-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display:none;">' +
               '<div style="display:flex; align-items:center; justify-content:center; gap:0.4rem; color:var(--text-muted); font-size: var(--fs-sm);">' +
-                '<span class="material-symbols-rounded" style="font-size: var(--fs-xl); color:var(--accent);">add_photo_alternate</span>' +
+                '<i class="ph ph-image-square" style="font-size: var(--fs-xl); color:var(--accent);"></i>' +
                 '<span>' + esc(t_('ticket_screenshots_hint')) + '</span>' +
               '</div>' +
             '</div>' +
@@ -1019,7 +1017,7 @@ export class ShellView {
           '</div>' +
           '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:var(--radius-sm); padding:0.55rem 0.75rem; font-size: var(--fs-sm);">' +
             '<div style="font-weight:700; color:var(--text-muted); text-transform:uppercase; font-size: var(--fs-xs); letter-spacing:0.05em; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.3rem;">' +
-              '<span class="material-symbols-rounded" style="font-size: var(--fs-md);">devices</span> ' + esc(t_('ticket_env_title')) +
+              '<i class="ph ph-devices" style="font-size: var(--fs-md);"></i> ' + esc(t_('ticket_env_title')) +
             '</div>' +
             '<div style="display:flex; flex-wrap:wrap; gap:0.4rem;">' +
               '<span class="gm-chip" style="font-size: var(--fs-xs); padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">FGF: <strong style="color:var(--fg);">' + esc(env.appVersion) + '</strong></span>' +
@@ -1046,14 +1044,14 @@ export class ShellView {
       const item = NAV_ITEMS.find((i) => i.id === id);
       if (!item) return;
       const isActive = this.state.active === id;
-      const m3Icon = item.m3Icon || 'circle';
+      const phIcon = item.icon || 'ph-circle';
       html += '<button class="gm-bottom-nav-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + id + '">' +
-                  '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
+                  '<i class="ph ' + phIcon + ' gm-icon"></i>' +
                   '<span>' + legacy.t(item.labelKey) + '</span>' +
                 '</button>';
     });
     html += '<button class="gm-bottom-nav-item" data-gm-more>' +
-                '<span class="material-symbols-rounded gm-icon">more_horiz</span>' +
+                '<i class="ph ph-dots-three gm-icon"></i>' +
                 '<span class="gm-bottom-nav-unread-badge hidden" id="bottom-nav-more-badge">0</span>' +
                 '<span>' + legacy.t('gm_nav_more') + '</span>' +
             '</button>';
@@ -1078,10 +1076,10 @@ export class ShellView {
     this.visibleNavItems().forEach((item) => {
       const isActive = this.state.active === item.id;
       const label = legacy.t(item.labelKey);
-      const m3Icon = item.m3Icon || 'circle';
+      const phIcon = item.icon || 'ph-circle';
 
       html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
-                  '<span class="material-symbols-rounded gm-icon">' + m3Icon + '</span>' +
+                  '<i class="ph ' + phIcon + ' gm-icon"></i>' +
                   '<span>' + label + '</span>' +
               '</button>';
     });

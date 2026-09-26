@@ -24,7 +24,7 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
             // 2. The single compact trigger button exists
             expect(toolbarContent).toContain('id="ocr-dropdown-trigger"');
             expect(toolbarContent).toContain('class="gm-btn gm-btn-sm ocr-dropdown-trigger"');
-            expect(toolbarContent).toContain('ph-duotone ph-sparkle');
+            expect(toolbarContent).toContain('ph ph-sparkle');
             expect(toolbarContent).toContain('AI Metric Scanners');
             expect(toolbarContent).toContain('ph-caret-down');
 
@@ -45,7 +45,7 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
             const expectedMetrics = [
                 { metric: 'members', label: '1. Members OCR', icon: 'ph-users' },
                 { metric: 'power', label: '2. Power OCR', icon: 'ph-sword' },
-                { metric: 'fleet', label: '3. Fleet OCR', icon: 'ph-swords' },
+                { metric: 'fleet', label: '3. Fleet OCR', icon: 'ph-shooting-star' },
                 { metric: 'tech', label: '4. Tech OCR', icon: 'ph-atom' },
                 { metric: 'flagship', label: '5. Flagship OCR', icon: 'ph-rocket' },
                 { metric: 'champs', label: '6. Champs OCR', icon: 'ph-crown' },

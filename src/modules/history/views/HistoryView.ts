@@ -229,7 +229,7 @@ export class HistoryView {
 
     if (filtered.length === 0) {
       area.innerHTML = pillsHtml +
-        '<div class="gm-empty"><i class="ph-duotone ph-clock-counter-clockwise gm-icon"></i><div class="gm-empty-title">' + legacy.t('history_empty') + '</div></div>';
+        '<div class="gm-empty"><i class="ph ph-clock-counter-clockwise gm-icon"></i><div class="gm-empty-title">' + legacy.t('history_empty') + '</div></div>';
       this.wirePills();
       return;
     }
@@ -657,7 +657,7 @@ export class HistoryView {
           (totalScore > 0 ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-trophy"></i> ' + legacy.fmt(totalScore) + '</span>' : '') +
         '</div>' +
         (sorted.length === 0
-          ? '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('history_empty_session') + '</div></div>'
+          ? '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('history_empty_session') + '</div></div>'
           : '<div class="gm-table-wrap gm-ui-table-wrap"><div class="gm-table-scroll">' +
               '<table class="gm-table gm-resp-table gm-ui-table-el gm-ui-table-sticky">' +
                 '<thead><tr>' + headerCols + '</tr></thead>' +

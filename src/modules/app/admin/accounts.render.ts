@@ -81,7 +81,7 @@ export function renderSuperAdminGroupedAccounts(
   if (countEl) countEl.textContent = String(listToRender.length);
 
   if (listToRender.length === 0) {
-    container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_accounts') + '</div></div>';
+    container.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_accounts') + '</div></div>';
     return;
   }
 
@@ -161,7 +161,7 @@ export function renderAccountCardsToContainer(
   if (countEl) countEl.textContent = String(listToRender.length);
 
   if (listToRender.length === 0) {
-    container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_accounts') + '</div></div>';
+    container.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_accounts') + '</div></div>';
     return;
   }
 

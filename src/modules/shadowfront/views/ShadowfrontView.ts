@@ -774,7 +774,7 @@ export class ShadowfrontView {
     if (sq.ended) {
       html +=
         '<div class="gm-empty" style="margin-top: 2rem;">' +
-          '<i class="ph-duotone ph-ghost gm-icon"></i>' +
+          '<i class="ph ph-ghost gm-icon"></i>' +
           '<div class="gm-empty-title">' + legacy.t('event_not_active') + '</div>' +
           '<div class="gm-empty-hint">' + legacy.t('sf_squad_inactive_hint') + '</div>' +
         '</div>';
@@ -943,7 +943,7 @@ export class ShadowfrontView {
       if (!sq || !sq.sessionId) {
         html +=
           '<div class="gm-empty" style="margin-top: 2rem;">' +
-            '<i class="ph-duotone ph-rocket-launch gm-icon"></i>' +
+            '<i class="ph ph-rocket-launch gm-icon"></i>' +
             '<div class="gm-empty-title">' + legacy.t('event_not_active') + '</div>' +
             '<div class="gm-empty-hint">' + legacy.t('sf_squad_inactive_hint') + '</div>' +
           '</div>';

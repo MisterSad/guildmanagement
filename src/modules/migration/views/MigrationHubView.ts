@@ -410,7 +410,7 @@ export class MigrationHubView {
     if (filtered.length === 0) {
       container.innerHTML = `
         <div class="gm-empty" style="padding:1.5rem 0.5rem;">
-          <i class="ph-duotone ph-newspaper-clipping gm-icon"></i>
+          <i class="ph ph-newspaper-clipping gm-icon"></i>
           <div class="gm-empty-title" style="font-size:0.88rem;">No pages found</div>
           <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">Click "New Wiki Page" to create one.</p>
         </div>

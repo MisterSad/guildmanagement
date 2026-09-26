@@ -77,13 +77,13 @@ function emptyStateHtml(): string {
   const members = getGuildMembers();
   if (members.length === 0) {
     return '<div class="gm-empty gm-empty--coldstart" style="padding:3rem 1rem; text-align:center;">' +
-      '<i class="ph-duotone ph-scan gm-icon" style="font-size: var(--fs-5xl); color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
+      '<i class="ph ph-scan gm-icon" style="font-size: var(--fs-5xl); color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
       '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; margin-bottom:0.5rem;">' + t('empty_members_roster_title') + '</div>' +
       '<div class="gm-empty-desc" style="color:var(--text-muted); font-size: var(--fs-base); max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' + t('empty_members_roster_desc') + '</div>' +
       '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="members"><i class="ph ph-scan"></i> ' + t('empty_members_roster_cta') + '</button>' +
     '</div>';
   }
-  return '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
+  return '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
 }
 
 // ── Cold-start skeleton (P3-08) ──────────────────────────────────────────────
@@ -374,11 +374,11 @@ export function buildMilitaryMatrixHtml(
   const headerSummary =
     '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding:0.85rem 1rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg);">' +
       '<div style="font-weight:700; font-size: var(--fs-md); color:var(--fg); display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
-        '<span class="material-symbols-rounded" style="color:var(--accent);">shield</span> Tactical Force Matrix (' + sorted.length + ' players)' +
+        '<i class="ph ph-shield" style="color:var(--accent);"></i> Tactical Force Matrix (' + sorted.length + ' players)' +
         '<span class="gm-chip" style="color:#facc15; background:rgba(234,179,8,0.12); border:1px solid rgba(234,179,8,0.3); font-size: var(--fs-xs); margin-left:0.35rem;" title="16 Top Rally Leaders automatically assigned"><i class="ph ph-crown-simple"></i> ' + leaderCount + ' Rally Leaders</span>' +
       '</div>' +
       '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">' +
-        '<span class="gm-chip" style="color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); font-size: var(--fs-sm);"><i class="ph ph-swords"></i> Guild Fleet: ' + formatPower(totalFleet) + '</span>' +
+        '<span class="gm-chip" style="color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); font-size: var(--fs-sm);"><i class="ph ph-sword"></i> Guild Fleet: ' + formatPower(totalFleet) + '</span>' +
         '<span class="gm-chip" style="color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); font-size: var(--fs-sm);"><i class="ph ph-atom"></i> Guild Tech: ' + formatPower(totalTech) + '</span>' +
         '<span class="gm-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm);"><i class="ph ph-trophy"></i> Total Glory: ' + formatPower(totalGlory) + '</span>' +
       '</div>' +

@@ -27,7 +27,7 @@ export interface HistorySession {
 }
 
 export const EVENT_META: Record<string, HistoryEventMeta> = {
-  'SvS':                { icon: 'ph-swords',      label: 'SvS',         filterKey: 'SvS',         hasScore: true,  border: 'var(--accent)' },
+  'SvS':                { icon: 'ph-sword',      label: 'SvS',         filterKey: 'SvS',         hasScore: true,  border: 'var(--accent)' },
   'GvG':                { icon: 'ph-flag-banner', label: 'GvG',         filterKey: 'GvG',         hasScore: true,  border: 'var(--accent)' },
   'Shadowfront':        { icon: 'ph-ghost',       label: 'Shadowfront', filterKey: 'Shadowfront', hasScore: false, border: 'var(--info)'   },
   'Defend Trade Route': { icon: 'ph-truck',       label: 'DTR',         filterKey: 'DTR',         hasScore: false, border: 'var(--info)'   },

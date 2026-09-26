@@ -44,7 +44,7 @@
     transform: translateY(0) scale(0.98);
 }
 .gm-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
-.gm-btn .ph, .gm-btn .ph-fill, .gm-btn .material-symbols-rounded { font-size: var(--fs-xl); }
+.gm-btn .ph, .gm-btn .ph-fill { font-size: var(--fs-xl); }
 
 .gm-btn-primary {
     background: var(--md-sys-color-primary);
@@ -248,7 +248,6 @@
     z-index: 5;
     transition: color .18s ease, background .18s ease;
 }
-.gm-search-clear-btn .material-symbols-rounded,
 .gm-search-clear-btn .ph {
     font-size: var(--fs-xl);
     display: block;
@@ -995,8 +994,7 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     letter-spacing: 0.02em;
 }
 
-.gm-uid-invalid i,
-.gm-uid-invalid .material-symbols-rounded {
+.gm-uid-invalid i {
     font-size: var(--fs-base);
     color: #f87171;
 }
@@ -2857,7 +2855,7 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     text-overflow: ellipsis;
     height: 20px;
 }
-.portal-military-tile-footer .material-symbols-rounded {
+.portal-military-tile-footer .ph {
     font-size: var(--fs-sm);
     opacity: 0.8;
     flex-shrink: 0;

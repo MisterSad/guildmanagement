@@ -110,7 +110,7 @@ export function mountPasskeysPanel(config: PasskeysPanelConfig): PasskeysPanelHa
     }
 
     if (!passkeys.length) {
-      listEl.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-fingerprint gm-icon"></i><div class="gm-empty-title">No passkeys yet</div></div>';
+      listEl.innerHTML = '<div class="gm-empty"><i class="ph ph-fingerprint gm-icon"></i><div class="gm-empty-title">No passkeys yet</div></div>';
       return;
     }
 

@@ -65,7 +65,7 @@ export function renderBannedPlayers(): void {
   if (count) count.textContent = String(filtered.length);
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_banned') + '</div></div>';
+    container.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_banned') + '</div></div>';
     return;
   }
 

@@ -67,7 +67,7 @@ export async function renderMigrationGroupsList(): Promise<void> {
 
     const groups = groupsRes.data || [];
     if (groups.length === 0) {
-      container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ghost gm-icon"></i><div class="gm-empty-title">No migration groups yet</div></div>';
+      container.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">No migration groups yet</div></div>';
       return;
     }
 
@@ -130,6 +130,6 @@ export async function renderMigrationGroupsList(): Promise<void> {
       });
     });
   } catch (err: any) {
-    container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' + esc(err.message) + '</div></div>';
+    container.innerHTML = '<div class="gm-empty"><i class="ph ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' + esc(err.message) + '</div></div>';
   }
 }

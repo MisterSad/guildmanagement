@@ -90,7 +90,7 @@ export { newSessionId } from '../utils/date';
 export function getEventIcon(name?: string | null): string {
   if (!name) return 'ph-calendar-dot';
   const lower = String(name).toLowerCase();
-  if (lower.indexOf('svs') !== -1) return 'ph-swords';
+  if (lower.indexOf('svs') !== -1) return 'ph-sword';
   if (lower.indexOf('gvg') !== -1) return 'ph-flag-banner';
   if (lower.indexOf('shadowfront') !== -1) return 'ph-ghost';
   if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return 'ph-truck';

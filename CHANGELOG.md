@@ -70,6 +70,31 @@
     - Worth stating plainly: this is a modest win. The real CSS weight is the icon fonts (310 KB of Phosphor CSS for 3,043 glyphs, of which 56 duotone icons are used) — that is a separate, much larger lever.
   - **Quality & Verification**: `npm run type-check` 0 errors, 132 Vitest suites green (1,472 tests), production build clean, and all 29 Playwright e2e tests pass against the real production bundle.
 
+- **Performance: icon and font consolidation — ~5.6 MB off the first load (unreleased)**
+  - **Material Symbols Rounded was a 5.4 MB font download for 64 icons.** The `<link>` in `index.html` and `terms.html` requested the full variable font across every axis (`opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200`); `content-length` on the `woff2` Google serves for it is **5,399,596 bytes**. It was also a render-blocking third-party stylesheet on the critical path. The audit had estimated this at 150–200 KB — it was measured, not estimated, and it is by a wide margin the single largest performance defect found anywhere in this codebase.
+    - All 64 usages were migrated to Phosphor. 48 ligature→icon mappings were built and **validated against the package's actual 1,530-icon list** before use, rather than guessed.
+    - `ShellView`'s five dynamic sites were straightforward: its nav and event definitions already carried a Phosphor `icon` field alongside `m3Icon`, so the migration was switching to the field that was already there.
+    - Removed a dual-path leftover in the password-visibility toggle that maintained both an `<i class="ph">` and a Material `<span>`, and migrated the Stats podium's rank ternary (`emoji_events`/`military_tech`/`workspace_premium` → `ph-trophy`/`ph-medal`/`ph-seal-check`).
+    - CSS rules were **converted, not deleted**, where they targeted `.material-symbols-rounded` alone (e.g. `.portal-military-tile-footer`) — deleting them would have silently unstyled the elements. Only rules already pairing with `.ph`, or specific to Material's variable-font axes, were dropped.
+  - **Dropped the Phosphor duotone family**: 231 KB of CSS and a 164 KB `woff2` for the 55 occurrences that used it, every one of which exists in the regular set.
+  - **Fixed seven icon names that do not exist in Phosphor and were therefore rendering as nothing**: `ph-bolt`, `ph-brightness-high`, `ph-lock-keyhole`, `ph-shield-crown`, `ph-swords`, `ph-user-clock`, `ph-webhook`. These were pre-existing bugs, unrelated to this migration, found by validating every `ph-*` name in the codebase against the package. All 176 distinct icon names now resolve.
+    - `ph-swords` → `ph-sword` created a collision with the Power OCR scanner, so the Fleet scanner was given `ph-shooting-star` to stay distinguishable.
+  - **Trimmed the Phosphor `@font-face` via a small Vite plugin** (`vite.config.ts`). The package declares four sources (woff2/woff/ttf/svg) and Vite resolved all of them, emitting **3.97 MB** of `woff`, `ttf` and `svg` — the SVG alone is 2.9 MB — that no browser ever downloads, since woff2 is first and universally supported. The plugin rewrites the rule to woff2 only and changes `font-display: block` to `swap`: `block` meant every `.ph` icon rendered as *nothing* (not a fallback glyph) until the 147 KB font arrived. Rewriting the stylesheet beats vendoring a copy, since the 1,530 icon rules stay owned by the package.
+  - **Dropped Space Grotesk** from the Google Fonts request (4 weights). It was listed only as a second fallback behind Plus Jakarta Sans in `--font-display`, and both came from the *same* request — if one failed to load so did the other, so it could never render.
+  - **Measured result**
+
+    | | Before | After |
+    |---|---|---|
+    | CSS bundle (raw) | 437.91 kB | **240.72 kB** |
+    | CSS bundle (gzip) | 68.59 kB | **42.13 kB** |
+    | Font assets emitted to `dist` | 6.9 MB | **144 kB** |
+    | Icon font actually downloaded | 311 kB | **147 kB** |
+    | Material Symbols download | 5.4 MB | **0** |
+    | Google font families / weights | 4 / 17 | 3 / 13 |
+
+  - **Quality & Verification**: `npm run type-check` 0 errors, 132 Vitest suites green (1,472 tests), all 29 Playwright e2e green, and the built login page checked visually in a browser — it exercises six former Material ligatures (`person_add`, `shield`, `lock`, `visibility`, `login`, `fingerprint`) and every one renders as a real glyph.
+  - Five tests that pinned the old icon markup were updated, including one now asserting that the duotone import does **not** return.
+
 ## [3.20.2] - 2026-09-24
 
 - **Bug Fix & Ergonomics: War Manual Score Saving & History Modal Table Scrolling (V3.20.2)**

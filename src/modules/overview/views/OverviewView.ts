@@ -304,7 +304,7 @@ export class OverviewView {
     if (!this.clockMembers.length) {
       container.innerHTML =
         '<div class="gm-empty">' +
-          '<i class="ph-duotone ph-clock gm-icon"></i>' +
+          '<i class="ph ph-clock gm-icon"></i>' +
           '<div class="gm-empty-title">No timezone clocks yet</div>' +
           '<div class="gm-empty-hint">Add an officer\'s timezone with "' + legacy.esc(legacy.t('manage_clocks')) + '" above.</div>' +
         '</div>';
@@ -408,7 +408,7 @@ export class OverviewView {
         '</div>' +
         '<div id="pending-account-list">' +
           '<div class="gm-empty" style="padding:1.25rem;">' +
-            '<i class="ph-duotone ph-hourglass gm-icon"></i>' +
+            '<i class="ph ph-hourglass gm-icon"></i>' +
             '<div class="gm-empty-title">No pending registrations</div>' +
           '</div>' +
         '</div>' +
@@ -438,7 +438,7 @@ export class OverviewView {
     if (fromGm) return fromGm;
     if (!name) return 'ph-calendar-dot';
     const lower = name.toLowerCase();
-    if (lower.indexOf('svs') !== -1) return 'ph-swords';
+    if (lower.indexOf('svs') !== -1) return 'ph-sword';
     if (lower.indexOf('gvg') !== -1) return 'ph-flag-banner';
     if (lower.indexOf('shadowfront') !== -1) return 'ph-ghost';
     if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return 'ph-truck';
@@ -451,7 +451,7 @@ export class OverviewView {
 
   private renderUpcomingCard(upcoming: any[]): string {
     if (!upcoming || !upcoming.length) {
-      return '<div class="gm-empty"><i class="ph-duotone ph-calendar-x gm-icon"></i>' +
+      return '<div class="gm-empty"><i class="ph ph-calendar-x gm-icon"></i>' +
         '<div class="gm-empty-title">' + legacy.t('overview_no_upcoming') + '</div></div>';
     }
 
@@ -529,7 +529,7 @@ export class OverviewView {
 
   private renderActivityCard(activity: any[]): string {
     if (!activity || !activity.length) {
-      return '<div class="gm-empty"><i class="ph-duotone ph-clock-counter-clockwise gm-icon"></i>' +
+      return '<div class="gm-empty"><i class="ph ph-clock-counter-clockwise gm-icon"></i>' +
         '<div class="gm-empty-title">' + legacy.t('overview_no_activity') + '</div></div>';
     }
 

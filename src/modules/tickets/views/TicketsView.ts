@@ -119,7 +119,7 @@ export class TicketsView {
       return;
     }
     if (!legacy.isSuperAdmin()) {
-      container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-shield-warning gm-icon"></i><div class="gm-empty-title">Super admin only</div></div>';
+      container.innerHTML = '<div class="gm-empty"><i class="ph ph-shield-warning gm-icon"></i><div class="gm-empty-title">Super admin only</div></div>';
       return;
     }
 
@@ -133,7 +133,7 @@ export class TicketsView {
       console.error('tickets load error', err);
       container.innerHTML =
         '<div class="gm-empty">' +
-          '<i class="ph-duotone ph-warning-circle gm-icon"></i>' +
+          '<i class="ph ph-warning-circle gm-icon"></i>' +
           '<div class="gm-empty-title">Could not load tickets</div>' +
           '<button class="gm-btn gm-btn-outline" data-tickets-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
         '</div>';
@@ -148,7 +148,7 @@ export class TicketsView {
 
   private render(container: Element, tickets: any[]): void {
     if (!tickets || tickets.length === 0) {
-      container.innerHTML = '<div class="gm-empty"><i class="ph-duotone ph-ticket gm-icon"></i><div class="gm-empty-title">' + legacy.esc(legacy.t('tickets_empty')) + '</div></div>';
+      container.innerHTML = '<div class="gm-empty"><i class="ph ph-ticket gm-icon"></i><div class="gm-empty-title">' + legacy.esc(legacy.t('tickets_empty')) + '</div></div>';
       return;
     }
 

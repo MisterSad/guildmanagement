@@ -12,7 +12,6 @@ import '../styles.css';
 import '../components.css';
 import '../shell.css';
 import '@phosphor-icons/web/regular';
-import '@phosphor-icons/web/duotone';
 
 import { t, getLang, setLang, applyTranslations } from './core/i18n/i18n';
 import { getSupabaseClient, escapeHTML, handleSessionInvalidation, resetSessionInvalidationFlag } from './core/api/supabase';

@@ -56,9 +56,46 @@ function serviceWorkerDevPlugin(): Plugin {
   };
 }
 
+/**
+ * Trims the Phosphor icon `@font-face` to the only format any supported browser
+ * will ever fetch, and stops hiding the icons while it loads.
+ *
+ * The package declares four sources — woff2, woff, ttf and svg. Vite resolves
+ * every `url()` it finds, so all four were emitted into `dist/assets`: 3.97 MB
+ * of woff/ttf/svg (the SVG alone is 2.9 MB) that no browser downloads, since
+ * woff2 is first in the list and universally supported. It cost nothing in user
+ * bandwidth but bloated every deploy.
+ *
+ * It also ships `font-display: block`, which means each `.ph` icon renders as
+ * *nothing* — not a fallback glyph — until the 147 kB woff2 arrives. `swap` is
+ * the right trade for an icon font used in navigation and buttons.
+ *
+ * Rewriting the stylesheet is preferable to vendoring a copy of it: the 1,530
+ * icon rules stay owned by the package and keep updating with it.
+ */
+function phosphorFontTrimPlugin(): Plugin {
+  return {
+    name: 'fgf-phosphor-font-trim',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.includes('@phosphor-icons/web') || !id.endsWith('.css')) return null;
+      if (!code.includes('@font-face')) return null;
+
+      const trimmed = code
+        .replace(
+          /src:\s*[^;]*;/,
+          'src: url("./Phosphor.woff2") format("woff2");'
+        )
+        .replace(/font-display:\s*block;/, 'font-display: swap;');
+
+      return trimmed === code ? null : { code: trimmed, map: null };
+    },
+  };
+}
+
 export default defineConfig({
   root: './',
-  plugins: [serviceWorkerDevPlugin()],
+  plugins: [serviceWorkerDevPlugin(), phosphorFontTrimPlugin()],
   build: {
     outDir: 'dist',
     // Source maps disabled for production: the post-cutover invariant is that

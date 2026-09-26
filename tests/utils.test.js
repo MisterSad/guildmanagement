@@ -170,7 +170,8 @@ describe('getPowerTier', () => {
 
 describe('event theming helpers', () => {
     it('getEventIcon maps known event names', () => {
-        expect(RAD.getEventIcon('SvS Battle')).toBe('ph-swords');
+        // 'ph-swords' is not a Phosphor icon and rendered as nothing; the real name is singular.
+        expect(RAD.getEventIcon('SvS Battle')).toBe('ph-sword');
         expect(RAD.getEventIcon('GvG War')).toBe('ph-flag-banner');
         expect(RAD.getEventIcon('Shadowfront')).toBe('ph-ghost');
         expect(RAD.getEventIcon('Trade Route DTR')).toBe('ph-truck');

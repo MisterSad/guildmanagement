@@ -152,7 +152,7 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
           '<button type="button" class="gm-mini-btn gm-close-modal"><i class="ph ph-x"></i></button>' +
         '</div>' +
         '<div class="gm-modal-body" id="player-history-body" style="display:flex; flex-direction:column; gap:1.25rem; max-height:70vh; overflow-y:auto;">' +
-          '<div class="gm-empty" style="padding:2rem;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading history...</div></div>' +
+          '<div class="gm-empty" style="padding:2rem;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading history...</div></div>' +
         '</div>' +
         '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top: 1.5rem;">' +
           '<button type="button" class="gm-btn gm-btn-ghost gm-close-modal">Close</button>' +

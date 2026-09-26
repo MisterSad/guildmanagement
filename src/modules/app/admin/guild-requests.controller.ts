@@ -361,7 +361,7 @@ export async function renderPendingRegistrations(activeG?: string): Promise<void
   if (overviewCount) overviewCount.textContent = String(pending.length);
   if (adminCount) adminCount.textContent = String(pending.length);
 
-  const emptyHtml = '<div class="gm-empty" style="padding:1.25rem;"><i class="ph-duotone ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
+  const emptyHtml = '<div class="gm-empty" style="padding:1.25rem;"><i class="ph ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
 
   const renderListTo = (container: HTMLElement | null): void => {
     if (!container) return;

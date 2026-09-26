@@ -544,7 +544,7 @@ export class StatsView {
     const container = containers[0] as HTMLElement;
 
     const tabsHtml = this.getTabsHtml();
-    container.innerHTML = tabsHtml + '<div class="gm-empty" style="padding:3.5rem 1.5rem;"><i class="ph-duotone ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading guild metrics...</div></div>';
+    container.innerHTML = tabsHtml + '<div class="gm-empty" style="padding:3.5rem 1.5rem;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading guild metrics...</div></div>';
     this.wireModeTabs(container);
 
     const db = legacy.getDb();
@@ -725,7 +725,7 @@ export class StatsView {
       // Inactive HTML Cards
       const inactiveHtml = inactiveRows.length === 0
         ? '<div class="gm-empty" style="padding:2.5rem 1.5rem; text-align:center;">' +
-            '<i class="ph-duotone ph-check-circle gm-icon" style="font-size: var(--fs-4xl); color:var(--accent-mint); margin-bottom:.5rem; display:block;"></i>' +
+            '<i class="ph ph-check-circle gm-icon" style="font-size: var(--fs-4xl); color:var(--accent-mint); margin-bottom:.5rem; display:block;"></i>' +
             '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg);">Every member participated in the last 2 weeks</div>' +
             '<div style="font-size: var(--fs-base); color:var(--fg-dim); margin-top:0.25rem;">No inactive members detected on the roster.</div>' +
           '</div>'
@@ -1059,7 +1059,7 @@ export class StatsView {
 
         container.innerHTML = tabsHtml +
           '<div class="gm-empty gm-leaderboard-empty" style="padding:3.5rem 1.5rem; text-align:center; background:var(--bg-1); border-radius:var(--radius-xl); border:1px dashed var(--border-soft); margin-top:1rem;">' +
-            '<i class="ph-duotone ph-trophy gm-icon" style="font-size: var(--fs-5xl); color:var(--fg-dim); margin-bottom:.75rem; display:block; opacity:0.6;"></i>' +
+            '<i class="ph ph-trophy gm-icon" style="font-size: var(--fs-5xl); color:var(--fg-dim); margin-bottom:.75rem; display:block; opacity:0.6;"></i>' +
             '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg); margin-bottom:.5rem;">' + esc(emptyTitle) + '</div>' +
             '<div class="gm-empty-hint" style="font-size: var(--fs-sm); color:var(--fg-dim); max-width:480px; margin:0 auto; line-height:1.5;">' + esc(emptyDesc) + '</div>' +
           '</div>';
@@ -1232,7 +1232,7 @@ export class StatsView {
   private render3DPodiumColumn(member: any, medalClass: string, rankNum: string): string {
     if (!member) return '';
     const initial = legacy.avatarInit(member.pseudo);
-    const crownHtml = rankNum === '1' ? '<div class="gm-podium-crown-wrap"><span class="material-symbols-rounded gm-podium-crown">crown</span></div>' : '';
+    const crownHtml = rankNum === '1' ? '<div class="gm-podium-crown-wrap"><i class="ph ph-crown gm-podium-crown"></i></div>' : '';
     return '<div class="gm-podium-column gm-' + medalClass + '">' +
       crownHtml +
       '<div class="gm-podium-avatar-wrap gm-podium-avatar-hex">' +
@@ -1243,7 +1243,7 @@ export class StatsView {
       '<div class="gm-podium-score-val">' + fmt(member.score) + ' pts</div>' +
       '<div class="gm-podium-pedestal">' +
         '<div class="gm-podium-pedestal-content">' +
-          '<span class="material-symbols-rounded gm-podium-pedestal-icon">' + (rankNum === '1' ? 'emoji_events' : rankNum === '2' ? 'military_tech' : 'workspace_premium') + '</span>' +
+          '<i class="ph ' + (rankNum === '1' ? 'ph-trophy' : rankNum === '2' ? 'ph-medal' : 'ph-seal-check') + ' gm-podium-pedestal-icon"></i>' +
         '</div>' +
       '</div>' +
     '</div>';
