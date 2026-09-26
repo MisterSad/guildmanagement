@@ -4,11 +4,19 @@ import { test, expect } from '@playwright/test';
 // run without any backend. They verify the page boots and the auth form is
 // wired correctly.
 
-test('login page loads with title, footer and Discord button', async ({ page }) => {
+test('login page loads with title, footer and both Discord affordances', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/FGF|Guild/i);
     await expect(page.locator('#login-view .gm-login-title').first()).toContainText(/FGF GUILD MANAGEMENT/i);
-    await expect(page.locator('.gm-login-discord-btn')).toBeVisible();
+
+    // Two distinct things now share .gm-login-discord-btn, so each is asserted
+    // on its own: the Phase D2 sign-in button, and the long-standing link to
+    // the community server. A bare class selector would match both and fail
+    // Playwright's strict mode -- which is how this was caught.
+    await expect(page.locator('#login-discord-btn')).toBeVisible();
+    await expect(page.locator('#login-discord-btn')).toContainText(/Sign in with Discord/i);
+    await expect(page.locator('a.gm-login-discord-btn[href*="discord.gg"]')).toBeVisible();
+
     await expect(page.locator('.gm-login-footer')).toContainText('Developed by HawkEye #1058');
 });
 

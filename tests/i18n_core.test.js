@@ -10,8 +10,9 @@ import { t, getLang, setLang, applyTranslations } from '../src/core/i18n/i18n';
 import { EN } from '../src/core/i18n/i18n.dictionary';
 
 describe('i18n dictionary (golden)', () => {
-  it('keeps the full 529-key English dictionary', () => {
-    expect(Object.keys(EN).length).toBe(529);
+  it('keeps the full 530-key English dictionary', () => {
+    // 530 since Phase D2 added `login_btn_discord`.
+    expect(Object.keys(EN).length).toBe(530);
   });
 
   it('has no empty translation value', () => {

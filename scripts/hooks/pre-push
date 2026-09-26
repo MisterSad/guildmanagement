@@ -96,6 +96,7 @@ if [[ "$DEPLOY_ALL" == true ]]; then
   # All known functions (update this list when adding a new function)
   ALL_FUNCTIONS=(
     admin-accounts
+    auth-discord
     auth-login
     auth-passkey
     discord-bot-interactions

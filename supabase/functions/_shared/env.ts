@@ -47,6 +47,10 @@ function getRawEnv(): Record<string, string | undefined> {
       "DISCORD_APPLICATION_ID",
       "DISCORD_PUBLIC_KEY",
       "DISCORD_WORKER_SECRET",
+      "DISCORD_CLIENT_ID",
+      "DISCORD_CLIENT_SECRET",
+      "DISCORD_OAUTH_REDIRECT_URI",
+      "APP_DEFAULT_ORIGIN",
     ];
     for (const key of explicitKeys) {
       if (!env[key]) {

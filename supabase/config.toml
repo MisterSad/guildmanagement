@@ -451,6 +451,16 @@ verify_jwt = false
 [functions.auth-passkey]
 verify_jwt = false
 
+# Discord OAuth sign-in. No session exists at any of its three routes by
+# definition (sign-in is what they perform), so a Supabase JWT cannot gate
+# them. Each authenticates by its own means instead: /start and /callback by a
+# single-use state row carrying the PKCE verifier, and the POST redeem by a
+# single-use ticket. A missing block here would silently default to
+# verify_jwt = true and break every Discord sign-in -- the exact regression
+# that already hit auth-passkey and guild-request.
+[functions.auth-discord]
+verify_jwt = false
+
 [functions.player-register]
 verify_jwt = false
 

@@ -398,6 +398,103 @@ export function startConditionalPasskeyListener(): void {
     .catch(() => { /* silent by design */ });
 }
 
+// ── Discord sign-in ──────────────────────────────────────────────────────────
+
+/**
+ * Consumes a `?gm_auth=` ticket (or `?gm_auth_error=`) left by the
+ * auth-discord callback redirect.
+ *
+ * MUST run before `restoreSession()`: it installs a session, and letting the
+ * restore path win first would leave the ticket unspent in the URL while the
+ * page settled into a logged-out state.
+ *
+ * The query parameters are stripped from the URL before anything else happens,
+ * via `history.replaceState`. That matters for three reasons: a reload must not
+ * retry an already-spent ticket, the ticket must not survive into a bookmark or
+ * the browser's session history, and it must not leak through the `Referer` of
+ * any subsequent request the page makes.
+ *
+ * Returns true when it handled the URL, so the caller can skip the ordinary
+ * session restore.
+ */
+export async function handleDiscordCallback(): Promise<boolean> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+
+  let params: URLSearchParams;
+  try {
+    params = new URLSearchParams(window.location.search);
+  } catch {
+    return false;
+  }
+  const ticket = params.get('gm_auth');
+  const errorCode = params.get('gm_auth_error');
+  if (!ticket && !errorCode) return false;
+
+  // Strip first, act second.
+  try {
+    params.delete('gm_auth');
+    params.delete('gm_auth_error');
+    const qs = params.toString();
+    window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+  } catch { /* replaceState is unavailable in some embedded webviews */ }
+
+  if (errorCode) {
+    setLoginError(discordErrorMessage(errorCode));
+    return true;
+  }
+
+  const x = g();
+  if (!x || typeof x.redeemDiscordTicket !== 'function') {
+    setLoginError('Discord sign-in is unavailable in this build.');
+    return true;
+  }
+
+  try {
+    const resp: LoginResponse = await x.redeemDiscordTicket(ticket);
+    if (resp.ok && resp.state === 'unlinked') {
+      // Expected until phase D3 ships the claim flow: the Discord account is
+      // genuine, it simply is not attached to an account yet.
+      const who = resp.discordUsername ? ' (' + resp.discordUsername + ')' : '';
+      setLoginError('This Discord account' + who + ' is not linked to any account yet. Sign in with your identifier and password, then link Discord from your account page.');
+      return true;
+    }
+    if (resp.ok) {
+      await handleSuccessfulLogin(resp, resp.id || '');
+      return true;
+    }
+    setLoginError(discordErrorMessage(resp.error || 'request_failed'));
+  } catch (err: any) {
+    console.error('Discord sign-in error:', err);
+    setLoginError(discordErrorMessage('request_failed'));
+  }
+  return true;
+}
+
+/** Maps an auth-discord error code to something a person can act on. */
+function discordErrorMessage(code: string): string {
+  switch (code) {
+    case 'cancelled':
+      return 'Discord sign-in was cancelled.';
+    case 'state_invalid':
+      return 'That Discord sign-in link has expired or was already used. Please try again.';
+    case 'ticket_invalid':
+      return 'That Discord sign-in has expired or was already used. Please try again.';
+    case 'too_many_attempts':
+      return 'Too many attempts. Please wait a few minutes and try again.';
+    case 'pending_approval':
+      return 'Your account is awaiting approval by a guild admin.';
+    case 'not_configured':
+      return 'Discord sign-in is not configured on this deployment.';
+    case 'exchange_failed':
+    case 'identity_failed':
+      return 'Discord did not confirm your identity. Please try again.';
+    case 'request_timeout':
+      return 'The server did not respond in time. Please check your connection and try again.';
+    default:
+      return 'Discord sign-in failed. Please try again.';
+  }
+}
+
 // ── Auth tabs & forms ────────────────────────────────────────────────────────
 
 /** Switches between the signin / register / guild-request auth panels. */
@@ -615,6 +712,11 @@ export function initAuthForms(): void {
   wireOnce(el('go-to-register-btn'), '__gmAuthWired', 'click', () => showAuthTab('register'));
   wireOnce(el('register-back-btn'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
   wireOnce(el('guild-request-back-btn'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
+
+  wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => {
+    const x = g();
+    if (x && typeof x.loginWithDiscord === 'function') x.loginWithDiscord();
+  });
 
   wireOnce(el('logout-btn'), '__gmAuthWired', 'click', () => { void doLogout(); });
   wireOnce(el('member-logout-btn'), '__gmAuthWired', 'click', () => { void doLogout(); });

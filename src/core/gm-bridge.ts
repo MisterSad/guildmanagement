@@ -48,6 +48,7 @@ import {
 import { parseOcrScore } from '../modules/ocr/ocr.service';
 import {
   login, logout, registerPlayer, submitGuildRequest, adminAccounts, generateJoinCode,
+  loginWithDiscord, redeemDiscordTicket,
   loginWithPasskey, loginWithBackupCode, startConditionalPasskeyLogin, abortConditionalPasskeyLogin
 } from './auth/session';
 import {
@@ -116,6 +117,7 @@ export function installGmBridge(): void {
 
     // Auth / sessions
     login, logout, registerPlayer, submitGuildRequest, adminAccounts, generateJoinCode,
+  loginWithDiscord, redeemDiscordTicket,
     loginWithPasskey, loginWithBackupCode, startConditionalPasskeyLogin, abortConditionalPasskeyLogin,
 
     // OCR

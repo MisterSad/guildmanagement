@@ -100,6 +100,7 @@ import {
 } from './modules/app/state/app-state';
 import {
   restoreSession,
+  handleDiscordCallback,
   handleSuccessfulLogin,
   revealPortal,
   doLogout,
@@ -257,6 +258,7 @@ if (typeof window !== 'undefined') {
   // listeners (would double-bind forms/pollers).
   wAny.GM_AUTH = {
     restoreSession,
+    handleDiscordCallback,
     handleSuccessfulLogin,
     revealPortal,
     doLogout,
@@ -595,14 +597,22 @@ if (typeof window !== 'undefined') {
       const metric = btn.getAttribute('data-metric') || 'members';
       void openOcrModal(metric);
     });
-    // Restore the persisted session, then the last active tab on success.
-    void restoreSession().then((res) => {
-      if (res && res.restored) {
-        resetSessionInvalidationFlag();
-        if (res.role !== 'member' && !res.portal) {
-          restoreSavedTab();
+    // A Discord sign-in returns here carrying a one-time ticket in the URL, and
+    // must be handled BEFORE the ordinary restore: it installs a session, so
+    // letting restoreSession win the race would settle the page into a
+    // logged-out state with the ticket still unspent. It resolves false when
+    // the URL carries no ticket, which is every other page load.
+    void handleDiscordCallback().then((handled) => {
+      if (handled) return;
+      // Restore the persisted session, then the last active tab on success.
+      return restoreSession().then((res) => {
+        if (res && res.restored) {
+          resetSessionInvalidationFlag();
+          if (res.role !== 'member' && !res.portal) {
+            restoreSavedTab();
+          }
         }
-      }
+      });
     });
   });
 }

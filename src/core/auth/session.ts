@@ -10,6 +10,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getClient, parseFunctionsInvokeResult } from '../api/supabase';
+import { SUPABASE_URL } from '../config/constants';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : {}) as any;
@@ -77,18 +78,29 @@ export async function login(id: string, password: string): Promise<AuthResult> {
   return { ok: true, role: data.role, id: data.id, hasPasskey: !!data.has_passkey };
 }
 
-/** Applies a { ok, access_token, refresh_token, ... } passkey response. */
-export async function applyPasskeySessionData(data: any, extraFields?: Record<string, unknown>): Promise<AuthResult> {
+/**
+ * Applies a minted `{ ok, access_token, refresh_token, role, id }` payload.
+ *
+ * Every credential method that ends at `establishShadowSession` server-side --
+ * passkey, backup code, Discord -- lands here, so there is one place where a
+ * session is installed rather than one per method.
+ */
+export async function applySessionResponse(data: any, extraFields?: Record<string, unknown>): Promise<AuthResult> {
   const c = getClient();
   if (!c) return { ok: false, error: 'no_client' };
   if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid' };
   const s = await c.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
   if (s.error) return { ok: false, error: 'session_set_failed' };
-  const result: AuthResult = { ok: true, role: data.role, id: data.id, hasPasskey: true };
+  const result: AuthResult = { ok: true, role: data.role, id: data.id };
   if (extraFields) {
     for (const k in extraFields) result[k] = extraFields[k];
   }
   return result;
+}
+
+/** Applies a { ok, access_token, refresh_token, ... } passkey response. */
+export async function applyPasskeySessionData(data: any, extraFields?: Record<string, unknown>): Promise<AuthResult> {
+  return applySessionResponse(data, { hasPasskey: true, ...(extraFields || {}) });
 }
 
 /** Passkey login (delegates the ceremony to window.GM.webauthn). */
@@ -121,6 +133,70 @@ export function abortConditionalPasskeyLogin(): void {
   if (w.GM && w.GM.webauthn && w.GM.webauthn.abortConditionalAuth) {
     w.GM.webauthn.abortConditionalAuth();
   }
+}
+
+/** Query parameter the auth-discord callback appends on success. */
+export const DISCORD_TICKET_PARAM = 'gm_auth';
+/** ...and on failure. */
+export const DISCORD_ERROR_PARAM = 'gm_auth_error';
+
+/**
+ * Starts the Discord sign-in by navigating the whole page to auth-discord/start.
+ *
+ * A full-page redirect, not a popup: `vercel.json` sets
+ * `Cross-Origin-Opener-Policy: same-origin`, which severs `window.opener`, so
+ * the usual popup + postMessage handshake would never fire.
+ *
+ * The origin is passed so the Edge Function knows where to send the user back.
+ * It is not trusted: the function validates it with `isAllowedOrigin()` and
+ * silently falls back to APP_DEFAULT_ORIGIN, so a tampered value cannot turn
+ * this into an open redirect.
+ */
+export function loginWithDiscord(): void {
+  if (typeof window === 'undefined') return;
+  const origin = window.location.origin;
+  const url = SUPABASE_URL + '/functions/v1/auth-discord/start?origin=' + encodeURIComponent(origin);
+  window.location.assign(url);
+}
+
+/**
+ * Spends a one-time ticket for a real session.
+ *
+ * The ticket carries no token of its own -- it only attests that this browser
+ * completed a Discord authorization -- so the session is minted server-side
+ * here, on a single-use redemption.
+ *
+ * Resolves to `{ ok: true, state: 'unlinked' }` when the Discord account is
+ * not attached to any account yet. That is not an error: phases D3 (claim) and
+ * D4 (onboarding) hang off exactly this branch.
+ */
+export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
+  const c = getClient();
+  if (!c) return { ok: false, error: 'no_client' };
+  let r: any;
+  try {
+    r = await withTimeout(
+      c.functions.invoke('auth-discord', { body: { action: 'redeem', ticket: ticket } }),
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+  } catch (e: any) {
+    return {
+      ok: false,
+      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+    };
+  }
+  const data = await parseFunctionsInvokeResult(r);
+  if (!data || !data.ok) {
+    const detail =
+      (data && (data.error || data.msg || data.message || data.code)) ||
+      (r && r.error && r.error.message) ||
+      'request_failed';
+    return { ok: false, error: String(detail) };
+  }
+  if (data.state === 'unlinked') {
+    return { ok: true, state: 'unlinked', discordUsername: data.discord_username || null };
+  }
+  return applySessionResponse(data, { state: 'session' });
 }
 
 /** Signs out and clears sb-/supabase./gm_/fgf_ localStorage keys. */
