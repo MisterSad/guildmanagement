@@ -29,7 +29,7 @@ Mission d'audit global terminée et **déployée en production le 2026-09-13** (
 ### Phase 2 — Sécurité Rôles & RLS (`sec(auth)`)
 - Contrainte `accounts_role_check` stricte : `super_admin`, `server_admin`, `guild_admin`, `member` (défaut `member`). **Abandon définitif des rôles virtuels/in-game** (`R5`, `R4`, `admin`) — plus aucun alias d'élévation.
 - Helpers exacts sans alias : `is_super_admin()`, `is_server_admin()`, `gm_can_read_guilds()` — résolution exclusivement via `public.accounts` (`auth_user_id` + `status='active'`).
-- Époch d'invalidation de session `accounts.session_version` + `public.gm_session_is_valid()` (claim JWT `app_metadata.session_version`), bumpée sur reset de mot de passe / changement de rôle / suspension (admin-accounts + shadow-session).
+- Époque d'invalidation de session `accounts.session_version` + `public.gm_session_is_valid()` (claim JWT `app_metadata.session_version`), bumpée sur reset de mot de passe / changement de rôle / suspension (admin-accounts + shadow-session). **Réellement appliquée depuis `20260926250000` (C1)** : le contrôle est replié dans les six helpers RLS (77 références de policy) et dans `_shared/session-epoch.ts` pour les Edge Functions. Tolérant à l'absence de claim (jeton légataire) mais refusant un claim périmé — un contrôle strict aurait coupé 122 des 171 comptes au déploiement.
 - RLS `player_absences` corrigée : self-read via `a.uid = player_absences.uid` (plus de dépendance au `app_metadata.account_id`).
 
 ### Phase 3 — Résilience Frontend & Roster (`perf(frontend)`)

@@ -8,6 +8,7 @@ import { escapeLike } from "../_shared/like.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { resolveAuditChannelId, postAuditMessage } from "../_shared/discord-verification.ts";
 import { randomBackupCode, sha256Hex } from "../_shared/backup-codes.ts";
+import { isSessionRevoked } from "../_shared/session-epoch.ts";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -106,11 +107,20 @@ async function getCallerInfo(
 
   const { data: acc } = await admin
     .from("accounts")
-    .select("id, role, guild, server_number, status")
+    .select("id, role, guild, server_number, status, session_version")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
   if (!acc || acc.status !== "active") {
+    return { role: null, accountId: null, guild: null, serverNumber: null };
+  }
+
+  // C1: refuse a token minted before the account's session_version was bumped.
+  // Same absent-tolerant rule as gm_session_is_valid(); see
+  // 20260926250000_real_session_revocation.sql. The epoch is read from the
+  // token's own payload because getUser() answers from the live auth.users row,
+  // whose value is always the freshly bumped one.
+  if (isSessionRevoked(jwt, acc.session_version as number | null)) {
     return { role: null, accountId: null, guild: null, serverNumber: null };
   }
 

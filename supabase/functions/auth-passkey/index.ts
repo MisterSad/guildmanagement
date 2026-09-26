@@ -17,6 +17,7 @@ import {
   verifyAndConsumeBackupCode,
 } from "../_shared/backup-codes.ts";
 import { canManageAccount, type Role } from "../_shared/admin-authz.ts";
+import { isSessionRevoked } from "../_shared/session-epoch.ts";
 
 // Two groups of actions:
 //  - Unauthenticated (part of the login flow itself, no session yet):
@@ -118,11 +119,20 @@ async function getIdentity(
 
   const { data: acc } = await admin
     .from("accounts")
-    .select("id, role, guild, status")
+    .select("id, role, guild, status, session_version")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
   if (!acc || acc.status !== "active") return null;
+
+  // C1: refuse a token minted before the account's session_version was bumped.
+  // Same absent-tolerant rule as gm_session_is_valid(); see
+  // 20260926250000_real_session_revocation.sql. The epoch is read from the
+  // token's own payload because getUser() answers from the live auth.users row,
+  // whose value is always the freshly bumped one.
+  if (isSessionRevoked(jwt, acc.session_version as number | null)) {
+    return null;
+  }
 
   return {
     accountId: acc.id as string,

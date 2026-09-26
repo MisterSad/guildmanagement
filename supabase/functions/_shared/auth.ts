@@ -7,6 +7,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isSessionRevoked } from "./session-epoch.ts";
 
 export interface CallerInfo {
   authenticated: boolean;
@@ -25,6 +26,17 @@ export interface CallerInfo {
    * quota and one of which broadcasts to Discord.
    */
   active: boolean;
+  /**
+   * True when the bearer token is authentic but belongs to a superseded epoch:
+   * `accounts.session_version` has been bumped since it was minted.
+   *
+   * Finding C1. RLS now refuses these tokens (every policy helper calls
+   * `gm_session_is_valid()`), but RLS cannot protect an Edge Function that
+   * queries with the service key -- which is all of them. Without this check,
+   * revoking a stolen token would cut its database access and leave OCR,
+   * ticketing, Discord broadcast and data export wide open to it.
+   */
+  sessionRevoked: boolean;
 }
 
 /**
@@ -45,6 +57,7 @@ function denied(partial: Partial<CallerInfo>): CallerInfo {
     serverNumber: null,
     status: null,
     active: false,
+    sessionRevoked: false,
     ...partial,
   };
 }
@@ -68,7 +81,7 @@ export async function validateCallerAuth(
   const adminClient = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
   const { data: acc } = await adminClient
     .from("accounts")
-    .select("id, role, guild, server_number, status")
+    .select("id, role, guild, server_number, status, session_version")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -81,6 +94,19 @@ export async function validateCallerAuth(
       userId: user.id,
       accountId: acc.id ?? null,
       status: acc.status ?? null,
+    });
+  }
+
+  // C1: the token's epoch must still be current. Absent-tolerant, matching
+  // gm_session_is_valid() exactly -- the two must not disagree, or an account
+  // would be refused by RLS while the Edge Functions still served it.
+  if (isSessionRevoked(jwt, acc.session_version as number | null)) {
+    return denied({
+      authenticated: true,
+      userId: user.id,
+      accountId: acc.id ?? null,
+      status: acc.status ?? null,
+      sessionRevoked: true,
     });
   }
 
@@ -105,5 +131,6 @@ export async function validateCallerAuth(
     serverNumber,
     status: acc.status ?? null,
     active: true,
+    sessionRevoked: false,
   };
 }

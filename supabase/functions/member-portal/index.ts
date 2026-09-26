@@ -4,6 +4,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { getPlayer } from "../_shared/member-lookup.ts";
+import { isSessionRevoked } from "../_shared/session-epoch.ts";
 import {
   MAX_ALLOWED_POWER,
   MAX_ALLOWED_EVENT_SCORE,
@@ -188,11 +189,20 @@ async function getIdentity(
 
   const { data: acc } = await admin
     .from("accounts")
-    .select("id, role, guild, status, uid")
+    .select("id, role, guild, status, uid, session_version")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
   if (!acc || acc.status !== "active") return null;
+
+  // C1: refuse a token minted before the account's session_version was bumped.
+  // Same absent-tolerant rule as gm_session_is_valid(); see
+  // 20260926250000_real_session_revocation.sql. The epoch is read from the
+  // token's own payload because getUser() answers from the live auth.users row,
+  // whose value is always the freshly bumped one.
+  if (isSessionRevoked(jwt, acc.session_version as number | null)) {
+    return null;
+  }
 
   const accountId = acc.id as string;
   const role = (acc.role || "member") as string;

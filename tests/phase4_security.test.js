@@ -11,6 +11,7 @@ import path from 'node:path';
 import { isAllowedOrigin } from '../supabase/functions/_shared/cors.ts';
 import { escapeLike, escapeOrFilterValue } from '../supabase/functions/_shared/like.ts';
 import { escapeLike as clientEscapeLike } from '../src/core/utils/text.ts';
+import { readTokenSessionVersion, isSessionRevoked } from '../supabase/functions/_shared/session-epoch.ts';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -205,5 +206,133 @@ describe('M17 — the audit ledger cannot be flooded or silently forged', () => 
 
   it('says in the function comment that the attribution is not trustworthy', () => {
     expect(m).toContain('CLIENT-DECLARED and must not be trusted for forensics');
+  });
+});
+
+describe('C1 — session revocation is now real, not merely documented', () => {
+  // ADR + migration 20260913130000 claimed pre-bump tokens would fail "on any
+  // policy that invokes it". Queried live: ZERO policies invoked it. Meanwhile
+  // admin-accounts bumped the epoch with the comment "pre-reset access/refresh
+  // tokens must stop matching", and nothing made them stop.
+
+  const token = (appMetadata) => {
+    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+    return `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'u', app_metadata: appMetadata })}.sig`;
+  };
+
+  it('reads the epoch from the token payload', () => {
+    expect(readTokenSessionVersion(token({ session_version: 7 }))).toBe(7);
+    expect(readTokenSessionVersion(token({ session_version: '7' }))).toBe(7);
+  });
+
+  it('revokes a token whose epoch the account has moved past', () => {
+    expect(isSessionRevoked(token({ session_version: 2 }), 3)).toBe(true);
+    expect(isSessionRevoked(token({ session_version: 3 }), 3)).toBe(false);
+  });
+
+  it('treats epoch 0 as a real epoch, not as an absent claim', () => {
+    // 150 of 171 accounts sit at version 0. A `if (!raw)` test would have
+    // classified every one of their tokens as "legacy" and made them
+    // permanently unrevocable -- the exact failure this check exists to close.
+    expect(readTokenSessionVersion(token({ session_version: 0 }))).toBe(0);
+    expect(isSessionRevoked(token({ session_version: 0 }), 0)).toBe(false);
+    expect(isSessionRevoked(token({ session_version: 0 }), 1)).toBe(true);
+  });
+
+  it('tolerates a token minted before the claim existed', () => {
+    // 122 of 171 GoTrue users carried no such claim. Refusing them would have
+    // cut database access for 71% of the user base on deploy.
+    expect(readTokenSessionVersion(token({ app_role: 'member' }))).toBe(null);
+    expect(isSessionRevoked(token({ app_role: 'member' }), 4)).toBe(false);
+  });
+
+  it('never throws on a malformed token', () => {
+    for (const bad of ['', 'x', 'a.b', 'a.!!!.c', 'a.eyJ9.c', null, undefined]) {
+      expect(() => isSessionRevoked(bad, 1)).not.toThrow();
+      expect(isSessionRevoked(bad, 1)).toBe(false);
+    }
+  });
+
+  it('defaults a null account version to 0 rather than passing everything', () => {
+    expect(isSessionRevoked(token({ session_version: 0 }), null)).toBe(false);
+    expect(isSessionRevoked(token({ session_version: 5 }), null)).toBe(true);
+  });
+
+  it('does not compare the epoch getUser() reports, which is the live row', () => {
+    // getUser() answers from the CURRENT auth.users row, so its session_version
+    // is always the freshly bumped one; comparing it to accounts would compare
+    // the database to itself and pass every time.
+    const epoch = stripComments(read('supabase/functions/_shared/session-epoch.ts'));
+    expect(epoch).not.toContain('user.app_metadata');
+    expect(epoch).toContain("split(\".\")[1]");
+  });
+
+  it('wires the check into every JWT-validating entry point', () => {
+    // Six functions share validateCallerAuth; three validate their own JWT and
+    // would otherwise have kept serving a revoked token with the service key.
+    for (const f of [
+      '_shared/auth.ts',
+      'admin-accounts/index.ts',
+      'member-portal/index.ts',
+      'auth-passkey/index.ts',
+    ]) {
+      const src = read(`supabase/functions/${f}`);
+      expect(src, `${f} must consult the epoch`).toContain('isSessionRevoked(jwt,');
+      expect(src, `${f} must select session_version`).toMatch(/\.select\("[^"]*session_version/);
+    }
+  });
+
+  it('checks the epoch only after the signature has been verified', () => {
+    const auth = stripComments(read('supabase/functions/_shared/auth.ts'));
+    const verifyAt = auth.indexOf('auth.getUser(jwt)');
+    const epochAt = auth.indexOf('isSessionRevoked(jwt,');
+    expect(verifyAt).toBeGreaterThan(-1);
+    expect(epochAt, 'decoding must follow verification').toBeGreaterThan(verifyAt);
+  });
+
+  it('reports revocation distinctly from suspension', () => {
+    const auth = read('supabase/functions/_shared/auth.ts');
+    expect(auth).toContain('sessionRevoked: boolean');
+    expect(auth).toContain('sessionRevoked: true');
+  });
+});
+
+describe('C1 — the migration folds the check into the policy helpers', () => {
+  const m = read('supabase/migrations/20260926250000_real_session_revocation.sql');
+
+  it('backfills the claim before enforcing it', () => {
+    // Enforcing first would have refused the 122 users who had no claim.
+    const backfillAt = m.indexOf('UPDATE auth.users');
+    const defineAt = m.indexOf('CREATE OR REPLACE FUNCTION public.gm_session_is_valid');
+    expect(backfillAt).toBeGreaterThan(-1);
+    expect(backfillAt, 'the backfill must come first').toBeLessThan(defineAt);
+    expect(m).toContain("? 'session_version')");
+  });
+
+  it('tolerates an absent claim and refuses a stale one', () => {
+    expect(m).toContain('THEN true');
+    expect(m).toContain('a.session_version =');
+    expect(m).toContain("a.status = 'active'");
+  });
+
+  it('covers the 77 policy references by editing six functions, not 100+ policies', () => {
+    for (const fn of [
+      'gm_is_admin_caller',
+      'is_super_admin',
+      'gm_can_read_guilds',
+      'check_user_guild_access',
+      'check_user_guild_write_access',
+      'gm_can_read_guild_data',
+    ]) {
+      const at = m.indexOf(`FUNCTION public.${fn}`);
+      expect(at, `${fn} must be redefined`).toBeGreaterThan(-1);
+      const body = m.slice(at, m.indexOf('$$;', at));
+      expect(body, `${fn} must consult the epoch`).toContain('gm_session_is_valid()');
+    }
+  });
+
+  it('asserts its own postconditions', () => {
+    expect(m).toContain('still lack the session_version claim');
+    expect(m).toContain('of 6 RLS helpers consult gm_session_is_valid');
   });
 });
