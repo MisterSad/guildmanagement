@@ -28,8 +28,12 @@ describe('Final cutover: app.js removed', () => {
     const router = read('src/modules/app/router.ts');
     expect(router).not.toContain('legacyTabLoader');
     expect(router).not.toContain('setLegacyTabLoader');
-    expect(router).toContain("invokeMethod('GM_MEMBERS', 'fetchGuildMembers', signal)");
-    expect(router).toContain("invokeMethod('GM_ADMIN', 'fetchAccounts')");
+    // Phase 7: the router calls its loaders by reference. The signal is also
+    // passed in the shape fetchGuildMembers actually accepts -- it used to be
+    // handed the bare AbortSignal as the options object, so `opts.signal` was
+    // always undefined and the abort was never wired to anything.
+    expect(router).toContain('fetchGuildMembers({ signal })');
+    expect(router).toContain('fetchAccounts()');
   });
 
   it('the router cancels/dedupes in-flight tab loads via AbortController (P3-03)', () => {
@@ -121,6 +125,6 @@ describe('Final cutover: residual app.js wiring re-homed under /src', () => {
     expect(accountsCtrl).toContain('mountPasskeysPanel');
     expect(accountsCtrl).toContain("byId('my-passkeys-list')");
     const router = read('src/modules/app/router.ts');
-    expect(router).toContain("invokeMethod('GM_ADMIN', 'loadMyPasskeysCard')");
+    expect(router).toContain('loadMyPasskeysCard()');
   });
 });

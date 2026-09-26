@@ -145,7 +145,7 @@ describe('phase-6 findings that measurement contradicted', () => {
     // deliberately excluded.
     const router = read('src/modules/app/router.ts');
     expect(router).toContain('TEARDOWN_BY_TAB');
-    expect(router).toContain('ns.destroy()');
+    expect(router).toContain('target.destroy()');
   });
 
   it('NOT A DEFECT: writes invalidate the derived views centrally', () => {

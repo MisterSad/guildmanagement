@@ -11,6 +11,35 @@
 
 import { getDomRefs, getDomRef } from './dom-refs';
 import { getVerifiedRole } from '../../core/auth/roles';
+// FINDING M8, phase 7. Every tab loader below used to be resolved by string on
+// `window` (`invokeMethod('GM_MEMBERS', 'fetchGuildMembers')`) and no-opped
+// silently when the name was wrong -- so renaming a loader left `tsc --noEmit`
+// green while the tab stopped loading, and no test could see it. They are
+// ordinary imports now: the same rename is a compile error.
+import { fetchGuildMembers } from './members/members.controller';
+import { fetchBannedPlayers } from './members/banned.controller';
+import {
+  fetchAccounts,
+  fetchGuilds,
+  populateAccountGuildSelect,
+  wireJoinCode,
+  wireAdminInvite,
+  loadMyPasskeysCard
+} from './admin/accounts.controller';
+import { loadGuildSettings, fetchGuildRequests } from './admin/guild-requests.controller';
+import { renderGuildsList } from './admin/guilds.controller';
+import { renderMigrationGroupsList } from './admin/migration-groups.controller';
+import { migrationHubView } from '../migration/views/MigrationHubView';
+import { ticketsView } from '../tickets/views/TicketsView';
+import { sanctionsView } from '../sanctions/views/SanctionsView';
+import { overviewView } from '../overview/views/OverviewView';
+import { eventsView } from '../events/views/EventsView';
+import { shadowfrontView } from '../shadowfront/views/ShadowfrontView';
+import { armsRaceView } from '../armsrace/views/ArmsRaceView';
+import { gloryView } from '../glory/views/GloryView';
+import { historyView } from '../history/views/HistoryView';
+import { statsView } from '../stats/views/StatsView';
+import { portalView } from '../portal/views/PortalView';
 
 function w(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -27,15 +56,18 @@ let activeLoadController: AbortController | null = null;
 let activeLoadTabId = '';
 let loadingTab = false;
 
-async function invokeMethod(namespaceName: string, method: string, ...args: unknown[]): Promise<boolean> {
-  const ns = w()[namespaceName];
-  if (!ns || typeof ns[method] !== 'function') return false;
+/**
+ * Runs one tab loader, keeping a failure from aborting the rest of the batch.
+ *
+ * The predecessor also swallowed a MISSING loader, returning false and carrying
+ * on -- which is how a renamed method turned into a silently blank tab. There is
+ * nothing left to miss: `load` is a real reference, checked at compile time.
+ */
+async function runLoader(label: string, load: () => unknown): Promise<void> {
   try {
-    await ns[method](...args);
-    return true;
+    await load();
   } catch (err) {
-    console.error(namespaceName + '.' + method + ' failed:', err);
-    return true;
+    console.error(label + ' failed:', err);
   }
 }
 
@@ -70,29 +102,46 @@ function resetTabChrome(): void {
  * re-creates its timers, MigrationHubView re-subscribes once `destroy()` has
  * nulled the channels), so destroy-then-load is safe and idempotent.
  */
-const TEARDOWN_BY_TAB: Record<string, string> = {
-  'admin-migration-hub': 'GM_MIGRATION_HUB',
-  'migration-hub': 'GM_MIGRATION_HUB',
-  'gm-overview': 'GM_OVERVIEW',
-  'overview': 'GM_OVERVIEW',
-  'tab-sanctions': 'GM_SANCTIONS',
-  'sanctions': 'GM_SANCTIONS',
+interface TeardownTarget {
+  readonly label: string;
+  readonly destroy: () => void;
+}
+
+const MIGRATION_HUB_TEARDOWN: TeardownTarget = {
+  label: 'MigrationHubView',
+  destroy: () => migrationHubView.destroy()
+};
+const OVERVIEW_TEARDOWN: TeardownTarget = {
+  label: 'OverviewView',
+  destroy: () => overviewView.destroy()
+};
+const SANCTIONS_TEARDOWN: TeardownTarget = {
+  label: 'SanctionsView',
+  destroy: () => sanctionsView.destroy()
+};
+
+const TEARDOWN_BY_TAB: Record<string, TeardownTarget> = {
+  'admin-migration-hub': MIGRATION_HUB_TEARDOWN,
+  'migration-hub': MIGRATION_HUB_TEARDOWN,
+  'gm-overview': OVERVIEW_TEARDOWN,
+  'overview': OVERVIEW_TEARDOWN,
+  'tab-sanctions': SANCTIONS_TEARDOWN,
+  'sanctions': SANCTIONS_TEARDOWN,
 };
 
 /** Tears down the view we are navigating away from. Never throws. */
 function teardownPreviousTab(previousTabId: string, nextTabId: string): void {
   if (!previousTabId || previousTabId === nextTabId) return;
-  const namespaceName = TEARDOWN_BY_TAB[previousTabId];
-  if (!namespaceName) return;
-  // Two ids can map to the same namespace (e.g. 'overview' / 'gm-overview');
-  // do not tear down when we are merely switching between those aliases.
-  if (TEARDOWN_BY_TAB[nextTabId] === namespaceName) return;
-  const ns = w()[namespaceName];
-  if (!ns || typeof ns.destroy !== 'function') return;
+  const target = TEARDOWN_BY_TAB[previousTabId];
+  if (!target) return;
+  // Two ids can map to the same view (e.g. 'overview' / 'gm-overview'); do not
+  // tear down when we are merely switching between those aliases. Comparing the
+  // shared object identity is what makes that work.
+  if (TEARDOWN_BY_TAB[nextTabId] === target) return;
   try {
-    ns.destroy();
+    target.destroy();
   } catch (err) {
-    console.error(namespaceName + '.destroy failed:', err);
+    console.error(target.label + '.destroy failed:', err);
   }
 }
 
@@ -132,63 +181,69 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
   try {
     // ── Members / banned (GM_MEMBERS) ────────────────────────────────────────
     if (['admin-members', 'member-members', 'member-home', 'members'].includes(tabId)) {
-      await invokeMethod('GM_MEMBERS', 'fetchGuildMembers', signal);
+      await runLoader('members', () => fetchGuildMembers({ signal }));
     }
     if (tabId === 'admin-banned' || tabId === 'banned') {
-      await invokeMethod('GM_MEMBERS', 'fetchBannedPlayers');
+      await runLoader('banned', () => fetchBannedPlayers());
     }
 
     // ── Accounts / guild settings (GM_ADMIN) ─────────────────────────────────
     if (tabId === 'admin-home' || tabId === 'accounts') {
-      await invokeMethod('GM_ADMIN', 'fetchAccounts');
-      await invokeMethod('GM_ADMIN', 'loadGuildSettings');
-      await invokeMethod('GM_ADMIN', 'populateAccountGuildSelect');
-      await invokeMethod('GM_ADMIN', 'wireJoinCode');
-      await invokeMethod('GM_ADMIN', 'wireAdminInvite');
-      await invokeMethod('GM_ADMIN', 'loadMyPasskeysCard');
+      // Before anything that reads the guild map: `fetchGuilds` is what fills
+      // `window.guildsList` / `guildsData`, and nothing on this tab used to
+      // call it. The "Create Admin Account" guild dropdown was therefore empty
+      // unless the user happened to arrive via a path that fetched guilds.
+      await runLoader('guilds', () => fetchGuilds());
+      await runLoader('accounts', () => fetchAccounts());
+      await runLoader('guild-settings', () => loadGuildSettings());
+      await runLoader('account-guild-select', () => populateAccountGuildSelect());
+      await runLoader('join-code', () => wireJoinCode());
+      await runLoader('admin-invite', () => wireAdminInvite());
+      await runLoader('my-passkeys', () => loadMyPasskeysCard());
     }
     if (tabId === 'admin-discord' || tabId === 'guild-settings') {
-      await invokeMethod('GM_ADMIN', 'loadGuildSettings');
+      await runLoader('guild-settings', () => loadGuildSettings());
     }
     if (tabId === 'guild-requests') {
-      await invokeMethod('GM_ADMIN', 'fetchGuildRequests');
+      await runLoader('guild-requests', () => fetchGuildRequests());
     }
     if (tabId === 'guilds') {
-      await invokeMethod('GM_ADMIN', 'renderGuildsList');
+      await runLoader('guilds-list', () => renderGuildsList());
     }
     if (tabId === 'migration-groups') {
-      await invokeMethod('GM_ADMIN', 'renderMigrationGroupsList');
+      await runLoader('migration-groups', () => renderMigrationGroupsList());
     }
     if (tabId === 'admin-superadmin') {
-      await invokeMethod('GM_ADMIN', 'renderGuildsList');
-      await invokeMethod('GM_ADMIN', 'renderMigrationGroupsList');
-      await invokeMethod('GM_ADMIN', 'fetchAccounts');
-      await invokeMethod('GM_ADMIN', 'populateAccountGuildSelect');
-      await invokeMethod('GM_ADMIN', 'wireAdminInvite');
-      await invokeMethod('GM_ADMIN', 'fetchGuildRequests');
+      await runLoader('guilds', () => fetchGuilds());
+      await runLoader('guilds-list', () => renderGuildsList());
+      await runLoader('migration-groups', () => renderMigrationGroupsList());
+      await runLoader('accounts', () => fetchAccounts());
+      await runLoader('account-guild-select', () => populateAccountGuildSelect());
+      await runLoader('admin-invite', () => wireAdminInvite());
+      await runLoader('guild-requests', () => fetchGuildRequests());
     }
 
     // ── Migrated /src-backed view modules ────────────────────────────────────
-    if (tabId === 'admin-migration-hub' || tabId === 'migration-hub') { await invokeMethod('GM_MIGRATION_HUB', 'load'); }
-    if (tabId === 'tab-tickets') { await invokeMethod('GM_TICKETS', 'load'); }
-    if (tabId === 'tab-sanctions' || tabId === 'sanctions') { await invokeMethod('GM_SANCTIONS', 'load'); }
-    if (tabId === 'gm-overview' || tabId === 'overview') { await invokeMethod('GM_OVERVIEW', 'load'); }
-    if (tabId === 'event-svs' || tabId === 'svs') { await invokeMethod('GM_EVENTS', 'loadEvent', 'SvS'); }
-    if (tabId === 'event-gvg' || tabId === 'gvg') { await invokeMethod('GM_EVENTS', 'loadEvent', 'GvG'); }
+    if (tabId === 'admin-migration-hub' || tabId === 'migration-hub') { await runLoader('migration-hub', () => migrationHubView.load()); }
+    if (tabId === 'tab-tickets') { await runLoader('tickets', () => ticketsView.load()); }
+    if (tabId === 'tab-sanctions' || tabId === 'sanctions') { await runLoader('sanctions', () => sanctionsView.load()); }
+    if (tabId === 'gm-overview' || tabId === 'overview') { await runLoader('overview', () => overviewView.load()); }
+    if (tabId === 'event-svs' || tabId === 'svs') { await runLoader('events:SvS', () => eventsView.loadEvent('SvS')); }
+    if (tabId === 'event-gvg' || tabId === 'gvg') { await runLoader('events:GvG', () => eventsView.loadEvent('GvG')); }
     if (tabId === 'event-shadowfront' || tabId === 'Shadowfront' || tabId === 'shadowfront') {
-      await invokeMethod('GM_SHADOWFRONT', 'load');
+      await runLoader('shadowfront', () => shadowfrontView.load());
     }
-    if (tabId === 'event-dtr' || tabId === 'dtr') { await invokeMethod('GM_EVENTS', 'loadEvent', 'Defend Trade Route'); }
+    if (tabId === 'event-dtr' || tabId === 'dtr') { await runLoader('events:DTR', () => eventsView.loadEvent('Defend Trade Route')); }
     if (tabId === 'event-arms-race' || tabId === 'ARMS RACE' || tabId === 'Arms Race' || tabId === 'armsrace') {
-      await invokeMethod('GM_ARMSRACE', 'load');
+      await runLoader('armsrace', () => armsRaceView.load());
     }
-    if (tabId === 'event-glory' || tabId === 'glory') { await invokeMethod('GM_GLORY', 'load'); }
-    if (tabId === 'event-history' || tabId === 'history') { await invokeMethod('GM_HISTORY', 'load'); }
+    if (tabId === 'event-glory' || tabId === 'glory') { await runLoader('glory', () => gloryView.load()); }
+    if (tabId === 'event-history' || tabId === 'history') { await runLoader('history', () => historyView.load()); }
     if (tabId === 'stats-admin' || tabId === 'stats-member' || tabId === 'stats') {
-      await invokeMethod('GM_STATS', 'load');
+      await runLoader('stats', () => statsView.load());
     }
-    if ((tabId === 'player-portal-view' || tabId === 'portal') && w().GM_PORTAL) {
-      await invokeMethod('GM_PORTAL', 'loadDashboard');
+    if (tabId === 'player-portal-view' || tabId === 'portal') {
+      await runLoader('portal', () => portalView.loadDashboard());
     }
   } finally {
     // Only the still-current controller releases the lock; an aborted older

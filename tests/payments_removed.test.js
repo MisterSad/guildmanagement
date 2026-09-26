@@ -107,7 +107,8 @@ describe('the guild admin tab kept what was actually live', () => {
 
   it('is reachable from the router under its own name', () => {
     const router = read('src/modules/app/router.ts');
-    expect(router).toContain("'renderGuildsList'");
+    // Phase 7: an imported reference now, not a string looked up on `window`.
+    expect(router).toContain('renderGuildsList()');
     expect(router).not.toContain('renderGuildsSubscriptionList');
   });
 });

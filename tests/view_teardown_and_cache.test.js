@@ -118,9 +118,12 @@ describe('the router tears down the view it navigates away from', () => {
   const router = stripComments(read('src/modules/app/router.ts'));
 
   it('maps the views that hold timers, channels or listeners', () => {
+    // Phase 7: these were `window.GM_*` namespace names resolved by string.
+    // They are imported view objects now, so a rename is a compile error rather
+    // than a teardown that silently stops happening.
     expect(router).toContain('TEARDOWN_BY_TAB');
-    for (const ns of ['GM_MIGRATION_HUB', 'GM_OVERVIEW', 'GM_SANCTIONS']) {
-      expect(router, `${ns} must be torn down`).toContain(ns);
+    for (const view of ['migrationHubView', 'overviewView', 'sanctionsView']) {
+      expect(router, `${view} must be torn down`).toContain(`${view}.destroy()`);
     }
   });
 
@@ -128,8 +131,8 @@ describe('the router tears down the view it navigates away from', () => {
     // Destroying these on a tab switch would dismantle the navigation and the
     // help popover -- they are not tabs.
     const map = router.slice(router.indexOf('TEARDOWN_BY_TAB'), router.indexOf('teardownPreviousTab'));
-    expect(map).not.toContain('GM_SHELL');
-    expect(map).not.toContain('GM_HELP');
+    expect(map).not.toContain('shellView');
+    expect(map).not.toContain('helpView');
   });
 
   it('calls the teardown before mounting the next view, and tracks what is mounted', () => {
@@ -140,7 +143,9 @@ describe('the router tears down the view it navigates away from', () => {
   it('does not tear down when switching between aliases of the same view', () => {
     // 'overview' and 'gm-overview' are the same view; a switch between them
     // must not clear its timers.
-    expect(router).toContain('if (TEARDOWN_BY_TAB[nextTabId] === namespaceName) return;');
+    // The two ids now map to the SAME object, so identity comparison is what
+    // distinguishes an alias switch from a real one.
+    expect(router).toContain('if (TEARDOWN_BY_TAB[nextTabId] === target) return;');
   });
 
   it('never lets a failing destroy break navigation', () => {
@@ -150,15 +155,19 @@ describe('the router tears down the view it navigates away from', () => {
   });
 });
 
-describe('the bridges expose destroy so the router can reach it', () => {
-  const main = stripComments(read('src/main.ts'));
+describe('the views the router tears down actually define destroy', () => {
+  // Phase 7: this used to check the `window.GM_*` bridge exposed `destroy`.
+  // The router holds the view objects directly, so the bridge is no longer the
+  // thing that has to carry it -- the view is.
+  const views = {
+    migrationHubView: 'src/modules/migration/views/MigrationHubView.ts',
+    overviewView: 'src/modules/overview/views/OverviewView.ts',
+    sanctionsView: 'src/modules/sanctions/views/SanctionsView.ts'
+  };
 
-  for (const ns of ['GM_MIGRATION_HUB', 'GM_OVERVIEW', 'GM_SANCTIONS']) {
-    it(`${ns} exposes destroy`, () => {
-      const start = main.indexOf(`${ns} = {`);
-      expect(start, `${ns} bridge must exist`).toBeGreaterThan(-1);
-      const block = main.slice(start, main.indexOf('};', start));
-      expect(block).toContain('destroy:');
+  for (const [name, file] of Object.entries(views)) {
+    it(`${name} defines destroy()`, () => {
+      expect(stripComments(read(file)), `${file} must define destroy()`).toMatch(/\bdestroy\(\)\s*:?\s*(void)?\s*\{/);
     });
   }
 });

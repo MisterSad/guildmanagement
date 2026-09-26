@@ -1,11 +1,66 @@
 /**
  * tests/app_router.test.js
  *
- * Sous-lot 6.4/6.8 — unit suite for the tab router. After the final cutover the
- * router routes every tab directly to the typed /src controllers through the
- * window.GM_* bridges (no legacy app.js loader anymore).
+ * Unit suite for the tab router.
+ *
+ * PHASE 7. This used to stub `window.GM_*` objects and assert the router called
+ * them -- i.e. it tested the bridge, which is the thing being dismantled. The
+ * router now imports its loaders directly, so the modules are mocked instead
+ * and the assertions are about real function references. A rename that used to
+ * leave this suite green while breaking a tab is now a compile error before the
+ * suite even runs.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+vi.mock('../src/modules/app/members/members.controller', () => ({ fetchGuildMembers: vi.fn() }));
+vi.mock('../src/modules/app/members/banned.controller', () => ({ fetchBannedPlayers: vi.fn() }));
+vi.mock('../src/modules/app/admin/accounts.controller', () => ({
+  fetchAccounts: vi.fn(),
+  fetchGuilds: vi.fn(),
+  populateAccountGuildSelect: vi.fn(),
+  wireJoinCode: vi.fn(),
+  wireAdminInvite: vi.fn(),
+  loadMyPasskeysCard: vi.fn()
+}));
+vi.mock('../src/modules/app/admin/guild-requests.controller', () => ({
+  loadGuildSettings: vi.fn(),
+  fetchGuildRequests: vi.fn()
+}));
+vi.mock('../src/modules/app/admin/guilds.controller', () => ({ renderGuildsList: vi.fn() }));
+vi.mock('../src/modules/app/admin/migration-groups.controller', () => ({ renderMigrationGroupsList: vi.fn() }));
+vi.mock('../src/modules/migration/views/MigrationHubView', () => ({ migrationHubView: { load: vi.fn(), destroy: vi.fn() } }));
+vi.mock('../src/modules/tickets/views/TicketsView', () => ({ ticketsView: { load: vi.fn() } }));
+vi.mock('../src/modules/sanctions/views/SanctionsView', () => ({ sanctionsView: { load: vi.fn(), destroy: vi.fn() } }));
+vi.mock('../src/modules/overview/views/OverviewView', () => ({ overviewView: { load: vi.fn(), destroy: vi.fn() } }));
+vi.mock('../src/modules/events/views/EventsView', () => ({ eventsView: { loadEvent: vi.fn() } }));
+vi.mock('../src/modules/shadowfront/views/ShadowfrontView', () => ({ shadowfrontView: { load: vi.fn() } }));
+vi.mock('../src/modules/armsrace/views/ArmsRaceView', () => ({ armsRaceView: { load: vi.fn() } }));
+vi.mock('../src/modules/glory/views/GloryView', () => ({ gloryView: { load: vi.fn() } }));
+vi.mock('../src/modules/history/views/HistoryView', () => ({ historyView: { load: vi.fn() } }));
+vi.mock('../src/modules/stats/views/StatsView', () => ({ statsView: { load: vi.fn() } }));
+vi.mock('../src/modules/portal/views/PortalView', () => ({ portalView: { loadDashboard: vi.fn() } }));
+
+import { fetchGuildMembers } from '../src/modules/app/members/members.controller';
+import { fetchBannedPlayers } from '../src/modules/app/members/banned.controller';
+import {
+  fetchAccounts,
+  fetchGuilds,
+  populateAccountGuildSelect,
+  wireJoinCode
+} from '../src/modules/app/admin/accounts.controller';
+import { loadGuildSettings, fetchGuildRequests } from '../src/modules/app/admin/guild-requests.controller';
+import { renderGuildsList } from '../src/modules/app/admin/guilds.controller';
+import { renderMigrationGroupsList } from '../src/modules/app/admin/migration-groups.controller';
+import { migrationHubView } from '../src/modules/migration/views/MigrationHubView';
+import { ticketsView } from '../src/modules/tickets/views/TicketsView';
+import { sanctionsView } from '../src/modules/sanctions/views/SanctionsView';
+import { overviewView } from '../src/modules/overview/views/OverviewView';
+import { eventsView } from '../src/modules/events/views/EventsView';
+import { shadowfrontView } from '../src/modules/shadowfront/views/ShadowfrontView';
+import { armsRaceView } from '../src/modules/armsrace/views/ArmsRaceView';
+import { gloryView } from '../src/modules/glory/views/GloryView';
+import { historyView } from '../src/modules/history/views/HistoryView';
+import { statsView } from '../src/modules/stats/views/StatsView';
 
 import {
   triggerTabDataLoad,
@@ -41,42 +96,20 @@ const FIXTURE = `
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-function stubBridge() {
-  window.GM_MEMBERS = { fetchGuildMembers: vi.fn(), fetchBannedPlayers: vi.fn() };
-  window.GM_ADMIN = {
-    fetchAccounts: vi.fn(),
-    loadGuildSettings: vi.fn(),
-    populateAccountGuildSelect: vi.fn(),
-    wireJoinCode: vi.fn(),
-    fetchGuildRequests: vi.fn(),
-    renderGuildsList: vi.fn(),
-    renderMigrationGroupsList: vi.fn()
-  };
-}
-
 beforeEach(() => {
   document.body.innerHTML = FIXTURE;
   localStorage.clear();
-  stubBridge();
+  vi.clearAllMocks();
 });
 
 afterEach(() => {
-  vi.restoreAllMocks();
+  // `restoreAllMocks` would restore the module mocks declared above to their
+  // real implementations, so every test after the first would exercise the real
+  // views. `clearAllMocks` resets the call records and keeps the mocks.
+  vi.clearAllMocks();
   document.body.innerHTML = '';
   localStorage.clear();
-  delete window.GM_OVERVIEW;
-  delete window.GM_EVENTS;
-  delete window.GM_GLORY;
-  delete window.GM_HISTORY;
-  delete window.GM_SANCTIONS;
-  delete window.GM_STATS;
-  delete window.GM_ARMSRACE;
-  delete window.GM_SHADOWFRONT;
-  delete window.GM_TICKETS;
-  delete window.GM_PORTAL;
   delete window.GM_SHELL;
-  delete window.GM_MEMBERS;
-  delete window.GM_ADMIN;
 });
 
 describe('dom-refs', () => {
@@ -117,62 +150,55 @@ describe('onTabActivated — visual switching', () => {
 
   it('blocks admin tab switching when user role is member', async () => {
     localStorage.setItem('gm_role', 'member');
-    window.GM_MEMBERS.fetchGuildMembers = vi.fn();
 
     await onTabActivated('admin-members', 'dashboard-view');
 
     const members = document.getElementById('admin-members');
     expect(members.classList.contains('active')).toBe(false);
-    expect(window.GM_MEMBERS.fetchGuildMembers).not.toHaveBeenCalled();
+    expect(fetchGuildMembers).not.toHaveBeenCalled();
   });
 });
 
 describe('triggerTabDataLoad — /src domain routing', () => {
-  it('routes member/admin tabs to GM_MEMBERS and GM_ADMIN', async () => {
+  it('routes member and admin tabs to the imported controllers', async () => {
     await triggerTabDataLoad('admin-members');
-    expect(window.GM_MEMBERS.fetchGuildMembers).toHaveBeenCalledTimes(1);
+    expect(fetchGuildMembers).toHaveBeenCalledTimes(1);
 
     await triggerTabDataLoad('members');
-    expect(window.GM_MEMBERS.fetchGuildMembers).toHaveBeenCalledTimes(2);
+    expect(fetchGuildMembers).toHaveBeenCalledTimes(2);
 
     await triggerTabDataLoad('admin-banned');
-    expect(window.GM_MEMBERS.fetchBannedPlayers).toHaveBeenCalledTimes(1);
+    expect(fetchBannedPlayers).toHaveBeenCalledTimes(1);
 
     await triggerTabDataLoad('accounts');
-    expect(window.GM_ADMIN.fetchAccounts).toHaveBeenCalledTimes(1);
-    expect(window.GM_ADMIN.loadGuildSettings).toHaveBeenCalledTimes(1);
-    expect(window.GM_ADMIN.populateAccountGuildSelect).toHaveBeenCalledTimes(1);
-    expect(window.GM_ADMIN.wireJoinCode).toHaveBeenCalledTimes(1);
+    expect(fetchAccounts).toHaveBeenCalledTimes(1);
+    expect(loadGuildSettings).toHaveBeenCalledTimes(1);
+    expect(populateAccountGuildSelect).toHaveBeenCalledTimes(1);
+    expect(wireJoinCode).toHaveBeenCalledTimes(1);
+    // The guild map has to be fetched on this tab: nothing else fills
+    // window.guildsList, and the "Create Admin Account" dropdown reads it.
+    expect(fetchGuilds).toHaveBeenCalledTimes(1);
 
     await triggerTabDataLoad('guild-settings');
-    expect(window.GM_ADMIN.loadGuildSettings).toHaveBeenCalledTimes(2);
+    expect(loadGuildSettings).toHaveBeenCalledTimes(2);
 
     await triggerTabDataLoad('guild-requests');
-    expect(window.GM_ADMIN.fetchGuildRequests).toHaveBeenCalledTimes(1);
+    expect(fetchGuildRequests).toHaveBeenCalledTimes(1);
 
     await triggerTabDataLoad('guilds');
-    expect(window.GM_ADMIN.renderGuildsList).toHaveBeenCalledTimes(1);
+    expect(renderGuildsList).toHaveBeenCalledTimes(1);
 
     await triggerTabDataLoad('migration-groups');
-    expect(window.GM_ADMIN.renderMigrationGroupsList).toHaveBeenCalledTimes(1);
+    expect(renderMigrationGroupsList).toHaveBeenCalledTimes(1);
 
     await triggerTabDataLoad('admin-superadmin');
-    expect(window.GM_ADMIN.renderGuildsList).toHaveBeenCalledTimes(2);
-    expect(window.GM_ADMIN.renderMigrationGroupsList).toHaveBeenCalledTimes(2);
-    expect(window.GM_ADMIN.fetchGuildRequests).toHaveBeenCalledTimes(2);
+    expect(renderGuildsList).toHaveBeenCalledTimes(2);
+    expect(renderMigrationGroupsList).toHaveBeenCalledTimes(2);
+    expect(fetchGuildRequests).toHaveBeenCalledTimes(2);
+    expect(fetchGuilds).toHaveBeenCalledTimes(2);
   });
 
-  it('routes each migrated view tab to its window.GM_* loader', async () => {
-    window.GM_OVERVIEW = { load: vi.fn() };
-    window.GM_EVENTS = { loadEvent: vi.fn() };
-    window.GM_GLORY = { load: vi.fn() };
-    window.GM_HISTORY = { load: vi.fn() };
-    window.GM_SANCTIONS = { load: vi.fn() };
-    window.GM_STATS = { load: vi.fn() };
-    window.GM_ARMSRACE = { load: vi.fn() };
-    window.GM_SHADOWFRONT = { load: vi.fn() };
-    window.GM_TICKETS = { load: vi.fn() };
-
+  it('routes each view tab to its imported view module', async () => {
     await triggerTabDataLoad('overview');
     await triggerTabDataLoad('event-svs');
     await triggerTabDataLoad('event-gvg');
@@ -184,23 +210,36 @@ describe('triggerTabDataLoad — /src domain routing', () => {
     await triggerTabDataLoad('stats-admin');
     await triggerTabDataLoad('tab-sanctions');
     await triggerTabDataLoad('tab-tickets');
+    await triggerTabDataLoad('migration-hub');
 
-    expect(window.GM_OVERVIEW.load).toHaveBeenCalledTimes(1);
-    expect(window.GM_EVENTS.loadEvent).toHaveBeenCalledWith('SvS');
-    expect(window.GM_EVENTS.loadEvent).toHaveBeenCalledWith('GvG');
-    expect(window.GM_EVENTS.loadEvent).toHaveBeenCalledWith('Defend Trade Route');
-    expect(window.GM_ARMSRACE.load).toHaveBeenCalledTimes(1);
-    expect(window.GM_SHADOWFRONT.load).toHaveBeenCalledTimes(1);
-    expect(window.GM_GLORY.load).toHaveBeenCalledTimes(1);
-    expect(window.GM_HISTORY.load).toHaveBeenCalledTimes(1);
-    expect(window.GM_STATS.load).toHaveBeenCalledTimes(1);
-    expect(window.GM_SANCTIONS.load).toHaveBeenCalledTimes(1);
-    expect(window.GM_TICKETS.load).toHaveBeenCalledTimes(1);
+    expect(overviewView.load).toHaveBeenCalledTimes(1);
+    expect(eventsView.loadEvent).toHaveBeenCalledWith('SvS');
+    expect(eventsView.loadEvent).toHaveBeenCalledWith('GvG');
+    expect(eventsView.loadEvent).toHaveBeenCalledWith('Defend Trade Route');
+    expect(armsRaceView.load).toHaveBeenCalledTimes(1);
+    expect(shadowfrontView.load).toHaveBeenCalledTimes(1);
+    expect(gloryView.load).toHaveBeenCalledTimes(1);
+    expect(historyView.load).toHaveBeenCalledTimes(1);
+    expect(statsView.load).toHaveBeenCalledTimes(1);
+    expect(sanctionsView.load).toHaveBeenCalledTimes(1);
+    expect(ticketsView.load).toHaveBeenCalledTimes(1);
+    expect(migrationHubView.load).toHaveBeenCalledTimes(1);
   });
 
-  it('is defensive: missing modules/functions never throw', async () => {
-    delete window.GM_MEMBERS;
-    delete window.GM_ADMIN;
+  it('tears down the previous view when the tab changes', async () => {
+    await triggerTabDataLoad('gm-overview');
+    await triggerTabDataLoad('tab-sanctions');
+    expect(overviewView.destroy).toHaveBeenCalledTimes(1);
+
+    // Aliases of the same view must NOT tear it down.
+    vi.clearAllMocks();
+    await triggerTabDataLoad('overview');
+    await triggerTabDataLoad('gm-overview');
+    expect(overviewView.destroy).not.toHaveBeenCalled();
+  });
+
+  it('is defensive: a loader that throws never breaks the batch', async () => {
+    fetchGuildMembers.mockRejectedValueOnce(new Error('boom'));
     await expect(triggerTabDataLoad('overview')).resolves.toBeUndefined();
     await expect(triggerTabDataLoad('admin-members')).resolves.toBeUndefined();
     await expect(triggerTabDataLoad('event-unknown')).resolves.toBeUndefined();
@@ -220,46 +259,42 @@ describe('restoreSavedTab', () => {
 
   it('falls back to gm_last_tab then activates the tab directly', async () => {
     localStorage.setItem('gm_last_tab', 'glory');
-    window.GM_GLORY = { load: vi.fn() };
 
     restoreSavedTab();
     await tick();
 
-    expect(window.GM_GLORY.load).toHaveBeenCalledTimes(1);
+    expect(gloryView.load).toHaveBeenCalledTimes(1);
   });
 
   it('uses the default tab when no stored value exists', async () => {
-    window.GM_OVERVIEW = { load: vi.fn() };
 
     restoreSavedTab();
     await tick();
 
-    expect(window.GM_OVERVIEW.load).toHaveBeenCalledTimes(1);
+    expect(overviewView.load).toHaveBeenCalledTimes(1);
   });
 
   it('is a no-op when user role is member', () => {
     localStorage.setItem('gm_role', 'member');
     localStorage.setItem('gm_active_tab', 'admin-members');
     window.GM_SHELL = { gotoItem: vi.fn() };
-    window.GM_OVERVIEW = { load: vi.fn() };
 
     restoreSavedTab();
 
     expect(window.GM_SHELL.gotoItem).not.toHaveBeenCalled();
-    expect(window.GM_OVERVIEW.load).not.toHaveBeenCalled();
+    expect(overviewView.load).not.toHaveBeenCalled();
   });
 });
 
 describe('reloadActiveView', () => {
   it('reloads the currently active panel', async () => {
-    window.GM_OVERVIEW = { load: vi.fn() };
     document.getElementById('admin-home').classList.remove('active');
     document.getElementById('gm-overview').classList.add('active');
 
     reloadActiveView();
     await tick();
 
-    expect(window.GM_OVERVIEW.load).toHaveBeenCalledTimes(1);
+    expect(overviewView.load).toHaveBeenCalledTimes(1);
   });
 
   it('is a no-op when no panel is active', async () => {
@@ -272,19 +307,18 @@ describe('reloadActiveView', () => {
 describe('initTabNavigation', () => {
   it('binds delegated clicks and is idempotent', async () => {
     const container = document.getElementById('nav-container');
-    window.GM_OVERVIEW = { load: vi.fn() };
 
     initTabNavigation(container);
     initTabNavigation(container);
 
     container.querySelector('[data-tab="gm-overview"]').click();
     await tick();
-    expect(window.GM_OVERVIEW.load).toHaveBeenCalledTimes(1);
+    expect(overviewView.load).toHaveBeenCalledTimes(1);
     expect(document.getElementById('gm-overview').classList.contains('active')).toBe(true);
 
     container.querySelector('[data-tab="admin-members"]').click();
     await tick();
-    expect(window.GM_MEMBERS.fetchGuildMembers).toHaveBeenCalledTimes(1);
+    expect(fetchGuildMembers).toHaveBeenCalledTimes(1);
   });
 });
 
