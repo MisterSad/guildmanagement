@@ -2,7 +2,7 @@
  * tests/app_admin.test.js
  *
  * Sous-lot 6.5 — jsdom suite for the typed admin modules ported from app.js
- * (accounts rendering, pending registrations, migration groups, subscriptions).
+ * (accounts rendering, pending registrations, migration groups, guilds).
  * Legacy app.js is untouched.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -21,7 +21,7 @@ import {
   resolveRegistration
 } from '../src/modules/app/admin/guild-requests.controller';
 import { renderMigrationGroupsList } from '../src/modules/app/admin/migration-groups.controller';
-import { renderGuildsSubscriptionList } from '../src/modules/app/admin/subscriptions.controller';
+import { renderGuildsList } from '../src/modules/app/admin/guilds.controller';
 import { clearAdminStore } from '../src/modules/app/admin/admin-store';
 
 const ADMIN_DOM = `
@@ -174,7 +174,7 @@ describe('fetchAccounts + account cards', () => {
 
 describe('fetchGuilds / populateAccountGuildSelect', () => {
   it('populates window.guildsData and the super-admin guild select', async () => {
-    window.GM.db = makeDb({ guilds: [{ id: 'ALPHA', subscription_type: 'Premium', subscription_end: null, server_number: 1058, payments_disabled: false }] });
+    window.GM.db = makeDb({ guilds: [{ id: 'ALPHA', server_number: 1058 }] });
 
     await fetchGuilds();
     populateAccountGuildSelect();
@@ -322,23 +322,34 @@ describe('migration groups', () => {
   });
 });
 
-describe('subscriptions', () => {
-  it('renders the grouped guild subscription list', async () => {
-    window.GM.db = makeDb({ guilds: [{ id: 'ALPHA', subscription_type: 'Unlimited', subscription_end: null, server_number: '1058' }] });
+describe('guilds (server numbers + deletion)', () => {
+  it('renders the guild list grouped by server, with the editor and delete control', async () => {
+    window.GM.db = makeDb({ guilds: [{ id: 'ALPHA', server_number: '1058' }] });
 
-    await renderGuildsSubscriptionList();
+    await renderGuildsList();
 
     const container = document.getElementById('guilds-list-container');
     expect(container.textContent).toContain('ALPHA');
-    expect(container.textContent).toContain('Unlimited');
     expect(container.textContent).toContain('Server #1058');
-    expect(container.querySelector('.save-guild-sub-btn')).toBeTruthy();
+    expect(container.querySelector('.guild-server-number')).toBeTruthy();
+    expect(container.querySelector('.save-guild-btn')).toBeTruthy();
     expect(container.querySelector('.delete-guild-btn')).toBeTruthy();
+    // Phase 1: no subscription editor survives.
+    expect(container.querySelector('.guild-sub-type')).toBeNull();
+    expect(container.querySelector('.guild-sub-end')).toBeNull();
+  });
+
+  it('flags a guild with no server number, since transfers depend on it', async () => {
+    window.GM.db = makeDb({ guilds: [{ id: 'BRAVO', server_number: null }] });
+    await renderGuildsList();
+    const container = document.getElementById('guilds-list-container');
+    expect(container.textContent).toContain('Unassigned Server');
+    expect(container.textContent).toContain('No server number');
   });
 
   it('renders the empty state when no guild exists', async () => {
     window.GM.db = makeDb({ guilds: [] });
-    await renderGuildsSubscriptionList();
+    await renderGuildsList();
     expect(document.getElementById('guilds-list-container').textContent).toContain('No guild found');
   });
 });

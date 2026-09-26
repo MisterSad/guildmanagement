@@ -148,7 +148,7 @@ import {
   initGuildRequestsUi
 } from './modules/app/admin/guild-requests.controller';
 import { renderMigrationGroupsList } from './modules/app/admin/migration-groups.controller';
-import { renderGuildsSubscriptionList } from './modules/app/admin/subscriptions.controller';
+import { renderGuildsList } from './modules/app/admin/guilds.controller';
 import {
   fetchGuildMembers,
   handleAddMember,
@@ -315,7 +315,7 @@ if (typeof window !== 'undefined') {
     resolveRegistration,
     initGuildRequestsUi,
     renderMigrationGroupsList,
-    renderGuildsSubscriptionList
+    renderGuildsList
   };
 
   // members/roster/matrix/transfers/absences/banned exposed under GM_MEMBERS

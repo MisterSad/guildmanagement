@@ -102,9 +102,6 @@ if [[ "$DEPLOY_ALL" == true ]]; then
     discord-profile-verification
     discord-webhook-proxy
     event-reminders
-    gm-create-order
-    gm-order-status
-    gm-stripe-webhook
     guild-data-export
     guild-request
     member-portal

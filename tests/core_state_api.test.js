@@ -206,18 +206,6 @@ describe('RBAC — roles & write access', () => {
 });
 
 describe('gating helpers', () => {
-  it('isGuildSubscriptionExpired is always false', () => {
-    expect(roles.isGuildSubscriptionExpired('ALPHA')).toBe(false);
-  });
-
-  it('isPaymentsDisabled reads window.guildsData', () => {
-    window.currentGuild = 'ALPHA';
-    window.guildsData = { ALPHA: { paymentsDisabled: true }, BETA: { paymentsDisabled: false } };
-    expect(roles.isPaymentsDisabled('ALPHA')).toBe(true);
-    expect(roles.isPaymentsDisabled('BETA')).toBe(false);
-    expect(roles.isPaymentsDisabled('GAMMA')).toBe(false);
-  });
-
   it('detectClientEnvironment parses OS/browser', () => {
     const chrome = roles.detectClientEnvironment('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     expect(chrome.os).toBe('macOS');

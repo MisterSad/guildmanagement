@@ -152,14 +152,14 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
     if (tabId === 'guild-requests') {
       await invokeMethod('GM_ADMIN', 'fetchGuildRequests');
     }
-    if (tabId === 'subscriptions') {
-      await invokeMethod('GM_ADMIN', 'renderGuildsSubscriptionList');
+    if (tabId === 'guilds') {
+      await invokeMethod('GM_ADMIN', 'renderGuildsList');
     }
     if (tabId === 'migration-groups') {
       await invokeMethod('GM_ADMIN', 'renderMigrationGroupsList');
     }
     if (tabId === 'admin-superadmin') {
-      await invokeMethod('GM_ADMIN', 'renderGuildsSubscriptionList');
+      await invokeMethod('GM_ADMIN', 'renderGuildsList');
       await invokeMethod('GM_ADMIN', 'renderMigrationGroupsList');
       await invokeMethod('GM_ADMIN', 'fetchAccounts');
       await invokeMethod('GM_ADMIN', 'populateAccountGuildSelect');

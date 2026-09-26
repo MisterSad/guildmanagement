@@ -54,7 +54,7 @@ export const EN: Record<string, string> = {
             label_discord_webhook: 'Discord Webhook URL',
             btn_save_config:       'Save Configuration',
             toast_config_updated:  'Guild configuration updated successfully!',
-            toast_config_save_failed: 'Failed to save configuration: {n} setting(s) could not be saved. Check your permissions and subscription status.',
+            toast_config_save_failed: 'Failed to save configuration: {n} setting(s) could not be saved. Check your permissions.',
 
             /* ── Guild Members page ────────────── */
             members_title:         'Guild Members',

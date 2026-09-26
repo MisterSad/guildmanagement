@@ -49,7 +49,7 @@ function stubBridge() {
     populateAccountGuildSelect: vi.fn(),
     wireJoinCode: vi.fn(),
     fetchGuildRequests: vi.fn(),
-    renderGuildsSubscriptionList: vi.fn(),
+    renderGuildsList: vi.fn(),
     renderMigrationGroupsList: vi.fn()
   };
 }
@@ -150,14 +150,14 @@ describe('triggerTabDataLoad — /src domain routing', () => {
     await triggerTabDataLoad('guild-requests');
     expect(window.GM_ADMIN.fetchGuildRequests).toHaveBeenCalledTimes(1);
 
-    await triggerTabDataLoad('subscriptions');
-    expect(window.GM_ADMIN.renderGuildsSubscriptionList).toHaveBeenCalledTimes(1);
+    await triggerTabDataLoad('guilds');
+    expect(window.GM_ADMIN.renderGuildsList).toHaveBeenCalledTimes(1);
 
     await triggerTabDataLoad('migration-groups');
     expect(window.GM_ADMIN.renderMigrationGroupsList).toHaveBeenCalledTimes(1);
 
     await triggerTabDataLoad('admin-superadmin');
-    expect(window.GM_ADMIN.renderGuildsSubscriptionList).toHaveBeenCalledTimes(2);
+    expect(window.GM_ADMIN.renderGuildsList).toHaveBeenCalledTimes(2);
     expect(window.GM_ADMIN.renderMigrationGroupsList).toHaveBeenCalledTimes(2);
     expect(window.GM_ADMIN.fetchGuildRequests).toHaveBeenCalledTimes(2);
   });

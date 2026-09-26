@@ -10,8 +10,6 @@ const CORS_BEARING_FUNCTIONS = [
   'member-portal',
   'auth-login',
   'player-register',
-  'gm-create-order',
-  'gm-order-status',
   'discord-webhook-proxy',
   'ocr-guild-members',
   'tickets',

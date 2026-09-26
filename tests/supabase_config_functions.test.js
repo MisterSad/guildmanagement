@@ -77,7 +77,6 @@ describe('supabase/config.toml Edge Function coverage', () => {
       'player-register',
       'guild-request',
       'event-reminders',
-      'gm-stripe-webhook',
       'discord-bot-interactions',
       'discord-profile-verification',
     ]) {
@@ -90,8 +89,6 @@ describe('supabase/config.toml Edge Function coverage', () => {
       'member-portal',
       'admin-accounts',
       'guild-data-export',
-      'gm-create-order',
-      'gm-order-status',
       'discord-webhook-proxy',
       'ocr-guild-members',
       'tickets',

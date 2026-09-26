@@ -11,62 +11,6 @@ function clearStorage() {
     localStorage.clear();
 }
 
-describe('isGuildSubscriptionExpired (subscription gating neutralized in v127.0)', () => {
-    beforeEach(() => {
-        clearStorage();
-        window.currentGuildRestriction = null;
-        window.guildsData = {
-            ALPHA: { type: 'Unlimited' },
-            OMEGA: { type: 'Premium', end: new Date(Date.now() + 86400000).toISOString() },
-            IMK: { type: 'Premium', end: new Date(Date.now() - 86400000).toISOString() },
-            BABE: { type: 'Premium' },
-            SOLO: { type: 'Standard' },
-        };
-    });
-
-    it('always returns false for all guilds and roles (app is free since v127.0)', () => {
-        setStorage({ gm_role: 'super_admin' });
-        expect(GM.isGuildSubscriptionExpired('IMK')).toBe(false);
-
-        setStorage({ gm_role: 'guild_admin' });
-        window.currentGuildRestriction = 'IMK';
-        expect(GM.isGuildSubscriptionExpired('IMK')).toBe(false);
-        expect(GM.isGuildSubscriptionExpired('BABE')).toBe(false);
-        expect(GM.isGuildSubscriptionExpired('ALPHA')).toBe(false);
-        expect(GM.isGuildSubscriptionExpired('OMEGA')).toBe(false);
-        expect(GM.isGuildSubscriptionExpired('SOLO')).toBe(false);
-        expect(GM.isGuildSubscriptionExpired('NOPE')).toBe(false);
-        expect(GM.isGuildSubscriptionExpired()).toBe(false);
-    });
-});
-
-describe('isPaymentsDisabled (per-guild payments switch)', () => {
-    beforeEach(() => {
-        clearStorage();
-        window.currentGuildRestriction = null;
-        window.guildsData = {
-            ALPHA: { type: 'Unlimited', paymentsDisabled: false },
-            DEMO: { type: 'Unlimited', paymentsDisabled: true },
-        };
-    });
-
-    it('returns false when the guild has no disabled flag', () => {
-        expect(GM.isPaymentsDisabled('ALPHA')).toBe(false);
-        expect(GM.isPaymentsDisabled('NOPE')).toBe(false);
-    });
-
-    it('returns true for a guild with payments disabled', () => {
-        expect(GM.isPaymentsDisabled('DEMO')).toBe(true);
-    });
-
-    it('falls back to the active guild when no id is given', () => {
-        window.currentGuild = 'DEMO';
-        expect(GM.isPaymentsDisabled()).toBe(true);
-        window.currentGuild = 'ALPHA';
-        expect(GM.isPaymentsDisabled()).toBe(false);
-    });
-});
-
 describe('guild config (localStorage + DB fallback)', () => {
     beforeEach(() => {
         clearStorage();

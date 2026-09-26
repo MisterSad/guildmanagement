@@ -59,7 +59,7 @@ export async function fetchGuilds(): Promise<void> {
   if (!db) return;
   const w = winAny();
   try {
-    const res = await db.from('guilds').select('id, subscription_type, subscription_end, server_number, payments_disabled').order('id');
+    const res = await db.from('guilds').select('id, server_number').order('id');
     if (res.error) return;
     const data = res.data;
     if (data && data.length > 0) {
@@ -67,12 +67,7 @@ export async function fetchGuilds(): Promise<void> {
       w.guildsData = {};
       data.forEach((g: any) => {
         const sNum = g.server_number || (ls() ? ls()!.getItem('gm_server_number_' + g.id) : '') || '';
-        w.guildsData[g.id] = {
-          type: g.subscription_type || 'Unlimited',
-          end: g.subscription_end || null,
-          server_number: sNum,
-          paymentsDisabled: !!g.payments_disabled
-        };
+        w.guildsData[g.id] = { server_number: sNum };
       });
       if (w.GM_SHELL) {
         if (typeof w.GM_SHELL.renderTopbar === 'function') w.GM_SHELL.renderTopbar();

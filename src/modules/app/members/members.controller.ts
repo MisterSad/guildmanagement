@@ -165,7 +165,6 @@ export async function fetchGuildMembers(opts?: { signal?: AbortSignal }): Promis
 const TRANSFER_ERROR_MESSAGES: Record<string, string> = {
   permission_denied: 'You do not have permission to resolve this transfer.',
   transfer_not_found_or_resolved: 'This transfer was already resolved or no longer exists.',
-  subscription_expired: "Your guild's subscription is not active.",
   member_no_longer_in_source: 'This player has already left their original guild — the transfer is no longer valid.',
   uid_already_in_target: 'A member with this UID already exists in your guild.',
   duplicate_pseudo_in_target: 'A member with this name already exists in your guild.',
@@ -660,7 +659,7 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
   } catch (err) { console.error('Failed to fetch transfer-eligible guilds', err); }
 
   if (eligibleGuilds.length === 0) {
-    showToast('No other guild is eligible for transfer right now. Set a server number in Super Admin > Subscription Management & Server Numbers, or ask a super admin to open a cross-server migration window.', 'warning');
+    showToast('No other guild is eligible for transfer right now. Set a server number in Super Admin > Guilds & Server Numbers, or ask a super admin to open a cross-server migration window.', 'warning');
     return;
   }
 

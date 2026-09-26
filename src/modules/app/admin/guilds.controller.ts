@@ -1,9 +1,19 @@
 /**
- * src/modules/app/admin/subscriptions.controller.ts
+ * src/modules/app/admin/guilds.controller.ts
  *
- * Sous-lot 6.5 (Strangler) — super-admin guild subscription list ported from
- * app.js#renderGuildsSubscriptionList (accordion by server, type/end/server
- * editor, save + delete via RPC).
+ * Super-admin guild roster: guilds grouped by game server, with the server
+ * number editor and guild deletion.
+ *
+ * Phase 1 (payment removal) renamed this from `subscriptions.controller.ts`.
+ * Only the subscription fields were dead -- the tab itself is live and is the
+ * *only* surface that assigns a guild's `server_number` (a prerequisite for
+ * cross-server transfers, see members.controller#showTransferMemberDialog)
+ * and the only one that deletes a guild via `gm_delete_guild`. Deleting the
+ * file, as the audit roadmap first proposed, would have removed both.
+ *
+ * The removed subscription editor also carried a latent bug: it offered a
+ * 'Lifetime' option that `guilds_subscription_type_check` never accepted, so
+ * choosing it failed the save.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -12,14 +22,14 @@ import { t, esc, winAny, byId, getDb, ls } from './utils';
 import { fetchGuilds } from './accounts.controller';
 import { showToast } from '../dialogs/dialogs.service';
 
-export async function renderGuildsSubscriptionList(): Promise<void> {
+export async function renderGuildsList(): Promise<void> {
   const container = byId('guilds-list-container');
   const db = getDb();
   if (!container || !db) return;
   const w = winAny();
 
   try {
-    const res = await db.from('guilds').select('id, subscription_type, subscription_end, server_number').order('id');
+    const res = await db.from('guilds').select('id, server_number').order('id');
     if (res.error) throw res.error;
     const guildsListRaw = res.data;
     if (!guildsListRaw || guildsListRaw.length === 0) {
@@ -70,39 +80,14 @@ export async function renderGuildsSubscriptionList(): Promise<void> {
 
       group.guilds.forEach((g: any) => {
         const guildId = g.id;
-        const type = g.subscription_type || 'Unlimited';
-        const end = g.subscription_end;
         const serverNum = g.server_number
           || (w.guildsData && w.guildsData[guildId] ? w.guildsData[guildId].server_number : '')
           || (ls() ? ls()!.getItem('gm_server_number_' + guildId) : '')
           || '';
-        const dateVal = end ? end.split('T')[0] : '';
 
-        let countdownHtml = '';
-        if (type === 'Unlimited') {
-          countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: var(--fs-sm); font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Unlimited</span>';
-        } else if (type === 'Lifetime') {
-          countdownHtml = '<span class="gm-chip gm-chip-success" style="font-size: var(--fs-sm); font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-infinity"></i> Lifetime</span>';
-        } else if (end) {
-          const diff = new Date(end).getTime() - Date.now();
-          if (diff <= 0) {
-            countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: var(--fs-sm); font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-lock-key"></i> Expired</span>';
-          } else {
-            const secs = Math.floor(diff / 1000);
-            const mins = Math.floor(secs / 60);
-            const hours = Math.floor(mins / 60);
-            const days = Math.floor(hours / 24);
-            let timeStr = '';
-            if (days > 0) timeStr = days + 'd ' + (hours % 24) + 'h';
-            else if (hours > 0) timeStr = hours + 'h ' + (mins % 60) + 'm';
-            else timeStr = mins + 'm';
-            countdownHtml = '<span class="gm-chip gm-chip-warning" style="font-size: var(--fs-sm); font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ' + timeStr + ' remaining</span>';
-          }
-        } else {
-          countdownHtml = '<span class="gm-chip gm-chip-danger" style="font-size: var(--fs-sm); font-weight: 700;">No date (Expired)</span>';
-        }
-
-        const serverTag = serverNum ? ' <span style="font-size: var(--fs-sm); font-weight:500; color:var(--fg-dim);">(Server #' + esc(serverNum) + ')</span>' : '';
+        const serverTag = serverNum
+          ? ' <span style="font-size: var(--fs-sm); font-weight:500; color:var(--fg-dim);">(Server #' + esc(serverNum) + ')</span>'
+          : ' <span class="gm-chip gm-chip-warning" style="font-size: var(--fs-sm); font-weight:700;">No server number</span>';
 
         html +=
           '<div class="gm-cred-card" data-guild-id="' + esc(guildId) + '">' +
@@ -110,26 +95,13 @@ export async function renderGuildsSubscriptionList(): Promise<void> {
               '<div class="gm-cred-name" style="font-size: var(--fs-xl); display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
                 '<i class="ph ph-shield"></i> ' + esc(guildId) + serverTag +
               '</div>' +
-              '<div class="countdown-badge-wrapper">' + countdownHtml + '</div>' +
             '</div>' +
             '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
               '<div class="gm-col" style="flex: 1; gap: 0.25rem; min-width:100px;">' +
                 '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">Server #</label>' +
                 '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' + esc(guildId) + '" value="' + esc(serverNum) + '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;" placeholder="e.g. 1089">' +
               '</div>' +
-              '<div class="gm-col" style="flex: 1.2; gap: 0.25rem; min-width:110px;">' +
-                '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">Type</label>' +
-                '<select class="gm-select gm-select-sm guild-sub-type" data-guild="' + esc(guildId) + '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;">' +
-                  '<option value="Unlimited"' + (type === 'Unlimited' ? ' selected' : '') + '>Unlimited</option>' +
-                  '<option value="Premium"' + (type === 'Premium' ? ' selected' : '') + '>Premium</option>' +
-                  '<option value="Lifetime"' + (type === 'Lifetime' ? ' selected' : '') + '>Lifetime</option>' +
-                '</select>' +
-              '</div>' +
-              '<div class="gm-col guild-sub-end-wrapper" style="flex: 1.2; gap: 0.25rem; min-width:110px; ' + (type !== 'Premium' ? 'display: none;' : '') + '">' +
-                '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">End Date</label>' +
-                '<input type="date" class="gm-input gm-input-sm guild-sub-end" data-guild="' + esc(guildId) + '" value="' + dateVal + '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;">' +
-              '</div>' +
-              '<button class="gm-btn gm-btn-primary save-guild-sub-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+              '<button class="gm-btn gm-btn-primary save-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
                 '<i class="ph ph-floppy-disk"></i> Save' +
               '</button>' +
               '<button class="gm-btn gm-btn-danger-ghost delete-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
@@ -160,28 +132,12 @@ export async function renderGuildsSubscriptionList(): Promise<void> {
       });
     });
 
-    container.querySelectorAll('.guild-sub-type').forEach((select) => {
-      select.addEventListener('change', () => {
-        const guildId = select.getAttribute('data-guild');
-        const wrapper = container.querySelector('.gm-cred-card[data-guild-id="' + guildId + '"] .guild-sub-end-wrapper') as HTMLElement | null;
-        if (wrapper) wrapper.style.display = (select as HTMLSelectElement).value === 'Premium' ? '' : 'none';
-      });
-    });
-
-    container.querySelectorAll('.save-guild-sub-btn').forEach((btn) => {
+    container.querySelectorAll('.save-guild-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const guildId = btn.getAttribute('data-guild') || '';
         const card = container.querySelector('.gm-cred-card[data-guild-id="' + guildId + '"]');
         if (!card) return;
-        const select = card.querySelector('.guild-sub-type') as HTMLSelectElement;
-        const input = card.querySelector('.guild-sub-end') as HTMLInputElement;
         const serverNumInput = card.querySelector('.guild-server-number') as HTMLInputElement | null;
-        const type = select.value;
-        let endVal: string | null = null;
-        if (type === 'Premium') {
-          if (!input.value) { showToast('Please specify an end date for Premium subscription.', 'error'); return; }
-          endVal = new Date(input.value + 'T23:59:59Z').toISOString();
-        }
         const serverNum = serverNumInput ? serverNumInput.value.trim() : '';
         if (serverNum && !/^\d{4}$/.test(serverNum)) { showToast('Server number must be exactly 4 digits (e.g. 1089).', 'error'); return; }
 
@@ -192,17 +148,14 @@ export async function renderGuildsSubscriptionList(): Promise<void> {
         try { ls()?.setItem('gm_server_number_' + guildId, serverNum); } catch (_) { /* ignore */ }
         if (w.guildsData && w.guildsData[guildId]) {
           w.guildsData[guildId].server_number = serverNum;
-          w.guildsData[guildId].type = type;
-          w.guildsData[guildId].end = endVal;
         }
 
         try {
-          const updatePayload = { subscription_type: type, subscription_end: endVal, server_number: serverNum || null };
-          const res = await db.from('guilds').update(updatePayload).eq('id', guildId).select();
+          const res = await db.from('guilds').update({ server_number: serverNum || null }).eq('id', guildId).select();
           if (res.error) throw new Error(res.error.message || JSON.stringify(res.error));
           showToast('Guild ' + guildId + (serverNum ? ' (Server #' + serverNum + ')' : '') + ' updated successfully!', 'success');
           await fetchGuilds();
-          await renderGuildsSubscriptionList();
+          await renderGuildsList();
         } catch (err: any) {
           showToast('Error during update: ' + err.message, 'error');
         } finally {
@@ -237,7 +190,7 @@ export async function renderGuildsSubscriptionList(): Promise<void> {
               }
               showToast('Guild ' + guildId + ' deleted successfully', 'success');
               await fetchGuilds();
-              await renderGuildsSubscriptionList();
+              await renderGuildsList();
               if (typeof w.populateGuildSelects === 'function') w.populateGuildSelects();
             } catch (err: any) {
               showToast('Error deleting guild: ' + err.message, 'error');

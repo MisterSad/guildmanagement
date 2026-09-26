@@ -150,15 +150,9 @@ describe('non-regression — existing consumers', () => {
     expect(roles.canWriteGuild('ALPHA')).toBe(false);
   });
 
-  it('roles.getActiveGuild / isPaymentsDisabled read the mirrored globals', () => {
-    patchAppState({
-      currentGuildRestriction: 'CLAW',
-      currentGuild: 'ALPHA',
-      guildsData: { CLAW: { paymentsDisabled: true } }
-    });
+  it('roles.getActiveGuild reads the mirrored globals', () => {
+    patchAppState({ currentGuildRestriction: 'CLAW', currentGuild: 'ALPHA' });
     expect(roles.getActiveGuild()).toBe('CLAW');
-    expect(roles.isPaymentsDisabled('CLAW')).toBe(true);
-    expect(roles.isPaymentsDisabled('ALPHA')).toBe(false);
   });
 
   it('combat.getRoleInfo reads window.currentGuildRestriction', async () => {

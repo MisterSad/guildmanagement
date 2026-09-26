@@ -174,102 +174,6 @@ export type Database = {
         }
         Relationships: []
       }
-      diplomatic_treaties: {
-        Row: {
-          created_at: string
-          created_by_account_id: string
-          expires_at: string | null
-          guild_a: string
-          guild_a_server: string
-          guild_a_signed_at: string | null
-          guild_a_signed_by: string | null
-          guild_b: string
-          guild_b_server: string
-          guild_b_signed_at: string | null
-          guild_b_signed_by: string | null
-          id: string
-          status: string
-          terms: string
-          title: string
-          treaty_type: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by_account_id: string
-          expires_at?: string | null
-          guild_a: string
-          guild_a_server: string
-          guild_a_signed_at?: string | null
-          guild_a_signed_by?: string | null
-          guild_b: string
-          guild_b_server: string
-          guild_b_signed_at?: string | null
-          guild_b_signed_by?: string | null
-          id?: string
-          status?: string
-          terms: string
-          title: string
-          treaty_type: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by_account_id?: string
-          expires_at?: string | null
-          guild_a?: string
-          guild_a_server?: string
-          guild_a_signed_at?: string | null
-          guild_a_signed_by?: string | null
-          guild_b?: string
-          guild_b_server?: string
-          guild_b_signed_at?: string | null
-          guild_b_signed_by?: string | null
-          id?: string
-          status?: string
-          terms?: string
-          title?: string
-          treaty_type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "diplomatic_treaties_created_by_account_id_fkey"
-            columns: ["created_by_account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "diplomatic_treaties_guild_a_fkey"
-            columns: ["guild_a"]
-            isOneToOne: false
-            referencedRelation: "guilds"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "diplomatic_treaties_guild_a_signed_by_fkey"
-            columns: ["guild_a_signed_by"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "diplomatic_treaties_guild_b_fkey"
-            columns: ["guild_b"]
-            isOneToOne: false
-            referencedRelation: "guilds"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "diplomatic_treaties_guild_b_signed_by_fkey"
-            columns: ["guild_b_signed_by"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       discord_account_links: {
         Row: {
           account_id: string
@@ -532,60 +436,6 @@ export type Database = {
         }
         Relationships: []
       }
-      gm_payments: {
-        Row: {
-          amount_cents: number
-          applied_at: string | null
-          created_at: string
-          currency: string
-          days_added: number | null
-          guild_id: string
-          id: string
-          kind: string
-          merchant_order_ext_ref: string | null
-          order_id: string | null
-          plan_key: string
-          provider: string
-          status: string
-          token: string | null
-          updated_at: string
-        }
-        Insert: {
-          amount_cents: number
-          applied_at?: string | null
-          created_at?: string
-          currency?: string
-          days_added?: number | null
-          guild_id: string
-          id?: string
-          kind?: string
-          merchant_order_ext_ref?: string | null
-          order_id?: string | null
-          plan_key: string
-          provider?: string
-          status?: string
-          token?: string | null
-          updated_at?: string
-        }
-        Update: {
-          amount_cents?: number
-          applied_at?: string | null
-          created_at?: string
-          currency?: string
-          days_added?: number | null
-          guild_id?: string
-          id?: string
-          kind?: string
-          merchant_order_ext_ref?: string | null
-          order_id?: string | null
-          plan_key?: string
-          provider?: string
-          status?: string
-          token?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       guild_config: {
         Row: {
           guild: string
@@ -764,31 +614,19 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          payments_disabled: boolean
-          plan_key: string | null
           server_number: string | null
-          subscription_end: string | null
-          subscription_type: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           id: string
-          payments_disabled?: boolean
-          plan_key?: string | null
           server_number?: string | null
-          subscription_end?: string | null
-          subscription_type?: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
-          payments_disabled?: boolean
-          plan_key?: string | null
           server_number?: string | null
-          subscription_end?: string | null
-          subscription_type?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -1606,15 +1444,6 @@ export type Database = {
         Args: { p_guild: string }
         Returns: boolean
       }
-      get_push_config: {
-        Args: never
-        Returns: {
-          cron_secret: string
-          vapid_private: string
-          vapid_public: string
-          vapid_subject: string
-        }[]
-      }
       gm_add_member_to_active_events: {
         Args: { p_guild: string; p_pseudo: string }
         Returns: number
@@ -1644,31 +1473,6 @@ export type Database = {
           p_role: string
         }
         Returns: undefined
-      }
-      gm_apply_donation: {
-        Args: { p_order_id: string }
-        Returns: {
-          amount_cents: number
-          error: string
-          guild_id: string
-          ok: boolean
-          payment_id: string
-        }[]
-      }
-      gm_apply_subscription_payment: {
-        Args: {
-          p_ext_ref?: string
-          p_order_id: string
-          p_provider?: string
-          p_token?: string
-        }
-        Returns: {
-          days_added: number
-          error: string
-          guild_id: string
-          ok: boolean
-          plan_key: string
-        }[]
       }
       gm_approve_guild_request: {
         Args: { p_request_id: string }
@@ -1725,16 +1529,6 @@ export type Database = {
       }
       gm_cleanup_expired_ocr_cache: { Args: never; Returns: undefined }
       gm_cleanup_stale_reminder_locks: { Args: never; Returns: number }
-      gm_create_diplomatic_treaty: {
-        Args: {
-          p_expires_days?: number
-          p_guild_b: string
-          p_guild_b_server: string
-          p_terms: string
-          p_treaty_type: string
-        }
-        Returns: string
-      }
       gm_create_ticket: {
         Args: {
           p_attachments?: Json
@@ -1750,48 +1544,6 @@ export type Database = {
           id: number
           status: string
           ticket_number: number
-        }[]
-      }
-      gm_cross_guild_ranking: {
-        Args: never
-        Returns: {
-          arms_attended: number
-          arms_rate: number
-          arms_total: number
-          combat_density_raw: number
-          combat_density_score: number
-          day6_pvp_score: number
-          day6_score: number
-          draft_score: number
-          dtr_attended: number
-          dtr_rate: number
-          dtr_total: number
-          global_attended: number
-          global_rate: number
-          global_total: number
-          glory_attended: number
-          glory_rate: number
-          glory_score: number
-          glory_total: number
-          glory_total_weeks: number
-          guild: string
-          gvg_attended: number
-          gvg_avg_prep: number
-          gvg_avg_pvp: number
-          gvg_rate: number
-          gvg_total: number
-          power: number
-          pseudo: string
-          scouting_tier: string
-          server_number: string
-          shadow_attended: number
-          shadow_rate: number
-          shadow_total: number
-          svs_attended: number
-          svs_avg_prep: number
-          svs_avg_pvp: number
-          svs_rate: number
-          svs_total: number
         }[]
       }
       gm_delete_guild: {
@@ -1872,42 +1624,8 @@ export type Database = {
         Args: { p_event_name: string; p_guild: string; p_session_id: string }
         Returns: Json
       }
-      gm_gvg_guild_matchup: {
-        Args: never
-        Returns: {
-          avg_power: number
-          avg_prep_score: number
-          avg_pvp_score: number
-          danger_score: number
-          danger_tier: string
-          guild: string
-          gvg_count: number
-          member_count: number
-          server_number: string
-          total_power: number
-          total_prep_score: number
-          total_pvp_score: number
-        }[]
-      }
-      gm_gvg_player_matchup: {
-        Args: never
-        Returns: {
-          avg_prep_score: number
-          avg_pvp_score: number
-          danger_score: number
-          danger_tier: string
-          guild: string
-          gvg_count: number
-          max_prep_score: number
-          max_pvp_score: number
-          power: number
-          pseudo: string
-          server_number: string
-        }[]
-      }
       gm_invoke_event_reminders: { Args: never; Returns: undefined }
       gm_is_admin_caller: { Args: never; Returns: boolean }
-      gm_is_leader_caller: { Args: never; Returns: boolean }
       gm_leaderboard: {
         Args: { p_guild?: string; p_period?: string; p_week?: string }
         Returns: Json
@@ -2027,10 +1745,6 @@ export type Database = {
         }[]
       }
       gm_reset_demo_tenant_data: { Args: never; Returns: Json }
-      gm_revoke_diplomatic_treaty: {
-        Args: { p_treaty_id: string }
-        Returns: boolean
-      }
       gm_save_chest_tiers: {
         Args: { p_event_name: string; p_guild: string; p_tiers: Json }
         Returns: Json
@@ -2040,10 +1754,6 @@ export type Database = {
       gm_set_join_code: {
         Args: { p_code: string; p_guild: string }
         Returns: Json
-      }
-      gm_sign_diplomatic_treaty: {
-        Args: { p_treaty_id: string }
-        Returns: boolean
       }
       gm_stats_data: { Args: { p_guild?: string }; Returns: Json }
       gm_submit_guild_request: {
@@ -2055,22 +1765,6 @@ export type Database = {
           p_server_number: string
         }
         Returns: Json
-      }
-      gm_svs_server_matchup: {
-        Args: never
-        Returns: {
-          avg_prep_score: number
-          avg_pvp_score: number
-          danger_score: number
-          danger_tier: string
-          guild: string
-          max_prep_score: number
-          max_pvp_score: number
-          power: number
-          pseudo: string
-          server_number: string
-          svs_count: number
-        }[]
       }
       gm_sync_shadowfront_participants: {
         Args: { p_guild: string; p_session_id: string }
@@ -2189,26 +1883,19 @@ export type Database = {
         }
         Returns: Json
       }
+      gm_verify_password: {
+        Args: { p_id: string; p_password: string }
+        Returns: {
+          canonical_id: string
+          error: string
+          is_locked: boolean
+          role: string
+          status: string
+        }[]
+      }
       is_server_admin: { Args: never; Returns: boolean }
       is_subscription_active: { Args: { p_guild: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
-      list_event_sessions: {
-        Args: { p_guild?: string }
-        Returns: {
-          event_name: string
-          participants: number
-          participated_count: number
-          session_id: string
-          total_score: number
-          week_start: string
-        }[]
-      }
-      list_event_weeks: {
-        Args: { p_guild?: string }
-        Returns: {
-          week_start: string
-        }[]
-      }
       request_guild_transfer: {
         Args: { p_target_guild: string; p_uid: string }
         Returns: Json

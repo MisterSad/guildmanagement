@@ -23,7 +23,7 @@ const FIXTURE = `
 
 let views = [];
 
-function installGM(role, paymentsDisabled) {
+function installGM(role) {
   const calls = { onTabActivated: [], reloadActiveView: [] };
   window.GM = {
     t: (k) => k,
@@ -34,7 +34,6 @@ function installGM(role, paymentsDisabled) {
     isSuperAdmin: () => role === 'super_admin',
     isServerAdmin: () => role === 'server_admin',
     isGuildAdmin: () => role !== 'member',
-    isPaymentsDisabled: () => !!paymentsDisabled,
     avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
     appVersion: 'V-test',
     detectClientEnvironment: () => ({ appVersion: 'V-test', os: 'TestOS', browser: 'TestBrowser' }),
@@ -63,7 +62,7 @@ function installGM(role, paymentsDisabled) {
 function boot(role, opts = {}) {
   document.body.innerHTML = FIXTURE;
   localStorage.clear();
-  const calls = installGM(role, opts.paymentsDisabled);
+  const calls = installGM(role);
   const view = new ShellView();
   views.push(view);
   return { view, calls };
@@ -108,7 +107,6 @@ describe('ShellView — structure & constants', () => {
 describe('ShellView — renderShell()', () => {
   it('wraps the dashboard and renders sidebar, topbar, bottom-nav and drawer', () => {
     const { view } = boot('guild_admin');
-    document.body.classList.add('guild-read-only');
     view.init();
 
     expect(document.querySelector('#dashboard-view .gm-shell')).toBeTruthy();
@@ -122,8 +120,6 @@ describe('ShellView — renderShell()', () => {
     expect(document.getElementById('gm-overview')).toBeTruthy();
     // Legacy hidden nav-tab for gm-overview was injected for app.js.
     expect(document.querySelector('.app-header .nav-tabs [data-tab="gm-overview"]')).toBeTruthy();
-    // Subscription status check clears read-only mode.
-    expect(document.body.classList.contains('guild-read-only')).toBe(false);
   });
 
   it('renders the app version above Terms & Conditions in the sidebar footer', () => {
@@ -223,18 +219,17 @@ describe('ShellView — lazy module registry', () => {
 });
 
 describe('ShellView — destroy() cleanup', () => {
-  it('stops the 30s interval after destroy()', () => {
+  it('leaves no periodic re-render running (Phase 1 removed the subscription countdown)', () => {
     vi.useFakeTimers();
     const { view } = boot('guild_admin');
     view.init();
 
     const spy = vi.spyOn(view, 'renderTopbar');
-    vi.advanceTimersByTime(30000);
-    expect(spy).toHaveBeenCalled();
+    vi.advanceTimersByTime(300000);
+    expect(spy, 'the sidebar/topbar must not rebuild on a timer').not.toHaveBeenCalled();
 
-    spy.mockClear();
     view.destroy();
-    vi.advanceTimersByTime(90000);
+    vi.advanceTimersByTime(300000);
     expect(spy).not.toHaveBeenCalled();
   });
 

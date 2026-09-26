@@ -434,9 +434,6 @@ verify_jwt = false
 [functions.event-reminders]
 verify_jwt = false
 
-[functions.gm-stripe-webhook]
-verify_jwt = false
-
 # Was missing entirely (Discord bot Phase 1) -- authenticated by Ed25519
 # signature instead of a Supabase JWT; a future deploy with no per-function
 # flag override would otherwise silently default to verify_jwt = true and
@@ -456,12 +453,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.guild-data-export]
-verify_jwt = true
-
-[functions.gm-create-order]
-verify_jwt = true
-
-[functions.gm-order-status]
 verify_jwt = true
 
 [functions.discord-webhook-proxy]

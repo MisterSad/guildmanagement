@@ -66,11 +66,6 @@ describe('DEMO Tenant Dynamic Data & Daily Reset Automation', () => {
         expect(buildEventSessionId('Shadowfront Squad 2', testDate)).toBe(`SF2-${dKey}-1`);
     });
 
-    it('verifies DEMO guild is recognized as payments disabled and isolated', () => {
-        const GM = window.GM;
-        expect(GM.isPaymentsDisabled('DEMO')).toBe(true);
-    });
-
     it('verifies DemoAdmin and DemoPlayer accounts are initialized with demo1234 encrypted passwords and DemoPlayer has UID', () => {
         const migrationContent = fs.readFileSync(migrationPath, 'utf-8');
         expect(migrationContent).toContain("'DemoAdmin'");

@@ -153,7 +153,6 @@ supabase functions deploy auth-passkey --no-verify-jwt
 supabase functions deploy player-register --no-verify-jwt
 supabase functions deploy guild-request --no-verify-jwt
 supabase functions deploy event-reminders --no-verify-jwt
-supabase functions deploy gm-stripe-webhook --no-verify-jwt
 supabase functions deploy discord-bot-interactions --no-verify-jwt
 supabase functions deploy discord-profile-verification --no-verify-jwt
 
@@ -162,22 +161,19 @@ supabase functions deploy member-portal
 supabase functions deploy admin-accounts
 supabase functions deploy ocr-guild-members
 supabase functions deploy discord-webhook-proxy
-supabase functions deploy gm-create-order
-supabase functions deploy gm-order-status
 supabase functions deploy guild-data-export
 supabase functions deploy tickets
 ```
 
 > **Discord verification worker**: `discord-verification-worker/` is a standalone, always-on Node.js Gateway listener — **not** an Edge Function — deployed separately (e.g. Render). It holds no business logic and calls the `discord-profile-verification` Edge Function with the shared `DISCORD_WORKER_SECRET`. The `--no-verify-jwt` flag applies to the `discord-profile-verification` endpoint it calls, not to the worker itself.
 
-> **`gm-revolut-webhook`**: documented historically but **not implemented** — no handler exists in `supabase/functions/`. Do not add it to this matrix.
+> **Deleted in Phase 1 (2026-09-26)**: `gm-create-order`, `gm-order-status`, `gm-stripe-webhook` (payment removal — the platform is free with no donation path), plus two functions that were live on the platform with **no source in this repository**: `gm-revolut-webhook` (public, `verify_jwt = false`) and `webauthn-spike` (a leftover probe). Earlier revisions of this runbook asserted `gm-revolut-webhook` did not exist; it did. Every deployed function must have its source versioned here.
 
 ---
 
 ## 6. Phase 4 — Post-Deployment Verification Matrix (S1–S6 & F1–F6)
 
 ### Security Behavior Matrix (S1–S6):
-- **S1**: Authenticated member calling `gm_apply_subscription_payment` via PostgREST → Expect HTTP 403 `permission denied`.
 - **S2**: Anonymous caller inserting into `system_audit_logs` via PostgREST → Expect HTTP 401 RLS denial.
 - **S3**: 5 consecutive failed login attempts on test account → 5th attempt returns `account_locked`; DB row shows `failed_login_count=5` and `locked_until > now()`.
 - **S4**: 31 rapid login attempts from same client IP → 31st attempt returns HTTP 429 `too_many_attempts`.

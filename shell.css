@@ -337,21 +337,6 @@
     margin-bottom: clamp(0.2rem, 0.4vh, 0.5rem);
 }
 
-.gm-sub-card-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    width: 100%;
-    padding: clamp(0.32rem, 0.5vh, 0.45rem) 0.6rem;
-    border-radius: var(--radius-pill);
-    background: var(--accent-lime);
-    color: oklch(0.14 0.02 125);
-    font-weight: 700;
-    font-size: clamp(0.74rem, 1.1vh, 0.8rem);
-    letter-spacing: 0.01em;
-    box-shadow: 0 4px 14px oklch(0.88 0.19 125 / 0.3);
-}
 .gm-sidebar-report-bug {
     width: 100% !important;
     margin: clamp(0.35rem, 0.6vh, 0.5rem) 0 !important;
@@ -360,16 +345,6 @@
     padding: clamp(0.32rem, 0.5vh, 0.45rem) 0.6rem !important;
     font-size: clamp(0.74rem, 1.1vh, 0.8rem) !important;
     flex-shrink: 0 !important;
-}
-
-.gm-sub-card-pill.gm-sub-expired {
-    background: var(--danger);
-    color: white;
-    box-shadow: 0 4px 14px oklch(0.68 0.20 25 / 0.4);
-}
-.gm-sub-card-pill.gm-sub-unlimited {
-    background: linear-gradient(135deg, var(--accent-lime), var(--accent-cyan));
-    color: oklch(0.14 0.02 250);
 }
 
 /* ─── Main column ─── */
@@ -1190,10 +1165,6 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     }
     .gm-sidebar-guild-select {
         padding: 0.28rem 0.45rem;
-        font-size: var(--fs-xs);
-    }
-    .gm-sub-card-pill {
-        padding: 0.3rem 0.5rem;
         font-size: var(--fs-xs);
     }
     .gm-sidebar-report-bug {

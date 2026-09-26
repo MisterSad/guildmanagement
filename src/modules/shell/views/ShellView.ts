@@ -104,10 +104,6 @@ const legacy = {
     const g = gm();
     return !!(g && typeof g.isGuildAdmin === 'function' && g.isGuildAdmin());
   },
-  isPaymentsDisabled(): boolean {
-    const g = gm();
-    return !!(g && typeof g.isPaymentsDisabled === 'function' && g.isPaymentsDisabled());
-  },
   avatarInit(value: string): string {
     const g = gm();
     return g && typeof g.avatarInit === 'function' ? g.avatarInit(value) : String(value || '').slice(0, 1).toUpperCase();
@@ -217,7 +213,6 @@ export class ShellView {
   private observer?: MutationObserver;
   private mediaQuery?: any;
   private mediaQueryHandler?: (e: any) => void;
-  private intervalId?: ReturnType<typeof setInterval>;
 
   public getState(): ShellState {
     return this.state;
@@ -235,18 +230,9 @@ export class ShellView {
     this.observeViewport();
     this.wireLoginPasswordToggle();
     this.wireSearchClearButtons();
-
-    // Update periodically to keep subscription time fresh (30s).
-    this.intervalId = setInterval(() => {
-      if (typeof document !== 'undefined' && document.hidden) return;
-      if (this.state.active) {
-        this.renderSidebar();
-        this.renderTopbar();
-      }
-    }, 30000);
   }
 
-  /** Release every tracked side effect (interval, observer, matchMedia listener). */
+  /** Release every tracked side effect (observer, matchMedia listener). */
   public destroy(): void {
     if (this.observer) {
       this.observer.disconnect();
@@ -261,10 +247,6 @@ export class ShellView {
     }
     this.mediaQuery = undefined;
     this.mediaQueryHandler = undefined;
-    if (this.intervalId !== undefined) {
-      clearInterval(this.intervalId);
-      this.intervalId = undefined;
-    }
     this.initialized = false;
   }
 
@@ -386,7 +368,6 @@ export class ShellView {
       '<aside class="gm-sidebar" data-gm-sidebar></aside>' +
       '<div class="gm-main">' +
         '<header class="gm-topbar" data-gm-topbar></header>' +
-        '<div id="guild-warning-banner" class="gm-warning-banner" style="display: none;"></div>' +
         '<div class="gm-content" data-gm-content></div>' +
       '</div>' +
       '<nav class="gm-bottom-nav" data-gm-bottom-nav></nav>' +
@@ -463,16 +444,6 @@ export class ShellView {
     return 'Admin';
   }
 
-  private checkSubscriptionStatus(): boolean {
-    document.body.classList.remove('guild-read-only');
-    const banner = document.getElementById('guild-warning-banner');
-    if (banner) {
-      banner.style.display = 'none';
-      banner.innerHTML = '';
-    }
-    return false;
-  }
-
   private renderGuildSelectorHtml(): string {
     const isSuperAdmin = legacy.isSuperAdmin();
     let guilds = legacy.getGuildsList();
@@ -503,70 +474,19 @@ export class ShellView {
     }
   }
 
-  private getSubscriptionCardHtml(): string {
-    const activeGuild = legacy.getCurrentGuild();
-    const guildsData = legacy.getGuildsData();
-    let cardTitle = legacy.esc(activeGuild) + ' Guild';
-    let cardDesc = 'Standard Plan';
-    let pillLabel = 'Active Plan';
-    let pillClass = '';
-    let icon = 'ph-crown';
-
-    if (guildsData[activeGuild]) {
-      const sub = guildsData[activeGuild];
-      if (sub.type === 'Unlimited') {
-        cardTitle = legacy.esc(activeGuild) + ' • Unlimited';
-        cardDesc = 'Unlimited access for all guild members.';
-        pillLabel = 'Unlimited';
-        pillClass = 'gm-sub-unlimited';
-        icon = 'ph-infinity';
-      } else if (sub.type === 'Lifetime') {
-        cardTitle = legacy.esc(activeGuild) + ' • Lifetime';
-        cardDesc = 'Lifetime access - never expires.';
-        pillLabel = 'Lifetime';
-        pillClass = 'gm-sub-unlimited';
-        icon = 'ph-infinity';
-      } else if (sub.type === 'Premium') {
-        if (sub.end) {
-          const endMs = new Date(sub.end).getTime();
-          const diff = endMs - Date.now();
-          if (diff <= 0) {
-            cardTitle = legacy.esc(activeGuild) + ' • Premium';
-            cardDesc = 'Subscription expired. Read-only mode active.';
-            pillLabel = 'Expired';
-            pillClass = 'gm-sub-expired';
-            icon = 'ph-lock-key';
-          } else {
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            cardTitle = legacy.esc(activeGuild) + ' • Premium';
-            cardDesc = 'Active plan • Expires in ' + days + 'd ' + hours + 'h';
-            pillLabel = 'Premium Tier';
-            icon = 'ph-sparkle';
-          }
-        } else {
-          cardTitle = legacy.esc(activeGuild) + ' • Premium';
-          cardDesc = 'Subscription expired.';
-          pillLabel = 'Expired';
-          pillClass = 'gm-sub-expired';
-          icon = 'ph-lock-key';
-        }
-      }
-    }
-
-    return '<div class="gm-sidebar-sub-card">' +
-      this.renderGuildSelectorHtml() +
-      '<div class="gm-sub-card-pill ' + pillClass + '">' +
-        '<i class="ph-fill ' + icon + '"></i> ' + pillLabel +
-      '</div>' +
-    '</div>';
+  /**
+   * Sidebar guild card. Phase 1 removed the subscription pill it used to carry
+   * (plan label, expiry countdown, Premium/Lifetime tiers): the platform is
+   * free and `guilds.subscription_type` no longer exists. The guild selector
+   * inside it is load-bearing -- it is how a super_admin switches tenant.
+   */
+  private getGuildCardHtml(): string {
+    return '<div class="gm-sidebar-sub-card">' + this.renderGuildSelectorHtml() + '</div>';
   }
 
   public renderSidebar(): void {
     const el = document.querySelector('[data-gm-sidebar]');
     if (!el) return;
-
-    this.checkSubscriptionStatus();
 
     const canReportBug = legacy.isGuildAdmin();
 
@@ -610,7 +530,7 @@ export class ShellView {
       '<nav class="gm-sidebar-nav">' +
         navHtml +
       '</nav>' +
-      this.getSubscriptionCardHtml() +
+      this.getGuildCardHtml() +
       footerItems.map((item) => {
         return '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-nav-item="' + item.id + '">' +
           '<i class="ph ' + (item.icon || 'ph-circle') + '" style="font-size: var(--fs-xl);"></i>' +
@@ -674,8 +594,6 @@ export class ShellView {
   public renderTopbar(): void {
     const el = document.querySelector('[data-gm-topbar]');
     if (!el) return;
-
-    this.checkSubscriptionStatus();
 
     const brandHtml = this.state.mobile
       ? '<div class="gm-topbar-mobile-brand">' +

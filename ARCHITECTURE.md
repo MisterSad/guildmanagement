@@ -18,8 +18,8 @@
 │  │ TypeScript / ESM Frontend (`index.html` + `/src/main.ts` module)              │  │
 │  │ ├─ Core Utilities & Legacy Bridge: `/src/core/gm-bridge.ts` (window.GM)        │  │
 │  │ ├─ Admin Command Center: `/src/modules/app/admin/*` (accounts, requests,       │  │
-│  │ │   subscriptions, migration groups), EventsView/StatsView (`/src`)            │  │
-│  │ ├─ Player Self-Service Portal: PortalView (`/src`), `/src/modules/push`        │  │
+│  │ │   guilds, migration groups), EventsView/StatsView (`/src`)                   │  │
+│  │ ├─ Player Self-Service Portal: PortalView (`/src`)                             │  │
 │  │ ├─ Roster OCR (screenshots or video) + Rank Detection:                         │  │
 │  │ │   `/src/modules/app/ocr/*` + `/src/modules/ocr/ocr.service.ts`              │  │
 │  │ ├─ Identity: `/src/core/auth/webauthn.service.ts` (Passkeys client)           │  │
@@ -31,7 +31,7 @@
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   EDGE & SECURITY LAYER                                 │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
-│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 16 live         │  │
+│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 14 live         │  │
 │  │ ├─ Public (`verify_jwt = false`):                                                 │  │
 │  │ │   ├─ `auth-login`: Bcrypt dual-read, lockout, IP rate limit, JWT issuer         │  │
 │  │ │   ├─ `auth-passkey`: Passkeys/WebAuthn — register, sign in (scoped or fully     │  │
@@ -40,8 +40,7 @@
 │  │ │   ├─ `guild-request`: Public guild self-service request submission (reviewed    │  │
 │  │ │   │   manually by a super_admin; provisions nothing on its own)                 │  │
 │  │ │   ├─ `event-reminders`: Cron-secret gated notification dispatcher (Vault),      │  │
-│  │ │   │   fans out to both Discord webhooks and Web Push subscribers                │  │
-│  │ │   ├─ `gm-stripe-webhook`: Stripe webhook signature verification                 │  │
+│  │ │   │   fans out to Discord webhooks (Web Push was removed in Phase 2)            │  │
 │  │ │   ├─ `discord-bot-interactions`: Slash-command handler, Ed25519-verified        │  │
 │  │ │   ├─ `discord-profile-verification`: Worker shared-secret gated (screenshot     │  │
 │  │ │   │   OCR → guild tag → Discord role/nickname)                                  │  │
@@ -52,12 +51,9 @@
 │  │ │       │   a screen-recording video (client extracts frames first); Members      │  │
 │  │ │       │   scans also detect R1-R4 rank from the roster's section headers        │  │
 │  │ │       ├─ `discord-webhook-proxy`: Whitelisted Discord webhook proxy (SSRF safe) │  │
-│  │ │       ├─ `gm-create-order`: Stripe subscription checkout session initializer    │  │
-│  │ │       ├─ `gm-order-status`: Order status reader and verification                │  │
 │  │ │       ├─ `guild-data-export`: Guild data export (JWT-gated)                     │  │
-│  │ │       └─ `tickets`: Bug-report ticketing console backend                        │  │
-│  │ ├─ Non implémenté / Déprécié: `gm-revolut-webhook` (Revolut) — aucun code         │  │
-│  │ │   associé dans `supabase/functions/`; ne pas déployer (voir note §1).           │  │
+│  │ │       ├─ `tickets`: Bug-report ticketing console backend                        │  │
+│  │ │       └─ `migration-summary`: Gemini summariser for the Migration Hub wiki      │  │
 │  │ └─ Shared Modules: _shared/auth.ts, _shared/logger.ts, _shared/rate-limit.ts,     │  │
 │  │     _shared/admin-authz.ts, _shared/shadow-session.ts, _shared/cors.ts            │  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
@@ -78,7 +74,7 @@
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-> **⚠️ `gm-revolut-webhook` — Non implémenté / Déprécié**: historically referenced as a Revolut webhook receiver, but there is **no handler** in `supabase/functions/` and no `[functions.gm-revolut-webhook]` block in `supabase/config.toml`. Only the Stripe webhook (`gm-stripe-webhook`) is implemented. Do not include it in deployment matrices.
+> **⚠️ Payments were removed entirely on 2026-09-26 (Phase 1)**. Deleted from the platform: `gm-create-order`, `gm-order-status`, `gm-stripe-webhook`, and two functions that were **live with no source in this repository** — `gm-revolut-webhook` (ACTIVE, version 13, `verify_jwt = false`, i.e. public) and `webauthn-spike` (a leftover probe). Earlier revisions of this document asserted in a warning box that `gm-revolut-webhook` did **not** exist and should be kept out of deployment matrices; it existed and was serving traffic. Treat this as the standing invariant instead: **every deployed Edge Function must have its source versioned here**, and the deployed set must be reconciled against `supabase/functions/` rather than against prose.
 
 ---
 

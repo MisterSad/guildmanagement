@@ -25,8 +25,6 @@ export type WarOpponent = Tables['war_opponents']['Row'];
 export type WarSession = Tables['war_sessions']['Row'];
 export type SystemAuditLog = Tables['system_audit_logs']['Row'];
 export type Ticket = Tables['tickets']['Row'];
-export type DiplomaticTreaty = Tables['diplomatic_treaties']['Row'];
-export type GmPayment = Tables['gm_payments']['Row'];
 
 // `E2eeMessage` / `E2eeConversation` were removed here: the Leader Hall E2EE
 // tables were dropped by 20260913000000_drop_leader_hall_e2ee.sql and neither
@@ -55,11 +53,3 @@ export interface WarOpponentSnapshot {
   guild_ref?: string | null;
 }
 
-// Not a table — `guilds.subscription_type`/`subscription_end` describe this,
-// kept as a convenience shape for subscription UI code.
-export interface GuildSubscription {
-  guild: string;
-  type: 'Free' | 'Premium' | 'Unlimited' | 'Lifetime';
-  end?: string | null;
-  server_number?: number | null;
-}

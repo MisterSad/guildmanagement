@@ -52,11 +52,11 @@ test('clicking Terms & Conditions in footer opens dedicated full page and can re
 
     const title = page.locator('.terms-doc-title');
     await expect(title).toBeVisible();
-    await expect(title).toContainText('TERMS OF SERVICE AND GENERAL CONDITIONS OF SALE');
+    await expect(title).toContainText('TERMS OF SERVICE AND GENERAL CONDITIONS OF USE');
 
     await expect(page.locator('body')).toContainText('André Vieira');
     await expect(page.locator('body')).toContainText('SECTION 1. LEGAL NOTICE & STATUTORY DISCLOSURES');
-    await expect(page.locator('body')).toContainText('SECTION 4. COMMERCIAL TERMS, ACCESS PASSES & NO AUTOMATIC RENEWAL');
+    await expect(page.locator('body')).toContainText('SECTION 4. FREE OF CHARGE');
     await expect(page.locator('body')).toContainText('SECTION 9. GOVERNING LAW & JURISDICTION');
 
     // Return to platform

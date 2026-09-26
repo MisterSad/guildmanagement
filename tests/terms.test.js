@@ -14,8 +14,8 @@ describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
 
     it('terms.html exists and contains full legal document title and metadata', () => {
         expect(fs.existsSync(termsHtmlPath)).toBe(true);
-        expect(termsHtmlContent).toContain('TERMS OF SERVICE AND GENERAL CONDITIONS OF SALE (TOS/GCS)');
-        expect(termsHtmlContent).toContain('August 20, 2026');
+        expect(termsHtmlContent).toContain('TERMS OF SERVICE AND GENERAL CONDITIONS OF USE (TOS/GCU)');
+        expect(termsHtmlContent).toContain('September 26, 2026');
         expect(termsHtmlContent).toContain('FGF Guild Management Platform');
         expect(termsHtmlContent).toContain('fgfwiki@gmail.com');
         expect(termsHtmlContent).toContain('André Vieira');
@@ -26,7 +26,7 @@ describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
         expect(termsHtmlContent).toContain('SECTION 1. LEGAL NOTICE &amp; STATUTORY DISCLOSURES');
         expect(termsHtmlContent).toContain('SECTION 2. NATURE OF THE SERVICE &amp; TECHNICAL ARCHITECTURE');
         expect(termsHtmlContent).toContain('SECTION 3. INTELLECTUAL PROPERTY &amp; DISCLAIMER OF NON-AFFILIATION');
-        expect(termsHtmlContent).toContain('SECTION 4. COMMERCIAL TERMS, ACCESS PASSES &amp; NO AUTOMATIC RENEWAL');
+        expect(termsHtmlContent).toContain('SECTION 4. FREE OF CHARGE — NO PAYMENT, NO SUBSCRIPTION, NO DONATION');
         expect(termsHtmlContent).toContain('SECTION 5. GAME INTEGRITY, TECHNICAL COMPLIANCE &amp; ACCEPTABLE USE');
         expect(termsHtmlContent).toContain('SECTION 6. PRIVACY BY DESIGN &amp; DATA GOVERNANCE (GDPR &amp; CCPA)');
         expect(termsHtmlContent).toContain('SECTION 7. LIMITATION OF LIABILITY &amp; WARRANTY DISCLAIMER');

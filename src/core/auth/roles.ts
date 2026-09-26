@@ -118,11 +118,6 @@ export function getActiveGuild(): string {
   return w.currentGuildRestriction || w.currentGuild || (store ? store.getItem('gm_current_guild') : null) || 'ALPHA';
 }
 
-/** Subscription gating is neutralized (platform is free since v127.0). */
-export function isGuildSubscriptionExpired(_guildId?: string): boolean {
-  return false;
-}
-
 /** Logged-in pseudo (gm_user → gm_pseudo). */
 export function getCurrentPseudo(): string | null {
   const store = ls();
@@ -141,14 +136,6 @@ export function currentAccountId(): string | null {
   return fromGm || (store ? store.getItem('gm_user') : null) || null;
 }
 
-/** True when the guild has payments disabled (from window.guildsData). */
-export function isPaymentsDisabled(guildId?: string): boolean {
-  const g = guildId || getActiveGuild();
-  const w = winAny();
-  if (!w.guildsData || !w.guildsData[g]) return false;
-  return !!w.guildsData[g].paymentsDisabled;
-}
-
 /** Role-based write access, mirroring gm-utils.js#canWriteGuild. */
 export function canWriteGuild(guildId?: string): boolean {
   const activeG = guildId || getActiveGuild();
@@ -163,7 +150,7 @@ export function canWriteGuild(guildId?: string): boolean {
     if (!serverRestriction) return false;
     const targetData = w.guildsData && w.guildsData[activeG];
     if (!targetData || String(targetData.server_number) !== String(serverRestriction)) return false;
-    return !isGuildSubscriptionExpired(activeG);
+    return true;
   }
 
   if (role === 'guild_admin') {
@@ -171,7 +158,7 @@ export function canWriteGuild(guildId?: string): boolean {
     // Never fall back to a default guild: writing to the wrong tenant is worse
     // than blocking. Missing restriction ⇒ block (UI shows read-only).
     if (!restricted) return false;
-    return activeG === restricted && !isGuildSubscriptionExpired(activeG);
+    return activeG === restricted;
   }
 
   return false;
