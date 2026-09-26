@@ -11,7 +11,7 @@
 
 import { t, esc, winAny, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
-import { patchAppState } from '../state/app-state';
+import { patchAppState } from '../../../core/state/app-state';
 import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers } from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';

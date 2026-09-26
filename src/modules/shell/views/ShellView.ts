@@ -22,6 +22,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getActiveGuild } from '../../../core/auth/roles';
+import { getAppState, patchAppState } from '../../../core/state/app-state';
 
 export type ShellRole = 'member' | 'guild_admin' | 'server_admin' | 'super_admin' | string;
 
@@ -138,25 +139,24 @@ const legacy = {
     return getActiveGuild();
   },
   setCurrentGuild(guild: string): void {
-    winAny().currentGuild = guild;
+    // Through the store, which mirrors onto `window` itself. Assigning the
+    // global directly left getAppState() reporting the previous guild.
+    patchAppState({ currentGuild: guild });
   },
   getGuildsList(): string[] {
-    const w = winAny();
-    return Array.isArray(w.guildsList) ? w.guildsList : [];
+    return getAppState().guildsList;
   },
   getGuildsData(): Record<string, any> {
-    const w = winAny();
-    return (w.guildsData && typeof w.guildsData === 'object') ? w.guildsData : {};
+    return getAppState().guildsData;
   },
   guildsDataRaw(): any {
-    return winAny().guildsData;
+    return getAppState().guildsData;
   },
   getCurrentGuildRestriction(): string | null {
-    const w = winAny();
-    return w.currentGuildRestriction || null;
+    return getAppState().currentGuildRestriction;
   },
   setCurrentGuildRestriction(value: string): void {
-    winAny().currentGuildRestriction = value;
+    patchAppState({ currentGuildRestriction: value });
   },
   appOnTabActivated(tabId: string): void {
     const app = winAny().GM_APP;

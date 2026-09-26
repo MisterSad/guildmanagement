@@ -6,6 +6,7 @@
  */
 
 import { initTermsModal } from './dom/ui';
+import { patchAppState } from './state/app-state';
 
 /** Copies any legacy `rad_*` localStorage keys to `gm_*`, then removes them. */
 export function migrateLegacyStorageKeys(): void {
@@ -37,7 +38,9 @@ export function initCurrentGuild(): void {
     // unresolved guild look resolved for the whole session; leaving it null
     // lets getActiveGuild() report the truth.
     const seeded = localRestriction || current;
-    (window as any).currentGuild = typeof seeded === 'string' && seeded.trim() !== '' ? seeded.trim() : null;
+    patchAppState({
+      currentGuild: typeof seeded === 'string' && seeded.trim() !== '' ? seeded.trim() : null
+    });
   } catch (_) { /* ignored */ }
 }
 

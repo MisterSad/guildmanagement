@@ -28,7 +28,7 @@ import {
   resetVersionCheck
 } from '../src/modules/app/auth/version-check';
 import { handlePortalLookupSuccess } from '../src/modules/app/auth/portal.controller';
-import { getAppState, patchAppState, resetAppState } from '../src/modules/app/state/app-state';
+import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
 
 const AUTH_DOM = `
   <div id="login-view">

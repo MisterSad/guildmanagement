@@ -1,13 +1,20 @@
 /**
- * src/modules/app/state/app-state.ts
+ * src/core/state/app-state.ts
  *
- * Sous-lot 6.2 (Strangler) — Unified global app state for the root `app.js`
- * monolith. Holds the cross-cutting `window.*` globals in one typed store and
- * mirrors every write back onto `window` so the still-loaded classic script
- * (`app.js`) and the `/src` modules stay coherent during the migration.
+ * The app's cross-cutting state: active tenant, guild list, roster selection,
+ * collapsed role groups. Lives in `core/` because `core/auth/roles.ts` and
+ * `core/gm-bridge.ts` both need it, and this module imports nothing.
  *
- * Call-time `window` reads/writes only; `app.js` is intentionally untouched.
- * This module never assigns a new `window.GM_*` global (bridge lives in main.ts).
+ * It still mirrors every write onto `window`, but no longer because a classic
+ * `app.js` reads them -- that script is gone. The mirror survives for the
+ * `GM_*` bridge and for the tests and e2e specs that seed state by assigning
+ * the globals directly. Retiring it is the window-mirror collapse (M7).
+ *
+ * Two properties the mirror MUST keep, both of which it once broke:
+ *   - a read does not write, so asking for the active guild cannot create
+ *     `window.GM_COLLAPSED_ROLES` as a side effect;
+ *   - hydration is absence-aware, so deleting a global clears the field
+ *     instead of being refilled from the previous value.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -28,7 +35,13 @@ export interface AppState {
   currentServerRestriction: string | null;
   currentGuild: string | null;
   guildsList: string[];
-  guildsData: Record<string, unknown>;
+  /**
+   * Per-guild metadata, keyed by guild id. `server_number` is the only field
+   * anything reads; it was `unknown` while the only consumers went through
+   * `window` and cast it away, so typing it costs nothing and lets
+   * `canWriteGuild()` compare server numbers without an `any`.
+   */
+  guildsData: Record<string, { server_number?: string | null } | undefined>;
   guildAbsences: unknown[];
   adminSelectedMembers: Set<string>;
   adminMembersViewMode: AdminMembersViewMode;
@@ -103,12 +116,23 @@ function ensureWindowMirror(): void {
   }
 }
 
-/** Imports any externally-written `window.*` values into the internal state. */
+/**
+ * Imports any externally-written `window.*` values into the internal state.
+ *
+ * The three scalars below are absence-AWARE: a key that is missing or blank
+ * resets the field to null rather than leaving the previous value in place.
+ * Without that, the mirror is sticky -- `ensureWindowMirror()` refills a missing
+ * key from the state and `hydrateFromWindow()` reads it straight back, so once a
+ * guild had been seen it could never be forgotten. That was invisible while
+ * every reader went to `window` directly; it surfaced the moment
+ * `getActiveGuild()` started reading the store, where clearing the global no
+ * longer fell through to localStorage.
+ */
 function hydrateFromWindow(): void {
   const w = winAny();
-  if (w.currentGuildRestriction !== undefined) state.currentGuildRestriction = w.currentGuildRestriction ?? null;
-  if (w.currentServerRestriction !== undefined) state.currentServerRestriction = w.currentServerRestriction ?? null;
-  if (typeof w.currentGuild === 'string' && w.currentGuild) state.currentGuild = w.currentGuild;
+  state.currentGuildRestriction = w.currentGuildRestriction ?? null;
+  state.currentServerRestriction = w.currentServerRestriction ?? null;
+  state.currentGuild = (typeof w.currentGuild === 'string' && w.currentGuild) ? w.currentGuild : null;
   if (Array.isArray(w.guildsList)) state.guildsList = w.guildsList;
   if (w.guildsData && typeof w.guildsData === 'object') state.guildsData = w.guildsData;
   if (Array.isArray(w.guildAbsences)) state.guildAbsences = w.guildAbsences;
@@ -138,13 +162,18 @@ function syncToWindow(): void {
  * fills `window` keys that are still undefined, so app.js-authored values win.
  */
 export function initAppState(): void {
-  ensureWindowMirror();
   hydrateFromWindow();
+  ensureWindowMirror();
 }
 
 /** Returns a snapshot of the unified state (Set/array members shared by ref). */
 export function getAppState(): AppState {
-  ensureWindowMirror();
+  // A READ does not write. `ensureWindowMirror()` used to run here too, which
+  // meant merely asking for the active guild CREATED `window.GM_COLLAPSED_ROLES`
+  // and friends as a side effect -- the opposite of what this move is for, and
+  // caught by StatsView's cutover guard. The mirror is established at boot
+  // (`initAppState`) and refreshed on every write (`patchAppState`), which is
+  // when external consumers actually need it.
   hydrateFromWindow();
   return { ...state, collapsedRoles: { ...state.collapsedRoles } };
 }

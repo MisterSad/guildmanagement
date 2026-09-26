@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { getAppState, patchAppState, resetAppState } from '../src/modules/app/state/app-state';
+import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
 import {
   setGuildMembers,
   setPendingTransfers,

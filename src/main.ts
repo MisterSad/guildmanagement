@@ -97,7 +97,7 @@ import {
   getAppState,
   patchAppState,
   resetAppState
-} from './modules/app/state/app-state';
+} from './core/state/app-state';
 import {
   restoreSession,
   handleDiscordCallback,

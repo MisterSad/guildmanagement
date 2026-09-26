@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { initAppState, getAppState, patchAppState, resetAppState } from '../src/modules/app/state/app-state';
+import { initAppState, getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
 import * as roles from '../src/core/auth/roles';
 import { getRoleInfo } from '../src/core/scoring/combat';
 

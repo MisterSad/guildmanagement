@@ -8,6 +8,7 @@ import { escapeLike } from '../utils/text';
 import { AccountRole } from '../../types/database';
 import { getClient, sessionInfo, addSessionVerifiedListener, SessionInfo } from '../api/supabase';
 import { APP_VERSION } from '../config/constants';
+import { getAppState, patchAppState } from '../state/app-state';
 
 let verifiedRole: AccountRole | null = null;
 let verifiedAccountId: string | null = null;
@@ -128,10 +129,14 @@ function ls(): Storage | null {
  * `db-guard`; views render an unresolved state instead of querying.
  */
 export function getActiveGuild(): string | null {
-  const w = winAny();
+  // Reads the typed store rather than the raw globals. The store still mirrors
+  // onto `window` (and re-reads it), so behaviour is unchanged -- what changes
+  // is that `core/` no longer reaches into `window.*` for application state,
+  // and there is one reader of this chain instead of four.
+  const st = getAppState();
   const store = ls();
   const resolved =
-    w.currentGuildRestriction || w.currentGuild || (store ? store.getItem('gm_current_guild') : null);
+    st.currentGuildRestriction || st.currentGuild || (store ? store.getItem('gm_current_guild') : null);
   const trimmed = typeof resolved === 'string' ? resolved.trim() : '';
   return trimmed !== '' ? trimmed : null;
 }
@@ -173,13 +178,13 @@ export function canWriteGuild(guildId?: string | null): boolean {
   if (role === 'server_admin') {
     const serverRestriction = store ? store.getItem('gm_server_restriction') : null;
     if (!serverRestriction) return false;
-    const targetData = w.guildsData && w.guildsData[activeG];
+    const targetData = getAppState().guildsData[activeG];
     if (!targetData || String(targetData.server_number) !== String(serverRestriction)) return false;
     return true;
   }
 
   if (role === 'guild_admin') {
-    const restricted = w.currentGuildRestriction;
+    const restricted = getAppState().currentGuildRestriction;
     // Never fall back to a default guild: writing to the wrong tenant is worse
     // than blocking. Missing restriction ⇒ block (UI shows read-only).
     if (!restricted) return false;
@@ -198,7 +203,7 @@ export async function ensureGuildRestriction(): Promise<string | null> {
   const w = winAny();
   if (role === 'super_admin') return null;
   if (role !== 'guild_admin') return null;
-  if (w.currentGuildRestriction) return w.currentGuildRestriction;
+  if (getAppState().currentGuildRestriction) return getAppState().currentGuildRestriction;
 
   const c = getClient();
   if (!c) return null;
@@ -208,8 +213,9 @@ export async function ensureGuildRestriction(): Promise<string | null> {
     const res = await c.from('accounts').select('guild').ilike('id', escapeLike(info.accountId)).maybeSingle();
     if (res && (res as any).data && (res as any).data.guild) {
       const guild = (res as any).data.guild;
-      w.currentGuildRestriction = guild;
-      w.currentGuild = guild;
+      // Through the store, which mirrors onto `window` itself. Writing the
+      // globals directly left getAppState() stale until its next re-hydration.
+      patchAppState({ currentGuildRestriction: guild, currentGuild: guild });
       const store = ls();
       try {
         if (store) {

@@ -18,7 +18,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeLike } from '../../../core/utils/text';
-import { patchAppState, resetAppState } from '../state/app-state';
+import { patchAppState, resetAppState } from '../../../core/state/app-state';
 import { showToast } from '../dialogs/dialogs.service';
 import { setVerifiedRole } from '../../../core/auth/roles';
 import { shellView } from '../../shell/views/ShellView';

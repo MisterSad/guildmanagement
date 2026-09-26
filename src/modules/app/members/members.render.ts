@@ -11,7 +11,7 @@
 
 import { t, esc, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
-import { getAppState, patchAppState, type CollapsedRoles } from '../state/app-state';
+import { getAppState, patchAppState, type CollapsedRoles } from '../../../core/state/app-state';
 import { getAccounts } from '../admin/admin-store';
 import { filterBulkEligibleMembers, isRoleAllowedForBulk } from '../../members/members.service';
 import {
@@ -804,8 +804,7 @@ function bindRosterDelegation(): void {
     const segBtn = target.closest<HTMLElement>('#admin-members-view-mode .gm-seg-btn');
     if (segBtn) {
       const v = segBtn.getAttribute('data-view') === 'matrix' ? 'matrix' : 'cards';
-      const ww = w();
-      ww.adminMembersViewMode = v;
+      patchAppState({ adminMembersViewMode: v });
       document.querySelectorAll('#admin-members-view-mode .gm-seg-btn').forEach((b) => {
         const bb = b as HTMLElement;
         const isActive = bb.getAttribute('data-view') === v;

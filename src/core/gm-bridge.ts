@@ -11,6 +11,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { APP_VERSION } from './config/constants';
+import { initAppState } from './state/app-state';
 import {
   escapeHTML, MAX_NUMERIC, formatNumber, parseNumber, formatPower, avatarInit,
   cleanPlayerPseudo, levenshteinDistance, calculateStringSimilarity, findBestMatchingMember,
@@ -139,6 +140,11 @@ export function installGmBridge(): void {
     if (w.GM[key] === undefined) w.GM[key] = members[key];
   });
 
-  if (!Array.isArray(w.guildsList)) w.guildsList = [];
+  // The bridge installs before main.ts calls initAppState(), and several
+  // consumers read `window.guildsList` in between. Establishing the whole
+  // mirror here -- rather than patching this one global by hand -- means every
+  // key exists from the first line that can observe it. initAppState() is
+  // idempotent: it hydrates from `window` before writing back.
+  initAppState();
   w.GM_GVG_TASKS = { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed };
 }

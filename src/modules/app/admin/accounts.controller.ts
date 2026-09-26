@@ -14,6 +14,7 @@ import { setAccounts, filterAccountsOut, unshiftAccount, setPendingPassword, get
 import { renderAccounts } from './accounts.render';
 import { showToast } from '../dialogs/dialogs.service';
 import { shellView } from '../../shell/views/ShellView';
+import { patchAppState } from '../../../core/state/app-state';
 
 /** crypto.getRandomValues-based password generator (app.js#generatePassword). */
 export function generatePassword(length: number): string {
@@ -65,12 +66,12 @@ export async function fetchGuilds(): Promise<void> {
     if (res.error) return;
     const data = res.data;
     if (data && data.length > 0) {
-      w.guildsList = data.map((g: any) => g.id);
-      w.guildsData = {};
+      const guildsData: Record<string, { server_number?: string | null }> = {};
       data.forEach((g: any) => {
         const sNum = g.server_number || (ls() ? ls()!.getItem('gm_server_number_' + g.id) : '') || '';
-        w.guildsData[g.id] = { server_number: sNum };
+        guildsData[g.id] = { server_number: sNum };
       });
+      patchAppState({ guildsList: data.map((g: any) => g.id), guildsData });
       // Phase 7: the guild map has just changed, so the chrome that displays it
       // is re-rendered directly rather than through two `window` probes that
       // skipped the refresh whenever a name drifted.

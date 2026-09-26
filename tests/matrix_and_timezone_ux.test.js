@@ -4,7 +4,7 @@ import path from 'path';
 
 import { buildMilitaryMatrixHtml } from '../src/modules/app/members/members.render';
 import { initTimezoneCollapsible } from '../src/modules/app/ocr/ocr.controller';
-import { patchAppState, resetAppState } from '../src/modules/app/state/app-state';
+import { patchAppState, resetAppState } from '../src/core/state/app-state';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
