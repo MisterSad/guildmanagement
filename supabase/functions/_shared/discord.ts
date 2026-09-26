@@ -2,8 +2,8 @@
  * supabase/functions/_shared/discord.ts
  *
  * Shared helpers for the Discord bot integration (slash commands only --
- * no Gateway connection). Mirrors _shared/stripe.ts's shape: the endpoint
- * is intentionally public (verify_jwt: false, Discord calls it without a
+ * no Gateway connection). The endpoint it serves is intentionally public
+ * (verify_jwt: false, Discord calls it without a
  * Supabase JWT), authenticated instead by verifying every request's
  * Ed25519 signature against DISCORD_PUBLIC_KEY.
  *
