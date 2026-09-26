@@ -15,6 +15,9 @@ import { patchAppState } from '../state/app-state';
 import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers } from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
+import { eventsView } from '../../events/views/EventsView';
+import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
+import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
 import { toastFetchError, isAbortError } from '../../../core/api/fetch-errors';
 import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
 
@@ -40,10 +43,18 @@ function avatarInit(value: unknown): string {
   const x = g();
   return x && typeof x.avatarInit === 'function' ? x.avatarInit(value) : String(value || '?').charAt(0).toUpperCase();
 }
-function maybeInitOcr(): void {
-  const ocr = winAny().GM_OCR;
-  if (ocr && typeof ocr.initGeminiModule === 'function') ocr.initGeminiModule();
-}
+/*
+ * PHASE 7. `maybeInitOcr()` lived here and probed `GM_OCR.initGeminiModule`.
+ * That method does not exist and never has -- the bridge exposes
+ * `initOcrGeminiModule`. The call therefore never fired once, from the day it
+ * was written, and nothing reported it: probing `window` for a name that is not
+ * there is indistinguishable from choosing not to call it.
+ *
+ * Nothing broke because the initialisation is lazy anyway: `openOcrModal()`
+ * calls `initOcrGeminiModule()` itself, guarded by `ocrModuleInitialized`. The
+ * dead pre-warm is removed rather than repaired -- wiring it back would add DOM
+ * setup to every Members load, which is a behaviour change nobody asked for.
+ */
 
 function gmDebounce(fn: () => void, wait: number): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -111,7 +122,6 @@ function applySignal(builder: any, signal?: AbortSignal): any {
 export async function fetchGuildMembers(opts?: { signal?: AbortSignal }): Promise<void> {
   const client = db();
   if (!client) return;
-  maybeInitOcr();
   const currentG = activeGuild();
   const signal = opts && opts.signal ? opts.signal : undefined;
 
@@ -506,12 +516,12 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
       if (!enrollRes.error && typeof enrollRes.data === 'number') addedEvents = enrollRes.data;
     } catch (err) { console.error('Auto-enroll into active events failed', err); }
 
-    const events = winAny().GM_EVENTS;
-    if (events && typeof events.addMemberToActiveEvents === 'function') await events.addMemberToActiveEvents(pseudo);
-    const armsrace = winAny().GM_ARMSRACE;
-    if (armsrace && typeof armsrace.addMemberToActiveEvents === 'function') await armsrace.addMemberToActiveEvents(pseudo);
-    const shadowfront = winAny().GM_SHADOWFRONT;
-    if (shadowfront && typeof shadowfront.load === 'function') await shadowfront.load();
+    // Phase 7: direct calls. These were three `window` probes that no-opped
+    // whenever a name drifted -- the same shape as the dead `maybeInitOcr`
+    // above, which probed a method that never existed.
+    await eventsView.addMemberToActiveEvents(pseudo);
+    await armsRaceView.addMemberToActiveEvents(pseudo);
+    await shadowfrontView.load();
 
     if (addedEvents > 0) showToast(pseudo + ' ' + t('toast_member_added_active_events'), 'info');
   } catch (err: any) {
@@ -532,12 +542,9 @@ export async function deleteGuildMember(pseudo: string): Promise<void> {
     const gm = g();
     if (gm && gm.cache && typeof gm.cache.invalidate === 'function') gm.cache.invalidate();
 
-    const events = winAny().GM_EVENTS;
-    if (events && typeof events.removeMemberFromActiveEvents === 'function') events.removeMemberFromActiveEvents(pseudo);
-    const armsrace = winAny().GM_ARMSRACE;
-    if (armsrace && typeof armsrace.removeMemberFromActiveEvents === 'function') armsrace.removeMemberFromActiveEvents(pseudo);
-    const shadowfront = winAny().GM_SHADOWFRONT;
-    if (shadowfront && typeof shadowfront.load === 'function') await shadowfront.load();
+    eventsView.removeMemberFromActiveEvents(pseudo);
+    armsRaceView.removeMemberFromActiveEvents(pseudo);
+    await shadowfrontView.load();
   } catch (err: any) {
     showToast(t('toast_err_generic') + ' ' + err.message, 'error');
   }

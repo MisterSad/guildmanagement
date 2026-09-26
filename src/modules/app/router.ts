@@ -40,6 +40,7 @@ import { gloryView } from '../glory/views/GloryView';
 import { historyView } from '../history/views/HistoryView';
 import { statsView } from '../stats/views/StatsView';
 import { portalView } from '../portal/views/PortalView';
+import { shellView } from '../shell/views/ShellView';
 
 function w(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -332,12 +333,9 @@ export function restoreSavedTab(defaultTab = 'overview'): void {
     || (store ? store.getItem('gm_last_tab') : null)
     || defaultTab;
 
-  const shell = w().GM_SHELL;
-  if (shell && typeof shell.gotoItem === 'function') {
-    shell.gotoItem(saved);
-    return;
-  }
-  void onTabActivated(saved);
+  // Phase 7: the shell is imported, so this can no longer silently fall through
+  // to the bare tab activation because a namespace name drifted.
+  shellView.gotoItem(saved);
 }
 
 /** Re-loads the currently active panel's data. */

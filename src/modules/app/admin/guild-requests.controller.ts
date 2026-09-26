@@ -18,6 +18,7 @@ import { showToast, openCustomMsgModal } from '../dialogs/dialogs.service';
 import { initChestTiersSettings, loadChestTiers } from '../../events/chest-settings';
 import { testDiscordWebhook, formatDiscordRoleMention, sendDiscordWebhookDetailed } from '../../../core/integrations/discord';
 import { buildGvgDailyTaskEmbed } from '../../../core/config/gvg-tasks';
+import { overviewView } from '../../overview/views/OverviewView';
 
 const GUILD_REQUEST_STATUS_META: Record<string, { label: string; cls: string }> = {
   pending: { label: 'Pending', cls: 'gm-chip-warning' },
@@ -414,12 +415,9 @@ export async function resolveRegistration(id: string, action: 'approve' | 'rejec
     if (!res.ok) throw new Error(res.error || (action + '_failed'));
     filterAccountsOut(id);
     await fetchAccounts();
-    const w = winAny();
-    if (w.GM_OVERVIEW && typeof w.GM_OVERVIEW.load === 'function') {
-      w.GM_OVERVIEW.load();
-    } else {
-      await renderPendingRegistrations();
-    }
+    // Phase 7: the Overview reload was a `window` probe with a fallback that
+    // only ran when the namespace was missing -- i.e. never, in production.
+    void overviewView.load();
     showToast(action === 'approve' ? 'Player account approved.' : 'Player registration rejected.', 'success');
   } catch (err: any) {
     showToast(t('toast_err_generic') + ' ' + err.message, 'error');

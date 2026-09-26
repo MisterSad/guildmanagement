@@ -10,8 +10,8 @@
  *   - All `window.GM.*`, `window.currentGuild`, `window.guildsList`,
  *     `window.guildsData`, `window.GM_APP.*` reads happen at call time through
  *     an internal typed adapter (no capture at module load).
- *   - The sibling modules driven lazily (GM_OVERVIEW, GM_SHADOWFRONT,
- *     GM_ARMSRACE)
+ *   - The sibling views it drives on tab activation (Overview, Shadowfront,
+ *     Arms Race), imported directly since phase 7
  *     are resolved through a lazy registry, at call time, behind the same
  *     `if (module && module.load)` guards — none of them is imported or
  *     required to migrate.
@@ -80,6 +80,9 @@ const EVENT_TABS = [
 // ── Legacy adapter (call-time reads, no writes) ───────────────────────────────
 
 import { escapeHTML } from '../../../core/utils/text';
+import { overviewView } from '../../overview/views/OverviewView';
+import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
+import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
 
 const legacy = {
   t(key: string): string {
@@ -178,19 +181,16 @@ const legacy = {
   }
 };
 
-// ── Lazy sibling-module registry (resolved at call time) ──────────────────────
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type LazyLoader = { load?: () => any };
 
-export const lazyModules = {
-  overview(): any { return winAny().GM_OVERVIEW; },
-  shadowfront(): any { return winAny().GM_SHADOWFRONT; },
-  armsrace(): any { return winAny().GM_ARMSRACE; }
-};
-
-function callLoad(mod: LazyLoader | undefined | null): void {
-  if (mod && typeof mod.load === 'function') mod.load();
-}
+/*
+ * PHASE 7. A `lazyModules` registry lived here, resolving three sibling views
+ * off `window` at call time (`GM_OVERVIEW`, `GM_SHADOWFRONT`, `GM_ARMSRACE`)
+ * and no-opping whenever a name drifted -- so the Arms Race, Shadowfront and
+ * Overview panels could open with stale content and report nothing. They are
+ * imported directly now. Nothing outside this file used the registry, and the
+ * import direction is safe: none of the three imports the shell.
+ */
 
 // ── Shell state ───────────────────────────────────────────────────────────────
 
@@ -297,9 +297,9 @@ export class ShellView {
           this.renderEventsTabs();
 
           if (tabId === 'event-arms-race') {
-            callLoad(lazyModules.armsrace());
+            void armsRaceView.load();
           } else if (tabId === 'event-shadowfront') {
-            callLoad(lazyModules.shadowfront());
+            void shadowfrontView.load();
           }
 
           legacy.appOnTabActivated(tabId);
@@ -416,7 +416,7 @@ export class ShellView {
         dashboard.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
         const panel = document.getElementById('gm-overview');
         if (panel) panel.classList.add('active');
-        callLoad(lazyModules.overview());
+        void overviewView.load();
       });
     }
   }

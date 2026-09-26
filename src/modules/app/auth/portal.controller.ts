@@ -14,6 +14,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { LoginResponse } from './auth.controller';
+// Aliased: a local `portalView` in this file is the panel ELEMENT.
+import { portalView as portalDashboard } from '../../portal/views/PortalView';
 
 function w(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -79,10 +81,8 @@ export async function handlePortalLookupSuccess(loginResp: LoginResponse, typedI
   const container = document.querySelector('.gm-portal-container');
   if (container) container.classList.add('portal-wide');
 
-  const portal = w().GM_PORTAL;
-  if (portal && typeof portal.loadDashboard === 'function') {
-    portal.loadDashboard();
-  } else {
-    setPortalError('Portal module not loaded. Please reload the page.');
-  }
+  // Phase 7: a direct call. The "Portal module not loaded" branch this
+  // replaces could only fire when `window.GM_PORTAL` was absent, which an
+  // import cannot be.
+  void portalDashboard.loadDashboard();
 }

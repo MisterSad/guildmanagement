@@ -13,6 +13,7 @@ import { getActiveGuild } from '../../../core/auth/roles';
 import { setAccounts, filterAccountsOut, unshiftAccount, setPendingPassword, getAccounts } from './admin-store';
 import { renderAccounts } from './accounts.render';
 import { showToast } from '../dialogs/dialogs.service';
+import { shellView } from '../../shell/views/ShellView';
 
 /** crypto.getRandomValues-based password generator (app.js#generatePassword). */
 export function generatePassword(length: number): string {
@@ -70,10 +71,11 @@ export async function fetchGuilds(): Promise<void> {
         const sNum = g.server_number || (ls() ? ls()!.getItem('gm_server_number_' + g.id) : '') || '';
         w.guildsData[g.id] = { server_number: sNum };
       });
-      if (w.GM_SHELL) {
-        if (typeof w.GM_SHELL.renderTopbar === 'function') w.GM_SHELL.renderTopbar();
-        if (typeof w.GM_SHELL.renderSidebar === 'function') w.GM_SHELL.renderSidebar();
-      }
+      // Phase 7: the guild map has just changed, so the chrome that displays it
+      // is re-rendered directly rather than through two `window` probes that
+      // skipped the refresh whenever a name drifted.
+      shellView.renderTopbar();
+      shellView.renderSidebar();
       populateAccountGuildSelect();
     }
   } catch (err) {

@@ -7,6 +7,12 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// Phase 7: resolveRegistration refreshes the Overview through an import now.
+vi.mock('../src/modules/overview/views/OverviewView', () => ({
+  overviewView: { load: vi.fn(), destroy: vi.fn() }
+}));
+import { overviewView } from '../src/modules/overview/views/OverviewView';
+
 import {
   fetchAccounts,
   fetchGuilds,
@@ -91,7 +97,6 @@ beforeEach(() => {
   window.GM.db = makeDb();
   window.currentGuild = 'ALPHA';
   window.showConfirm = vi.fn((_title, _msg, onConfirm) => { void onConfirm(); });
-  window.GM_OVERVIEW = { load: vi.fn() };
 });
 
 afterEach(() => {
@@ -99,7 +104,6 @@ afterEach(() => {
   clearAdminStore();
   document.body.innerHTML = '';
   delete window.GM_ADMIN;
-  delete window.GM_OVERVIEW;
   delete window.showConfirm;
   delete window.currentGuild;
   localStorage.clear();
@@ -258,7 +262,7 @@ describe('pending registrations', () => {
     document.querySelector('.gm-pending-approve').click();
 
     await vi.waitFor(() => expect(window.GM.adminAccounts).toHaveBeenCalledWith('approve-registration', { id: 'Pending1' }));
-    await vi.waitFor(() => expect(window.GM_OVERVIEW.load).toHaveBeenCalled());
+    await vi.waitFor(() => expect(overviewView.load).toHaveBeenCalled());
   });
 
   it('rejects a registration through resolveRegistration', async () => {

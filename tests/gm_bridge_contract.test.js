@@ -136,3 +136,63 @@ describe('M8 — the window bridge has a contract that is actually checked', () 
     expect(remaining.length, `still string-resolved: ${remaining.join(', ')}`).toBe(0);
   });
 });
+
+describe('M8 — namespaces phase 7 has already disconnected', () => {
+  // Each of these had consumers reaching for it through `window`. They are
+  // ordinary imports now, so the namespace may still be INSTALLED by main.ts
+  // for whatever else reads it, but nothing in src/ resolves it by string any
+  // more. Asserting the absence is what stops one creeping back.
+  const disconnected = [
+    'GM_EVENTS',
+    'GM_ARMSRACE',
+    'GM_SHADOWFRONT',
+    'GM_OCR',
+    'GM_SHELL',
+    'GM_MEMBERS',
+    'GM_ADMIN',
+    'GM_STATS',
+    'GM_GLORY',
+    'GM_HISTORY',
+    'GM_TICKETS',
+    'GM_SANCTIONS',
+    'GM_MIGRATION_HUB',
+    'GM_PORTAL',
+    'GM_OVERVIEW'
+  ];
+
+  for (const ns of disconnected) {
+    it(`${ns} has no string-resolved consumer left`, () => {
+      const offenders = [];
+      for (const f of walk('src')) {
+        if (f === 'src/main.ts' || f === 'src/core/gm-bridge.ts') continue;
+        const code = stripComments(read(f))
+          // `'[GM_STATS] …'` and friends are log prefixes, not bridge access.
+          .replace(/'\[GM_[A-Z_]+\]/g, "'");
+        if (new RegExp(`\\b${ns}\\b`).test(code)) offenders.push(f);
+      }
+      expect(offenders, `${ns} still reached via window in: ${offenders.join(', ')}`).toEqual([]);
+    });
+  }
+
+  it('records the namespaces still resolved by string, and why', () => {
+    // These three are DELIBERATE and are not phase-7 work:
+    //   GM_APP / GM_I  — `core/` must not import `modules/`. `core/dom/toast.ts`
+    //     is the very implementation `GM_APP.showToast` points at, so importing
+    //     the app's renderer here would invert the layering (and recurse).
+    //   GM_COLLAPSED_ROLES — a mirrored state global, not a method bridge; it
+    //     belongs to the `window`-mirror collapse (finding M7, phase 3).
+    const remaining = new Set();
+    for (const f of walk('src')) {
+      if (f === 'src/main.ts' || f === 'src/core/gm-bridge.ts') continue;
+      const code = stripComments(read(f)).replace(/'\[GM_[A-Z_]+\]/g, "'");
+      for (const m of code.matchAll(/\bGM_[A-Z_]+/g)) remaining.add(m[0]);
+    }
+    expect([...remaining].sort()).toEqual([
+      'GM_APP',
+      'GM_BADGES',
+      'GM_COLLAPSED_ROLES',
+      'GM_GVG_TASKS',
+      'GM_I'
+    ]);
+  });
+});

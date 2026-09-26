@@ -9,6 +9,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
 import { esc, byId, winAny } from '../admin/utils';
 import { getGuildMembers } from '../members/members.store';
 import { categorizeOcrDiff, computeOcrRosterDelta } from '../../ocr/ocr.service';
@@ -92,8 +93,7 @@ export function renderOcrResults(players: any[]): void {
 
     let updateCount = 0, reconciledCount = 0, otherGuildCount = 0;
     let sfAssignments: any[] = [];
-    const sf = winAny().GM_SHADOWFRONT;
-    if (meta.eventType === 'shadowfront' && sf && typeof sf.getAssignments === 'function') sfAssignments = sf.getAssignments();
+    if (meta.eventType === 'shadowfront') sfAssignments = shadowfrontView.getAssignments();
 
     let html = '';
     players.forEach((p, idx) => {

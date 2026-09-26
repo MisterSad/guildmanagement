@@ -38,6 +38,9 @@ import {
 } from './ocr.meta';
 import { renderOcrResults, toggleAllCheckboxes } from './ocr.render';
 import { EventsService } from '../../events/events.service';
+import { eventsView } from '../../events/views/EventsView';
+import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
+import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
 
 export { getOcrModel };
 
@@ -774,8 +777,10 @@ export async function commitOcrUpdates(): Promise<void> {
             await client.from('event_participants').insert([Object.assign({ guild: currentG, event_name: 'Shadowfront', session_id: activeSid, pseudo: sp.pseudo, week_start: getWeekStart(sqRes.data.start_at || new Date()) }, updatePayload)]);
           }
         });
-        const sf = w().GM_SHADOWFRONT;
-        if (sf && typeof sf.load === 'function') await sf.load();
+        // Phase 7: a direct call. The `window` probe silently skipped the
+        // refresh whenever the namespace or method name drifted, leaving the
+        // Shadowfront tab showing pre-OCR data with no error.
+        await shadowfrontView.load();
       } else if (meta.eventType === 'armsrace') {
         const arEvName = meta.stage === 'stageA' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
         const arRes = await client.from('event_status').select('session_id, is_active, start_at').eq('guild', currentG).eq('event_name', arEvName).maybeSingle();
@@ -790,10 +795,17 @@ export async function commitOcrUpdates(): Promise<void> {
             await client.from('event_participants').insert([{ guild: currentG, event_name: arEvName, session_id: arSid, pseudo: sp.pseudo, participated: 1, week_start: getWeekStart(arRes.data.start_at || new Date()) }]);
           }
         });
-        const ar = w().GM_ARMSRACE;
-        if (ar && typeof ar.load === 'function') await ar.load();
+        await armsRaceView.load();
       } else {
         const evName = meta.eventKey;
+        // `eventKey` is optional on the metric metadata. Without this guard an
+        // unconfigured metric queried `event_name = undefined`, fell into the
+        // branch below and told the user to "start the undefined session in
+        // Events". Typing the call to loadEvent() is what surfaced it.
+        if (!evName) {
+          showToast('This OCR metric has no event configured.', 'error');
+          return;
+        }
         const evRes = await client.from('event_status').select('session_id, is_active, start_at').eq('guild', currentG).eq('event_name', evName).maybeSingle();
         if (!evRes.data || !evRes.data.is_active || !evRes.data.session_id) {
           showToast('Please start the ' + evName + ' session in Events before applying OCR updates.', 'error');
@@ -830,8 +842,7 @@ export async function commitOcrUpdates(): Promise<void> {
             }
           });
         }
-        const events = w().GM_EVENTS;
-        if (events && typeof events.loadEvent === 'function') await events.loadEvent(evName);
+        await eventsView.loadEvent(evName);
       }
 
       showToast(selectedPlayers.length + ' participant(s) updated for ' + meta.header + '!', 'success');

@@ -39,6 +39,7 @@ vi.mock('../src/modules/glory/views/GloryView', () => ({ gloryView: { load: vi.f
 vi.mock('../src/modules/history/views/HistoryView', () => ({ historyView: { load: vi.fn() } }));
 vi.mock('../src/modules/stats/views/StatsView', () => ({ statsView: { load: vi.fn() } }));
 vi.mock('../src/modules/portal/views/PortalView', () => ({ portalView: { loadDashboard: vi.fn() } }));
+vi.mock('../src/modules/shell/views/ShellView', () => ({ shellView: { gotoItem: vi.fn(), renderShell: vi.fn(), renderSidebar: vi.fn(), renderTopbar: vi.fn() } }));
 
 import { fetchGuildMembers } from '../src/modules/app/members/members.controller';
 import { fetchBannedPlayers } from '../src/modules/app/members/banned.controller';
@@ -61,6 +62,7 @@ import { armsRaceView } from '../src/modules/armsrace/views/ArmsRaceView';
 import { gloryView } from '../src/modules/glory/views/GloryView';
 import { historyView } from '../src/modules/history/views/HistoryView';
 import { statsView } from '../src/modules/stats/views/StatsView';
+import { shellView } from '../src/modules/shell/views/ShellView';
 
 import {
   triggerTabDataLoad,
@@ -248,40 +250,34 @@ describe('triggerTabDataLoad — /src domain routing', () => {
 });
 
 describe('restoreSavedTab', () => {
-  it('prefers gm_active_tab and delegates to the modern shell', () => {
+  it('prefers gm_active_tab and delegates to the shell', () => {
     localStorage.setItem('gm_active_tab', 'admin-members');
-    window.GM_SHELL = { gotoItem: vi.fn() };
-
     restoreSavedTab();
-
-    expect(window.GM_SHELL.gotoItem).toHaveBeenCalledWith('admin-members');
+    expect(shellView.gotoItem).toHaveBeenCalledWith('admin-members');
   });
 
-  it('falls back to gm_last_tab then activates the tab directly', async () => {
+  it('falls back to gm_last_tab', () => {
+    // Phase 7: this used to assert the loader ran, by way of a fallback that
+    // only fired when `window.GM_SHELL` was ABSENT -- which never happened in
+    // production, where the bridge was always installed and `gotoItem` returned
+    // first. The contract being tested is which storage key wins.
     localStorage.setItem('gm_last_tab', 'glory');
-
     restoreSavedTab();
-    await tick();
-
-    expect(gloryView.load).toHaveBeenCalledTimes(1);
+    expect(shellView.gotoItem).toHaveBeenCalledWith('glory');
   });
 
-  it('uses the default tab when no stored value exists', async () => {
-
+  it('uses the default tab when no stored value exists', () => {
     restoreSavedTab();
-    await tick();
-
-    expect(overviewView.load).toHaveBeenCalledTimes(1);
+    expect(shellView.gotoItem).toHaveBeenCalledWith('overview');
   });
 
   it('is a no-op when user role is member', () => {
     localStorage.setItem('gm_role', 'member');
     localStorage.setItem('gm_active_tab', 'admin-members');
-    window.GM_SHELL = { gotoItem: vi.fn() };
 
     restoreSavedTab();
 
-    expect(window.GM_SHELL.gotoItem).not.toHaveBeenCalled();
+    expect(shellView.gotoItem).not.toHaveBeenCalled();
     expect(overviewView.load).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,13 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// Phase 7: `revealPortal` imports the portal view instead of probing
+// `window.GM_PORTAL`, so the stub these tests used no longer intercepts it.
+vi.mock('../src/modules/portal/views/PortalView', () => ({
+  portalView: { loadDashboard: vi.fn(), renderDashboard: vi.fn() }
+}));
+import { portalView } from '../src/modules/portal/views/PortalView';
+
 import {
   restoreSession,
   handleSuccessfulLogin,
@@ -120,7 +127,6 @@ afterEach(() => {
   resetAppState();
   document.body.innerHTML = '';
   delete window.GM_APP;
-  delete window.GM_PORTAL;
   delete window.GM_SHELL;
   localStorage.clear();
   sessionStorage.clear();
@@ -220,7 +226,6 @@ describe('restoreSession', () => {
   it('restores a player-portal session straight into the portal', async () => {
     localStorage.setItem('gm_portal_session', '1');
     window.GM.sessionInfo = vi.fn(async () => ({ role: 'member', accountId: 'Player1' }));
-    window.GM_PORTAL = { loadDashboard: vi.fn() };
 
     const res = await restoreSession();
 
@@ -228,13 +233,12 @@ describe('restoreSession', () => {
     expect(res.portal).toBe(true);
     expect(localStorage.getItem('gm_role')).toBe('member');
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
-    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
+    expect(portalView.loadDashboard).toHaveBeenCalled();
   });
 
   it('restores a member session into the player portal even without pre-existing gm_portal_session', async () => {
     localStorage.setItem('gm_role', 'member');
     window.GM.sessionInfo = vi.fn(async () => ({ role: 'member', accountId: 'Player2' }));
-    window.GM_PORTAL = { loadDashboard: vi.fn() };
 
     const res = await restoreSession();
 
@@ -246,7 +250,7 @@ describe('restoreSession', () => {
     expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
-    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
+    expect(portalView.loadDashboard).toHaveBeenCalled();
   });
 
   it('resolves a server_admin restriction from the accounts row', async () => {
@@ -264,7 +268,6 @@ describe('restoreSession', () => {
 
 describe('handleSuccessfulLogin', () => {
   it('routes a member login directly to the player portal and sets portal session', async () => {
-    window.GM_PORTAL = { loadDashboard: vi.fn() };
 
     await handleSuccessfulLogin({ ok: true, role: 'member', id: 'Player1' }, 'Player1');
 
@@ -276,7 +279,7 @@ describe('handleSuccessfulLogin', () => {
     expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
-    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
+    expect(portalView.loadDashboard).toHaveBeenCalled();
   });
 
   it('syncs the guild restriction and routes to the admin shell', async () => {
@@ -314,20 +317,18 @@ describe('handleSuccessfulLogin', () => {
 
 describe('revealAdmin and revealPortal', () => {
   it('guards revealAdmin against showing admin dashboard to members', () => {
-    window.GM_PORTAL = { loadDashboard: vi.fn() };
     revealAdmin('member');
     expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
-    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
+    expect(portalView.loadDashboard).toHaveBeenCalled();
   });
 
   it('revealPortal activates player portal and hides admin dashboard', () => {
-    window.GM_PORTAL = { loadDashboard: vi.fn() };
     revealPortal();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
-    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
+    expect(portalView.loadDashboard).toHaveBeenCalled();
   });
 });
 
@@ -426,13 +427,12 @@ describe('handlePortalLookupSuccess', () => {
     window.GM.db = {
       functions: { invoke: vi.fn(async () => ({ data: { ok: true }, error: null })) }
     };
-    window.GM_PORTAL = { loadDashboard: vi.fn() };
 
     await handlePortalLookupSuccess({ ok: true, id: 'Player1' }, 'Player1');
 
     expect(localStorage.getItem('gm_portal_session')).toBe('1');
     expect(document.getElementById('portal-step-form').classList.contains('hidden')).toBe(false);
-    expect(window.GM_PORTAL.loadDashboard).toHaveBeenCalled();
+    expect(portalView.loadDashboard).toHaveBeenCalled();
   });
 
   it('shows the connection error for a player_not_found response (legacy order parity)', async () => {

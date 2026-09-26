@@ -21,6 +21,8 @@ import { escapeLike } from '../../../core/utils/text';
 import { patchAppState, resetAppState } from '../state/app-state';
 import { showToast } from '../dialogs/dialogs.service';
 import { setVerifiedRole } from '../../../core/auth/roles';
+import { shellView } from '../../shell/views/ShellView';
+import { portalView } from '../../portal/views/PortalView';
 
 export type AuthTab = 'signin' | 'register' | 'guild-request' | 'login' | 'request';
 
@@ -108,8 +110,7 @@ export function revealPortal(): void {
   const container = document.querySelector('.gm-portal-container');
   if (container) container.classList.add('portal-wide');
 
-  const portal = w().GM_PORTAL;
-  if (portal && typeof portal.loadDashboard === 'function') portal.loadDashboard();
+  void portalView.loadDashboard();
 }
 
 export function revealAdmin(role: string): void {
@@ -127,10 +128,7 @@ export function revealAdmin(role: string): void {
     // silently read 'ALPHA' (finding H2): the badge displayed a plausible guild
     // name and nobody noticed it was the wrong one. Now that an unresolved
     // tenant says so out loud, the staleness is plain, so re-render here.
-    const shellAfterDashboard = w().GM_SHELL;
-    if (shellAfterDashboard && typeof shellAfterDashboard.renderSidebar === 'function') {
-      shellAfterDashboard.renderSidebar();
-    }
+    shellView.renderSidebar();
     return;
   }
   const loginView = el('login-view');
@@ -139,8 +137,7 @@ export function revealAdmin(role: string): void {
   if (playerPortalView) { playerPortalView.classList.add('hidden'); playerPortalView.classList.remove('portal-connected'); }
   const dashboardView = el('dashboard-view');
   if (dashboardView) { dashboardView.classList.remove('hidden'); dashboardView.classList.add('active'); }
-  const shell = w().GM_SHELL;
-  if (shell && typeof shell.renderShell === 'function') shell.renderShell();
+  shellView.renderShell();
 }
 
 function reloadActiveView(): void {
@@ -1086,8 +1083,7 @@ export function maybeShowSecureAccountPrompt(resp: LoginResponse, role: string):
       const navBtn = document.querySelector('[data-portal-nav="settings"]') as HTMLElement | null;
       if (navBtn) navBtn.click();
     } else {
-      const shell = w().GM_SHELL;
-      if (shell && typeof shell.gotoItem === 'function') shell.gotoItem('accounts');
+      shellView.gotoItem('accounts');
     }
   });
 }
