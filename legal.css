@@ -1,0 +1,290 @@
+/*
+ * legal.css -- the standalone stylesheet for the legal pages (terms.html and
+ * privacy.html).
+ *
+ * These pages are deliberately NOT Vite entry points. Finding H3 records why:
+ * they used to <link> the root app stylesheets, which `scripts/build.js`
+ * excludes from dist/ because Vite bundles them through main.ts -- so in
+ * production those links resolved to a non-CSS response and the browser refused
+ * them for a `text/plain` MIME type. Making the pages Vite entry points would
+ * have injected the whole application CSS bundle into a static legal document
+ * to fix errors that only the links themselves caused.
+ *
+ * The styling therefore lived in an inline <style> block. That was right for one
+ * page and became duplication at two, so it is a file now: a ROOT stylesheet
+ * that is not in EXCLUDED_FILES, which build.js copies to dist/ verbatim. Both
+ * pages load it same-origin -- no CSP exception, no application CSS.
+ */
+
+/*
+ * H3: the icons are inline SVG instead of the unpkg <script>, which the
+ * CSP (`script-src 'self'`) blocked outright -- so in production they
+ * simply did not render. The paths are the real Phosphor glyphs,
+ * extracted from the installed @phosphor-icons/web package rather than
+ * redrawn. 1em square with currentColor reproduces exactly how the icon
+ * font behaved, so no other rule in this file had to change.
+ */
+.terms-icon {
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
+    vertical-align: -0.125em;
+    flex-shrink: 0;
+}
+body {
+    background: var(--bg-0, #0a0a0c);
+    color: var(--text-primary, #f1f5f9);
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+}
+
+.terms-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(18, 18, 22, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.1));
+    padding: 0.85rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.terms-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--text-primary, #f1f5f9);
+}
+
+.terms-brand-badge {
+    background: linear-gradient(135deg, #6366f1, #3b82f6);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    padding: 0.35rem 0.6rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
+}
+
+.terms-brand-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.terms-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+    border-radius: 8px;
+    background: var(--bg-1, rgba(255, 255, 255, 0.06));
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.12));
+    color: var(--text-primary, #f1f5f9);
+    text-decoration: none;
+    transition: all 0.18s ease;
+}
+
+.terms-back-btn:hover {
+    background: var(--bg-2, rgba(255, 255, 255, 0.12));
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.25));
+    transform: translateX(-2px);
+}
+
+.terms-main-wrap {
+    flex: 1;
+    max-width: 920px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem 1.5rem;
+    box-sizing: border-box;
+}
+
+.terms-doc-header {
+    background: var(--bg-1, #121316);
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.12));
+    border-radius: var(--radius-xl, 16px);
+    padding: 2rem 2.25rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+.terms-doc-header::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #6366f1, #3b82f6, #10b981);
+}
+
+.terms-doc-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 0 0.85rem 0;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+}
+
+.terms-doc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.terms-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.1));
+    border-radius: 20px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary, #cbd5e1);
+}
+
+.terms-meta-pill strong {
+    color: var(--text-primary, #f1f5f9);
+}
+
+.terms-meta-pill a {
+    color: #818cf8;
+    text-decoration: none;
+}
+
+.terms-meta-pill a:hover {
+    text-decoration: underline;
+}
+
+.terms-content-card {
+    background: var(--bg-1, #121316);
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.1));
+    border-radius: var(--radius-xl, 16px);
+    padding: 2.25rem;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.terms-preamble-box {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(59, 130, 246, 0.04));
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.terms-section {
+    margin-bottom: 2.25rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+}
+
+.terms-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.terms-section-h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    letter-spacing: 0.01em;
+}
+
+.terms-section-h2 .ph {
+    color: #818cf8;
+    font-size: 1.3rem;
+}
+
+.terms-callout {
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 4px solid #6366f1;
+    border-radius: 0 10px 10px 0;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    font-size: 0.92rem;
+}
+
+.terms-callout.warning {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.06);
+}
+
+.terms-callout.success {
+    border-left-color: #10b981;
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.terms-badge-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.85rem 0 0.5rem 0;
+}
+
+.terms-badge-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.3rem 0.7rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.12));
+    color: var(--text-secondary, #cbd5e1);
+}
+
+.terms-badge-chip .ph {
+    color: #818cf8;
+}
+
+.terms-footer {
+    background: #0d0d10;
+    border-top: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+    padding: 2rem 1.5rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.terms-footer-inner {
+    max-width: 920px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+@media (max-width: 640px) {
+    .terms-doc-header { padding: 1.5rem 1.25rem; }
+    .terms-content-card { padding: 1.5rem 1.15rem; }
+    .terms-doc-title { font-size: 1.3rem; }
+    .terms-footer-inner { flex-direction: column; text-align: center; }
+}

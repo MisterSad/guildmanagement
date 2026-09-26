@@ -42,13 +42,22 @@ describe('H3 — terms.html is a self-contained legal page again', () => {
     }
   });
 
-  it('is styled by its own <style> block, which is why nobody noticed', () => {
+  it('is styled without the application CSS bundle, from its own stylesheet', () => {
     // The audit concluded the page was unstyled. It was not -- and that matters,
     // because the proposed fix (a second Vite entry point) would have injected
     // the whole application CSS bundle into a standalone legal page.
-    const style = terms.match(/<style[^>]*>([\s\S]*?)<\/style>/);
-    expect(style).not.toBe(null);
-    expect(style[1].split('\n').length).toBeGreaterThan(200);
+    //
+    // Phase 8 moved those rules out of an inline <style> block and into
+    // `legal.css`, because privacy.html needs exactly the same ones and 270
+    // duplicated lines would have drifted. The property being asserted is
+    // unchanged: the page is fully styled by something that is NOT the app
+    // bundle, and that build.js actually copies into dist/.
+    expect(terms).toMatch(/<link[^>]+href="legal\.css/);
+    const css = read('legal.css');
+    expect(css.split('\n').length).toBeGreaterThan(200);
+    expect(css).toContain('.terms-doc-title');
+    // Still not a Vite entry point.
+    expect(terms).not.toContain('/src/main.ts');
   });
 
   it('loads no script at all, so the CSP cannot block one', () => {
@@ -65,14 +74,19 @@ describe('H3 — terms.html is a self-contained legal page again', () => {
     expect(terms).toContain('viewBox="0 0 1024 1024"');
     // 1em square + currentColor is what reproduces the icon-font behaviour, so
     // no other rule in the page had to change.
-    expect(terms).toMatch(/\.terms-icon\s*\{[^}]*width:\s*1em/);
-    expect(terms).toMatch(/\.terms-icon\s*\{[^}]*fill:\s*currentColor/);
+    const css = read('legal.css');
+    expect(css).toMatch(/\.terms-icon\s*\{[^}]*width:\s*1em/);
+    expect(css).toMatch(/\.terms-icon\s*\{[^}]*fill:\s*currentColor/);
   });
 
-  it('keeps only the font stylesheet the CSP explicitly allows', () => {
+  it('loads only the two stylesheets it is allowed to: Google Fonts, and its own', () => {
+    // The CSP permits `style-src 'self' https://fonts.googleapis.com`, so these
+    // are the only two shapes that can load. Any third link is either a
+    // CSP violation or the app bundle creeping back in.
     const links = terms.match(/<link[^>]+rel="stylesheet"[^>]*>/g) || [];
-    expect(links.length).toBe(1);
-    expect(links[0]).toContain('fonts.googleapis.com');
+    expect(links.length).toBe(2);
+    expect(links.some((l) => l.includes('fonts.googleapis.com')), 'the font stylesheet').toBe(true);
+    expect(links.some((l) => l.includes('legal.css')), 'the legal stylesheet').toBe(true);
     expect(read('vercel.json')).toContain('https://fonts.googleapis.com');
   });
 });

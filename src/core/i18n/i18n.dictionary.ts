@@ -21,6 +21,7 @@ export const EN: Record<string, string> = {
             guild_unresolved:      'No guild selected. Pick a guild before continuing.',
             login_discord:         'Want a guild space for your guild? Join our Discord',
             footer_terms:          'Terms & Conditions',
+            footer_privacy:        'Privacy Policy',
             terms_modal_title:     'Terms of Service & General Conditions of Sale (TOS/GCS)',
             terms_close:           'Close',
 

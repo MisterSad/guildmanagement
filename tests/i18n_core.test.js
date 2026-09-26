@@ -12,11 +12,13 @@ import { t, getLang, setLang, applyTranslations } from '../src/core/i18n/i18n';
 import { EN } from '../src/core/i18n/i18n.dictionary';
 
 describe('i18n dictionary (golden)', () => {
-  it('keeps the full 533-key English dictionary', () => {
-    // 533 since finding B1 added `event_session_started` and `sf_commanders_full`. 531 since finding H2
-    // added `guild_unresolved`, the message shown when the
-    // active tenant cannot be resolved -- which used to silently become ALPHA.
-    expect(Object.keys(EN).length).toBe(533);
+  it('keeps the full 534-key English dictionary', () => {
+    // 534 since phase 8 added `footer_privacy`, the label on the new Privacy
+    // Policy link. 533 since finding B1 added `event_session_started` and
+    // `sf_commanders_full`. 531 since finding H2 added `guild_unresolved`, the
+    // message shown when the active tenant cannot be resolved -- which used to
+    // silently become ALPHA.
+    expect(Object.keys(EN).length).toBe(534);
   });
 
   it('has no empty translation value', () => {

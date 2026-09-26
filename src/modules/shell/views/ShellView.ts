@@ -553,6 +553,7 @@ export class ShellView {
       '<div class="gm-sidebar-legal-footer">' +
         '<div class="gm-app-version">' + legacy.esc(legacy.appVersion()) + '</div>' +
         '<a href="terms.html" class="gm-sidebar-legal-link" data-i18n="footer_terms">Terms &amp; Conditions</a>' +
+                '<a href="privacy.html" class="gm-sidebar-legal-link" data-i18n="footer_privacy">Privacy Policy</a>' +
       '</div>';
 
     el.innerHTML = html;
@@ -1015,6 +1016,7 @@ export class ShellView {
     html += '<div class="gm-sidebar-legal-footer" style="grid-column: 1 / -1; margin-top: 0.5rem; border-top: 1px solid var(--border-soft); padding: 0.75rem 0.5rem 0.25rem 0.5rem;">' +
                 '<div class="gm-app-version">' + legacy.esc(legacy.appVersion()) + '</div>' +
                 '<a href="terms.html" class="gm-sidebar-legal-link" data-i18n="footer_terms">Terms &amp; Conditions</a>' +
+                '<a href="privacy.html" class="gm-sidebar-legal-link" data-i18n="footer_privacy">Privacy Policy</a>' +
             '</div>';
     html += '</div>';
     drawer.innerHTML = html;
