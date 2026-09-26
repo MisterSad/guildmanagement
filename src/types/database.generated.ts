@@ -1585,6 +1585,7 @@ export type Database = {
           guild: string
           id: string
           role: string
+          server_number: string
           status: string
           uid: string
         }[]
@@ -2160,10 +2161,6 @@ export type Database = {
       servers_in_open_migration_group: {
         Args: { p_server_a: string; p_server_b: string }
         Returns: boolean
-      }
-      transfer_guild_member: {
-        Args: { p_pseudo?: string; p_target_guild: string; p_uid: string }
-        Returns: Json
       }
     }
     Enums: {

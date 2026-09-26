@@ -254,9 +254,12 @@ if (typeof window !== 'undefined') {
   initAppState();
   wAny.GM.appState = { get: getAppState, patch: patchAppState, reset: resetAppState };
 
-  // Sous-lot 6.3 (Strangler): auth/session/version/portal handlers exposed for
-  // the legacy cutover. NOT auto-initialized while app.js still wires its own
-  // listeners (would double-bind forms/pollers).
+  // Auth/session/version/portal handlers, exposed for the e2e suite and the
+  // remaining bridge consumers. The old note here claimed they are "NOT
+  // auto-initialized while app.js still wires its own listeners" -- app.js has
+  // not existed for some time, and initAuthForms()/initTabNavigation() ARE
+  // called at the bottom of this file. A reader trusting that sentence would
+  // have gone looking for a double-binding hazard that cannot occur.
   wAny.GM_AUTH = {
     restoreSession,
     handleDiscordCallback,
@@ -437,10 +440,9 @@ if (typeof window !== 'undefined') {
     audit: AuditService
   };
 
-  // Backward-compatible stats entrypoint. Replaces the former root stats.js
-  // (Strangler cutover): every legacy caller (app.js tab wiring, shell.js)
-  // still calls window.GM_STATS.load()/loadSingleEvent()/renderLeaderboard()
-  // unchanged, now served by the /src StatsView module.
+  // Stats entrypoint, kept for the bridge. The callers this once served --
+  // app.js tab wiring and shell.js -- are both gone, and the router now imports
+  // StatsView directly (phase 7).
   (window as any).GM_STATS = {
     load: () => statsView.load(),
     loadSingleEvent: (eventName: any, weeks: any) => statsView.loadSingleEvent(eventName, weeks),
@@ -448,9 +450,10 @@ if (typeof window !== 'undefined') {
     getState: () => statsView.getState()
   };
 
-  // Backward-compatible shell entrypoint. Replaces the former root shell.js
-  // (Strangler cutover): app.js, gm-leader-hall.js and subscription.service.ts
-  // keep calling window.GM_SHELL.gotoItem/renderShell/renderSidebar/renderTopbar.
+  // Shell entrypoint, kept for the bridge. None of the callers it names in the
+  // history above still exist: app.js and gm-leader-hall.js were removed with
+  // the cutover, subscription.service.ts with payments (phase 1), and the
+  // remaining /src callers import shellView directly (phase 7).
   (window as any).GM_SHELL = {
     gotoItem: (itemId: string) => shellView.gotoItem(itemId),
     renderShell: () => shellView.renderShell(),
@@ -458,9 +461,9 @@ if (typeof window !== 'undefined') {
     renderTopbar: () => shellView.renderTopbar()
   };
 
-  // Backward-compatible Shadowfront entrypoint. Replaces the former root
-  // shadowfront.js (Strangler cutover): app.js, ShellView's lazy registry and
-  // OCR flows keep calling window.GM_SHADOWFRONT.load()/render()/getAssignments().
+  // Shadowfront entrypoint, kept for the bridge. ShellView's lazy registry was
+  // removed in phase 7 and the OCR flows import the view directly, so nothing
+  // in /src reaches for this any more.
   (window as any).GM_SHADOWFRONT = {
     load: () => shadowfrontView.load(),
     render: () => shadowfrontView.render(),
@@ -469,18 +472,17 @@ if (typeof window !== 'undefined') {
     getActiveSquadSession: (squadKey: any) => shadowfrontView.getActiveSquadSession(squadKey)
   };
 
-  // Backward-compatible Arms Race entrypoint. Replaces the former root
-  // armsrace.js (Strangler cutover): app.js and ShellView's lazy registry keep
-  // calling window.GM_ARMSRACE.load()/addMemberToActiveEvents()/removeMember…
+  // Arms Race entrypoint, kept for the bridge. Same story as Shadowfront: the
+  // lazy registry is gone and /src imports the view.
   (window as any).GM_ARMSRACE = {
     load: () => armsRaceView.load(),
     addMemberToActiveEvents: (pseudo: string) => armsRaceView.addMemberToActiveEvents(pseudo),
     removeMemberFromActiveEvents: (pseudo: string) => armsRaceView.removeMemberFromActiveEvents(pseudo)
   };
 
-  // Backward-compatible Player Portal entrypoint. Replaces the former root
-  // portal.js (Strangler cutover): app.js and e2e call
-  // window.GM_PORTAL.loadDashboard() / renderDashboard() unchanged.
+  // Player Portal entrypoint. This one has a live consumer that is NOT /src:
+  // e2e/portal.spec.js drives the production bundle through
+  // window.GM_PORTAL.loadDashboard(). That is why the bridge survives phase 7.
   (window as any).GM_PORTAL = {
     loadDashboard: () => portalView.loadDashboard(),
     renderDashboard: () => portalView.renderDashboard()

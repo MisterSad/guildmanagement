@@ -280,7 +280,9 @@ describe('transfer member dialog', () => {
 
     document.getElementById('confirm-transfer-btn').click();
     await tick();
-    expect(window.GM.db.__calls.rpc.map((c) => c.name)).toContain('transfer_guild_member');
+    // Phase 3: `transfer_guild_member` was a one-line SQL wrapper around this,
+    // with an identical signature and no check of its own. It is dropped.
+    expect(window.GM.db.__calls.rpc.map((c) => c.name)).toContain('gm_transfer_guild_member');
   });
 
   it('warns when no guild is eligible', async () => {

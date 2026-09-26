@@ -152,20 +152,41 @@ describe('showTransferMemberDialog fires its two independent queries in parallel
   });
 });
 
-describe('Build pipeline minifies legacy JS/CSS instead of a byte-for-byte copy', () => {
+describe('Build pipeline: the root copy loop', () => {
   const buildJs = read('scripts/build.js');
 
-  it('uses esbuild transform to minify legacy root scripts', () => {
-    expect(buildJs).toMatch(/import \{[^}]*\btransform\b[^}]*\} from 'esbuild'/);
-    expect(buildJs).toContain("minify: true");
+  // PHASE 3. This block used to assert that the loop minified root JS and CSS.
+  // Measured against the actual repository, BOTH branches were unreachable: the
+  // five root stylesheets are excluded because Vite bundles them through
+  // main.ts, and the only root `.js` files are playwright.config.js and
+  // vitest.config.js, excluded for the same reason. `minifiedCount` was always
+  // 0, so the "Minified N JS/CSS files" summary never printed either. The
+  // assertions passed by reading source text for code that never executed.
+  //
+  // Removing those branches was verified the only way that means anything:
+  // dist/ came out with the same 11 files at identical byte sizes.
+
+  it('copies exactly the root assets Vite does not emit', () => {
+    expect(buildJs).toContain('fs.copyFileSync(srcPath, destPath)');
+    // favicon.ico, favicon.png and terms.html -- nothing else qualifies.
+    expect(buildJs).toMatch(/\['\.js', '\.css', '\.webmanifest', '\.png', '\.json', '\.html', '\.ico'\]/);
   });
 
-  it('still runs the pre-existing node --check syntax gate before minifying', () => {
-    expect(buildJs).toContain('node --check');
-    expect(buildJs).toContain('Syntax check failed');
+  it('keeps excluding what Vite already bundles', () => {
+    for (const f of ['index.html', 'tokens.css', 'theme.css', 'styles.css', 'components.css', 'shell.css']) {
+      expect(buildJs, `${f} must stay excluded`).toContain(`'${f}'`);
+    }
   });
 
-  it('still excludes index.html from the copy loop (Vite already emits the correct bundled one)', () => {
-    expect(buildJs).toContain("'index.html'");
+  it('no longer claims to minify anything', () => {
+    expect(buildJs).not.toContain('minifyToDist');
+    expect(buildJs).not.toContain('Minified ');
+  });
+
+  it('still syntax-checks root scripts, in the suite that always runs', () => {
+    // The `node --check` gate the removed branch carried is not lost: this one
+    // runs over every root script whether or not a build happens.
+    const rootSyntax = read('tests/root_syntax.test.js');
+    expect(rootSyntax).toContain('node --check');
   });
 });

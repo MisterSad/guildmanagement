@@ -71,18 +71,21 @@ const EXCLUDED_FILES = [
 // `transform()` (not `build()`) minifies one file's source in place without
 // bundling/resolving imports, which is exactly what a non-module script
 // needs.
-async function minifyToDist(file, loader) {
-  const srcPath = path.join(rootDir, file);
-  const destPath = path.join(distDir, file);
-  const source = fs.readFileSync(srcPath, 'utf8');
-  const result = await transform(source, { minify: true, loader, target: 'es2020' });
-  fs.writeFileSync(destPath, result.code);
-}
 
-let minifiedCount = 0;
-let originalBytes = 0;
-let minifiedBytes = 0;
 
+/*
+ * PHASE 3. This loop used to minify root `.js` and `.css` files on their way to
+ * dist/, and log how many bytes it saved. Measured: BOTH branches are dead. The
+ * five root stylesheets are in EXCLUDED_FILES because Vite bundles them through
+ * main.ts, and the only root `.js` files are `playwright.config.js` and
+ * `vitest.config.js`, excluded for the same reason -- so `minifiedCount` was
+ * always 0 and the summary never printed. What the loop actually does, and all
+ * it has done since the Strangler cutover, is copy three files:
+ * favicon.ico, favicon.png and terms.html.
+ *
+ * The `node --check` the .js branch ran is not lost: `tests/root_syntax.test.js`
+ * runs it over every root script, and does so whether or not a build happens.
+ */
 for (const file of files) {
   if (file === 'node_modules' || file === 'dist' || file.startsWith('.') || EXCLUDED_FILES.includes(file)) continue;
   const ext = path.extname(file).toLowerCase();
@@ -93,40 +96,12 @@ for (const file of files) {
 
   try {
     if (!fs.statSync(srcPath).isFile()) continue;
-
-    if (ext === '.js') {
-      try {
-        execSync(`node --check "${srcPath}"`, { stdio: 'pipe' });
-      } catch (syntaxErr) {
-        console.error(`\n❌ BUILD FAILED: SyntaxError in ${file}`);
-        throw new Error(`Syntax check failed for ${file}: ${syntaxErr.message}`);
-      }
-      const before = fs.statSync(srcPath).size;
-      await minifyToDist(file, 'js');
-      originalBytes += before;
-      minifiedBytes += fs.statSync(destPath).size;
-      minifiedCount++;
-    } else if (ext === '.css') {
-      const before = fs.statSync(srcPath).size;
-      await minifyToDist(file, 'css');
-      originalBytes += before;
-      minifiedBytes += fs.statSync(destPath).size;
-      minifiedCount++;
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
+    fs.copyFileSync(srcPath, destPath);
   } catch (e) {
-    if (e.message && e.message.startsWith('Syntax check failed')) {
-      throw e;
-    }
     console.warn(`Could not process ${file}:`, e.message);
   }
 }
 
-if (minifiedCount > 0) {
-  const savedPct = Math.round((1 - minifiedBytes / originalBytes) * 100);
-  console.log(`Minified ${minifiedCount} JS/CSS files: ${originalBytes} -> ${minifiedBytes} bytes (-${savedPct}%).`);
-}
 
 // version.json: a tiny, unminified marker the client polls (see app.js
 // checkForNewVersion()) to detect a stale long-lived tab -- a full reload

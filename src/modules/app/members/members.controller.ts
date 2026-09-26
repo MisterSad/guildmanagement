@@ -735,7 +735,9 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
     const span = confirmBtn.querySelector('span');
     if (span) span.textContent = 'Transferring...';
     try {
-      const res = await client.rpc('transfer_guild_member', { p_uid: member.uid, p_target_guild: targetGuild, p_pseudo: member.pseudo });
+      // Phase 3: the canonical name. `transfer_guild_member` was a one-line
+      // SQL wrapper around exactly this, with the identical signature.
+      const res = await client.rpc('gm_transfer_guild_member', { p_uid: member.uid, p_target_guild: targetGuild, p_pseudo: member.pseudo });
       if (res.error) throw res.error;
       if (!res.data || !res.data.ok) throw new Error((res.data && res.data.error) || 'transfer_failed');
       const targetOption = targetSelect!.options[targetSelect!.selectedIndex];
