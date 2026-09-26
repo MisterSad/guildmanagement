@@ -136,10 +136,12 @@ EXCEPTION
 END;
 $$;
 
--- Supports both rate-limit lookups, which are the only queries on this table
--- that run on every client error.
-CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at_recent
-    ON public.system_audit_logs (created_at DESC);
+-- NOTE: this migration originally created `idx_audit_logs_created_at_recent`
+-- on (created_at DESC) to support both rate-limit lookups. That index already
+-- existed as `idx_audit_logs_created_at`, and `CREATE INDEX IF NOT EXISTS`
+-- cannot detect an equivalent index under a different name -- so it shipped a
+-- duplicate, which 20260926270000 drops. Nothing is created here: the index the
+-- rate limit needs is already in place.
 
 COMMENT ON FUNCTION public.gm_report_client_error(text, text, text, text, text, text, jsonb, jsonb) IS
     'Unauthenticated crash reporting (ADR-011). `guild` and `user_identifier` are CLIENT-DECLARED and must not be trusted for forensics; metadata.verified_auth_uid carries the only identity the database established. Rate limited per auth.uid() when signed in, and by a shared anonymous ceiling otherwise -- never by the caller-supplied correlation_id, which was finding M17.';

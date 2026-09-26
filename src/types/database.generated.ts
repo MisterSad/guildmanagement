@@ -46,6 +46,56 @@ export type Database = {
           },
         ]
       }
+      account_link_codes: {
+        Row: {
+          account_id: string | null
+          code_hash: string
+          created_at: string
+          expires_at: string
+          guild: string | null
+          id: string
+          issued_by: string
+          kind: string
+          role: string | null
+          used_at: string | null
+          used_by_discord_user_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          guild?: string | null
+          id?: string
+          issued_by: string
+          kind: string
+          role?: string | null
+          used_at?: string | null
+          used_by_discord_user_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          guild?: string | null
+          id?: string
+          issued_by?: string
+          kind?: string
+          role?: string | null
+          used_at?: string | null
+          used_by_discord_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_link_codes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       account_passkeys: {
         Row: {
           account_id: string
@@ -200,6 +250,48 @@ export type Database = {
           },
         ]
       }
+      discord_auth_throttle: {
+        Row: {
+          attempts: number
+          discord_user_id: string
+          window_start: string
+        }
+        Insert: {
+          attempts?: number
+          discord_user_id: string
+          window_start: string
+        }
+        Update: {
+          attempts?: number
+          discord_user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      discord_auth_tickets: {
+        Row: {
+          created_at: string
+          discord_user_id: string
+          discord_username: string | null
+          expires_at: string
+          ticket: string
+        }
+        Insert: {
+          created_at?: string
+          discord_user_id: string
+          discord_username?: string | null
+          expires_at: string
+          ticket: string
+        }
+        Update: {
+          created_at?: string
+          discord_user_id?: string
+          discord_username?: string | null
+          expires_at?: string
+          ticket?: string
+        }
+        Relationships: []
+      }
       discord_link_codes: {
         Row: {
           code: string
@@ -221,6 +313,30 @@ export type Database = {
           discord_user_id?: string
           discord_username?: string | null
           expires_at?: string
+        }
+        Relationships: []
+      }
+      discord_oauth_states: {
+        Row: {
+          code_verifier: string
+          created_at: string
+          expires_at: string
+          origin: string
+          state: string
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string
+          expires_at: string
+          origin: string
+          state: string
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string
+          expires_at?: string
+          origin?: string
+          state?: string
         }
         Relationships: []
       }
@@ -613,18 +729,21 @@ export type Database = {
       guilds: {
         Row: {
           created_at: string | null
+          empty_since: string | null
           id: string
           server_number: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          empty_since?: string | null
           id: string
           server_number?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          empty_since?: string | null
           id?: string
           server_number?: string | null
           updated_at?: string | null
@@ -1435,7 +1554,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      gm_discord_claim_progress: {
+        Row: {
+          guild: string | null
+          linked: number | null
+          role: string | null
+          total: number | null
+          unlinked: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_uid_exists_globally: { Args: { p_uid: string }; Returns: boolean }
@@ -1501,6 +1629,18 @@ export type Database = {
       gm_can_read_account: { Args: { p_account_id: string }; Returns: boolean }
       gm_can_read_guild_data: { Args: { p_guild: string }; Returns: boolean }
       gm_can_read_guilds: { Args: never; Returns: boolean }
+      gm_check_discord_throttle: {
+        Args: {
+          p_bucket: string
+          p_discord_user_id: string
+          p_limit: number
+          p_window_ms: number
+        }
+        Returns: {
+          allowed: boolean
+          remaining: number
+        }[]
+      }
       gm_check_ip_throttle: {
         Args: {
           p_bucket: string
@@ -1527,8 +1667,31 @@ export type Database = {
         Args: { p_score: number; p_tiers: Json }
         Returns: number
       }
+      gm_claim_account_with_discord: {
+        Args: { p_discord_user_id: string; p_id: string; p_password: string }
+        Returns: {
+          account_id: string
+          err: string
+          ok: boolean
+          role: string
+        }[]
+      }
       gm_cleanup_expired_ocr_cache: { Args: never; Returns: undefined }
       gm_cleanup_stale_reminder_locks: { Args: never; Returns: number }
+      gm_consume_discord_auth_ticket: {
+        Args: { p_ticket: string }
+        Returns: {
+          discord_user_id: string
+          discord_username: string
+        }[]
+      }
+      gm_consume_discord_oauth_state: {
+        Args: { p_state: string }
+        Returns: {
+          code_verifier: string
+          origin: string
+        }[]
+      }
       gm_create_ticket: {
         Args: {
           p_attachments?: Json
@@ -1561,6 +1724,51 @@ export type Database = {
         Args: { p_event_name: string; p_guild: string; p_session_id: string }
         Returns: Json
       }
+      gm_discord_create_guild: {
+        Args: {
+          p_discord_user_id: string
+          p_discord_username: string
+          p_guild_tag: string
+          p_server_number: string
+        }
+        Returns: {
+          account_id: string
+          err: string
+          guild: string
+          ok: boolean
+          role: string
+        }[]
+      }
+      gm_discord_join_guild: {
+        Args: {
+          p_discord_user_id: string
+          p_discord_username: string
+          p_join_code: string
+          p_uid: string
+        }
+        Returns: {
+          account_id: string
+          err: string
+          guild: string
+          ok: boolean
+          role: string
+          status: string
+        }[]
+      }
+      gm_discord_unlink: {
+        Args: {
+          p_account_id: string
+          p_actor: string
+          p_code_hash: string
+          p_expires_at: string
+        }
+        Returns: {
+          err: string
+          guild: string
+          ok: boolean
+          previous_discord_user_id: string
+        }[]
+      }
       gm_event_scoring_key:
         | {
             Args: {
@@ -1582,7 +1790,9 @@ export type Database = {
         Args: { p_date: string; p_event_name: string }
         Returns: string
       }
+      gm_expire_empty_guilds: { Args: never; Returns: Json }
       gm_find_player_by_uid: { Args: { p_uid: string }; Returns: Json }
+      gm_generate_account_id: { Args: { p_base: string }; Returns: string }
       gm_get_chest_tiers: {
         Args: { p_event_name: string; p_guild: string }
         Returns: Json
@@ -1626,6 +1836,21 @@ export type Database = {
       }
       gm_invoke_event_reminders: { Args: never; Returns: undefined }
       gm_is_admin_caller: { Args: never; Returns: boolean }
+      gm_issue_admin_invite: {
+        Args: {
+          p_code_hash: string
+          p_expires_at: string
+          p_guild: string
+          p_issued_by: string
+          p_max_open: number
+          p_role: string
+        }
+        Returns: {
+          err: string
+          ok: boolean
+          open_codes: number
+        }[]
+      }
       gm_leaderboard: {
         Args: { p_guild?: string; p_period?: string; p_week?: string }
         Returns: Json
@@ -1706,6 +1931,30 @@ export type Database = {
         Args: { p_event_name: string; p_guild: string; p_week_start: string }
         Returns: number
       }
+      gm_purge_discord_ephemera: { Args: never; Returns: Json }
+      gm_redeem_admin_invite: {
+        Args: {
+          p_code_hash: string
+          p_discord_user_id: string
+          p_discord_username: string
+        }
+        Returns: {
+          account_id: string
+          err: string
+          guild: string
+          ok: boolean
+          role: string
+        }[]
+      }
+      gm_redeem_relink_code: {
+        Args: { p_code_hash: string; p_discord_user_id: string }
+        Returns: {
+          account_id: string
+          err: string
+          ok: boolean
+          role: string
+        }[]
+      }
       gm_register_player: {
         Args: {
           p_id: string
@@ -1754,6 +2003,10 @@ export type Database = {
       gm_set_join_code: {
         Args: { p_code: string; p_guild: string }
         Returns: Json
+      }
+      gm_snowflake_created_at: {
+        Args: { p_snowflake: string }
+        Returns: string
       }
       gm_stats_data: { Args: { p_guild?: string }; Returns: Json }
       gm_submit_guild_request: {

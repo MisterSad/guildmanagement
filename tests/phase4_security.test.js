@@ -336,3 +336,119 @@ describe('C1 — the migration folds the check into the policy helpers', () => {
     expect(m).toContain('of 6 RLS helpers consult gm_session_is_valid');
   });
 });
+
+describe('M4 — the deny-all posture is now stated, not merely implied', () => {
+  const m = read('supabase/migrations/20260926260000_document_deny_all_tables.sql');
+
+  it('documents every policy-less table, not just the ones that existed at audit time', () => {
+    // The audit counted 11. Phase 1 removed gm_payments and push_subscriptions,
+    // phases D2-D6 added four, so the real list is 13 -- which is why the
+    // migration asserts the INVARIANT rather than enumerating names.
+    for (const t of [
+      'account_backup_codes', 'account_passkeys', 'discord_account_links',
+      'discord_link_codes', 'discord_verification_throttle',
+      'guild_creation_requests', 'login_throttle', 'tickets', 'webauthn_challenges',
+    ]) {
+      expect(m, `${t} must get a COMMENT`).toContain(`COMMENT ON TABLE public.${t} IS`);
+    }
+  });
+
+  it('fails if a future policy-less table ships without an explanation', () => {
+    expect(m).toContain('policy-less RLS tables with no COMMENT explaining the deny-all');
+    expect(m).toContain('deny-all tables still missing FORCE');
+  });
+
+  it('records that FORCE is cosmetic here, so nobody re-reports it', () => {
+    // Verified against this project's roles: postgres AND service_role both
+    // hold rolbypassrls, so FORCE changes nothing for either, and anon /
+    // authenticated never bypass -- zero policies already denies them.
+    expect(m).toContain('rolbypassrls');
+    expect(m).toMatch(/FORCE changes nothing/);
+  });
+
+  it('warns against "fixing" the empty read on tickets', () => {
+    // The likeliest future mistake: someone sees no rows and adds a client
+    // policy, turning a server-mediated table into a cross-tenant read.
+    expect(m).toContain('Do NOT add a client policy');
+  });
+
+  it('says why login_throttle cannot simply be dropped with password login', () => {
+    expect(m).toContain('NOT removable with the password login it was built for');
+    expect(m).toContain('IP ADDRESSES');
+  });
+});
+
+describe('M3 — measured database debt, including what is deliberately left alone', () => {
+  const m = read('supabase/migrations/20260926270000_database_debt.sql');
+
+  it('drops the duplicate index this work introduced, and keeps the survivor', () => {
+    // 20260926240000 added idx_audit_logs_created_at_recent with
+    // CREATE INDEX IF NOT EXISTS under a new name -- which cannot detect an
+    // existing index carrying the same definition under a different name.
+    expect(m).toContain('DROP INDEX IF EXISTS public.idx_audit_logs_created_at_recent');
+    expect(m).toContain('DROP INDEX IF EXISTS public.idx_audit_logs_guild;');
+    expect(m).toContain('dropped the wrong created_at index');
+    expect(m).toContain('dropped the wrong guild index');
+  });
+
+  it('no longer creates that index in the migration that introduced it', () => {
+    const m17 = read('supabase/migrations/20260926240000_harden_client_error_reporting.sql');
+    expect(m17).not.toContain('CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at_recent');
+  });
+
+  it('wraps auth.uid() so it is not re-evaluated per row', () => {
+    for (const pol of ['gm_migration_wiki_delete', 'gm_migration_wiki_comments_delete', 'ocr_cache_admin_select']) {
+      const at = m.indexOf(`CREATE POLICY ${pol}`);
+      expect(at, `${pol} must be recreated`).toBeGreaterThan(-1);
+      const body = m.slice(at, m.indexOf(');', at));
+      expect(body, `${pol} must use (SELECT auth.uid())`).toContain('(SELECT auth.uid())');
+    }
+  });
+
+  it('closes the ocr_cache cross-tenant read while it is still harmless', () => {
+    // super_admin and server_admin have accounts.guild = NULL by design, so
+    // their cached scans were stored with guild_id NULL -- and the old
+    // `guild_id IS NULL` disjunct made those rows readable by every
+    // authenticated user of every tenant. It leaks zero rows only because the
+    // cache has never worked (finding H1); repairing it in phase 5 would have
+    // armed it.
+    expect(m).toContain('ocr_cache still grants every tenant the NULL-guild rows');
+    const at = m.indexOf('CREATE POLICY ocr_cache_admin_select');
+    const body = m.slice(at, m.indexOf('    );', at));
+    expect(body).not.toContain('guild_id IS NULL)');
+    expect(body).toContain('guild_id IS NOT NULL');
+  });
+
+  it('splits the FOR ALL policies so SELECT runs one policy, not two', () => {
+    for (const t of ['player_metrics_history', 'server_migration_group_servers', 'server_migration_groups']) {
+      expect(m, `${t} write policy must be narrowed`).toMatch(new RegExp(`DROP POLICY IF EXISTS \\w+ ON public\\.${t}`));
+    }
+    expect(m).toContain('FOR ALL policies still overlapping SELECT');
+    // And no new FOR ALL is introduced.
+    const created = m.match(/CREATE POLICY[\s\S]*?;/g) || [];
+    for (const c of created) {
+      if (/player_metrics_history|server_migration/.test(c)) {
+        expect(c, 'must not reintroduce FOR ALL').not.toMatch(/FOR ALL/);
+      }
+    }
+  });
+
+  it('records why the 12 unindexed foreign keys are left unindexed', () => {
+    // Every child table whose FK points at guilds or accounts holds 0-8 rows.
+    // Indexing by lint is what produced the 21 unused indexes in the first
+    // place; the two findings are one mistake seen from both ends.
+    expect(m).toContain('between 0 and 8 rows');
+    expect(m).toContain('20260920140000');
+    // The prose wraps across comment lines, so collapse whitespace first
+    // rather than asserting on a layout that a reflow would break.
+    const flat = m.replace(/--/g, ' ').replace(/\s+/g, ' ');
+    expect(flat).toContain('Index when a query is shown to be slow, not when a linter counts a constraint');
+  });
+
+  it('records why pg_net stays in public', () => {
+    expect(m).toContain('gm_invoke_event_reminders');
+    expect(m).toContain('EVERY FIVE MINUTES');
+    const flat = m.replace(/--/g, ' ').replace(/\s+/g, ' ');
+    expect(flat).toContain('which PostgREST does not expose');
+  });
+});
