@@ -7,6 +7,7 @@ import {
 } from "https://esm.sh/@simplewebauthn/server@10.0.1";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { escapeLike } from "../_shared/like.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { establishShadowSession } from "../_shared/shadow-session.ts";
 import {
@@ -82,7 +83,7 @@ async function lookupAccountById(admin: ReturnType<typeof createClient>, rawId: 
   const { data } = await admin
     .from("accounts")
     .select("id, role, guild, status, locked_until")
-    .ilike("id", trimmed)
+    .ilike("id", escapeLike(trimmed))
     .maybeSingle();
   return data;
 }
@@ -690,7 +691,7 @@ Deno.serve(async (req: Request) => {
       const { data: targetAcc } = await admin
         .from("accounts")
         .select("id, role, guild, server_number")
-        .ilike("id", targetId)
+        .ilike("id", escapeLike(targetId))
         .maybeSingle();
       if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
 

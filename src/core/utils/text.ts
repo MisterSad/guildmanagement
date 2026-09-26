@@ -314,3 +314,18 @@ export function parseGeminiJson<T = unknown>(jsonText?: string | null): T | null
     throw e;
   }
 }
+
+/**
+ * Escapes the characters that carry meaning inside a SQL LIKE pattern.
+ *
+ * Finding M16: `.ilike('id', value)` means "equals, ignoring case" at every
+ * call site in this app, but PostgREST passes `%` and `_` through as
+ * wildcards. Rejecting them is not an option — `_` is legal in a real account
+ * id (`Ares_Actual`) — so they are escaped instead.
+ */
+export function escapeLike(value: string): string {
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/%/g, '\\%')
+    .replace(/_/g, '\\_');
+}

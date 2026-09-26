@@ -44,15 +44,34 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 /**
+ * How far a Discord interaction timestamp may be from our clock.
+ *
+ * Matches the tolerance the (now removed) Stripe webhook verifier used, and
+ * Discord's own guidance.
+ */
+export const DISCORD_TIMESTAMP_TOLERANCE_S = 300;
+
+/**
  * Verifies a Discord interaction request signature.
  * Signed message is `timestamp + rawBody` (UTF-8), per Discord's spec.
+ *
+ * FINDING B3, now closed: the signature was verified but the timestamp was
+ * never checked for freshness, so a single captured interaction stayed valid
+ * forever — its signature covers the timestamp, so replaying both together
+ * verified perfectly. Anything outside the tolerance is now refused before the
+ * cryptography runs.
  */
 export async function verifyDiscordSignature(
   publicKeyHex: string,
   signatureHex: string,
   timestamp: string,
-  rawBody: string
+  rawBody: string,
+  nowSeconds: number = Math.floor(Date.now() / 1000)
 ): Promise<boolean> {
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts) || Math.abs(nowSeconds - ts) > DISCORD_TIMESTAMP_TOLERANCE_S) {
+    return false;
+  }
   try {
     const key = await crypto.subtle.importKey(
       "raw",

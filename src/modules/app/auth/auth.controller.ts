@@ -17,6 +17,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { escapeLike } from '../../../core/utils/text';
 import { patchAppState, resetAppState } from '../state/app-state';
 import { showToast } from '../dialogs/dialogs.service';
 import { setVerifiedRole } from '../../../core/auth/roles';
@@ -198,7 +199,7 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
     let guild: string | null = null;
     if (client) {
       try {
-        const { data } = await client.from('accounts').select('guild').ilike('id', info.accountId).maybeSingle();
+        const { data } = await client.from('accounts').select('guild').ilike('id', escapeLike(info.accountId)).maybeSingle();
         guild = data && data.guild ? data.guild : null;
       } catch (err) {
         console.error('Failed to restore account guild restriction:', err);
@@ -215,7 +216,7 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
     let serverNumber: string | null = null;
     if (client) {
       try {
-        const { data } = await client.from('accounts').select('guild, server_number').ilike('id', info.accountId).maybeSingle();
+        const { data } = await client.from('accounts').select('guild, server_number').ilike('id', escapeLike(info.accountId)).maybeSingle();
         const sNum = data && data.server_number;
         if (sNum) serverNumber = String(sNum);
         else if (data && data.guild) {
@@ -302,7 +303,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
     let guild: string | null = null;
     if (client) {
       try {
-        const { data } = await client.from('accounts').select('guild').ilike('id', canonicalUser).maybeSingle();
+        const { data } = await client.from('accounts').select('guild').ilike('id', escapeLike(canonicalUser)).maybeSingle();
         guild = data && data.guild ? data.guild : null;
       } catch (err) {
         console.error('Failed to load login guild restriction:', err);
@@ -320,7 +321,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
     let serverNumber: string | null = null;
     if (client) {
       try {
-        const { data } = await client.from('accounts').select('guild, server_number').ilike('id', canonicalUser).maybeSingle();
+        const { data } = await client.from('accounts').select('guild, server_number').ilike('id', escapeLike(canonicalUser)).maybeSingle();
         const sNum = data && data.server_number;
         if (sNum) serverNumber = String(sNum);
         else if (data && data.guild) {

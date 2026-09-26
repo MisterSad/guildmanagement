@@ -9,6 +9,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { escapeLike } from '../../../core/utils/text';
 import { t, esc, gm, winAny, byId, getDb } from './utils';
 import { type AccountRow, getAccounts, filterAccountsOut } from './admin-store';
 import { fetchAccounts, fetchGuilds } from './accounts.controller';
@@ -350,7 +351,7 @@ export async function renderPendingRegistrations(activeG?: string): Promise<void
           .select('id, uid, status, role, guild, created_at')
           .eq('status', 'pending')
           .eq('role', 'member')
-          .ilike('guild', guild);
+          .ilike('guild', escapeLike(guild || ''));
         pending = res.data || [];
       } catch (e) {
         console.warn('[GM] Error loading pending accounts:', e);

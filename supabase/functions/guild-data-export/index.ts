@@ -22,6 +22,7 @@ import ExcelJS from "npm:exceljs@4.4.0";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
+import { escapeOrFilterValue } from "../_shared/like.ts";
 import { isGuildInScope } from "../_shared/admin-authz.ts";
 import { fetchAllRows } from "../_shared/pagination.ts";
 
@@ -118,7 +119,17 @@ Deno.serve(async (req: Request) => {
 
   if (caller.role !== "guild_admin") {
     const { data: g } = await admin.from("guilds").select("server_number").eq("id", targetGuild).maybeSingle();
-    if (!isGuildInScope({ role: caller.role, guild: caller.guild, serverNumber: caller.serverNumber }, targetGuild, g?.server_number ?? null)) {
+    // FINDING M16, upstream half. `targetGuild` arrives from the request body
+    // for anyone above guild_admin, and it is interpolated into a PostgREST
+    // `.or()` filter further down. Requiring the guild to EXIST is what makes
+    // that safe: a real guild id matches ^[A-Z0-9_]{2,12}$ and so can carry
+    // none of the characters that grammar treats as separators. An unknown
+    // name used to fall through here, because isGuildInScope short-circuits
+    // to true for a super_admin regardless of what was asked for.
+    if (!g) {
+      return json({ ok: false, error: "guild_not_found" }, 404);
+    }
+    if (!isGuildInScope({ role: caller.role, guild: caller.guild, serverNumber: caller.serverNumber }, targetGuild, g.server_number ?? null)) {
       return json({ ok: false, error: "forbidden" }, 403);
     }
   }
@@ -154,7 +165,7 @@ Deno.serve(async (req: Request) => {
       fetchAllRows(admin, "player_name_history", "uid, old_pseudo, new_pseudo, changed_by, changed_at", byGuild()),
       fetchAllRows(admin, "shadowfront_squads", "week_start, squad, pseudo, role, is_commander, session_id", byGuild()),
       fetchAllRows(admin, "shadowfront_signups", "week_start, pseudo, availability, updated_at", byGuild()),
-      fetchAllRows(admin, "guild_transfers", "uid, pseudo, source_guild, target_guild, status, resolved_at, created_at", (q) => q.or(`source_guild.eq.${targetGuild},target_guild.eq.${targetGuild}`)),
+      fetchAllRows(admin, "guild_transfers", "uid, pseudo, source_guild, target_guild, status, resolved_at, created_at", (q) => q.or(`source_guild.eq.${escapeOrFilterValue(targetGuild!)},target_guild.eq.${escapeOrFilterValue(targetGuild!)}`)),
       fetchAllRows(admin, "guild_config", "key, value, updated_at", byGuild()),
     ]);
 

@@ -4,6 +4,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { findUserByEmail } from "../_shared/pagination.ts";
 import { canManageAccount, maxAssignableRole, isGuildInScope, normalizeRole, Role } from "../_shared/admin-authz.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { escapeLike } from "../_shared/like.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { resolveAuditChannelId, postAuditMessage } from "../_shared/discord-verification.ts";
 import { randomBackupCode, sha256Hex } from "../_shared/backup-codes.ts";
@@ -254,7 +255,7 @@ Deno.serve(async (req: Request) => {
     const { data: targetAcc } = await admin
       .from("accounts")
       .select("id, role, guild, server_number, auth_user_id")
-      .ilike("id", id)
+      .ilike("id", escapeLike(id))
       .maybeSingle();
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
 
@@ -332,7 +333,7 @@ Deno.serve(async (req: Request) => {
     const { data: targetAcc } = await admin
       .from("accounts")
       .select("id, role, guild, server_number")
-      .ilike("id", id)
+      .ilike("id", escapeLike(id))
       .maybeSingle();
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
 
@@ -602,7 +603,7 @@ Deno.serve(async (req: Request) => {
     const { data: targetAcc } = await admin
       .from("accounts")
       .select("id, role, guild, server_number, auth_user_id")
-      .ilike("id", id)
+      .ilike("id", escapeLike(id))
       .maybeSingle();
 
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);

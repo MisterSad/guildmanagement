@@ -1,5 +1,18 @@
 // supabase/functions/_shared/cors.ts
 
+/**
+ * The audit proposed removing the localhost entries from production. They stay,
+ * deliberately: this project's documented development loop runs `npm run build`
+ * and serves `dist/` on 5173 while calling the DEPLOYED Edge Functions, so
+ * removing them breaks local development outright rather than in some future
+ * refactor.
+ *
+ * The exposure is bounded and worth stating: sessions are bearer tokens in
+ * `localStorage`, not cookies, so a page on another origin cannot read a
+ * victim's token through CORS — it can only make unauthenticated calls, which
+ * every endpoint already refuses. The genuine hole here was the Vercel regex
+ * below, and that one is fixed.
+ */
 export const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:3000",
@@ -8,9 +21,30 @@ export const ALLOWED_ORIGINS = [
   "https://guildmanagement.vercel.app",
 ];
 
-// Strict official project Vercel deployments & previews (no open *.vercel.app relay)
-const VERCEL_OFFICIAL_REGEX =
-  /^https:\/\/(?:[a-zA-Z0-9_-]+\.)?(?:fgf-guild-management|guildmanagement)(?:-[a-zA-Z0-9_-]+)?\.vercel\.app$/i;
+/**
+ * Official project deployments and their previews.
+ *
+ * FINDING M13, now closed: the previous pattern ended in
+ * `(?:-[a-zA-Z0-9_-]+)?\.vercel\.app`, which made `guildmanagement-evil`
+ * match. Anyone could create a Vercel project with that name and become a
+ * trusted origin for every Edge Function.
+ *
+ * Vercel deployment URLs are `<project>-<hash>-<scope>`, branch previews are
+ * `<project>-git-<branch>-<scope>`, and the project alias is
+ * `<project>-<scope>` — every one of them ends in the owning scope.
+ * so the suffix is real and cannot simply be dropped — it is now bounded to the
+ * scope that actually owns these deployments instead of accepting any word.
+ * The scope is not a guess: `LICENSE` cites
+ * `guildmanagement-mistersads-projects.vercel.app`, which is also why the hash
+ * segment has to be optional.
+ */
+const VERCEL_TEAM_SCOPE = "mistersads-projects";
+const VERCEL_OFFICIAL_REGEX = new RegExp(
+  "^https://(?:fgf-guild-management|guildmanagement)" +
+  "(?:(?:-git-[a-z0-9][a-z0-9-]*|-[a-z0-9]{6,})?-" + VERCEL_TEAM_SCOPE + ")?" +
+  "\\.vercel\\.app$",
+  "i"
+);
 
 const GUILDMGMT_DOMAIN_REGEX = /^https:\/\/[a-z0-9-]+\.guildmgmt\.app$/i;
 

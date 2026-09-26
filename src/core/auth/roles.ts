@@ -4,6 +4,7 @@
  * Account roles model: super_admin, server_admin, guild_admin, member.
  */
 
+import { escapeLike } from '../utils/text';
 import { AccountRole } from '../../types/database';
 import { getClient, sessionInfo, addSessionVerifiedListener, SessionInfo } from '../api/supabase';
 import { APP_VERSION } from '../config/constants';
@@ -180,7 +181,7 @@ export async function ensureGuildRestriction(): Promise<string | null> {
   try {
     const info = await sessionInfo();
     if (!info || !info.accountId) return null;
-    const res = await c.from('accounts').select('guild').ilike('id', info.accountId).maybeSingle();
+    const res = await c.from('accounts').select('guild').ilike('id', escapeLike(info.accountId)).maybeSingle();
     if (res && (res as any).data && (res as any).data.guild) {
       const guild = (res as any).data.guild;
       w.currentGuildRestriction = guild;

@@ -34,12 +34,29 @@ describe('Ticket 1.4: CORS Hardening & Vercel Origin Restriction', () => {
       expect(isAllowedOrigin('https://guildmanagement.vercel.app')).toBe(true);
     });
 
-    it('accepts legitimate official project preview deployments', () => {
-      expect(isAllowedOrigin('https://guildmanagement-preview-123.vercel.app')).toBe(true);
-      expect(isAllowedOrigin('https://guildmanagement-git-feature-branch.vercel.app')).toBe(true);
-      expect(isAllowedOrigin('https://guildmanagement-mistersads-projects.vercel.app')).toBe(true);
-      expect(isAllowedOrigin('https://preview.guildmanagement.vercel.app')).toBe(true);
+    it('accepts official deployments, which always carry the owning scope', () => {
+      // FINDING M13, and these expectations are what locked it in. Vercel ends
+      // every deployment host with the scope that owns it:
+      //   <project>-<hash>-<scope>        deployment
+      //   <project>-git-<branch>-<scope>  branch preview
+      //   <project>-<scope>               project alias
+      expect(isAllowedOrigin('https://guildmanagement.vercel.app')).toBe(true);
       expect(isAllowedOrigin('https://fgf-guild-management.vercel.app')).toBe(true);
+      expect(isAllowedOrigin('https://guildmanagement-mistersads-projects.vercel.app')).toBe(true);
+      expect(isAllowedOrigin('https://guildmanagement-abc123def-mistersads-projects.vercel.app')).toBe(true);
+      expect(isAllowedOrigin('https://guildmanagement-git-feature-branch-mistersads-projects.vercel.app')).toBe(true);
+    });
+
+    it('refuses the scope-less forms anyone can register', () => {
+      // This is the bypass: create a Vercel project called
+      // `guildmanagement-evil` and the old pattern trusted you.
+      expect(isAllowedOrigin('https://guildmanagement-preview-123.vercel.app')).toBe(false);
+      expect(isAllowedOrigin('https://guildmanagement-git-feature-branch.vercel.app')).toBe(false);
+      expect(isAllowedOrigin('https://guildmanagement-evil.vercel.app')).toBe(false);
+      // Not a Vercel deployment shape at all.
+      expect(isAllowedOrigin('https://preview.guildmanagement.vercel.app')).toBe(false);
+      // A plausible hash, but under someone else's scope.
+      expect(isAllowedOrigin('https://guildmanagement-abc123def-attacker-projects.vercel.app')).toBe(false);
     });
 
     it('accepts verified guildmgmt.app custom domain subdomains', () => {
@@ -73,10 +90,10 @@ describe('Ticket 1.4: CORS Hardening & Vercel Origin Restriction', () => {
   describe('3. getCorsHeaders - Origin Reflection Semantics', () => {
     it('echoes authorized preview deployment origin', () => {
       const req = new Request('https://api.test', {
-        headers: { Origin: 'https://guildmanagement-preview-123.vercel.app' }
+        headers: { Origin: 'https://guildmanagement-abc123def-mistersads-projects.vercel.app' }
       });
       const headers = getCorsHeaders(req);
-      expect(headers['Access-Control-Allow-Origin']).toBe('https://guildmanagement-preview-123.vercel.app');
+      expect(headers['Access-Control-Allow-Origin']).toBe('https://guildmanagement-abc123def-mistersads-projects.vercel.app');
       expect(headers['Vary']).toBe('Origin');
     });
 

@@ -448,6 +448,25 @@ export async function adminAccounts(action: string, payload?: Record<string, any
   const w = winAny();
   const body = Object.assign({ action: action }, payload || {});
 
+  // FINDING M16 / two sources of truth for authorization, now closed.
+  //
+  // `update-role` used to run a four-step fallback chain, and steps 2 to 4 all
+  // bypassed admin-accounts' authorization matrix entirely -- canManageAccount,
+  // isGuildInScope and maxAssignableRole never ran:
+  //
+  //   Step 2 called `create` with a RANDOM generated password and a hardcoded
+  //     'ALPHA' guild fallback, so a role change could silently mint
+  //     credentials and drop an account into the wrong tenant.
+  //   Step 3 called gm_admin_upsert with an EMPTY password -- the trap phase D1
+  //     had to add an explicit guard for.
+  //   Step 4 issued a direct `accounts` UPDATE from the browser, matched by a
+  //     case-insensitive pattern on the id. With an id of "%" that UPDATE
+  //     matches EVERY row in the table. RLS confines it to a super_admin, so it
+  //     was never a privilege escalation, but the blast radius was entirely
+  //     unintended.
+  //
+  // The Edge Function is now the only path. If it refuses, that refusal is the
+  // answer -- masking it behind three unauthorized retries is the problem.
   if (action === 'update-role' && payload && payload.id && payload.role) {
     const targetGuild = payload.guild === 'ALL' ? null : (payload.guild || null);
     let targetServer = payload.serverNumber || null;
@@ -464,52 +483,22 @@ export async function adminAccounts(action: string, payload?: Record<string, any
       }
     }
 
-    // Step 1: dedicated update-role action.
+    let edgeRes: any;
     try {
-      const edgeRes = await c.functions.invoke('admin-accounts', {
+      edgeRes = await c.functions.invoke('admin-accounts', {
         body: { action: 'update-role', id: payload.id, role: payload.role, guild: targetGuild, serverNumber: targetServer }
       });
-      if (edgeRes && edgeRes.data && edgeRes.data.ok) return { ok: true, role: payload.role, server_number: targetServer };
-    } catch (_) { /* fall through */ }
-
-    // Step 2: create action (service_role sync without altering password).
-    try {
-      const createRes = await c.functions.invoke('admin-accounts', {
-        body: {
-          action: 'create',
-          id: payload.id,
-          password: 'Sync_Role_Update_' + Math.random().toString(36).slice(2, 10),
-          role: payload.role,
-          guild: targetGuild || 'ALPHA',
-          serverNumber: targetServer
-        }
-      });
-      if (createRes && createRes.data && createRes.data.ok) return { ok: true, role: payload.role, server_number: targetServer };
-    } catch (_) { /* fall through */ }
-
-    // Step 3: native gm_admin_upsert RPC.
-    try {
-      const { error: upsertErr } = await c.rpc('gm_admin_upsert', {
-        p_id: payload.id, p_password: '', p_role: payload.role, p_guild: targetGuild
-      });
-      if (!upsertErr) {
-        if (targetServer) {
-          try { await c.from('accounts').update({ server_number: targetServer }).ilike('id', payload.id); } catch (_) { /* ignore */ }
-        }
-        return { ok: true, role: payload.role, server_number: targetServer };
-      }
-    } catch (rpcErr) {
-      console.warn('gm_admin_upsert RPC attempt:', rpcErr);
+    } catch (e: any) {
+      return { ok: false, error: (e && e.message) || 'request_failed' };
     }
-
-    // Step 4: direct accounts UPDATE.
-    try {
-      const updateFields: Record<string, unknown> = { role: payload.role };
-      if (targetGuild !== undefined) updateFields.guild = targetGuild;
-      if (targetServer) updateFields.server_number = targetServer;
-      const { data: dbData, error: dbErr } = await c.from('accounts').update(updateFields).ilike('id', payload.id).select();
-      if (!dbErr && dbData && dbData.length > 0) return { ok: true, role: payload.role, server_number: targetServer };
-    } catch (_) { /* fall through to edge */ }
+    const roleData = await parseFunctionsInvokeResult(edgeRes);
+    if (roleData && roleData.ok) {
+      return { ok: true, role: payload.role, server_number: targetServer };
+    }
+    return {
+      ok: false,
+      error: String((roleData && roleData.error) || (edgeRes && edgeRes.error && edgeRes.error.message) || 'request_failed')
+    };
   }
 
   let r: any;

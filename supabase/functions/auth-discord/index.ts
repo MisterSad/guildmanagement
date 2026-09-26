@@ -37,6 +37,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
+import { escapeLike } from "../_shared/like.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { establishShadowSession } from "../_shared/shadow-session.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
@@ -570,7 +571,7 @@ async function handleBackupLogin(req: Request, body: unknown, admin: any, logger
   const { data: acc, error: aErr } = await admin
     .from("accounts")
     .select("id, role, status, locked_until")
-    .ilike("id", parsed.data.id)
+    .ilike("id", escapeLike(parsed.data.id))
     .maybeSingle();
   if (aErr) {
     logger.error("Failed to load account for backup sign-in", aErr);

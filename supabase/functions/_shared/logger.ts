@@ -47,6 +47,11 @@ const SENSITIVE_KEYS = new Set([
 const SENSITIVE_TEXT_PATTERNS: RegExp[] = [
   /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, // JWT (Supabase access/service tokens)
   /\b(?:sk|rk|pk|whsec)_(?:live|test)_[A-Za-z0-9]{10,}\b/gi, // Stripe secret/publishable/webhook keys
+  // Supabase's current key formats. The scrubbers only knew the legacy `eyJ…`
+  // JWT shape, so a modern secret key pasted into an error message went
+  // straight through (finding B3).
+  /\bsb_secret_[A-Za-z0-9_-]{10,}\b/gi,
+  /\bsb_publishable_[A-Za-z0-9_-]{10,}\b/gi,
   /\bBearer\s+[A-Za-z0-9._-]{10,}\b/gi,
   /\b(password|secret|token|api[_-]?key)\s*[:=]\s*\S+/gi,
 ];

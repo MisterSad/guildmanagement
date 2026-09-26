@@ -165,18 +165,23 @@ export async function checkAndRecordIpAttempt(
     });
 
     if (error) {
-      // Fail open on database error to avoid locking legitimate users
-      return { allowed: true, remaining: 1 };
+      // FAIL CLOSED (finding B3). This used to return `allowed: true` on any
+      // database error, so pressure on the database silently disabled login,
+      // sign-up and OCR throttling at exactly the moment an attacker would be
+      // causing it. Failing closed costs nothing real: every caller of this
+      // helper goes on to read `accounts` anyway, so if the database cannot
+      // answer here it cannot serve the request either.
+      return { allowed: false, remaining: 0 };
     }
 
     const row = Array.isArray(data) ? data[0] : data;
-    if (!row) return { allowed: true, remaining: 1 };
+    if (!row) return { allowed: false, remaining: 0 };
 
     return {
       allowed: row.allowed !== false,
       remaining: Math.max(0, Number(row.remaining) || 0),
     };
   } catch {
-    return { allowed: true, remaining: 1 };
+    return { allowed: false, remaining: 0 };
   }
 }

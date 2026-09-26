@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { extractClientIp } from "../_shared/rate-limit.ts";
+import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
 // Public, unauthenticated endpoint: anyone can submit a request to create a
 // new guild. Real validation (format, uniqueness, volume cap) happens
@@ -11,32 +11,36 @@ import { extractClientIp } from "../_shared/rate-limit.ts";
 // approve-guild-request/reject-guild-request -- nothing here provisions
 // anything on its own.
 //
-// Rate limiting is a private in-memory counter (not the shared, DB-backed
-// checkAndRecordIpAttempt/login_throttle used by auth-login and
-// admin-accounts) deliberately: that table sums attempts per-IP across every
-// consumer, so a busy office IP hitting the login form a handful of times
-// would also throttle its first-ever guild request. player-register has the
-// exact same isolation requirement and solves it the same way.
+// Rate limiting uses the shared, database-backed sliding window.
+//
+// It used to be a private in-memory Map, justified in a comment that claimed
+// "player-register has the exact same isolation requirement and solves it the
+// same way". That was simply not true -- player-register has always called
+// checkAndRecordIpAttempt. And the isolation the comment was protecting cost
+// more than it bought: Edge isolates are ephemeral and scaled horizontally, so
+// the Map gave "5 per isolate", which on the only unauthenticated endpoint
+// that writes to the database is not a limit at all (finding B3).
+//
+// The real trade-off the old comment identified does exist: login_throttle sums
+// attempts per IP across every consumer, so a busy office IP can arrive here
+// already partly spent. That is the same cost player-register accepts, and a
+// shared budget that works beats a private one that does not.
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const attemptLog = new Map<string, number[]>();
+/**
+ * FINDING B3, now closed: this limiter used to be a `Map` in module scope.
+ * Edge isolates are ephemeral and scaled horizontally, so "5 per 5 minutes"
+ * was really "5 per isolate" — and a fresh isolate starts with an empty Map.
+ * On the only unauthenticated endpoint that writes to the database, that is
+ * not a limit at all.
+ *
+ * It now shares the database-backed sliding window every other public endpoint
+ * uses, which is the pattern `player-register` already had.
+ */
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 300_000;
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const windowStart = now - WINDOW_MS;
-  const hits = (attemptLog.get(ip) || []).filter((t) => t > windowStart);
-  if (hits.length >= MAX_ATTEMPTS) {
-    attemptLog.set(ip, hits);
-    return true;
-  }
-  hits.push(now);
-  attemptLog.set(ip, hits);
-  return false;
-}
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
@@ -56,7 +60,8 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
   const clientIp = extractClientIp(req.headers);
-  if (rateLimited(clientIp)) {
+  const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: MAX_ATTEMPTS, windowMs: WINDOW_MS });
+  if (!throttle.allowed) {
     logger.warn("Rate limit exceeded on guild creation request", { ip: clientIp });
     return json({ ok: false, error: "too_many_attempts" }, 429);
   }

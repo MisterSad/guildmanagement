@@ -13,10 +13,25 @@ describe('CORS Origin Matching & Security Caps (GAP 4)', () => {
     expect(isAllowedOrigin('https://fgf-guild-management.vercel.app')).toBe(true);
 
     // 2. Official project Vercel preview deployments
-    expect(isAllowedOrigin('https://guildmanagement-preview-123.vercel.app')).toBe(true);
-    expect(isAllowedOrigin('https://guildmanagement-git-feature.vercel.app')).toBe(true);
+      // FINDING M13, and these expectations are what locked it in.
+      //
+      // Vercel always ends a deployment host with the owning scope:
+      //   <project>-<hash>-<scope>        deployment
+      //   <project>-git-<branch>-<scope>  branch preview
+      //   <project>-<scope>               project alias
+      // The scope-less forms this file used to accept are precisely the ones
+      // ANYONE can register, which is what made the old pattern a bypass.
     expect(isAllowedOrigin('https://guildmanagement-mistersads-projects.vercel.app')).toBe(true);
-    expect(isAllowedOrigin('https://preview.guildmanagement.vercel.app')).toBe(true);
+    expect(isAllowedOrigin('https://guildmanagement-abc123def-mistersads-projects.vercel.app')).toBe(true);
+    expect(isAllowedOrigin('https://guildmanagement-git-feature-branch-mistersads-projects.vercel.app')).toBe(true);
+    // Scope-less: registrable by anyone, therefore refused.
+    expect(isAllowedOrigin('https://guildmanagement-preview-123.vercel.app')).toBe(false);
+    expect(isAllowedOrigin('https://guildmanagement-git-feature.vercel.app')).toBe(false);
+    expect(isAllowedOrigin('https://guildmanagement-evil.vercel.app')).toBe(false);
+    // A subdomain is not a Vercel deployment shape at all.
+    expect(isAllowedOrigin('https://preview.guildmanagement.vercel.app')).toBe(false);
+    // A real-looking hash under someone else's scope.
+    expect(isAllowedOrigin('https://guildmanagement-abc123def-attacker-projects.vercel.app')).toBe(false);
 
     // 3. Exact custom subdomains (anchored https://*.guildmgmt.app)
     expect(isAllowedOrigin('https://app.guildmgmt.app')).toBe(true);
@@ -40,10 +55,10 @@ describe('CORS Origin Matching & Security Caps (GAP 4)', () => {
 
   it('getCorsHeaders returns Vary: Origin and appropriate Allow-Origin', () => {
     const validReq = new Request('https://api.test', {
-      headers: { Origin: 'https://guildmanagement-preview-123.vercel.app' }
+      headers: { Origin: 'https://guildmanagement-abc123def-mistersads-projects.vercel.app' }
     });
     const headers = getCorsHeaders(validReq);
-    expect(headers['Access-Control-Allow-Origin']).toBe('https://guildmanagement-preview-123.vercel.app');
+    expect(headers['Access-Control-Allow-Origin']).toBe('https://guildmanagement-abc123def-mistersads-projects.vercel.app');
     expect(headers['Vary']).toBe('Origin');
 
     const invalidReq = new Request('https://api.test', {

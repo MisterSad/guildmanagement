@@ -9,6 +9,21 @@ import { getSupabaseClient } from '../../core/api/supabase';
 import { SystemAuditLog } from '../../types/database';
 import { logger } from '../../core/logger/logger';
 
+/**
+ * Escapes a value going into a PostgREST `.or()` filter.
+ *
+ * Commas and parentheses are the filter grammar's own separators, so they are
+ * replaced rather than escaped; the LIKE wildcards are then neutralised on what
+ * remains. Mirrors `supabase/functions/_shared/like.ts` on the Edge side.
+ */
+function escapeOrFilterValue(value: string): string {
+  return String(value ?? '')
+    .replace(/[,()]/g, ' ')
+    .replace(/\\/g, '\\\\')
+    .replace(/%/g, '\\%')
+    .replace(/_/g, '\\_');
+}
+
 export interface AuditLogFilter {
   level?: string;
   service?: string;
@@ -53,7 +68,17 @@ export class AuditService {
       query = query.eq('guild', filters.guild);
     }
     if (filters.search && filters.search.trim()) {
-      const s = filters.search.trim();
+      // FINDING M16. PostgREST parses `.or()` as a comma-separated list of
+      // `column.operator.value` triples, and this string is assembled by
+      // interpolation. A comma or a parenthesis typed into the search box
+      // therefore re-partitions the expression and silently changes which rows
+      // come back — searching for `a,b` asked for a column named `b`. A `%` or
+      // `_` additionally leaked LIKE wildcards into all six clauses.
+      //
+      // RLS confines this table to a super_admin either way, so it was never a
+      // route across a tenant boundary; it was a query whose meaning the user
+      // could change by accident.
+      const s = escapeOrFilterValue(filters.search.trim());
       query = query.or(`pseudo.ilike.%${s}%,uid.ilike.%${s}%,message.ilike.%${s}%,server_number.ilike.%${s}%,guild.ilike.%${s}%,user_identifier.ilike.%${s}%`);
     }
 
