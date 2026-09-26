@@ -77,7 +77,6 @@ import { portalView } from './modules/portal/views/PortalView';
 import { PortalService } from './modules/portal/portal.service';
 import { AuditService } from './modules/audit/audit.service';
 import * as badgesService from './modules/badges/badges.service';
-import { pushService } from './modules/push/PushService';
 import { helpView } from './modules/help/HelpView';
 import { ticketsView } from './modules/tickets/views/TicketsView';
 import { migrationHubView } from './modules/migration/views/MigrationHubView';
@@ -205,7 +204,7 @@ import { parseOcrScore } from './modules/ocr/ocr.service';
 import { BaseComponent } from './components/ui/BaseComponent';
 import { ToastNotification } from './components/ui/Toast';
 import { PortalChart } from './modules/portal/components/PortalChart';
-import { initPWA, promptPWAInstall, setAppNotificationBadge } from './core/pwa/pwa';
+import { initNetworkStatusMonitoring } from './core/net/network-status';
 import { initTooltips } from './components/ui/Tooltip';
 import { initSentry } from './core/monitoring/sentry';
 
@@ -483,14 +482,11 @@ if (typeof window !== 'undefined') {
     renderDashboard: () => portalView.renderDashboard()
   };
 
-  // Wave 1 Strangler bridges (satellites badges/push/help/tickets).
+  // Wave 1 Strangler bridges (satellites badges/help/tickets).
   (window as any).GM_BADGES = {
     computeBadges: badgesService.computeBadges,
     parseRank: badgesService.parseRank,
     daysSince: badgesService.daysSince
-  };
-  (window as any).GM_PUSH = {
-    mount: (container: HTMLElement) => pushService.mount(container)
   };
   (window as any).GM_HELP = {
     open: (id: string) => helpView.open(id),
@@ -548,11 +544,6 @@ if (typeof window !== 'undefined') {
     closeDialog
   };
 
-  (window as any).GM.pwa = {
-    promptPWAInstall,
-    setAppNotificationBadge
-  };
-
   document.addEventListener('DOMContentLoaded', () => {
     // Full cutover bootstrap order (app.js removed). gm-utils startup
     // side-effects (rad_* migration, window.currentGuild, terms modal) first.
@@ -576,11 +567,10 @@ if (typeof window !== 'undefined') {
     initOcrDropdown();
     initTimezoneCollapsible();
     initVersionCheck();
-    initPWA();
-    // Former shell.js/gm-help.js/push.js/sanctions bootstrap.
+    initNetworkStatusMonitoring();
+    // Former shell.js/gm-help.js/sanctions bootstrap.
     shellView.init();
     helpView.init();
-    pushService.init();
     sanctionsView.init();
     // i18n single pass over the complete dictionary once the DOM is ready.
     applyTranslations();

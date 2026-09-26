@@ -14,6 +14,82 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_backup_codes: {
+        Row: {
+          account_id: string
+          code_hash: string
+          created_at: string
+          id: string
+          used_at: string | null
+        }
+        Insert: {
+          account_id: string
+          code_hash: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+        }
+        Update: {
+          account_id?: string
+          code_hash?: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_backup_codes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      account_passkeys: {
+        Row: {
+          account_id: string
+          created_at: string
+          credential_id: string
+          device_label: string
+          id: string
+          last_used_at: string | null
+          public_key: string
+          sign_count: number
+          transports: string[] | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          credential_id: string
+          device_label: string
+          id?: string
+          last_used_at?: string | null
+          public_key: string
+          sign_count?: number
+          transports?: string[] | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          credential_id?: string
+          device_label?: string
+          id?: string
+          last_used_at?: string | null
+          public_key?: string
+          sign_count?: number
+          transports?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_passkeys_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       accounts: {
         Row: {
           auth_user_id: string | null
@@ -28,6 +104,7 @@ export type Database = {
           password_hash: string | null
           role: string | null
           server_number: string | null
+          session_version: number
           status: string
           uid: string | null
         }
@@ -44,6 +121,7 @@ export type Database = {
           password_hash?: string | null
           role?: string | null
           server_number?: string | null
+          session_version?: number
           status?: string
           uid?: string | null
         }
@@ -60,6 +138,7 @@ export type Database = {
           password_hash?: string | null
           role?: string | null
           server_number?: string | null
+          session_version?: number
           status?: string
           uid?: string | null
         }
@@ -191,250 +270,25 @@ export type Database = {
           },
         ]
       }
-      e2ee_blocked_accounts: {
+      discord_account_links: {
         Row: {
           account_id: string
-          blocked_account_id: string
-          created_at: string
+          discord_user_id: string
+          linked_at: string
         }
         Insert: {
           account_id: string
-          blocked_account_id: string
-          created_at?: string
+          discord_user_id: string
+          linked_at?: string
         }
         Update: {
           account_id?: string
-          blocked_account_id?: string
-          created_at?: string
+          discord_user_id?: string
+          linked_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "e2ee_blocked_accounts_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e2ee_blocked_accounts_blocked_account_id_fkey"
-            columns: ["blocked_account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      e2ee_conversation_members: {
-        Row: {
-          account_id: string
-          conversation_id: string
-          group_role: string
-          guild: string | null
-          joined_at: string
-          role: string
-        }
-        Insert: {
-          account_id: string
-          conversation_id: string
-          group_role?: string
-          guild?: string | null
-          joined_at?: string
-          role: string
-        }
-        Update: {
-          account_id?: string
-          conversation_id?: string
-          group_role?: string
-          guild?: string | null
-          joined_at?: string
-          role?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "e2ee_conversation_members_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e2ee_conversation_members_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "e2ee_conversations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      e2ee_conversations: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          is_r5_only: boolean
-          server_number: string | null
-          title: string | null
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_r5_only?: boolean
-          server_number?: string | null
-          title?: string | null
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_r5_only?: boolean
-          server_number?: string | null
-          title?: string | null
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "e2ee_conversations_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      e2ee_message_reactions: {
-        Row: {
-          account_id: string
-          conversation_id: string
-          created_at: string
-          emoji: string
-          id: number
-          message_id: number
-        }
-        Insert: {
-          account_id: string
-          conversation_id: string
-          created_at?: string
-          emoji: string
-          id?: number
-          message_id: number
-        }
-        Update: {
-          account_id?: string
-          conversation_id?: string
-          created_at?: string
-          emoji?: string
-          id?: number
-          message_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "e2ee_message_reactions_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e2ee_message_reactions_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "e2ee_conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e2ee_message_reactions_message_id_fkey"
-            columns: ["message_id"]
-            isOneToOne: false
-            referencedRelation: "e2ee_messages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      e2ee_messages: {
-        Row: {
-          ciphertext: string
-          conversation_id: string
-          created_at: string
-          header_data: Json
-          id: number
-          iv: string
-          sender_account_id: string
-          sender_guild: string | null
-          sender_role: string
-        }
-        Insert: {
-          ciphertext: string
-          conversation_id: string
-          created_at?: string
-          header_data?: Json
-          id?: number
-          iv: string
-          sender_account_id: string
-          sender_guild?: string | null
-          sender_role: string
-        }
-        Update: {
-          ciphertext?: string
-          conversation_id?: string
-          created_at?: string
-          header_data?: Json
-          id?: number
-          iv?: string
-          sender_account_id?: string
-          sender_guild?: string | null
-          sender_role?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "e2ee_messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "e2ee_conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e2ee_messages_sender_account_id_fkey"
-            columns: ["sender_account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      e2ee_one_time_prekeys: {
-        Row: {
-          account_id: string
-          created_at: string
-          id: number
-          is_used: boolean
-          key_id: number
-          public_key: string
-        }
-        Insert: {
-          account_id: string
-          created_at?: string
-          id?: number
-          is_used?: boolean
-          key_id: number
-          public_key: string
-        }
-        Update: {
-          account_id?: string
-          created_at?: string
-          id?: number
-          is_used?: boolean
-          key_id?: number
-          public_key?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "e2ee_one_time_prekeys_account_id_fkey"
+            foreignKeyName: "discord_account_links_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
@@ -442,45 +296,49 @@ export type Database = {
           },
         ]
       }
-      e2ee_prekey_bundles: {
+      discord_link_codes: {
         Row: {
-          account_id: string
-          identity_key: string
-          identity_signing_key: string | null
-          registration_id: number
-          signed_prekey: string
-          signed_prekey_sig: string
-          updated_at: string
+          code: string
+          created_at: string
+          discord_user_id: string
+          discord_username: string | null
+          expires_at: string
         }
         Insert: {
-          account_id: string
-          identity_key: string
-          identity_signing_key?: string | null
-          registration_id: number
-          signed_prekey: string
-          signed_prekey_sig: string
-          updated_at?: string
+          code: string
+          created_at?: string
+          discord_user_id: string
+          discord_username?: string | null
+          expires_at?: string
         }
         Update: {
-          account_id?: string
-          identity_key?: string
-          identity_signing_key?: string | null
-          registration_id?: number
-          signed_prekey?: string
-          signed_prekey_sig?: string
-          updated_at?: string
+          code?: string
+          created_at?: string
+          discord_user_id?: string
+          discord_username?: string | null
+          expires_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "e2ee_prekey_bundles_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: true
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-event_chest_tiers: {
+      discord_verification_throttle: {
+        Row: {
+          attempts: number
+          discord_user_id: string
+          window_start: string
+        }
+        Insert: {
+          attempts?: number
+          discord_user_id: string
+          window_start: string
+        }
+        Update: {
+          attempts?: number
+          discord_user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      event_chest_tiers: {
         Row: {
           chests: number
           day: number
@@ -491,7 +349,7 @@ event_chest_tiers: {
           updated_at: string
         }
         Insert: {
-          chests: number
+          chests?: number
           day: number
           event_name: string
           guild: string
@@ -553,6 +411,13 @@ event_chest_tiers: {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "event_daily_scores_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_event_daily_scores_member"
             columns: ["guild", "pseudo"]
@@ -742,6 +607,48 @@ event_chest_tiers: {
         }
         Relationships: []
       }
+      guild_creation_requests: {
+        Row: {
+          admin_id: string
+          created_at: string
+          discord_handle: string
+          guild_tag: string
+          id: string
+          note: string | null
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          server_number: string
+          status: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          discord_handle: string
+          guild_tag: string
+          id?: string
+          note?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          server_number: string
+          status?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          discord_handle?: string
+          guild_tag?: string
+          id?: string
+          note?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          server_number?: string
+          status?: string
+        }
+        Relationships: []
+      }
       guild_members: {
         Row: {
           champion_power: number | null
@@ -758,6 +665,7 @@ event_chest_tiers: {
           pseudo: string
           role: string | null
           tech_power: number | null
+          timezone: string | null
           timezone_offset: number | null
           uid: string | null
         }
@@ -776,6 +684,7 @@ event_chest_tiers: {
           pseudo: string
           role?: string | null
           tech_power?: number | null
+          timezone?: string | null
           timezone_offset?: number | null
           uid?: string | null
         }
@@ -794,6 +703,7 @@ event_chest_tiers: {
           pseudo?: string
           role?: string | null
           tech_power?: number | null
+          timezone?: string | null
           timezone_offset?: number | null
           uid?: string | null
         }
@@ -900,6 +810,178 @@ event_chest_tiers: {
           window_start?: string
         }
         Relationships: []
+      }
+      migration_wiki_comments: {
+        Row: {
+          author_account_id: string | null
+          author_guild_id: string | null
+          author_pseudo: string
+          author_role: string
+          content: string
+          created_at: string
+          id: string
+          page_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_account_id?: string | null
+          author_guild_id?: string | null
+          author_pseudo: string
+          author_role?: string
+          content: string
+          created_at?: string
+          id?: string
+          page_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_account_id?: string | null
+          author_guild_id?: string | null
+          author_pseudo?: string
+          author_role?: string
+          content?: string
+          created_at?: string
+          id?: string
+          page_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_wiki_comments_author_account_id_fkey"
+            columns: ["author_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "migration_wiki_comments_author_guild_id_fkey"
+            columns: ["author_guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "migration_wiki_comments_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "migration_wiki_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      migration_wiki_pages: {
+        Row: {
+          attachments: Json
+          category: string
+          content: string
+          created_at: string
+          created_by_account_id: string | null
+          created_by_pseudo: string
+          guild_id: string | null
+          id: string
+          is_pinned: boolean
+          scope: string
+          server_number: string
+          title: string
+          updated_at: string
+          updated_by_account_id: string | null
+          updated_by_pseudo: string
+        }
+        Insert: {
+          attachments?: Json
+          category?: string
+          content?: string
+          created_at?: string
+          created_by_account_id?: string | null
+          created_by_pseudo: string
+          guild_id?: string | null
+          id?: string
+          is_pinned?: boolean
+          scope: string
+          server_number: string
+          title: string
+          updated_at?: string
+          updated_by_account_id?: string | null
+          updated_by_pseudo: string
+        }
+        Update: {
+          attachments?: Json
+          category?: string
+          content?: string
+          created_at?: string
+          created_by_account_id?: string | null
+          created_by_pseudo?: string
+          guild_id?: string | null
+          id?: string
+          is_pinned?: boolean
+          scope?: string
+          server_number?: string
+          title?: string
+          updated_at?: string
+          updated_by_account_id?: string | null
+          updated_by_pseudo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_wiki_pages_created_by_account_id_fkey"
+            columns: ["created_by_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "migration_wiki_pages_guild_id_fkey"
+            columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "migration_wiki_pages_updated_by_account_id_fkey"
+            columns: ["updated_by_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ocr_cache: {
+        Row: {
+          created_at: string
+          ending_rank: string | null
+          expires_at: string
+          guild_id: string | null
+          hash: string
+          metric_type: string
+          players: Json
+        }
+        Insert: {
+          created_at?: string
+          ending_rank?: string | null
+          expires_at?: string
+          guild_id?: string | null
+          hash: string
+          metric_type: string
+          players: Json
+        }
+        Update: {
+          created_at?: string
+          ending_rank?: string | null
+          expires_at?: string
+          guild_id?: string | null
+          hash?: string
+          metric_type?: string
+          players?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocr_cache_guild_id_fkey"
+            columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_absences: {
         Row: {
@@ -1038,63 +1120,6 @@ event_chest_tiers: {
           },
         ]
       }
-      player_push_prefs: {
-        Row: {
-          event_types: string[]
-          guild: string
-          pseudo: string
-          updated_at: string
-        }
-        Insert: {
-          event_types?: string[]
-          guild: string
-          pseudo: string
-          updated_at?: string
-        }
-        Update: {
-          event_types?: string[]
-          guild?: string
-          pseudo?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          created_at: string
-          endpoint: string
-          guild: string
-          id: number
-          last_seen: string
-          p256dh: string
-          pseudo: string | null
-          ua: string | null
-        }
-        Insert: {
-          auth: string
-          created_at?: string
-          endpoint: string
-          guild: string
-          id?: never
-          last_seen?: string
-          p256dh: string
-          pseudo?: string | null
-          ua?: string | null
-        }
-        Update: {
-          auth?: string
-          created_at?: string
-          endpoint?: string
-          guild?: string
-          id?: never
-          last_seen?: string
-          p256dh?: string
-          pseudo?: string | null
-          ua?: string | null
-        }
-        Relationships: []
-      }
       sanctions: {
         Row: {
           comment: string | null
@@ -1129,6 +1154,65 @@ event_chest_tiers: {
             referencedColumns: ["guild", "pseudo"]
           },
         ]
+      }
+      server_migration_group_servers: {
+        Row: {
+          added_at: string
+          group_id: string
+          id: number
+          server_number: string
+        }
+        Insert: {
+          added_at?: string
+          group_id: string
+          id?: number
+          server_number: string
+        }
+        Update: {
+          added_at?: string
+          group_id?: string
+          id?: number
+          server_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_migration_group_servers_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "server_migration_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_migration_groups: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          opened_at: string
+          status: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          opened_at?: string
+          status?: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          opened_at?: string
+          status?: string
+        }
+        Relationships: []
       }
       shadowfront_signups: {
         Row: {
@@ -1432,6 +1516,41 @@ event_chest_tiers: {
           },
         ]
       }
+      webauthn_challenges: {
+        Row: {
+          account_id: string | null
+          ceremony_type: string
+          challenge: string
+          created_at: string
+          expires_at: string
+          id: string
+        }
+        Insert: {
+          account_id?: string | null
+          ceremony_type: string
+          challenge: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+        }
+        Update: {
+          account_id?: string | null
+          ceremony_type?: string
+          challenge?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webauthn_challenges_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_scores: {
         Row: {
           computed_at: string | null
@@ -1496,14 +1615,6 @@ event_chest_tiers: {
           vapid_subject: string
         }[]
       }
-      gm_add_e2ee_group_member: {
-        Args: { p_account_ids: string[]; p_conversation_id: string }
-        Returns: boolean
-      }
-      gm_add_e2ee_group_members: {
-        Args: { p_account_ids: string[]; p_conversation_id: string }
-        Returns: boolean
-      }
       gm_add_member_to_active_events: {
         Args: { p_guild: string; p_pseudo: string }
         Returns: number
@@ -1559,6 +1670,10 @@ event_chest_tiers: {
           plan_key: string
         }[]
       }
+      gm_approve_guild_request: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       gm_approve_participant_submission: {
         Args: {
           p_event_name: string
@@ -1573,14 +1688,27 @@ event_chest_tiers: {
         Args: { p_auth_user_id: string; p_id: string; p_secret: string }
         Returns: undefined
       }
-      gm_can_access_e2ee_conversation: {
-        Args: { p_conversation_id: string }
+      gm_can_access_server_wiki: {
+        Args: { p_server_number: string }
         Returns: boolean
       }
+      gm_can_access_wiki_page: { Args: { p_page_id: string }; Returns: boolean }
       gm_can_admin_see_absences: { Args: { p_guild: string }; Returns: boolean }
       gm_can_read_account: { Args: { p_account_id: string }; Returns: boolean }
       gm_can_read_guild_data: { Args: { p_guild: string }; Returns: boolean }
       gm_can_read_guilds: { Args: never; Returns: boolean }
+      gm_check_ip_throttle: {
+        Args: {
+          p_bucket: string
+          p_ip: string
+          p_limit: number
+          p_window_ms: number
+        }
+        Returns: {
+          allowed: boolean
+          remaining: number
+        }[]
+      }
       gm_check_login: {
         Args: { p_id: string; p_password: string }
         Returns: {
@@ -1592,9 +1720,10 @@ event_chest_tiers: {
         }[]
       }
       gm_chests_for_score: {
-        Args: { p_score: number; p_tiers?: Json }
+        Args: { p_score: number; p_tiers: Json }
         Returns: number
       }
+      gm_cleanup_expired_ocr_cache: { Args: never; Returns: undefined }
       gm_cleanup_stale_reminder_locks: { Args: never; Returns: number }
       gm_create_diplomatic_treaty: {
         Args: {
@@ -1603,15 +1732,6 @@ event_chest_tiers: {
           p_guild_b_server: string
           p_terms: string
           p_treaty_type: string
-        }
-        Returns: string
-      }
-      gm_create_e2ee_conversation: {
-        Args: {
-          p_is_r5_only?: boolean
-          p_member_account_ids?: string[]
-          p_title?: string
-          p_type: string
         }
         Returns: string
       }
@@ -1638,6 +1758,8 @@ event_chest_tiers: {
           arms_attended: number
           arms_rate: number
           arms_total: number
+          combat_density_raw: number
+          combat_density_score: number
           day6_pvp_score: number
           day6_score: number
           draft_score: number
@@ -1671,10 +1793,6 @@ event_chest_tiers: {
           svs_rate: number
           svs_total: number
         }[]
-      }
-      gm_delete_e2ee_conversation: {
-        Args: { p_conversation_id: string }
-        Returns: boolean
       }
       gm_delete_guild: {
         Args: { p_guild_id: string }
@@ -1713,19 +1831,6 @@ event_chest_tiers: {
         Returns: string
       }
       gm_find_player_by_uid: { Args: { p_uid: string }; Returns: Json }
-      gm_get_e2ee_prekey_bundle: {
-        Args: { p_target_account_id: string }
-        Returns: {
-          account_id: string
-          identity_key: string
-          identity_signing_key: string
-          one_time_key_id: number
-          one_time_public_key: string
-          registration_id: number
-          signed_prekey: string
-          signed_prekey_sig: string
-        }[]
-      }
       gm_get_chest_tiers: {
         Args: { p_event_name: string; p_guild: string }
         Returns: Json
@@ -1748,11 +1853,14 @@ event_chest_tiers: {
           start_date: string
         }[]
       }
+      gm_get_player_event_history: {
+        Args: { p_limit?: number; p_uid: string }
+        Returns: Json
+      }
       gm_get_player_metrics_history: {
         Args: { p_limit?: number; p_uid: string }
         Returns: Json
       }
-      gm_get_push_prefs: { Args: { p_uid?: string }; Returns: Json }
       gm_get_shadow: {
         Args: { p_id: string }
         Returns: {
@@ -1763,22 +1871,6 @@ event_chest_tiers: {
       gm_get_war_session: {
         Args: { p_event_name: string; p_guild: string; p_session_id: string }
         Returns: Json
-      }
-      gm_guild_benchmark: {
-        Args: never
-        Returns: {
-          active_events: number
-          avg_power: number
-          guild: string
-          inactive_members: number
-          max_power: number
-          members: number
-          participation_rate: number
-          push_subs: number
-          server_number: string
-          subscription_type: string
-          total_power: number
-        }[]
       }
       gm_gvg_guild_matchup: {
         Args: never
@@ -1820,10 +1912,6 @@ event_chest_tiers: {
         Args: { p_guild?: string; p_period?: string; p_week?: string }
         Returns: Json
       }
-      gm_leave_e2ee_conversation: {
-        Args: { p_conversation_id: string }
-        Returns: boolean
-      }
       gm_list_event_sessions: {
         Args: { p_guild?: string }
         Returns: {
@@ -1840,10 +1928,6 @@ event_chest_tiers: {
       }
       gm_list_opponent_candidates: {
         Args: { p_guild: string; p_kind: string }
-        Returns: Json
-      }
-      gm_list_war_sessions: {
-        Args: { p_event_name: string; p_guild: string }
         Returns: Json
       }
       gm_list_tickets: {
@@ -1863,6 +1947,18 @@ event_chest_tiers: {
           ticket_number: number
           title: string
         }[]
+      }
+      gm_list_transfer_eligible_guilds: {
+        Args: { p_guild: string }
+        Returns: {
+          id: string
+          is_same_server: boolean
+          server_number: string
+        }[]
+      }
+      gm_list_war_sessions: {
+        Args: { p_event_name: string; p_guild: string }
+        Returns: Json
       }
       gm_log_player_audit: {
         Args: {
@@ -1892,17 +1988,6 @@ event_chest_tiers: {
         Args: { p_event_name: string; p_guild: string; p_week_start: string }
         Returns: number
       }
-      gm_publish_e2ee_prekey_bundle: {
-        Args: {
-          p_identity_key: string
-          p_identity_signing_key?: string
-          p_one_time_prekeys?: Json
-          p_registration_id: number
-          p_signed_prekey: string
-          p_signed_prekey_sig: string
-        }
-        Returns: boolean
-      }
       gm_register_player: {
         Args: {
           p_id: string
@@ -1912,17 +1997,26 @@ event_chest_tiers: {
         }
         Returns: Json
       }
-      gm_reject_player_account: { Args: { p_id: string }; Returns: Json }
-      gm_remove_e2ee_group_member: {
-        Args: { p_conversation_id: string; p_target_account_id: string }
-        Returns: boolean
+      gm_reject_guild_request: {
+        Args: { p_reason: string; p_request_id: string }
+        Returns: Json
       }
+      gm_reject_player_account: { Args: { p_id: string }; Returns: Json }
       gm_remove_member_from_active_events: {
         Args: { p_guild: string; p_pseudo: string }
         Returns: number
       }
-      gm_rename_e2ee_conversation: {
-        Args: { p_conversation_id: string; p_new_title: string }
+      gm_report_client_error: {
+        Args: {
+          p_correlation_id: string
+          p_error_details?: Json
+          p_guild?: string
+          p_level: string
+          p_message?: string
+          p_metadata?: Json
+          p_service: string
+          p_user_identifier?: string
+        }
         Returns: boolean
       }
       gm_reset_account_password: {
@@ -1942,12 +2036,9 @@ event_chest_tiers: {
         Returns: Json
       }
       gm_session_id_base: { Args: { p_session_id: string }; Returns: string }
+      gm_session_is_valid: { Args: never; Returns: boolean }
       gm_set_join_code: {
         Args: { p_code: string; p_guild: string }
-        Returns: Json
-      }
-      gm_set_push_prefs: {
-        Args: { p_event_types: string[]; p_uid: string }
         Returns: Json
       }
       gm_sign_diplomatic_treaty: {
@@ -1955,6 +2046,16 @@ event_chest_tiers: {
         Returns: boolean
       }
       gm_stats_data: { Args: { p_guild?: string }; Returns: Json }
+      gm_submit_guild_request: {
+        Args: {
+          p_admin_id: string
+          p_discord_handle: string
+          p_guild_tag: string
+          p_note: string
+          p_server_number: string
+        }
+        Returns: Json
+      }
       gm_svs_server_matchup: {
         Args: never
         Returns: {
@@ -1975,17 +2076,17 @@ event_chest_tiers: {
         Args: { p_guild: string; p_session_id: string }
         Returns: number
       }
-      gm_toggle_block_leader: {
-        Args: { p_block: boolean; p_target_account_id: string }
-        Returns: boolean
-      }
-      gm_toggle_e2ee_reaction: {
-        Args: { p_emoji: string; p_message_id: number }
-        Returns: Json
-      }
       gm_transfer_guild_member: {
         Args: { p_pseudo?: string; p_target_guild: string; p_uid: string }
         Returns: Json
+      }
+      gm_transfer_sync_related_rows: {
+        Args: {
+          p_pseudo: string
+          p_source_guild: string
+          p_target_guild: string
+        }
+        Returns: undefined
       }
       gm_unsync_shadowfront_participant: {
         Args: { p_guild: string; p_pseudo: string; p_session_id: string }
@@ -2008,10 +2109,12 @@ event_chest_tiers: {
           server_number: string
         }[]
       }
-      gm_update_player_timezone: {
-        Args: { p_offset: number; p_uid: string }
-        Returns: Json
-      }
+      gm_update_player_timezone:
+        | { Args: { p_offset: number; p_uid: string }; Returns: Json }
+        | {
+            Args: { p_offset: number; p_timezone?: string; p_uid: string }
+            Returns: Json
+          }
       gm_update_ticket_status: {
         Args: { p_id: number; p_status: string }
         Returns: {
@@ -2028,7 +2131,12 @@ event_chest_tiers: {
         }[]
       }
       gm_upsert_daily_scores: {
-        Args: { p_event_name: string; p_guild: string; p_rows: Json; p_session_id: string }
+        Args: {
+          p_event_name: string
+          p_guild: string
+          p_rows: Json
+          p_session_id: string
+        }
         Returns: Json
       }
       gm_upsert_player_absence: {
@@ -2109,15 +2217,9 @@ event_chest_tiers: {
         Args: { p_action: string; p_transfer_id: string }
         Returns: Json
       }
-      save_push_subscription: {
-        Args: {
-          p_auth: string
-          p_endpoint: string
-          p_p256dh: string
-          p_pseudo?: string
-          p_ua?: string
-        }
-        Returns: Json
+      servers_in_open_migration_group: {
+        Args: { p_server_a: string; p_server_b: string }
+        Returns: boolean
       }
       transfer_guild_member: {
         Args: { p_pseudo?: string; p_target_guild: string; p_uid: string }
@@ -2141,12 +2243,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2170,11 +2272,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2195,11 +2297,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2220,11 +2322,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2237,11 +2339,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

@@ -25,7 +25,6 @@ export const TENANT_TABLES = [
   'sanctions',
   'weekly_scores',
   'guild_config',
-  'push_subscriptions',
   'shadowfront_signups',
   'shadowfront_squads',
   'player_name_history'

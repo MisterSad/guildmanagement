@@ -127,10 +127,6 @@ export const ConfirmDiscordLinkSchema = z.object({
   code: z.string().trim().min(1, "code is required").max(64)
 }).passthrough();
 
-export const SetPushPrefsSchema = z.object({
-  event_types: z.array(z.string().trim().min(1).max(64)).min(1, "event_types cannot be empty")
-}).passthrough();
-
 export const ActionPayloadSchemas = {
   "submit-scores": SubmitScoresSchema,
   "update-power": UpdatePowerSchema,
@@ -142,7 +138,6 @@ export const ActionPayloadSchemas = {
   "delete-absence": DeleteAbsenceSchema,
   "update-timezone": UpdateTimezoneSchema,
   "confirm-discord-link": ConfirmDiscordLinkSchema,
-  "set-push-prefs": SetPushPrefsSchema,
 };
 
 describe('Ticket 2.3: Static Containment - Zod Schema Validation in member-portal', () => {
@@ -162,7 +157,10 @@ describe('Ticket 2.3: Static Containment - Zod Schema Validation in member-porta
     expect(portalContent).toContain('export const DeleteAbsenceSchema =');
     expect(portalContent).toContain('export const UpdateTimezoneSchema =');
     expect(portalContent).toContain('export const ConfirmDiscordLinkSchema =');
-    expect(portalContent).toContain('export const SetPushPrefsSchema =');
+    // Web Push was removed with the PWA: the schema and both push-prefs
+    // actions are gone from member-portal, and must not come back.
+    expect(portalContent).not.toContain('SetPushPrefsSchema');
+    expect(portalContent).not.toContain('push-prefs');
     expect(portalContent).not.toContain('CreateDonationSchema');
     expect(portalContent).toContain('export const ActionPayloadSchemas: Record<string, z.ZodType<any>> =');
   });
@@ -408,17 +406,6 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
     });
   });
 
-  describe('SetPushPrefsSchema', () => {
-    it('accepts non-empty string array', () => {
-      expect(SetPushPrefsSchema.safeParse({ event_types: ['events', 'glory'] }).success).toBe(true);
-    });
-
-    it('rejects empty array or missing event_types', () => {
-      expect(SetPushPrefsSchema.safeParse({ event_types: [] }).success).toBe(false);
-      expect(SetPushPrefsSchema.safeParse({ event_types: 'events' }).success).toBe(false);
-      expect(SetPushPrefsSchema.safeParse({}).success).toBe(false);
-    });
-  });
 });
 
 describe('Ticket 2.3: Validation Dispatch Simulation', () => {

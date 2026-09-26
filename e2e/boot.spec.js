@@ -2,8 +2,9 @@ import { test, expect } from '@playwright/test';
 
 // Boot integrity of the PRODUCTION bundle in dist/ (see playwright.config.js):
 //  - index.html loads and shows the auth screen with no uncaught JS exception;
-//  - the service worker is actually served at /sw.js (200, not 404), which is
-//    the whole point of keeping the compiled worker at the root of dist/.
+//  - /sw.js is still served (200, not 404) and is the self-unregistering
+//    tombstone left behind by the PWA removal, and the app itself no longer
+//    registers any service worker.
 //
 // External CDN scripts (supabase UMD + phosphor icons) are stubbed so the spec
 // never depends on network access; the app's own Supabase client is bundled by
@@ -39,28 +40,37 @@ test('production index.html boots with no uncaught JS exception', async ({ page 
   expect(pageErrors).toEqual([]);
 });
 
-test('the compiled service worker is served at /sw.js (200, not 404)', async ({ page, request }) => {
-  // 1. The file itself must be reachable at the root-scoped path in dist/.
+test('/sw.js is still served, and is the self-unregistering tombstone', async ({ request }) => {
+  // The PWA is retired, but the file must KEEP being served: a worker already
+  // installed on a member's device only goes away if the browser can fetch a
+  // new /sw.js that unregisters itself. A 404 here would leave every existing
+  // installation running the old push worker indefinitely.
   const response = await request.get('/sw.js');
   expect(response.status()).toBe(200);
   expect(response.headers()['content-type'] || '').toContain('javascript');
 
-  // 2. The app must actually register it at root scope. Chromium does not
-  //    surface the service-worker script request through page.waitForResponse,
-  //    so poll navigator.serviceWorker instead.
+  const body = await response.text();
+  // esbuild minifies the worker, so assert on what survives minification:
+  // the unregister call, and the absence of the push pipeline.
+  expect(body).toMatch(/unregister\(\)/);
+  expect(body).not.toMatch(/showNotification/);
+  expect(body).not.toMatch(/notificationclick/);
+});
+
+test('the app no longer registers a service worker', async ({ page }) => {
   await stubNetwork(page);
   await page.goto('/');
 
-  const scope = await page
-    .waitForFunction(
-      async () => {
-        const reg = await navigator.serviceWorker.getRegistration('/');
-        return reg ? reg.scope : null;
-      },
-      null,
-      { timeout: 15_000 }
-    )
-    .then((handle) => handle.jsonValue());
+  // Give the page the same window the old registration had (it registered on
+  // the `load` event), then assert nothing claimed a registration.
+  await page.waitForLoadState('load');
+  await page.waitForTimeout(1000);
 
-  expect(scope).toContain('/');
+  const registrations = await page.evaluate(async () => {
+    if (!('serviceWorker' in navigator)) return 0;
+    const regs = await navigator.serviceWorker.getRegistrations();
+    return regs.length;
+  });
+
+  expect(registrations).toBe(0);
 });

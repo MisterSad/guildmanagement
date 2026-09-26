@@ -35,7 +35,6 @@ const FIXTURES = {
     season: { level: 'Silver', events: 9 }
   },
   'get-badges': { ok: true, role: 'R3', created_at: '2026-06-01T00:00:00Z', overall_power: 80000000, attended: 12, glory_best: 4000 },
-  'get-push-prefs': { ok: true, event_types: ['events', 'glory', 'challenges'] },
   'get-transfer-guilds': { ok: true, guilds: [] },
   'get-absences': { ok: true, absences: [] }
 };

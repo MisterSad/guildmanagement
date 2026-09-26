@@ -77,14 +77,6 @@ export class PortalService {
     return this.invokeAction('get-transfer-guilds');
   }
 
-  public static async getPushPrefs(): Promise<PortalResponse> {
-    return this.invokeAction('get-push-prefs');
-  }
-
-  public static async setPushPrefs(eventTypes: string[]): Promise<PortalResponse> {
-    return this.invokeAction('set-push-prefs', { event_types: eventTypes });
-  }
-
   public static async confirmDiscordLink(code: string): Promise<PortalResponse> {
     return this.invokeAction('confirm-discord-link', { code });
   }

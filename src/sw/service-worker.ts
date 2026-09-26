@@ -1,110 +1,103 @@
 /**
- * src/sw/service-worker.ts
+ * src/sw/service-worker.ts — SELF-DESTRUCTING TOMBSTONE. DO NOT ADD BEHAVIOUR.
  *
- * TypeScript port of the legacy root `sw.js`. Web Push event reminders only:
- * install / activate / push / notificationclick.
+ * The PWA was removed entirely (Web Push decommissioned; the worker never had a
+ * `fetch` handler and never touched Cache Storage, so it provided no offline
+ * capability and no caching -- only installability). Nothing registers a service
+ * worker any more: `src/core/pwa/pwa.ts` and its `navigator.serviceWorker
+ * .register('/sw.js')` call are gone.
  *
- * Deliberate invariant: this worker has NO `fetch` handler and NEVER touches
- * the Cache Storage API. The app owns its own `?v=` asset versioning and must
- * never be served stale.
+ * But deleting this file would NOT uninstall anything. A service worker already
+ * installed on a member's device keeps running forever, independently of the
+ * page that registered it. The only way to retire it is to serve a *new*
+ * `/sw.js` that unregisters itself: on the next in-scope navigation the browser
+ * re-fetches this script, notices the bytes changed, installs it, and this
+ * `activate` handler removes the registration. That update check is driven by
+ * the browser, not by the page, which is why it still works with the
+ * registration code deleted.
  *
- * Compiled to `dist/sw.js` (root scope) by `scripts/build.js` via esbuild, and
- * served on the fly in dev by the Vite plugin in `vite.config.ts`.
+ * Keep shipping this for at least one full release cycle so every returning
+ * device has a chance to pick it up. Only then delete `src/sw/`, the esbuild
+ * block in `scripts/build.js` and the dev plugin in `vite.config.ts`.
  *
- * The service-worker global scope lives in `lib.webworker`, which conflicts
- * with the project's DOM lib setup, so `self` and the APIs it exposes are
- * viewed through minimal structural interfaces declared locally.
+ * The service-worker global scope lives in `lib.webworker`, which conflicts with
+ * the project's DOM lib setup, so `self` is viewed through minimal structural
+ * interfaces declared locally.
  */
-
-import { parsePushPayload, type PushMessageDataLike } from './push-payload';
 
 interface ExtendableEventLike {
   waitUntil(promise: Promise<unknown>): void;
 }
 
-interface PushEventLike extends ExtendableEventLike {
-  data: PushMessageDataLike | null;
-}
-
-interface NotificationLike {
-  close(): void;
-  data?: { url?: string } | null;
-}
-
-interface NotificationEventLike extends ExtendableEventLike {
-  notification: NotificationLike;
-}
-
-interface ClientLike {
-  focus?: () => Promise<unknown>;
+interface WindowClientLike {
+  url: string;
+  navigate?: (url: string) => Promise<unknown>;
 }
 
 interface ClientsLike {
-  claim(): Promise<void>;
-  matchAll(options?: { type?: string; includeUncontrolled?: boolean }): Promise<ClientLike[]>;
-  openWindow(url: string): Promise<unknown>;
+  matchAll(options?: { type?: string; includeUncontrolled?: boolean }): Promise<WindowClientLike[]>;
 }
 
 interface RegistrationLike {
-  showNotification(title: string, options: NotificationOptionsLike): Promise<void>;
+  unregister(): Promise<boolean>;
 }
 
-interface NotificationOptionsLike {
-  body?: string;
-  icon?: string;
-  badge?: string;
-  tag?: string;
-  renotify?: boolean;
-  data?: unknown;
+interface CacheStorageLike {
+  keys(): Promise<string[]>;
+  delete(cacheName: string): Promise<boolean>;
 }
 
 interface SWGlobal {
   skipWaiting(): Promise<void>;
   clients: ClientsLike;
   registration: RegistrationLike;
+  caches?: CacheStorageLike;
   addEventListener(
     type: 'install' | 'activate',
     listener: (event: ExtendableEventLike) => void
-  ): void;
-  addEventListener(type: 'push', listener: (event: PushEventLike) => void): void;
-  addEventListener(
-    type: 'notificationclick',
-    listener: (event: NotificationEventLike) => void
   ): void;
 }
 
 const sw = self as unknown as SWGlobal;
 
 sw.addEventListener('install', () => {
+  // Take over immediately instead of waiting for every old tab to close --
+  // the whole point of this worker is to stop existing without delay.
   void sw.skipWaiting();
 });
 
 sw.addEventListener('activate', (event) => {
-  event.waitUntil(sw.clients.claim());
-});
-
-sw.addEventListener('push', (event) => {
-  const payload = parsePushPayload(event.data);
-  const options: NotificationOptionsLike = {
-    body: payload.body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
-    tag: payload.tag,
-    renotify: true,
-    data: { url: payload.url },
-  };
-  event.waitUntil(sw.registration.showNotification(payload.title, options));
-});
-
-sw.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/';
   event.waitUntil(
-    sw.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.focus) return client.focus();
+    (async () => {
+      // Defensive: this worker never populated Cache Storage, but a future
+      // regression (or a hand-edited dist/sw.js) might have. Leaving entries
+      // behind would let a stale `index.html` outlive the worker.
+      try {
+        if (sw.caches) {
+          const names = await sw.caches.keys();
+          await Promise.all(names.map((name) => sw.caches!.delete(name)));
+        }
+      } catch {
+        /* Cache Storage unavailable or blocked (private mode): nothing to purge. */
       }
-      return sw.clients.openWindow(target);
-    })
+
+      await sw.registration.unregister();
+
+      // Reload open tabs so they stop being controlled by this worker straight
+      // away rather than at their next navigation. Best-effort: `navigate()` is
+      // unavailable on some browsers and rejects if the client was never
+      // controlled by us.
+      try {
+        const clients = await sw.clients.matchAll({ type: 'window' });
+        await Promise.all(
+          clients.map((client) => {
+            if (typeof client.navigate !== 'function') return Promise.resolve();
+            return client.navigate(client.url).catch(() => undefined);
+          })
+        );
+      } catch {
+        /* Client enumeration blocked: the tabs will drop control on next load. */
+      }
+    })()
   );
 });

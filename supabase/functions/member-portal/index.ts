@@ -142,10 +142,6 @@ export const ConfirmDiscordLinkSchema = z.object({
   code: z.string().trim().min(1, "code is required").max(64)
 }).passthrough();
 
-export const SetPushPrefsSchema = z.object({
-  event_types: z.array(z.string().trim().min(1).max(64)).min(1, "event_types cannot be empty")
-}).passthrough();
-
 export const ActionPayloadSchemas: Record<string, z.ZodType<any>> = {
   "submit-scores": SubmitScoresSchema,
   "update-power": UpdatePowerSchema,
@@ -157,7 +153,6 @@ export const ActionPayloadSchemas: Record<string, z.ZodType<any>> = {
   "delete-absence": DeleteAbsenceSchema,
   "update-timezone": UpdateTimezoneSchema,
   "confirm-discord-link": ConfirmDiscordLinkSchema,
-  "set-push-prefs": SetPushPrefsSchema,
 };
 
 function makeJson(req: Request) {
@@ -973,54 +968,6 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       logger.info("Discord account linked", { accountId: identity.accountId, discordUserId: linkCode.discord_user_id });
       return json({ ok: true, discord_username: linkCode.discord_username || null });
-    }
-
-    if (action === "get-push-prefs") {
-      const { data, error } = await admin.rpc("gm_get_push_prefs", { p_uid: uid });
-      if (error) {
-        logger.error("Failed gm_get_push_prefs", error, { uid });
-        return json({ ok: false, error: "db_error" }, 200);
-      }
-      const row = (Array.isArray(data) ? data[0] : data) as { event_types?: string[] } | null;
-      return json({
-        ok: true,
-        event_types: row?.event_types ?? ["events", "glory", "challenges"]
-      });
-    }
-
-    if (action === "set-push-prefs") {
-      const types = Array.isArray(payload?.event_types)
-        ? payload.event_types.filter((t: unknown) => typeof t === "string")
-        : [];
-      if (types.length === 0) {
-        return json({ ok: false, error: "invalid_event_types" }, 400);
-      }
-
-      const member = await getPlayer(admin, uid, identity.guild);
-
-      const { data, error } = await admin.rpc("gm_set_push_prefs", {
-        p_uid: uid,
-        p_event_types: types,
-      });
-      if (error) {
-        logger.error("Failed gm_set_push_prefs", error, { uid, types });
-        return json({ ok: false, error: "db_error" }, 200);
-      }
-      const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
-      if (!row || !row.ok) return json({ ok: false, error: row?.error || "update_failed" }, 200);
-
-      await logPlayerAction(admin, {
-        action_type: "push_prefs",
-        pseudo: member?.pseudo || uid,
-        uid,
-        guild: member?.guild || identity.guild || "UNKNOWN",
-        message: `Updated push notification preferences: [${types.join(", ")}]`,
-        metadata: {
-          event_types: types
-        }
-      });
-
-      return json({ ok: true });
     }
 
     return json({ ok: false, error: "unknown_action" }, 400);

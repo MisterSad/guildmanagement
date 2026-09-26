@@ -56,9 +56,9 @@ describe('Final cutover: src/main.ts bootstrap', () => {
       'initOcrDropdown()',
       'initTimezoneCollapsible()',
       'initVersionCheck()',
+      'initNetworkStatusMonitoring()',
       'shellView.init()',
       'helpView.init()',
-      'pushService.init()',
       'sanctionsView.init()',
       'applyTranslations()',
       'restoreSession()'

@@ -74,7 +74,18 @@ export function showNewVersionBanner(newVersion: string): void {
   document.body.appendChild(banner);
 
   const later = document.getElementById('new-version-later');
-  if (later) later.addEventListener('click', () => { banner.remove(); });
+  if (later) {
+    later.addEventListener('click', () => {
+      banner.remove();
+      // Re-arm the prompt. Without this reset `newVersionBannerShown` stayed
+      // true for the lifetime of the tab, so `checkForNewVersion()` short-
+      // circuited on its first line and a user who dismissed the banner once
+      // was never offered the update again -- on a long-lived tab that means
+      // running stale code indefinitely, which is exactly what this mechanism
+      // exists to prevent. The 15-minute poll will surface it again.
+      newVersionBannerShown = false;
+    });
+  }
   const refresh = document.getElementById('new-version-refresh');
   if (refresh) refresh.addEventListener('click', () => { winAny().location.reload(); });
 }

@@ -13,11 +13,16 @@ if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir, { recursive: true });
 }
 
-// Service worker: compiled from TypeScript under /src (the Strangler
-// invariant forbids new root runtime scripts) straight to dist/sw.js at the
-// root of the output so its registration scope stays `/`. Bundled as a classic
-// IIFE because the registration calls (`/sw.js`, no `{ type: 'module' }`) must
-// keep working unchanged. It intentionally exposes no `fetch`/cache logic.
+// Service worker: the PWA is retired, and this now compiles a SELF-DESTRUCTING
+// TOMBSTONE (src/sw/service-worker.ts) whose only job is to call
+// registration.unregister(). It must keep being emitted at the root of dist/ so
+// the path stays `/sw.js`: a worker already installed on a member's device only
+// goes away when the browser can fetch a NEW /sw.js from that exact URL and see
+// it unregister itself. Dropping this block would 404 the path and leave every
+// existing installation running the old push worker forever.
+//
+// Remove it (and src/sw/, and the dev plugin in vite.config.ts) only after a
+// full release cycle has given returning devices time to pick the tombstone up.
 {
   const swEntry = path.join(rootDir, 'src/sw/service-worker.ts');
   await esbuildBuild({

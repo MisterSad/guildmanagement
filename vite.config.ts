@@ -12,10 +12,14 @@ interface MinimalResponse {
 
 /**
  * Dev-only parity for the service worker. In production `dist/sw.js` is emitted
- * by `scripts/build.js` (esbuild), but the Striangler invariant forbids a root
+ * by `scripts/build.js` (esbuild), but the Strangler invariant forbids a root
  * `sw.js`, so the root dev server has nothing to serve at `/sw.js`. This plugin
  * compiles `src/sw/service-worker.ts` (bundled, classic IIFE — the same output
- * shape as the build) on demand so push registration works in `vite dev`.
+ * shape as the build) on demand.
+ *
+ * Since the PWA was retired that worker is a self-destructing tombstone, so what
+ * this keeps working in `vite dev` is the *unregistration* path, not push. Keep
+ * it until `src/sw/` itself is deleted.
  */
 function serviceWorkerDevPlugin(): Plugin {
   return {

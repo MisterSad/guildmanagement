@@ -27,8 +27,12 @@ export type SystemAuditLog = Tables['system_audit_logs']['Row'];
 export type Ticket = Tables['tickets']['Row'];
 export type DiplomaticTreaty = Tables['diplomatic_treaties']['Row'];
 export type GmPayment = Tables['gm_payments']['Row'];
-export type E2eeMessage = Tables['e2ee_messages']['Row'];
-export type E2eeConversation = Tables['e2ee_conversations']['Row'];
+
+// `E2eeMessage` / `E2eeConversation` were removed here: the Leader Hall E2EE
+// tables were dropped by 20260913000000_drop_leader_hall_e2ee.sql and neither
+// alias had a single consumer left. They only survived because
+// database.generated.ts had gone stale and still described the dropped tables --
+// regenerating it turned them into the build failure this file's header promises.
 
 // SvS / GvG granular scoring domain types (free-text columns behind CHECK
 // constraints, so codegen only exposes `string` — narrowed here).
