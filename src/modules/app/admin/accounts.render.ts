@@ -192,6 +192,7 @@ export function renderAccountCardsToContainer(
         '<button class="gm-mini-btn gm-cred-reset" title="Renew Password"><i class="ph ph-arrows-clockwise"></i></button>' +
         '<button class="gm-mini-btn gm-cred-copy hidden" title="Copy Password"><i class="ph ph-copy"></i></button>' +
         '<button class="gm-mini-btn gm-cred-reset-passkeys" title="Reset Passkeys (revoke all passkeys + backup codes)"><i class="ph ph-fingerprint"></i></button>' +
+        '<button class="gm-mini-btn gm-cred-discord-unlink" title="Unlink Discord and issue a single-use relink code"><i class="ph ph-discord-logo"></i></button>' +
       '</div>';
     } else {
       passHtml = '<div class="gm-cred-pass gm-masked" style="opacity: 0.6; cursor: not-allowed;" title="Protected Super Admin Account">' +
@@ -310,6 +311,74 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
           } catch (err: any) {
             const g = gm();
             if (g && g.showToast) g.showToast('Could not reset passkeys: ' + err.message, 'error');
+          } finally {
+            (btn as HTMLButtonElement).disabled = false;
+            if (icon) icon.className = originalClass;
+          }
+        }
+      );
+    });
+  });
+
+  // Phase D6 — detach a Discord identity and hand back a way in.
+  //
+  // The confirmation says plainly that this is announced on Discord, because
+  // peer unlink is allowed: a guild_admin can do this to another guild_admin
+  // of the same guild. Visibility, not restriction, is the safeguard the owner
+  // chose — so the person clicking must know it will be seen.
+  container.querySelectorAll('.gm-cred-discord-unlink').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const wrap = btn.closest('.gm-cred-pass') as HTMLElement | null;
+      const accId = wrap ? wrap.getAttribute('data-acc-id') || '' : '';
+      const w = winAny();
+      if (!w.showConfirm) return;
+      w.showConfirm(
+        'Unlink Discord',
+        'This detaches the Discord account currently linked to <strong>' + esc(accId) + '</strong> and ends their active sessions.' +
+        '<br><br>A <strong>single-use relink code</strong> will be generated, shown once, and valid for 7 days — relay it to them so they can sign back in with Discord.' +
+        '<br><br>This action is written to the audit ledger and <strong>announced on the guild\'s Discord audit channel</strong>. Continue?',
+        async () => {
+          const icon = btn.querySelector('i');
+          const originalClass = icon ? icon.className : '';
+          (btn as HTMLButtonElement).disabled = true;
+          if (icon) icon.className = 'ph ph-circle-notch ph-spin';
+          try {
+            const g = gm();
+            const res = await g.adminAccounts('discord-unlink', { id: accId });
+            if (!res.ok) throw new Error(res.error || 'unlink_failed');
+
+            // Shown once. The server never stores the plaintext, so there is
+            // no second chance to read it.
+            if (wrap) {
+              wrap.setAttribute('data-acc-relink-code', res.relink_code);
+              const holder = document.createElement('div');
+              holder.className = 'gm-cred-pass';
+              holder.style.display = 'inline-flex';
+              holder.innerHTML =
+                '<span class="gm-pwd-text">' + esc(res.relink_code) + '</span>' +
+                '<button class="gm-mini-btn gm-relink-copy" title="Copy relink code"><i class="ph ph-copy"></i></button>';
+              wrap.insertAdjacentElement('afterend', holder);
+              const copyBtn = holder.querySelector('.gm-relink-copy');
+              if (copyBtn) copyBtn.addEventListener('click', () => {
+                if (navigator.clipboard) navigator.clipboard.writeText(res.relink_code)
+                  .then(() => { const gg = gm(); if (gg && gg.showToast) gg.showToast('Relink code copied.', 'success'); })
+                  .catch(() => undefined);
+              });
+            }
+            if (navigator.clipboard) navigator.clipboard.writeText(res.relink_code).catch(() => undefined);
+
+            const gg = gm();
+            if (gg && gg.showToast) {
+              gg.showToast(
+                res.previous_discord_user_id
+                  ? 'Discord unlinked from ' + accId + '. Relink code copied — relay it via Discord.'
+                  : accId + ' had no Discord link. A relink code was issued and copied — relay it via Discord.',
+                'success'
+              );
+            }
+          } catch (err: any) {
+            const gg = gm();
+            if (gg && gg.showToast) gg.showToast('Could not unlink Discord: ' + err.message, 'error');
           } finally {
             (btn as HTMLButtonElement).disabled = false;
             if (icon) icon.className = originalClass;

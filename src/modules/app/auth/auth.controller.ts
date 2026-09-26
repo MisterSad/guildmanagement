@@ -452,10 +452,16 @@ export async function handleDiscordCallback(): Promise<boolean> {
   try {
     const resp: LoginResponse = await x.redeemDiscordTicket(ticket);
     if (resp.ok && resp.state === 'unlinked') {
-      // Expected until phase D3 ships the claim flow: the Discord account is
-      // genuine, it simply is not attached to an account yet.
+      // The Discord account is genuine, it simply is not attached yet. If an
+      // admin issued a relink code (phase D6), this is where it is spent —
+      // using the CONTINUATION ticket, so the code alone is not enough: the
+      // person must also have just proved control of this Discord account.
+      if (resp.ticket) {
+        openRelinkDialog(resp.ticket, resp.discordUsername || null);
+        return true;
+      }
       const who = resp.discordUsername ? ' (' + resp.discordUsername + ')' : '';
-      setLoginError('This Discord account' + who + ' is not linked to any account yet. Sign in with your identifier and password, then link Discord from your account page.');
+      setLoginError('This Discord account' + who + ' is not linked to any account yet. Sign in with your identifier and password, then ask an admin for a relink code.');
       return true;
     }
     if (resp.ok) {
@@ -468,6 +474,108 @@ export async function handleDiscordCallback(): Promise<boolean> {
     setLoginError(discordErrorMessage('request_failed'));
   }
   return true;
+}
+
+/**
+ * Asks for a relink code after a Discord sign-in found no linked account.
+ *
+ * `ticket` is the continuation ticket from the `unlinked` response — it is what
+ * binds the code to *this* Discord authorization, so a code found or
+ * intercepted on its own cannot be redeemed.
+ */
+export function openRelinkDialog(ticket: string, discordUsername: string | null): void {
+  if (typeof document === 'undefined') return;
+  const existing = document.getElementById('discord-relink-overlay');
+  if (existing) existing.remove();
+
+  const who = discordUsername ? ' as <strong>' + escapeDialogText(discordUsername) + '</strong>' : '';
+  const html =
+    '<div id="discord-relink-overlay" class="gm-modal-overlay">' +
+      '<div class="gm-modal-card" style="max-width: 420px; width: 92%;">' +
+        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom: .75rem;">' +
+          '<i class="ph ph-link" style="font-size: var(--fs-2xl); color: var(--accent);"></i>' +
+          '<h3 style="margin:0; font-size: var(--fs-xl);">Link this Discord account</h3>' +
+        '</div>' +
+        '<p style="margin:0 0 .9rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+          'You signed in' + who + ', but this Discord account is not linked to any account yet.' +
+          '<br>If an admin gave you a <strong>relink code</strong>, enter it now.' +
+        '</p>' +
+        '<div class="gm-login-field">' +
+          '<label for="discord-relink-code">Relink code</label>' +
+          '<input type="text" id="discord-relink-code" class="gm-input" placeholder="XXXXX-XXXXX" autocomplete="one-time-code">' +
+        '</div>' +
+        '<div id="discord-relink-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
+          '<i class="ph ph-warning-circle"></i><span></span>' +
+        '</div>' +
+        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
+          '<button type="button" class="gm-btn gm-btn-ghost" id="discord-relink-cancel">Cancel</button>' +
+          '<button type="button" class="gm-btn gm-btn-primary" id="discord-relink-submit">Link and sign in</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  const overlay = document.getElementById('discord-relink-overlay');
+  if (!overlay) return;
+  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+
+  const closeModal = (): void => {
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.remove(); }, 200);
+  };
+  const cancelBtn = document.getElementById('discord-relink-cancel');
+  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
+
+  const setErr = (msg: string): void => {
+    const errorEl = document.getElementById('discord-relink-error');
+    if (!errorEl) return;
+    const span = errorEl.querySelector('span:last-of-type');
+    if (span) span.textContent = msg;
+    errorEl.classList.remove('hidden');
+  };
+
+  const submitBtn = document.getElementById('discord-relink-submit') as HTMLButtonElement | null;
+  if (submitBtn) {
+    submitBtn.addEventListener('click', async () => {
+      const code = ((el<HTMLInputElement>('discord-relink-code') || ({} as any)).value || '').trim();
+      if (!code) { setErr('Enter the relink code an admin gave you.'); return; }
+
+      submitBtn.disabled = true;
+      try {
+        const x = g();
+        const resp: LoginResponse = x && typeof x.relinkWithDiscord === 'function'
+          ? await x.relinkWithDiscord(ticket, code)
+          : { ok: false, error: 'unavailable' };
+
+        if (!resp.ok) {
+          // The ticket is single-use, so a failed attempt burns it. Say so
+          // rather than letting someone retype into a dead dialog.
+          if (resp.error === 'discord_already_linked') {
+            setErr('This Discord account is already linked to a different account.');
+          } else if (resp.error === 'ticket_invalid') {
+            setErr('This attempt expired. Close this and sign in with Discord again.');
+          } else if (resp.error === 'account_not_active') {
+            setErr('That account is not active. Contact an admin.');
+          } else {
+            setErr('That relink code is not valid, has expired, or was already used.');
+          }
+          return;
+        }
+        closeModal();
+        await handleSuccessfulLogin(resp, resp.id || '');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+}
+
+/** Escaping for the single interpolation in the dialog above. */
+function escapeDialogText(v: string): string {
+  return String(v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 /** Maps an auth-discord error code to something a person can act on. */

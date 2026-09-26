@@ -113,6 +113,33 @@ export async function resolveAuditChannelId(
   return map.get("discord_audit_channel_id") || map.get("discord_officer_channel_id") || null;
 }
 
+/**
+ * Posts a durable message to a guild's Discord audit channel.
+ *
+ * Deliberately NOT the auto-deleting variant used for verification replies:
+ * this is the record of a privileged action, so it must survive. Best-effort
+ * by design — an announcement that fails must never fail the action it
+ * describes, because the database write is the authoritative audit trail and
+ * Discord is the notification.
+ *
+ * `allowed_mentions: { parse: [] }` is not optional: an account id or guild
+ * name containing `@everyone` would otherwise ping the whole server.
+ */
+export async function postAuditMessage(channelId: string, content: string): Promise<boolean> {
+  const token = Deno.env.get("DISCORD_BOT_TOKEN");
+  if (!token || !channelId) return false;
+  try {
+    const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface ExtractedProfile {
   pseudo: string;
   uid: string;

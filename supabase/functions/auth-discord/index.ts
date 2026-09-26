@@ -41,6 +41,12 @@ import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.
 import { establishShadowSession } from "../_shared/shadow-session.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
 import {
+  BACKUP_CODE_LENGTH,
+  normalizeBackupCode,
+  sha256Hex,
+  verifyAndConsumeBackupCode,
+} from "../_shared/backup-codes.ts";
+import {
   DISCORD_ME_URL,
   DISCORD_REVOKE_URL,
   DISCORD_TOKEN_URL,
@@ -68,9 +74,25 @@ const TICKET_TTL_MS = 2 * 60_000;
 /** Shared with auth-login and auth-passkey — login_throttle is keyed purely by IP. */
 const IP_LIMIT = { limit: 60, windowMs: 300_000 };
 
+const TicketField = z.string().trim().min(16).max(256);
+
 const RedeemSchema = z.object({
   action: z.literal("redeem"),
-  ticket: z.string().trim().min(16).max(256),
+  ticket: TicketField,
+});
+
+/** Phase D6: attach a Discord identity to an account using a relink code. */
+const RelinkSchema = z.object({
+  action: z.literal("relink"),
+  ticket: TicketField,
+  code: z.string().trim().min(4).max(128),
+});
+
+/** Phase D6: the super_admin's way back in when Discord itself is the problem. */
+const BackupLoginSchema = z.object({
+  action: z.literal("backup-login"),
+  id: z.string().trim().min(1).max(128),
+  code: z.string().trim().min(4).max(64),
 });
 
 function makeJson(req: Request) {
@@ -104,6 +126,27 @@ function configured(): boolean {
 function resolveOrigin(raw: string | null): string {
   if (raw && isAllowedOrigin(raw)) return raw;
   return DEFAULT_ORIGIN;
+}
+
+/** Mints a single-use ticket for a Discord identity. Returns null on failure. */
+async function issueTicket(
+  admin: any,
+  discordUserId: string,
+  discordUsername: string | null,
+  logger: EdgeLogger
+): Promise<string | null> {
+  const ticket = randomToken(32);
+  const { error } = await admin.from("discord_auth_tickets").insert({
+    ticket,
+    discord_user_id: discordUserId,
+    discord_username: discordUsername,
+    expires_at: new Date(Date.now() + TICKET_TTL_MS).toISOString(),
+  });
+  if (error) {
+    logger.error("Failed to persist auth ticket", error);
+    return null;
+  }
+  return ticket;
 }
 
 // ── GET /start ──────────────────────────────────────────────────────────────
@@ -241,52 +284,50 @@ async function handleCallback(req: Request, url: URL, admin: any, logger: EdgeLo
   // ── Issue the ticket. Note it is issued whether or not the Discord account
   //    is linked: resolving that is the redeem step's job, and it is what D3
   //    (claim) and D4 (onboarding) will extend.
-  const ticket = randomToken(32);
-  const { error: tErr } = await admin.from("discord_auth_tickets").insert({
-    ticket,
-    discord_user_id: discordUserId,
-    discord_username: discordUsername,
-    expires_at: new Date(Date.now() + TICKET_TTL_MS).toISOString(),
-  });
-  if (tErr) {
-    logger.error("Failed to persist auth ticket", tErr);
-    return redirect(buildErrorReturnUrl(origin, "server_error"));
-  }
+  const ticket = await issueTicket(admin, discordUserId, discordUsername, logger);
+  if (!ticket) return redirect(buildErrorReturnUrl(origin, "server_error"));
 
   logger.info("Discord authorization completed", { discordUserId });
   return redirect(buildReturnUrl(origin, ticket));
 }
 
-// ── POST { action: "redeem", ticket } ───────────────────────────────────────
-async function handleRedeem(req: Request, admin: any, logger: EdgeLogger): Promise<Response> {
-  const json = makeJson(req);
-
-  let ticket = "";
-  try {
-    const parsed = RedeemSchema.safeParse(await req.json());
-    if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
-    ticket = parsed.data.ticket;
-  } catch {
-    return json({ ok: false, error: "bad_request" }, 400);
-  }
-
-  const ip = extractClientIp(req.headers);
-  const throttle = await checkAndRecordIpAttempt(admin, ip, IP_LIMIT);
-  if (!throttle.allowed) {
-    logger.warn("IP rate limit exceeded on Discord redeem", { ip });
-    return json({ ok: false, error: "too_many_attempts" }, 429);
-  }
-
-  const { data: rows, error: tErr } = await admin
-    .rpc("gm_consume_discord_auth_ticket", { p_ticket: ticket });
-  if (tErr) {
-    logger.error("Failed to consume auth ticket", tErr);
-    return json({ ok: false, error: "server_error" }, 500);
+/** Spends a ticket, returning the Discord identity it attested. */
+async function consumeTicket(
+  admin: any,
+  ticket: string,
+  logger: EdgeLogger
+): Promise<{ ok: true; discordUserId: string; discordUsername: string | null } | { ok: false; error: string; status: number }> {
+  const { data: rows, error } = await admin.rpc("gm_consume_discord_auth_ticket", { p_ticket: ticket });
+  if (error) {
+    logger.error("Failed to consume auth ticket", error);
+    return { ok: false, error: "server_error", status: 500 };
   }
   const row = Array.isArray(rows) ? rows[0] : rows;
-  if (!row) return json({ ok: false, error: "ticket_invalid" }, 200);
+  if (!row) return { ok: false, error: "ticket_invalid", status: 200 };
+  return { ok: true, discordUserId: row.discord_user_id as string, discordUsername: row.discord_username ?? null };
+}
 
-  const discordUserId = row.discord_user_id as string;
+/** Shared IP budget check for every POST action. */
+async function throttled(req: Request, admin: any, logger: EdgeLogger, what: string): Promise<boolean> {
+  const ip = extractClientIp(req.headers);
+  const t = await checkAndRecordIpAttempt(admin, ip, IP_LIMIT);
+  if (!t.allowed) logger.warn("IP rate limit exceeded", { ip, what });
+  return !t.allowed;
+}
+
+// ── POST { action: "redeem", ticket } ───────────────────────────────────────
+async function handleRedeem(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
+  const json = makeJson(req);
+
+  const parsed = RedeemSchema.safeParse(body);
+  if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
+
+  if (await throttled(req, admin, logger, "redeem")) return json({ ok: false, error: "too_many_attempts" }, 429);
+
+  const consumed = await consumeTicket(admin, parsed.data.ticket, logger);
+  if (!consumed.ok) return json({ ok: false, error: consumed.error }, consumed.status);
+  const row = { discord_username: consumed.discordUsername };
+  const discordUserId = consumed.discordUserId;
 
   const { data: link, error: lErr } = await admin
     .from("discord_account_links")
@@ -298,13 +339,20 @@ async function handleRedeem(req: Request, admin: any, logger: EdgeLogger): Promi
     return json({ ok: false, error: "server_error" }, 500);
   }
 
-  // No link yet. D2 stops here by design; D3 turns this into the claim flow
-  // and D4 into onboarding, both keyed off this same shape.
+  // No link yet. The original ticket has just been spent, so a CONTINUATION
+  // ticket is issued for the same Discord identity: without it the caller
+  // would have to restart the whole Discord round trip merely to present a
+  // relink code. It is single-use and short-lived exactly like the first.
+  //
+  // D6 uses this to accept a relink code; D3 (claim) and D4 (onboarding) hang
+  // off the same branch and the same continuation ticket.
   if (!link || !link.account_id) {
     logger.info("Discord account is not linked to any account", { discordUserId });
+    const continuation = await issueTicket(admin, discordUserId, row.discord_username ?? null, logger);
     return json({
       ok: true,
       state: "unlinked",
+      ticket: continuation,
       discord_username: row.discord_username ?? null,
     });
   }
@@ -349,6 +397,148 @@ async function handleRedeem(req: Request, admin: any, logger: EdgeLogger): Promi
   });
 }
 
+// ── POST { action: "relink", ticket, code } — phase D6 ──────────────────────
+//
+// The way back in when a Discord link is lost, wrong, or was never made. An
+// admin unlinks and hands over a single-use code (see admin-accounts
+// "discord-unlink"); this spends it together with a fresh Discord
+// authorization, so possession of the code alone is not enough — the person
+// must also prove control of the Discord account being attached.
+async function handleRelink(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
+  const json = makeJson(req);
+
+  const parsed = RelinkSchema.safeParse(body);
+  if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
+
+  if (await throttled(req, admin, logger, "relink")) return json({ ok: false, error: "too_many_attempts" }, 429);
+
+  const consumed = await consumeTicket(admin, parsed.data.ticket, logger);
+  if (!consumed.ok) return json({ ok: false, error: consumed.error }, consumed.status);
+
+  // Only the hash is ever compared; the plaintext existed once, in the
+  // response that handed the code over.
+  const codeHash = await sha256Hex(normalizeBackupCode(parsed.data.code));
+  const { data: rows, error } = await admin.rpc("gm_redeem_relink_code", {
+    p_code_hash: codeHash,
+    p_discord_user_id: consumed.discordUserId,
+  });
+  if (error) {
+    logger.error("Failed to redeem relink code", error);
+    return json({ ok: false, error: "server_error" }, 500);
+  }
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  if (!row || row.ok !== true) {
+    logger.warn("Relink code rejected", { reason: row?.err ?? "unknown" });
+    // `discord_already_linked` is surfaced verbatim: it is actionable, and it
+    // tells the person about their own Discord account, not someone else's.
+    return json({ ok: false, error: row?.err || "code_invalid" }, 200);
+  }
+
+  const accountId = row.account_id as string;
+  logger.setContext({ userId: accountId });
+
+  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const shadow = await establishShadowSession(admin, anon, accountId, row.role || "member", logger);
+  if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
+
+  logger.info("Account relinked to a new Discord identity", { accountId, discordUserId: consumed.discordUserId });
+
+  return json({
+    ok: true,
+    state: "session",
+    role: row.role,
+    id: accountId,
+    access_token: shadow.session.access_token,
+    refresh_token: shadow.session.refresh_token,
+    expires_at: shadow.session.expires_at,
+  });
+}
+
+// ── POST { action: "backup-login", id, code } — phase D6 ────────────────────
+//
+// super_admin ONLY, and deliberately so. Every other account has an
+// administrator above it who can unlink and reissue a relink code — a stronger
+// path, because it puts a second human in the loop. For those accounts a backup
+// code would only be a weaker credential sitting beside the strong one. The
+// super_admin has nobody above them, so codes are their sole recovery.
+//
+// A non-super_admin gets `invalid_code`, identical to a wrong code: the reply
+// must not double as a role oracle.
+async function handleBackupLogin(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
+  const json = makeJson(req);
+
+  const parsed = BackupLoginSchema.safeParse(body);
+  if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
+
+  if (await throttled(req, admin, logger, "backup-login")) return json({ ok: false, error: "too_many_attempts" }, 429);
+
+  const code = normalizeBackupCode(parsed.data.code);
+  if (code.length !== BACKUP_CODE_LENGTH) return json({ ok: false, error: "invalid_code" }, 200);
+
+  const { data: acc, error: aErr } = await admin
+    .from("accounts")
+    .select("id, role, status, locked_until")
+    .ilike("id", parsed.data.id)
+    .maybeSingle();
+  if (aErr) {
+    logger.error("Failed to load account for backup sign-in", aErr);
+    return json({ ok: false, error: "server_error" }, 500);
+  }
+  if (!acc || acc.status !== "active" || acc.role !== "super_admin") {
+    logger.warn("Backup sign-in refused", { id: parsed.data.id, reason: !acc ? "unknown" : acc.role !== "super_admin" ? "not_super_admin" : "not_active" });
+    return json({ ok: false, error: "invalid_code" }, 200);
+  }
+  if (acc.locked_until && new Date(acc.locked_until).getTime() > Date.now()) {
+    logger.warn("Locked account attempted backup sign-in", { id: acc.id });
+    return json({ ok: false, error: "account_locked" }, 200);
+  }
+
+  const consumed = await verifyAndConsumeBackupCode(admin, acc.id, code);
+  if (!consumed.ok) {
+    if (consumed.error === "server_error") return json({ ok: false, error: "server_error" }, 500);
+    return json({ ok: false, error: "invalid_code" }, 200);
+  }
+
+  await admin
+    .from("accounts")
+    .update({ failed_login_count: 0, locked_until: null, last_login_at: new Date().toISOString() })
+    .eq("id", acc.id);
+
+  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const shadow = await establishShadowSession(admin, anon, acc.id, acc.role, logger);
+  if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
+
+  logger.info("super_admin signed in with a backup code", { accountId: acc.id, remaining: consumed.remaining });
+
+  return json({
+    ok: true,
+    state: "session",
+    role: acc.role,
+    id: acc.id,
+    backup_codes_remaining: consumed.remaining,
+    access_token: shadow.session.access_token,
+    refresh_token: shadow.session.refresh_token,
+    expires_at: shadow.session.expires_at,
+  });
+}
+
+/** Routes a POST by its `action`, parsing the body exactly once. */
+async function handlePost(req: Request, admin: any, logger: EdgeLogger): Promise<Response> {
+  const json = makeJson(req);
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ ok: false, error: "bad_request" }, 400);
+  }
+  switch (body?.action) {
+    case "redeem":       return handleRedeem(req, body, admin, logger);
+    case "relink":       return handleRelink(req, body, admin, logger);
+    case "backup-login": return handleBackupLogin(req, body, admin, logger);
+    default:             return json({ ok: false, error: "bad_request" }, 400);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   const json = makeJson(req);
   const logger = new EdgeLogger("auth-discord", req);
@@ -373,7 +563,7 @@ Deno.serve(async (req: Request) => {
 
   if (req.method === "GET" && route === "/start") return handleStart(req, url, admin, logger);
   if (req.method === "GET" && route === "/callback") return handleCallback(req, url, admin, logger);
-  if (req.method === "POST" && (route === "" || route === "/")) return handleRedeem(req, admin, logger);
+  if (req.method === "POST" && (route === "" || route === "/")) return handlePost(req, admin, logger);
 
   return json({ ok: false, error: "not_found" }, 404);
 });

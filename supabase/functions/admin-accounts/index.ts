@@ -5,6 +5,8 @@ import { findUserByEmail } from "../_shared/pagination.ts";
 import { canManageAccount, maxAssignableRole, isGuildInScope, normalizeRole, Role } from "../_shared/admin-authz.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import { resolveAuditChannelId, postAuditMessage } from "../_shared/discord-verification.ts";
+import { randomBackupCode, sha256Hex } from "../_shared/backup-codes.ts";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,6 +32,9 @@ const UpdateRoleSchema = z.object({
   guild: guildField,
 });
 const DeleteSchema = z.object({ id: idField });
+const DiscordUnlinkSchema = z.object({ id: idField });
+/** A relink code has to survive a Discord conversation and a time zone. */
+const RELINK_CODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const UpdateGuildSchema = z.object({ id: idField, guild: guildField });
 const SetJoinCodeSchema = z.object({ guild: guildField, code: z.string().trim().min(1).max(64) });
 const GetJoinCodeSchema = z.object({ guild: guildField });
@@ -292,6 +297,104 @@ Deno.serve(async (req: Request) => {
 
     logger.info("Admin reset account password", { targetId: canonicalId });
     return json({ ok: true, password: newPassword });
+  }
+
+  // ── Phase D6: detach a Discord identity and hand back a way in ──────────
+  //
+  // Peer unlink is permitted: canManageAccount already lets a guild_admin
+  // manage another guild_admin of the same guild, and the owner chose to keep
+  // that rather than centralise recovery on the super_admin. The safeguard is
+  // not restriction but visibility -- every unlink is written to the audit
+  // ledger AND announced on the guild's Discord audit channel, so it cannot
+  // happen quietly.
+  //
+  // The unlink and the relink code are issued in ONE transaction
+  // (gm_discord_unlink). A bare "remove the link" with no code to follow is
+  // not recovery, it is a way to strand a colleague -- so the RPC cannot do
+  // only the first half.
+  if (action === "discord-unlink") {
+    const parsedUnlink = DiscordUnlinkSchema.safeParse(body);
+    if (!parsedUnlink.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const id = parsedUnlink.data.id;
+
+    const { data: targetAcc } = await admin
+      .from("accounts")
+      .select("id, role, guild, server_number")
+      .ilike("id", id)
+      .maybeSingle();
+    if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
+
+    const targetCtx = await getTargetCtx(admin, targetAcc);
+    if (!canManageAccount(info, targetCtx)) {
+      logger.warn("Forbidden attempt to unlink Discord", { callerRole: info.role, targetId: id, targetRole: targetAcc.role });
+      return json({ ok: false, error: "forbidden" }, 403);
+    }
+
+    // Plaintext exists only in this response. The database sees the hash.
+    const relinkCode = randomBackupCode();
+    const expiresAt = new Date(Date.now() + RELINK_CODE_TTL_MS).toISOString();
+
+    const { data: rows, error: rpcErr } = await admin.rpc("gm_discord_unlink", {
+      p_account_id: targetAcc.id,
+      p_code_hash: await sha256Hex(relinkCode),
+      p_expires_at: expiresAt,
+      p_actor: info.accountId ?? "unknown",
+    });
+    if (rpcErr) {
+      logger.error("gm_discord_unlink failed", rpcErr, { targetId: targetAcc.id });
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (!row || row.ok !== true) {
+      return json({ ok: false, error: row?.err || "unlink_failed" }, 200);
+    }
+
+    const previous = row.previous_discord_user_id as string | null;
+    const targetGuild = (row.guild as string | null) ?? targetAcc.guild ?? null;
+
+    // The ledger is the authoritative record; Discord is the notification.
+    await admin.from("system_audit_logs").insert({
+      level: "WARN",
+      service: "admin-accounts",
+      action_type: "discord_unlink",
+      guild: targetGuild,
+      user_identifier: info.accountId ?? null,
+      message: `Discord link removed from ${targetAcc.id}` + (previous ? ` (was ${previous})` : " (no link was attached)"),
+      metadata: {
+        target_account: targetAcc.id,
+        target_role: targetAcc.role,
+        previous_discord_user_id: previous,
+        actor_role: info.role,
+        relink_code_expires_at: expiresAt,
+      },
+    });
+
+    // Best-effort: a failed announcement must not fail the unlink, which has
+    // already committed.
+    if (targetGuild) {
+      const channelId = await resolveAuditChannelId(admin, targetGuild);
+      if (channelId) {
+        await postAuditMessage(
+          channelId,
+          `🔓 **Discord link removed** — \`${targetAcc.id}\` (${targetAcc.role || "member"})` +
+          (previous ? ` was linked to Discord id \`${previous}\`.` : ` had no Discord link attached.`) +
+          `\nPerformed by \`${info.accountId ?? "unknown"}\`. A single-use relink code was issued and expires in 7 days.`
+        );
+      } else {
+        logger.info("No Discord audit channel configured for guild", { guild: targetGuild });
+      }
+    }
+
+    logger.info("Discord link removed", { targetId: targetAcc.id, previous });
+
+    return json({
+      ok: true,
+      id: targetAcc.id,
+      previous_discord_user_id: previous,
+      relink_code: relinkCode,
+      expires_at: expiresAt,
+      announced: Boolean(targetGuild),
+    });
   }
 
   if (action === "create") {

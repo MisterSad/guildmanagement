@@ -9,6 +9,12 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { establishShadowSession } from "../_shared/shadow-session.ts";
+import {
+  BACKUP_CODE_LENGTH,
+  issueBackupCodes,
+  normalizeBackupCode,
+  verifyAndConsumeBackupCode,
+} from "../_shared/backup-codes.ts";
 import { canManageAccount, type Role } from "../_shared/admin-authz.ts";
 
 // Two groups of actions:
@@ -84,52 +90,6 @@ async function lookupAccountById(admin: ReturnType<typeof createClient>, rawId: 
 // Accepts the code with or without its "XXXXX-XXXXX" dash, any casing, and
 // stray whitespace — the hash only matches the canonical dashed form it was
 // generated in, so this reconstructs that form before hashing.
-function normalizeBackupCode(raw: string): string {
-  const alnum = (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (alnum.length !== 10) return alnum;
-  return alnum.slice(0, 5) + "-" + alnum.slice(5, 10);
-}
-
-// Backup codes: excludes visually-ambiguous characters (0/O, 1/I/L).
-const BACKUP_CODE_COUNT = 10;
-const BACKUP_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-
-function randomBackupCode(): string {
-  const bytes = new Uint8Array(10);
-  crypto.getRandomValues(bytes);
-  let raw = "";
-  for (const b of bytes) raw += BACKUP_CODE_ALPHABET[b % BACKUP_CODE_ALPHABET.length];
-  return raw.slice(0, 5) + "-" + raw.slice(5, 10);
-}
-
-async function sha256Hex(input: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/**
- * Replaces an account's entire backup-code set with a fresh one (one shared
- * set per account — regenerating always invalidates the prior set). Codes
- * are returned in plaintext exactly once; only their SHA-256 hash is stored.
- */
-async function issueBackupCodes(
-  admin: ReturnType<typeof createClient>,
-  accountId: string
-): Promise<string[]> {
-  await admin.from("account_backup_codes").delete().eq("account_id", accountId);
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const codes = Array.from({ length: BACKUP_CODE_COUNT }, randomBackupCode);
-    const rows = await Promise.all(
-      codes.map(async (code) => ({ account_id: accountId, code_hash: await sha256Hex(code) }))
-    );
-    const { error } = await admin.from("account_backup_codes").insert(rows);
-    if (!error) return codes;
-    if (error.code !== "23505") throw error; // only retry on a hash collision
-  }
-  throw new Error("backup_code_generation_failed");
-}
-
 interface Identity {
   accountId: string;
   role: string;
@@ -441,7 +401,7 @@ Deno.serve(async (req: Request) => {
 
     if (action === "backup-login") {
       const code = normalizeBackupCode(typeof payload?.code === "string" ? payload.code : "");
-      if (!code || code.length !== 11) {
+      if (!code || code.length !== BACKUP_CODE_LENGTH) {
         return json({ ok: false, error: "invalid_code" }, 200);
       }
 
@@ -454,34 +414,20 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, error: "account_locked" }, 200);
       }
 
-      const codeHash = await sha256Hex(code);
-      const { data: codeRow, error: codeErr } = await admin
-        .from("account_backup_codes")
-        .select("id")
-        .eq("account_id", acc.id)
-        .eq("code_hash", codeHash)
-        .is("used_at", null)
-        .maybeSingle();
-      if (codeErr) {
-        logger.error("Failed to look up backup code", codeErr);
-        return json({ ok: false, error: "server_error" }, 500);
-      }
-      if (!codeRow) {
+      const consumed = await verifyAndConsumeBackupCode(admin, acc.id, code);
+      if (!consumed.ok) {
+        if (consumed.error === "server_error") {
+          logger.error("Failed to look up backup code", null, { accountId: acc.id });
+          return json({ ok: false, error: "server_error" }, 500);
+        }
         return json({ ok: false, error: "invalid_code" }, 200);
       }
+      const remaining = consumed.remaining;
 
-      // Single-use.
-      await admin.from("account_backup_codes").update({ used_at: new Date().toISOString() }).eq("id", codeRow.id);
       await admin
         .from("accounts")
         .update({ failed_login_count: 0, locked_until: null, last_login_at: new Date().toISOString() })
         .eq("id", acc.id);
-
-      const { count: remaining } = await admin
-        .from("account_backup_codes")
-        .select("id", { count: "exact", head: true })
-        .eq("account_id", acc.id)
-        .is("used_at", null);
 
       const anonForBackup = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
       const shadowResult = await establishShadowSession(admin, anonForBackup, acc.id, acc.role || "member", logger);

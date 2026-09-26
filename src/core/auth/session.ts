@@ -194,9 +194,78 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
     return { ok: false, error: String(detail) };
   }
   if (data.state === 'unlinked') {
-    return { ok: true, state: 'unlinked', discordUsername: data.discord_username || null };
+    // `ticket` is a CONTINUATION ticket for the same Discord identity: the one
+    // that arrived in the URL has just been spent. It lets the caller present a
+    // relink code without redoing the whole Discord round trip.
+    return {
+      ok: true,
+      state: 'unlinked',
+      ticket: data.ticket || null,
+      discordUsername: data.discord_username || null
+    };
   }
   return applySessionResponse(data, { state: 'session' });
+}
+
+/**
+ * Attaches a Discord identity to an account using a single-use relink code.
+ *
+ * Takes the continuation ticket from an `unlinked` redemption, so the code
+ * alone is never enough: the caller must also have just proved control of the
+ * Discord account being attached. That is what stops a leaked code from being
+ * redeemable by whoever finds it.
+ */
+export async function relinkWithDiscord(ticket: string, code: string): Promise<AuthResult> {
+  const c = getClient();
+  if (!c) return { ok: false, error: 'no_client' };
+  let r: any;
+  try {
+    r = await withTimeout(
+      c.functions.invoke('auth-discord', { body: { action: 'relink', ticket: ticket, code: code } }),
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+  } catch (e: any) {
+    return {
+      ok: false,
+      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+    };
+  }
+  const data = await parseFunctionsInvokeResult(r);
+  if (!data || !data.ok) {
+    const detail =
+      (data && (data.error || data.msg || data.message || data.code)) ||
+      (r && r.error && r.error.message) ||
+      'request_failed';
+    return { ok: false, error: String(detail) };
+  }
+  return applySessionResponse(data, { state: 'session' });
+}
+
+/**
+ * super_admin recovery when Discord itself is the problem.
+ *
+ * Restricted server-side: every other account has an administrator above it
+ * who can unlink and reissue a relink code, which is stronger because it
+ * involves a second human. The super_admin has nobody above them.
+ */
+export async function loginWithBackupCodeDiscord(id: string, code: string): Promise<AuthResult> {
+  const c = getClient();
+  if (!c) return { ok: false, error: 'no_client' };
+  let r: any;
+  try {
+    r = await withTimeout(
+      c.functions.invoke('auth-discord', { body: { action: 'backup-login', id: id, code: code } }),
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+  } catch (e: any) {
+    return {
+      ok: false,
+      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+    };
+  }
+  const data = await parseFunctionsInvokeResult(r);
+  if (!data || !data.ok) return { ok: false, error: String((data && data.error) || 'request_failed') };
+  return applySessionResponse(data, { state: 'session', backupCodesRemaining: data.backup_codes_remaining });
 }
 
 /** Signs out and clears sb-/supabase./gm_/fgf_ localStorage keys. */
