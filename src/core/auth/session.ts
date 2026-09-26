@@ -242,6 +242,45 @@ export async function relinkWithDiscord(ticket: string, code: string): Promise<A
 }
 
 /**
+ * Claims an existing account for a Discord identity by proving the password.
+ *
+ * IRREVERSIBLE. On success the server destroys the password, its reversible
+ * copy, every passkey and every backup code — Discord becomes the only way in
+ * for that account. A `super_admin` receives a fresh set of backup codes in
+ * the response, shown once, because they have no administrator above them to
+ * unlink and reissue.
+ *
+ * `ticket` is the continuation ticket from an `unlinked` redemption, so the
+ * password alone is never enough: the caller must also have just proved
+ * control of the Discord account being attached.
+ */
+export async function claimWithDiscord(ticket: string, id: string, password: string): Promise<AuthResult> {
+  const c = getClient();
+  if (!c) return { ok: false, error: 'no_client' };
+  let r: any;
+  try {
+    r = await withTimeout(
+      c.functions.invoke('auth-discord', { body: { action: 'claim', ticket: ticket, id: id, password: password } }),
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+  } catch (e: any) {
+    return {
+      ok: false,
+      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+    };
+  }
+  const data = await parseFunctionsInvokeResult(r);
+  if (!data || !data.ok) {
+    const detail =
+      (data && (data.error || data.msg || data.message || data.code)) ||
+      (r && r.error && r.error.message) ||
+      'request_failed';
+    return { ok: false, error: String(detail) };
+  }
+  return applySessionResponse(data, { state: 'session', claimed: true, backupCodes: data.backup_codes || null });
+}
+
+/**
  * super_admin recovery when Discord itself is the problem.
  *
  * Restricted server-side: every other account has an administrator above it

@@ -42,6 +42,7 @@ import { establishShadowSession } from "../_shared/shadow-session.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
 import {
   BACKUP_CODE_LENGTH,
+  issueBackupCodes,
   normalizeBackupCode,
   sha256Hex,
   verifyAndConsumeBackupCode,
@@ -74,6 +75,16 @@ const TICKET_TTL_MS = 2 * 60_000;
 /** Shared with auth-login and auth-passkey — login_throttle is keyed purely by IP. */
 const IP_LIMIT = { limit: 60, windowMs: 300_000 };
 
+/**
+ * The claim verifies a password, so it is a guessing oracle and gets its own,
+ * tighter budget rather than the shared one. Two things already make it
+ * expensive to abuse — a ticket is spent per attempt, and a ticket costs a full
+ * Discord round trip — but neither is a budget, so this is.
+ */
+const CLAIM_IP_LIMIT = { limit: 20, windowMs: 300_000 };
+/** Second budget, keyed by Discord account, so rotating IPs buys nothing. */
+const CLAIM_DISCORD_LIMIT = { limit: 10, windowMs: 3_600_000 };
+
 const TicketField = z.string().trim().min(16).max(256);
 
 const RedeemSchema = z.object({
@@ -86,6 +97,14 @@ const RelinkSchema = z.object({
   action: z.literal("relink"),
   ticket: TicketField,
   code: z.string().trim().min(4).max(128),
+});
+
+/** Phase D3: prove you own the password, and the account becomes Discord-only. */
+const ClaimSchema = z.object({
+  action: z.literal("claim"),
+  ticket: TicketField,
+  id: z.string().trim().min(1).max(128),
+  password: z.string().min(1).max(256),
 });
 
 /** Phase D6: the super_admin's way back in when Discord itself is the problem. */
@@ -522,6 +541,101 @@ async function handleBackupLogin(req: Request, body: unknown, admin: any, logger
   });
 }
 
+// ── POST { action: "claim", ticket, id, password } — phase D3 ───────────────
+//
+// IRREVERSIBLE. A successful claim destroys the password, the reversible
+// `password_enc` copy, every passkey and every backup code, in the same
+// transaction that creates the link. One sign-in method at any instant.
+//
+// Three things stand between this and a password-guessing oracle, in order of
+// how much they cost an attacker: every attempt spends a ticket, and a ticket
+// costs a full Discord round trip; a tighter per-IP budget than the other
+// actions; and a per-Discord-account budget so rotating IPs buys nothing.
+async function handleClaim(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
+  const json = makeJson(req);
+
+  const parsed = ClaimSchema.safeParse(body);
+  if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
+
+  const ip = extractClientIp(req.headers);
+  const ipBudget = await checkAndRecordIpAttempt(admin, ip, CLAIM_IP_LIMIT);
+  if (!ipBudget.allowed) {
+    logger.warn("IP rate limit exceeded on claim", { ip });
+    return json({ ok: false, error: "too_many_attempts" }, 429);
+  }
+
+  const consumed = await consumeTicket(admin, parsed.data.ticket, logger);
+  if (!consumed.ok) return json({ ok: false, error: consumed.error }, consumed.status);
+
+  // Budget the Discord account itself, now that we know which one it is.
+  const bucket = new Date(Math.floor(Date.now() / 60000) * 60000).toISOString();
+  const { data: tRows } = await admin.rpc("gm_check_discord_throttle", {
+    p_discord_user_id: consumed.discordUserId,
+    p_limit: CLAIM_DISCORD_LIMIT.limit,
+    p_window_ms: CLAIM_DISCORD_LIMIT.windowMs,
+    p_bucket: bucket,
+  });
+  const tRow = Array.isArray(tRows) ? tRows[0] : tRows;
+  // Fails OPEN on a database error, matching _shared/rate-limit.ts, because
+  // the ticket cost already bounds this path hard. (Finding B3 proposes
+  // flipping every limiter to fail closed; that is a Phase 4 decision to take
+  // across all of them at once, not one endpoint at a time.)
+  if (tRow && tRow.allowed === false) {
+    logger.warn("Discord-account rate limit exceeded on claim", { discordUserId: consumed.discordUserId });
+    return json({ ok: false, error: "too_many_attempts" }, 429);
+  }
+
+  const { data: rows, error } = await admin.rpc("gm_claim_account_with_discord", {
+    p_id: parsed.data.id,
+    p_password: parsed.data.password,
+    p_discord_user_id: consumed.discordUserId,
+  });
+  if (error) {
+    logger.error("Claim failed", error);
+    return json({ ok: false, error: "server_error" }, 500);
+  }
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  if (!row || row.ok !== true) {
+    logger.warn("Claim rejected", { reason: row?.err ?? "unknown", id: parsed.data.id });
+    return json({ ok: false, error: row?.err || "invalid_credentials" }, 200);
+  }
+
+  const accountId = row.account_id as string;
+  const role = (row.role as string) || "member";
+  logger.setContext({ userId: accountId });
+
+  // The claim just deleted this account's backup codes. A super_admin has no
+  // administrator above them to unlink and reissue, so they must leave this
+  // request holding a fresh set — it is their only recovery path once the
+  // password is gone. Everyone else is covered by D6's relink code.
+  let backupCodes: string[] | undefined;
+  if (role === "super_admin") {
+    try {
+      backupCodes = await issueBackupCodes(admin, accountId);
+    } catch (err) {
+      logger.error("Failed to issue backup codes after a super_admin claim", err, { accountId });
+    }
+  }
+
+  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const shadow = await establishShadowSession(admin, anon, accountId, role, logger);
+  if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
+
+  logger.info("Account claimed with Discord", { accountId, role, discordUserId: consumed.discordUserId });
+
+  return json({
+    ok: true,
+    state: "session",
+    claimed: true,
+    role,
+    id: accountId,
+    backup_codes: backupCodes,
+    access_token: shadow.session.access_token,
+    refresh_token: shadow.session.refresh_token,
+    expires_at: shadow.session.expires_at,
+  });
+}
+
 /** Routes a POST by its `action`, parsing the body exactly once. */
 async function handlePost(req: Request, admin: any, logger: EdgeLogger): Promise<Response> {
   const json = makeJson(req);
@@ -533,6 +647,7 @@ async function handlePost(req: Request, admin: any, logger: EdgeLogger): Promise
   }
   switch (body?.action) {
     case "redeem":       return handleRedeem(req, body, admin, logger);
+    case "claim":        return handleClaim(req, body, admin, logger);
     case "relink":       return handleRelink(req, body, admin, logger);
     case "backup-login": return handleBackupLogin(req, body, admin, logger);
     default:             return json({ ok: false, error: "bad_request" }, 400);
