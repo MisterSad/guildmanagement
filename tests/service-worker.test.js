@@ -32,9 +32,10 @@ function readSrcFiles() {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
       // `*.generated.ts` is a build artifact of the live database schema, not
-      // authored code: it legitimately still names push tables until the drop
-      // migration is applied and the types are regenerated. Scanning it would
-      // make this suite fail on a state it does not control.
+      // authored code, so it is not scanned here. The drop migration HAS since
+      // been applied and the types regenerated -- verified against production --
+      // and `tests/phase2_pwa_retirement.test.js` asserts that directly rather
+      // than leaving it to a scan that skips the file.
       else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.generated.ts')) {
         out.push([full, fs.readFileSync(full, 'utf8')]);
       }
