@@ -1,3 +1,40 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.21.0**
+
+Hey everyone! This one is a big housekeeping release. Less shiny than a new feature, but it makes the tool faster, safer, and honest about what it does with your data. 🧹
+
+---
+
+### 🆓 1. Free, and now it says so everywhere
+The app has been free for a while, but parts of the site still talked about subscriptions and plans. All of that is gone. There is **no checkout, no subscription, no donation button, and no payment information of any kind** anywhere in the tool. Nothing is gated behind paying — and nothing ever will be.
+
+### 🔐 2. A real Privacy Policy
+There is now a **Privacy Policy** (linked in the footer, next to the Terms) that actually lists what the tool stores about you, why, for how long, and who else sees it. In short: your in-game pseudonym, your UID, your event stats, and your Discord ID if you linked one. No real names, no addresses, no phone numbers, no payment data, and **no cookies or tracking of any kind**.
+
+If you want your data deleted, write to **fgfwiki@gmail.com** with your pseudonym and guild and I will handle it. Your stats stay in the guild's totals, but with nothing left that points to you.
+
+Screenshots you upload for roster scanning are still **never stored** — they are read and thrown away.
+
+### 🔔 3. Discord is the only notification channel now
+Browser/phone push notifications are removed. They had already stopped working some time ago, and Discord reaches everybody anyway. Nothing changes for your event reminders — they come from the bot as usual. If you had ever "installed" the site as an app, it will quietly clean itself up next time you open it.
+
+### ⚡ 4. Faster loading
+The icon font now ships only the icons the app actually uses — **87% smaller**. Fonts were trimmed too. The app should feel noticeably quicker to open, especially on mobile data.
+
+### 🎨 5. Icons that were invisible now show up
+42 icons across toasts, confirmation dialogs, UID warnings and Arms Race chips were drawing **nothing at all** — they were asking for an icon style the app never loaded. All fixed.
+
+### 🛠️ 6. "Unassigned Server" on the admin screen
+Reported by HawkEye: every guild admin was showing under "Unassigned Server". The data was never wrong — the screen just was not being told which server each admin belonged to. Fixed at the source, and the admin list now also fills the guild dropdown correctly.
+
+### 🛡️ 7. Security and reliability hardening
+A full audit was run over the whole platform and the findings are fixed: tighter browser security policy, stronger session handling, better rate limiting, and stricter isolation between guilds. **No guild's data was ever exposed to another guild** — the isolation held throughout. These changes make sure it keeps holding.
+
+---
+
+That's it! Nothing you need to do — just reload the page if it is still open from before. As always, ping me if anything looks off. 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.20.2**
 
 Hey everyone! I just pushed a targeted fix and ergonomics update for manual war score entry (SvS and GvG) and the event history review modal! ⚔️📊

@@ -1,8 +1,10 @@
 # Changelog
 
-## [Unreleased] — audit remediation, 2026-09-26 → 2026-09-27
+## [3.21.0] - 2026-09-27 — audit remediation (phases 1-9), **deployed**
 
-> **Nothing in this section is deployed.** It is the audit-remediation branch; production still runs the previous release. Verified rather than assumed — the live `/sw.js` is still the old push worker, and the live CSP still carries the wildcard this branch removed.
+> **Shipped to production on 2026-09-27** and verified there, not assumed: `/sw.js` now returns the self-unregistering tombstone with zero push handlers, the CSP is down to `script-src 'self'` with no `*.supabase.co` wildcard, `privacy.html`/`terms.html`/`legal.css` all serve 200, and the app boots with **zero CSP violations**. The 15 Edge Functions were already current with this branch — verified behaviourally, by probing the phase-4 CORS fix from the bypass origin — so none were redeployed and all seven `verify_jwt = true` functions stayed gated.
+>
+> **Version bumped from 3.20.2 to 3.21.0 deliberately.** The first push shipped under the *previous* release's version string, so `version.json` was unchanged and no long-lived tab would ever have been prompted to reload. This release in particular needs clients to come back: a tab that never reloads keeps the old CSP and never fetches the new `/sw.js`, so the service worker on that device is never retired.
 
 - **HawkEye is now `accounts.guild = 'ALPHA'` — owner decision, applied to production (data change, no code change)**
   - The super_admin is also the admin of guild ALPHA on server 1058, and the account row now says so. **`server_number` is deliberately left NULL**: `gm_admin_list()` derives it with `COALESCE(accounts.server_number, guilds.server_number)`, so ALPHA's own number (1058) is used and there is no second copy to drift if ALPHA ever changes server.
