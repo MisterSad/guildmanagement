@@ -71,8 +71,17 @@ describe('TICKET-17 [SEC-06]: Security Headers & Advanced CSP Audit', () => {
     expect(csp).not.toContain('unpkg.com');
     expect(csp).not.toContain('cdn.jsdelivr.net');
 
-    // Allowed endpoints
-    expect(csp).toContain('https://*.supabase.co');
+    // script-src must be exactly 'self': the app loads no external script.
+    // AUDIT-2026-09-26 [M12]: a `https://*.supabase.co` wildcard in script-src
+    // trusts every Supabase project on the internet, because any project can
+    // serve attacker-controlled JS from a public Storage bucket. That turns an
+    // otherwise inert HTML injection into script execution.
+    expect(csp).toContain("script-src 'self';");
+    expect(csp).not.toContain('*.supabase.co');
+
+    // Allowed endpoints -- Supabase pinned to this project only.
+    expect(csp).toContain('https://vgweufzwmfwplusskmuf.supabase.co');
+    expect(csp).toContain('wss://vgweufzwmfwplusskmuf.supabase.co');
     expect(csp).toContain('https://discord.com');
     expect(csp).toContain('https://*.ingest.sentry.io');
     expect(csp).toContain('https://*.ingest.de.sentry.io');

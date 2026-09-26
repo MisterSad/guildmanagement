@@ -1,5 +1,30 @@
 # Changelog
 
+## [Unreleased] - 2026-09-26
+
+- **Security: Credential Column Exposure, Over-Broad Function Grants & CSP Wildcard (unreleased)**
+  - **[CRITICAL] `public.accounts` credential columns were readable by every guild admin** (`supabase/migrations/20260926080000_restrict_accounts_column_grants.sql`):
+    - `authenticated` held a **table-wide** `GRANT SELECT ON public.accounts`. Combined with the `gm_accounts_select` policy (which by design lets a `guild_admin` read every account of their own guild), any guild admin could `GET /rest/v1/accounts?select=*` and exfiltrate `password_hash` (bcrypt), `password_enc` (`pgp_sym_encrypt` of the **plaintext** password) and `gotrue_secret_enc` for every member of their guild.
+    - Measured on production at audit time: **172/172 accounts carried a non-null `password_enc`**, and **98/172 had no bcrypt `password_hash` at all** — those accounts rely solely on the reversible form.
+    - Replaced with a column-level allowlist: `id, auth_user_id, status, guild, role, uid, server_number, created_at`. The allowlist is the union of (a) the columns read by RLS policy subqueries that execute as the caller, verified against `pg_policies`, and (b) the columns actually selected by direct client PostgREST reads.
+    - Withheld: `password_hash`, `password_enc`, `gotrue_secret_enc`, `failed_login_count`, `last_login_at`, `locked_until`, `session_version`. Verified zero references to any of the seven in `src/` outside generated types.
+    - No policy and no function changed: RLS still decides *which rows*; this narrows *which columns*. `SECURITY DEFINER` functions execute as the function owner and never consult these grants, so `auth-login`, `admin-accounts`, `member-portal` and every `gm_*` RPC are unaffected.
+  - **[CRITICAL] Anonymous cross-tenant push registration via `save_push_subscription`** (`supabase/migrations/20260926080100_revoke_overreaching_function_grants.sql`):
+    - The function was granted to `anon` and fell back to `coalesce(v_guild, 'ALPHA')` when `auth.uid()` is NULL, so an unauthenticated caller could register their own Web Push endpoint into tenant `ALPHA` and receive that guild's event reminders. `p_pseudo` was written verbatim (impersonation) and `ON CONFLICT (endpoint) DO UPDATE` allowed rewriting a victim's row.
+    - This is the exact bug class a previous release claims to have purged ("purged all hardcoded tenant fallbacks `COALESCE(..., 'ALPHA')`") — the function was re-created afterwards and reintroduced it.
+    - Revoked `EXECUTE` from `anon`, `authenticated` and `PUBLIC`. Web Push is already decommissioned end to end, so nothing regresses; the function and its table are dropped outright in the Web Push removal phase.
+  - **Destructive maintenance functions were callable by unprivileged roles**:
+    - `gm_cleanup_expired_ocr_cache()` was executable by **`anon`** (verified via `has_function_privilege`) — an unconditional `DELETE` on `ocr_cache`, i.e. anyone holding the public publishable key could wipe the cache and force re-billing of Gemini Vision calls.
+    - `gm_reset_demo_tenant_data()` was executable by **`authenticated`** — any logged-in member of any guild could wipe and rebuild the public DEMO tenant on demand.
+    - Both revoked from `anon`, `authenticated` and `PUBLIC`. Verified safe: all five `pg_cron` jobs run as `postgres`, not as `authenticated`/`anon`.
+  - **CSP: removed the `https://*.supabase.co` wildcard from `script-src` and `connect-src`** (`vercel.json`):
+    - Any Supabase project can serve attacker-controlled JavaScript from a public Storage bucket, so the wildcard trusted **every Supabase project on the internet** and would have turned an otherwise inert HTML injection into script execution. The app loads no external script at all (`index.html` has a single `<script type="module">` and zero inline scripts).
+    - `script-src` is now exactly `'self'`; Supabase is pinned to this project's host in `connect-src`.
+  - **Removed two tests that locked the CSP weakness in**: `tests/cdn_packaging_csp_hardening.test.js` and `tests/security_headers_audit.test.js` both asserted `expect(csp).toContain('https://*.supabase.co')`. They now assert the pinned host **and** `expect(csp).not.toContain('*.supabase.co')`, so the wildcard cannot silently return.
+  - **Quality & Verification**:
+    - `npm run type-check` (0 TS errors), 134 Vitest suites green (1,504 tests passed), production build clean.
+    - Column allowlist, function privileges and cron job ownership were each verified against the live production database before the migrations were written, not inferred from the migration chain.
+
 ## [3.20.2] - 2026-09-24
 
 - **Bug Fix & Ergonomics: War Manual Score Saving & History Modal Table Scrolling (V3.20.2)**

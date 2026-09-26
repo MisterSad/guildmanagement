@@ -25,8 +25,13 @@ describe('TICKET-08 [SEC-04]: CDN Packaging & CSP Hardening', () => {
     expect(csp).not.toContain('cdn.jsdelivr.net');
     expect(csp).not.toContain('unpkg.com');
 
-    // Retains required services
-    expect(csp).toContain('https://*.supabase.co');
+    // Retains required services -- pinned to the exact project, never a wildcard.
+    // AUDIT-2026-09-26 [M12]: `https://*.supabase.co` used to be asserted here,
+    // which locked the weakness in. Any Supabase project can serve arbitrary JS
+    // from a public Storage bucket, so a wildcard in script-src trusts every
+    // Supabase project on the internet.
+    expect(csp).toContain('https://vgweufzwmfwplusskmuf.supabase.co');
+    expect(csp).not.toContain('*.supabase.co');
     expect(csp).toContain('https://discord.com');
     expect(csp).toContain('https://*.ingest.sentry.io');
   });
