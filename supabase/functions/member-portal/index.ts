@@ -198,11 +198,16 @@ async function getIdentity(
   const role = (acc.role || "member") as string;
   const guild = (acc.guild || null) as string | null;
 
-  const { data: shadow } = await admin
-    .rpc("gm_get_shadow", { p_id: accountId });
-
-  const row = Array.isArray(shadow) ? shadow[0] : shadow;
-  const playerUid = (row?.player_uid || acc.uid || accountId) as string;
+  // The player UID comes straight from the `accounts` row selected above.
+  //
+  // This used to call `gm_get_shadow(accountId)` first and prefer
+  // `row?.player_uid`. That RPC returns only `(auth_user_id, gotrue_secret)` --
+  // there is no `player_uid` column in its return type -- so the value was
+  // always `undefined` and resolution always fell through to exactly the
+  // expression below. The call was therefore pure overhead: one extra round
+  // trip AND one `pgp_sym_decrypt` of the shadow GoTrue secret on every single
+  // portal request, decrypting a credential for a value that was discarded.
+  const playerUid = (acc.uid || accountId) as string;
 
   return {
     accountId,
