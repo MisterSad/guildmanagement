@@ -477,66 +477,92 @@ export async function handleDiscordCallback(): Promise<boolean> {
 }
 
 /**
- * Offers the two ways to attach a Discord identity to an existing account,
- * after a sign-in found no link.
+ * Everything a Discord sign-in with no linked account can do next.
  *
- * Primary path — **claim** (phase D3): prove you own the account's password.
- * Secondary path — **relink code** (phase D6): for the 99 accounts that have
- * never logged in and will not remember a password they never used, and for
- * anyone whose link was removed by an admin.
+ * Four paths, because four genuinely different people arrive here:
+ *   claim  — an existing account holder proving their password (D3).
+ *   code   — someone handed an invitation or relink code (D5 / D6).
+ *   join   — a player joining a guild with its join code (D4).
+ *   create — a leader starting a new guild (D4).
  *
- * Both spend the CONTINUATION ticket from the `unlinked` response, so neither
- * a password nor a code is sufficient on its own: the person must also have
- * just proved control of the Discord account being attached.
+ * All four spend the CONTINUATION ticket from the `unlinked` response, so no
+ * secret is ever sufficient on its own: the person must also have just proved
+ * control of the Discord account being attached.
  */
 export function openLinkAccountDialog(ticket: string, discordUsername: string | null): void {
   if (typeof document === 'undefined') return;
   const existing = document.getElementById('discord-link-overlay');
   if (existing) existing.remove();
 
+  type Path = 'claim' | 'code' | 'join' | 'create';
   const who = discordUsername ? ' as <strong>' + escapeDialogText(discordUsername) + '</strong>' : '';
+
+  const option = (id: Path, icon: string, label: string): string =>
+    '<button type="button" class="gm-btn gm-btn-ghost gm-link-path" data-path="' + id + '" ' +
+      'style="flex:1 1 45%; justify-content:flex-start; gap:.45rem; font-size:.82rem; padding:.5rem .6rem;">' +
+      '<i class="ph ' + icon + '"></i><span>' + label + '</span>' +
+    '</button>';
+
+  const field = (id: string, label: string, attrs: string): string =>
+    '<div class="gm-login-field" style="margin-top:.6rem;">' +
+      '<label for="' + id + '">' + label + '</label>' +
+      '<input id="' + id + '" class="gm-input" ' + attrs + '>' +
+    '</div>';
+
   const html =
     '<div id="discord-link-overlay" class="gm-modal-overlay">' +
-      '<div class="gm-modal-card" style="max-width: 440px; width: 92%;">' +
-        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom: .75rem;">' +
-          '<i class="ph ph-link" style="font-size: var(--fs-2xl); color: var(--accent);"></i>' +
-          '<h3 style="margin:0; font-size: var(--fs-xl);">Link this Discord account</h3>' +
+      '<div class="gm-modal-card" style="max-width: 460px; width: 94%;">' +
+        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;">' +
+          '<i class="ph ph-discord-logo" style="font-size: var(--fs-2xl); color:#5865F2;"></i>' +
+          '<h3 style="margin:0; font-size: var(--fs-xl);">Welcome</h3>' +
         '</div>' +
-        '<p style="margin:0 0 .9rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
-          'You signed in' + who + ', but this Discord account is not linked to an account yet.' +
-          '<br>Sign in once with your identifier and password to link them.' +
+        '<p style="margin:0 0 .8rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+          'You signed in' + who + '. This Discord account is not linked yet — what would you like to do?' +
         '</p>' +
-        '<div id="discord-link-pw-path">' +
-          '<div class="gm-login-field">' +
-            '<label for="discord-link-id">Identifier</label>' +
-            '<input type="text" id="discord-link-id" class="gm-input" autocomplete="username">' +
-          '</div>' +
-          '<div class="gm-login-field" style="margin-top:.6rem;">' +
-            '<label for="discord-link-password">Password</label>' +
-            '<input type="password" id="discord-link-password" class="gm-input" autocomplete="current-password">' +
-          '</div>' +
-          '<div class="terms-callout warning" style="margin-top:.75rem; font-size: var(--fs-sm); line-height:1.4;">' +
+        '<div style="display:flex; flex-wrap:wrap; gap:.4rem;">' +
+          option('claim', 'ph-user-check', 'I already have an account') +
+          option('code', 'ph-ticket', 'I have a code') +
+          option('join', 'ph-users-three', 'Join a guild') +
+          option('create', 'ph-flag-banner', 'Create a guild') +
+        '</div>' +
+
+        '<div id="path-claim" class="gm-link-panel hidden">' +
+          field('discord-link-id', 'Identifier', 'type="text" autocomplete="username"') +
+          field('discord-link-password', 'Password', 'type="password" autocomplete="current-password"') +
+          '<div class="terms-callout warning" style="margin-top:.7rem; font-size: var(--fs-sm); line-height:1.4;">' +
             '<i class="ph ph-warning"></i> After this, <strong>Discord becomes the only way in</strong> for this account. Your password and any passkeys are removed.' +
           '</div>' +
         '</div>' +
-        '<div id="discord-link-code-path" class="hidden">' +
-          '<div class="gm-login-field">' +
-            '<label for="discord-link-code">Invitation or relink code</label>' +
-            '<input type="text" id="discord-link-code" class="gm-input" placeholder="XXXXX-XXXXX" autocomplete="one-time-code">' +
-          '</div>' +
-          '<p style="margin:.6rem 0 0; color: var(--fg-dim); font-size: var(--fs-sm); line-height:1.4;">' +
-            'An admin issues these from the accounts screen — either to restore your access, or to add you as a new admin.' +
+
+        '<div id="path-code" class="gm-link-panel hidden">' +
+          field('discord-link-code', 'Invitation or relink code', 'type="text" placeholder="XXXXX-XXXXX" autocomplete="one-time-code"') +
+          '<p style="margin:.5rem 0 0; color: var(--fg-dim); font-size: var(--fs-sm); line-height:1.4;">' +
+            'An admin issues these — either to restore your access, or to add you as a new admin.' +
           '</p>' +
         '</div>' +
-        '<button type="button" id="discord-link-toggle" style="margin-top:.7rem; background:none; border:none; color:var(--fg-dim); font-size:.8rem; text-decoration:underline; cursor:pointer; padding:0;">' +
-          'I have an invitation or relink code' +
-        '</button>' +
+
+        '<div id="path-join" class="gm-link-panel hidden">' +
+          field('discord-join-code', "Your guild's join code", 'type="text" autocomplete="off"') +
+          field('discord-join-uid', 'Your in-game UID', 'type="text" inputmode="numeric" autocomplete="off"') +
+          '<p style="margin:.5rem 0 0; color: var(--fg-dim); font-size: var(--fs-sm); line-height:1.4;">' +
+            'Your UID must already be on the roster. An admin approves your account before you can sign in.' +
+          '</p>' +
+        '</div>' +
+
+        '<div id="path-create" class="gm-link-panel hidden">' +
+          field('discord-create-tag', 'Guild tag', 'type="text" maxlength="12" placeholder="SIGMA" autocomplete="off"') +
+          field('discord-create-server', 'Server number', 'type="text" maxlength="4" inputmode="numeric" placeholder="1089" autocomplete="off"') +
+          '<p style="margin:.5rem 0 0; color: var(--fg-dim); font-size: var(--fs-sm); line-height:1.4;">' +
+            'You become its first admin. Two to twelve letters, digits or underscores; the tag must be free.' +
+          '</p>' +
+        '</div>' +
+
         '<div id="discord-link-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
           '<i class="ph ph-warning-circle"></i><span></span>' +
         '</div>' +
         '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
           '<button type="button" class="gm-btn gm-btn-ghost" id="discord-link-cancel">Cancel</button>' +
-          '<button type="button" class="gm-btn gm-btn-primary" id="discord-link-submit">Link and sign in</button>' +
+          '<button type="button" class="gm-btn gm-btn-primary" id="discord-link-submit" disabled>Continue</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -554,19 +580,7 @@ export function openLinkAccountDialog(ticket: string, discordUsername: string | 
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
 
-  let usingCode = false;
-  const toggle = document.getElementById('discord-link-toggle');
-  if (toggle) {
-    toggle.addEventListener('click', () => {
-      usingCode = !usingCode;
-      const pw = document.getElementById('discord-link-pw-path');
-      const code = document.getElementById('discord-link-code-path');
-      if (pw) pw.classList.toggle('hidden', usingCode);
-      if (code) code.classList.toggle('hidden', !usingCode);
-      toggle.textContent = usingCode ? 'Use my password instead' : 'I have an invitation or relink code';
-    });
-  }
-
+  const submitBtn = document.getElementById('discord-link-submit') as HTMLButtonElement | null;
   const setErr = (msg: string): void => {
     const errorEl = document.getElementById('discord-link-error');
     if (!errorEl) return;
@@ -575,38 +589,84 @@ export function openLinkAccountDialog(ticket: string, discordUsername: string | 
     errorEl.classList.remove('hidden');
   };
 
-  const submitBtn = document.getElementById('discord-link-submit') as HTMLButtonElement | null;
+  let path: Path | null = null;
+  const LABELS: Record<Path, string> = {
+    claim: 'Link and sign in',
+    code: 'Redeem code',
+    join: 'Request access',
+    create: 'Create guild',
+  };
+  overlay.querySelectorAll('.gm-link-path').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      path = btn.getAttribute('data-path') as Path;
+      overlay.querySelectorAll('.gm-link-path').forEach((b) => b.classList.toggle('gm-active', b === btn));
+      overlay.querySelectorAll('.gm-link-panel').forEach((pnl) => {
+        pnl.classList.toggle('hidden', pnl.id !== 'path-' + path);
+      });
+      const errorEl = document.getElementById('discord-link-error');
+      if (errorEl) errorEl.classList.add('hidden');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = LABELS[path];
+      }
+    });
+  });
+
+  const val = (id: string): string => ((el<HTMLInputElement>(id) || ({} as any)).value || '').trim();
+
   if (submitBtn) {
     submitBtn.addEventListener('click', async () => {
+      if (!path) return;
       const x = g();
       let resp: LoginResponse;
 
       submitBtn.disabled = true;
       try {
-        if (usingCode) {
-          const code = ((el<HTMLInputElement>('discord-link-code') || ({} as any)).value || '').trim();
-          if (!code) { setErr('Enter the code an admin gave you.'); return; }
-          resp = x && typeof x.redeemLinkCode === 'function'
-            ? await x.redeemLinkCode(ticket, code)
-            : { ok: false, error: 'unavailable' };
-        } else {
-          const id = ((el<HTMLInputElement>('discord-link-id') || ({} as any)).value || '').trim();
+        if (path === 'claim') {
+          const id = val('discord-link-id');
           const password = (el<HTMLInputElement>('discord-link-password') || ({} as any)).value || '';
           if (!id || !password) { setErr('Enter both your identifier and your password.'); return; }
           resp = x && typeof x.claimWithDiscord === 'function'
-            ? await x.claimWithDiscord(ticket, id, password)
+            ? await x.claimWithDiscord(ticket, id, password) : { ok: false, error: 'unavailable' };
+        } else if (path === 'code') {
+          const code = val('discord-link-code');
+          if (!code) { setErr('Enter the code an admin gave you.'); return; }
+          resp = x && typeof x.redeemLinkCode === 'function'
+            ? await x.redeemLinkCode(ticket, code) : { ok: false, error: 'unavailable' };
+        } else if (path === 'join') {
+          const joinCode = val('discord-join-code');
+          const uid = val('discord-join-uid');
+          if (!joinCode || !uid) { setErr('Enter both the join code and your in-game UID.'); return; }
+          resp = x && typeof x.onboardWithDiscord === 'function'
+            ? await x.onboardWithDiscord(ticket, 'join', { join_code: joinCode, uid: uid })
+            : { ok: false, error: 'unavailable' };
+        } else {
+          const tag = val('discord-create-tag');
+          const server = val('discord-create-server');
+          if (!tag || !server) { setErr('Enter both a guild tag and a server number.'); return; }
+          resp = x && typeof x.onboardWithDiscord === 'function'
+            ? await x.onboardWithDiscord(ticket, 'create', { guild_tag: tag, server_number: server })
             : { ok: false, error: 'unavailable' };
         }
 
         if (!resp.ok) {
-          setErr(linkErrorMessage(resp.error || 'request_failed', usingCode));
+          setErr(linkErrorMessage(resp.error || 'request_failed', path));
+          return;
+        }
+
+        // A joined player has no session yet, by design: an admin approves
+        // first. Say so rather than dropping them on a blank login screen.
+        if (resp.state === 'pending_approval') {
+          closeModal();
+          setLoginError(
+            'Your request to join ' + (resp.guild || 'the guild') +
+            ' was submitted as ' + (resp.id || 'a new account') +
+            '. An admin has to approve it — sign in with Discord again once they have.'
+          );
           return;
         }
 
         closeModal();
-        // A super_admin is handed a fresh set of backup codes here, once,
-        // because the claim just destroyed the old set and they have no
-        // administrator above them to reissue.
         if (Array.isArray(resp.backupCodes) && resp.backupCodes.length) {
           showBackupCodesOnce(resp.backupCodes);
         }
@@ -619,7 +679,7 @@ export function openLinkAccountDialog(ticket: string, discordUsername: string | 
 }
 
 /** Maps a link/claim failure onto something the person can act on. */
-function linkErrorMessage(code: string, usingCode: boolean): string {
+function linkErrorMessage(code: string, path: 'claim' | 'code' | 'join' | 'create'): string {
   switch (code) {
     case 'discord_already_linked':
       return 'This Discord account is already linked to a different account.';
@@ -638,10 +698,29 @@ function linkErrorMessage(code: string, usingCode: boolean): string {
       return 'Wrong identifier or password.';
     case 'request_timeout':
       return 'The server did not respond in time. Please check your connection and try again.';
+    case 'invalid_code':
+      return 'That join code is not valid.';
+    case 'uid_not_in_guild':
+      return 'That UID is not on the guild roster. Ask an admin to add you first.';
+    case 'uid_already_claimed':
+      return 'That UID is already attached to another account.';
+    case 'invalid_uid':
+      return 'A UID is digits only.';
+    case 'invalid_guild_tag':
+      return 'A guild tag is 2 to 12 letters, digits or underscores.';
+    case 'invalid_server_number':
+      return 'A server number is exactly four digits.';
+    case 'tag_taken':
+      return 'That guild tag is already taken.';
+    case 'discord_account_too_new':
+      return 'Your Discord account is too recent to create a guild. Ask an existing admin for an invitation instead.';
+    case 'daily_limit_reached':
+      return 'Too many guilds have been created today. Please try again tomorrow.';
     default:
-      return usingCode
-        ? 'That code is not valid, has expired, or was already used.'
-        : 'Could not link this account. Please try again.';
+      if (path === 'code') return 'That code is not valid, has expired, or was already used.';
+      if (path === 'join') return 'Could not join that guild. Check the code and your UID.';
+      if (path === 'create') return 'Could not create that guild. Please try again.';
+      return 'Could not link this account. Please try again.';
   }
 }
 

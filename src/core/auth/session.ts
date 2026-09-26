@@ -284,6 +284,54 @@ export async function claimWithDiscord(ticket: string, id: string, password: str
 }
 
 /**
+ * Phase D4 — a first Discord sign-in with no account.
+ *
+ * `join` redeems a guild's join code with the caller's in-game UID and lands
+ * in `pending_approval`: the join code is a shared secret and the UID check
+ * only proves the UID is on the roster and unclaimed, so an admin still
+ * approves — exactly as password self-registration has always worked.
+ *
+ * `create` provisions a guild and its first `guild_admin`, and signs in
+ * immediately. Every guardrail (Discord account age, tag shape, daily ceiling)
+ * is enforced in SQL, never here.
+ */
+export async function onboardWithDiscord(
+  ticket: string,
+  mode: 'join' | 'create',
+  fields: Record<string, string>
+): Promise<AuthResult> {
+  const c = getClient();
+  if (!c) return { ok: false, error: 'no_client' };
+  let r: any;
+  try {
+    r = await withTimeout(
+      c.functions.invoke('auth-discord', {
+        body: { action: 'onboard', mode: mode, ticket: ticket, ...fields }
+      }),
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+  } catch (e: any) {
+    return {
+      ok: false,
+      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+    };
+  }
+  const data = await parseFunctionsInvokeResult(r);
+  if (!data || !data.ok) {
+    const detail =
+      (data && (data.error || data.msg || data.message || data.code)) ||
+      (r && r.error && r.error.message) ||
+      'request_failed';
+    return { ok: false, error: String(detail) };
+  }
+  // A joined member has no session yet, by design.
+  if (data.state === 'pending_approval') {
+    return { ok: true, state: 'pending_approval', id: data.id, guild: data.guild };
+  }
+  return applySessionResponse(data, { state: 'session', created: !!data.created, guild: data.guild });
+}
+
+/**
  * super_admin recovery when Discord itself is the problem.
  *
  * Restricted server-side: every other account has an administrator above it

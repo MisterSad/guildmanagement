@@ -174,10 +174,15 @@ describe('least privilege and retention', () => {
 describe('the dialog offers both ways in, and warns before the irreversible one', () => {
   const dialog = controller.slice(controller.indexOf('export function openLinkAccountDialog'), controller.indexOf('function linkErrorMessage'));
 
-  it('leads with the claim and keeps the code path reachable', () => {
+  it('offers the claim alongside the other three ways in', () => {
+    // Phase D4 turned this into a four-path chooser: claim, code, join a
+    // guild, create a guild. Four genuinely different people arrive here.
     expect(dialog).toContain('claimWithDiscord(ticket, id, password)');
     expect(dialog).toContain('redeemLinkCode(ticket, code)');
-    expect(dialog).toContain('I have an invitation or relink code');
+    expect(dialog).toContain("onboardWithDiscord(ticket, 'join'");
+    expect(dialog).toContain("onboardWithDiscord(ticket, 'create'");
+    expect(dialog).toContain('I already have an account');
+    expect(dialog).toContain('I have a code');
   });
 
   it('says plainly that the password will be removed', () => {

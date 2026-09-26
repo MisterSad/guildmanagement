@@ -106,6 +106,30 @@ const RedeemCodeSchema = z.object({
   code: z.string().trim().min(4).max(128),
 });
 
+/**
+ * Phase D4: a first sign-in with no account, choosing a way in.
+ *
+ * `join` needs the guild's join code and the caller's in-game UID; `create`
+ * needs a free tag and a server number. Discriminated on `mode` so a caller
+ * cannot supply one set of fields and reach the other branch.
+ */
+const OnboardSchema = z.discriminatedUnion("mode", [
+  z.object({
+    action: z.literal("onboard"),
+    mode: z.literal("join"),
+    ticket: TicketField,
+    join_code: z.string().trim().min(1).max(64),
+    uid: z.string().trim().regex(/^[0-9]{1,20}$/),
+  }),
+  z.object({
+    action: z.literal("onboard"),
+    mode: z.literal("create"),
+    ticket: TicketField,
+    guild_tag: z.string().trim().min(2).max(12),
+    server_number: z.string().trim().regex(/^[0-9]{4}$/),
+  }),
+]);
+
 /** Phase D3: prove you own the password, and the account becomes Discord-only. */
 const ClaimSchema = z.object({
   action: z.literal("claim"),
@@ -685,6 +709,97 @@ async function handleClaim(req: Request, body: unknown, admin: any, logger: Edge
   });
 }
 
+// ── POST { action: "onboard", mode, ticket, ... } — phase D4 ───────────────
+//
+// The two ways in for someone with no account: redeem a guild's join code, or
+// create a guild. Both spend the continuation ticket, so a join code or a free
+// tag is never enough on its own.
+//
+// Every guardrail is enforced in SQL, not here. The Discord account-age check
+// in particular is recomputed from the snowflake inside
+// `gm_discord_create_guild` -- a value this function computed would be a value
+// a stale deploy could get wrong.
+async function handleOnboard(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
+  const json = makeJson(req);
+
+  const parsed = OnboardSchema.safeParse(body);
+  if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
+
+  if (await throttled(req, admin, logger, "onboard")) return json({ ok: false, error: "too_many_attempts" }, 429);
+
+  const consumed = await consumeTicket(admin, parsed.data.ticket, logger);
+  if (!consumed.ok) return json({ ok: false, error: consumed.error }, consumed.status);
+
+  const username = consumed.discordUsername ?? "";
+  let row: any;
+
+  if (parsed.data.mode === "join") {
+    const { data, error } = await admin.rpc("gm_discord_join_guild", {
+      p_discord_user_id: consumed.discordUserId,
+      p_discord_username: username,
+      p_join_code: parsed.data.join_code,
+      p_uid: parsed.data.uid,
+    });
+    if (error) {
+      logger.error("Join-by-code failed", error);
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+    row = Array.isArray(data) ? data[0] : data;
+  } else {
+    const { data, error } = await admin.rpc("gm_discord_create_guild", {
+      p_discord_user_id: consumed.discordUserId,
+      p_discord_username: username,
+      p_guild_tag: parsed.data.guild_tag,
+      p_server_number: parsed.data.server_number,
+    });
+    if (error) {
+      logger.error("Guild creation failed", error);
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+    row = Array.isArray(data) ? data[0] : data;
+  }
+
+  if (!row || row.ok !== true) {
+    logger.warn("Onboarding rejected", { mode: parsed.data.mode, reason: row?.err ?? "unknown" });
+    return json({ ok: false, error: row?.err || "onboarding_failed" }, 200);
+  }
+
+  const accountId = row.account_id as string;
+  const role = (row.role as string) || "member";
+  logger.setContext({ userId: accountId });
+
+  // A joined member lands in 'pending' and cannot sign in until an admin
+  // approves -- the same rule password self-registration has always had.
+  // Report that plainly instead of minting a session that would be refused.
+  if (row.status === "pending") {
+    logger.info("Player registered through Discord, awaiting approval", { accountId, guild: row.guild });
+    return json({
+      ok: true,
+      state: "pending_approval",
+      id: accountId,
+      guild: row.guild,
+    });
+  }
+
+  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const shadow = await establishShadowSession(admin, anon, accountId, role, logger);
+  if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
+
+  logger.info("Onboarded through Discord", { mode: parsed.data.mode, accountId, role, guild: row.guild });
+
+  return json({
+    ok: true,
+    state: "session",
+    created: parsed.data.mode === "create",
+    role,
+    id: accountId,
+    guild: row.guild,
+    access_token: shadow.session.access_token,
+    refresh_token: shadow.session.refresh_token,
+    expires_at: shadow.session.expires_at,
+  });
+}
+
 /** Routes a POST by its `action`, parsing the body exactly once. */
 async function handlePost(req: Request, admin: any, logger: EdgeLogger): Promise<Response> {
   const json = makeJson(req);
@@ -697,6 +812,7 @@ async function handlePost(req: Request, admin: any, logger: EdgeLogger): Promise
   switch (body?.action) {
     case "redeem":       return handleRedeem(req, body, admin, logger);
     case "claim":        return handleClaim(req, body, admin, logger);
+    case "onboard":      return handleOnboard(req, body, admin, logger);
     case "redeem-code": return handleRedeemCode(req, body, admin, logger);
     case "backup-login": return handleBackupLogin(req, body, admin, logger);
     default:             return json({ ok: false, error: "bad_request" }, 400);
