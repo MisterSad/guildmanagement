@@ -9,6 +9,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { t, esc, gm, winAny, byId, getDb, ls } from './utils';
+import { getActiveGuild } from '../../../core/auth/roles';
 import { setAccounts, filterAccountsOut, unshiftAccount, setPendingPassword, getAccounts } from './admin-store';
 import { renderAccounts } from './accounts.render';
 import { showToast } from '../dialogs/dialogs.service';
@@ -84,9 +85,13 @@ export function populateAccountGuildSelect(): void {
   const w = winAny();
   const selectR4 = byId<HTMLSelectElement>('account-guild');
   if (selectR4) {
-    const myGuild = w.currentGuildRestriction || w.currentGuild || 'ALPHA';
-    selectR4.innerHTML = '<option value="' + esc(myGuild) + '">' + esc(myGuild) + '</option>';
-    selectR4.value = myGuild;
+    // H2: offering 'ALPHA' here let an admin create an account in a tenant
+    // they never chose. With nothing resolved the select stays empty.
+    const myGuild = getActiveGuild();
+    selectR4.innerHTML = myGuild
+      ? '<option value="' + esc(myGuild) + '">' + esc(myGuild) + '</option>'
+      : '<option value="">' + esc(t('guild_unresolved')) + '</option>';
+    selectR4.value = myGuild || '';
     selectR4.disabled = true;
   }
 
@@ -196,11 +201,15 @@ export function wireAdminInvite(): void {
   });
 }
 
-function joinCodeStorageKey(): string {
-  const w = winAny();
-  const g = gm();
-  const guild = w.currentGuild || (g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null) || 'ALPHA';
-  return 'gm_join_code_plain_' + guild;
+/**
+ * H2: returns null when no tenant is resolved, rather than keying the cache on
+ * 'ALPHA'. A join code is a per-guild secret; caching one under a guessed guild
+ * meant an unresolved session could read back, and display, another tenant's
+ * code.
+ */
+function joinCodeStorageKey(): string | null {
+  const guild = getActiveGuild();
+  return guild ? 'gm_join_code_plain_' + guild : null;
 }
 
 /** Guild join-code card (permanent code, generated once, persisted server-side). */
@@ -233,8 +242,12 @@ export function wireJoinCode(): void {
   }
 
   async function loadJoinCode(): Promise<void> {
-    const w = winAny();
-    const guild = w.currentGuild || (g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null) || 'ALPHA';
+    const guild = getActiveGuild();
+    if (!guild) {
+      // H2: asking the server for 'ALPHA's join code was never intended.
+      showToast(t('guild_unresolved'), 'error');
+      return;
+    }
     try {
       const res = await g.adminAccounts('get-join-code', { guild });
       if (!res.ok) throw new Error(res.error || 'get_code_failed');
@@ -245,14 +258,20 @@ export function wireJoinCode(): void {
         const generatedCode = g.generateJoinCode('FGF');
         const setRes = await g.adminAccounts('set-join-code', { code: generatedCode, guild });
         if (!setRes.ok) throw new Error(setRes.error || 'set_code_failed');
-        try { ls()?.setItem(joinCodeStorageKey(), generatedCode); } catch (_) { /* ignore */ }
+        try {
+          const key = joinCodeStorageKey();
+          if (key) ls()?.setItem(key, generatedCode);
+        } catch (_) { /* ignore */ }
         showCode(generatedCode);
         setInfo("This is your guild's permanent join code. Share it with your players.");
         showToast('Join code created.', 'success');
       }
     } catch (_err) {
       let storedCode = '';
-      try { storedCode = ls()?.getItem(joinCodeStorageKey()) || ''; } catch (_) { /* ignore */ }
+      try {
+        const key = joinCodeStorageKey();
+        storedCode = key ? (ls()?.getItem(key) || '') : '';
+      } catch (_) { /* ignore */ }
       if (storedCode) {
         showCode(storedCode);
         setInfo("This is your guild's permanent join code. Share it with your players.");

@@ -33,7 +33,11 @@ export function initCurrentGuild(): void {
     const store = typeof localStorage !== 'undefined' ? localStorage : null;
     const localRestriction = store ? store.getItem('gm_guild_restriction') : null;
     const current = store ? store.getItem('gm_current_guild') : null;
-    (window as any).currentGuild = localRestriction || current || 'ALPHA';
+    // H2: no `|| 'ALPHA'`. Seeding a real tenant here is what made an
+    // unresolved guild look resolved for the whole session; leaving it null
+    // lets getActiveGuild() report the truth.
+    const seeded = localRestriction || current;
+    (window as any).currentGuild = typeof seeded === 'string' && seeded.trim() !== '' ? seeded.trim() : null;
   } catch (_) { /* ignored */ }
 }
 

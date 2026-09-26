@@ -43,23 +43,38 @@ export const LOCAL_CONFIG_FALLBACK: Record<string, string> = {
   notify_svs_won_prep: 'false'
 };
 
-const DEFAULT_GUILD_TAGS: Record<string, string> = {
-  ALPHA: '[PR1M]',
-  OMEGA: '[OMG]',
-  BABE: '[BABE]',
-  IMK: '[IMK]',
-  YARR: '[YARR]',
-  CLAW: '[CLAW]',
-  DEMO: '[DEMO]'
-};
+/*
+ * FINDING H2: `DEFAULT_GUILD_TAGS` used to live here -- a hardcoded table of 7
+ * tags for a product with 26 tenants, in direct violation of ADR-003. It is
+ * gone, and no seeding migration was needed: `guild_config` already holds a
+ * `guild_tag` for all 7, and for 14 of the other 19 besides.
+ *
+ * Two of the hardcoded values were also simply WRONG -- the database says CLAW
+ * is `[BYE]` and DEMO is `DEMO`, against `[CLAW]` and `[DEMO]` in the table.
+ * Since the DB is read first, the real values already won; the dead table was
+ * only ever consulted for a guild with no stored tag, where it now yields the
+ * same `[<ID>]` the other 19 guilds have always shown.
+ */
 
 function ls(): Storage | null {
   return typeof localStorage !== 'undefined' ? localStorage : null;
 }
 
-/** Reads one config key: DB → localStorage → fallback table (or ''). */
-export async function getGuildConfig(key: string): Promise<any> {
-  const currentG = getActiveGuild();
+/**
+ * Reads one config key: DB → localStorage → fallback table (or '').
+ *
+ * H2: `guild` may be passed explicitly. It used to be impossible to read
+ * another tenant's config, because this always used `getActiveGuild()` -- which
+ * is why `getGuildTag('CLAW')` returned the ACTIVE guild's tag while only its
+ * fallback honoured the argument. With no guild resolvable, the static fallback
+ * is returned without touching the database or localStorage: a key of
+ * `gm_config_null_<key>` is not a cache, it is a bug waiting to be read back.
+ */
+export async function getGuildConfig(key: string, guild?: string | null): Promise<any> {
+  const currentG = guild || getActiveGuild();
+  if (!currentG) {
+    return LOCAL_CONFIG_FALLBACK[key] !== undefined ? LOCAL_CONFIG_FALLBACK[key] : '';
+  }
   const c = getClient();
   if (c) {
     try {
@@ -85,8 +100,14 @@ export async function getGuildConfig(key: string): Promise<any> {
  * mirror is only written AFTER a successful upsert: a failed write must not
  * visually validate an unchecked notification toggle (P0 audit RC1).
  */
-export async function setGuildConfig(key: string, value: any): Promise<boolean> {
-  const currentG = getActiveGuild();
+export async function setGuildConfig(key: string, value: any, guild?: string | null): Promise<boolean> {
+  const currentG = guild || getActiveGuild();
+  // H2: refuse rather than write config into a guessed tenant. Returning false
+  // is already the contract callers use to surface a failed persist.
+  if (!currentG) {
+    console.error(`[guild-config] Refusing to persist "${key}": no guild resolved.`);
+    return false;
+  }
   const c = getClient();
   if (c) {
     try {
@@ -108,18 +129,26 @@ export async function setGuildConfig(key: string, value: any): Promise<boolean> 
   return true;
 }
 
-/** Returns the guild tag wrapped in brackets, with per-guild defaults. */
-export async function getGuildTag(guild?: string): Promise<string> {
+/**
+ * Returns the guild tag wrapped in brackets, derived from the guild id when the
+ * tenant has not configured one.
+ *
+ * H2: the `guild` argument is now actually honoured for the lookup, not just for
+ * the fallback, and an unresolvable guild yields '' rather than ALPHA's tag.
+ * Callers treat '' as "no tag configured", which is the truth.
+ */
+export async function getGuildTag(guild?: string | null): Promise<string> {
   const g = guild || getActiveGuild();
+  if (!g) return '';
   try {
-    const customTag = await getGuildConfig('guild_tag');
+    const customTag = await getGuildConfig('guild_tag', g);
     if (customTag && typeof customTag === 'string' && customTag.trim()) {
       const t = customTag.trim();
       if (!t.startsWith('[') && !t.endsWith(']')) return '[' + t + ']';
       return t;
     }
-  } catch (_) { /* fall through to defaults */ }
-  return DEFAULT_GUILD_TAGS[g] || ('[' + (g || 'ALPHA') + ']');
+  } catch (_) { /* fall through to the derived form */ }
+  return '[' + g + ']';
 }
 
 /** Legacy `GM.config` shaped facade. */

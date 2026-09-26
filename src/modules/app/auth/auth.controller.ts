@@ -121,6 +121,16 @@ export function revealAdmin(role: string): void {
   const app = w().GM_APP;
   if (app && typeof app.showAdminDashboard === 'function') {
     app.showAdminDashboard(role);
+    // The sidebar is rendered at boot, BEFORE sign-in resolves the tenant, and
+    // this early return used to skip every re-render -- so the guild badge kept
+    // whatever it showed at boot. That was invisible while an unresolved guild
+    // silently read 'ALPHA' (finding H2): the badge displayed a plausible guild
+    // name and nobody noticed it was the wrong one. Now that an unresolved
+    // tenant says so out loud, the staleness is plain, so re-render here.
+    const shellAfterDashboard = w().GM_SHELL;
+    if (shellAfterDashboard && typeof shellAfterDashboard.renderSidebar === 'function') {
+      shellAfterDashboard.renderSidebar();
+    }
     return;
   }
   const loginView = el('login-view');

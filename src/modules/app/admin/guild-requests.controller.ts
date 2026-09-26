@@ -10,6 +10,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeLike } from '../../../core/utils/text';
+import { getActiveGuild } from '../../../core/auth/roles';
 import { t, esc, gm, winAny, byId, getDb } from './utils';
 import { type AccountRow, getAccounts, filterAccountsOut } from './admin-store';
 import { fetchAccounts, fetchGuilds } from './accounts.controller';
@@ -322,25 +323,23 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
 
 // ── Pending player registrations ─────────────────────────────────────────────
 
-export async function renderPendingRegistrations(activeG?: string): Promise<void> {
+export async function renderPendingRegistrations(activeG?: string | null): Promise<void> {
   const overviewContainer = byId('pending-account-list');
   const overviewCount = byId('pending-account-count');
   const adminContainer = byId('admin-pending-account-list');
   const adminCount = byId('admin-pending-account-count');
   if (!overviewContainer && !adminContainer) return;
 
-  let guild = activeG;
-  if (!guild) {
-    const g = gm();
-    guild = g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : 'ALPHA';
-  }
+  // H2: falls through to the canonical resolver, which returns null rather
+  // than ALPHA. An unresolved tenant then matches no pending account.
+  const guild = activeG || getActiveGuild();
   const activeGUpper = String(guild || '').trim().toUpperCase();
 
   let pending: AccountRow[] = [];
   const accounts = getAccounts();
   if (accounts && accounts.length > 0) {
     pending = accounts.filter((acc) => {
-      const accGuildUpper = String(acc.guild || 'ALPHA').trim().toUpperCase();
+      const accGuildUpper = String(acc.guild || '').trim().toUpperCase();
       return acc.status === 'pending' && acc.role === 'member' && accGuildUpper === activeGUpper;
     });
   } else {

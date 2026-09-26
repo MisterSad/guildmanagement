@@ -54,9 +54,9 @@ const legacy = {
     const g = gm();
     return g && typeof g.formatNumber === 'function' ? g.formatNumber(num) : String(num ?? '');
   },
-  getActiveGuild(): string {
+  getActiveGuild(): string | null {
     const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : 'ALPHA';
+    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
   },
   getWeekStart(dateArg?: unknown): string {
     const g = gm();
@@ -143,7 +143,7 @@ export class EventsView {
     return this.state;
   }
 
-  private currentGuild(): string {
+  private currentGuild(): string | null {
     return this.guildOverride || legacy.getActiveGuild();
   }
 
@@ -400,6 +400,8 @@ export class EventsView {
     const host = this.getPanel(tabKey)?.querySelector<HTMLElement>('.war-banner');
     if (!host) return;
     const guild = this.currentGuild();
+    // H2: reading war meta without a resolved tenant used to read ALPHA's.
+    if (!guild) return;
     const ev = s.activeEventName as WarEventName;
     const war = this.getWar(tabKey);
 
@@ -451,8 +453,11 @@ export class EventsView {
   private async ensureWarSession(tabKey: string): Promise<WarSession | null> {
     const s = this.state[tabKey];
     if (!s.activeEventName || !s.sessionId) return null;
+    const guild = this.currentGuild();
+    // H2: creating a war session writes. No tenant, no session.
+    if (!guild) return null;
     const res = await EventsService.upsertWarSession({
-      guild: this.currentGuild(),
+      guild,
       eventName: s.activeEventName as WarEventName,
       sessionId: s.sessionId
     });
@@ -574,8 +579,13 @@ export class EventsView {
     const isSvs = s.activeEventName === 'SvS';
     const war = this.getWar(tabKey);
     const known = war.opponents.find((o) => o && String(o.name).toLowerCase() === name.toLowerCase());
+    const guild = this.currentGuild();
+    if (!guild) {
+      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      return;
+    }
     const res = await EventsService.upsertWarSession({
-      guild: this.currentGuild(),
+      guild,
       eventName: s.activeEventName as WarEventName,
       sessionId: s.sessionId,
       opponent: {
@@ -606,6 +616,13 @@ export class EventsView {
     if (!s.activeEventName || !s.sessionId) return;
     const day = Number(btn.getAttribute('data-day'));
     if (!(day >= 1 && day <= 6)) return;
+    const guild = this.currentGuild();
+    // H2: guard BEFORE the optimistic UI update, so the button cannot show a
+    // result that was never persisted (and never persisted into ALPHA).
+    if (!guild) {
+      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      return;
+    }
     const war = this.getWar(tabKey);
     const key = 'day' + day + '_result';
     const prev: 'won' | 'lost' | null = war.session ? (war.session as any)[key] || null : null;
@@ -643,7 +660,7 @@ export class EventsView {
     }
 
     void EventsService.upsertWarSession({
-      guild: this.currentGuild(),
+      guild,
       eventName: s.activeEventName as WarEventName,
       sessionId: s.sessionId,
       dailyResults: { ['day' + day]: next }
@@ -793,8 +810,13 @@ export class EventsView {
       }
     }
 
+    const rowGuild = this.currentGuild();
+    if (!rowGuild) {
+      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      return;
+    }
     const res = await EventsService.upsertDailyScores(
-      this.currentGuild(),
+      rowGuild,
       s.activeEventName as WarEventName,
       s.sessionId,
       rows

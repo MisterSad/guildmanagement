@@ -290,6 +290,7 @@ export class MigrationHubView {
     if (!db) return;
 
     const currentG = getActiveGuild();
+    if (!currentG) return;
     const serverNumber = legacy.getServerNumber(currentG);
 
     // Update scope switcher labels
@@ -697,6 +698,7 @@ export class MigrationHubView {
     if (!db) return;
 
     const currentG = getActiveGuild();
+    if (!currentG) return;
     const serverNumber = legacy.getServerNumber(currentG);
     const pseudo = getCurrentPseudo() || currentAccountId() || 'Admin';
     const accId = currentAccountId();
@@ -1312,6 +1314,7 @@ export class MigrationHubView {
     if (!modal || !modalContent) return;
 
     const currentG = getActiveGuild();
+    if (!currentG) return;
     const serverNumber = legacy.getServerNumber(currentG);
     const scopeLabel = this.filterState.scope === 'guild' ? `Guild [${currentG}]` : `Server [${serverNumber}]`;
 

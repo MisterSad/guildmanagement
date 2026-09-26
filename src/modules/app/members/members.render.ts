@@ -10,6 +10,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { t, esc, byId } from '../admin/utils';
+import { getActiveGuild } from '../../../core/auth/roles';
 import { getAppState } from '../state/app-state';
 import { getAccounts } from '../admin/admin-store';
 import { filterBulkEligibleMembers, isRoleAllowedForBulk } from '../../members/members.service';
@@ -69,9 +70,12 @@ function calculateRallyGrade(m: any, max: number): number {
   const score = calculateRallyScore(m);
   return max > 0 ? Math.round((score / max) * 100) : 0;
 }
-function currentGuild(): string {
-  const x = w();
-  return x.currentGuildRestriction || x.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
+/**
+ * H2: delegates to the single canonical resolver instead of re-implementing the
+ * fallback chain, and returns null rather than ALPHA when nothing resolves.
+ */
+function currentGuild(): string | null {
+  return getActiveGuild();
 }
 function emptyStateHtml(): string {
   const members = getGuildMembers();
@@ -526,7 +530,8 @@ export function renderTimezoneCoverage(): void {
   const currentG = currentGuild();
   const members = getGuildMembers();
   const withTz = members.filter((m) => {
-    if ((m.guild || 'ALPHA') !== currentG) return false;
+    // H2: a member with no guild belongs to no guild, not to ALPHA.
+    if ((m.guild || '') !== currentG) return false;
     return !!m.timezone || (m.timezone_offset != null && !isNaN(Number(m.timezone_offset)));
   });
   if (withTz.length === 0) { section.style.display = 'none'; return; }
@@ -575,7 +580,7 @@ export function updateBulkActionBar(filteredList: GuildMember[]): void {
   const activeGuild = w().GM && typeof w().GM.getActiveGuild === 'function' ? w().GM.getActiveGuild() : currentGuild();
   const selected = getAppState().adminSelectedMembers;
   const rosterMap: Record<string, GuildMember> = {};
-  getGuildMembers().filter((m) => (m.guild || 'ALPHA') === activeGuild).forEach((m) => { if (m && m.pseudo) rosterMap[m.pseudo] = m; });
+  getGuildMembers().filter((m) => (m.guild || '') === activeGuild).forEach((m) => { if (m && m.pseudo) rosterMap[m.pseudo] = m; });
 
   Array.from(selected).forEach((p) => {
     const mem = rosterMap[p];
@@ -621,7 +626,7 @@ export async function bulkUpdateMemberRoles(targetRole: string): Promise<boolean
   }
 
   const activeGuild = w().GM && typeof w().GM.getActiveGuild === 'function' ? w().GM.getActiveGuild() : currentGuild();
-  const currentRoster = getGuildMembers().filter((m) => (m.guild || 'ALPHA') === activeGuild);
+  const currentRoster = getGuildMembers().filter((m) => (m.guild || '') === activeGuild);
   const { eligiblePseudos, excludedR5Count } = filterBulkEligibleMembers(currentRoster, getAppState().adminSelectedMembers);
 
   if (!eligiblePseudos || eligiblePseudos.length === 0) {
@@ -681,7 +686,7 @@ export function renderGuildMembers(skipSubpanels?: boolean): void {
   const currentG = currentGuild();
 
   const filteredAdmin = members.filter((m) => {
-    const memberG = m.guild || 'ALPHA';
+    const memberG = m.guild || '';
     const matchGuild = memberG === currentG;
     const matchSearch = (String(m.pseudo).toLowerCase() + ' ' + String(m.uid || '').toLowerCase()).indexOf(qAdmin) !== -1;
     let matchTier: boolean;
@@ -717,7 +722,7 @@ function updateTempUidBadge(): void {
   if (!badge || !countSpan) return;
   const currentG = currentGuild();
   const count = getGuildMembers()
-    .filter((m) => (m.guild || 'ALPHA') === currentG && isInvalidOrTempUid(m.uid)).length;
+    .filter((m) => (m.guild || '') === currentG && isInvalidOrTempUid(m.uid)).length;
 
   if (count > 0) {
     countSpan.textContent = String(count);

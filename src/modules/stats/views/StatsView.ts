@@ -84,9 +84,9 @@ const legacy = {
     const g = gm();
     return g && typeof g.avatarInit === 'function' ? g.avatarInit(pseudo) : avatarInit(pseudo);
   },
-  getActiveGuild(): string {
+  getActiveGuild(): string | null {
     const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : 'ALPHA';
+    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
   },
   ensureAuthSession(): Promise<unknown> {
     const g = gm();
@@ -182,7 +182,7 @@ type PrimaryView = 'cockpit' | 'leaderboard' | 'events';
 type StatsPeriod = '1w' | '2w' | '4w' | '8w' | 'all';
 
 interface StatsState {
-  activeGuild: string;
+  activeGuild: string | null;
   primaryView: PrimaryView;
   currentMode: string;
   selectedEvent: string;
@@ -199,7 +199,9 @@ interface StatsState {
 
 function createState(): StatsState {
   return {
-    activeGuild: 'ALPHA',
+    // H2: no tenant until one is resolved; 'ALPHA' here meant every
+    // pre-resolution render queried a real guild's stats.
+    activeGuild: null,
     primaryView: 'leaderboard',
     currentMode: 'global',
     selectedEvent: 'SvS',

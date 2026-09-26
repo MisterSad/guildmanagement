@@ -18,20 +18,21 @@ function makeDb(opts = {}) {
     from(table) {
       return {
         select() {
-          return {
-            eq() {
-              return {
-                eq() {
-                  return {
-                    maybeSingle: async () => {
-                      calls.push({ op: 'select', table });
-                      return { data: opts.selectValue !== undefined ? { value: opts.selectValue } : null, error: null };
-                    }
-                  };
-                }
-              };
+          // The eq() arguments are recorded so a test can prove WHICH tenant was
+          // queried. They used to be discarded, which is why nothing caught
+          // getGuildConfig ignoring its guild argument (finding H2).
+          const filters = {};
+          const chain = {
+            eq(col, val) {
+              filters[col] = val;
+              return chain;
+            },
+            maybeSingle: async () => {
+              calls.push({ op: 'select', table, filters });
+              return { data: opts.selectValue !== undefined ? { value: opts.selectValue } : null, error: null };
             }
           };
+          return chain;
         },
         upsert(payload) {
           calls.push({ op: 'upsert', table, payload });
@@ -82,6 +83,13 @@ describe('cache — TTL, invalidation, clear', () => {
 });
 
 describe('guild config — DB + localStorage', () => {
+  // FINDING H2: these used to pass without ever setting a guild, because
+  // getActiveGuild() invented 'ALPHA'. The tenant is now established explicitly
+  // -- which is the point: config reads and writes must name their tenant.
+  beforeEach(() => {
+    localStorage.setItem('gm_current_guild', 'ALPHA');
+  });
+
   it('reads the DB value when available', async () => {
     window.GM = { db: makeDb({ selectValue: '7' }) };
     expect(await guildConfig.getGuildConfig('coeff_svs')).toBe('7');
@@ -93,6 +101,7 @@ describe('guild config — DB + localStorage', () => {
     expect(await guildConfig.getGuildConfig('coeff_svs')).toBe('9');
 
     localStorage.clear();
+    localStorage.setItem('gm_current_guild', 'ALPHA');
     expect(await guildConfig.getGuildConfig('coeff_gvg')).toBe('5');
     expect(await guildConfig.getGuildConfig('unknown_key')).toBe('');
   });
@@ -112,13 +121,50 @@ describe('guild config — DB + localStorage', () => {
     expect(await guildConfig.setGuildConfig('coeff_svs', '1')).toBe(false);
   });
 
-  it('getGuildTag uses custom tag → bracketed, else per-guild default', async () => {
+  it('H2: refuses to read or write config for an unresolved tenant', async () => {
+    localStorage.removeItem('gm_current_guild');
+    const db = makeDb({ selectValue: '7' });
+    window.GM = { db };
+
+    // The static fallback, NOT the DB value and NOT another tenant's value.
+    expect(await guildConfig.getGuildConfig('coeff_svs')).toBe('5');
+    expect(db.calls.find((c) => c.op === 'select')).toBeUndefined();
+
+    // A write must fail loudly rather than land in a guessed tenant.
+    expect(await guildConfig.setGuildConfig('coeff_svs', '12')).toBe(false);
+    expect(db.calls.find((c) => c.op === 'upsert')).toBeUndefined();
+  });
+
+  it('getGuildTag brackets a stored tag, else derives one from the guild id', async () => {
     window.GM = { db: makeDb({ selectValue: 'PR1M' }) };
     expect(await guildConfig.getGuildTag('ALPHA')).toBe('[PR1M]');
 
+    // H2: `DEFAULT_GUILD_TAGS` is gone -- a hardcoded table of 7 tags for 26
+    // tenants, violating ADR-003. With no stored tag the id is used, exactly as
+    // the other 19 guilds always did. Production is unaffected: guild_config
+    // already holds a tag for all 7, and two of the hardcoded values were
+    // actually WRONG (the DB says CLAW is [BYE] and DEMO is DEMO).
     window.GM = { db: makeDb({ selectValue: '' }) };
-    expect(await guildConfig.getGuildTag('ALPHA')).toBe('[PR1M]');
+    expect(await guildConfig.getGuildTag('ALPHA')).toBe('[ALPHA]');
     expect(await guildConfig.getGuildTag('UNKNOWN')).toBe('[UNKNOWN]');
+  });
+
+  it('H2: honours the guild argument for the lookup, not just the fallback', async () => {
+    // getGuildConfig used to resolve the tenant itself, so getGuildTag('CLAW')
+    // returned the ACTIVE guild's tag while only its fallback read the argument.
+    const db = makeDb({ selectValue: 'BYE' });
+    window.GM = { db };
+    localStorage.setItem('gm_current_guild', 'OMEGA');
+    expect(await guildConfig.getGuildTag('CLAW')).toBe('[BYE]');
+    const select = db.calls.find((c) => c.op === 'select');
+    expect(select.filters.guild, 'must query CLAW, not the active guild').toBe('CLAW');
+    expect(select.filters.key).toBe('guild_tag');
+  });
+
+  it('H2: yields no tag at all when no guild can be resolved', async () => {
+    localStorage.removeItem('gm_current_guild');
+    window.GM = { db: makeDb({ selectValue: 'PR1M' }) };
+    expect(await guildConfig.getGuildTag()).toBe('');
   });
 });
 

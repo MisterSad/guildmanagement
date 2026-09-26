@@ -19,6 +19,7 @@ import {
 } from './members.store';
 import { renderGuildMembers } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
+import { getActiveGuild } from '../../../core/auth/roles';
 
 function g(): any {
   return winAny().GM;
@@ -27,11 +28,12 @@ function db(): any {
   const x = g();
   return x && x.db ? x.db : null;
 }
-function activeGuild(): string {
-  const gm = g();
-  if (gm && typeof gm.getActiveGuild === 'function') return gm.getActiveGuild();
-  const x = winAny();
-  return x.currentGuildRestriction || x.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
+/**
+ * H2: one resolver, shared. This was the third of four independent copies of
+ * the restriction -> current -> localStorage -> ALPHA chain.
+ */
+function activeGuild(): string | null {
+  return getActiveGuild();
 }
 function avatarInit(value: unknown): string {
   const x = g();

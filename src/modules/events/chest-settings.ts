@@ -100,7 +100,13 @@ function addTier(day: number): void {
 export async function loadChestTiers(): Promise<void> {
   if (!byId('chest-tiers-grid')) return;
 
-  const result = await EventsService.getChestTiers(getActiveGuild(), currentEvent);
+  const activeGuild = getActiveGuild();
+  if (!activeGuild) {
+    // H2: reading with an unresolved tenant used to read ALPHA's tiers.
+    showToast(t('guild_unresolved'), 'error');
+    return;
+  }
+  const result = await EventsService.getChestTiers(activeGuild, currentEvent);
   if (!result.ok) {
     if (result.error && result.error !== 'rpc_failed') {
       showToast(t('war_save_tiers_error') + ' ' + result.error, 'error');
@@ -163,7 +169,13 @@ async function saveTiers(): Promise<void> {
   }
 
   try {
-    const result = await EventsService.saveChestTiers(getActiveGuild(), currentEvent, normalized);
+    const saveGuild = getActiveGuild();
+    if (!saveGuild) {
+      // H2: worse than a bad read -- this would have WRITTEN ALPHA's tiers.
+      showToast(t('guild_unresolved'), 'error');
+      return;
+    }
+    const result = await EventsService.saveChestTiers(saveGuild, currentEvent, normalized);
     if (!result.ok) {
       showToast(t('war_save_tiers_error') + (result.error && result.error !== 'rpc_failed' ? ' ' + result.error : ''), 'error');
     } else {

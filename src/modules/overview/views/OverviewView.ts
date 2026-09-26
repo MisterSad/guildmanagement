@@ -57,9 +57,9 @@ const legacy = {
     const g = gm();
     return g && typeof g.formatNumber === 'function' ? g.formatNumber(num) : String(num ?? '');
   },
-  getActiveGuild(): string {
+  getActiveGuild(): string | null {
     const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : 'ALPHA';
+    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
   },
   getWeekStart(): string {
     const g = gm();
@@ -285,7 +285,10 @@ export class OverviewView {
         const icon = exportBtn.querySelector('i');
         if (icon) icon.className = 'ph ph-circle-notch ph-spin';
         try {
-          const res = await legacy.exportGuildData(legacy.getActiveGuild());
+          const exportGuild = legacy.getActiveGuild();
+          // H2: exporting with an unresolved tenant would have exported ALPHA.
+          if (!exportGuild) throw new Error('guild_unresolved');
+          const res = await legacy.exportGuildData(exportGuild);
           if (!res.ok) throw new Error(res.error || 'export_failed');
         } catch (err: any) {
           legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');

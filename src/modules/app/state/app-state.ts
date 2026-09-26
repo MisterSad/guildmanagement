@@ -26,7 +26,7 @@ export type AdminMembersViewMode = 'cards' | 'matrix';
 export interface AppState {
   currentGuildRestriction: string | null;
   currentServerRestriction: string | null;
-  currentGuild: string;
+  currentGuild: string | null;
   guildsList: string[];
   guildsData: Record<string, unknown>;
   guildAbsences: unknown[];
@@ -47,12 +47,20 @@ function defaultCollapsedRoles(): CollapsedRoles {
   return { R5: false, R4: false, R3: false, R2: false, R1: false };
 }
 
-function defaultCurrentGuild(): string {
+/**
+ * H2: returns null rather than 'ALPHA' when nothing is stored.
+ *
+ * Both the happy path and the catch used to hand back a real, populated tenant,
+ * so a browser that blocks localStorage entirely started every session pointed
+ * at ALPHA.
+ */
+function defaultCurrentGuild(): string | null {
   try {
     const store = ls();
-    return (store ? store.getItem('gm_current_guild') : null) || 'ALPHA';
+    const stored = store ? store.getItem('gm_current_guild') : null;
+    return typeof stored === 'string' && stored.trim() !== '' ? stored.trim() : null;
   } catch (_) {
-    return 'ALPHA';
+    return null;
   }
 }
 

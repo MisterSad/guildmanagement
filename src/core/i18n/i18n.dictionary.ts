@@ -18,6 +18,7 @@ export const EN: Record<string, string> = {
             login_btn:             'Access',
             login_btn_loading:     'Logging in...',
             login_btn_discord:     'Sign in with Discord',
+            guild_unresolved:      'No guild selected. Pick a guild before continuing.',
             login_discord:         'Want a guild space for your guild? Join our Discord',
             footer_terms:          'Terms & Conditions',
             terms_modal_title:     'Terms of Service & General Conditions of Sale (TOS/GCS)',

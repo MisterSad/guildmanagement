@@ -74,9 +74,13 @@ describe('cleanPlayerPseudo and getGuildTag', () => {
         expect(GM.cleanPlayerPseudo('Admiral_99', '[ALPHA]')).toBe('Admiral_99');
     });
 
-    it('returns valid default guild tags for standard tenants', async () => {
-        expect(await GM.getGuildTag('ALPHA')).toBe('[PR1M]');
-        expect(await GM.getGuildTag('OMEGA')).toBe('[OMG]');
+    it('derives a guild tag from the guild id when none is stored', async () => {
+        // FINDING H2: this asserted the hardcoded DEFAULT_GUILD_TAGS table --
+        // 7 tags for 26 tenants, against ADR-003. The table is gone; the real
+        // tags live in guild_config, which already holds one for all 7. With no
+        // stored tag the id is used, as it always was for the other 19 guilds.
+        expect(await GM.getGuildTag('ALPHA')).toBe('[ALPHA]');
+        expect(await GM.getGuildTag('OMEGA')).toBe('[OMEGA]');
         expect(await GM.getGuildTag('BABE')).toBe('[BABE]');
     });
 });

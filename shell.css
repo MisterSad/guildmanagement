@@ -337,6 +337,19 @@
     margin-bottom: clamp(0.2rem, 0.4vh, 0.5rem);
 }
 
+/*
+ * FINDING H2: shown when the active tenant cannot be resolved. It must NOT look
+ * like a guild name -- the whole point is that the user is in no guild, where
+ * the old code silently displayed 'ALPHA'.
+ */
+.gm-sidebar-guild-badge--unresolved {
+    background: oklch(0.24 0.05 40);
+    color: var(--accent-amber, oklch(0.82 0.15 75));
+    border-color: oklch(0.45 0.10 60);
+    font-weight: 600;
+    text-transform: none;
+}
+
 .gm-sidebar-report-bug {
     width: 100% !important;
     margin: clamp(0.35rem, 0.6vh, 0.5rem) 0 !important;

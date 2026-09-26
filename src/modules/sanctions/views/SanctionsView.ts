@@ -36,9 +36,9 @@ const legacy = {
   esc(value: unknown): string {
     return escapeHTML(value);
   },
-  getActiveGuild(): string {
+  getActiveGuild(): string | null {
     const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : 'ALPHA';
+    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
   },
   avatarInit(value: unknown): string {
     const g = gm();

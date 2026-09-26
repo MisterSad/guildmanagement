@@ -21,6 +21,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { getActiveGuild } from '../../../core/auth/roles';
 
 export type ShellRole = 'member' | 'guild_admin' | 'server_admin' | 'super_admin' | string;
 
@@ -129,9 +130,9 @@ const legacy = {
     const g = gm();
     return g && g.db ? g.db : null;
   },
-  getCurrentGuild(): string {
-    const w = winAny();
-    return w.currentGuild || 'ALPHA';
+  getCurrentGuild(): string | null {
+    // H2: null, not ALPHA. The sidebar badge renders an explicit placeholder.
+    return getActiveGuild();
   },
   setCurrentGuild(guild: string): void {
     winAny().currentGuild = guild;
@@ -467,7 +468,13 @@ export class ShellView {
         '</select>' +
       '</div>';
     } else {
-      const displayGuild = restriction || legacy.getCurrentGuild() || 'ALPHA';
+      const displayGuild = restriction || legacy.getCurrentGuild();
+      if (!displayGuild) {
+        // H2: showing 'ALPHA' here told the user they were in a tenant they had
+        // not selected -- the most visible face of this finding.
+        return '<div class="gm-sidebar-guild-badge gm-sidebar-guild-badge--unresolved">'
+          + legacy.esc(legacy.t('guild_unresolved')) + '</div>';
+      }
       const sVal = (guildsData[displayGuild] && guildsData[displayGuild].server_number) ? String(guildsData[displayGuild].server_number).replace(/^#+/, '') : '';
       const sNum = sVal ? ' #' + legacy.esc(sVal) : '';
       return '<div class="gm-sidebar-guild-badge">' + legacy.esc(displayGuild) + sNum + '</div>';
@@ -617,7 +624,11 @@ export class ShellView {
       guilds = guilds.filter((g) => {
         return guildsData[g] && String(guildsData[g].server_number) === String(serverRestriction);
       });
-      if (guilds.length > 0 && guilds.indexOf(legacy.getCurrentGuild()) === -1) {
+      // H2: an unresolved guild now also lands here and gets RESOLVED to the
+      // first guild this server_admin actually governs, instead of being left
+      // pointing at ALPHA.
+      const cur = legacy.getCurrentGuild();
+      if (guilds.length > 0 && (!cur || guilds.indexOf(cur) === -1)) {
         legacy.setCurrentGuild(guilds[0]);
         localStorage.setItem('gm_current_guild', guilds[0]);
       }

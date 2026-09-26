@@ -10,6 +10,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { t, esc, gm, winAny, byId } from './utils';
+import { getActiveGuild } from '../../../core/auth/roles';
 import {
   type AccountRow,
   getAccounts,
@@ -30,7 +31,10 @@ function isSuperAdminUser(): boolean {
 
 export function renderAccounts(): void {
   const w = winAny();
-  const activeG = w.currentGuild || 'ALPHA';
+  // H2: no ALPHA fallback. An unresolved tenant matches no account's guild,
+  // so the list shows only the super_admin (exempted below) rather than
+  // presenting ALPHA's roster as if it were the caller's.
+  const activeG = getActiveGuild();
   const activeGUpper = String(activeG || '').trim().toUpperCase();
   const superAdmin = isSuperAdminUser();
   const accounts = getAccounts();
@@ -39,7 +43,9 @@ export function renderAccounts(): void {
 
   const activeAccounts = accounts.filter((acc) => {
     if (acc.status === 'pending') return false;
-    const accGuild = acc.guild || 'ALPHA';
+    // H2: an account with no guild belongs to no guild. Coercing it to ALPHA
+    // mislabelled the one real super_admin row as an ALPHA member.
+    const accGuild = acc.guild || '';
     if (acc.role === 'super_admin') return true;
     return String(accGuild).trim().toUpperCase() === activeGUpper;
   });

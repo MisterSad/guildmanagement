@@ -68,9 +68,9 @@ const legacy = {
     if (!g || typeof g.getWeekStart !== 'function') return '';
     return dateArg === undefined ? g.getWeekStart() : g.getWeekStart(dateArg);
   },
-  getActiveGuild(): string {
+  getActiveGuild(): string | null {
     const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : 'ALPHA';
+    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
   },
   buildEventSessionId(eventName: string, when: unknown, existingIds?: unknown): string {
     const g = gm();

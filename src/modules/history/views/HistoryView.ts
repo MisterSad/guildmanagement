@@ -59,9 +59,9 @@ const legacy = {
     const g = gm();
     return g && typeof g.formatNumber === 'function' ? g.formatNumber(num) : String(num ?? '');
   },
-  getActiveGuild(): string {
+  getActiveGuild(): string | null {
     const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : 'ALPHA';
+    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
   },
   buildEventSessionId(eventName: string, weekStart: string): string {
     const g = gm();
@@ -428,10 +428,16 @@ export class HistoryView {
     let warExtra: { grid: ChestTier[]; daily: Record<string, Array<{ day: number; score: number; chests_unlocked: number }>> } | null = null;
     let granularActive = false;
     if (granular && sessionId && isDualScore) {
-      const [warRes, dayRes] = await Promise.all([
-        EventsService.getWarSession(legacy.getActiveGuild(), eventName as WarEventName, sessionId),
-        EventsService.getDailyScores(legacy.getActiveGuild(), eventName as WarEventName, sessionId)
-      ]);
+      const granularGuild = legacy.getActiveGuild();
+      const [warRes, dayRes] = granularGuild
+        ? await Promise.all([
+            EventsService.getWarSession(granularGuild, eventName as WarEventName, sessionId),
+            EventsService.getDailyScores(granularGuild, eventName as WarEventName, sessionId)
+          ])
+        // H2: without a tenant there is nothing to fetch; fall through to the
+        // aggregated view rather than reading ALPHA's session.
+        : [{ ok: false } as Awaited<ReturnType<typeof EventsService.getWarSession>>,
+           { ok: false } as Awaited<ReturnType<typeof EventsService.getDailyScores>>];
       if (warRes.ok && dayRes.ok) {
         const snapshot = warRes.session
           && Array.isArray(warRes.session.chest_tiers_snapshot)
@@ -452,8 +458,14 @@ export class HistoryView {
 
   private async updateGranularDayField(eventName: string, sessionId: string, pseudo: string, day: number, score: number): Promise<void> {
     if (!(day >= 0 && day <= 6)) return;
+    const dayGuild = legacy.getActiveGuild();
+    if (!dayGuild) {
+      // H2: this writes a score. Refuse rather than write into ALPHA.
+      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      return;
+    }
     const res = await EventsService.upsertDailyScores(
-      legacy.getActiveGuild(),
+      dayGuild,
       eventName as WarEventName,
       sessionId,
       [{ pseudo, day, score }]

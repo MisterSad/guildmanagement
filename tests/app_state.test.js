@@ -28,7 +28,12 @@ describe('defaults', () => {
     const s = getAppState();
     expect(s.currentGuildRestriction).toBeNull();
     expect(s.currentServerRestriction).toBeNull();
-    expect(s.currentGuild).toBe('ALPHA');
+    // FINDING H2, and this assertion is the finding: the "documented default"
+    // was a real, populated tenant. A session that could not resolve a guild
+    // started pointed at ALPHA, and a super_admin or in-scope server_admin has
+    // rights there -- so the default was a cross-tenant read, and potentially a
+    // cross-tenant write, with no error anywhere.
+    expect(s.currentGuild).toBeNull();
     expect(s.guildsList).toEqual([]);
     expect(s.guildsData).toEqual({});
     expect(s.guildAbsences).toEqual([]);
@@ -125,12 +130,12 @@ describe('resetAppState', () => {
     resetAppState();
 
     const s = getAppState();
-    expect(s.currentGuild).toBe('ALPHA');
+    expect(s.currentGuild).toBeNull();
     expect(s.currentGuildRestriction).toBeNull();
     expect(s.guildsList).toEqual([]);
     expect(s.adminMembersViewMode).toBe('cards');
     expect(s.adminSelectedMembers.size).toBe(0);
-    expect(window.currentGuild).toBe('ALPHA');
+    expect(window.currentGuild).toBeNull();
     expect(window.guildsList).toEqual([]);
     expect(window.adminSelectedMembers.size).toBe(0);
   });

@@ -7,7 +7,10 @@
 
 ## PART 1 — CURRENT LIVE ARCHITECTURE (VERIFIED PRODUCTION REALITY)
 
-### 1. High-Level System Topology
+#
+> **Tenant resolution (finding H2).** `getActiveGuild()` returns `string | null` and never invents a tenant. It is the single resolver — four modules used to re-implement its fallback chain, each ending in a hardcoded `'ALPHA'`, so an unresolved guild silently became a real, populated one. `canWriteGuild()` refuses a null tenant for **every** role including `super_admin`, which is what makes `db-guard` block the write and surface `READ_ONLY_MESSAGE` instead of stamping `guild: null`. Per-guild values such as the guild tag live in `guild_config`, never in a table in the client. `tests/alpha_fallback_removed.test.js` fails on any new tenant literal in `src/`.
+
+## 1. High-Level System Topology
 
 **FGF Guild Management Tool** is a serverless, multi-tenant SaaS tactical command and analytics platform built for competitive guilds in *Foundation Galactic Frontier*. The live production system is a single TypeScript/ESM frontend (`/src/main.ts`) that assembles the legacy `window.GM_*` bridge in-browser, backed by Supabase PostgreSQL 17 with Row Level Security (RLS) and Deno TypeScript Edge Functions. The former root monolith `app.js` was removed in the Strangler final cutover. The project root now holds no application script at all — only tooling configs (`playwright.config.js`, `vitest.config.js`) — and the service worker is a typed module at `src/sw/service-worker.ts` (pure parser in `src/sw/push-payload.ts`) compiled to the root-scoped `dist/sw.js` by esbuild in `scripts/build.js`.
 

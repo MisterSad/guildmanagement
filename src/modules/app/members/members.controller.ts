@@ -10,6 +10,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { t, esc, winAny, byId } from '../admin/utils';
+import { getActiveGuild } from '../../../core/auth/roles';
 import { patchAppState } from '../state/app-state';
 import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers } from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
@@ -27,11 +28,13 @@ function db(): any {
   const x = g();
   return x && x.db ? x.db : null;
 }
-function activeGuild(): string {
-  const x = winAny();
-  const gm = g();
-  if (gm && typeof gm.getActiveGuild === 'function') return gm.getActiveGuild();
-  return x.currentGuildRestriction || x.currentGuild || localStorage.getItem('gm_current_guild') || 'ALPHA';
+/**
+ * H2: one resolver, shared. This used to re-implement the restriction →
+ * current → localStorage → ALPHA chain locally -- one of four independent
+ * copies, each free to disagree with the others.
+ */
+function activeGuild(): string | null {
+  return getActiveGuild();
 }
 function avatarInit(value: unknown): string {
   const x = g();

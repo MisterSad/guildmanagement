@@ -112,11 +112,28 @@ function ls(): Storage | null {
   return typeof localStorage !== 'undefined' ? localStorage : null;
 }
 
-/** Active guild id: restriction → current → localStorage → ALPHA. */
-export function getActiveGuild(): string {
+/**
+ * Active guild id: restriction → current → localStorage, or `null`.
+ *
+ * FINDING H2. This used to end in `|| 'ALPHA'`, which made a failure to resolve
+ * the tenant indistinguishable from "the tenant is ALPHA" -- a real, populated
+ * guild. RLS contained the damage for a `guild_admin` (they simply read an empty
+ * set), but a `super_admin` or an in-scope `server_admin` has rights over ALPHA,
+ * so an unresolved guild meant reading, and potentially WRITING, another
+ * tenant's data with no error anywhere. ADR-003 forbids exactly this
+ * ("no specific tenant branch in frontend or backend logic").
+ *
+ * Returning `null` makes the failure explicit and forces callers to decide.
+ * `canWriteGuild()` refuses it, which is what blocks every tenant write through
+ * `db-guard`; views render an unresolved state instead of querying.
+ */
+export function getActiveGuild(): string | null {
   const w = winAny();
   const store = ls();
-  return w.currentGuildRestriction || w.currentGuild || (store ? store.getItem('gm_current_guild') : null) || 'ALPHA';
+  const resolved =
+    w.currentGuildRestriction || w.currentGuild || (store ? store.getItem('gm_current_guild') : null);
+  const trimmed = typeof resolved === 'string' ? resolved.trim() : '';
+  return trimmed !== '' ? trimmed : null;
 }
 
 /** Logged-in pseudo (gm_user → gm_pseudo). */
@@ -138,8 +155,15 @@ export function currentAccountId(): string | null {
 }
 
 /** Role-based write access, mirroring gm-utils.js#canWriteGuild. */
-export function canWriteGuild(guildId?: string): boolean {
+export function canWriteGuild(guildId?: string | null): boolean {
   const activeG = guildId || getActiveGuild();
+  // H2: an unresolved tenant blocks every write, including a super_admin's.
+  // Without this the `super_admin` branch below returns true for a null guild,
+  // and db-guard would then stamp `guild: null` onto the row or filter on it --
+  // worse than refusing, and silent. This mirrors the doctrine the guild_admin
+  // branch has always carried: writing to the wrong tenant is worse than
+  // blocking.
+  if (!activeG) return false;
   const role = roleFromStorage();
   const w = winAny();
   const store = ls();

@@ -20,6 +20,13 @@
  * delicate -- `.eq()` is appended after `.delete()`), and the failure mode is
  * harmless. A write that later fails has merely dropped a freshness marker, so
  * the next visit refetches identical data.
+ *
+ * FINDING H2: every guard below also refuses an UNRESOLVED tenant. That is what
+ * turns `getActiveGuild()` returning null into a visible failure -- the caller
+ * gets READ_ONLY_MESSAGE instead of a write stamped `guild: null`, or (before H2)
+ * a write silently addressed to ALPHA. `canWriteGuild` refuses null on its own;
+ * the explicit `!currentG` is what narrows the type for the `.eq('guild', …)`
+ * and `invalidateGuildViews` calls that follow.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -67,7 +74,7 @@ export function installDbWriteGuard(db: any): any {
     const originalDelete = builder.delete;
     builder.delete = function (...args: any[]): any {
       const currentG = getActiveGuild();
-      if (!canWriteGuild(currentG)) return readOnlyResult();
+      if (!currentG || !canWriteGuild(currentG)) return readOnlyResult();
       invalidateGuildViews(currentG);
       return originalDelete.apply(this, args).eq('guild', currentG);
     };
@@ -75,7 +82,7 @@ export function installDbWriteGuard(db: any): any {
     const originalUpdate = builder.update;
     builder.update = function (values: any, options?: any): any {
       const currentG = getActiveGuild();
-      if (!canWriteGuild(currentG)) return readOnlyResult();
+      if (!currentG || !canWriteGuild(currentG)) return readOnlyResult();
       invalidateGuildViews(currentG);
       return originalUpdate.call(this, values, options).eq('guild', currentG);
     };
@@ -83,7 +90,7 @@ export function installDbWriteGuard(db: any): any {
     const originalInsert = builder.insert;
     builder.insert = function (values: any, options?: any): any {
       const currentG = getActiveGuild();
-      if (!canWriteGuild(currentG)) return readOnlyResult();
+      if (!currentG || !canWriteGuild(currentG)) return readOnlyResult();
       invalidateGuildViews(currentG);
       let v = values;
       if (Array.isArray(v)) {
@@ -97,7 +104,7 @@ export function installDbWriteGuard(db: any): any {
     const originalUpsert = builder.upsert;
     builder.upsert = function (values: any, options?: any): any {
       const currentG = getActiveGuild();
-      if (!canWriteGuild(currentG)) return readOnlyResult();
+      if (!currentG || !canWriteGuild(currentG)) return readOnlyResult();
       invalidateGuildViews(currentG);
       let v = values;
       if (Array.isArray(v)) {

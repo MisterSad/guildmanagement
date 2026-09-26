@@ -55,9 +55,9 @@ const legacy = {
   esc(value: unknown): string {
     return escapeHTML(value);
   },
-  getActiveGuild(): string {
+  getActiveGuild(): string | null {
     const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : 'ALPHA';
+    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
   },
   getWeekStart(dateArg?: unknown): string {
     const g = gm();
@@ -129,6 +129,11 @@ export class ArmsRaceView {
     }
     try {
       const currentG = legacy.getActiveGuild();
+      if (!currentG) {
+        // H2: this used to load ALPHA's Arms Race when resolution failed.
+        this.render();
+        return;
+      }
       let statusQ: any = db.from('event_status').select('event_name, is_active, session_id, start_at')
         .in('event_name', [ARMSRACE_STAGE_EVENTS.stageA, ARMSRACE_STAGE_EVENTS.stageB]);
       let membersQ: any = db.from('guild_members').select('pseudo, uid');
@@ -200,6 +205,11 @@ export class ArmsRaceView {
     const evName = ARMSRACE_STAGE_EVENTS[stageKey];
     const stageLetter = armsRaceStageLetter(stageKey);
     const currentG = legacy.getActiveGuild();
+    if (!currentG) {
+      // H2: starting a stage writes. Refuse rather than write into ALPHA.
+      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      return;
+    }
     let sessionId: string;
     if (stg && stg.active && stg.sessionId) {
       sessionId = stg.sessionId;
