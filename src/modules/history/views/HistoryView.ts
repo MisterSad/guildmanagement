@@ -307,7 +307,7 @@ export class HistoryView {
                   '<span>' + legacy.esc(meta.label) + '</span>' +
                 '</div>' +
                 '<div style="display:flex; gap:0.4rem; align-items:center;">' +
-                  ((s.total_score || 0) > 0 ? '<span class="gm-task-countdown-badge"><i class="ph-fill ph-trophy"></i> ' + legacy.fmt(s.total_score) + '</span>' : '') +
+                  ((s.total_score || 0) > 0 ? '<span class="gm-task-countdown-badge"><i class="ph ph-trophy"></i> ' + legacy.fmt(s.total_score) + '</span>' : '') +
                   '<span class="gm-task-countdown-badge">' + (s.participated_count || 0) + '/' + (s.participants || 0) + ' (' + ratio + '%)</span>' +
                 '</div>' +
               '</div>' +
@@ -557,7 +557,7 @@ export class HistoryView {
         if (isAdmin) {
           participatedCell = '<td class="gm-center" data-label="' + legacy.t('col_participated') + '"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
         } else {
-          participatedCell = '<td class="gm-center" data-label="' + legacy.t('col_participated') + '">' + (r.participated > 0 ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+          participatedCell = '<td class="gm-center" data-label="' + legacy.t('col_participated') + '">' + (r.participated > 0 ? '<i class="ph ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
         }
       }
       if (eventName === 'Shadowfront') {
@@ -566,16 +566,16 @@ export class HistoryView {
           excusedCell = '<td class="gm-center" data-label="Excused"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.excused ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
           subPresentCell = '<td class="gm-center" data-label="Sub Present"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.sub_present ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
         } else {
-          lateCell = '<td class="gm-center" data-label="Late">' + (r.late ? '<i class="ph-fill ph-check-circle text-warning"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
-          excusedCell = '<td class="gm-center" data-label="Excused">' + (r.excused ? '<i class="ph-fill ph-check-circle text-info"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
-          subPresentCell = '<td class="gm-center" data-label="Sub Present">' + (r.sub_present ? '<i class="ph-fill ph-check-circle text-accent"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+          lateCell = '<td class="gm-center" data-label="Late">' + (r.late ? '<i class="ph ph-check-circle text-warning"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+          excusedCell = '<td class="gm-center" data-label="Excused">' + (r.excused ? '<i class="ph ph-check-circle text-info"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+          subPresentCell = '<td class="gm-center" data-label="Sub Present">' + (r.sub_present ? '<i class="ph ph-check-circle text-accent"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
         }
       }
       if (isDtr) {
         if (isAdmin) {
           appointedCell = '<td class="gm-center" data-label="Appointed"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="appointed" data-pseudo="' + legacy.esc(r.pseudo) + '"' + (r.appointed ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
         } else {
-          appointedCell = '<td class="gm-center" data-label="Appointed">' + (r.appointed ? '<i class="ph-fill ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+          appointedCell = '<td class="gm-center" data-label="Appointed">' + (r.appointed ? '<i class="ph ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
         }
       }
 
@@ -664,9 +664,9 @@ export class HistoryView {
       scrollBody: true,
       body:
         '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;">' +
-          '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + sorted.length + '</span>' +
-          '<span class="gm-chip gm-chip-success"><i class="ph-fill ph-check-circle"></i> ' + doneCount + ' ' + legacy.t('event_participated') + '</span>' +
-          (totalScore > 0 ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-trophy"></i> ' + legacy.fmt(totalScore) + '</span>' : '') +
+          '<span class="gm-chip"><i class="ph ph-users"></i> ' + sorted.length + '</span>' +
+          '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' + doneCount + ' ' + legacy.t('event_participated') + '</span>' +
+          (totalScore > 0 ? '<span class="gm-chip gm-chip-accent"><i class="ph ph-trophy"></i> ' + legacy.fmt(totalScore) + '</span>' : '') +
         '</div>' +
         (sorted.length === 0
           ? '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('history_empty_session') + '</div></div>'

@@ -23,6 +23,7 @@
     "esbuild": "0.28.2",
     "jsdom": "25.0.1",
     "serve": "14.2.6",
+    "subset-font": "^2.9.0",
     "typescript": "7.0.2",
     "vite": "8.2.1",
     "vitest": "^4.1.11"

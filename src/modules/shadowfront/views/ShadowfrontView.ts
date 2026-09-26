@@ -848,10 +848,10 @@ export class ShadowfrontView {
       html += '<div class="sf-sub-panel active">';
       html += '<div class="sf-compose-bar">' +
         '<div class="sf-compose-summary">' +
-          '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + legacy.t('sf_pool') + ': ' + poolPseudos.length + '</span>' +
-          '<span class="stat-chip"><i class="ph-fill ph-shield-check"></i> ' + legacy.t('sf_participants') + ': ' + confirmedParticipants.length + '/20</span>' +
-          '<span class="stat-chip"><i class="ph-fill ph-clock-countdown"></i> ' + legacy.t('sf_reserves') + ': ' + confirmedReserves.length + '/10</span>' +
-          '<span class="stat-chip"><i class="ph-fill ph-chart-line"></i> ' + legacy.t('sf_avg_rate') + ': ' + avgRate + '</span>' +
+          '<span class="stat-chip"><i class="ph ph-users"></i> ' + legacy.t('sf_pool') + ': ' + poolPseudos.length + '</span>' +
+          '<span class="stat-chip"><i class="ph ph-shield-check"></i> ' + legacy.t('sf_participants') + ': ' + confirmedParticipants.length + '/20</span>' +
+          '<span class="stat-chip"><i class="ph ph-clock-countdown"></i> ' + legacy.t('sf_reserves') + ': ' + confirmedReserves.length + '/10</span>' +
+          '<span class="stat-chip"><i class="ph ph-chart-line"></i> ' + legacy.t('sf_avg_rate') + ': ' + avgRate + '</span>' +
         '</div>' +
         '<div class="sf-compose-controls">' +
           '<div class="sf-sort-toggle" style="display:flex; gap:0.25rem;">' +
@@ -865,7 +865,7 @@ export class ShadowfrontView {
 
       html +=
         '<div class="sf-column sf-unassigned">' +
-        '<div class="sf-col-header"><i class="ph-fill ph-users-three"></i> ' + legacy.t('sf_pool') +
+        '<div class="sf-col-header"><i class="ph ph-users-three"></i> ' + legacy.t('sf_pool') +
           ' <span class="count-badge">' + poolPseudos.length + '</span></div>';
 
       html +=
@@ -981,7 +981,7 @@ export class ShadowfrontView {
 
     html += '<div class="sf-column sf-squad-col' + (sq.active ? '' : ' sf-squad-off') + '">' +
       '<div class="sf-col-header squad-header ' + squad + '">' +
-        '<i class="ph-fill ph-shield-check"></i> ' + legacy.t('sf_participants') +
+        '<i class="ph ph-shield-check"></i> ' + legacy.t('sf_participants') +
         ' <span class="sf-cap ' + (pFull ? 'full' : '') + '" style="margin-left: auto;">' + participants.length + '/' + SHADOWFRONT_PARTICIPANTS_MAX + '</span>' +
       '</div>' +
       '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
@@ -995,7 +995,7 @@ export class ShadowfrontView {
 
     html += '<div class="sf-column sf-squad-col' + (sq.active ? '' : ' sf-squad-off') + '">' +
       '<div class="sf-col-header squad-header ' + squad + '" style="filter: brightness(0.95);">' +
-        '<i class="ph-fill ph-clock-countdown"></i> ' + legacy.t('sf_reserves') +
+        '<i class="ph ph-clock-countdown"></i> ' + legacy.t('sf_reserves') +
         ' <span class="sf-cap ' + (rFull ? 'full' : '') + '" style="margin-left: auto;">' + reserves.length + '/' + SHADOWFRONT_RESERVES_MAX + '</span>' +
       '</div>' +
       '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
@@ -1027,7 +1027,7 @@ export class ShadowfrontView {
 
     let cmdBtn = '';
     if (isParticipant) {
-      const iconClass = isCommander ? 'ph-fill ph-star' : 'ph ph-star';
+      const iconClass = isCommander ? 'ph ph-star' : 'ph ph-star';
       const starColor = isCommander ? 'color: #eab308; cursor: pointer;' : 'color: var(--fg-dim); cursor: pointer;';
       cmdBtn = '<button class="sf-commander-btn" data-pseudo="' + legacy.esc(pseudo) + '" title="Toggle Commander" style="background: none; border: none; padding: 0.2rem; margin-right: 0.25rem;' + starColor + '">' +
         '<i class="' + iconClass + '" style="font-size: var(--fs-xl);"></i>' +
@@ -1064,10 +1064,10 @@ export class ShadowfrontView {
 
     let html =
       '<div class="sf-tracking">' +
-        '<div class="sf-tracking-header"><i class="ph-fill ph-chart-bar"></i> ' + legacy.t('sf_tracking_title') + '</div>' +
+        '<div class="sf-tracking-header"><i class="ph ph-chart-bar"></i> ' + legacy.t('sf_tracking_title') + '</div>' +
         '<div class="event-stats" style="margin-bottom: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">' +
-          '<span class="stat-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + legacy.t('event_total') + '</span>' +
-          '<span class="stat-chip success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated') + '</span>' +
+          '<span class="stat-chip"><i class="ph ph-users"></i> ' + participants.length + ' ' + legacy.t('event_total') + '</span>' +
+          '<span class="stat-chip success"><i class="ph ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated') + '</span>' +
           '<button type="button" class="gm-btn gm-btn-sm sf-all-present-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> ' + legacy.t('sf_all_present') + '</button>' +
           '<button type="button" class="gm-btn gm-btn-sm sf-all-absent-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-square"></i> ' + legacy.t('sf_all_absent') + '</button>' +
           '<span class="sf-saved-flash" style="opacity:0; transition: opacity 0.3s; font-size: var(--fs-sm); color:var(--success);"></span>' +
@@ -1254,7 +1254,7 @@ export class ShadowfrontView {
       const done = this.state.participants.filter((p) => Number(p.participated) > 0).length;
       const chip = area.querySelector('.event-stats .stat-chip.success');
       if (chip) {
-        chip.innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated');
+        chip.innerHTML = '<i class="ph ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated');
       }
     };
 

@@ -99,7 +99,7 @@ export function createDialog(opts: DialogOptions): HTMLElement {
 
   const headerCloseId = opts.headerCloseId || (id + '-close');
   const iconHtml = opts.iconClass && /^[a-z0-9 _-]+$/i.test(opts.iconClass)
-    ? '<i class="ph-fill ' + opts.iconClass + '" aria-hidden="true"></i> '
+    ? '<i class="ph ' + opts.iconClass + '" aria-hidden="true"></i> '
     : '';
   const headingText =
     '<div class="gm-ui-dialog-heading-text">' +

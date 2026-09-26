@@ -470,10 +470,17 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
       fleet_rating: fleetVal, tech_power: techVal, flagship_power: flagshipVal,
       champion_power: champVal, crew_power: crewVal, glory_score: gloryVal
     };
-    const insertRes = await client.from('guild_members').insert([newMemberRow]);
+    // Take back the row the database actually wrote, rather than pushing a
+    // client-side guess. The old code inserted without `.select()` and then
+    // invented `created_at` from the browser clock -- so the roster showed a
+    // timestamp that was never stored, and silently discarded anything the
+    // database fills in itself (defaults, triggers, normalisation).
+    const insertRes = await client.from('guild_members').insert([newMemberRow]).select();
     if (insertRes.error) throw insertRes.error;
-    newMemberRow.created_at = new Date().toISOString();
-    pushGuildMember(newMemberRow);
+    const storedRow = Array.isArray(insertRes.data) && insertRes.data.length > 0
+      ? insertRes.data[0]
+      : null;
+    pushGuildMember(storedRow || newMemberRow);
 
     ['member-pseudo', 'member-uid', 'member-power', 'member-fleet', 'member-tech', 'member-flagship', 'member-champ', 'member-crew', 'member-glory']
       .forEach((id) => { const el = byId<HTMLInputElement>(id); if (el) el.value = ''; });
@@ -800,7 +807,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
 
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 480px; width: 95vw;">' +
-      '<div class="confirm-icon"><i class="ph-fill ph-pencil-simple text-accent"></i></div>' +
+      '<div class="confirm-icon"><i class="ph ph-pencil-simple text-accent"></i></div>' +
       '<h3>' + t('edit_member_title') + '</h3>' +
       '<p>' + t('edit_member_body') + '</p>' +
       '<form id="edit-member-form" style="display:flex; flex-direction:column; gap: 1rem; margin-top: 1rem;">' +

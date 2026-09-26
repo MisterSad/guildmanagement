@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import crypto from 'crypto';
 import { build as esbuildBuild, transform } from 'esbuild';
 import fs from 'fs';
 import path from 'path';
@@ -144,6 +145,108 @@ if (minifiedCount > 0) {
     JSON.stringify({ version: m[1], builtAt: new Date().toISOString() })
   );
   console.log(`Wrote version.json (${m[1]}).`);
+}
+
+
+// ── Phosphor icon font: ship only the glyphs this app actually draws ────────
+//
+// The package font carries 1,530 icons; this app uses 171 of them. Everything
+// else was 120 kB of woff2 downloaded by every first-time visitor to render
+// nothing. `vite.config.ts` already trims the @font-face to woff2 alone and
+// flips `font-display` to swap; this trims the file itself.
+//
+// The used set is derived by scanning the source for `ph-*` tokens. That is
+// only safe because nothing builds an icon name at runtime (no `'ph-' + x`
+// anywhere) and no icon name is stored in the database -- both checked. If that
+// ever changes, this step must go, because a missing glyph renders as nothing
+// and no test would see it.
+//
+// The guarantee that no glyph went missing is enforced by `e2e/icons.spec.js`,
+// which renders every used icon against this very bundle in a real browser and
+// fails on any that measures zero width. It lives there rather than here on
+// purpose: reading a woff2 cmap back would only prove the subsetter did what it
+// was told, whereas the browser proves the icon is actually drawn.
+{
+  const subsetFont = (await import('subset-font')).default;
+
+  const phosphorCss = fs.readFileSync(
+    path.join(rootDir, 'node_modules/@phosphor-icons/web/src/regular/style.css'),
+    'utf8'
+  );
+  const codepointByName = {};
+  for (const m of phosphorCss.matchAll(/\.ph\.(ph-[a-z0-9-]+):before\s*\{\s*content:\s*"\\([0-9a-fA-F]+)"/g)) {
+    codepointByName[m[1]] = parseInt(m[2], 16);
+  }
+
+  const scanRoots = ['src', 'index.html', 'terms.html', 'components.css', 'styles.css', 'shell.css', 'tokens.css', 'theme.css'];
+  const walk = (p, out = []) => {
+    const st = fs.statSync(p);
+    if (st.isDirectory()) {
+      for (const e of fs.readdirSync(p)) walk(path.join(p, e), out);
+    } else out.push(p);
+    return out;
+  };
+  const used = new Set();
+  for (const r of scanRoots) {
+    const abs = path.join(rootDir, r);
+    if (!fs.existsSync(abs)) continue;
+    for (const file of walk(abs)) {
+      if (!/\.(ts|js|html|css)$/.test(file)) continue;
+      for (const m of fs.readFileSync(file, 'utf8').matchAll(/\bph-[a-z0-9-]+/g)) {
+        if (codepointByName[m[0]] !== undefined) used.add(m[0]);
+      }
+    }
+  }
+
+  const assetsDir = path.join(distDir, 'assets');
+  const fontFile = fs.existsSync(assetsDir)
+    ? fs.readdirSync(assetsDir).find((f) => /^Phosphor-.*\.woff2$/.test(f))
+    : null;
+
+  if (!fontFile) {
+    throw new Error('build.js: no Phosphor woff2 in dist/assets -- the icon font step would silently do nothing.');
+  }
+  if (used.size === 0) {
+    throw new Error('build.js: scanned 0 icon names -- refusing to subset the font down to nothing.');
+  }
+
+  const fontPath = path.join(assetsDir, fontFile);
+  const before = fs.statSync(fontPath).size;
+  const text = [...used].map((n) => String.fromCodePoint(codepointByName[n])).join('');
+
+  const subset = await subsetFont(fs.readFileSync(fontPath), text, { targetFormat: 'woff2' });
+
+  // Re-hash from the SUBSET bytes and rename. Vite hashed the file from the
+  // full font, so overwriting it in place would keep the same URL forever:
+  // adding an icon, rebuilding and deploying would leave every returning
+  // visitor on their cached copy, with the new icon rendering as a blank box.
+  // The URL now changes whenever the glyph set does.
+  const digest = crypto.createHash('sha256').update(subset).digest('base64url').slice(0, 8);
+  const subsetName = `Phosphor-${digest}.woff2`;
+  fs.writeFileSync(path.join(assetsDir, subsetName), subset);
+  if (subsetName !== fontFile) fs.unlinkSync(fontPath);
+
+  // Point the stylesheet at the new name. Every emitted CSS references it by
+  // the Vite-hashed filename, so this must rewrite them all or the page 404s.
+  let rewritten = 0;
+  for (const f of fs.readdirSync(assetsDir)) {
+    if (!f.endsWith('.css')) continue;
+    const cssPath = path.join(assetsDir, f);
+    const body = fs.readFileSync(cssPath, 'utf8');
+    if (!body.includes(fontFile)) continue;
+    fs.writeFileSync(cssPath, body.split(fontFile).join(subsetName));
+    rewritten++;
+  }
+  if (rewritten === 0) {
+    throw new Error(`build.js: no CSS referenced ${fontFile}; the subset font would be unreachable.`);
+  }
+
+  const after = subset.length;
+  console.log(
+    `Subset Phosphor: ${used.size}/${Object.keys(codepointByName).length} glyphs, ` +
+    `${before} -> ${after} bytes (-${Math.round((1 - after / before) * 100)}%), ` +
+    `as ${subsetName} (${rewritten} stylesheet${rewritten === 1 ? '' : 's'} rewritten).`
+  );
 }
 
 console.log('Build complete! All root scripts & assets copied to dist/.');

@@ -1152,11 +1152,11 @@ export class EventsView {
     let html =
       '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between; align-items: center;">' +
         '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap; align-items: center; flex: 1;">' +
-          '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + participants.length + ' ' + legacy.t('event_total') + '</span>' +
-          '<span class="gm-chip gm-chip-success"><i class="ph-fill ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated') + '</span>' +
-          '<span class="gm-chip"><i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + legacy.t('event_absent') + '</span>' +
-          (isDtr ? '<span class="gm-chip gm-chip-accent"><i class="ph-fill ph-check-square"></i> ' + appointedCount + ' Appointed</span>' : '') +
-          (hasScore ? '<span class="gm-chip gm-chip-accent" title="' + legacy.esc(formatNumber(totalScore)) + '"><i class="ph-fill ph-trophy"></i> ' + legacy.t('event_total_score') + ' ' + formatCompactNumber(totalScore) + '</span>' : '') +
+          '<span class="gm-chip"><i class="ph ph-users"></i> ' + participants.length + ' ' + legacy.t('event_total') + '</span>' +
+          '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated') + '</span>' +
+          '<span class="gm-chip"><i class="ph ph-x-circle"></i> ' + (participants.length - done) + ' ' + legacy.t('event_absent') + '</span>' +
+          (isDtr ? '<span class="gm-chip gm-chip-accent"><i class="ph ph-check-square"></i> ' + appointedCount + ' Appointed</span>' : '') +
+          (hasScore ? '<span class="gm-chip gm-chip-accent" title="' + legacy.esc(formatNumber(totalScore)) + '"><i class="ph ph-trophy"></i> ' + legacy.t('event_total_score') + ' ' + formatCompactNumber(totalScore) + '</span>' : '') +
           approveAllBtn +
         '</div>' +
         '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
@@ -1448,17 +1448,17 @@ export class EventsView {
         ? participants.reduce((a, p) => a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0), 0)
         : participants.reduce((a, p) => a + (p.score || 0), 0);
     const chips = el.querySelectorAll('.event-stats .gm-chip');
-    if (chips[1]) chips[1].innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated');
-    if (chips[2]) chips[2].innerHTML = '<i class="ph-fill ph-x-circle"></i> ' + (participants.length - done) + ' ' + legacy.t('event_absent');
+    if (chips[1]) chips[1].innerHTML = '<i class="ph ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated');
+    if (chips[2]) chips[2].innerHTML = '<i class="ph ph-x-circle"></i> ' + (participants.length - done) + ' ' + legacy.t('event_absent');
 
     const isDtr = this.state[tabKey].activeEventName === 'Defend Trade Route';
     if (isDtr) {
       const appointedCount = participants.reduce((a, p) => a + (p.appointed ? 1 : 0), 0);
-      if (chips[3]) chips[3].innerHTML = '<i class="ph-fill ph-check-square"></i> ' + appointedCount + ' Appointed';
+      if (chips[3]) chips[3].innerHTML = '<i class="ph ph-check-square"></i> ' + appointedCount + ' Appointed';
     } else {
       const hasScore = EVENTS_WITHOUT_SCORE.indexOf(this.state[tabKey].activeEventName as string) === -1;
       if (hasScore && chips[3]) {
-        chips[3].innerHTML = '<i class="ph-fill ph-trophy"></i> ' + legacy.t('event_total_score') + ' ' + legacy.fmt(totalScore);
+        chips[3].innerHTML = '<i class="ph ph-trophy"></i> ' + legacy.t('event_total_score') + ' ' + legacy.fmt(totalScore);
       }
     }
   }

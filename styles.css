@@ -1236,7 +1236,7 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     gap: 0.6rem;
     flex: 1 1 auto;
 }
-.gm-ui-dialog-heading > i.ph-fill { color: var(--accent); font-size: var(--fs-lg); }
+.gm-ui-dialog-heading > i.ph { color: var(--accent); font-size: var(--fs-lg); } /* was i.ph-fill: that weight is not shipped, so the icon rendered nothing */
 .gm-ui-dialog-heading-text { display: flex; flex-direction: column; gap: 0.15rem; }
 .gm-ui-dialog-title {
     margin: 0;

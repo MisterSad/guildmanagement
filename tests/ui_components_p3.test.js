@@ -73,7 +73,12 @@ describe('Dialog — lifecycle, ARIA & close paths', () => {
     const card = dialogCard(dialog);
     expect(card.className).toContain('gm-ui-dialog-danger');
     expect(card.querySelector('.gm-ui-dialog-subtitle')?.textContent).toContain('SvS');
-    expect(card.querySelector('.gm-ui-dialog-heading i.ph-fill')).toBeTruthy();
+    // Was `i.ph-fill`. That class rendered NOTHING: Phosphor scopes its glyph
+    // rules as `.ph.ph-name:before`, so an element carrying `ph-fill ph-x`
+    // matched no rule at all (content `none`, width 0), and only the regular
+    // weight is imported anyway. The test asserted the presence of a broken
+    // icon. Verified in a browser before and after.
+    expect(card.querySelector('.gm-ui-dialog-heading i.ph')).toBeTruthy();
   });
 
   it('confirm button fires onConfirm (awaited) then closes the dialog', async () => {

@@ -505,9 +505,9 @@ export class ArmsRaceView {
     html +=
       '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between;">' +
         '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap;">' +
-          '<span class="gm-chip"><i class="ph-fill ph-users"></i> ' + stats.total + ' ' + legacy.t('event_total') + '</span>' +
-          '<span class="gm-chip gm-chip-success"><i class="ph-fill ph-check-circle"></i> ' + stats.done + ' ' + legacy.t('event_participated') + '</span>' +
-          '<span class="gm-chip"><i class="ph-fill ph-x-circle"></i> ' + stats.absent + ' ' + legacy.t('event_absent') + '</span>' +
+          '<span class="gm-chip"><i class="ph ph-users"></i> ' + stats.total + ' ' + legacy.t('event_total') + '</span>' +
+          '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' + stats.done + ' ' + legacy.t('event_participated') + '</span>' +
+          '<span class="gm-chip"><i class="ph ph-x-circle"></i> ' + stats.absent + ' ' + legacy.t('event_absent') + '</span>' +
         '</div>' +
         '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
           '<i class="ph ph-magnifying-glass gm-icon"></i>' +
@@ -627,8 +627,8 @@ export class ArmsRaceView {
     const participants = this.state.stages[this.activeStage].participants;
     const stats = computeArmsRaceStats(participants);
     const chips = el.querySelectorAll('.event-stats .gm-chip');
-    if (chips[1]) chips[1].innerHTML = '<i class="ph-fill ph-check-circle"></i> ' + stats.done + ' ' + legacy.t('event_participated');
-    if (chips[2]) chips[2].innerHTML = '<i class="ph-fill ph-x-circle"></i> ' + stats.absent + ' ' + legacy.t('event_absent');
+    if (chips[1]) chips[1].innerHTML = '<i class="ph ph-check-circle"></i> ' + stats.done + ' ' + legacy.t('event_participated');
+    if (chips[2]) chips[2].innerHTML = '<i class="ph ph-x-circle"></i> ' + stats.absent + ' ' + legacy.t('event_absent');
   }
 }
 

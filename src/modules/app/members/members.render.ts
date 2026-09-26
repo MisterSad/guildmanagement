@@ -253,7 +253,7 @@ export function memberTileHtml(
 
   const uidStatus = getUidStatus(m.uid);
   const uidDisplayHtml = !uidStatus.valid
-    ? '<span class="gm-mono gm-uid-text gm-uid-invalid" title="' + esc((uidStatus.label || '') + ' — ' + (uidStatus.reason || 'Click Edit to set real game UID')) + '"><i class="ph-bold ph-warning-circle"></i> UID ' + esc(uidVal) + '</span>'
+    ? '<span class="gm-mono gm-uid-text gm-uid-invalid" title="' + esc((uidStatus.label || '') + ' — ' + (uidStatus.reason || 'Click Edit to set real game UID')) + '"><i class="ph ph-warning-circle"></i> UID ' + esc(uidVal) + '</span>'
     : '<span class="gm-mono gm-uid-text">UID ' + esc(uidVal) + '</span>';
 
   return '<div class="gm-member-row' + (isSelected ? ' is-selected' : '') + '" data-pseudo="' + esc(m.pseudo) + '">' +
@@ -411,7 +411,7 @@ export function buildMilitaryMatrixHtml(
 
     const uidStatus = getUidStatus(m.uid);
     const uidHtml = !uidStatus.valid
-      ? '<div style="font-size: var(--fs-xs); margin-top:2px;" class="gm-mono gm-uid-invalid" title="' + esc((uidStatus.label || '') + ' — ' + (uidStatus.reason || '')) + '"><i class="ph-bold ph-warning-circle"></i> UID ' + esc(uidVal) + '</div>'
+      ? '<div style="font-size: var(--fs-xs); margin-top:2px;" class="gm-mono gm-uid-invalid" title="' + esc((uidStatus.label || '') + ' — ' + (uidStatus.reason || '')) + '"><i class="ph ph-warning-circle"></i> UID ' + esc(uidVal) + '</div>'
       : '<div style="font-size: var(--fs-xs); color:var(--text-muted);" class="gm-mono">UID ' + esc(uidVal) + '</div>';
 
     const isR5 = roleVal === 'R5';

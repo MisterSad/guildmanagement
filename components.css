@@ -512,7 +512,8 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
 }
 
 .gm-tab-pill.gm-active .ph,
-.gm-tab-pill.gm-active .ph-fill {
+/* was .ph-fill: that weight is not shipped (see styles.css) */
+.gm-tab-pill.gm-active .ph {
     color: #121722 !important;
     filter: none !important;
 }

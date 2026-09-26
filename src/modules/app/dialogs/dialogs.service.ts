@@ -95,7 +95,7 @@ export function showConfirm(
   overlay.style.zIndex = '1000001';
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 400px; width: 90%; text-align: center;">' +
-      '<div class="confirm-icon"><i class="ph-fill ph-warning text-error"></i></div>' +
+      '<div class="confirm-icon"><i class="ph ph-warning text-error"></i></div>' +
       '<h3>' + esc(title) + '</h3>' +
       '<p>' + message + '</p>' +
       '<div class="confirm-actions">' +

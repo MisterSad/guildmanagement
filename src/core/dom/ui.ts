@@ -70,7 +70,7 @@ export function pickEventStart(opts: PickEventStartOptions | undefined, callback
   overlay.className = 'gm-modal-overlay';
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 400px; width: 90%; text-align: center;">' +
-      '<div class="confirm-icon"><i class="ph-fill ph-calendar-plus text-accent"></i></div>' +
+      '<div class="confirm-icon"><i class="ph ph-calendar-plus text-accent"></i></div>' +
       '<h3>' + t('event_start_when_title') + '</h3>' +
       '<p>' + (o.eventLabel ? '<strong>' + escapeHTML(o.eventLabel) + '</strong> - ' : '') + t('event_start_when_body') + '</p>' +
       '<div class="gm-col" style="gap:.75rem; text-align:left; margin:.25rem 0 1.2rem;">' +

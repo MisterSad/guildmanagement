@@ -31,7 +31,7 @@ export function renderToast(message: unknown, type?: string, duration?: number):
   toast.className = 'toast ' + (type || 'info');
 
   const icon = document.createElement('i');
-  icon.className = 'ph-fill ' + (icons[type as string] || 'ph-info');
+  icon.className = 'ph ' + (icons[type as string] || 'ph-info');
   const span = document.createElement('span');
   span.textContent = String(message);
   toast.appendChild(icon);
