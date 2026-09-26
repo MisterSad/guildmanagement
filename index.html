@@ -461,6 +461,35 @@
                         </form>
                     </div>
 
+                    <!-- Phase D5: invite an additional admin. The code IS the link -
+                         no Discord server membership or guild mapping involved. -->
+                    <div class="gm-card gm-card-padded gm-section" id="admin-invite-card" style="margin-top: 1.5rem;">
+                        <div class="gm-section-title" style="margin-bottom: 1rem;">
+                            <i class="ph ph-ticket"></i>
+                            <span>Invite an Admin</span>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--text-dim); margin: -0.5rem 0 1rem;">
+                            Generates a <strong>single-use code</strong>, valid 7 days. Whoever redeems it signs in with Discord and receives a new admin account in that guild &mdash; with no password. Shown once, so relay it via Discord.
+                        </p>
+                        <form id="admin-invite-form" class="gm-row" style="gap:.75rem; flex-wrap:wrap;">
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 160px;">
+                                <i class="ph ph-shield gm-icon"></i>
+                                <select id="admin-invite-guild" class="gm-select gm-input" style="padding-left: 2.25rem;"></select>
+                            </div>
+                            <div class="gm-input-with-icon" style="flex:1; min-width: 160px;">
+                                <i class="ph ph-user-gear gm-icon"></i>
+                                <select id="admin-invite-role" class="gm-select gm-input" style="padding-left: 2.25rem;">
+                                    <option value="guild_admin">guild_admin</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="gm-btn gm-btn-primary">
+                                <i class="ph ph-ticket"></i>
+                                <span>Generate Invitation</span>
+                            </button>
+                        </form>
+                        <div id="admin-invite-result" style="margin-top:.85rem;"></div>
+                    </div>
+
                     <div class="gm-section" id="pending-accounts-card-admin">
                         <div class="gm-section-head">
                             <div class="gm-section-title" style="color:var(--accent-amber); font-weight:700;">

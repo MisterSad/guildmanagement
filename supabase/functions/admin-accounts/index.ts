@@ -35,6 +35,18 @@ const DeleteSchema = z.object({ id: idField });
 const DiscordUnlinkSchema = z.object({ id: idField });
 /** A relink code has to survive a Discord conversation and a time zone. */
 const RELINK_CODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const AdminInviteSchema = z.object({
+  guild: guildField,
+  role: z.enum(["guild_admin", "server_admin", "super_admin"]),
+});
+/** Same window as a relink code: long enough to cross a Discord conversation. */
+const INVITE_CODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/**
+ * Outstanding invitations per guild. A guardrail in code, per the owner's
+ * decision -- changing it is a migration, not a settings toggle someone can
+ * quietly raise. BABE has 11 admins today, so 5 open at once is generous.
+ */
+const MAX_OPEN_INVITES_PER_GUILD = 5;
 const UpdateGuildSchema = z.object({ id: idField, guild: guildField });
 const SetJoinCodeSchema = z.object({ guild: guildField, code: z.string().trim().min(1).max(64) });
 const GetJoinCodeSchema = z.object({ guild: guildField });
@@ -394,6 +406,101 @@ Deno.serve(async (req: Request) => {
       relink_code: relinkCode,
       expires_at: expiresAt,
       announced: Boolean(targetGuild),
+    });
+  }
+
+  // ── Phase D5: invite an additional admin ────────────────────────────────
+  //
+  // No dependence on a Discord server, and no mapping between FGF guilds and
+  // Discord servers: THE CODE IS THE LINK. Whoever redeems it gets a new
+  // account in that guild, with no password of any kind -- Discord-only from
+  // birth.
+  //
+  // Authorization reuses the existing matrix rather than inventing one:
+  // `maxAssignableRole` caps what the caller may grant (a guild_admin can
+  // never mint a server_admin), and `isGuildInScope` caps where.
+  if (action === "issue-admin-invite") {
+    const parsedInvite = AdminInviteSchema.safeParse(body);
+    if (!parsedInvite.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const targetGuild = parsedInvite.data.guild;
+    const targetRole = parsedInvite.data.role as Role;
+
+    const ceiling = maxAssignableRole(info.role);
+    if (!ceiling) return json({ ok: false, error: "forbidden" }, 403);
+    // Ordering of the four roles, most privileged first.
+    const rank: Record<string, number> = { super_admin: 3, server_admin: 2, guild_admin: 1, member: 0 };
+    if (rank[targetRole] > rank[ceiling]) {
+      logger.warn("Attempt to invite above the caller's ceiling", { callerRole: info.role, targetRole });
+      return json({ ok: false, error: "forbidden" }, 403);
+    }
+
+    const { data: guildRow } = await admin
+      .from("guilds").select("id, server_number").eq("id", targetGuild).maybeSingle();
+    if (!guildRow) return json({ ok: false, error: "guild_not_found" }, 404);
+
+    if (!isGuildInScope(info, targetGuild, guildRow.server_number)) {
+      logger.warn("Attempt to invite outside the caller's scope", { callerRole: info.role, targetGuild });
+      return json({ ok: false, error: "forbidden" }, 403);
+    }
+
+    // Plaintext exists only in this response.
+    const inviteCode = randomBackupCode();
+    const expiresAt = new Date(Date.now() + INVITE_CODE_TTL_MS).toISOString();
+
+    const { data: rows, error: rpcErr } = await admin.rpc("gm_issue_admin_invite", {
+      p_code_hash: await sha256Hex(inviteCode),
+      p_guild: targetGuild,
+      p_role: targetRole,
+      p_issued_by: info.accountId ?? "unknown",
+      p_expires_at: expiresAt,
+      p_max_open: MAX_OPEN_INVITES_PER_GUILD,
+    });
+    if (rpcErr) {
+      logger.error("gm_issue_admin_invite failed", rpcErr, { targetGuild, targetRole });
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (!row || row.ok !== true) {
+      return json({ ok: false, error: row?.err || "issue_failed", open_codes: row?.open_codes ?? null }, 200);
+    }
+
+    await admin.from("system_audit_logs").insert({
+      level: "WARN",
+      service: "admin-accounts",
+      action_type: "admin_invite_issued",
+      guild: targetGuild,
+      user_identifier: info.accountId ?? null,
+      message: `Admin invitation issued for ${targetGuild} (${targetRole})`,
+      metadata: {
+        target_guild: targetGuild,
+        target_role: targetRole,
+        actor_role: info.role,
+        open_codes: row.open_codes,
+        expires_at: expiresAt,
+      },
+    });
+
+    // Announced for the same reason an unlink is: provisioning an admin is a
+    // privileged act, and the guild should be able to see it happen.
+    const channelId = await resolveAuditChannelId(admin, targetGuild);
+    if (channelId) {
+      await postAuditMessage(
+        channelId,
+        `🎟️ **Admin invitation issued** — a single-use code for a new \`${targetRole}\` in \`${targetGuild}\`, ` +
+        `created by \`${info.accountId ?? "unknown"}\` and valid for 7 days.`
+      );
+    }
+
+    logger.info("Admin invitation issued", { targetGuild, targetRole, openCodes: row.open_codes });
+
+    return json({
+      ok: true,
+      guild: targetGuild,
+      role: targetRole,
+      invite_code: inviteCode,
+      expires_at: expiresAt,
+      open_codes: row.open_codes,
+      max_open_codes: MAX_OPEN_INVITES_PER_GUILD,
     });
   }
 

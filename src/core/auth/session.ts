@@ -208,20 +208,23 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
 }
 
 /**
- * Attaches a Discord identity to an account using a single-use relink code.
+ * Spends a single-use link code: either a `relink` (reattach an existing
+ * account, phase D6) or an `admin_invite` (provision a new admin account,
+ * phase D5). One entry point, because the person holding the code has no
+ * reason to know which kind an admin issued them.
  *
  * Takes the continuation ticket from an `unlinked` redemption, so the code
  * alone is never enough: the caller must also have just proved control of the
  * Discord account being attached. That is what stops a leaked code from being
  * redeemable by whoever finds it.
  */
-export async function relinkWithDiscord(ticket: string, code: string): Promise<AuthResult> {
+export async function redeemLinkCode(ticket: string, code: string): Promise<AuthResult> {
   const c = getClient();
   if (!c) return { ok: false, error: 'no_client' };
   let r: any;
   try {
     r = await withTimeout(
-      c.functions.invoke('auth-discord', { body: { action: 'relink', ticket: ticket, code: code } }),
+      c.functions.invoke('auth-discord', { body: { action: 'redeem-code', ticket: ticket, code: code } }),
       AUTH_REQUEST_TIMEOUT_MS
     );
   } catch (e: any) {

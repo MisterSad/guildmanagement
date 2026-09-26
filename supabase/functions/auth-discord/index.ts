@@ -92,9 +92,16 @@ const RedeemSchema = z.object({
   ticket: TicketField,
 });
 
-/** Phase D6: attach a Discord identity to an account using a relink code. */
-const RelinkSchema = z.object({
-  action: z.literal("relink"),
+/**
+ * Phase D6/D5: spend a single-use code.
+ *
+ * ONE action for both kinds, because the person holding the code has no reason
+ * to know whether an admin issued them a `relink` (reattach an existing
+ * account) or an `admin_invite` (provision a new one). Making them choose would
+ * be an invitation to burn a ticket on the wrong guess.
+ */
+const RedeemCodeSchema = z.object({
+  action: z.literal("redeem-code"),
   ticket: TicketField,
   code: z.string().trim().min(4).max(128),
 });
@@ -416,20 +423,28 @@ async function handleRedeem(req: Request, body: unknown, admin: any, logger: Edg
   });
 }
 
-// ── POST { action: "relink", ticket, code } — phase D6 ──────────────────────
+// ── POST { action: "redeem-code", ticket, code } — phases D6 + D5 ──────────
 //
-// The way back in when a Discord link is lost, wrong, or was never made. An
-// admin unlinks and hands over a single-use code (see admin-accounts
-// "discord-unlink"); this spends it together with a fresh Discord
-// authorization, so possession of the code alone is not enough — the person
-// must also prove control of the Discord account being attached.
-async function handleRelink(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
+// Two kinds of code arrive here:
+//   * `relink`       — reattach an EXISTING account whose link was removed, or
+//                      was never made (phase D6).
+//   * `admin_invite` — provision a NEW admin account in a guild (phase D5).
+//
+// Both are spent together with a fresh Discord authorization, so possession of
+// the code is never sufficient: the person must also prove control of the
+// Discord account being attached.
+//
+// The kind is read first, without consuming: the two RPCs take different
+// arguments and each enforces its own single-use semantics under FOR UPDATE.
+// A race here loses nothing — the loser gets `code_invalid`, which is exactly
+// what a spent code should return.
+async function handleRedeemCode(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
   const json = makeJson(req);
 
-  const parsed = RelinkSchema.safeParse(body);
+  const parsed = RedeemCodeSchema.safeParse(body);
   if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
 
-  if (await throttled(req, admin, logger, "relink")) return json({ ok: false, error: "too_many_attempts" }, 429);
+  if (await throttled(req, admin, logger, "redeem-code")) return json({ ok: false, error: "too_many_attempts" }, 429);
 
   const consumed = await consumeTicket(admin, parsed.data.ticket, logger);
   if (!consumed.ok) return json({ ok: false, error: consumed.error }, consumed.status);
@@ -437,36 +452,70 @@ async function handleRelink(req: Request, body: unknown, admin: any, logger: Edg
   // Only the hash is ever compared; the plaintext existed once, in the
   // response that handed the code over.
   const codeHash = await sha256Hex(normalizeBackupCode(parsed.data.code));
-  const { data: rows, error } = await admin.rpc("gm_redeem_relink_code", {
-    p_code_hash: codeHash,
-    p_discord_user_id: consumed.discordUserId,
-  });
-  if (error) {
-    logger.error("Failed to redeem relink code", error);
+
+  const { data: codeRow, error: lookupErr } = await admin
+    .from("account_link_codes")
+    .select("kind")
+    .eq("code_hash", codeHash)
+    .is("used_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (lookupErr) {
+    logger.error("Failed to classify link code", lookupErr);
     return json({ ok: false, error: "server_error" }, 500);
   }
-  const row = Array.isArray(rows) ? rows[0] : rows;
+  if (!codeRow) return json({ ok: false, error: "code_invalid" }, 200);
+
+  let row: any;
+  if (codeRow.kind === "admin_invite") {
+    const { data, error } = await admin.rpc("gm_redeem_admin_invite", {
+      p_code_hash: codeHash,
+      p_discord_user_id: consumed.discordUserId,
+      p_discord_username: consumed.discordUsername ?? "",
+    });
+    if (error) {
+      logger.error("Failed to redeem admin invite", error);
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+    row = Array.isArray(data) ? data[0] : data;
+  } else {
+    const { data, error } = await admin.rpc("gm_redeem_relink_code", {
+      p_code_hash: codeHash,
+      p_discord_user_id: consumed.discordUserId,
+    });
+    if (error) {
+      logger.error("Failed to redeem relink code", error);
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+    row = Array.isArray(data) ? data[0] : data;
+  }
+
   if (!row || row.ok !== true) {
-    logger.warn("Relink code rejected", { reason: row?.err ?? "unknown" });
+    logger.warn("Link code rejected", { kind: codeRow.kind, reason: row?.err ?? "unknown" });
     // `discord_already_linked` is surfaced verbatim: it is actionable, and it
-    // tells the person about their own Discord account, not someone else's.
+    // describes the caller's own Discord account, not someone else's.
     return json({ ok: false, error: row?.err || "code_invalid" }, 200);
   }
 
   const accountId = row.account_id as string;
+  const role = (row.role as string) || "member";
   logger.setContext({ userId: accountId });
 
   const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
-  const shadow = await establishShadowSession(admin, anon, accountId, row.role || "member", logger);
+  const shadow = await establishShadowSession(admin, anon, accountId, role, logger);
   if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
 
-  logger.info("Account relinked to a new Discord identity", { accountId, discordUserId: consumed.discordUserId });
+  logger.info("Link code redeemed", {
+    kind: codeRow.kind, accountId, role, discordUserId: consumed.discordUserId,
+  });
 
   return json({
     ok: true,
     state: "session",
-    role: row.role,
+    kind: codeRow.kind,
+    role,
     id: accountId,
+    guild: row.guild ?? null,
     access_token: shadow.session.access_token,
     refresh_token: shadow.session.refresh_token,
     expires_at: shadow.session.expires_at,
@@ -648,7 +697,7 @@ async function handlePost(req: Request, admin: any, logger: EdgeLogger): Promise
   switch (body?.action) {
     case "redeem":       return handleRedeem(req, body, admin, logger);
     case "claim":        return handleClaim(req, body, admin, logger);
-    case "relink":       return handleRelink(req, body, admin, logger);
+    case "redeem-code": return handleRedeemCode(req, body, admin, logger);
     case "backup-login": return handleBackupLogin(req, body, admin, logger);
     default:             return json({ ok: false, error: "bad_request" }, 400);
   }

@@ -521,15 +521,15 @@ export function openLinkAccountDialog(ticket: string, discordUsername: string | 
         '</div>' +
         '<div id="discord-link-code-path" class="hidden">' +
           '<div class="gm-login-field">' +
-            '<label for="discord-link-code">Relink code</label>' +
+            '<label for="discord-link-code">Invitation or relink code</label>' +
             '<input type="text" id="discord-link-code" class="gm-input" placeholder="XXXXX-XXXXX" autocomplete="one-time-code">' +
           '</div>' +
           '<p style="margin:.6rem 0 0; color: var(--fg-dim); font-size: var(--fs-sm); line-height:1.4;">' +
-            'An admin can issue one for you from the accounts screen.' +
+            'An admin issues these from the accounts screen — either to restore your access, or to add you as a new admin.' +
           '</p>' +
         '</div>' +
         '<button type="button" id="discord-link-toggle" style="margin-top:.7rem; background:none; border:none; color:var(--fg-dim); font-size:.8rem; text-decoration:underline; cursor:pointer; padding:0;">' +
-          'I have a relink code instead' +
+          'I have an invitation or relink code' +
         '</button>' +
         '<div id="discord-link-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
           '<i class="ph ph-warning-circle"></i><span></span>' +
@@ -563,7 +563,7 @@ export function openLinkAccountDialog(ticket: string, discordUsername: string | 
       const code = document.getElementById('discord-link-code-path');
       if (pw) pw.classList.toggle('hidden', usingCode);
       if (code) code.classList.toggle('hidden', !usingCode);
-      toggle.textContent = usingCode ? 'Use my password instead' : 'I have a relink code instead';
+      toggle.textContent = usingCode ? 'Use my password instead' : 'I have an invitation or relink code';
     });
   }
 
@@ -585,9 +585,9 @@ export function openLinkAccountDialog(ticket: string, discordUsername: string | 
       try {
         if (usingCode) {
           const code = ((el<HTMLInputElement>('discord-link-code') || ({} as any)).value || '').trim();
-          if (!code) { setErr('Enter the relink code an admin gave you.'); return; }
-          resp = x && typeof x.relinkWithDiscord === 'function'
-            ? await x.relinkWithDiscord(ticket, code)
+          if (!code) { setErr('Enter the code an admin gave you.'); return; }
+          resp = x && typeof x.redeemLinkCode === 'function'
+            ? await x.redeemLinkCode(ticket, code)
             : { ok: false, error: 'unavailable' };
         } else {
           const id = ((el<HTMLInputElement>('discord-link-id') || ({} as any)).value || '').trim();
@@ -640,7 +640,7 @@ function linkErrorMessage(code: string, usingCode: boolean): string {
       return 'The server did not respond in time. Please check your connection and try again.';
     default:
       return usingCode
-        ? 'That relink code is not valid, has expired, or was already used.'
+        ? 'That code is not valid, has expired, or was already used.'
         : 'Could not link this account. Please try again.';
   }
 }

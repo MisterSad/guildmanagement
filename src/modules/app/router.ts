@@ -144,6 +144,7 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
       await invokeMethod('GM_ADMIN', 'loadGuildSettings');
       await invokeMethod('GM_ADMIN', 'populateAccountGuildSelect');
       await invokeMethod('GM_ADMIN', 'wireJoinCode');
+      await invokeMethod('GM_ADMIN', 'wireAdminInvite');
       await invokeMethod('GM_ADMIN', 'loadMyPasskeysCard');
     }
     if (tabId === 'admin-discord' || tabId === 'guild-settings') {
@@ -163,6 +164,7 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
       await invokeMethod('GM_ADMIN', 'renderMigrationGroupsList');
       await invokeMethod('GM_ADMIN', 'fetchAccounts');
       await invokeMethod('GM_ADMIN', 'populateAccountGuildSelect');
+      await invokeMethod('GM_ADMIN', 'wireAdminInvite');
       await invokeMethod('GM_ADMIN', 'fetchGuildRequests');
     }
 

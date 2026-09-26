@@ -174,10 +174,10 @@ describe('least privilege and retention', () => {
 describe('the dialog offers both ways in, and warns before the irreversible one', () => {
   const dialog = controller.slice(controller.indexOf('export function openLinkAccountDialog'), controller.indexOf('function linkErrorMessage'));
 
-  it('leads with the claim and keeps the relink code reachable', () => {
+  it('leads with the claim and keeps the code path reachable', () => {
     expect(dialog).toContain('claimWithDiscord(ticket, id, password)');
-    expect(dialog).toContain('relinkWithDiscord(ticket, code)');
-    expect(dialog).toContain('I have a relink code instead');
+    expect(dialog).toContain('redeemLinkCode(ticket, code)');
+    expect(dialog).toContain('I have an invitation or relink code');
   });
 
   it('says plainly that the password will be removed', () => {
@@ -196,6 +196,6 @@ describe('the dialog offers both ways in, and warns before the irreversible one'
     // Neither a password nor a code is enough on its own.
     expect(session).toMatch(/claimWithDiscord\(ticket: string, id: string, password: string\)/);
     expect(session).toContain("action: 'claim', ticket: ticket");
-    expect(session).toContain("action: 'relink', ticket: ticket");
+    expect(session).toContain("action: 'redeem-code', ticket: ticket");
   });
 });

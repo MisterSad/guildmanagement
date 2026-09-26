@@ -122,8 +122,10 @@ describe('a relink code alone is not enough', () => {
   it('requires a fresh Discord authorization as well', () => {
     // The code is spent together with a continuation ticket, so someone who
     // merely finds the code cannot redeem it.
-    expect(discordFn).toMatch(/RelinkSchema = z\.object\(\{[\s\S]*?ticket: TicketField[\s\S]*?code:/);
-    const fn = discordFn.slice(discordFn.indexOf('async function handleRelink'));
+    // Phase D5 merged relink and admin-invite redemption into one action, so
+    // the person holding a code never has to know which kind it is.
+    expect(discordFn).toMatch(/RedeemCodeSchema = z\.object\(\{[\s\S]*?ticket: TicketField[\s\S]*?code:/);
+    const fn = discordFn.slice(discordFn.indexOf('async function handleRedeemCode'));
     expect(fn).toContain('consumeTicket(admin, parsed.data.ticket, logger)');
     expect(fn).toContain('p_discord_user_id: consumed.discordUserId');
   });
@@ -213,8 +215,8 @@ describe('backup codes: one implementation, one audience', () => {
 });
 
 describe('every POST action is rate limited', () => {
-  it('throttles redeem, relink and backup-login alike', () => {
-    for (const fnName of ['handleRedeem', 'handleRelink', 'handleBackupLogin']) {
+  it('throttles redeem, code redemption and backup-login alike', () => {
+    for (const fnName of ['handleRedeem', 'handleRedeemCode', 'handleBackupLogin']) {
       const fn = discordFn.slice(discordFn.indexOf(`async function ${fnName}`));
       expect(fn.slice(0, 900), `${fnName} must check the IP budget`).toContain('throttled(req, admin, logger');
     }

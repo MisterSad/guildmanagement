@@ -90,6 +90,39 @@ export function populateAccountGuildSelect(): void {
     selectR4.disabled = true;
   }
 
+  // Phase D5 invitation card: a guild_admin can only invite into their own
+  // guild, so the select collapses to one locked option for them; anyone with
+  // wider scope gets the full list. The server re-checks either way
+  // (isGuildInScope), this only keeps the UI honest.
+  const inviteGuild = byId<HTMLSelectElement>('admin-invite-guild');
+  if (inviteGuild) {
+    const restriction = w.currentGuildRestriction;
+    if (restriction) {
+      inviteGuild.innerHTML = '<option value="' + esc(restriction) + '">' + esc(restriction) + '</option>';
+      inviteGuild.value = restriction;
+      inviteGuild.disabled = true;
+    } else {
+      inviteGuild.disabled = false;
+      inviteGuild.innerHTML = (w.guildsList || []).map((g: string) => {
+        const sNum = (w.guildsData && w.guildsData[g] && w.guildsData[g].server_number) ? ' (#' + w.guildsData[g].server_number + ')' : '';
+        return '<option value="' + esc(g) + '">' + esc(g) + sNum + '</option>';
+      }).join('');
+    }
+  }
+
+  // The role ceiling mirrors maxAssignableRole() on the server: a guild_admin
+  // and a server_admin may only ever mint a guild_admin.
+  const inviteRole = byId<HTMLSelectElement>('admin-invite-role');
+  if (inviteRole) {
+    const g2 = gm();
+    const isSuper = !!(g2 && typeof g2.isSuperAdmin === 'function' && g2.isSuperAdmin());
+    inviteRole.innerHTML = isSuper
+      ? '<option value="guild_admin">guild_admin</option>' +
+        '<option value="server_admin">server_admin</option>' +
+        '<option value="super_admin">super_admin</option>'
+      : '<option value="guild_admin">guild_admin</option>';
+  }
+
   const selectR5 = byId<HTMLSelectElement>('superadmin-account-guild');
   if (selectR5) {
     let html = '';
@@ -99,6 +132,68 @@ export function populateAccountGuildSelect(): void {
     });
     selectR5.innerHTML = html;
   }
+}
+
+/**
+ * Phase D5 — issue a single-use admin invitation.
+ *
+ * The plaintext is returned once and never stored, so it is surfaced inline
+ * and copied to the clipboard immediately. Idempotent wiring: the form is
+ * re-rendered whenever the accounts tab loads.
+ */
+export function wireAdminInvite(): void {
+  const form = byId<HTMLFormElement>('admin-invite-form');
+  if (!form || (form as any).__gmInviteWired) return;
+  (form as any).__gmInviteWired = true;
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const guildSel = byId<HTMLSelectElement>('admin-invite-guild');
+    const roleSel = byId<HTMLSelectElement>('admin-invite-role');
+    const result = byId('admin-invite-result');
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+    const guild = guildSel ? guildSel.value : '';
+    const role = roleSel ? roleSel.value : 'guild_admin';
+    if (!guild) { showToast('Pick a guild first.', 'error'); return; }
+
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+      const g = gm();
+      const res = await g.adminAccounts('issue-admin-invite', { guild: guild, role: role });
+      if (!res.ok) {
+        if (res.error === 'too_many_open_codes') {
+          showToast('That guild already has ' + (res.open_codes ?? 'too many') + ' unused invitations. Wait for one to be used or to expire.', 'error');
+        } else if (res.error === 'forbidden') {
+          showToast('You cannot invite that role into that guild.', 'error');
+        } else {
+          showToast('Could not issue an invitation: ' + res.error, 'error');
+        }
+        return;
+      }
+
+      if (result) {
+        result.innerHTML =
+          '<div class="gm-cred-pass" style="display:inline-flex;">' +
+            '<span class="gm-pwd-text">' + esc(res.invite_code) + '</span>' +
+            '<button class="gm-mini-btn gm-invite-copy" title="Copy invitation code"><i class="ph ph-copy"></i></button>' +
+          '</div>' +
+          '<div style="margin-top:.4rem; font-size:.78rem; color:var(--text-dim);">' +
+            esc(String(res.open_codes)) + ' of ' + esc(String(res.max_open_codes)) + ' invitations open for ' + esc(guild) + '. Shown once.' +
+          '</div>';
+        const copyBtn = result.querySelector('.gm-invite-copy');
+        if (copyBtn) copyBtn.addEventListener('click', () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(res.invite_code)
+            .then(() => showToast('Invitation code copied.', 'success')).catch(() => undefined);
+        });
+      }
+      if (navigator.clipboard) navigator.clipboard.writeText(res.invite_code).catch(() => undefined);
+      showToast('Invitation for ' + guild + ' created and copied — relay it via Discord.', 'success');
+    } catch (err: any) {
+      showToast('Could not issue an invitation: ' + (err && err.message ? err.message : 'unknown error'), 'error');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
 }
 
 function joinCodeStorageKey(): string {
