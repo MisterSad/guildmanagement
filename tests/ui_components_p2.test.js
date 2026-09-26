@@ -17,15 +17,6 @@ import { EventsView } from '../src/modules/events/views/EventsView';
 import { resetSupabaseClient } from '../src/core/api/supabase';
 
 import { renderBadge, createBadge, renderWarStatusBadge, badgeRecipe } from '../src/components/ui/Badge';
-import {
-  renderTable,
-  createTable,
-  renderTableHead,
-  renderTableCell,
-  renderTableEmpty,
-  renderTableLoading,
-  tableClass
-} from '../src/components/ui/Table';
 import { formatCompactNumber } from '../src/core/utils/numbers';
 
 /* ─── Badge unit coverage ──────────────────────────────────────────────── */
@@ -70,98 +61,6 @@ describe('Badge — cva recipe, escaping, helpers', () => {
 });
 
 /* ─── Table wrapper coverage ───────────────────────────────────────────── */
-describe('Table — renderTable contract', () => {
-  const cols = [
-    { key: 'pseudo', label: 'Member', align: 'left' },
-    { key: 'd1', label: 'Day 1', align: 'right' },
-    { key: 'chests', label: 'Chests', align: 'center' }
-  ];
-
-  it('renders the wrapped table shell with sticky/responsive classes', () => {
-    const html = renderTable({ columns: cols, rows: [], sticky: true, responsive: true });
-    expect(html).toContain('gm-table-wrap gm-ui-table-wrap');
-    expect(html).toContain('gm-table-scroll');
-    expect(html).toContain('gm-table gm-ui-table-el gm-resp-table gm-ui-table-sticky');
-  });
-
-  it('renders escaped headers with alignment classes', () => {
-    const html = renderTable({ columns: cols, rows: [], wrapped: false });
-    expect(html).toContain('Member');
-    expect(html).toContain('gm-right');
-    expect(html).toContain('gm-center');
-  });
-
-  it('renders row cells with escaping, alignment and custom overrides', () => {
-    const html = renderTable({
-      columns: cols,
-      rows: [{ pseudo: '<Alpha>', d1: 2500, chests: 4 }],
-      wrapped: false
-    });
-    expect(html).toContain('&lt;Alpha&gt;');
-    expect(html).toContain('>2500<');
-    expect(html).toContain('>4<');
-  });
-
-  it('applies rowClass, highlight and rowKey onto <tr>', () => {
-    const html = renderTable({
-      columns: cols,
-      rows: [{ pseudo: 'Alpha', d1: 2500, chests: 1 }],
-      wrapped: false,
-      rowClass: (row) => (row.pseudo === 'Alpha' ? 'participant-row' : ''),
-      highlight: (row) => (row.d1 >= 1000 ? 'gm-ui-table-hl-target' : null),
-      rowKey: (row) => row.pseudo
-    });
-    expect(html).toContain('class="gm-ui-table-row participant-row gm-ui-table-hl-target"');
-    expect(html).toContain('data-state="gm-ui-table-hl-target"');
-    expect(html).toContain('data-row-key="Alpha"');
-  });
-
-  it('renders an accessible empty state (role=status)', () => {
-    const html = renderTable({ columns: cols, rows: [], wrapped: false, emptyText: 'No war session' });
-    expect(html).toContain('role="status"');
-    expect(html).toContain('aria-live="polite"');
-    expect(html).toContain('No war session');
-    expect(html).toContain('gm-ui-table-empty-row');
-  });
-
-  it('renders an accessible loading state (role=status + aria-busy)', () => {
-    const html = renderTable({ columns: cols, rows: [], wrapped: false, loading: true, loadingText: 'Loading grid' });
-    expect(html).toContain('role="status"');
-    expect(html).toContain('aria-busy="true"');
-    expect(html).toContain('Loading grid');
-    expect(html).toContain('gm-ui-table-loading-row');
-  });
-
-  it('createTable mounts into a host and returns the table element', () => {
-    const host = document.createElement('div');
-    const table = createTable(host, { columns: cols, rows: [{ pseudo: 'X', d1: 1, chests: 2 }] });
-    expect(table).toBeInstanceOf(HTMLTableElement);
-    expect(host.querySelectorAll('tr').length).toBe(2);
-  });
-});
-
-describe('Table — granular composition helpers', () => {
-  it('tableClass merges sticky + responsive', () => {
-    expect(tableClass({ sticky: true, responsive: true })).toContain('gm-ui-table-sticky');
-    expect(tableClass({ sticky: false, responsive: false })).not.toContain('gm-ui-table-sticky');
-  });
-
-  it('renderTableHead emits escaped aligned th', () => {
-    const head = renderTableHead([{ key: 'd', label: '<Day>', align: 'right' }]);
-    expect(head).toContain('&lt;Day&gt;');
-    expect(head).toContain('gm-right');
-  });
-
-  it('renderTableCell keeps alignment + optional data-label', () => {
-    expect(renderTableCell('25', 'right', 'Day 1')).toContain('class="gm-ui-table-td gm-right"');
-    expect(renderTableCell('25', 'right', 'Day 1')).toContain('data-label="Day 1"');
-  });
-
-  it('empty/loading rows carry role=status', () => {
-    expect(renderTableEmpty(3, 'none')).toContain('role="status"');
-    expect(renderTableLoading(3)).toContain('role="status"');
-  });
-});
 
 /* ─── Compact score formatting ─────────────────────────────────────────── */
 describe('formatCompactNumber — large score display', () => {

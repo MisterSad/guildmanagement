@@ -11,10 +11,25 @@ export const MAX_NUMERIC = 9999999999;
 export type AppRole = 'super_admin' | 'server_admin' | 'guild_admin' | 'member';
 
 /**
- * Escapes HTML-significant characters (strict anti-XSS invariant). Order and
- * replacement set mirror the legacy gm-utils.js#escapeHTML exactly.
+ * THE escaping boundary for this app. Every dynamic value interpolated into
+ * markup must pass through this function.
+ *
+ * Escapes `& < > " ' \``. The backtick matters: without it a value landing in a
+ * template-literal context can break out of it.
+ *
+ * Nullish input yields `''`, never the strings `"null"` / `"undefined"` -- a
+ * missing value must render as nothing, not as the word "null" on screen.
+ *
+ * There used to be a second, byte-for-byte copy of this in
+ * `src/core/api/supabase.ts`, kept "byte-for-byte equivalent to gm-utils.js"
+ * because `window.GM.escapeHTML` was reassigned to it on every page load. That
+ * legacy script no longer exists, and the two copies had already drifted: this
+ * one stringified nullish input while the other returned `''`. A duplicated
+ * security boundary always drifts eventually, so they were merged here, keeping
+ * the safer nullish behaviour.
  */
 export function escapeHTML(s: unknown): string {
+  if (s === null || s === undefined) return '';
   return String(s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

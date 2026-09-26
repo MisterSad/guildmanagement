@@ -4,28 +4,12 @@
  * Supabase client accessor & REST helper wrappers.
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY } from '../config/constants';
 import { normalizeRole } from '../utils/text';
 import { mapFetchError } from './fetch-errors';
 
 let client: SupabaseClient | null = null;
-
-export function getSupabaseConfig(): { url: string; key: string } {
-  const url = (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_URL : undefined) || '';
-  const key = (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined) || '';
-  return { url, key };
-}
-
-export function validateSupabaseEnv(): { url: string; anonKey: string } {
-  const { url, key } = getSupabaseConfig();
-  if (!url || !key) {
-    throw new Error(
-      'Supabase initialization error: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variable.'
-    );
-  }
-  return { url, anonKey: key };
-}
 
 export function resetSupabaseClient(): void {
   client = null;
@@ -42,6 +26,20 @@ export function getClient(): SupabaseClient | null {
   return null;
 }
 
+/**
+ * Memoised accessor for the app's single Supabase client.
+ *
+ * `main.ts` builds the client from the hardcoded constants and wraps it in the
+ * multi-tenant write guard before any service runs, then publishes it as
+ * `window.GM.db` -- so that is the only source. An `import.meta.env`
+ * (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`) fallback used to live here,
+ * but it was unreachable: `main.ts:222` deliberately builds from the constants
+ * ("never import.meta.env"), so `window.GM.db` was always already set. Worse, a
+ * client created through that fallback would have bypassed `installDbWriteGuard`
+ * entirely -- a silent hole in the tenant write guard if it had ever run.
+ *
+ * Returns `null` rather than fabricating an unguarded client.
+ */
 export function getSupabaseClient(): SupabaseClient | null {
   if (client) return client;
 
@@ -50,42 +48,14 @@ export function getSupabaseClient(): SupabaseClient | null {
     return client;
   }
 
-  const { url, key } = getSupabaseConfig();
-
-  if (!url || !key) {
-    console.error(
-      '[Supabase] Configuration error: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables.'
-    );
-    return null;
-  }
-
-  try {
-    if (typeof window !== 'undefined' && (window as any).supabase?.createClient) {
-      client = (window as any).supabase.createClient(url, key);
-      return client;
-    }
-    client = createClient(url, key);
-    return client;
-  } catch (e) {
-    console.error('Supabase init error:', e);
-    return null;
-  }
+  return null;
 }
 
-// Must stay byte-for-byte equivalent to gm-utils.js's escapeHTML (legacy):
-// window.GM.escapeHTML gets reassigned to this one on every page load
-// (see main.ts), so any drift here is a silent, load-order-dependent
-// regression for every legacy module reading window.GM.escapeHTML.
-export function escapeHTML(str: any): string {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/`/g, '&#96;');
-}
+// `escapeHTML` used to be duplicated here. It now lives solely in
+// `src/core/utils/text.ts`; it is re-exported so the many existing
+// `from './core/api/supabase'` import sites keep working, but there is exactly
+// one implementation.
+export { escapeHTML } from '../utils/text';
 
 export interface SessionInfo {
   role: string;

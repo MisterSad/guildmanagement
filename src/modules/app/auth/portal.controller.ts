@@ -6,8 +6,9 @@
  * portal session, verifies it through the JWT-gated `member-portal` Edge
  * Function, then reveals the portal dashboard.
  *
- * Runtime note: `app.js` still owns the click wiring; this module is the typed
- * replacement exposed on `window.GM_AUTH`.
+ * Runtime note: this module owns the behaviour and is exposed on
+ * `window.GM_AUTH`. The click wiring used to belong to `app.js`, which no longer
+ * exists.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

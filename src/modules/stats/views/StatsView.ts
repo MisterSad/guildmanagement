@@ -19,7 +19,7 @@
 
 import { eventScoringKey } from '../../../core/config/events';
 import { getWeekStart, formatWeek } from '../../../core/utils/date';
-import { formatNumber, avatarInit } from '../../../core/utils/text';
+import { formatNumber, avatarInit, escapeHTML } from '../../../core/utils/text';
 import { getPowerTier } from '../../../core/scoring/combat';
 import {
   StatsService,
@@ -124,14 +124,10 @@ const legacy = {
 
 // ── Local helpers (mirrors of stats.js internals) ─────────────────────────────
 
+// Delegates to the single escaping boundary. This used to be a local copy that
+// silently omitted the backtick, so StatsView escaped less than every other view.
 function esc(str: unknown): string {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+  return escapeHTML(str);
 }
 
 function fmt(num: number | null | undefined): string {

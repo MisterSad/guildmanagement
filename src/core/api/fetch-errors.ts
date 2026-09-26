@@ -12,6 +12,13 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+// The one escaping boundary. Imported from utils/text rather than from
+// ./supabase (which re-exports it) because supabase.ts imports mapFetchError
+// from this module -- going through it would create an import cycle.
+// This stays consistent with the "pure" contract above: escapeHTML is a pure
+// string function and touches no DOM.
+import { escapeHTML } from '../utils/text';
+
 export type FetchErrorKind = 'offline' | 'gateway' | 'rate_limited' | 'unauthorized' | 'server' | 'unknown';
 
 export interface FetchErrorInfo {
@@ -151,13 +158,12 @@ export function getFetchErrorRuntime(): Required<FetchErrorRuntime> {
  * Inline retry banner (single, non-blocking, body-level)
  * ------------------------------------------------------------------------- */
 
+// Delegates to the single escaping boundary. The previous local version omitted
+// the apostrophe, which made it correct only inside double-quoted attributes --
+// an implicit contract every future caller would have had to know about.
+// escapeHTML covers both quote styles, so it is safe in any attribute context.
 function escapeAttr(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return escapeHTML(value);
 }
 
 let retryBannerEl: HTMLElement | null = null;

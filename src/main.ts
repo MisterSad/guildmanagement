@@ -64,7 +64,6 @@ import {
   parseGeminiJson,
   MAX_NUMERIC
 } from './core/utils/text';
-import { appStore } from './core/store/store';
 import { calculateMatchupData, calculateMatchupAsync } from './workers/matchup.worker';
 import { EventsService } from './modules/events/events.service';
 import { ShadowfrontService } from './modules/shadowfront/shadowfront.service';
@@ -232,10 +231,9 @@ if (typeof window !== 'undefined') {
   // /src modules (gm-utils Strangler cutover).
   installGmBridge();
 
-  // Sous-lot 6.1 (Strangler): global dialogs/toasts now owned by /src. The
-  // legacy app.js classic script still loads and sets these at parse time, so
-  // these assignments overwrite its bridges with the typed implementations
-  // (app.js is removed in the final cutover lot).
+  // Global dialogs/toasts are owned by /src. These used to overwrite bridges
+  // that the classic app.js set at parse time; app.js no longer exists, so these
+  // are now the only definitions.
   wAny.showConfirm = showConfirm;
   wAny.GM_APP = wAny.GM_APP || {};
   wAny.GM_APP.showToast = showAppToast;
@@ -244,9 +242,14 @@ if (typeof window !== 'undefined') {
   wAny.GM.components = { openDialog, closeDialog };
   wAny.GM_COMPONENTS_DIALOG = { openDialog, closeDialog };
 
-  // Sous-lot 6.2 (Strangler): unified cross-cutting state. Init before the
-  // bootstrap and expose typed accessors for /src modules; every write is
-  // mirrored onto window.* so the still-loaded classic app.js stays coherent.
+  // Unified cross-cutting state. Init before the bootstrap and expose typed
+  // accessors for /src modules.
+  //
+  // Every write is still mirrored onto window.*, which existed so the classic
+  // app.js stayed coherent. app.js is gone, so that mirror now has no consumer
+  // outside this bridge and should collapse into a plain module singleton --
+  // until it does, any stray `window.currentGuild = ...` silently rewrites app
+  // state. See src/modules/app/state/app-state.ts.
   initAppState();
   wAny.GM.appState = { get: getAppState, patch: patchAppState, reset: resetAppState };
 
@@ -289,13 +292,12 @@ if (typeof window !== 'undefined') {
     showLogin
   };
 
-  // Sous-lot 6.5 (Strangler): admin/accounts/guild-request/migration/subscription
-  // handlers exposed under GM_ADMIN for the cutover. Deliberately NOT assigned to
-  // bare window.fetchAccounts/loadGuildSettings/... while app.js runs: its tab
-  // loaders also call IIFE-private helpers (loadMyPasskeysCard, members badge
-  // re-render) that /src does not yet own, so the router keeps delegating whole
-  // tabs to the captured legacy loader. Also NOT auto-initializing the form
-  // wiring (app.js already binds those forms => would double-submit).
+  // admin/accounts/guild-request/migration/subscription handlers exposed under
+  // GM_ADMIN. They are namespaced rather than assigned to bare
+  // window.fetchAccounts/loadGuildSettings/..., which dates from when app.js
+  // owned those globals. app.js is gone and the form wiring IS initialised
+  // below (initAccountsUi/initGuildRequestsUi), so the old "would double-submit"
+  // caveat no longer applies.
   wAny.GM_ADMIN = {
     fetchAccounts,
     deleteAccount,
@@ -317,10 +319,9 @@ if (typeof window !== 'undefined') {
     renderGuildsSubscriptionList
   };
 
-  // Sous-lot 6.6 (Strangler): members/roster/matrix/transfers/absences/banned
-  // exposed under GM_MEMBERS (namespaced). Names are NOT assigned to the bare
-  // window.* probes used by the router's legacyTabLoader, so app.js keeps
-  // owning the live roster until the full cutover.
+  // members/roster/matrix/transfers/absences/banned exposed under GM_MEMBERS
+  // (namespaced). The bare window.* probes the router's legacyTabLoader used to
+  // read belonged to app.js, which no longer exists: /src owns the live roster.
   wAny.GM_MEMBERS = {
     fetchGuildMembers,
     renderGuildMembers,
@@ -345,9 +346,10 @@ if (typeof window !== 'undefined') {
     initBannedUi
   };
 
-  // Sous-lot 6.7 (Strangler): OCR bulk roster pipeline exposed under GM_OCR.
-  // The bare window.openOcrModal/closeOcrModal are only backfilled when absent
-  // (app.js already defines them) so its UI buttons keep working unchanged.
+  // OCR bulk roster pipeline exposed under GM_OCR. The bare
+  // window.openOcrModal/closeOcrModal are backfilled when absent; that guard
+  // existed because app.js defined them first. app.js is gone, so these are now
+  // always the definitions that win.
   wAny.GM_OCR = {
     openOcrModal,
     closeOcrModal,
@@ -421,7 +423,6 @@ if (typeof window !== 'undefined') {
   (window as any).GM.MAX_NUMERIC = MAX_NUMERIC;
 
   // Store, Worker & Services bridge
-  (window as any).GM.store = appStore;
   (window as any).GM.logger = logger;
   (window as any).GM.calculateMatchupData = calculateMatchupData;
   (window as any).GM.calculateMatchupAsync = calculateMatchupAsync;

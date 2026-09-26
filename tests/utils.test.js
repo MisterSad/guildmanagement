@@ -12,9 +12,19 @@ describe('escapeHTML', () => {
     it('escapes quotes and backticks', () => {
         expect(RAD.escapeHTML("it's `code`")).toBe('it&#39;s &#96;code&#96;');
     });
-    it('stringifies null/undefined inputs', () => {
-        expect(RAD.escapeHTML(null)).toBe('null');
-        expect(RAD.escapeHTML(undefined)).toBe('undefined');
+    it('renders nullish input as empty, never as the word "null"', () => {
+        // Behaviour change, deliberately. There were two escapeHTML
+        // implementations assigned to window.GM.escapeHTML in sequence --
+        // main.ts set the core/api/supabase one (returned ''), then
+        // installGmBridge() overwrote it with the core/utils/text one
+        // (stringified to 'null'), so which one won depended purely on load
+        // order. They are now a single implementation, and it returns ''.
+        //
+        // '' is the right answer: printing the literal word "null" into the UI
+        // is a defect, and it matches the convention formatNumber already
+        // follows below for nullish input.
+        expect(RAD.escapeHTML(null)).toBe('');
+        expect(RAD.escapeHTML(undefined)).toBe('');
     });
 });
 
