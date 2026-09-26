@@ -4,6 +4,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
+import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl } from "../_shared/gemini.ts";
 
 export interface OcrImageItem {
   base64Data: string;
@@ -491,13 +492,9 @@ Deno.serve(async (req: Request) => {
     },
   };
 
-  const modelsToTry = [
-    "gemini-flash-latest",
-    "gemini-3.5-flash",
-    "gemini-3.7-flash",
-    "gemini-3-flash-preview",
-    "gemini-flash-lite-latest",
-  ];
+  // B1: one shared list; three of the five entries here were identifiers
+  // Google has never published. See _shared/gemini.ts.
+  const modelsToTry = GEMINI_MODEL_FALLBACKS;
 
   let geminiResultRaw = "";
   let lastError = "";
@@ -506,7 +503,7 @@ Deno.serve(async (req: Request) => {
 
   for (const modelName of modelsToTry) {
     try {
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+      const apiUrl = geminiGenerateContentUrl(modelName);
       const resp = await fetch(apiUrl, {
         method: "POST",
         headers: {

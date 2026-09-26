@@ -51,6 +51,13 @@ export const SHADOWFRONT_SQUAD_EVENT = {
 } as const;
 export const SHADOWFRONT_PARTICIPANTS_MAX = 20;
 export const SHADOWFRONT_RESERVES_MAX = 10;
+/**
+ * B1: the commander cap was an inline `3` in ShadowfrontView, enforced with a
+ * hardcoded English sentence while its two sibling limits were named constants
+ * with a translated message. Named here so all three squad limits live in one
+ * place and read the same way.
+ */
+export const SHADOWFRONT_COMMANDERS_MAX = 3;
 
 export type ShadowfrontSquadKey = 'squad1' | 'squad2';
 export type ShadowfrontRole = 'participant' | 'reserve';

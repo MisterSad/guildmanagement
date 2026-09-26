@@ -10,8 +10,13 @@ export const APP_VERSION = 'V3.20.2';
 export const SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
 export const SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
 
-/** Upper bound for parsed/displayed numeric metrics. */
-export const MAX_NUMERIC = 9999999999;
+/*
+ * B1: `MAX_NUMERIC` used to be declared here as well as in `core/utils/text.ts`,
+ * with the same value. This copy had ZERO importers -- every consumer, including
+ * main.ts and gm-bridge.ts, takes it from `text.ts`, which is also where the only
+ * code that uses it lives (formatNumber and parseNumber clamp against it). A
+ * second declaration of a bound is a second thing to forget to change.
+ */
 
 /** Sentry DSN for client-side crash reporting & APM (optional). */
 export const SENTRY_DSN: string =

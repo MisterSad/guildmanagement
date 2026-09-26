@@ -391,17 +391,16 @@ export class StatsService {
 
 // ── Shared types & pure helpers (Stats calculation core) ──────────────────────
 
-export type EventCoeffBucket = 'SvS' | 'GvG' | 'Shadowfront' | 'DTR' | 'Arms Race';
+// B1: declared once in core/config/event-coeffs and re-exported here, so the
+// stats engine and the settings screen cannot weight events differently.
+import {
+  DEFAULT_EVENT_COEFFS,
+  type EventCoeffBucket,
+  type EventCoeffs
+} from '../../core/config/event-coeffs';
 
-export type EventCoeffs = Record<EventCoeffBucket, number>;
-
-export const DEFAULT_EVENT_COEFFS: EventCoeffs = {
-  SvS: 5,
-  GvG: 5,
-  Shadowfront: 3,
-  DTR: 2,
-  'Arms Race': 1
-};
+export { DEFAULT_EVENT_COEFFS };
+export type { EventCoeffBucket, EventCoeffs };
 
 export const STATS_WEIGHTS = {
   participation: 6,

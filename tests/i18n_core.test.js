@@ -2,18 +2,21 @@
  * tests/i18n_core.test.js
  *
  * Golden suite for src/core/i18n/i18n.ts after the legacy root `i18n.js`
- * removal. The full English dictionary (537 keys) is now the single source of
+ * removal. The full English dictionary is the single source of
  * truth; window.GM_I18N is provided by tests/setup.js (mirroring src/main.ts).
  */
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import { t, getLang, setLang, applyTranslations } from '../src/core/i18n/i18n';
 import { EN } from '../src/core/i18n/i18n.dictionary';
 
 describe('i18n dictionary (golden)', () => {
-  it('keeps the full 531-key English dictionary', () => {
-    // 531 since finding H2 added `guild_unresolved`, the message shown when the
+  it('keeps the full 533-key English dictionary', () => {
+    // 533 since finding B1 added `event_session_started` and `sf_commanders_full`. 531 since finding H2
+    // added `guild_unresolved`, the message shown when the
     // active tenant cannot be resolved -- which used to silently become ALPHA.
-    expect(Object.keys(EN).length).toBe(531);
+    expect(Object.keys(EN).length).toBe(533);
   });
 
   it('has no empty translation value', () => {
@@ -93,5 +96,58 @@ describe('i18n applyTranslations()', () => {
 
     expect(document.querySelector('#a span').textContent).toBe('FGF GUILD MANAGEMENT');
     expect(document.querySelector('#b span').textContent).toBe('');
+  });
+});
+
+describe('B1 — every key the code asks for actually exists', () => {
+  // This is the third time this bug has shipped: `modal_add_clock_btn` in
+  // eae0842, and `event_session_started` found by the 2026-09 audit. `t()`
+  // falls back to the raw key, so the failure is silent to every test and
+  // loud to the user -- they see the literal string `event_session_started`
+  // in a toast. Counting keys cannot catch it; only cross-checking the call
+  // sites can.
+  const srcDir = path.resolve(__dirname, '..', 'src');
+
+  function walk(dir, out = []) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full, out);
+      else if (e.name.endsWith('.ts')) out.push(full);
+    }
+    return out;
+  }
+
+  const files = walk(srcDir);
+
+  it('finds the t() call sites it is supposed to be checking', () => {
+    // Guards the guard: a regex that silently matches nothing would make this
+    // whole block vacuous and green forever.
+    const total = files.reduce(
+      (n, f) => n + (fs.readFileSync(f, 'utf8').match(/\bt\(\s*'[a-z0-9_]+'\s*[),]/g) || []).length,
+      0
+    );
+    expect(total).toBeGreaterThan(150);
+  });
+
+  it('has a dictionary entry for every literal key passed to t()', () => {
+    const missing = [];
+    for (const f of files) {
+      const src = fs.readFileSync(f, 'utf8');
+      const re = /\bt\(\s*'([a-z0-9_]+)'\s*[),]/g;
+      let m;
+      while ((m = re.exec(src)) !== null) {
+        if (!Object.prototype.hasOwnProperty.call(EN, m[1])) {
+          missing.push(`${path.relative(srcDir, f)}: t('${m[1]}')`);
+        }
+      }
+    }
+    expect(missing, `keys called but never defined:\n${missing.join('\n')}`).toEqual([]);
+  });
+
+  it('defines the key whose absence the audit found', () => {
+    // Only `event_session_started_sf` existed, so every non-Shadowfront
+    // session start showed users the raw key.
+    expect(EN.event_session_started).toBe('New session started.');
+    expect(EN.event_session_started_sf).toContain('Shadowfront');
   });
 });

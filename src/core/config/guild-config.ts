@@ -10,14 +10,13 @@
 
 import { getClient } from '../api/supabase';
 import { getActiveGuild } from '../auth/roles';
+import { defaultCoeffConfigEntries } from './event-coeffs';
 
 /** Default value table used when neither the DB nor localStorage has a value. */
 export const LOCAL_CONFIG_FALLBACK: Record<string, string> = {
-  coeff_svs: '5',
-  coeff_gvg: '5',
-  coeff_shadowfront: '3',
-  coeff_dtr: '2',
-  coeff_armsrace: '1',
+  // B1: spread from the single declaration in ./event-coeffs, which the stats
+  // engine reads too. These were five hand-written strings that duplicated it.
+  ...defaultCoeffConfigEntries(),
   webhook_armsrace: '',
   webhook_dtr: '',
   webhook_shadowfront: '',

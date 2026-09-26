@@ -23,6 +23,7 @@ import {
   SHADOWFRONT_SQUAD_EVENT,
   SHADOWFRONT_PARTICIPANTS_MAX,
   SHADOWFRONT_RESERVES_MAX,
+  SHADOWFRONT_COMMANDERS_MAX,
   categoriseHistory,
   categoryMeta,
   countRate,
@@ -56,9 +57,12 @@ const legacy = {
     const g = gm();
     return g && g.db ? g.db : null;
   },
-  t(key: string): string {
+  t(key: string, replacements?: Record<string, string | number>): string {
     const g = gm();
-    return g && typeof g.t === 'function' ? g.t(key) : key;
+    // B1: the shim dropped the replacements argument, so no message in this
+    // view could carry a value -- which is part of why the commander limit was
+    // written as a hardcoded English sentence instead of a translated one.
+    return g && typeof g.t === 'function' ? g.t(key, replacements) : key;
   },
   esc(value: unknown): string {
     return escapeHTML(value);
@@ -654,8 +658,8 @@ export class ShadowfrontView {
       const currentCommanders = this.state.assignments.filter((a) => {
         return a.squad === assignment.squad && a.is_commander;
       });
-      if (currentCommanders.length >= 3) {
-        legacy.showToast('You can only have up to 3 commanders per squad!', 'error');
+      if (currentCommanders.length >= SHADOWFRONT_COMMANDERS_MAX) {
+        legacy.showToast(legacy.t('sf_commanders_full', { n: SHADOWFRONT_COMMANDERS_MAX }), 'error');
         return;
       }
     }

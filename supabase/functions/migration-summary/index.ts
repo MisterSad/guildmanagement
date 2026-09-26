@@ -4,6 +4,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
+import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl } from "../_shared/gemini.ts";
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
@@ -212,12 +213,8 @@ Deno.serve(async (req: Request) => {
     },
   };
 
-  const modelsToTry = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-flash-latest",
-  ];
+  // B1: the same list the OCR path uses, rather than a second opinion.
+  const modelsToTry = GEMINI_MODEL_FALLBACKS;
 
   let summaryText = "";
   let lastError = "";
@@ -226,7 +223,7 @@ Deno.serve(async (req: Request) => {
 
   for (const modelName of modelsToTry) {
     try {
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+      const apiUrl = geminiGenerateContentUrl(modelName);
       const resp = await fetch(apiUrl, {
         method: "POST",
         headers: {
