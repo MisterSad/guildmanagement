@@ -12,11 +12,11 @@
 
 ## 1. High-Level System Topology
 
-**FGF Guild Management Tool** is a serverless, multi-tenant SaaS tactical command and analytics platform built for competitive guilds in *Foundation Galactic Frontier*. The live production system is a single TypeScript/ESM frontend (`/src/main.ts`) that assembles the legacy `window.GM_*` bridge in-browser, backed by Supabase PostgreSQL 17 with Row Level Security (RLS) and Deno TypeScript Edge Functions. The former root monolith `app.js` was removed in the Strangler final cutover. The project root now holds no application script at all — only tooling configs (`playwright.config.js`, `vitest.config.js`) — and the service worker is a typed module at `src/sw/service-worker.ts` (pure parser in `src/sw/push-payload.ts`) compiled to the root-scoped `dist/sw.js` by esbuild in `scripts/build.js`.
+**FGF Guild Management Tool** is a serverless, multi-tenant SaaS tactical command and analytics platform built for competitive guilds in *Foundation Galactic Frontier*. The live production system is a single TypeScript/ESM frontend (`/src/main.ts`), backed by Supabase PostgreSQL 17 with Row Level Security (RLS) and Deno TypeScript Edge Functions. Phase 7 replaced most of the `window.GM_*` bridge with typed imports; what remains of it, and why, is in PART 2. The former root monolith `app.js` was removed in the Strangler final cutover. The project root now holds no application script at all — only tooling configs (`playwright.config.js`, `vitest.config.js`) — and `src/sw/service-worker.ts` is now a self-destructing tombstone — the PWA was removed in Phase 2 — still compiled to the root-scoped `dist/sw.js` by esbuild in `scripts/build.js` because that is the only way an already-installed worker can be retired. See §6.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   CLIENT LAYER (Browser / PWA)                          │
+│                                     CLIENT LAYER (Browser)                              │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ TypeScript / ESM Frontend (`index.html` + `/src/main.ts` module)              │  │
 │  │ ├─ Core Utilities & Legacy Bridge: `/src/core/gm-bridge.ts` (window.GM)        │  │
@@ -34,7 +34,7 @@
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   EDGE & SECURITY LAYER                                 │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
-│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 14 live         │  │
+│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 15 live         │  │
 │  │ ├─ Public (`verify_jwt = false`):                                                 │  │
 │  │ │   ├─ `auth-login`: Bcrypt dual-read, lockout, IP rate limit, JWT issuer         │  │
 │  │ │   ├─ `auth-passkey`: Passkeys/WebAuthn — register, sign in (scoped or fully     │  │
@@ -67,7 +67,7 @@
 │                                   DATABASE LAYER (Postgres 17)                          │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ Supabase Postgres 17 (Multi-Tenant Schema with Zero-Trust Row Level Security)       │  │
-│  │ ├─ 45 table definitions / 42 persistent active, Full RLS Enforcement              │  │
+│  │ ├─ 38 persistent tables, all RLS + FORCE RLS, 87 policies                         │  │
 │  │ ├─ Security Definer Access Helpers with `SET search_path TO ''`                   │  │
 │  │ ├─ Deterministic Event Session Generator: `public.gm_event_session_id()`           │  │
 │  │ ├─ Distributed Audit Ledger: `public.system_audit_logs` (service_role only)       │  │
@@ -78,6 +78,8 @@
 ```
 
 > **⚠️ Payments were removed entirely on 2026-09-26 (Phase 1)**. Deleted from the platform: `gm-create-order`, `gm-order-status`, `gm-stripe-webhook`, and two functions that were **live with no source in this repository** — `gm-revolut-webhook` (ACTIVE, version 13, `verify_jwt = false`, i.e. public) and `webauthn-spike` (a leftover probe). Earlier revisions of this document asserted in a warning box that `gm-revolut-webhook` did **not** exist and should be kept out of deployment matrices; it existed and was serving traffic. Treat this as the standing invariant instead: **every deployed Edge Function must have its source versioned here**, and the deployed set must be reconciled against `supabase/functions/` rather than against prose.
+
+> **Reconciled 2026-09-27: 15 deployed, 15 in the repository, zero drift in either direction.** `auth-discord` is the newest (Discord OAuth, Phase D2). `admin-accounts` is now genuinely `verify_jwt = true`, matching `config.toml` — it had been deployed as `false` while both the config and this document claimed otherwise (finding M1). Re-run the reconciliation with `list_edge_functions` against `ls supabase/functions/`; `tests/supabase_config_functions.test.js` covers the repo-internal half (every directory has a `[functions.*]` block and vice versa), but nothing in CI can see the platform, so this one is a runbook step, not a test.
 
 ---
 
@@ -111,7 +113,7 @@ Authentication operates on an **accounts-table-only** role resolution model. `us
 #### The Four Access Roles:
 1. **`super_admin`**: Single global master account (`HawkEye`). Bypasses tenant RLS qualifiers. Accesses full Command Center and `#tab-tickets`.
 2. **`server_admin`**: Reads and writes all tenant guilds sharing their assigned `server_number`. Uses server-scoped Guild Switcher.
-3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Write operations require active SaaS subscription (`public.is_subscription_active()`).
+3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Write operations still pass through `public.is_subscription_active()`, which has been a literal `SELECT true` since `20260824000000_free_app_and_donations.sql` — the app is free and the gate is inert. It survives only because ~44 RLS clauses call it; removing it means rewriting all of them, which is a lot of its own (deferred, Phase 4.14).
 4. **`member`**: **Zero direct database table access**. Communicates exclusively through the `member-portal` Edge Function.
 
 > These are the **only** values `accounts.role` may hold — the DB enforces it via the `accounts_role_check` CHECK constraint (column default `member`). The legacy virtual/in-game ranks (`R5`, `R4`) and the historical `admin` alias were **retired on 2026-09-13** and are rejected by the constraint; no helper maps them to elevated access anymore.
@@ -120,7 +122,7 @@ Authentication operates on an **accounts-table-only** role resolution model. `us
 Any account (admin or portal) can additionally register a Passkey per device instead of typing a password every time. Backed by `@simplewebauthn/server@10.0.1` (server-side crypto only — no `@simplewebauthn/browser` client dependency; `gm-webauthn.js` hand-rolls the base64url/ArrayBuffer marshalling to avoid adding a new CDN origin).
 - **Registration**: `auth-passkey` `register-options`/`register-verify` (JWT-authenticated). First passkey on an account also issues 10 one-time backup codes (SHA-256 hashed, shown once).
 - **Sign-in**: `auth-options`/`auth-verify` (unauthenticated — this *is* the login flow). Supports both a **scoped** ceremony (an id was typed, narrows the browser's picker to that account) and a **fully discoverable** one (no id — the picker shows every passkey registered for the site across every account; the credential's own `userHandle` resolves which account server-side, never anything the client claims). Conditional UI (`mediation: 'conditional'`, tied to `autocomplete="webauthn"` fields) runs in parallel so password-manager extensions (Proton Pass, Bitwarden, 1Password) that don't reliably support the modal picker still work via autofill-style suggestions.
-- **iOS constraint**: `PushManager`/full WebAuthn UX is materially better inside an installed PWA — see §6 for the same "must be installed" constraint on push notifications.
+- **iOS constraint**: the WebAuthn UX used to be materially better inside an installed PWA. The PWA was removed in Phase 2, so the passkey flow now runs in a plain browser tab everywhere; there is no install step and no §6 push constraint to cross-reference any more.
 - **Admin escape hatch**: `admin-reset-passkeys` action revokes every passkey + backup code for a target account (lost every device and the codes), gated by the same `canManageAccount`/`admin-authz.ts` matrix as the manual password-reset flow. R5 is not specially protected here (unlike the rank-assignment matrix) — the existing role hierarchy check already prevents managing an equal-or-higher role.
 - **Rate limiting**: `auth-passkey` and `auth-login` share one IP budget (`login_throttle`, keyed purely by IP, not by which function calls it) — a passkey sign-in costs 2 requests (options + verify), and the conditional/autofill listener adds a background options call on every page load. Widen this budget (not the per-function limit) if login attempts start getting throttled after adding another auth-adjacent feature.
 
@@ -156,17 +158,19 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 
 ### 4. Database Topology & Access Helpers
 
-#### 4.1 Database Tables (45 `CREATE TABLE` definitions; 42 persistent tables active, all RLS-enabled):
-- **Core Tenant / Roster** (20): `guilds` (13 rows, 1 is `DEMO`), `guild_members` (~1,540 rows), `event_status`, `event_participants` (~33k rows — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `diplomatic_treaties`, `server_migration_groups`, `server_migration_group_servers`.
+#### 4.1 Database Tables (**38 persistent tables**, counted live 2026-09-27; all have RLS *and* FORCE RLS, across 87 policies):
+- **Core Tenant / Roster** (19): `guilds` (**26 rows**, 1 is `DEMO`), `guild_members` (**~3,005 rows**), `event_status`, `event_participants` (**~55,760 rows** — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `server_migration_groups`, `server_migration_group_servers`. `diplomatic_treaties` was dropped in Phase 3 (0 rows, no UI).
+
+> **These figures were counted against production on 2026-09-27, not estimated.** The previous set (13 / ~1,540 / ~33k) understated the live system by roughly a factor of two and had been carried forward unchecked. Re-measure rather than adjust: `SELECT count(*)` on the three tables.
 - **Accounts & Identity** (8): `accounts` (custom bcrypt credential store, source of truth — see §2), `login_throttle` (shared IP rate limit for `auth-login` + `auth-passkey`), `webauthn_challenges`, `account_passkeys`, `account_backup_codes` (Passkeys/WebAuthn, added 2026-09), `discord_account_links`, `discord_link_codes`, `discord_verification_throttle` (Discord account linking + verification rate limiting, added 2026-09).
 - **Self-Service Requests** (1): `guild_creation_requests` (public `guild-request` submissions, reviewed by `super_admin`).
-- **Player Portal** (2): `player_absences`, `player_push_prefs` (per-player Web Push type opt-outs).
-- **Notifications** (1): `push_subscriptions` (Web Push endpoints; `event-reminders` fans out to both this and Discord webhooks).
-- **Leader Hall E2EE (Signal Protocol) — front-end removed 2026-09, SQL cleanup pending (7)**: `e2ee_prekey_bundles`, `e2ee_one_time_prekeys`, `e2ee_conversations`, `e2ee_conversation_members`, `e2ee_messages`, `e2ee_blocked_accounts`, `e2ee_message_reactions`. No UI reads them anymore; a dedicated drop migration is the follow-up Lot C.
-- **Billing & Support** (2): `gm_payments`, `tickets` (in-app bug-report console).
+- **Player Portal** (1): `player_absences`. `player_push_prefs` was dropped with Web Push in Phase 2.
+- **Notifications** (0): none. `push_subscriptions` was dropped in Phase 2 — Discord is the only notification channel.
+- **Leader Hall E2EE (Signal Protocol) — removed entirely (0)**: the seven `e2ee_*` tables are dropped. Verified against `pg_class`, not assumed from a migration file.
+- **Support** (1): `tickets` (in-app bug-report console). `gm_payments` was dropped in Phase 1 with the rest of the payment surface.
 - **Observability** (1): `system_audit_logs` (service_role-only INSERT).
 
-> **Count note**: the canonical migrations contain 45 `CREATE TABLE` definitions. Two legacy notification tables (`discord_notifications_sent`, `event_reminders_sent`) were dropped by `20260819203500_drop_orphaned_notification_tables.sql`, and `tmp_demo_roster` is a session-scoped `TEMP` staging table used by the demo reset, leaving **42 persistent active tables** (the four SvS/GvG war tables below were added by `20260914090000`). All of them have RLS enabled.
+> **Count note**: count tables from `pg_class`, never from the number of `CREATE TABLE` statements in the migration chain — the chain also contains the drops, so the two diverge every time something is removed, which is how this document came to claim 42. As of 2026-09-27 there are **38**, every one with RLS and FORCE RLS enabled. Phases 1–3 dropped `gm_payments`, `diplomatic_treaties`, the seven `e2ee_*` tables and the two Web Push tables; `tmp_demo_roster` is a session-scoped `TEMP` staging table and never appears in the count.
 
 > ⚠️ **Note on `shadowfront_squads` completeness**: a long-tenured player can show more attended Shadowfront weeks (`event_participants`) than surviving squad-assignment rows (`shadowfront_squads`), because the latter doesn't reliably retain every past week once a later session overwrites it. The Stats attendance-rate calculation (`gm-utils.js:computeShadowfrontAttendanceRate`) floors its denominator at the attended count to stay mathematically capped at 100%, but the underlying gap in `shadowfront_squads` itself is unresolved — any *new* feature reading that table should not assume it is a complete historical ledger.
 
@@ -260,14 +264,21 @@ Tracks SvS and GvG at per-day granularity — scores (Day 1..6), parametrizable 
 
 ---
 
-### 6. Web Push Notifications
-Anonymous, per-device opt-in (client `src/modules/push/PushService.ts` + service worker `src/sw/service-worker.ts`, compiled to `dist/sw.js` by esbuild; VAPID keys in Supabase secrets). The opt-in control (`window.GM_PUSH.mount(container)`) is mounted in **both** the admin Overview screen and the Portal's Notifications card — a player-facing gap (portal preferences existed with no way to actually subscribe) was found and fixed 2026-08-31; if a future notification surface is added, mount the control there too rather than assuming one mount point covers every audience.
-- **Send path**: `event-reminders`' `sendWebPush()` fans out to `push_subscriptions` (filtered by `player_push_prefs` per-type opt-outs) alongside the existing Discord webhook dispatch, on the same cron tick.
-- **iOS constraint**: `PushManager` only exists inside an **installed** PWA on iOS Safari (16.4+) — a plain Safari tab shows an "Add to Home Screen" hint instead. Desktop/Android need no install step.
+### 6. Notifications — Discord only (Web Push and the PWA removed, Phase 2)
+Discord is the **only** notification channel. `event-reminders` dispatches to each guild's own webhooks on its cron tick; there is no second fan-out.
+
+Web Push and the PWA were removed entirely: `src/modules/push/PushService.ts`, `src/core/pwa/pwa.ts`, `src/sw/push-payload.ts`, `manifest.webmanifest` and the five install-only PNG icons (612 KB) are gone, as are the `push_subscriptions` and `player_push_prefs` tables and the `save_push_subscription`, `gm_get_push_prefs` and `gm_set_push_prefs` RPCs. The service worker never had a `fetch` handler and never touched Cache Storage, so it provided no offline capability and no caching — only installability, which nothing needed.
+
+- **`src/sw/service-worker.ts` still exists, and must keep shipping.** It is a self-destructing tombstone whose only job is `registration.unregister()`. Deleting a service worker's source does not uninstall it: a worker already installed on a member's device runs forever, independently of the page that registered it, and goes away only when the browser can fetch a **new** `/sw.js` from that exact URL and watch it unregister. The source, the esbuild block in `scripts/build.js` and the dev plugin in `vite.config.ts` must be removed together, and only after the tombstone has been live for a full release cycle. Check before touching it:
+  ```
+  curl -sS https://guildmanagement.vercel.app/sw.js | grep -c unregister
+  ```
+  `0` means the tombstone is not deployed yet. `tests/phase2_pwa_retirement.test.js` enforces the all-or-nothing rule and that `/sw.js` is served revalidating — cache it and the kill switch never arrives.
+- **Offline copy**: `src/core/net/network-status.ts` says changes will **not** be saved. It used to promise "Local changes will sync when online", which was false — there is no write queue and no background sync anywhere in the app, so offline writes are simply lost.
 - **CSP dependency**: the uploaded-file `<video>` blob and any future blob-backed media element depend on `media-src` explicitly including `blob:` in `vercel.json` — `default-src 'self'` does **not** cover it by CSP-spec fallback, and this silently blocks the resource identically on every browser (not a codec/compat issue) if ever dropped. Confirmed live via `document.addEventListener('securitypolicyviolation', ...)` when this shipped without it.
 
 ### 7. Leader Hall — End-to-End Encrypted Messaging (removed 2026-09)
-The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild leadership) has been **removed entirely from the front-end**: `gm-signal-crypto.js`, `gm-leader-hall.js`, `noble-crypto.bundle.js`, the `/src` port and the `#tab-leader-hall` DOM are gone. The server-side `e2ee_*` tables and leader RPCs remain in the database pending a dedicated drop migration (Lot C) — no UI reads them anymore.
+The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild leadership) has been **removed entirely from the front-end**: `gm-signal-crypto.js`, `gm-leader-hall.js`, `noble-crypto.bundle.js`, the `/src` port and the `#tab-leader-hall` DOM are gone. The server-side `e2ee_*` tables and the `gm_is_leader_caller` RPC have since been dropped too (Phase 3), so nothing of the feature remains in either layer.
 
 ---
 
@@ -291,8 +302,8 @@ The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild l
 
 ## PART 2 — MODERNIZATION TARGET (`/src` ARCHITECTURE)
 
-`/src` houses the modernized ES Module codebase — **`src/main.ts` has run live in production since the 2026-08-30 build-pipeline fix** (it is a real `<script type="module">` in `index.html`, not a dev/test-only entrypoint as previously documented here). Migration is genuinely incremental and partial: some ports are feature-complete and bridged onto `window.GM.*` (the subscription/donation view fully replaced its legacy `subscription.js`); others are not, and per the incident below, an unfinished port must **never** be bridged onto a `window.GM_*` global a legacy script also owns.
-- **Reactive State Store** (`src/core/store/store.ts`): Centralized Pub/Sub state store with subscription disposers.
+`/src` is now the whole codebase. `src/main.ts` is the single `<script type="module">` in `index.html`, the root monolith is gone, and Phase 7 dismantled most of the `window.GM_*` bridge: the router and the views resolve each other by **typed import**, so renaming a loader is a compile error rather than a tab that silently stops loading. Three names survive on `window` deliberately — `GM_APP` and `GM_I` because `core/` must not import `modules/` (the toast implementation `GM_APP.showToast` points at lives in `core/dom/toast.ts`, so importing the app's renderer there would invert the layering), and `GM_COLLAPSED_ROLES` because it is a mirrored state global rather than a method bridge. `tests/gm_bridge_contract.test.js` pins that list so it cannot quietly grow.
+- **App state** (`src/core/state/app-state.ts`): the single write path for cross-cutting state (active tenant, guild list, roster selection). It still mirrors onto `window` for the bridge and for the tests that seed state by assignment, but reads are pure and hydration is absence-aware. The old Pub/Sub `src/core/store/store.ts` was dead — `subscribe()` was never called — and was deleted in Phase 3.
 - **Web Worker Engine** (`src/workers/matchup.worker.ts`): Offloaded combinatorial computation for GvG/SvS dangerosity and draft mercato simulations.
 - **BaseComponent Framework** (`src/components/ui/BaseComponent.ts`): Encapsulated UI component lifecycle with automatic listener cleanup.
 - **i18n**: Fully served by `/src/core/i18n/i18n.ts` (Strangler cutover), bridging the complete dictionary to `window.GM_I18N` and `window.GM.t`.

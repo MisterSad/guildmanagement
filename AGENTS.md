@@ -1,27 +1,43 @@
-# AGENTS.md — Rules & Architectural Guidelines for AI Agents
+# AGENTS.md — Rules for AI agents working on this repository
 
-## Core Principles & Persona
-- Lead Architect & SecOps: Zero-Trust RBAC, strict tenant isolation, 100% English.
-- Verification-First: Never claim completion without proof. Run quality gate before & after edits.
-- Token Efficiency: Edit targeted files only. Never dump monolithic files (e.g. `app.js`). Anchor on context.
+## Persona
+Lead Architect & SecOps. Zero-trust RBAC, strict tenant isolation. **All code, comments, types, UI strings, docs and tests are in English**; conversation with the owner is in French.
 
-## Stack & Invariants
-- Frontend: TypeScript ES modules in `src/` (Vite) bridging legacy `window.GM` scripts.
-- Backend: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, search_path = '') + Deno Edge Functions.
-- Access Roles: `super_admin` (all guilds), `server_admin` (scoped server), `guild_admin` (single guild), `member` (Portal RPC only).
-- Resolution: Account-table only (`accounts.auth_user_id = auth.uid()`). Never trust metadata or client UIDs.
-- Multi-Tenant: Uniform logic across all tenants (`ALPHA`, `BABE`, `CLAW`, etc.). No hardcoded guild conditions.
+## Verification-first
+Never claim completion without proof, and never fabricate a result. Measure against the running system rather than describing it from memory — the documentation in this repository was wrong about volumetrics by a factor of two, about which Edge Functions existed, and about what the database does on account deletion, for months at a time. See the `fgf-quality-gate` skill.
 
-## Strict Security Rules & Anti-Patterns
-1. Secrets: Vault/Deno env only. Never commit keys or log credentials. Validate env at runtime via Zod.
-2. Input Validation: Validate all Edge inputs with Zod schemas. Bound numbers (`parseSafeScore`).
-3. LLM Safety: Never interpolate raw user inputs into system prompts (Prompt Injection defense).
-4. Webhooks: Whitelist Discord domains; never allow client-supplied webhook URLs across tenant boundaries.
-5. Privacy: Never cache decrypted E2EE messages in `localStorage`. Keep in-memory only.
-6. XSS: Sanitize all dynamic HTML injections via `esc()` / `escapeHTML()`.
+## Stack
+- **Frontend**: TypeScript ES modules in `src/`, built by Vite. No UI framework. Views call each other by typed import; only three `window.GM_*` names survive deliberately (`tests/gm_bridge_contract.test.js` pins the list).
+- **Backend**: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, `SET search_path = ''`) + Deno Edge Functions. 15 deployed, 15 in the repo — keep it reconciled (ADR-017).
+- **Hosting**: Vercel. No service worker behaviour, no PWA, no cookies, no analytics.
+- **Scale**: 26 guilds, ~3,005 members, ~55,760 participation rows, 38 tables, 87 policies.
 
-## Quality Gate & Verification Commands
-Always run and ensure 100% green before finishing:
-- npm run type-check   # 0 TS errors required (tsc --noEmit)
-- npm test             # Vitest test battery (712+ tests green)
-- npm run build        # Production build + node --check root syntax check
+## Invariants that are easy to break
+- **Four roles**: `super_admin`, `server_admin`, `guild_admin`, `member`. Resolved from `accounts` via `auth.uid()` — never from client-supplied data.
+- **No per-tenant branching, and no hardcoded tenant list.** An unresolved tenant fails visibly; it never falls back to a real guild.
+- **`core/` never imports `modules/`.**
+- **`src/core/state/app-state.ts` is the only writer** of cross-cutting state. Never assign `window.currentGuild` and friends directly.
+- **The app is free** (ADR-015) and has **no PWA or push** (ADR-016). Do not reintroduce either, and do not document them.
+- **`src/sw/service-worker.ts` is a tombstone that must keep shipping** until it has been live a full release cycle. Deleting it does not uninstall anything — read ADR-016 first.
+
+## Security rules
+1. **Secrets**: Vault / Deno env only. Never commit, never log, never print a secret — verify by digest or by an in-SQL boolean.
+2. **Grants, not just policies.** A table-wide `GRANT SELECT` above correct policies is how credential columns leaked (finding C0). Grant columns.
+3. **Zod-validate every Edge Function input.** Bound numbers.
+4. **Never interpolate user input into an LLM prompt.**
+5. **Webhooks**: resolved server-side from `guild_config`, never client-supplied. Discord hosts only.
+6. **XSS**: one escaping boundary — `escapeHTML()` in `src/core/utils/text.ts`.
+7. **Rate limits fail closed.**
+8. **Never run a destructive probe against production.** `execute_sql` autocommits; this has permanently destroyed real rows. Use the `DEMO` tenant, which is rebuilt nightly at 03:00.
+
+## Quality gate
+```bash
+npm run type-check     # 0 errors
+npm test               # vitest run, all green, plus a coverage floor
+npm run build
+npx playwright test    # e2e, against the REAL built bundle in dist/
+```
+The e2e suite runs against `dist/` and is the only check that catches CSP violations and asset 404s. It is not optional.
+
+## Skills
+`.agents/skills/` — `fgf-quality-gate`, `fgf-rls-security`, `fgf-saas-architect`, `fgf-memory-keeper`, `fgf-changelog-discord`. Read `docs/adr/README.md` before any significant refactor.

@@ -1,6 +1,24 @@
 # Changelog
 
-## [Unreleased] - 2026-09-26
+## [Unreleased] — audit remediation, 2026-09-26 → 2026-09-27
+
+> **Nothing in this section is deployed.** It is the audit-remediation branch; production still runs the previous release. Verified rather than assumed — the live `/sw.js` is still the old push worker, and the live CSP still carries the wildcard this branch removed.
+
+- **Phase 9 — the documentation was confidently wrong, and now has a test (unreleased)**
+  - **What the docs claimed, against what the system is.** Each of these was carried forward unchecked, and each would have misled the next reader:
+    - `ARCHITECTURE.md`: **13 guilds / ~1,540 members / ~33k participations**. Live: **26 / ~3,005 / ~55,760** — wrong by roughly a factor of two. Also **&ldquo;45 table definitions / 42 persistent&rdquo;** against a real **38**, because it counted `CREATE TABLE` statements in the migration chain, which also contains the drops.
+    - It asserted in a warning box that **`gm-revolut-webhook` did not exist** and told readers to keep it out of deployment matrices. It existed, ACTIVE, `verify_jwt = false`, with no source in this repository. Corrected in Phase 1; ADR-017 now records the rule that would have prevented it.
+    - `README.md` sold **&ldquo;plans from one month to lifetime, purchased securely in the app&rdquo;** — and the price list it described belonged to **Revolut**, the flow removed before Stripe. It also advertised opt-in push notifications, and omitted **six shipped modules**: `migration` (1,465 lines, the largest feature in the app), `ocr`, `tickets`, `audit`, `badges`, `help`.
+    - `AGENTS.md` required a gate of **&ldquo;712+ tests&rdquo;** against a suite past 1,800.
+  - **Reconciliation that came out clean, and is worth stating**: **15 Edge Functions deployed, 15 in the repository, zero drift in either direction.** `gm-revolut-webhook` and `webauthn-spike` — the two that were live with no source — are gone, as are the three payment functions. `admin-accounts` is now genuinely `verify_jwt = true`, matching `config.toml` (finding M1).
+  - **Four new ADRs**, each recording an invariant that was learned the hard way rather than decided in the abstract: **ADR-015** permanently free (and why `is_subscription_active()` deliberately survives as `SELECT true`), **ADR-016** the PWA/push retirement *and the two-release ordering that makes it safe*, **ADR-017** every deployed Edge Function must have versioned source, **ADR-018** GDPR inventory, retention and erasure — including that erasure must be an `UPDATE`, because the seven `ON UPDATE CASCADE ON DELETE CASCADE` children make a delete-then-anonymise ordering silently anonymise nothing.
+  - **ADR-012 gets an addendum rather than a quiet edit.** It described an OCR cache that was documented, unit-tested, and consuming the Gemini quota it was meant to save **while absent from the deployed binary** — for the plainest of reasons: the function was last deployed two days *before* the migration that created the table it reads. An ADR that silently becomes fiction is worse than no ADR, so the failure is recorded in the ADR itself.
+  - **The five agent skills were rewritten against the current system.** They pointed at `src/core/store/store.ts` (deleted in Phase 3), described a three-role model, required `220+ tests`, and — in the architect skill — **enumerated 13 tenant ids by name in the same paragraph that forbids hardcoding a tenant**. There are 26, and the list was stale the day a guild was created. `.kilo/agents/` (11 definitions nothing read) is deleted.
+  - **A precise count in a document is the next stale fact**, so the gate commands are now stated without one. The numbers that remain — the volumetrics — carry an explicit measurement date and an instruction to re-measure rather than adjust.
+  - **The CHANGELOG's unversioned tail is marked, not fabricated.** The plan called for retro-assigning versions from 3.17.2 to 3.20.2; measurement says those releases are **already documented**, and what is actually unversioned is the older history *below* 3.17.2, where one section spans several versions. Inventing a mapping would put fabricated release history into the file this project uses as its memory, so the boundary is labelled instead and the reason recorded.
+  - **`tests/docs_accuracy.test.js`** makes the enforceable half of this permanent: the Edge Function count must equal the directory count, every documented function must exist, no dropped table may be listed as live inventory, no removed feature may be re-advertised, the agent instructions may not hardcode a test count or enumerate tenants, and the four ADRs must exist and be indexed. Sabotage-tested: drifting the count, re-adding a subscriptions section, and renaming a documented function each fail it by name. The first version of the dropped-table check also failed **correctly-written prose** that named a dropped table while saying it was dropped — scoped to the inventory bullets now.
+  - **What no test can cover is stated as a runbook step**, not pretended: nothing in CI can see the platform, so deployed-vs-repo reconciliation lives in ADR-017 and the deploy runbook. A green CI is not a reconciled platform.
+  - Gate: 0 TS errors, **152 suites / 1891 tests**, build clean, **35 e2e** green.
 
 - **Phase 8 — GDPR: the compliance page was making claims the database contradicted (unreleased)**
   - **The real finding was not the missing privacy policy.** It was that `terms.html`, a published legally binding document, stated two things that measurement disproved.
@@ -588,6 +606,15 @@
   - **Performance**: roster DOM event delegation bound once; `calculateRallyScore` memoized per sort pass; Tactical Force Matrix ranks in a single sort; O(1) precomputed `overall_power` max; cold-start `aria-busy` skeletons without clearing cached data on refresh.
   - **Security**: strict four-role isolation (`super_admin` / `server_admin` / `guild_admin` / `member`) with the legacy in-game roles retired; compromised GoTrue sessions invalidated via the `session_version` epoch bump on password reset / role change / suspension.
   - **Verification**: `npm run type-check` — 0 errors; **1133/1133 Vitest tests green across 100 suites** (+40 tests vs the previous 1093/97 baseline); production build stable (`version.json` V3.17.2), Service Worker compiled.
+
+
+---
+
+> ### Everything below predates the `## [x.y.z]` convention
+>
+> Releases **3.17.2 through 3.20.2 are documented above**, in order. The sections that follow are the historical log from before versioned headings were adopted: they are grouped by `## New` / `## Fixed` rather than by release, and each entry carries its version inline (e.g. `(V3.16.1)`).
+>
+> They have deliberately **not** been retro-assigned `## [x.y.z]` headings. A single section below spans several versions, and the mapping cannot be recovered reliably from the text — inventing one would put fabricated release history into the file this project uses as its memory. Read them as a dated engineering log, not as releases.
 
 ## New
 

@@ -2,7 +2,7 @@
 
 > Guild management for Foundation Galactic Frontier, open to every guild, each with its own space.
 
-FGF Guild Management Tool is a web app I built to make running a guild in **Foundation Galactic Frontier** simple and organized. It is not tied to any single guild. Any guild of the game can use it, and every guild gets its own isolated space with its own members, events, settings, and subscription.
+FGF Guild Management Tool is a web app I built to make running a guild in **Foundation Galactic Frontier** simple and organized. It is not tied to any single guild. Any guild of the game can use it, and every guild gets its own isolated space with its own members, events, and settings. It is **free**, for everyone, with no paid tier of any kind.
 
 ---
 
@@ -15,11 +15,11 @@ This tool replaces spreadsheets and chat threads with a purpose-built workspace 
 - plan and run every event with a workflow adapted to its own rules,
 - build fair squads based on real participation history,
 - track attendance live,
-- keep the whole guild informed through Discord and push notifications,
+- keep the whole guild informed through Discord,
 - manage members, sanctions, banned players, and accounts,
 - rank players across the guild with statistics based on actual participation.
 
-Every guild is fully isolated from the others, and each one can subscribe independently.
+Every guild is fully isolated from the others, and creating one is self-service.
 
 ---
 
@@ -54,14 +54,29 @@ Paste a webhook URL and the guild's Discord is wired in: per-event webhooks, rol
 ### Player portal
 Players don't need an account. They enter their in-game UID and can update their power, request a guild transfer, and submit their scores for active events. Submissions arrive as pending for officers to approve.
 
-### Push notifications
-Members can opt in to push notifications on their device and receive event reminders even when they're not in the app.
+### Roster scanning (OCR)
+Rather than retyping a roster, officers upload a screenshot of the in-game member list or a metrics panel. It is transcribed automatically, matched against the existing roster, and presented as a diff — joins, departures, renames and power changes — for the officer to accept or reject. The image itself is never stored; only the transcribed text is cached, briefly, so re-submitting the same screenshot costs nothing.
+
+### Migration Hub
+A wiki for cross-server intelligence during server migrations: pages scoped to a guild or to a whole server, categorised (recruitment, diplomacy, intel), with comments and live updates. It is the largest feature in the app and, until now, the least documented.
+
+### Badges
+A catalog of 45 badges computed from real participation and progression — earned state, progress, and what is left to do for each one.
+
+### Bug tickets
+Anyone can file a bug report from inside the app; it lands in a console the super admin triages, and is relayed to Discord.
+
+### Audit log
+Administrative actions are recorded with who, what, when and which guild, and are browsable by the super admin. Entries are kept for 12 months.
+
+### Contextual help
+Small (i) buttons throughout the interface open plain-English guidance in place, so a new officer does not need a manual.
 
 ### Multi-guild support
-One platform, many guilds. Each guild is completely isolated, with its own members, events, settings, and subscription.
+One platform, many guilds — 26 of them today, sharing nothing. Each guild is completely isolated, with its own members, events and settings, enforced in the database rather than only in the interface. Creating a guild is self-service.
 
-### Subscriptions
-Each guild subscribes independently, with plans from one month to lifetime, purchased securely in the app. Renewals stack on the remaining time. If a subscription expires, the guild switches to read-only until it renews.
+### Free, with no payment surface
+The app is free for every guild. There is no checkout, no subscription, no donation mechanism, and no payment data is held or transmitted anywhere. Nothing is, or ever has been, gated behind a paid tier.
 
 ---
 
@@ -80,15 +95,21 @@ Each guild subscribes independently, with plans from one month to lifetime, purc
 
 | Role | What they can do |
 |------|------------------|
-| **Guild Admin** | Full management of their guild: events, squads, members, sanctions, Discord settings, subscription. |
+| **Super Admin** | Platform-wide: every guild, account provisioning, the audit log and the bug-ticket console. |
+| **Server Admin** | Every guild on one game server. |
+| **Guild Admin** | Full management of their guild: events, squads, members, sanctions, Discord settings. |
 | **Member** | Read-only access: overview, members, stats, history. |
 | **Player (portal)** | No account needed. Submits scores, updates power, requests transfers via their in-game UID. |
+
+A role is never read from the browser. It is resolved from the signed session token and re-checked in the database on every read and write, so changing it locally changes nothing.
 
 ---
 
 ## About the project
 
-This project was developed entirely by me, with no third-party assets. It is a lightweight web app built with plain JavaScript, a custom design system, a database and serverless backend, and an automated test suite for the core logic (statistics, rankings, subscriptions, access control). It is designed to be fast, easy to maintain, and simple to deploy.
+This project was developed entirely by me, with no third-party assets. It is a web app built in plain TypeScript with no UI framework, a custom design system, a Postgres database with serverless functions, and an automated test suite covering the core logic — statistics, rankings, access control, tenant isolation — plus end-to-end tests that drive the real production bundle rather than a development server.
+
+It is also deliberately light on the browser: no cookies, no analytics, no tracking of any kind, and no service worker. What it stores about players and how long it keeps it is set out in the [Privacy Policy](privacy.html).
 
 ---
 

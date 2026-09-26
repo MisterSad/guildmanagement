@@ -21,6 +21,10 @@ Whenever major design decisions, patterns, or critical bug resolutions are estab
 | [ADR-012](./ADR-012-sha256-ocr-deduplication-cache.md) | SHA-256 OCR Deduplication Cache for Gemini Vision | **Accepted** | 2026-09-20 |
 | [ADR-013](./ADR-013-wcag-2-2-aa-dialog-accessibility-and-focus-trap.md) | WCAG 2.2 AA Modal Dialog Accessibility & Focus Trap | **Accepted** | 2026-09-20 |
 | [ADR-014](./ADR-014-root-scripts-hygiene-and-discord-webhook-resilience.md) | Root Scripts Hygiene, Build Exclusion & Discord Webhook Rate-Limiting | **Accepted** | 2026-09-20 |
+| [ADR-015](./ADR-015-permanently-free-no-payment-surface.md) | Permanently Free — No Payment Surface of Any Kind | **Accepted** | 2026-09-26 |
+| [ADR-016](./ADR-016-pwa-and-web-push-retirement.md) | Retiring the PWA and Web Push — and the Ordering That Makes It Safe | **Accepted** | 2026-09-26 |
+| [ADR-017](./ADR-017-deployed-edge-functions-must-be-versioned.md) | Every Deployed Edge Function Must Have Its Source Versioned Here | **Accepted** | 2026-09-27 |
+| [ADR-018](./ADR-018-gdpr-data-inventory-retention-and-erasure.md) | GDPR — Data Inventory, Retention and Erasure | **Accepted** | 2026-09-27 |
 
 ---
 
