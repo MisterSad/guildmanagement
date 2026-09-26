@@ -25,6 +25,8 @@ const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const exists = (p) => fs.existsSync(path.join(rootDir, p));
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+/** For `#`-commented files: shell scripts and TOML. */
+const stripHashComments = (s) => s.replace(/^\s*#.*$/gm, '');
 
 const MIGRATION = 'supabase/migrations/20260926180000_drop_payments.sql';
 
@@ -44,8 +46,13 @@ describe('no payment code ships', () => {
   });
 
   it('declares no payment function in config.toml or the deploy hook', () => {
-    const config = read('supabase/config.toml');
-    const hook = read('scripts/hooks/pre-push');
+    // Comments are stripped first. Both files legitimately NAME these slugs in
+    // prose explaining that they were removed -- the hook's comment records that
+    // its hardcoded list had gone stale precisely because it still carried them
+    // -- and a raw search flags correct documentation as a regression. This has
+    // now bitten in five separate suites; strip, then assert.
+    const config = stripHashComments(read('supabase/config.toml'));
+    const hook = stripHashComments(read('scripts/hooks/pre-push'));
     for (const slug of ['gm-create-order', 'gm-order-status', 'gm-stripe-webhook', 'gm-revolut-webhook']) {
       expect(config, `config.toml still declares ${slug}`).not.toContain(slug);
       expect(hook, `the pre-push hook still deploys ${slug}`).not.toContain(slug);

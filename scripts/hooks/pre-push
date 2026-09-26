@@ -18,6 +18,18 @@
 #   1  → deploy failed (push is BLOCKED to avoid pushing broken state)
 #
 # Requires: npx supabase (project already linked via supabase link)
+#
+# NOTE ON verify_jwt — do not add `--no-verify-jwt` back.
+#   This hook used to pass that flag on every single deploy, forcing
+#   verify_jwt = false onto ALL functions regardless of what
+#   `supabase/config.toml` declares. That is the root cause of audit finding M1:
+#   `admin-accounts` -- the role provisioner -- ran publicly while both
+#   config.toml and ARCHITECTURE.md said it was JWT-gated. Seven functions are
+#   declared `verify_jwt = true`, and the blanket flag would have made every one
+#   of them public again on the next push to main.
+#   Without the flag the CLI reads the per-function value from config.toml,
+#   which is where that decision belongs. `tests/deploy_hook.test.js` fails if
+#   the flag comes back.
 
 set -euo pipefail
 
@@ -93,34 +105,28 @@ if [[ "$DEPLOY_ALL" == true ]]; then
   echo "  → _shared/ changed — deploying ALL functions"
   echo ""
 
-  # All known functions (update this list when adding a new function)
-  ALL_FUNCTIONS=(
-    admin-accounts
-    auth-discord
-    auth-login
-    auth-passkey
-    discord-bot-interactions
-    discord-profile-verification
-    discord-webhook-proxy
-    event-reminders
-    guild-data-export
-    guild-request
-    member-portal
-    migration-summary
-    ocr-guild-members
-    player-register
-    tickets
-  )
+  # Enumerated from the filesystem, never hand-maintained. The previous version
+  # was a hardcoded list, and the copy installed in .git/hooks had gone stale:
+  # it still named gm-create-order / gm-order-status / gm-stripe-webhook, which
+  # phase 1 deleted, and did not know about auth-discord. Deploying a function
+  # whose directory no longer exists fails, and a failure here BLOCKS the push --
+  # so a stale list does not degrade gracefully, it stops releases.
+  ALL_FUNCTIONS=()
+  while IFS= read -r d; do
+    fn=$(basename "$d")
+    [[ "$fn" == _* ]] && continue
+    ALL_FUNCTIONS+=("$fn")
+  done < <(find "${FUNCTIONS_DIR}" -mindepth 1 -maxdepth 1 -type d | sort)
 
   FAILED=()
   for fn in "${ALL_FUNCTIONS[@]}"; do
     printf "  Deploying %-35s" "${fn}..."
-    if npx supabase functions deploy "$fn" --no-verify-jwt 2>/dev/null 1>/dev/null; then
+    if npx supabase functions deploy "$fn" 2>/dev/null 1>/dev/null; then
       echo "✅"
     else
       # Retry once (cold network, transient error)
       sleep 2
-      if npx supabase functions deploy "$fn" --no-verify-jwt 2>/dev/null 1>/dev/null; then
+      if npx supabase functions deploy "$fn" 2>/dev/null 1>/dev/null; then
         echo "✅ (retry)"
       else
         echo "❌ FAILED"
@@ -148,11 +154,11 @@ else
   FAILED=()
   for fn in "${DEPLOY_FUNCTIONS[@]}"; do
     printf "  Deploying %-35s" "${fn}..."
-    if npx supabase functions deploy "$fn" --no-verify-jwt 2>/dev/null 1>/dev/null; then
+    if npx supabase functions deploy "$fn" 2>/dev/null 1>/dev/null; then
       echo "✅"
     else
       sleep 2
-      if npx supabase functions deploy "$fn" --no-verify-jwt 2>/dev/null 1>/dev/null; then
+      if npx supabase functions deploy "$fn" 2>/dev/null 1>/dev/null; then
         echo "✅ (retry)"
       else
         echo "❌ FAILED"
