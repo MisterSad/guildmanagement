@@ -19,7 +19,7 @@
 
 import { eventScoringKey } from '../../../core/config/events';
 import { getWeekStart, formatWeek } from '../../../core/utils/date';
-import { formatNumber, avatarInit, escapeHTML } from '../../../core/utils/text';
+import { formatNumber, avatarInit, escapeHTML, formatPower } from '../../../core/utils/text';
 import { getPowerTier } from '../../../core/scoring/combat';
 import {
   StatsService,
@@ -32,7 +32,13 @@ import {
   type MemberRow,
   type SquadRow,
   type StatsMembersPayload,
-  type AggregateMemberRow
+  type AggregateMemberRow,
+  type StatsHealthPayload,
+  type HealthWar,
+  type HealthPowerPoint,
+  type HealthWeek,
+  type ReliabilityRow,
+  summariseEngagement
 } from '../stats.service';
 
 // ── Legacy global adapter (typed, no writes) ──────────────────────────────────
@@ -168,13 +174,12 @@ function shortDate(iso?: string | null): string {
   return String(iso).slice(5, 10);
 }
 
-function formatBigNum(n?: number | null): string {
-  const value = n || 0;
-  if (value >= 1e9) return (value / 1e9).toFixed(1).replace('.0', '') + 'B';
-  if (value >= 1e6) return (value / 1e6).toFixed(1).replace('.0', '') + 'M';
-  if (value >= 1e3) return (value / 1e3).toFixed(1).replace('.0', '') + 'k';
-  return String(value);
-}
+// formatBigNum() lived here: a byte-level duplicate of formatBigNumber() in
+// src/modules/overview/overview.service.ts, and both duplicated
+// formatCompactNumber()/formatPower() in src/core/utils/text.ts, which are the
+// intended helpers. The Health tab uses formatPower(); the last caller of this
+// copy went with the old cockpit.
+
 
 const STATS_CACHE_TTL_MS = 15000;
 
@@ -532,289 +537,335 @@ export class StatsView {
 
   // ── 1. VUE 1 : COCKPIT EXÉCUTIF ─────────────────────────────────────────────
 
+  /**
+   * The Health tab: is my guild getting better or worse, and where are we
+   * losing?
+   *
+   * Phase S4. This used to be the "Guild Cockpit", and it computed everything
+   * in the browser from the raw `gm_stats_data` dump. Two of its cards were
+   * built on sand: "Weekly participation rate" divided by TODAY's roster size,
+   * so every removal silently rewrote every historical bar, and "Members
+   * engaged per event type" counted a member who attended one Arms Race day out
+   * of eighty the same as one who attended all eighty.
+   *
+   * What it shows now is what the database already knew and the page never
+   * asked for: the war record, the power curve, and who is actually turning up.
+   */
   private async renderCockpitView(): Promise<void> {
     const state = this.state;
     const containers = document.querySelectorAll('.stats-leaderboard-area');
     if (!containers || !containers.length) return;
-    const container = containers[0] as HTMLElement;
-
+    const container = containers[0];
     const tabsHtml = this.getTabsHtml();
-    container.innerHTML = tabsHtml + '<div class="gm-empty" style="padding:3.5rem 1.5rem;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading guild metrics...</div></div>';
-    this.wireModeTabs(container);
 
     const db = legacy.getDb();
-    if (!db) {
+    if (!db || !state.activeGuild) {
       container.innerHTML = tabsHtml + '<div class="gm-empty" style="padding:3rem;"><div class="gm-empty-title">Database unavailable.</div></div>';
       this.wireModeTabs(container);
       return;
     }
 
+    container.innerHTML = tabsHtml + '<div class="gm-empty" style="padding:3rem;"><div class="gm-empty-title">Loading guild metrics...</div></div>';
+
     const g = state.activeGuild;
     try {
-      const [membersRes, statusRes, statsDataRes, transRes] = await Promise.all([
-        db.from('guild_members').select('pseudo, overall_power, role, created_at').eq('guild', g),
-        db.from('event_status').select('event_name, session_id').eq('guild', g).eq('is_active', true),
-        db.rpc('gm_stats_data', { p_guild: g }),
-        db.from('guild_transfers').select('pseudo, source_guild, target_guild, status, created_at').eq('status', 'pending').eq('target_guild', g)
+      const recentWeeks = state.allWeeks.slice(0, 4);
+      const [healthRes, membersRes, rosterRes, transRes] = await Promise.all([
+        db.rpc('gm_stats_health', { p_guild: g, p_weeks: 8 }),
+        db.rpc('gm_stats_members', { p_guild: g, p_weeks: recentWeeks.length ? recentWeeks : null, p_trend: false }),
+        db.from('guild_members').select('pseudo, overall_power, role').eq('guild', g),
+        db.from('guild_transfers').select('pseudo, source_guild, status').eq('status', 'pending').eq('target_guild', g)
       ]);
 
-      const members: any[] = membersRes.data || [];
-      const rawStats = statsDataRes.data || null;
-      const parts: any[] = (rawStats && rawStats.participants) || [];
-      let validParts: any[] = parts.filter((r) => !r.is_pending);
-      validParts = keepOnlyPastOrCurrent(validParts);
+      if (healthRes.error) throw healthRes.error;
+      const health = (healthRes.data || {}) as StatsHealthPayload;
+      if (health.ok === false) throw new Error(health.error || 'stats_health_failed');
 
-      const pending = parts.filter((r) => r.is_pending);
-      const activeEvents = statusRes.data || [];
+      const membersPayload = (membersRes.data || {}) as StatsMembersPayload;
+      const coeffs = await this.getConfiguredCoeffs();
+      const reliability = membersPayload.ok === false
+        ? []
+        : StatsService.computeReliabilityLeaderboard(membersPayload, coeffs);
+      const segments = summariseEngagement(reliability);
+
+      const roster: any[] = rosterRes.data || [];
       const pendingTransfers: any[] = transRes.data || [];
 
-      // Macro Power
-      const totalPower = members.reduce((a, m) => a + (parseInt(m.overall_power, 10) || 0), 0);
-      const activeWithPower = members.filter((m) => (parseInt(m.overall_power, 10) || 0) > 0);
-      const avgPower = activeWithPower.length > 0 ? Math.round(totalPower / activeWithPower.length) : 0;
-
-      // Power Tiers (S/A/B/C/D)
-      const maxPower = members.reduce((a, m) => Math.max(a, parseInt(m.overall_power, 10) || 0), 0);
-      const tiers: Record<string, number> = { S: 0, A: 0, B: 0, C: 0, D: 0 };
-      members.forEach((m) => {
-        const tier = legacy.getPowerTier(m.overall_power, maxPower);
-        if (tiers[tier] !== undefined) tiers[tier]++;
-      });
-
-      const sortedByPower = activeWithPower.slice().sort((a, b) => (parseInt(b.overall_power, 10) || 0) - (parseInt(a.overall_power, 10) || 0));
-      const pctOfTotal = (n: number) => {
-        if (totalPower <= 0) return 0;
-        return Math.round(sortedByPower.slice(0, n).reduce((a, m) => a + (parseInt(m.overall_power, 10) || 0), 0) / totalPower * 100);
-      };
-      const top5Share = pctOfTotal(5);
-      const top10Share = pctOfTotal(10);
-
-      const tierOrder = ['S', 'A', 'B', 'C', 'D'];
-      const tierColors: Record<string, string> = { S: '#fbbf24', A: '#f87171', B: '#c084fc', C: '#60a5fa', D: '#34d399' };
-      let maxTier = 0;
-      tierOrder.forEach((k) => { if (tiers[k] > maxTier) maxTier = tiers[k]; });
-      const tierBars = tierOrder.map((k) => {
-        const pctW = maxTier > 0 ? Math.round(tiers[k] / maxTier * 100) : 0;
-        return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + k + '</span>' +
-          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:' + tierColors[k] + ';"></div></div>' +
-          '<span class="gm-kpi-value">' + tiers[k] + '</span></div>';
-      }).join('');
-
-      // Attendance & Inactivity Analysis (8w window)
-      const weekSet: Record<string, boolean> = {};
-      validParts.forEach((r) => { if (r.week_start) weekSet[r.week_start] = true; });
-      const allWeeks = Object.keys(weekSet).sort((a, b) => b.localeCompare(a));
-      const lastWeeks = allWeeks.slice(0, 8).reverse();
-
-      const perWeek: Record<string, { present: number; memberCount: number; rate: number }> = {};
-      lastWeeks.forEach((w) => {
-        const present: Record<string, Record<string, boolean>> = {};
-        let presentCount = 0;
-        validParts.forEach((r) => {
-          if (r.week_start !== w) return;
-          const attended = (r.participated > 0) || (r.sub_present === true);
-          if (!attended) return;
-          const key = legacy.eventScoringKey(r.event_name, r.session_id, r.week_start);
-          if (!key) return;
-          const norm = normalizePseudo(r.pseudo);
-          if (!present[norm]) { present[norm] = {}; presentCount++; }
-          present[norm][key] = true;
-        });
-        perWeek[w] = {
-          present: presentCount,
-          memberCount: members.length,
-          rate: members.length > 0 ? Math.round(presentCount / members.length * 100) : 0
-        };
-      });
-
-      // Mobilisation par type d'événement (8w)
-      const typeCounts: Record<string, number> = { 'SvS': 0, 'GvG': 0, 'Shadowfront': 0, 'Arms Race': 0, 'DTR': 0 };
-      const typeNames: Record<string, string> = { 'SvS': 'SvS', 'GvG': 'GvG', 'Shadowfront': 'Shadowfront', 'Arms Race': 'Arms Race', 'DTR': 'DTR' };
-      const typeMembers: Record<string, Record<string, boolean>> = {};
-      Object.keys(typeCounts).forEach((k) => { typeMembers[k] = {}; });
-      validParts.forEach((r) => {
-        if (lastWeeks.indexOf(r.week_start) === -1) return;
-        const attended = (r.participated > 0) || (r.sub_present === true);
-        if (!attended) return;
-        const key = legacy.eventScoringKey(r.event_name, r.session_id, r.week_start);
-        const prefix = key.split('|')[0];
-        let t: string | null = null;
-        if (prefix === 'SvS') t = 'SvS';
-        else if (prefix === 'GvG') t = 'GvG';
-        else if (prefix === 'Shadowfront') t = 'Shadowfront';
-        else if (prefix === 'Arms Race') t = 'Arms Race';
-        else if (prefix === 'DTR') t = 'DTR';
-        if (!t) return;
-        typeMembers[t][normalizePseudo(r.pseudo)] = true;
-      });
-      Object.keys(typeCounts).forEach((k) => {
-        typeCounts[k] = Object.keys(typeMembers[k]).length;
-      });
-      const typeOrder = ['GvG', 'SvS', 'Shadowfront', 'Arms Race', 'DTR'];
-      const typeColors: Record<string, string> = { 'GvG': '#60a5fa', 'SvS': '#fbbf24', 'Shadowfront': '#c084fc', 'Arms Race': '#f87171', 'DTR': '#34d399' };
-      let maxType = 0;
-      typeOrder.forEach((k) => { if (typeCounts[k] > maxType) maxType = typeCounts[k]; });
-      const typeBars = typeOrder.map((k) => {
-        const pctW = maxType > 0 ? Math.round(typeCounts[k] / maxType * 100) : 0;
-        return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + typeNames[k] + '</span>' +
-          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:' + (typeColors[k] || '#a78bfa') + ';"></div></div>' +
-          '<span class="gm-kpi-value">' + typeCounts[k] + ' members</span></div>';
-      }).join('');
-
-      const activeWindow = lastWeeks.length > 0 ? lastWeeks.slice(-2) : [];
-      const activeMembers: Record<string, boolean> = {};
-      validParts.forEach((r) => {
-        if (activeWindow.indexOf(r.week_start) === -1) return;
-        const attended = (r.participated > 0) || (r.sub_present === true);
-        if (!attended) return;
-        activeMembers[normalizePseudo(r.pseudo)] = true;
-      });
-      let inactive = members.filter((m) => !activeMembers[normalizePseudo(m.pseudo)]);
-
-      const lastSeen: Record<string, string> = {};
-      validParts.forEach((r) => {
-        if ((r.participated > 0) || (r.sub_present === true)) {
-          const n = normalizePseudo(r.pseudo);
-          if (!lastSeen[n] || r.week_start > lastSeen[n]) lastSeen[n] = r.week_start;
-        }
-      });
-      const inactiveRows = inactive.map((m) => {
-        return { pseudo: m.pseudo, power: parseInt(m.overall_power, 10) || 0, lastSeen: lastSeen[normalizePseudo(m.pseudo)] || null };
-      }).sort((a, b) => {
-        const la = a.lastSeen ? a.lastSeen : '';
-        const lb = b.lastSeen ? b.lastSeen : '';
-        if (la !== lb) return la < lb ? -1 : 1;
-        return b.power - a.power;
-      });
-
-      const weekBars = lastWeeks.map((w) => {
-        const d = perWeek[w];
-        const weekNum = getWeekNumber(w);
-        const weekLabel = (weekNum ? 'Week ' + weekNum : shortDate(w));
-        const pctRate = d.rate;
-        const barColor = pctRate >= 70 ? '#34d399' : (pctRate >= 40 ? '#a78bfa' : '#f87171');
-        return '<div class="gm-kpi-row" style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">' +
-          '<span class="gm-kpi-label" style="min-width:90px; font-weight:600; font-size: var(--fs-sm); color:var(--fg);">' + esc(weekLabel) + '</span>' +
-          '<div class="gm-kpi-bar-track" style="flex:1; height:22px; background:var(--bg-3); border-radius:6px; overflow:hidden; position:relative;">' +
-          '<div class="gm-kpi-bar" style="width:' + pctRate + '%; height:100%; background:' + barColor + '; border-radius:6px; transition:width .4s ease;"></div>' +
-          '</div>' +
-          '<span class="gm-kpi-value" style="min-width:120px; text-align:right; font-weight:700; font-size: var(--fs-base); font-family:var(--font-display); color:var(--fg);">' +
-            pctRate + '% <span style="font-size: var(--fs-sm); font-weight:500; color:var(--fg-dim);">(' + d.present + '/' + d.memberCount + ')</span>' +
-          '</span>' +
-        '</div>';
-      }).join('');
-
-      // Roster structure
-      const roles: Record<string, number> = { R5: 0, R4: 0, R3: 0, R2: 0, R1: 0 };
-      members.forEach((m) => { const r = m.role || 'R1'; roles[r] = (roles[r] || 0) + 1; });
-      const roleOrder = ['R5', 'R4', 'R3', 'R2', 'R1'];
-      let maxRole = 0;
-      roleOrder.forEach((k) => { if (roles[k] > maxRole) maxRole = roles[k]; });
-      const roleBars = roleOrder.map((k) => {
-        const pctW = maxRole > 0 ? Math.round(roles[k] / maxRole * 100) : 0;
-        return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + k + '</span>' +
-          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pctW + '%; background:#60a5fa;"></div></div>' +
-          '<span class="gm-kpi-value">' + roles[k] + '</span></div>';
-      }).join('');
-
-      // Inactive HTML Cards
-      const inactiveHtml = inactiveRows.length === 0
-        ? '<div class="gm-empty" style="padding:2.5rem 1.5rem; text-align:center;">' +
-            '<i class="ph ph-check-circle gm-icon" style="font-size: var(--fs-4xl); color:var(--accent-mint); margin-bottom:.5rem; display:block;"></i>' +
-            '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg);">Every member participated in the last 2 weeks</div>' +
-            '<div style="font-size: var(--fs-base); color:var(--fg-dim); margin-top:0.25rem;">No inactive members detected on the roster.</div>' +
-          '</div>'
-        : '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:0.85rem; margin-top:0.5rem;">' +
-            inactiveRows.slice(0, 12).map((m) => {
-              const initial = legacy.avatarInit(m.pseudo);
-              const seenText = m.lastSeen ? 'Seen ' + shortDate(m.lastSeen) : 'Never participated';
-              const pwr = formatBigNum(m.power);
-
-              return '<div style="background:var(--bg-2); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:0.85rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">' +
-                '<div style="display:flex; align-items:center; gap:0.85rem; min-width:0; flex:1;">' +
-                  '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size: var(--fs-md); font-weight:700; background:oklch(0.25 0.08 20); color:#f87171; flex-shrink:0;">' + esc(initial) + '</div>' +
-                  '<div style="min-width:0; flex:1;">' +
-                    '<div style="font-weight:700; color:var(--fg); font-size: var(--fs-md); word-break:break-word;">' + esc(m.pseudo) + '</div>' +
-                    '<div style="font-size: var(--fs-sm); color:var(--fg-dim); display:flex; align-items:center; gap:0.35rem; margin-top:2px;">' +
-                      '<i class="ph ph-lightning" style="color:var(--accent-amber);"></i> ' + esc(pwr) +
-                    '</div>' +
-                  '</div>' +
-                '</div>' +
-                '<div style="flex-shrink:0;">' +
-                  '<span style="font-size: var(--fs-sm); font-weight:600; padding:3px 8px; border-radius:99px; background:oklch(0.25 0.08 20); color:#f87171; border:1px solid oklch(0.45 0.15 20 / 0.4); display:inline-flex; align-items:center; gap:0.35rem; white-space:nowrap;">' +
-                    '<i class="ph ph-warning-circle"></i> ' + esc(seenText) +
-                  '</span>' +
-                '</div>' +
-              '</div>';
-            }).join('') +
-          '</div>' +
-          (inactiveRows.length > 12 ? '<div style="margin-top:0.75rem; text-align:center; font-size: var(--fs-sm); color:var(--fg-dim); font-weight:600;">+ ' + (inactiveRows.length - 12) + ' more inactive members</div>' : '');
-
-      // Operations List
-      const pendingHtml = pending.length === 0
-        ? '<div class="gm-empty" style="padding:1rem;">No pending score submissions.</div>'
-        : pending.slice(0, 10).map((p) => {
-            return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + esc(p.pseudo) + '</span><span class="gm-kpi-value">' + esc(p.event_name) + ' (' + shortDate(p.week_start) + ')</span></div>';
-          }).join('');
-
-      const transHtml = pendingTransfers.length === 0
-        ? '<div class="gm-empty" style="padding:1rem;">No pending transfer requests.</div>'
-        : pendingTransfers.slice(0, 10).map((t) => {
-            return '<div class="gm-kpi-row"><span class="gm-kpi-label">' + esc(t.pseudo) + '</span><span class="gm-kpi-value">from ' + esc(t.source_guild) + '</span></div>';
-          }).join('');
-
       const html = tabsHtml +
-        '<div class="gm-kpi-grid">' +
-          kpiTile('Total Power', formatBigNum(totalPower), 'ph-gauge', 'stat-theme-cyan') +
-          kpiTile('Avg Power (active)', formatBigNum(avgPower), 'ph-chart-line', 'stat-theme-lime') +
-          kpiTile('Inactive (2w+)', inactiveRows.length, 'ph-user-minus', inactiveRows.length > 5 ? 'stat-theme-coral' : 'stat-theme-mint') +
-          kpiTile('Pending score approvals', pending.length, 'ph-hourglass', pending.length > 0 ? 'stat-theme-coral' : 'stat-theme-mint') +
+        this.renderHealthHeadline(health, segments, reliability) +
+        this.renderEngagementCard(segments, reliability, recentWeeks.length) +
+        '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:.85rem; margin-top:.85rem;">' +
+          this.renderWarCard(health) +
+          this.renderPowerCard(health) +
         '</div>' +
-
-        '<div class="gm-kpi-grid" style="margin-top:.85rem;">' +
-          '<div class="gm-kpi-card" style="margin-top:0;"><div class="gm-kpi-card-title"><i class="ph ph-chart-line-up"></i> Weekly participation rate</div>' +
-            '<div class="gm-kpi-card-body">' + weekBars + '</div>' +
-          '</div>' +
-          '<div class="gm-kpi-card" style="margin-top:0;"><div class="gm-kpi-card-title"><i class="ph ph-chart-pie"></i> Members engaged per event type</div>' +
-            '<div class="gm-kpi-card-body">' + typeBars + '</div>' +
-          '</div>' +
+        '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:.85rem; margin-top:.85rem;">' +
+          this.renderParticipationCard(health) +
+          this.renderRosterCard(roster) +
         '</div>' +
-
-        '<div class="gm-kpi-card" style="margin-top:.85rem;"><div class="gm-kpi-card-title"><i class="ph ph-user-minus"></i> Members inactive for 2+ weeks</div>' +
-          '<div class="gm-kpi-card-body">' + inactiveHtml + '</div>' +
-        '</div>' +
-
-        '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:.85rem; margin-top:.85rem;">' +
-          '<div class="gm-kpi-card" style="margin-top:0;"><div class="gm-kpi-card-title"><i class="ph ph-chart-pie"></i> Power distribution by tier</div>' +
-            '<div class="gm-kpi-card-body">' + tierBars + '</div>' +
-          '</div>' +
-          '<div class="gm-kpi-card" style="margin-top:0;"><div class="gm-kpi-card-title"><i class="ph ph-user-list"></i> Roster summary</div>' +
-            '<div class="gm-kpi-card-body">' +
-              '<div class="gm-kpi-inline" style="margin-bottom:.85rem;">' +
-                kpiMini('Members', members.length) + kpiMini('With power', activeWithPower.length) + kpiMini('No power (0)', members.length - activeWithPower.length) +
-              '</div>' +
-              '<div style="font-weight:700; font-size: var(--fs-sm); margin-bottom:.35rem; color:var(--fg-dim);">Role structure</div>' +
-              roleBars +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="gm-kpi-card" style="margin-top:.85rem;"><div class="gm-kpi-card-title"><i class="ph ph-hourglass"></i> Pending Operations</div>' +
-          '<div class="gm-kpi-card-body">' +
-            '<div style="font-weight:700; font-size: var(--fs-sm); margin-bottom:.35rem; color:var(--fg-dim);">Pending score approvals (' + pending.length + ')</div>' +
-            pendingHtml +
-            '<div style="font-weight:700; font-size: var(--fs-sm); margin-top:.75rem; margin-bottom:.35rem; color:var(--fg-dim);">Pending transfer requests (' + pendingTransfers.length + ')</div>' +
-            transHtml +
-          '</div>' +
-        '</div>';
+        this.renderQualityCard(health, pendingTransfers);
 
       container.innerHTML = html;
       this.wireModeTabs(container);
     } catch (err) {
-      console.error('[GM_STATS] Cockpit error', err);
+      console.error('[GM_STATS] Health error', err);
       container.innerHTML = tabsHtml + '<div class="gm-empty" style="padding:3rem;"><div class="gm-empty-title">Failed to load metrics.</div></div>';
       this.wireModeTabs(container);
     }
+  }
+
+  private renderHealthHeadline(
+    health: StatsHealthPayload,
+    segments: Record<string, number>,
+    reliability: ReliabilityRow[]
+  ): string {
+    const measured = reliability.filter((r) => r.reliability !== null) as Array<ReliabilityRow & { reliability: number }>;
+    const median = measured.length
+      ? measured.slice().sort((a, b) => a.reliability - b.reliability)[Math.floor(measured.length / 2)].reliability
+      : null;
+    const pending = (health.quality && health.quality.pending_rows) || 0;
+    return '<div class="gm-kpi-grid">' +
+      kpiTile('Roster', health.roster_size || 0, 'ph-users', 'stat-theme-cyan') +
+      kpiTile('Core members', segments.core || 0, 'ph-shield-check', (segments.core || 0) > 0 ? 'stat-theme-lime' : 'stat-theme-coral') +
+      kpiTile('Dormant', segments.dormant || 0, 'ph-moon', (segments.dormant || 0) > (health.roster_size || 0) / 3 ? 'stat-theme-coral' : 'stat-theme-mint') +
+      kpiTile('Median reliability', median === null ? '—' : median + '%', 'ph-gauge', 'stat-theme-lime') +
+      (pending > 0 ? kpiTile('Pending approvals', pending, 'ph-hourglass', 'stat-theme-coral') : '') +
+    '</div>';
+  }
+
+  /**
+   * Four segments over the last four weeks. The cuts (60 and 30) are calibrated
+   * against production rather than chosen for roundness -- see
+   * ENGAGEMENT_THRESHOLDS in stats.service.ts.
+   */
+  private renderEngagementCard(segments: Record<string, number>, reliability: ReliabilityRow[], weeks: number): string {
+    const order: Array<[string, string, string]> = [
+      ['core', 'Core (60%+)', '#34d399'],
+      ['regular', 'Regular (30-60%)', '#a78bfa'],
+      ['occasional', 'Occasional (under 30%)', '#fbbf24'],
+      ['dormant', 'Dormant (nothing)', '#f87171'],
+      ['unmeasured', 'Not yet measured', 'var(--fg-dim)']
+    ];
+    const total = reliability.length || 1;
+    const bars = order.filter(([key]) => (segments[key] || 0) > 0).map(([key, label, colour]) => {
+      const n = segments[key] || 0;
+      const pct = Math.round((n / total) * 100);
+      return '<div class="gm-kpi-row">' +
+        '<span class="gm-kpi-label">' + esc(label) + '</span>' +
+        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + pct + '%; background:' + colour + ';"></span></span>' +
+        '<span class="gm-kpi-value">' + n + '</span>' +
+      '</div>';
+    }).join('');
+
+    const subtitle = weeks > 0
+      ? 'Weighted reliability over the last ' + weeks + ' week' + (weeks > 1 ? 's' : '')
+      : 'No weeks with data yet';
+
+    return '<div class="gm-kpi-card" style="margin-top:.85rem;">' +
+      '<div class="gm-kpi-card-title"><i class="ph ph-users-three"></i> Engagement</div>' +
+      '<div class="gm-kpi-card-body">' +
+        '<div style="font-size: var(--fs-sm); color:var(--fg-dim); margin-bottom:.6rem;">' + esc(subtitle) + '</div>' +
+        (bars || '<div style="color:var(--fg-dim);">Nothing to measure yet.</div>') +
+      '</div>' +
+    '</div>';
+  }
+
+  /**
+   * War record. The per-day split is the actionable half: it says whether the
+   * guild loses the preparation days or the PvP day. The denominator is days
+   * actually RECORDED -- never assumed to be six.
+   */
+  private renderWarCard(health: StatsHealthPayload): string {
+    const wars = health.war || [];
+    if (!wars.length) {
+      return '<div class="gm-kpi-card" style="margin-top:0;">' +
+        '<div class="gm-kpi-card-title"><i class="ph ph-sword"></i> War record</div>' +
+        '<div class="gm-kpi-card-body"><div style="color:var(--fg-dim);">No war sessions recorded yet. Open one from the SvS or GvG screen to start the record.</div></div>' +
+      '</div>';
+    }
+    const body = wars.map((w: HealthWar) => {
+      const total = w.day_wins + w.day_losses;
+      const pct = total > 0 ? Math.round((w.day_wins / total) * 100) : 0;
+      const colour = pct >= 60 ? '#34d399' : pct >= 40 ? '#fbbf24' : '#f87171';
+      const days = [1, 2, 3, 4, 5, 6].map((d) => {
+        const cell = (w.per_day || {})[String(d)];
+        if (!cell || (cell.won + cell.lost) === 0) {
+          return '<span title="Day ' + d + ': not recorded" style="color:var(--fg-dim);">·</span>';
+        }
+        const won = cell.won >= cell.lost;
+        return '<span title="Day ' + d + ': ' + cell.won + ' won, ' + cell.lost + ' lost" style="color:' +
+          (won ? '#34d399' : '#f87171') + '; font-weight:700;">' + (won ? 'W' : 'L') + '</span>';
+      }).join(' ');
+      return '<div style="margin-bottom:.75rem;">' +
+        '<div class="gm-kpi-row">' +
+          '<span class="gm-kpi-label">' + esc(w.event_name) + '</span>' +
+          '<span class="gm-kpi-value" style="color:' + colour + ';">' + w.day_wins + 'W - ' + w.day_losses + 'L</span>' +
+        '</div>' +
+        '<div style="font-size: var(--fs-sm); color:var(--fg-dim); display:flex; gap:.5rem; align-items:center;">' +
+          '<span>' + w.sessions + ' session' + (w.sessions > 1 ? 's' : '') + '</span>' +
+          '<span style="letter-spacing:.2em; font-family:var(--font-display);">' + days + '</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="gm-kpi-card" style="margin-top:0;">' +
+      '<div class="gm-kpi-card-title"><i class="ph ph-sword"></i> War record</div>' +
+      '<div class="gm-kpi-card-body">' + body +
+        '<div style="font-size: var(--fs-xs); color:var(--fg-dim);">Day 1 to 5 are preparation, day 6 is the battle. A dot means that day was never recorded.</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /**
+   * Power progression. Median, not sum: a guild's first OCR week covers part of
+   * the roster (CLAW went from 11 players scanned to 114 in one week) and a sum
+   * would draw a tenfold jump that never happened. Every point carries the
+   * number of players it is based on.
+   */
+  private renderPowerCard(health: StatsHealthPayload): string {
+    const series = (health.power && health.power.series) || [];
+    if (series.length < 2) {
+      return '<div class="gm-kpi-card" style="margin-top:0;">' +
+        '<div class="gm-kpi-card-title"><i class="ph ph-trend-up"></i> Power progression</div>' +
+        '<div class="gm-kpi-card-body"><div style="color:var(--fg-dim);">' +
+          (series.length === 1
+            ? 'Only one snapshot so far. A second weekly scan will start the curve.'
+            : 'No power snapshots yet. They are written when you run a power or roster scan.') +
+        '</div></div>' +
+      '</div>';
+    }
+    const first = series[0];
+    const last = series[series.length - 1];
+    const growth = first.median > 0 ? Math.round(((last.median - first.median) / first.median) * 1000) / 10 : 0;
+    const peak = series.reduce((a: number, p: HealthPowerPoint) => Math.max(a, p.median), 0) || 1;
+
+    const bars = series.map((p: HealthPowerPoint) => {
+      const pct = Math.round((p.median / peak) * 100);
+      return '<div class="gm-kpi-row">' +
+        '<span class="gm-kpi-label">' + esc(legacy.formatWeek(p.week_start).split(' ')[0]) + '</span>' +
+        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + pct + '%; background:#60a5fa;"></span></span>' +
+        '<span class="gm-kpi-value" title="' + p.players + ' players scanned that week">' + formatPower(p.median) + '</span>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="gm-kpi-card" style="margin-top:0;">' +
+      '<div class="gm-kpi-card-title"><i class="ph ph-trend-up"></i> Power progression</div>' +
+      '<div class="gm-kpi-card-body">' +
+        '<div style="font-size: var(--fs-sm); color:var(--fg-dim); margin-bottom:.6rem;">' +
+          'Median member power, ' + series.length + ' snapshots. ' +
+          '<strong style="color:' + (growth >= 0 ? '#34d399' : '#f87171') + ';">' +
+          (growth >= 0 ? '+' : '') + growth + '%</strong> since ' + esc(first.week_start) +
+          ' (based on ' + first.players + ' to ' + last.players + ' players scanned).' +
+        '</div>' + bars +
+      '</div>' +
+    '</div>';
+  }
+
+  private renderParticipationCard(health: StatsHealthPayload): string {
+    const weeks = health.participation || [];
+    const roster = health.roster_size || 0;
+    if (!weeks.length) {
+      return '<div class="gm-kpi-card" style="margin-top:0;">' +
+        '<div class="gm-kpi-card-title"><i class="ph ph-chart-line-up"></i> Members turning up each week</div>' +
+        '<div class="gm-kpi-card-body"><div style="color:var(--fg-dim);">No weeks with data yet.</div></div>' +
+      '</div>';
+    }
+    const peak = weeks.reduce((a: number, w: HealthWeek) => Math.max(a, w.present_members), 0) || 1;
+    const bars = weeks.slice().reverse().map((w: HealthWeek) => {
+      const pct = Math.round((w.present_members / peak) * 100);
+      const share = roster > 0 ? Math.round((w.present_members / roster) * 100) : 0;
+      const colour = share >= 70 ? '#34d399' : share >= 40 ? '#a78bfa' : '#f87171';
+      return '<div class="gm-kpi-row">' +
+        '<span class="gm-kpi-label">' + esc(legacy.formatWeek(w.week_start).split(' ')[0]) + '</span>' +
+        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + pct + '%; background:' + colour + ';"></span></span>' +
+        '<span class="gm-kpi-value" title="' + w.opportunities + ' events ran that week">' + w.present_members + '</span>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="gm-kpi-card" style="margin-top:0;">' +
+      '<div class="gm-kpi-card-title"><i class="ph ph-chart-line-up"></i> Members turning up each week</div>' +
+      '<div class="gm-kpi-card-body">' + bars +
+        '<div style="font-size: var(--fs-xs); color:var(--fg-dim); margin-top:.5rem;">' +
+          'Distinct members present. The colour compares against today’s roster of ' + roster +
+          '; the count itself does not, because the schema keeps no roster history.' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  private renderRosterCard(roster: any[]): string {
+    const withPower = roster.filter((m) => (parseInt(m.overall_power, 10) || 0) > 0);
+    const maxPower = roster.reduce((a, m) => Math.max(a, parseInt(m.overall_power, 10) || 0), 0);
+    const tiers: Record<string, number> = { S: 0, A: 0, B: 0, C: 0, D: 0 };
+    roster.forEach((m) => {
+      const tier = legacy.getPowerTier(m.overall_power, maxPower);
+      if (tiers[tier] !== undefined) tiers[tier]++;
+    });
+    const tierColours: Record<string, string> = { S: '#fbbf24', A: '#f87171', B: '#c084fc', C: '#60a5fa', D: '#34d399' };
+    const peak = Math.max(...Object.values(tiers), 1);
+    const tierBars = ['S', 'A', 'B', 'C', 'D'].map((t) =>
+      '<div class="gm-kpi-row">' +
+        '<span class="gm-kpi-label">Tier ' + t + '</span>' +
+        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + Math.round((tiers[t] / peak) * 100) + '%; background:' + tierColours[t] + ';"></span></span>' +
+        '<span class="gm-kpi-value">' + tiers[t] + '</span>' +
+      '</div>').join('');
+
+    const roles: Record<string, number> = {};
+    roster.forEach((m) => { const r = m.role || 'R1'; roles[r] = (roles[r] || 0) + 1; });
+    const rolePeak = Math.max(...Object.values(roles), 1);
+    const roleBars = Object.keys(roles).sort().reverse().map((r) =>
+      '<div class="gm-kpi-row">' +
+        '<span class="gm-kpi-label">' + esc(r) + '</span>' +
+        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + Math.round((roles[r] / rolePeak) * 100) + '%; background:var(--accent);"></span></span>' +
+        '<span class="gm-kpi-value">' + roles[r] + '</span>' +
+      '</div>').join('');
+
+    return '<div class="gm-kpi-card" style="margin-top:0;">' +
+      '<div class="gm-kpi-card-title"><i class="ph ph-user-list"></i> Roster</div>' +
+      '<div class="gm-kpi-card-body">' +
+        '<div class="gm-kpi-inline" style="margin-bottom:.85rem;">' +
+          kpiMini('Members', roster.length) +
+          kpiMini('With power', withPower.length) +
+          kpiMini('No power', roster.length - withPower.length) +
+        '</div>' +
+        '<div style="font-weight:700; font-size: var(--fs-sm); margin-bottom:.35rem; color:var(--fg-dim);">Power tiers</div>' + tierBars +
+        '<div style="font-weight:700; font-size: var(--fs-sm); margin:.75rem 0 .35rem; color:var(--fg-dim);">Roles</div>' + roleBars +
+      '</div>' +
+    '</div>';
+  }
+
+  /**
+   * Every other number on this page is a function of how completely the guild
+   * records its events. Without this an admin reading 16% Arms Race attendance
+   * cannot tell "nobody plays it" from "nobody records it".
+   */
+  private renderQualityCard(health: StatsHealthPayload, pendingTransfers: any[]): string {
+    const q = health.quality || { pending_rows: 0, weeks_with_data: 0, last_week: null };
+    const cov = health.coverage || {};
+    const members = cov.members || 0;
+    const sparse = ['tech_power', 'champion_power', 'crew_power', 'flagship_power', 'fleet_rating']
+      .map((k) => ({ k, n: cov[k] || 0 }))
+      .filter((x) => members > 0 && x.n / members < 0.6);
+
+    const label: Record<string, string> = {
+      tech_power: 'Tech', champion_power: 'Champions', crew_power: 'Crew',
+      flagship_power: 'Flagship', fleet_rating: 'Fleet'
+    };
+
+    return '<div class="gm-kpi-card" style="margin-top:.85rem;">' +
+      '<div class="gm-kpi-card-title"><i class="ph ph-seal-check"></i> How complete is this data?</div>' +
+      '<div class="gm-kpi-card-body">' +
+        '<div class="gm-kpi-inline" style="margin-bottom:.6rem;">' +
+          kpiMini('Weeks recorded', q.weeks_with_data) +
+          kpiMini('Last week', q.last_week ? String(q.last_week) : '—') +
+          kpiMini('Awaiting approval', q.pending_rows) +
+          kpiMini('Pending transfers', pendingTransfers.length) +
+        '</div>' +
+        (sparse.length
+          ? '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">Scanned for fewer than 60% of members, so they are left off the cards above: ' +
+              sparse.map((x) => esc(label[x.k] || x.k) + ' (' + Math.round((x.n / members) * 100) + '%)').join(', ') + '.</div>'
+          : '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">Every metric is scanned for most of the roster.</div>') +
+      '</div>' +
+    '</div>';
   }
 
   // ── 2. VUE 2 & 3 : LEADERBOARD & EVENT ANALYTICS ────────────────────────────

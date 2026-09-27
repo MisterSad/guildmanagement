@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { statsView } from '../src/modules/stats/views/StatsView';
-import { mockStatsMembers } from './helpers/stats-aggregate.js';
+import { mockStatsMembers, mockStatsHealth } from './helpers/stats-aggregate.js';
 
 // Bridge the /src StatsView onto the legacy window.GM_STATS surface, exactly
 // like src/main.ts does in production, so the historical suite keeps exercising
@@ -407,10 +407,29 @@ describe('GM_STATS cockpit', () => {
         // ZombieZzz never participated -> inactive
     ];
 
+    // war_sessions and player_metrics_history have no raw-row equivalent in
+    // these fixtures, so the Health RPC is given them directly.
+    const WAR_FIXTURE = [
+        { event_name: 'GvG', sessions: 1, day_wins: 6, day_losses: 0,
+          per_day: { 1: { won: 1, lost: 0 }, 2: { won: 1, lost: 0 }, 3: { won: 1, lost: 0 },
+                     4: { won: 1, lost: 0 }, 5: { won: 1, lost: 0 }, 6: { won: 1, lost: 0 } } },
+        { event_name: 'SvS', sessions: 1, day_wins: 1, day_losses: 5,
+          per_day: { 1: { won: 0, lost: 1 }, 2: { won: 0, lost: 1 }, 3: { won: 0, lost: 1 },
+                     4: { won: 0, lost: 1 }, 5: { won: 0, lost: 1 }, 6: { won: 1, lost: 0 } } }
+    ];
+    const POWER_FIXTURE = [
+        { week_start: W1, players: 4, median: 35000000, avg: 38750000 },
+        { week_start: W2, players: 4, median: 40000000, avg: 43750000 }
+    ];
+
     function buildKpiDb() {
         const base = buildDb();
         return makeDb({
-            rpc: { gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }) },
+            rpc: {
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }),
+                gm_stats_members: mockStatsMembers({ rows: PARTS_POWER, glory: [], members: MEMBERS_POWER }),
+                gm_stats_health: mockStatsHealth({ rows: PARTS_POWER, members: MEMBERS_POWER, war: WAR_FIXTURE, power: POWER_FIXTURE })
+            },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS_POWER),
                 event_participants: () => new MockBuilder(PARTS_POWER),
@@ -440,33 +459,72 @@ describe('GM_STATS cockpit', () => {
         document.body.innerHTML = '';
     });
 
-    it('renders Guild Health with power tiles and tier bars', async () => {
+    it('leads with the four numbers a guild leader acts on', async () => {
         await window.GM_STATS.load();
         await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
-        await new Promise((r) => setTimeout(r, 0));
 
-        const area = document.querySelector('.stats-leaderboard-area');
-        const text = area.textContent;
-        // Total power = 80M + 50M + 20M = 150M -> "150.0M" via formatBigNum
-        expect(text).toContain('Total Power');
-        expect(text).toContain('Roster summary');
-        expect(text).toContain('Power distribution');
+        const text = document.querySelector('.stats-leaderboard-area').textContent;
+        expect(text).toContain('Roster');
+        expect(text).toContain('Core members');
+        expect(text).toContain('Dormant');
+        expect(text).toContain('Median reliability');
+        expect(text).toContain('Power tiers');
     });
 
-    it('renders Engagement and flags inactive members', async () => {
+    it('shows the war record, day by day', async () => {
+        // war_sessions has been in the schema the whole time and the Stats page
+        // never read it. Days 1-5 are preparation, day 6 is the battle: the
+        // split is what tells an admin which half they are losing.
         await window.GM_STATS.load();
         await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
+
+        const text = document.querySelector('.stats-leaderboard-area').textContent;
+        expect(text).toContain('War record');
+        expect(text).toContain('6W - 0L');   // GvG, every day
+        expect(text).toContain('1W - 5L');   // SvS: loses prep, wins day 6
+    });
+
+    it('shows power progression as a median, with its sample size', async () => {
+        await window.GM_STATS.load();
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
 
-        const area = document.querySelector('.stats-leaderboard-area');
-        const text = area.textContent;
-        expect(text).toContain('Members inactive for 2+ weeks');
-        expect(text).toContain('Weekly participation rate');
-        expect(text).toContain('Members engaged per event type');
-        // ZombieZzz has no participation in the current or previous week.
-        expect(text).toContain('ZombieZzz');
+        const text = document.querySelector('.stats-leaderboard-area').textContent;
+        expect(text).toContain('Power progression');
+        expect(text).toContain('Median member power');
+        // 35M -> 40M is +14.3%. A SUM would be the wrong statistic here: a
+        // guild's first OCR week covers part of the roster, and CLAW went from
+        // 11 players scanned to 114 in one week.
+        expect(text).toContain('+14.3%');
+        expect(text).toContain('players scanned');
+    });
+
+    it('says how complete the data is, since every other number depends on it', async () => {
+        await window.GM_STATS.load();
+        await window.GM_STATS.setView('cockpit');
+        await new Promise((r) => setTimeout(r, 0));
+
+        const text = document.querySelector('.stats-leaderboard-area').textContent;
+        expect(text).toContain('How complete is this data?');
+        expect(text).toContain('Weeks recorded');
+        // The sparse metrics are named rather than silently averaged over a
+        // tenth of the roster: tech/champion/crew/flagship/fleet are unset in
+        // this fixture.
+        expect(text).toContain('Tech');
+    });
+
+    it('segments the roster by engagement instead of listing "inactive"', async () => {
+        await window.GM_STATS.load();
+        await window.GM_STATS.setView('cockpit');
+        await new Promise((r) => setTimeout(r, 0));
+
+        const text = document.querySelector('.stats-leaderboard-area').textContent;
+        expect(text).toContain('Engagement');
+        expect(text).toContain('Members turning up each week');
+        // ZombieZzz never participated, so the roster has at least one dormant.
+        expect(text).toContain('Dormant');
     });
 
     it('Engagement ignores a session planned for a future week', async () => {
@@ -477,8 +535,8 @@ describe('GM_STATS cockpit', () => {
         window.GM.db = makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W3, W2, W1] }, error: null }),
-                gm_stats_data: () => ({ data: { guild: G, members: MEMBERS_POWER, participants: parts, glory: [], squads: [] }, error: null }),
-                gm_stats_members: mockStatsMembers({ rows: parts, glory: [], members: MEMBERS_POWER })
+                gm_stats_members: mockStatsMembers({ rows: parts, glory: [], members: MEMBERS_POWER }),
+                gm_stats_health: mockStatsHealth({ rows: parts, members: MEMBERS_POWER, currentWeek: W2 })
             },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS_POWER),
@@ -496,47 +554,33 @@ describe('GM_STATS cockpit', () => {
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
 
-        const area = document.querySelector('.stats-leaderboard-area');
-        const text = area.textContent;
-        // Future week must not become the most recent week shown, nor inflate
-        // the recent-window computation.
+        const text = document.querySelector('.stats-leaderboard-area').textContent;
+        // A week that has not started cannot have results, and must not become
+        // the most recent week shown.
         expect(text).not.toContain('10/08/2026');
         expect(text).not.toContain('2026-08-10');
 
         delete window.GM.getWeekStart;
     });
 
-    it('renders Roster and Operations without throwing', async () => {
+    it('renders the roster breakdown without throwing', async () => {
         await window.GM_STATS.load();
         await window.GM_STATS.setView('cockpit');
-        await new Promise((r) => setTimeout(r, 0));
-        await new Promise((r) => setTimeout(r, 0));
-        expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('Role structure');
-
-        await window.GM_STATS.setView('cockpit');
-        await new Promise((r) => setTimeout(r, 0));
-        await new Promise((r) => setTimeout(r, 0));
-        expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('Pending score approvals');
-    });
-
-    it('Engagement breaks down engagement by event type', async () => {
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
-        await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
 
         const text = document.querySelector('.stats-leaderboard-area').textContent;
-        // AlphaPrime + BetaKnight participated in SvS over the 2 weeks.
-        expect(text).toContain('SvS');
-        expect(text).toContain('GvG');
-        expect(text).toContain('Shadowfront');
-        expect(text).toContain('Arms Race');
-        expect(text).toContain('DTR');
+        expect(text).toContain('Roles');
+        expect(text).toContain('Power tiers');
+        expect(text).toContain('Pending transfers');
     });
 
     it('Engagement renders cleanly with no participation data', async () => {
         const emptyDb = makeDb({
-            rpc: { gm_stats_weeks: () => ({ data: { ok: true, weeks: [] }, error: null }) },
+            rpc: {
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [] }, error: null }),
+                gm_stats_members: mockStatsMembers({ rows: [], glory: [], members: MEMBERS_POWER }),
+                gm_stats_health: mockStatsHealth({ rows: [], members: MEMBERS_POWER })
+            },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS_POWER),
                 event_participants: () => new MockBuilder([]),
@@ -550,14 +594,19 @@ describe('GM_STATS cockpit', () => {
         await new Promise((r) => setTimeout(r, 0));
 
         const text = document.querySelector('.stats-leaderboard-area').textContent;
-        expect(text).toContain('Weekly participation rate');
-        expect(text).toContain('Members inactive for 2+ weeks');
-        expect(text).toContain('ZombieZzz'); // no data -> everyone is inactive
+        // A guild with nothing recorded must say so, not render empty charts.
+        expect(text).toContain('Engagement');
+        expect(text).toContain('No weeks with data yet');
+        expect(text).toContain('No war sessions recorded yet');
     });
 
     it('persists the selected stats mode and reloads into it', async () => {
         const db = makeDb({
-            rpc: { gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2] }, error: null }) },
+            rpc: {
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2] }, error: null }),
+                gm_stats_members: mockStatsMembers({ rows: PARTS_POWER, glory: [], members: MEMBERS_POWER }),
+                gm_stats_health: mockStatsHealth({ rows: PARTS_POWER, members: MEMBERS_POWER })
+            },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS_POWER),
                 event_participants: () => new MockBuilder(PARTS_POWER),
@@ -580,7 +629,7 @@ describe('GM_STATS cockpit', () => {
 
         await window.GM_STATS.load();
         const text = document.querySelector('.stats-leaderboard-area').textContent;
-        expect(text).toContain('Weekly participation rate');
+        expect(text).toContain('Members turning up each week');
     });
 
     it('KPI modes hide the period/week selectors (no fallback to global)', async () => {

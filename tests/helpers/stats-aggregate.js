@@ -149,3 +149,58 @@ export function mockStatsMembers({ rows = [], glory = [], members = [] }) {
     error: null
   });
 }
+
+/**
+ * Drop-in `rpc.gm_stats_health` handler: the guild-level shape the Health tab
+ * consumes, derived from the same raw fixtures as mockStatsMembers so a test
+ * does not have to keep two descriptions of one guild in sync.
+ */
+export function mockStatsHealth({ rows = [], members = [], war = [], power = [], currentWeek = null }) {
+  const nonGlory = rows
+    .filter((r) => String(r.event_name || '').toLowerCase() !== 'glory' && !r.is_pending)
+    // A week that has not started cannot have results. The RPC applies this in
+    // SQL with date_trunc('week', now()); the mock is told the current week.
+    .filter((r) => !currentWeek || r.week_start <= currentWeek);
+  const weeks = [...new Set(nonGlory.map((r) => r.week_start))].sort();
+
+  const participation = weeks.map((w) => {
+    const inWeek = nonGlory.filter((r) => r.week_start === w);
+    return {
+      week_start: w,
+      opportunities: new Set(inWeek.map((r) => eventScoringKey(r.event_name, r.session_id, r.week_start))).size,
+      present_members: new Set(
+        inWeek.filter((r) => Number(r.participated) > 0 || r.sub_present === true).map((r) => r.pseudo)
+      ).size
+    };
+  });
+
+  const nonZero = (field) => members.filter((m) => Number(m[field] || 0) > 0).length;
+
+  return () => ({
+    data: {
+      ok: true,
+      guild: null,
+      weeks: weeks.length,
+      roster_size: members.length,
+      participation,
+      war,
+      power: { series: power, weeks: power.length },
+      coverage: {
+        members: members.length,
+        overall_power: nonZero('overall_power'),
+        tech_power: nonZero('tech_power'),
+        champion_power: nonZero('champion_power'),
+        crew_power: nonZero('crew_power'),
+        flagship_power: nonZero('flagship_power'),
+        fleet_rating: nonZero('fleet_rating'),
+        glory_score: nonZero('glory_score')
+      },
+      quality: {
+        pending_rows: rows.filter((r) => r.is_pending).length,
+        weeks_with_data: weeks.length,
+        last_week: weeks.length ? weeks[weeks.length - 1] : null
+      }
+    },
+    error: null
+  });
+}

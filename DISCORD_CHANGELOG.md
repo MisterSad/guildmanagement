@@ -1,3 +1,21 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.28.0**
+
+The **Stats → Guild Cockpit** tab has been rebuilt. It now shows things the app has been quietly recording for months and never displayed. ⚔️
+
+**Your war record.** Wins and losses, per event, day by day. ALPHA for example reads GvG 6W-0L and SvS 1W-5L — and you can see *which* days. That second one is the useful part: it says whether you are losing the five preparation days or the battle day. That has been in the database since war sessions existed and nothing ever showed it to you.
+
+**Your power curve.** Median member power, week by week, since the app started snapshotting it. It shows the median rather than the total on purpose: when a guild first starts scanning, only part of the roster is covered, and a total would draw a spectacular jump that never happened. Each point tells you how many players it is based on.
+
+**Who is actually turning up.** Your roster is split into Core / Regular / Occasional / Dormant. The thresholds are not invented — I measured the real distribution across every guild on the app and cut where it actually separates people.
+
+**How complete your data is.** A new card tells you how many weeks you have recorded, what is waiting for approval, and which metrics are scanned for too few members to be worth charting. It matters: if Arms Race attendance reads 16%, this card is what tells you whether nobody plays it or nobody records it.
+
+**Two old cards are gone.** "Weekly participation rate" divided every past week by your roster *as it is today*, so removing a member silently rewrote your history. "Members engaged per event type" counted someone who showed up once the same as someone who showed up eighty times.
+
+Reload the page. 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.27.0**
 
 **This is the one that changes your Stats numbers.** I said I would warn you, so here it is, with the reasoning. 📊
