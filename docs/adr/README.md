@@ -25,6 +25,7 @@ Whenever major design decisions, patterns, or critical bug resolutions are estab
 | [ADR-016](./ADR-016-pwa-and-web-push-retirement.md) | Retiring the PWA and Web Push — and the Ordering That Makes It Safe | **Accepted** | 2026-09-26 |
 | [ADR-017](./ADR-017-deployed-edge-functions-must-be-versioned.md) | Every Deployed Edge Function Must Have Its Source Versioned Here | **Accepted** | 2026-09-27 |
 | [ADR-018](./ADR-018-gdpr-data-inventory-retention-and-erasure.md) | GDPR — Data Inventory, Retention and Erasure | **Accepted** | 2026-09-27 |
+| [ADR-019](./ADR-019-weekly-guild-snapshots.md) | Weekly Guild Snapshots, and Why the Aggregate Is Not Member-Grain | **Accepted** | 2026-09-27 |
 
 ---
 

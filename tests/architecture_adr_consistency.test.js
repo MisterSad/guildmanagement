@@ -17,24 +17,16 @@ const adrReadmePath = path.join(adrDir, 'README.md');
 const archDocPath = path.join(rootDir, 'ARCHITECTURE.md');
 
 describe('TICKET-15 [DOC-01]: Architecture Decision Records Integrity', () => {
-  const expectedAdrs = [
-    'ADR-001-three-role-zero-trust-access-model.md',
-    'ADR-002-deterministic-event-session-ids.md',
-    'ADR-003-multi-tenant-saas-invariants.md',
-    'ADR-004-consolidated-database-schema-and-security-definer.md',
-    'ADR-005-memory-and-regression-prevention-protocol.md',
-    'ADR-006-four-role-access-model-with-server-admin.md',
-    'ADR-007-accounts-only-role-resolution.md',
-    'ADR-008-migration-protocol-v2.md',
-    'ADR-009-secrets-vault-only-policy.md',
-    'ADR-010-force-row-level-security-all-public-tables.md',
-    'ADR-011-client-error-reporting-and-sentry-apm.md',
-    'ADR-012-sha256-ocr-deduplication-cache.md',
-    'ADR-013-wcag-2-2-aa-dialog-accessibility-and-focus-trap.md',
-    'ADR-014-root-scripts-hygiene-and-discord-webhook-resilience.md',
-  ];
+  // Enumerated from disk, not hardcoded. The previous list stopped at ADR-014
+  // and had been stale since ADR-015 was written: four ADRs existed that no
+  // test looked at. A list that must be edited by hand to stay true is not a
+  // guard, it is a second thing to forget.
+  const expectedAdrs = fs.readdirSync(adrDir)
+    .filter((f) => /^ADR-\d{3}-.+\.md$/.test(f))
+    .sort();
 
-  it('verifies that all 14 ADR files exist in docs/adr/', () => {
+  it('verifies that every ADR file on disk is well formed', () => {
+    expect(expectedAdrs.length).toBeGreaterThanOrEqual(19);
     for (const adrFile of expectedAdrs) {
       const fullPath = path.join(adrDir, adrFile);
       expect(fs.existsSync(fullPath), `Missing ADR: ${adrFile}`).toBe(true);
@@ -50,9 +42,10 @@ describe('TICKET-15 [DOC-01]: Architecture Decision Records Integrity', () => {
     expect(fs.existsSync(adrReadmePath)).toBe(true);
     const readme = fs.readFileSync(adrReadmePath, 'utf8');
 
-    for (let i = 1; i <= 14; i++) {
-      const id = `ADR-${String(i).padStart(3, '0')}`;
+    for (const file of expectedAdrs) {
+      const id = file.slice(0, 7); // ADR-0NN
       expect(readme, `ADR index missing ${id}`).toContain(id);
+      expect(readme, `ADR index does not link ${file}`).toContain(file);
     }
   });
 
