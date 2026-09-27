@@ -6,6 +6,7 @@ window.GM_STATS = {
     load: () => statsView.load(),
     loadSingleEvent: (eventName, weeks) => statsView.loadSingleEvent(eventName, weeks),
     renderLeaderboard: () => statsView.renderLeaderboard(),
+    setView: (view, mode) => statsView.setView(view, mode),
     getState: () => statsView.getState()
 };
 
@@ -88,7 +89,7 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
         // DB with members but 0 event participants in W_EMPTY
         window.GM.db = makeDb({
             rpc: {
-                list_event_weeks: () => ({ data: [{ week_start: W_EMPTY }], error: null }),
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [W_EMPTY] }, error: null }),
                 gm_stats_data: () => ({
                     data: {
                         guild: G,
@@ -146,7 +147,7 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
 
         window.GM.db = makeDb({
             rpc: {
-                list_event_weeks: () => ({ data: [{ week_start: W_EMPTY }], error: null }),
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [W_EMPTY] }, error: null }),
                 gm_stats_data: () => ({
                     data: {
                         guild: G,
@@ -186,7 +187,7 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
 
         window.GM.db = makeDb({
             rpc: {
-                list_event_weeks: () => ({ data: [{ week_start: W_SCORED }], error: null }),
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [W_SCORED] }, error: null }),
                 gm_stats_data: () => ({
                     data: {
                         guild: G,

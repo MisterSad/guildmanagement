@@ -1,3 +1,17 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.25.0**
+
+Small but real fix on the **Stats** page, and the start of a bigger rework. 📊
+
+**The week selector was broken and I had not noticed.** It has been showing only the current week for about a month, and the *2 weeks / 4 weeks / 8 weeks* buttons were all quietly doing "1 week". If you ever wondered why the period buttons seemed to change nothing, that is why. They work now, and your full history is reachable again: ALPHA has 15 weeks of it.
+
+**Also fixed:** the Glory progression bonus was throwing away most of its own data. If you had two weeks of Glory recorded, your progression counted as zero. It now counts every week-on-week gain.
+
+**Also tidied:** the *Late / Excused* column is gone. Those two flags are set on well under 1% of records, so the column showed a dash for almost everyone and pushed the useful columns off the side of your phone.
+
+**What is coming.** I went through the whole Stats page against the real data this week, and the short version is that it shows a fraction of what the app already knows and scores you in a way that is hard to defend. A player who attends every SvS and GvG but skips the daily Arms Race currently reads 14%. That is next: a rate per event type, your war record, power progression, and a clear view of who is drifting away. I will tell you before your numbers change. 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.24.0**
 
 Quick fix. **Scanning a video into OCR was failing** where the same screens worked as screenshots. Reported on Glory, but it could hit any of the scans. 🛠️

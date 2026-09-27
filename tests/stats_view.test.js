@@ -93,7 +93,7 @@ const SQUADS = [
 function buildDb() {
   return makeDb({
     rpc: {
-      list_event_weeks: () => ({ data: [{ week_start: W2 }, { week_start: W1 }], error: null }),
+      gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }),
       gm_stats_data: () => ({
         data: { guild: G, members: MEMBERS, participants: PARTS, glory: GLORY, squads: SQUADS },
         error: null

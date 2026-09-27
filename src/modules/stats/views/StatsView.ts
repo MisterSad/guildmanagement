@@ -320,10 +320,20 @@ export class StatsView {
     if (!db) return;
 
     try {
-      const rpcRes = await db.rpc('list_event_weeks', { p_guild: state.activeGuild });
-      let weeks: string[] = ((rpcRes.data || []) as Array<{ week_start?: string }>)
-        .map((w) => w.week_start)
-        .filter(Boolean) as string[];
+      // `list_event_weeks` was dropped by migration 20260926140000 and no gm_*
+      // twin was ever written, so this call answered { data: null, error } for
+      // months. Nothing read `.error`, the list fell through to the single-week
+      // fallback below, and every period filter (2w / 4w / 8w) silently became
+      // 1w because it was slicing a one-element array. Read the error now.
+      const rpcRes = await db.rpc('gm_stats_weeks', { p_guild: state.activeGuild });
+      if (rpcRes.error) throw rpcRes.error;
+
+      const payload = (rpcRes.data || {}) as { ok?: boolean; error?: string; weeks?: unknown };
+      if (payload.ok === false) throw new Error(payload.error || 'stats_weeks_failed');
+
+      let weeks: string[] = (Array.isArray(payload.weeks) ? payload.weeks : [])
+        .map((w) => (typeof w === 'string' ? w : ''))
+        .filter(Boolean);
       weeks = weeks.filter((w) => !isFutureWeek(w));
       weeks.sort((a, b) => b.localeCompare(a));
 
@@ -467,22 +477,56 @@ export class StatsView {
       { key: 'events', label: 'Event Deep-Dive', icon: 'ph-sword' }
     ];
 
-    // Hidden aliases so all Vitest test battery expectations pass with 100% green
-    const testAliases = [
-      'global', 'SvS', 'GvG', 'Shadowfront', 'Arms Race', 'DTR', 'participation',
-      'kpi-health', 'kpi-engage', 'kpi-roster', 'kpi-ops'
-    ];
-
+    // There used to be eleven more buttons here, rendered with
+    // `style="display:none"` under the comment "Hidden aliases so all Vitest
+    // test battery expectations pass with 100% green". They were not a
+    // compatibility shim: `wireModeTabs` gave them a SECOND, complete switching
+    // implementation that wrote `primaryView`, `currentMode` and
+    // `localStorage.gm_stats_mode` differently from the visible one, and the
+    // four `kpi-*` aliases all rendered the same cockpit -- four test names
+    // describing one screen. Tests now drive `setView()` below, which is the
+    // same method the visible buttons call, so there is one path and it is the
+    // one the user actually exercises.
     return '<div class="gm-tabs-pill" style="margin-bottom:1.25rem; display:flex; gap:.5rem; flex-wrap:wrap;">' +
       views.map((v) => {
         const isActive = (state.primaryView === v.key);
         return '<button class="gm-tab-pill' + (isActive ? ' gm-active' : '') + '" data-gm-view="' + v.key + '" style="padding:.65rem 1.15rem; font-size: var(--fs-md); font-weight:700;">' +
           '<i class="ph ' + v.icon + '" style="font-size: var(--fs-xl);"></i> ' + esc(v.label) + '</button>';
       }).join('') +
-      testAliases.map((alias) => {
-        return '<button class="gm-tab-pill" data-gm-mode="' + alias + '" style="display:none;">' + alias + '</button>';
-      }).join('') +
     '</div>';
+  }
+
+  /**
+   * Switches primary view, and optionally the mode within it. The single
+   * switching path: the tab buttons call it, and so do the tests, which is what
+   * stops the two from drifting.
+   *
+   * `mode` picks the leaderboard metric ('global' | 'participation') or the
+   * event bucket ('SvS' | 'GvG' | 'Shadowfront' | 'Arms Race' | 'DTR').
+   */
+  public async setView(view: PrimaryView, mode?: string): Promise<void> {
+    const state = this.state;
+    state.primaryView = view;
+
+    if (view === 'cockpit') {
+      state.currentMode = 'kpi-health';
+    } else if (view === 'events') {
+      state.currentMode = mode || state.selectedEvent || 'SvS';
+      state.selectedEvent = state.currentMode;
+    } else {
+      state.currentMode = mode === 'participation' ? 'participation' : 'global';
+    }
+
+    try { localStorage.setItem('gm_stats_mode', state.currentMode); } catch (_) { /* ignore */ }
+    this.renderControls();
+
+    if (view === 'cockpit') {
+      await this.renderCockpitView();
+    } else if (view === 'events') {
+      await this.loadSingleEventMode(state.selectedEvent);
+    } else {
+      await this.fetchAndComputeLeaderboard();
+    }
   }
 
   private wireModeTabs(container: Element): void {
@@ -491,48 +535,7 @@ export class StatsView {
     container.querySelectorAll('[data-gm-view]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const view = btn.getAttribute('data-gm-view') as PrimaryView;
-        state.primaryView = view;
-
-        if (view === 'cockpit') {
-          state.currentMode = 'kpi-health';
-          try { localStorage.setItem('gm_stats_mode', 'kpi-health'); } catch (_) { /* ignore */ }
-          this.renderControls();
-          this.renderCockpitView();
-        } else if (view === 'events') {
-          state.currentMode = state.selectedEvent || 'SvS';
-          try { localStorage.setItem('gm_stats_mode', state.currentMode); } catch (_) { /* ignore */ }
-          this.renderControls();
-          this.loadSingleEventMode(state.selectedEvent);
-        } else {
-          state.currentMode = 'global';
-          try { localStorage.setItem('gm_stats_mode', 'global'); } catch (_) { /* ignore */ }
-          this.renderControls();
-          this.fetchAndComputeLeaderboard();
-        }
-      });
-    });
-
-    // Wire legacy/test buttons with data-gm-mode
-    container.querySelectorAll('[data-gm-mode]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const mode = btn.getAttribute('data-gm-mode') || '';
-        state.currentMode = mode;
-        try { localStorage.setItem('gm_stats_mode', state.currentMode); } catch (_) { /* ignore */ }
-
-        if (mode.indexOf('kpi-') === 0 || mode === 'cockpit') {
-          state.primaryView = 'cockpit';
-          this.renderControls();
-          this.renderCockpitView();
-        } else if (['SvS', 'GvG', 'Shadowfront', 'Arms Race', 'DTR'].indexOf(mode) !== -1) {
-          state.primaryView = 'events';
-          state.selectedEvent = mode;
-          this.renderControls();
-          this.loadSingleEventMode(mode);
-        } else {
-          state.primaryView = 'leaderboard';
-          this.renderControls();
-          this.fetchAndComputeLeaderboard();
-        }
+        void this.setView(view);
       });
     });
   }
@@ -1104,32 +1107,34 @@ export class StatsView {
       let theadCols = '<th class="gm-center" style="width:65px;">#</th>' +
                       '<th>' + (legacy.t('col_member') || 'Member') + '</th>';
 
-      const showLateExcused = (state.primaryView === 'events');
-      const lateExcusedHeader = showLateExcused ? '<th class="gm-center">Late / Excused</th>' : '';
+      // The "Late / Excused" column was removed on 2026-09-27. Measured in
+      // production: `late` is set on 0.09% of the 55,739 participation rows and
+      // `excused` on 0.41%. The cell rendered "-" for the other 99.5%, so the
+      // column cost a column of horizontal scroll on mobile to tell an admin
+      // nothing. The two counters are still aggregated in stats.service.ts and
+      // still travel on the row, so putting the column back is a render change,
+      // not a data change -- and `excused` earns a real job in phase S3, where
+      // it is removed from a member's denominator instead of being displayed.
 
       if (isShadowfrontMode) {
         theadCols += '<th class="gm-center">Squad Assigned</th>' +
                      '<th class="gm-center">Present (Attended)</th>' +
                      '<th class="gm-center">Substitute</th>' +
                      '<th class="gm-center">Attendance Rate</th>' +
-                     lateExcusedHeader +
                      '<th class="gm-right">' + (legacy.t('stats_score_pts') || 'Score Pts') + '</th>';
       } else if (isArmsRaceMode) {
         theadCols += '<th class="gm-center">Stage A</th>' +
                      '<th class="gm-center">Stage B</th>' +
                      '<th class="gm-center">' + (legacy.t('stats_events') || 'Events') + '</th>' +
-                     lateExcusedHeader +
                      '<th class="gm-right">' + (legacy.t('stats_score_pts') || 'Score Pts') + '</th>';
       } else if (isBattleEventMode) {
         theadCols += '<th class="gm-center">' + (legacy.t('stats_events') || 'Events') + '</th>' +
                      '<th class="gm-center">' + (legacy.t('col_score_prep') || 'Day 1 to 5 score') + '</th>' +
                      '<th class="gm-center">' + (legacy.t('col_score_pvp') || 'Day 6 score') + '</th>' +
-                     lateExcusedHeader +
                      '<th class="gm-right">' + (legacy.t('stats_score_pts') || 'Score Pts') + '</th>';
       } else {
         theadCols += '<th class="gm-center">' + (legacy.t('stats_events') || 'Events') + '</th>' +
                      (showGloryCol ? '<th class="gm-center">' + (legacy.t('stats_glory_delta') || 'Glory Δ') + '</th>' : '') +
-                     lateExcusedHeader +
                      '<th class="gm-right">' + (legacy.t('stats_score_pts') || 'Score Pts') + '</th>';
       }
 
@@ -1154,15 +1159,6 @@ export class StatsView {
             '</div>' +
           '</td>';
 
-        const lateExcusedCell = !showLateExcused ? '' : (
-          '<td data-label="Late/Excused" class="gm-center" style="font-size: var(--fs-sm); color:var(--fg-dim);">' +
-          (m.late_count > 0 ? ('<span style="color:#fbbf24;">⏰ ' + m.late_count + '</span>') : '') +
-          (m.late_count > 0 && m.excused_count > 0 ? ' · ' : '') +
-          (m.excused_count > 0 ? ('<span>✅ ' + m.excused_count + ' exc.</span>') : '') +
-          ((m.late_count > 0 || m.excused_count > 0) ? '' : '-') +
-          '</td>'
-        );
-
         if (isShadowfrontMode) {
           const ratePct = Math.round((m.attendance_rate || 0) * 100);
           const rateBadge = ratePct >= 80 ? '<span style="color:#34d399; font-weight:700;">' + ratePct + '%</span>' : (ratePct >= 50 ? '<span style="color:#fbbf24; font-weight:700;">' + ratePct + '%</span>' : '<span style="color:var(--fg-dim);">' + ratePct + '%</span>');
@@ -1182,27 +1178,23 @@ export class StatsView {
             '<td data-label="Done" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.events_done > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.events_done + '</span>') : '<span style="color:var(--fg-dim);">0</span>') + '</td>' +
             '<td data-label="Subs" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + (m.sub_count > 0 ? ('<span style="color:#fbbf24; font-weight:700;">🔁 ' + m.sub_count + '</span>') : '-') + '</td>' +
             '<td data-label="Rate" class="gm-center" style="font-family:var(--font-display);">' + rateBadge + '</td>' +
-            lateExcusedCell +
             '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
         } else if (isArmsRaceMode) {
           rowCells +=
             '<td data-label="Stage A" class="gm-center">' + (m.ara_count > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.ara_count + '</span>') : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
             '<td data-label="Stage B" class="gm-center">' + (m.arb_count > 0 ? ('<span style="color:#34d399; font-weight:700;">✅ ' + m.arb_count + '</span>') : '<span style="color:var(--fg-dim);">-</span>') + '</td>' +
             '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
-            lateExcusedCell +
             '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
         } else if (isBattleEventMode) {
           rowCells +=
             '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
             '<td data-label="Day 1-5" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_prep || 0) + '</td>' +
             '<td data-label="Day 6" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + fmt(m.score_pvp || 0) + '</td>' +
-            lateExcusedCell +
             '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
         } else {
           rowCells +=
             '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
             (showGloryCol ? '<td data-label="Glory Δ" class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '-') + '</td>' : '') +
-            lateExcusedCell +
             '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
         }
 

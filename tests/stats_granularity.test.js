@@ -11,6 +11,10 @@ import path from 'path';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
+// Absence assertions must not be satisfied -- or defeated -- by prose. Seven
+// suites in this repository have been fooled by a comment naming the very
+// thing it said was removed, including the one below, on first writing.
+const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 describe('gm_stats_data promotion + projection extension', () => {
   const migrationPath = path.resolve(root, 'supabase/migrations/20260831000000_promote_and_extend_gm_stats_data.sql');
@@ -81,11 +85,18 @@ describe('stats granularity additions (StatsView + StatsService after cutover)',
     expect(statsService).toContain('sq.is_commander');
   });
 
-  it('tracks late/excused counts per row and exposes a Late/Excused column gated to Event Deep-Dive only', () => {
+  it('still counts late and excused per row, but no longer spends a column on them', () => {
+    // Measured in production on 2026-09-27: `late` is set on 0.09% of the
+    // 55,739 participation rows and `excused` on 0.41%. The column rendered
+    // "-" for the other 99.5%. The counters stay in the service and on the row
+    // -- `excused` becomes load-bearing in phase S3, where it leaves a member's
+    // denominator instead of being displayed -- so this pins the split: the
+    // data survives, the column does not.
     expect(statsService).toContain('late_count');
     expect(statsService).toContain('excused_count');
-    expect(statsView).toContain('showLateExcused');
-    expect(statsView).toContain("state.primaryView === 'events'");
+    const viewCode = stripComments(statsView);
+    expect(viewCode).not.toContain('showLateExcused');
+    expect(viewCode).not.toContain('Late / Excused');
   });
 
   it('adds Glory as a normalized-row source in loadSingleEventMode and to the event picker', () => {

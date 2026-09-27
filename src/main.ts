@@ -439,6 +439,7 @@ if (typeof window !== 'undefined') {
     load: () => statsView.load(),
     loadSingleEvent: (eventName: any, weeks: any) => statsView.loadSingleEvent(eventName, weeks),
     renderLeaderboard: () => statsView.renderLeaderboard(),
+    setView: (view: any, mode?: any) => statsView.setView(view, mode),
     getState: () => statsView.getState()
   };
 

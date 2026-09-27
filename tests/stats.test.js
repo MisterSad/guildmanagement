@@ -8,6 +8,7 @@ window.GM_STATS = {
     load: () => statsView.load(),
     loadSingleEvent: (eventName, weeks) => statsView.loadSingleEvent(eventName, weeks),
     renderLeaderboard: () => statsView.renderLeaderboard(),
+    setView: (view, mode) => statsView.setView(view, mode),
     getState: () => statsView.getState()
 };
 
@@ -104,7 +105,7 @@ const SQUADS = [
 function buildDb() {
     return makeDb({
         rpc: {
-            list_event_weeks: () => ({ data: [{ week_start: W2 }, { week_start: W1 }], error: null }),
+            gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }),
             gm_stats_data: () => ({
                 data: {
                     guild: G,
@@ -236,8 +237,7 @@ describe('GM_STATS participation mode', () => {
     it('computes attendance rates as scores', async () => {
         await window.GM_STATS.load();
         // switch mode by clicking the participation tab
-        const btn = document.querySelector('button[data-gm-mode="participation"]');
-        btn.click();
+        await window.GM_STATS.setView('leaderboard', 'participation');
         await new Promise((r) => setTimeout(r, 0));
         await window.GM_STATS.load();
 
@@ -261,7 +261,7 @@ describe('GM_STATS participation mode', () => {
         ]);
         window.GM.db = makeDb({
             rpc: {
-                list_event_weeks: () => ({ data: [{ week_start: W3 }, { week_start: W2 }, { week_start: W1 }], error: null }),
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [W3, W2, W1] }, error: null }),
                 gm_stats_data: () => ({ data: { guild: G, members: MEMBERS, participants: futureParts, glory: GLORY, squads: SQUADS }, error: null })
             },
             from: {
@@ -275,8 +275,7 @@ describe('GM_STATS participation mode', () => {
 
         try {
             await window.GM_STATS.load();
-            const btn = document.querySelector('button[data-gm-mode="participation"]');
-            btn.click();
+            await window.GM_STATS.setView('leaderboard', 'participation');
             await new Promise((r) => setTimeout(r, 0));
             await window.GM_STATS.load();
 
@@ -315,7 +314,7 @@ describe('GM_STATS coefficient resolution (regression)', () => {
     function buildDtrDb(guildConfigRows) {
         return makeDb({
             rpc: {
-                list_event_weeks: () => ({ data: [{ week_start: W1 }], error: null }),
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [W1] }, error: null }),
                 gm_stats_data: () => ({ data: { guild: G, members: DTR_MEMBERS, participants: DTR_PARTS, glory: [], squads: [] }, error: null })
             },
             from: {
@@ -327,15 +326,14 @@ describe('GM_STATS coefficient resolution (regression)', () => {
         });
     }
 
-    // Forces global (weighted-score) leaderboard mode via the hidden test-alias
-    // button stats.js renders specifically so tests aren't order-dependent on
-    // whatever mode an earlier describe block's test last left state.currentMode in.
+    // Forces global (weighted-score) leaderboard mode. statsView is a module
+    // singleton, so an earlier describe block leaves state.currentMode wherever
+    // its last test put it. This used to be done by clicking a button rendered
+    // invisibly for exactly this purpose; setView() is the same path the
+    // visible tabs take.
     async function loadInGlobalMode() {
         await window.GM_STATS.load();
-        const globalBtn = document.querySelector('button[data-gm-mode="global"]');
-        expect(globalBtn).not.toBeNull();
-        globalBtn.click();
-        await new Promise((r) => setTimeout(r, 0));
+        await window.GM_STATS.setView('leaderboard', 'global');
     }
 
     it('applies the guild-configured coeff_dtr to a Defend Trade Route row instead of the pre-bug fallback of 1', async () => {
@@ -353,7 +351,7 @@ describe('GM_STATS coefficient resolution (regression)', () => {
     });
 });
 
-describe('GM_STATS KPI tabs', () => {
+describe('GM_STATS cockpit', () => {
     // Members with real power for the health/reliability computations.
     const MEMBERS_POWER = [
         { pseudo: 'AlphaPrime', uid: '111', guild: G, overall_power: 80000000, role: 'R4', created_at: '2026-05-01T00:00:00Z' },
@@ -372,7 +370,7 @@ describe('GM_STATS KPI tabs', () => {
     function buildKpiDb() {
         const base = buildDb();
         return makeDb({
-            rpc: { list_event_weeks: () => ({ data: [{ week_start: W2 }, { week_start: W1 }], error: null }) },
+            rpc: { gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }) },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS_POWER),
                 event_participants: () => new MockBuilder(PARTS_POWER),
@@ -404,8 +402,7 @@ describe('GM_STATS KPI tabs', () => {
 
     it('renders Guild Health with power tiles and tier bars', async () => {
         await window.GM_STATS.load();
-        const btn = document.querySelector('button[data-gm-mode="kpi-health"]');
-        btn.click();
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
 
@@ -419,8 +416,7 @@ describe('GM_STATS KPI tabs', () => {
 
     it('renders Engagement and flags inactive members', async () => {
         await window.GM_STATS.load();
-        const btn = document.querySelector('button[data-gm-mode="kpi-engage"]');
-        btn.click();
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
 
@@ -440,7 +436,7 @@ describe('GM_STATS KPI tabs', () => {
         ]);
         window.GM.db = makeDb({
             rpc: {
-                list_event_weeks: () => ({ data: [{ week_start: W3 }, { week_start: W2 }, { week_start: W1 }], error: null }),
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [W3, W2, W1] }, error: null }),
                 gm_stats_data: () => ({ data: { guild: G, members: MEMBERS_POWER, participants: parts, glory: [], squads: [] }, error: null })
             },
             from: {
@@ -455,8 +451,7 @@ describe('GM_STATS KPI tabs', () => {
         window.GM.getWeekStart = () => W2;
 
         await window.GM_STATS.load();
-        const btn = document.querySelector('button[data-gm-mode="kpi-engage"]');
-        btn.click();
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
 
@@ -472,14 +467,12 @@ describe('GM_STATS KPI tabs', () => {
 
     it('renders Roster and Operations without throwing', async () => {
         await window.GM_STATS.load();
-        const rosterBtn = document.querySelector('button[data-gm-mode="kpi-roster"]');
-        rosterBtn.click();
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
         expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('Role structure');
 
-        const opsBtn = document.querySelector('button[data-gm-mode="kpi-ops"]');
-        opsBtn.click();
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
         expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('Pending score approvals');
@@ -487,8 +480,7 @@ describe('GM_STATS KPI tabs', () => {
 
     it('Engagement breaks down engagement by event type', async () => {
         await window.GM_STATS.load();
-        const btn = document.querySelector('button[data-gm-mode="kpi-engage"]');
-        btn.click();
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
 
@@ -503,7 +495,7 @@ describe('GM_STATS KPI tabs', () => {
 
     it('Engagement renders cleanly with no participation data', async () => {
         const emptyDb = makeDb({
-            rpc: { list_event_weeks: () => ({ data: [], error: null }) },
+            rpc: { gm_stats_weeks: () => ({ data: { ok: true, weeks: [] }, error: null }) },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS_POWER),
                 event_participants: () => new MockBuilder([]),
@@ -512,8 +504,7 @@ describe('GM_STATS KPI tabs', () => {
         });
         window.GM.db = emptyDb;
         await window.GM_STATS.load();
-        const btn = document.querySelector('button[data-gm-mode="kpi-engage"]');
-        btn.click();
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
 
@@ -525,7 +516,7 @@ describe('GM_STATS KPI tabs', () => {
 
     it('persists the selected stats mode and reloads into it', async () => {
         const db = makeDb({
-            rpc: { list_event_weeks: () => ({ data: [{ week_start: W2 }], error: null }) },
+            rpc: { gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2] }, error: null }) },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS_POWER),
                 event_participants: () => new MockBuilder(PARTS_POWER),
@@ -534,13 +525,18 @@ describe('GM_STATS KPI tabs', () => {
         });
         window.GM.db = db;
         await window.GM_STATS.load();
-        // Switch to Engagement and back to global, then reload: mode restored.
-        const engageBtn = document.querySelector('button[data-gm-mode="kpi-engage"]');
-        engageBtn.click();
+        // Switch to the cockpit, then reload: the view is restored.
+        //
+        // This used to assert the persisted value was 'kpi-engage', reached by
+        // clicking an invisible button. There were four such kpi-* modes and
+        // all four rendered the same cockpit, so the mode being persisted named
+        // a screen that did not exist. What matters, and what is asserted now,
+        // is that a reload comes back to the cockpit rather than dropping the
+        // user on the leaderboard.
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
-        expect(localStorage.getItem('gm_stats_mode')).toBe('kpi-engage');
+        expect(localStorage.getItem('gm_stats_mode')).toBe('kpi-health');
 
-        // Reload the module: it must restore Engagement, not Weekly Global.
         await window.GM_STATS.load();
         const text = document.querySelector('.stats-leaderboard-area').textContent;
         expect(text).toContain('Weekly participation rate');
@@ -548,7 +544,7 @@ describe('GM_STATS KPI tabs', () => {
 
     it('KPI modes hide the period/week selectors (no fallback to global)', async () => {
         const db = makeDb({
-            rpc: { list_event_weeks: () => ({ data: [{ week_start: W2 }], error: null }) },
+            rpc: { gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2] }, error: null }) },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS_POWER),
                 event_participants: () => new MockBuilder(PARTS_POWER),
@@ -557,8 +553,7 @@ describe('GM_STATS KPI tabs', () => {
         });
         window.GM.db = db;
         await window.GM_STATS.load();
-        const engageBtn = document.querySelector('button[data-gm-mode="kpi-engage"]');
-        engageBtn.click();
+        await window.GM_STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
 
         const controls = document.querySelector('.stats-controls');
@@ -622,7 +617,7 @@ describe('GM_STATS KPI tabs', () => {
         ]);
         window.GM.db = makeDb({
             rpc: {
-                list_event_weeks: () => ({ data: [{ week_start: W2 }, { week_start: W1 }], error: null }),
+                gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }),
                 gm_stats_data: () => ({
                     data: {
                         guild: G,
@@ -642,25 +637,13 @@ describe('GM_STATS KPI tabs', () => {
         });
         await window.GM_STATS.load();
 
-        const sfBtn = document.querySelector('button[data-gm-mode="Shadowfront"]');
-        expect(sfBtn).not.toBeNull();
-        sfBtn.click();
-        await new Promise((r) => setTimeout(r, 0));
-        await new Promise((r) => setTimeout(r, 0));
+        await window.GM_STATS.setView('events', 'Shadowfront');
         expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('AlphaPrime');
 
-        const arBtn = document.querySelector('button[data-gm-mode="Arms Race"]');
-        expect(arBtn).not.toBeNull();
-        arBtn.click();
-        await new Promise((r) => setTimeout(r, 0));
-        await new Promise((r) => setTimeout(r, 0));
+        await window.GM_STATS.setView('events', 'Arms Race');
         expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('AlphaPrime');
 
-        const dtrBtn = document.querySelector('button[data-gm-mode="DTR"]');
-        expect(dtrBtn).not.toBeNull();
-        dtrBtn.click();
-        await new Promise((r) => setTimeout(r, 0));
-        await new Promise((r) => setTimeout(r, 0));
+        await window.GM_STATS.setView('events', 'DTR');
         expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('AlphaPrime');
     });
 });
