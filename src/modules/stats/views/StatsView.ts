@@ -30,7 +30,9 @@ import {
   type EventCoeffs,
   type ParticipantRow,
   type MemberRow,
-  type SquadRow
+  type SquadRow,
+  type StatsMembersPayload,
+  type AggregateMemberRow
 } from '../stats.service';
 
 // ── Legacy global adapter (typed, no writes) ──────────────────────────────────
@@ -193,7 +195,6 @@ interface StatsState {
   activeWeeksLoaded: string[];
   leaderboardData: any[];
   uidMap: Record<string, string>;
-  lastMaxPossible: number;
   isLoading: boolean;
 }
 
@@ -212,7 +213,6 @@ function createState(): StatsState {
     activeWeeksLoaded: [],
     leaderboardData: [],
     uidMap: {},
-    lastMaxPossible: 100,
     isLoading: false
   };
 }
@@ -849,57 +849,51 @@ export class StatsView {
     await this.loadGlobalMode(weeksToLoad);
   }
 
+  /**
+   * Fetches the aggregated counters for a set of weeks.
+   *
+   * Phase S2. This replaces `gm_stats_data`, which shipped every participation
+   * row of the tenant -- about 10,000 for OMEGA -- on every one of its four
+   * calls per visit, with no week filter and no aggregation. The RPC returns
+   * one object per roster member plus per-bucket counts: 5,118 in-window rows
+   * for OMEGA become 142 member objects.
+   */
+  private async fetchStatsMembers(weeks: string[]): Promise<StatsMembersPayload | null> {
+    const db = legacy.getDb();
+    if (!db) return null;
+    const res = await db.rpc('gm_stats_members', {
+      p_guild: this.state.activeGuild,
+      p_weeks: weeks && weeks.length ? weeks : null
+    });
+    if (res.error) throw res.error;
+    const payload = (res.data || null) as StatsMembersPayload | null;
+    if (!payload || payload.ok === false) {
+      throw new Error((payload && payload.error) || 'stats_members_failed');
+    }
+    return payload;
+  }
+
   private async loadGlobalMode(weeksToLoad: string[]): Promise<void> {
     const state = this.state;
-    const db = legacy.getDb();
     try {
       const isAllTime = (state.statsPeriod === 'all');
-      const dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
-      const raw = dataRes.data || null;
+      const requested = isAllTime ? state.allWeeks.slice() : weeksToLoad;
+      const payload = await this.fetchStatsMembers(requested);
+      if (!payload) { state.leaderboardData = []; this.renderLeaderboardImpl(); return; }
 
-      const memberRows: MemberRow[] = (raw && raw.members) || [];
-      let partRows: ParticipantRow[] = (raw && raw.participants) || [];
-      let gloryRows: ParticipantRow[] = (raw && raw.glory) || [];
-      const squadRows: SquadRow[] = (raw && raw.squads) || [];
-
-      partRows = keepOnlyPastOrCurrent(partRows);
-      gloryRows = keepOnlyPastOrCurrent(gloryRows);
-      const squadsFiltered = keepOnlyPastOrCurrent(squadRows);
-
-      if (!isAllTime && weeksToLoad && weeksToLoad.length > 0) {
-        partRows = partRows.filter((r) => weeksToLoad.indexOf(r.week_start || '') !== -1);
-        gloryRows = gloryRows.filter((r) => weeksToLoad.indexOf(r.week_start || '') !== -1);
-      }
-
-      const memberSet = new Set<string>();
-      memberRows.forEach((m) => { if (m.pseudo) memberSet.add(m.pseudo); });
-      partRows.forEach((r) => { if (r.pseudo) memberSet.add(r.pseudo); });
-      gloryRows.forEach((r) => { if (r.pseudo) memberSet.add(r.pseudo); });
-      squadsFiltered.forEach((r) => { if (r.pseudo) memberSet.add(r.pseudo); });
-
-      const membersList = Array.from(memberSet).sort((a, b) => a.localeCompare(b));
+      // The roster is the member list. Every participation row carries a
+      // (guild, pseudo) foreign key into guild_members, so the pseudos the old
+      // code harvested from the participant, glory and squad arrays were always
+      // a subset of it -- verified against production: zero orphans.
       state.uidMap = {};
-      memberRows.forEach((m) => { if (m.pseudo) state.uidMap[m.pseudo] = m.uid || ''; });
+      (payload.members || []).forEach((m: AggregateMemberRow) => { if (m.pseudo) state.uidMap[m.pseudo] = m.uid || ''; });
 
-      const actualWeeks = isAllTime
-        ? Array.from(new Set(
-            partRows.map((r) => r.week_start).concat(gloryRows.map((r) => r.week_start)).filter(Boolean) as string[]
-          )).sort()
-        : weeksToLoad;
-
+      const actualWeeks = (payload.weeks && payload.weeks.length) ? payload.weeks : requested;
       state.activeWeeksLoaded = actualWeeks;
 
       const coeffs = await this.getConfiguredCoeffs();
-      const computed = StatsService.computeWeightedLeaderboard({
-        membersList,
-        partRows,
-        gloryRows,
-        weeks: actualWeeks,
-        coeffs,
-        squadRows: squadsFiltered
-      });
+      const computed = StatsService.computeWeightedLeaderboardFromAggregate(payload, actualWeeks, coeffs);
       state.leaderboardData = computed.scores;
-      state.lastMaxPossible = computed.maxPossible;
 
       this.renderLeaderboardImpl();
     } catch (err) {
@@ -1010,24 +1004,18 @@ export class StatsView {
 
   private async loadParticipationMode(): Promise<void> {
     const state = this.state;
-    const db = legacy.getDb();
     try {
-      const memRes = await db.from('guild_members').select('pseudo').eq('guild', state.activeGuild);
-      const dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
-      const raw = dataRes.data || null;
-      const partRes = { data: (raw && raw.participants) || [] };
+      // This board has always measured all of history, not the selected
+      // window, and renderControls() hides the period selector for it -- so
+      // the behaviour and the absent control agree. Preserved rather than
+      // quietly changed: S3 decides what this rate should mean.
+      const payload = await this.fetchStatsMembers(state.allWeeks.slice());
+      if (!payload) { state.leaderboardData = []; this.renderLeaderboardImpl(); return; }
 
       state.uidMap = state.uidMap || {};
-      ((raw && raw.members) || []).forEach((m: MemberRow) => { if (m.pseudo) state.uidMap[m.pseudo] = m.uid || ''; });
+      (payload.members || []).forEach((m: AggregateMemberRow) => { if (m.pseudo) state.uidMap[m.pseudo] = m.uid || ''; });
 
-      const memberSet = new Set<string>();
-      ((memRes.data || []) as MemberRow[]).forEach((m) => { if (m.pseudo) memberSet.add(m.pseudo); });
-      ((partRes.data || []) as ParticipantRow[]).forEach((r) => { if (r.pseudo) memberSet.add(r.pseudo); });
-
-      const membersList = Array.from(memberSet).sort((a, b) => a.localeCompare(b));
-      const validRows = keepOnlyPastOrCurrent(((partRes.data || []) as ParticipantRow[]).filter((r) => !r.is_pending));
-
-      state.leaderboardData = StatsService.computeParticipationLeaderboard({ membersList, validRows });
+      state.leaderboardData = StatsService.computeParticipationLeaderboardFromAggregate(payload);
 
       this.renderLeaderboardImpl();
     } catch (err) {

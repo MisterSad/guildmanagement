@@ -12,6 +12,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { StatsView } from '../src/modules/stats/views/StatsView';
+import { mockStatsMembers } from './helpers/stats-aggregate.js';
 
 // ── Supabase mock (same shape as tests/stats.test.js) ─────────────────────────
 class MockBuilder {
@@ -65,9 +66,16 @@ const W1 = '2026-07-27';
 const W2 = '2026-08-03';
 const G = 'ALPHA';
 
+// GammaGhost is on the roster and has a PENDING participation row: pending is
+// what keeps them out of the scoring, not absence from the roster. The fixture
+// used to leave them off it, which event_participants' (guild, pseudo) foreign
+// key into guild_members makes impossible -- verified against production, zero
+// orphan pseudos. The old code rebuilt its member list by unioning participant
+// pseudos onto the roster, so the illegal fixture still rendered three rows.
 const MEMBERS = [
   { pseudo: 'AlphaPrime', uid: '111', guild: G },
-  { pseudo: 'BetaKnight', uid: '222', guild: G }
+  { pseudo: 'BetaKnight', uid: '222', guild: G },
+  { pseudo: 'GammaGhost', uid: '333', guild: G }
 ];
 
 const PARTS = [
@@ -97,7 +105,8 @@ function buildDb() {
       gm_stats_data: () => ({
         data: { guild: G, members: MEMBERS, participants: PARTS, glory: GLORY, squads: SQUADS },
         error: null
-      })
+      }),
+      gm_stats_members: mockStatsMembers({ rows: PARTS, glory: GLORY, members: MEMBERS })
     },
     from: {
       guild_members: () => new MockBuilder(MEMBERS),
@@ -156,7 +165,6 @@ describe('StatsView golden results (post stats.js cutover)', () => {
     const view = new StatsView();
     await view.load();
 
-    expect(view.getState().lastMaxPossible).toBe(225);
     expect(parseLeaderboard()).toEqual([
       { pseudo: 'AlphaPrime', events: '1/1', glory: '-', score: '65 pts' },
       { pseudo: 'BetaKnight', events: '1/1', glory: '-', score: '65 pts' },

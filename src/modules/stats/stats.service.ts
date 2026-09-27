@@ -135,8 +135,140 @@ export class StatsService {
       return a.pseudo.localeCompare(b.pseudo);
     });
 
-    const maxPossibleScore = round1((STATS_WEIGHTS.participation + STATS_WEIGHTS.performance + STATS_WEIGHTS.gloryMax + STATS_WEIGHTS.consistency) * Math.max(1, weeks.length) * 5);
-    return { scores, maxPossible: maxPossibleScore };
+    // `maxPossible` used to be returned here as
+    //   (6 + 4 + 20 + 15) * weeks * 5
+    // where the trailing 5 hardcoded "the highest coefficient is 5" -- wrong
+    // for any tenant that configures a higher one, and moot either way: no
+    // template ever read it. Removed rather than ported into the aggregate
+    // path. The interface keeps the field so both implementations share a
+    // shape; both now return 0.
+    return { scores, maxPossible: 0 };
+  }
+
+  /**
+   * The weighted leaderboard, computed from gm_stats_members' counters instead
+   * of from raw participation rows.
+   *
+   * Identical arithmetic to computeWeightedLeaderboard, reached differently:
+   * that one walks every row and de-duplicates scoring keys in a Set, this one
+   * receives the de-duplicated counts. `tests/stats_aggregate_equivalence.test.js`
+   * feeds both the same fixture and asserts the outputs match row for row.
+   *
+   * One deliberate difference, and it is a fix rather than a port: the SQL
+   * collapses several attended rows for one scoring key with `bool_or`, where
+   * the row walk kept whichever row the database happened to return first.
+   * Measured across all 55,739 production rows, 20 keys have multiple attended
+   * rows and in none of them does the score verdict differ, so the two rules
+   * agree on every row that exists -- but only one of them is deterministic.
+   */
+  public static computeWeightedLeaderboardFromAggregate(
+    payload: StatsMembersPayload,
+    weeks: string[],
+    coeffs?: EventCoeffs
+  ): WeightedLeaderboardResult {
+    const useCoeffs: EventCoeffs = coeffs || DEFAULT_EVENT_COEFFS;
+    const members = payload.members || [];
+    const totalTenantEvents = payload.tenant ? (Number(payload.tenant.total_events) || 0) : 0;
+
+    // Glory delta: the sum of every positive week-on-week gain, over the weeks
+    // in which the member actually scored. The payload is already windowed by
+    // gm_stats_members, matching what the view did before it (it filtered its
+    // glory rows to the selected weeks). Note the consequence, which predates
+    // this phase: at a 1-week period a delta needs two weeks and can only ever
+    // be zero, so the "Delta Glory" column is structurally empty in the default
+    // view. S3 decides whether that column earns its place.
+    const gloryByWeek: Record<string, Record<string, number>> = {};
+    (payload.glory || []).forEach((g) => {
+      const pseudo = String(g[0] || '');
+      const week = String(g[1] || '');
+      if (!week) return;
+      if (!gloryByWeek[week]) gloryByWeek[week] = {};
+      gloryByWeek[week][normalizePseudo(pseudo)] = Number(g[2]) || 0;
+    });
+    const weekStarts = Object.keys(gloryByWeek).sort();
+
+    const gloryDeltas: Record<string, number> = {};
+    members.forEach((m) => {
+      const norm = normalizePseudo(m.pseudo);
+      const scored = weekStarts.filter((w) => (gloryByWeek[w][norm] || 0) > 0);
+      let total = 0;
+      for (let j = 0; j < scored.length - 1; j++) {
+        const diff = (gloryByWeek[scored[j + 1]][norm] || 0) - (gloryByWeek[scored[j]][norm] || 0);
+        if (diff > 0) total += diff;
+      }
+      gloryDeltas[m.pseudo] = total;
+    });
+    const maxGloryDelta = Math.max(...Object.values(gloryDeltas).concat([0]));
+
+    const weekCount = Math.max(1, weeks.length);
+
+    const scores: WeightedScoreRow[] = members.map((m) => {
+      let eventsScore = 0;
+      const buckets = m.buckets || {};
+      Object.keys(buckets).forEach((bucket) => {
+        const counts = buckets[bucket] || { att: 0, att_scored: 0, present: 0 };
+        // The bucket label IS an event name -- 'SvS', 'Arms Race', or, for
+        // anything unrecognised, the raw event_name -- so the same resolver the
+        // row walk used per row applies here per bucket.
+        const key = resolveCoeffBucket(bucket);
+        const coeff = (key && useCoeffs[key] != null) ? useCoeffs[key] : 1;
+        eventsScore += STATS_WEIGHTS.participation * coeff * (Number(counts.att) || 0);
+        eventsScore += STATS_WEIGHTS.performance * coeff * (Number(counts.att_scored) || 0);
+      });
+
+      const eventsAttended = Number(m.attended) || 0;
+      const attRate = totalTenantEvents > 0 ? eventsAttended / totalTenantEvents : 0;
+      const consistencyBonus = attRate >= STATS_WEIGHTS.threshold
+        ? (STATS_WEIGHTS.consistency * weekCount) : 0;
+      const delta = gloryDeltas[m.pseudo] || 0;
+      const gloryBonus = (delta > 0 && maxGloryDelta > 0)
+        ? (delta / maxGloryDelta) * STATS_WEIGHTS.gloryMax * weekCount : 0;
+
+      return {
+        pseudo: m.pseudo,
+        score: round1(eventsScore + gloryBonus + consistencyBonus),
+        events_score: round1(eventsScore),
+        events_done: eventsAttended,
+        events_total: totalTenantEvents,
+        attendance_rate: attRate,
+        glory_delta: delta,
+        glory_bonus: round1(gloryBonus),
+        consistency_bonus: consistencyBonus
+      };
+    }).sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.pseudo.localeCompare(b.pseudo);
+    });
+
+    return { scores, maxPossible: 0 };
+  }
+
+  /**
+   * The attendance-rate leaderboard from the same aggregate. Uses `present`
+   * (participation or present substitute), which is the stricter of the two
+   * attendance rules the page already had -- scores do not make a member
+   * present here, where they do on the weighted board.
+   */
+  public static computeParticipationLeaderboardFromAggregate(
+    payload: StatsMembersPayload
+  ): ParticipationScoreRow[] {
+    const members = payload.members || [];
+    const totalTenantEvents = payload.tenant ? (Number(payload.tenant.total_events) || 0) : 0;
+
+    return members.map((m) => {
+      const attended = Number(m.present) || 0;
+      const rate = totalTenantEvents > 0 ? attended / totalTenantEvents : 0;
+      return {
+        pseudo: m.pseudo,
+        score: round1(rate * 100),
+        events_done: attended,
+        events_total: totalTenantEvents,
+        attendance_rate: rate,
+        glory_delta: 0,
+        glory_bonus: 0,
+        consistency_bonus: 0
+      };
+    }).sort((a, b) => b.score - a.score);
   }
 
   /**
@@ -360,6 +492,49 @@ export interface SquadRow {
   is_commander?: boolean;
   week_start?: string;
   [key: string]: unknown;
+}
+
+/* ── The aggregated payload from gm_stats_members ──────────────────────────
+ *
+ * Phase S2. The RPC returns counters, never a score: the per-tenant
+ * coefficients live in `guild_config` and are declared once, in
+ * src/core/config/event-coeffs.ts. Declaring them in SQL too would recreate
+ * finding B1 across a language boundary where tsc cannot see the drift.
+ */
+
+export interface AggregateBucketCounts {
+  /** Distinct scoring keys in this bucket the member attended (participation, substitute, or any score). */
+  att: number;
+  /** Of those, how many carried a score -- only ever non-zero for the literal names 'SvS'/'GvG'. */
+  att_scored: number;
+  /** The stricter rule: participation or present substitute, ignoring scores. */
+  present: number;
+}
+
+export interface AggregateMemberRow {
+  pseudo: string;
+  uid?: string | null;
+  role?: string | null;
+  overall_power?: number;
+  attended: number;
+  present: number;
+  weeks_active: number;
+  last_seen_week?: string | null;
+  late_count: number;
+  excused_count: number;
+  sub_count: number;
+  buckets: Record<string, AggregateBucketCounts>;
+}
+
+export interface StatsMembersPayload {
+  ok: boolean;
+  error?: string;
+  guild?: string;
+  weeks?: string[];
+  tenant?: { total_events: number; buckets: Record<string, number> };
+  members?: AggregateMemberRow[];
+  /** [pseudo, week_start, score] triples, one per member-week with a score. */
+  glory?: Array<[string, string, number]>;
 }
 
 export interface WeightedScoreRow {

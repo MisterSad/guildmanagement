@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { statsView } from '../src/modules/stats/views/StatsView';
+import { mockStatsMembers } from './helpers/stats-aggregate.js';
 
 // Bridge the /src StatsView onto the legacy window.GM_STATS surface, exactly
 // like src/main.ts does in production, so the historical suite keeps exercising
@@ -76,9 +77,15 @@ const W2 = '2026-08-03';
 const G = 'ALPHA';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
+// GammaGhost is on the roster and carries a PENDING row below: pending is what
+// keeps them out of the scoring, not absence from the roster. Leaving them off
+// it modelled something event_participants' (guild, pseudo) foreign key into
+// guild_members makes impossible -- verified against production, zero orphan
+// pseudos in either event_participants or shadowfront_squads.
 const MEMBERS = [
     { pseudo: 'AlphaPrime', uid: '111', guild: G },
-    { pseudo: 'BetaKnight', uid: '222', guild: G }
+    { pseudo: 'BetaKnight', uid: '222', guild: G },
+    { pseudo: 'GammaGhost', uid: '333', guild: G }
 ];
 
 const PARTS = [
@@ -115,7 +122,8 @@ function buildDb() {
                     squads: SQUADS
                 },
                 error: null
-            })
+            }),
+            gm_stats_members: mockStatsMembers({ rows: PARTS, glory: GLORY, members: MEMBERS })
         },
         from: {
             guild_members: () => new MockBuilder(MEMBERS),
@@ -262,7 +270,8 @@ describe('GM_STATS participation mode', () => {
         window.GM.db = makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W3, W2, W1] }, error: null }),
-                gm_stats_data: () => ({ data: { guild: G, members: MEMBERS, participants: futureParts, glory: GLORY, squads: SQUADS }, error: null })
+                gm_stats_data: () => ({ data: { guild: G, members: MEMBERS, participants: futureParts, glory: GLORY, squads: SQUADS }, error: null }),
+                gm_stats_members: mockStatsMembers({ rows: futureParts, glory: GLORY, members: MEMBERS })
             },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS),
@@ -315,7 +324,8 @@ describe('GM_STATS coefficient resolution (regression)', () => {
         return makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W1] }, error: null }),
-                gm_stats_data: () => ({ data: { guild: G, members: DTR_MEMBERS, participants: DTR_PARTS, glory: [], squads: [] }, error: null })
+                gm_stats_data: () => ({ data: { guild: G, members: DTR_MEMBERS, participants: DTR_PARTS, glory: [], squads: [] }, error: null }),
+                gm_stats_members: mockStatsMembers({ rows: DTR_PARTS, glory: [], members: DTR_MEMBERS })
             },
             from: {
                 guild_members: () => new MockBuilder(DTR_MEMBERS),
@@ -437,7 +447,8 @@ describe('GM_STATS cockpit', () => {
         window.GM.db = makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W3, W2, W1] }, error: null }),
-                gm_stats_data: () => ({ data: { guild: G, members: MEMBERS_POWER, participants: parts, glory: [], squads: [] }, error: null })
+                gm_stats_data: () => ({ data: { guild: G, members: MEMBERS_POWER, participants: parts, glory: [], squads: [] }, error: null }),
+                gm_stats_members: mockStatsMembers({ rows: parts, glory: [], members: MEMBERS_POWER })
             },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS_POWER),
@@ -627,7 +638,8 @@ describe('GM_STATS cockpit', () => {
                         squads: SQUADS
                     },
                     error: null
-                })
+                }),
+                gm_stats_members: mockStatsMembers({ rows: EVENT_PARTS, glory: GLORY, members: MEMBERS })
             },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS),

@@ -1,3 +1,15 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.26.0**
+
+Invisible release. **The Stats leaderboard no longer downloads your whole guild's history into your browser to add it up there.** ⚙️
+
+For the biggest guilds that was about 10,000 rows, four times per visit. The database now does the counting and sends back one line per member. Stats should feel quicker, especially on mobile and on a slow connection.
+
+**Your numbers have not changed.** That was the whole constraint: I built the new path, fed both the old and new versions the same data, and compared them line by line before switching anything over. Two small bugs turned up during that comparison and were fixed before release rather than after.
+
+Nothing to do on your side. Reload the page. The visible Stats rework, the one that changes how your score is calculated, is the next step, and I will warn you before it lands. 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.25.0**
 
 Small but real fix on the **Stats** page, and the start of a bigger rework. 📊
