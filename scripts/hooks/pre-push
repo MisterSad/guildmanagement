@@ -41,9 +41,20 @@ FUNCTIONS_DIR="supabase/functions"
 SHARED_DIR="${FUNCTIONS_DIR}/_shared"
 
 # ── 1. Collect pushed commits ────────────────────────────────────────────────
-# Read from stdin: "<local-sha> <local-ref> <remote-sha> <remote-ref>"
+# Read from stdin. git sends, per ref, in THIS order:
+#
+#     <local-ref> SP <local-sha> SP <remote-ref> SP <remote-sha> LF
+#
+# The ref comes first, not the sha. This loop used to read
+# "local_sha local_ref remote_sha remote_ref", which swapped every pair: the
+# branch guard compared a SHA against "refs/heads/main" and never matched, so
+# the hook returned 0 without deploying anything, on every push, silently.
+# `RANGE` was then "refs/heads/main..refs/heads/main"-shaped nonsense whose
+# `git diff` failure was swallowed by `|| true`, so there was no second chance
+# to notice. This is the mechanism behind audit finding H1, where
+# ocr-guild-members ran for days without the code that was in the repository.
 CHANGED_FILES=""
-while read local_sha local_ref remote_sha remote_ref; do
+while read local_ref local_sha remote_ref remote_sha; do
   # Only process pushes to main.
   #
   # This tests the REMOTE ref, not the local one. It used to test $local_ref,

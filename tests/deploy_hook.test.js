@@ -54,6 +54,15 @@ describe('the deploy hook does not override verify_jwt', () => {
 });
 
 describe('the deploy hook fires for every push that reaches main', () => {
+  it('reads git\'s stdin fields in the order git writes them', () => {
+    // git sends "<local-ref> <local-sha> <remote-ref> <remote-sha>". Reading
+    // sha-first swapped every pair, so the branch guard compared a SHA with
+    // "refs/heads/main", never matched, and the hook exited 0 having deployed
+    // nothing -- on every push since it was written.
+    expect(hook).toContain('while read local_ref local_sha remote_ref remote_sha; do');
+    expect(hook).not.toContain('while read local_sha local_ref remote_sha remote_ref; do');
+  });
+
   it('decides on the remote ref, not the local branch name', () => {
     // `git push origin HEAD:main` sends local_ref = "HEAD". Keying the guard
     // off the local name skipped the deploy for it, and for every push made
