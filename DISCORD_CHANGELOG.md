@@ -1,139 +1,24 @@
 📢 **FGF Guild Management Tool Update — CHANG_V3.30.0**
 
-The **Player Portal** now tells you the same numbers your guild admin sees. Until today it did not, and that was my fault. 🎯
+**The Stats page has been rebuilt and your scores have changed.** Here is why. 📊
 
-**The problem.** Your Portal said your guild's attendance was one figure; the admin's Stats page said another. On one guild I measured 48% against 32% — same guild, same day, same data. The Portal was counting every record equally, including Glory (which everyone is marked present for automatically) and scores still waiting for an admin to approve them.
+**The old score counted everything the guild ran equally.** One real week: 7 Arms Race sessions, 3 DTR, 1 Shadowfront, 1 SvS, 1 GvG. The Arms Race is daily and nobody does all of it — 16% participation across the whole app — so it decided **54%** of your score. The SvS decided **7.7%**. That is how someone who attended every war could read 14%.
 
-There is one calculation now, shared by both screens.
-
-**Your dashboard gets real numbers.** The four cards at the top of the Portal had actually been broken for a long time and were showing nothing at all. They are back, and they show:
-
-- **Your reliability**, with the breakdown per event type, and how you compare to your guild.
-- **Your power** against the strongest member of your guild — not, as before, against a number derived from your own power, which meant you could never move the bar.
-- **Your best Glory week.**
-
-**Glory badges were wrong for more than half of you.** The badge only counted your Glory weeks *after* discarding your oldest one. If you had recorded Glory exactly once — 658 of you — your best counted as zero and you earned no Glory badge at all, whatever the score. One of you is sitting on 369 million. That is fixed; your badges may jump.
-
-**One thing to know.** Your guild's custom event weightings are an admin setting the Portal cannot read, so if your guild has changed them, your figure may differ slightly from your admin's. The card says so.
-
-Reload the page. 🫡
-
----
-
-📢 **FGF Guild Management Tool Update — CHANG_V3.29.1**
-
-Quick fix on yesterday's Stats release. **Every bar chart on the Guild Cockpit was blank** — the labels and numbers were right, the coloured bars beside them simply were not drawing. My mistake, and my tests could not see it: nothing in an automated browser test measures whether something is actually visible. Thank you to whoever looked at the screen. 🙏
-
-Also fixed while I was in there:
-
-- The attendance chart was showing a couple of **phantom weeks with 0 members**, caused by a handful of records filed on the wrong day of the week. They are now folded into the right week.
-- The "How complete is this data?" card said your last recorded week was **next week**, because events entered in advance were being counted as history. It now counts only weeks that have actually happened, and tells you separately how many events you have scheduled ahead.
-
-Reload the page. 🫡
-
----
-
-📢 **FGF Guild Management Tool Update — CHANG_V3.29.0**
-
-Last piece of the Stats rework. The **Event Deep-Dive** tab is rebuilt, and with it the whole page now runs on the same rules. 🏁
-
-**Your war record is now on the event tab too.** Pick SvS or GvG and you see the opponent and the six day results above the table.
-
-**Two things were quietly wrong there and are fixed.**
-
-The attendance rate on that tab divided by *your own number of rows* rather than by what the guild actually ran — so a member with a single record showed 100%. It now uses the same rule as every other tab.
-
-And that tab was counting scores **still awaiting approval**. An unapproved 999 could sit at the top of the ranking there while being correctly ignored everywhere else. Approved scores only, now, like the rest of the app.
-
-**Shadowfront** also counted a member in both squads of one week as two attendances there and one everywhere else. One rule now.
-
----
-
-**That closes the Stats rework**, five releases in: the broken week selector, the move of all the counting into the database, one definition of attendance instead of five, a fair denominator for new members, and four cards built on data the app had been recording for months without ever showing you — your war record, your power curve, who is actually turning up, and how complete your own data is.
-
-If a number on that page ever looks wrong to you, tell me. The point of all this was that you should be able to check it yourself. 🫡
-
----
-
-📢 **FGF Guild Management Tool Update — CHANG_V3.28.0**
-
-The **Stats → Guild Cockpit** tab has been rebuilt. It now shows things the app has been quietly recording for months and never displayed. ⚔️
-
-**Your war record.** Wins and losses, per event, day by day. ALPHA for example reads GvG 6W-0L and SvS 1W-5L — and you can see *which* days. That second one is the useful part: it says whether you are losing the five preparation days or the battle day. That has been in the database since war sessions existed and nothing ever showed it to you.
-
-**Your power curve.** Median member power, week by week, since the app started snapshotting it. It shows the median rather than the total on purpose: when a guild first starts scanning, only part of the roster is covered, and a total would draw a spectacular jump that never happened. Each point tells you how many players it is based on.
-
-**Who is actually turning up.** Your roster is split into Core / Regular / Occasional / Dormant. The thresholds are not invented — I measured the real distribution across every guild on the app and cut where it actually separates people.
-
-**How complete your data is.** A new card tells you how many weeks you have recorded, what is waiting for approval, and which metrics are scanned for too few members to be worth charting. It matters: if Arms Race attendance reads 16%, this card is what tells you whether nobody plays it or nobody records it.
-
-**Two old cards are gone.** "Weekly participation rate" divided every past week by your roster *as it is today*, so removing a member silently rewrote your history. "Members engaged per event type" counted someone who showed up once the same as someone who showed up eighty times.
-
-Reload the page. 🫡
-
----
-
-📢 **FGF Guild Management Tool Update — CHANG_V3.27.0**
-
-**This is the one that changes your Stats numbers.** I said I would warn you, so here it is, with the reasoning. 📊
-
-## What was wrong
-
-Your score was measured against *everything the guild ran*, counted equally. Take ALPHA in the week of 31 August: 7 Arms Race sessions, 3 DTR, 1 Shadowfront, 1 SvS, 1 GvG. The Arms Race is daily and almost nobody does all of it — 16% participation across every guild on the app — and it decided **54%** of your score. The SvS, the thing your guild actually organises around, decided **7.7%**.
-
-That is why a player who showed up to every war could read 14%.
-
-## What replaces it
-
-A rate **per event type**, then one weighted number using **your guild's own coefficients** (the ones in your settings: SvS, GvG, Shadowfront, DTR, Arms Race).
-
-You now see the breakdown next to the score:
+**It is now a rate per event type, weighted by your guild's own coefficients**, with the breakdown beside the number:
 
 `SvS 2/3 · GvG 2/2 · Shadowfront 3/3 · DTR 5/8 · Arms Race 12/24 → 69%`
 
-You can check the number yourself, and so can the member asking about it.
+I measured a real guild first: 32 members up, 30 down, biggest move 11 points. What really changes is the **order** — wars now count for more than dailies. **New members are no longer marked absent for wars fought before they joined.**
 
-## Three fairness fixes
+**⚔️ New on the admin page**, from data the app already had: your **war record day by day** (one guild reads GvG 6W–0L, SvS 1W–5L, and you see *which* days you lose), your **power curve**, your roster split into **Core / Regular / Occasional / Dormant** with a trend arrow each, and a card saying **how complete your own data is**.
 
-- **New members are no longer marked absent for wars fought before they joined.** Your opportunities start the week you appear on the roster. On some guilds that is a quarter of the roster affected.
-- **An em dash instead of 0%** when your guild did not run an event type at all. "Did not attend" and "was never asked" are different things, and the old page showed both as zero.
-- **Excused absences leave your denominator** instead of sitting in a column nobody read.
+**🎮 Players: your Portal now agrees with your admin.** It did not before — one guild showed 48% in the Portal and 32% on the admin page, because the Portal counted Glory and unapproved scores. One calculation now, shared by both. The four cards atop your Portal were also broken; they are back.
 
-## Also new
+**Your Glory badge was wrong for over half of you.** It ignored your oldest Glory week, so if you recorded Glory exactly once — **658 of you** — your best counted as zero and you got no badge. **51 of you jump to the top tier.**
 
-A **trend arrow**: your last 4 weeks against the 4 before. It only appears when there is enough on both sides to mean something — a recruit's first month will not show a fake collapse.
+Weeks before this one are rebuilt from today's roster, so older figures are a reconstruction, not a photograph. From now on each week is frozen every Monday.
 
-## How much will your number move?
-
-I measured it on a real guild before releasing: out of 142 members, **32 went up, 30 went down, and the largest single move was 11 points**. Most of you will barely shift. What changes more is the *order*, because showing up to the wars now counts for more than grinding the dailies.
-
-If a member asks why their number changed, the breakdown beside it is the answer. 🫡
-
----
-
-📢 **FGF Guild Management Tool Update — CHANG_V3.26.0**
-
-Invisible release. **The Stats leaderboard no longer downloads your whole guild's history into your browser to add it up there.** ⚙️
-
-For the biggest guilds that was about 10,000 rows, four times per visit. The database now does the counting and sends back one line per member. Stats should feel quicker, especially on mobile and on a slow connection.
-
-**Your numbers have not changed.** That was the whole constraint: I built the new path, fed both the old and new versions the same data, and compared them line by line before switching anything over. Two small bugs turned up during that comparison and were fixed before release rather than after.
-
-Nothing to do on your side. Reload the page. The visible Stats rework, the one that changes how your score is calculated, is the next step, and I will warn you before it lands. 🫡
-
----
-
-📢 **FGF Guild Management Tool Update — CHANG_V3.25.0**
-
-Small but real fix on the **Stats** page, and the start of a bigger rework. 📊
-
-**The week selector was broken and I had not noticed.** It has been showing only the current week for about a month, and the *2 weeks / 4 weeks / 8 weeks* buttons were all quietly doing "1 week". If you ever wondered why the period buttons seemed to change nothing, that is why. They work now, and your full history is reachable again: ALPHA has 15 weeks of it.
-
-**Also fixed:** the Glory progression bonus was throwing away most of its own data. If you had two weeks of Glory recorded, your progression counted as zero. It now counts every week-on-week gain.
-
-**Also tidied:** the *Late / Excused* column is gone. Those two flags are set on well under 1% of records, so the column showed a dash for almost everyone and pushed the useful columns off the side of your phone.
-
-**What is coming.** I went through the whole Stats page against the real data this week, and the short version is that it shows a fraction of what the app already knows and scores you in a way that is hard to defend. A player who attends every SvS and GvG but skips the daily Arms Race currently reads 14%. That is next: a rate per event type, your war record, power progression, and a clear view of who is drifting away. I will tell you before your numbers change. 🫡
+Reload the page. **If a number looks wrong, tell me.** 🫡
 
 ---
 
