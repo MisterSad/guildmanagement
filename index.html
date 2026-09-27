@@ -351,6 +351,28 @@
                         </div>
                     </header>
 
+                    <!-- Recovery codes. Hidden by default: shown only to the super_admin, who is
+                         the only account the sign-in path accepts a code from, because every
+                         other account has an administrator above it who can unlink it and
+                         issue a relink code. -->
+                    <div class="gm-card gm-card-padded gm-section hidden" id="recovery-codes-card">
+                        <div class="gm-section-title" style="margin-bottom: 0.25rem;">
+                            <i class="ph ph-key"></i>
+                            <span>Recovery Codes</span>
+                        </div>
+                        <p class="gm-page-subtitle" style="margin-bottom:1rem;">Ten one-time codes that sign you in when Discord is unavailable. You are the only account with nobody above it, so these are your way back.</p>
+                        <div id="recovery-codes-status" class="gm-empty">
+                            <i class="ph ph-circle-notch ph-spin gm-icon"></i>
+                            <div class="gm-empty-title">Loading…</div>
+                        </div>
+                        <div id="recovery-codes-output" class="hidden" style="margin-top:1rem;"></div>
+                        <div class="gm-row" style="gap:.75rem; margin-top:1rem; flex-wrap:wrap; align-items:center;">
+                            <button type="button" id="recovery-codes-regen-btn" class="gm-btn gm-btn-ghost">
+                                <i class="ph ph-arrows-clockwise"></i> <span>Issue a new set</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- The "My Passkeys" card was removed on 2026-09-27.
                     
                          It let people REGISTER passkeys that could not be used to sign in

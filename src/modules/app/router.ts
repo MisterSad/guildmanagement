@@ -24,6 +24,8 @@ import {
   populateAccountGuildSelect,
   wireJoinCode,
   wireAdminInvite,
+  loadRecoveryCodesCard,
+  wireRecoveryCodesCard
 } from './admin/accounts.controller';
 import { loadGuildSettings, fetchGuildRequests } from './admin/guild-requests.controller';
 import { renderGuildsList } from './admin/guilds.controller';
@@ -195,6 +197,8 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
       // unless the user happened to arrive via a path that fetched guilds.
       await runLoader('guilds', () => fetchGuilds());
       await runLoader('accounts', () => fetchAccounts());
+      wireRecoveryCodesCard();
+      await runLoader('recovery-codes', () => loadRecoveryCodesCard());
       await runLoader('guild-settings', () => loadGuildSettings());
       await runLoader('account-guild-select', () => populateAccountGuildSelect());
       await runLoader('join-code', () => wireJoinCode());

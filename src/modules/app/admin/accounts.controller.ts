@@ -441,6 +441,127 @@ export function initAccountsUi(): void {
 
 // ── My Passkeys card (admin-home) ─────────────────────────────────────────────
 
+// ── Recovery codes ───────────────────────────────────────────────────────────
+//
+// The super_admin is the only account `auth-discord`'s `backup-login` accepts a
+// code from, because every other account has an administrator above it who can
+// unlink it and issue a relink code. That path needs a second human, which is
+// stronger. This one has nobody, so it gets ten one-time codes instead.
+//
+// The card is hidden for everyone else: the server refuses them anyway, and
+// showing a control that always fails is worse than not showing it.
+
+/** Loads the remaining count and reveals the card, for the super_admin only. */
+export async function loadRecoveryCodesCard(): Promise<void> {
+  const card = byId('recovery-codes-card');
+  const statusEl = byId('recovery-codes-status');
+  if (!card || !statusEl) return;
+
+  const g = gm();
+  if (!g || !g.adminAccounts) return;
+
+  try {
+    const res = await g.adminAccounts('backup-codes-status');
+    if (!res || !res.ok) {
+      // `forbidden` is the normal answer for every role but one. Leave the card
+      // hidden rather than showing an error nobody can act on.
+      card.classList.add('hidden');
+      return;
+    }
+    card.classList.remove('hidden');
+    const remaining = Number(res.remaining ?? 0);
+    const total = Number(res.total ?? 10);
+    const tone = remaining === 0 ? 'error' : (remaining <= 2 ? 'warning' : 'success');
+    statusEl.className = '';
+    statusEl.innerHTML =
+      '<div class="gm-row" style="gap:.6rem; align-items:center;">' +
+        '<span class="gm-badge gm-badge-' + tone + '">' + remaining + ' / ' + total + '</span>' +
+        '<span style="color: var(--text-muted); font-size: var(--fs-sm);">' +
+          (remaining === 0
+            ? 'No codes left. Issue a new set now.'
+            : remaining <= 2
+              ? 'Running low. Issue a new set soon.'
+              : 'unused codes remaining.') +
+        '</span>' +
+      '</div>';
+  } catch (_) {
+    card.classList.add('hidden');
+  }
+}
+
+/** Issues a fresh set of ten, shown once. */
+async function regenerateRecoveryCodes(): Promise<void> {
+  const btn = byId<HTMLButtonElement>('recovery-codes-regen-btn');
+  const out = byId('recovery-codes-output');
+  const g = gm();
+  if (!g || !g.adminAccounts || !out) return;
+
+  // Reissuing invalidates the previous set, so a code written down last year
+  // stops working. Say that before doing it, not after.
+  const ok = typeof window !== 'undefined'
+    ? window.confirm('Issue ten new recovery codes?\n\nYour current codes stop working immediately. The new ones are shown once and never again.')
+    : false;
+  if (!ok) return;
+
+  if (btn) btn.disabled = true;
+  try {
+    const res = await g.adminAccounts('backup-codes-regenerate');
+    if (!res || !res.ok || !Array.isArray(res.codes)) {
+      showToast('Could not issue new codes.', 'error');
+      return;
+    }
+    const codes: string[] = res.codes;
+    out.classList.remove('hidden');
+    out.innerHTML =
+      '<div class="terms-callout warning" style="margin-bottom:.75rem; font-size: var(--fs-sm); line-height:1.45;">' +
+        '<i class="ph ph-warning"></i> Save these now. They are shown once and cannot be recovered.' +
+      '</div>' +
+      '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:.4rem;">' +
+        codes.map((c) => '<code class="gm-code-chip" style="padding:.45rem .6rem; border-radius:8px; background: var(--bg-2, #1a1b1e); font-family: var(--font-mono, monospace);">' + esc(c) + '</code>').join('') +
+      '</div>' +
+      '<div class="gm-row" style="gap:.5rem; margin-top:.75rem;">' +
+        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="recovery-codes-copy"><i class="ph ph-copy"></i> Copy all</button>' +
+        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="recovery-codes-download"><i class="ph ph-download-simple"></i> Download</button>' +
+      '</div>';
+
+    const copyBtn = byId('recovery-codes-copy');
+    if (copyBtn) copyBtn.addEventListener('click', () => {
+      if (navigator.clipboard) {
+        void navigator.clipboard.writeText(codes.join('\n'))
+          .then(() => showToast('Recovery codes copied.', 'success'))
+          .catch(() => showToast('Could not copy. Select them by hand.', 'error'));
+      }
+    });
+    const dlBtn = byId('recovery-codes-download');
+    if (dlBtn) dlBtn.addEventListener('click', () => {
+      const blob = new Blob(
+        ['FGF Guild Management recovery codes\nIssued ' + new Date().toISOString() + '\n\n' + codes.join('\n') + '\n'],
+        { type: 'text/plain' }
+      );
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'fgf-recovery-codes.txt';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+
+    showToast('Ten new recovery codes issued.', 'success');
+    void loadRecoveryCodesCard();
+  } catch (err: any) {
+    showToast('Could not issue new codes: ' + (err && err.message ? err.message : 'unknown error'), 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/** Wires the reissue button once. */
+export function wireRecoveryCodesCard(): void {
+  const btn = byId('recovery-codes-regen-btn');
+  if (!btn || (btn as any).__gmRecoveryWired) return;
+  (btn as any).__gmRecoveryWired = true;
+  btn.addEventListener('click', () => { void regenerateRecoveryCodes(); });
+}
+
 // The "My Passkeys" card was removed on 2026-09-27: it registered passkeys
 // that could not be used to sign in anywhere. mountMyPasskeysCard() and
 // loadMyPasskeysCard() went with it rather than being left to find nothing,

@@ -20,7 +20,8 @@ vi.mock('../src/modules/app/admin/accounts.controller', () => ({
   populateAccountGuildSelect: vi.fn(),
   wireJoinCode: vi.fn(),
   wireAdminInvite: vi.fn(),
-  loadMyPasskeysCard: vi.fn()
+  wireRecoveryCodesCard: vi.fn(),
+  loadRecoveryCodesCard: vi.fn()
 }));
 vi.mock('../src/modules/app/admin/guild-requests.controller', () => ({
   loadGuildSettings: vi.fn(),
