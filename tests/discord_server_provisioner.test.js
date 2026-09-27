@@ -44,12 +44,17 @@ describe("Discord Server Provisioner: buildServerTemplate", () => {
     expect(template.guildSlug).toBe("alpha");
     expect(template.tagSlug).toBe("pr1m");
 
-    // Check roles
+    // Check roles. The three the verification flow resolves BY NAME carry no
+    // emoji and no suffix: findRoleByNormalizedName only strips brackets and
+    // upper-cases, so "👽 Visitor" and "🛡️ [PR1M] Member" could never be
+    // matched and every fresh server hit the no_matching_role dead end
+    // (ADR-020). Personality lives in the colour now.
     const roleNames = template.roles.map((r) => r.name);
     expect(roleNames).toContain("👑 [PR1M] R5");
     expect(roleNames).toContain("⭐ [PR1M] R4");
-    expect(roleNames).toContain("🛡️ [PR1M] Member");
-    expect(roleNames).toContain("👽 Visitor");
+    expect(roleNames).toContain("[PR1M]");
+    expect(roleNames).toContain("[VISITOR]");
+    expect(roleNames).toContain("[PENDING]");
 
     // Check 7 categories
     expect(template.categories).toHaveLength(7);
@@ -94,7 +99,7 @@ describe("Discord Server Provisioner: buildServerTemplate", () => {
     const roleNames = template.roles.map((r) => r.name);
     expect(roleNames).toContain("👑 [BABE] R5");
     expect(roleNames).toContain("⭐ [BABE] R4");
-    expect(roleNames).toContain("🛡️ [BABE] Member");
+    expect(roleNames).toContain("[BABE]");
 
     const catNames = template.categories.map((c) => c.name);
     expect(catNames).toContain("🪐 SERVER #2042");
@@ -208,7 +213,7 @@ describe("Discord Server Provisioner: provisionDiscordServer Execution", () => {
     );
 
     expect(res.ok).toBe(true);
-    expect(res.createdCounts.roles).toBe(4);
+    expect(res.createdCounts.roles).toBe(5); // + [PENDING]
     expect(res.createdCounts.categories).toBe(7);
     expect(res.createdCounts.channels).toBeGreaterThanOrEqual(28);
 
@@ -217,8 +222,12 @@ describe("Discord Server Provisioner: provisionDiscordServer Execution", () => {
     expect(progressUpdates[0].pct).toBe(5);
     expect(progressUpdates[progressUpdates.length - 1].pct).toBe(100);
 
-    // Check Supabase auto-wiring
-    expect(upsertRows).toHaveLength(3);
+    // Check Supabase auto-wiring. Two rows, not three: `discord_member_role_id`
+    // is deliberately no longer wired. It pointed at the tag-bearing
+    // "[TAG] Member" role and the worker granted it on EVERY successful
+    // verification, visitors included -- a second role that could leak exactly
+    // what the roster gate withholds (ADR-020).
+    expect(upsertRows).toHaveLength(2);
     const verifRow = upsertRows.find((r) => r.key === "discord_verification_channel_id");
     const auditRow = upsertRows.find((r) => r.key === "discord_audit_channel_id");
     const memberRoleRow = upsertRows.find((r) => r.key === "discord_member_role_id");
@@ -231,9 +240,18 @@ describe("Discord Server Provisioner: provisionDiscordServer Execution", () => {
     expect(auditRow.guild).toBe("ALPHA");
     expect(auditRow.value).toContain("channel_");
 
-    expect(memberRoleRow).toBeDefined();
-    expect(memberRoleRow.guild).toBe("ALPHA");
-    expect(memberRoleRow.value).toContain("role_");
+    expect(memberRoleRow).toBeUndefined();
+  });
+
+  it("refuses to build anything without a game-server number", async () => {
+    // It used to default to "1000" -- a number nobody entered, on a server
+    // nobody plays on, baked into every channel name. That number is what
+    // scopes guild-tag resolution (ADR-020) and the server_admin role.
+    const fakeGuild = makeFakeDiscordGuild();
+    await expect(
+      provisionDiscordServer(fakeGuild, { guildName: "DEMO", rateLimitDelayMs: 0 }, {})
+    ).rejects.toThrow("server_number_required");
+    expect(fakeGuild.roles.create).not.toHaveBeenCalled();
   });
 
   it("handles clean mode by deleting pre-existing deletable channels", async () => {
@@ -254,6 +272,8 @@ describe("Discord Server Provisioner: provisionDiscordServer Execution", () => {
       fakeGuild,
       {
         guildName: "DEMO",
+        // Required since ADR-020: the provisioner no longer invents "1000".
+        serverNumber: "0000",
         cleanMode: true,
         rateLimitDelayMs: 0,
       },

@@ -26,6 +26,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { provisionDiscordServer } from "./server-provisioner.js";
+import { getWeekStartIso } from "./week.js";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 
@@ -397,24 +398,62 @@ function timezoneLabel(offset) {
   return `UTC${n >= 0 ? "+" : ""}${n}`;
 }
 
+/**
+ * The roster identity behind a Discord user.
+ *
+ * Returns { uid, guild } for exactly one active linked account, or
+ * { ambiguous: [{ id, guild, role }] } when the person holds several and the
+ * command has to ask which one.
+ *
+ * Migration 20260927120000 re-keyed `discord_account_links` to
+ * (discord_user_id, account_id), so one Discord identity legitimately holds
+ * several accounts -- an administrator who is also a player. `.maybeSingle()`
+ * ERRORS on that rather than picking one, so every command here threw for the
+ * identity that already has two. Only ACTIVE accounts count, and a tie is never
+ * broken silently: silently picking is how an admin's command lands on their
+ * player account.
+ */
 async function resolveLinkedAccount(discordUserId) {
-  const { data: link, error: linkError } = await supabase
+  const { data: links, error: linkError } = await supabase
     .from("discord_account_links")
     .select("account_id")
-    .eq("discord_user_id", discordUserId)
-    .maybeSingle();
+    .eq("discord_user_id", discordUserId);
   if (linkError) throw linkError;
-  if (!link) return null;
+  if (!links || links.length === 0) return null;
 
-  const { data: account, error: accountError } = await supabase
+  const { data: accounts, error: accountError } = await supabase
     .from("accounts")
-    .select("uid, guild")
-    .eq("id", link.account_id)
-    .maybeSingle();
+    .select("id, uid, guild, role, status")
+    .in("id", links.map((l) => l.account_id));
   if (accountError) throw accountError;
-  if (!account?.uid || !account?.guild) return null;
 
-  return { uid: account.uid, guild: account.guild };
+  const usable = (accounts || []).filter((a) => a.status === "active" && a.uid && a.guild);
+  if (usable.length === 0) return null;
+  if (usable.length === 1) {
+    return { uid: usable[0].uid, guild: usable[0].guild, accountId: usable[0].id };
+  }
+  return {
+    ambiguous: usable
+      .map((a) => ({ id: a.id, guild: a.guild, role: a.role, uid: a.uid }))
+      .sort((a, b) => a.guild.localeCompare(b.guild)),
+  };
+}
+
+/**
+ * Replies asking which linked account to act as, and returns true when it did.
+ * Every caller of resolveLinkedAccount goes through this, so no command has to
+ * remember the ambiguous shape.
+ */
+async function askWhichAccount(interaction, linked) {
+  if (!linked || !linked.ambiguous) return false;
+  const list = linked.ambiguous.map((a) => `• **${a.guild}** — \`${a.id}\` (${a.role})`).join("\n");
+  await interaction.reply({
+    content:
+      `Your Discord account is linked to **${linked.ambiguous.length}** player accounts, so I don't know which one you mean:\n${list}\n` +
+      `Use the one you want in the app, or ask an admin to unlink the other.`,
+    ephemeral: true,
+  });
+  return true;
 }
 
 function formatPlayerLocalTime(offset) {
@@ -505,6 +544,7 @@ async function handleMyInfo(interaction) {
     });
     return;
   }
+  if (await askWhichAccount(interaction, linked)) return;
 
   const { data: member, error: memberErr } = await supabase
     .from("guild_members")
@@ -567,6 +607,13 @@ async function handleProfile(interaction) {
     if (!linked) {
       await interaction.reply({
         content: `<@${targetUser.id}> has no linked FGF account yet. They must run \`/link\` and confirm it in the Player Portal first.`,
+        ephemeral: true,
+      });
+      return;
+    }
+    if (linked.ambiguous) {
+      await interaction.reply({
+        content: `<@${targetUser.id}> has ${linked.ambiguous.length} linked player accounts, so I can't tell which roster entry you mean. Search by in-game name instead: \`/profile ingame_name:<pseudo>\`.`,
         ephemeral: true,
       });
       return;
@@ -667,6 +714,7 @@ async function handleAbsent(interaction) {
     });
     return;
   }
+  if (await askWhichAccount(interaction, linked)) return;
 
   const { data: member, error: memberError } = await supabase
     .from("guild_members")
@@ -721,7 +769,8 @@ async function handleTop(interaction) {
 
   if (!fgfGuild) {
     const linked = await resolveLinkedAccount(interaction.user.id).catch(() => null);
-    if (linked) fgfGuild = linked.guild;
+    // An ambiguous link resolves no single guild, so it resolves nothing here.
+    if (linked && linked.guild) fgfGuild = linked.guild;
   }
 
   if (!fgfGuild) {
@@ -785,7 +834,8 @@ async function handleAbsences(interaction) {
 
   if (!fgfGuild) {
     const linked = await resolveLinkedAccount(interaction.user.id).catch(() => null);
-    if (linked) fgfGuild = linked.guild;
+    // An ambiguous link resolves no single guild, so it resolves nothing here.
+    if (linked && linked.guild) fgfGuild = linked.guild;
   }
 
   if (!fgfGuild) {
@@ -961,7 +1011,7 @@ async function handleCtaButton(interaction) {
   let fleet = 0;
 
   const linked = await resolveLinkedAccount(userId).catch(() => null);
-  if (linked) {
+  if (linked && linked.guild) {
     const { data: member } = await supabase
       .from("guild_members")
       .select("pseudo, overall_power, fleet_rating")
@@ -1018,6 +1068,7 @@ async function handleUpdateStats(interaction) {
     });
     return;
   }
+  if (await askWhichAccount(interaction, linked)) return;
 
   const { data: member, error: memberErr } = await supabase
     .from("guild_members")
@@ -1037,13 +1088,15 @@ async function handleUpdateStats(interaction) {
   const changes = [];
 
   if (power !== null) {
-    const { error: rpcErr } = await supabase.rpc("gm_upsert_player_metrics", {
+    const { data: powerData, error: rpcErr } = await supabase.rpc("gm_upsert_player_metrics", {
       p_guild: linked.guild,
       p_pseudo: member.pseudo,
       p_total_power: power,
     });
-    if (rpcErr) {
-      await interaction.reply({ content: `Failed to update power: ${rpcErr.message}`, ephemeral: true });
+    const powerRes = rpcRowOk(powerData);
+    if (rpcErr || !powerRes.ok) {
+      const why = rpcErr ? rpcErr.message : powerRes.error || "the database refused the write";
+      await interaction.reply({ content: `Failed to update power: ${why}`, ephemeral: true });
       return;
     }
     const oldP = Number(member.overall_power) || 0;
@@ -1053,17 +1106,29 @@ async function handleUpdateStats(interaction) {
   }
 
   if (glory !== null) {
-    const { error: rpcErr } = await supabase.rpc("gm_submit_event_score", {
+    // Was `gm_submit_event_score`, a function that exists in no migration and in
+    // no database -- the error was logged to the console and the player was told
+    // "✅ Stats Updated" anyway. This is the RPC the app itself uses, keyed on
+    // the same ISO Monday, and a refusal now fails the reply.
+    const week = getWeekStartIso(new Date());
+    const { data: gloryData, error: rpcErr } = await supabase.rpc("gm_upsert_player_glory", {
       p_guild: linked.guild,
       p_pseudo: member.pseudo,
-      p_uid: linked.uid,
-      p_event_name: "GLORY",
-      p_score: glory,
+      p_week_start: week,
+      p_glory: glory,
     });
-    if (rpcErr) {
-      console.warn("gm_submit_event_score returned:", rpcErr.message);
+    const gloryRes = rpcRowOk(gloryData);
+    if (rpcErr || !gloryRes.ok) {
+      const why = rpcErr ? rpcErr.message : gloryRes.error || "the database refused the write";
+      console.warn(`gm_upsert_player_glory refused ${member.pseudo} (${linked.guild}): ${why}`);
+      await interaction.reply({
+        content: `Failed to update glory: ${why}. Your power${power !== null ? " was" : " was not"} affected.`,
+        ephemeral: true,
+      });
+      return;
     }
-    changes.push(`• **Glory**: **${formatNumber(glory)}**`);
+    const oldG = Number(member.glory_score) || 0;
+    changes.push(`• **Glory**: ${formatNumber(oldG)} ➔ **${formatNumber(glory)}** (week of ${week})`);
   }
 
   const embed = {
@@ -1078,6 +1143,16 @@ async function handleUpdateStats(interaction) {
 }
 
 const pendingSetups = new Map();
+
+
+// Both RPCs answer with a row/object carrying `ok`, and neither RAISEs on a
+// refusal -- so a null transport error proves nothing. Every earlier caller here
+// inspected only the transport error and reported success regardless, which is
+// how `/update-stats glory:` announced a save it never made.
+function rpcRowOk(data) {
+  const row = Array.isArray(data) ? data[0] : data;
+  return { ok: !!(row && row.ok), error: (row && row.error) || null };
+}
 
 function generateProgressBar(percent) {
   const totalBars = 16;
@@ -1111,14 +1186,39 @@ async function handleSetupServer(interaction) {
   const rawServer = interaction.options.getString("server_number");
   const cleanMode = interaction.options.getBoolean("clean_mode") || false;
 
-  // Retrieve guild metadata from Supabase
-  const { data: guildRow } = await supabase
+  // `guilds` has no `name` column in production -- selecting it answered 42703,
+  // so guildRow was null for EVERY guild and the two fallbacks below turned a
+  // typo into 31 channels provisioned for a tenant that does not exist, on a
+  // server number nobody had ever entered. An unresolved tenant fails visibly.
+  const { data: guildRow, error: guildErr } = await supabase
     .from("guilds")
-    .select("id, name, server_number")
+    .select("id, server_number")
     .eq("id", rawGuild)
     .maybeSingle();
 
-  const finalServerNumber = (rawServer ? rawServer.trim() : guildRow?.server_number) || "1000";
+  if (guildErr) {
+    await interaction.reply({
+      content: `❌ Could not read the guild list: ${guildErr.message}`,
+      ephemeral: true,
+    });
+    return;
+  }
+  if (!guildRow) {
+    await interaction.reply({
+      content: `❌ Guild \`${rawGuild}\` is not registered in the Guild Management tool. Check the identifier (e.g. \`ALPHA\`, \`OMEGA\`, \`IMK\`) or create the guild in the app first — I won't build a server for a tenant that doesn't exist.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const finalServerNumber = (rawServer ? rawServer.trim() : guildRow.server_number) || "";
+  if (!finalServerNumber) {
+    await interaction.reply({
+      content: `❌ Guild \`${rawGuild}\` has no game-server number on file, and you didn't pass one. Set it in the app (Settings ➔ Guild ➔ Server Number) or re-run with \`server_number:\`. I won't invent one: the server number is what scopes guild-tag resolution and the server_admin role.`,
+      ephemeral: true,
+    });
+    return;
+  }
 
   // Resolve guild tag
   const { data: tagRow } = await supabase
@@ -1135,7 +1235,7 @@ async function handleSetupServer(interaction) {
     setupId,
     guildId: interaction.guild.id,
     targetGuild: rawGuild,
-    guildName: guildRow?.name || rawGuild,
+    guildName: rawGuild,
     guildTag: finalTag,
     serverNumber: finalServerNumber,
     cleanMode,
@@ -1150,7 +1250,7 @@ async function handleSetupServer(interaction) {
     color: 0xf59e0b,
     title: `⚠️ Confirm Discord Server Setup: [${rawGuild}]`,
     description:
-      `You are about to bootstrap and format this Discord server for **${guildRow?.name || rawGuild}**.\n\n` +
+      `You are about to bootstrap and format this Discord server for **${rawGuild}**.\n\n` +
       `**Configuration Overview:**\n` +
       `• **FGF Guild**: \`${rawGuild}\` (Tag: \`[${finalTag}]\`)\n` +
       `• **Game Server**: \`#${finalServerNumber}\`\n` +
@@ -1303,9 +1403,10 @@ async function handleSetupButton(interaction) {
       `• **Channels**: ${res.createdCounts.channels}\n` +
       `• **Verification Channel**: <#${res.autoWired.verificationChannelId || "unknown"}>\n` +
       `• **Audit / Officers Channel**: <#${res.autoWired.auditChannelId || "unknown"}>\n` +
-      `• **Member Role**: <@&${res.autoWired.memberRoleId || "unknown"}>\n\n` +
+      `• **Verification Roles**: \`[PENDING]\`, \`[VISITOR]\` and the guild tag role — drag my own role **above** all three in Server Settings ➜ Roles, or I cannot assign them.\n\n` +
       `**SaaS Integration:**\n` +
-      `✅ \`guild_config\` has been automatically updated in the Supabase database. The OCR verification engine and absence notifications are now live for this server!`,
+      `✅ \`guild_config\` has been automatically updated in the Supabase database. The OCR verification engine and absence notifications are now live for this server.\n` +
+      `ℹ️ The roster gate is **off** for this guild: a verified screenshot will still create the roster entry. Turn it on in the app (Admin ➜ Discord Notifications ➜ Player Verification) to require an existing member-list entry before the guild role is granted.`,
     footer: { text: "FGF Guild Management • Server Architect" },
     timestamp: new Date().toISOString(),
   };

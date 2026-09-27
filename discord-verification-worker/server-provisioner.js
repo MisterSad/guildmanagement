@@ -39,7 +39,11 @@ export function sanitizeSlug(text) {
 export function buildServerTemplate({ guildName, guildTag, serverNumber }) {
   const cleanName = (guildName || "ALPHA").trim().toUpperCase();
   const cleanTag = (guildTag || cleanName).replace(/[\[\]]/g, "").trim().toUpperCase();
-  const cleanServer = String(serverNumber || "1000").replace(/[^0-9]/g, "") || "1000";
+  // No "1000" fallback: handleSetupServer refuses to run without a real server
+  // number, because that number is what scopes guild-tag resolution (ADR-020)
+  // and the server_admin role.
+  const cleanServer = String(serverNumber || "").replace(/[^0-9]/g, "");
+  if (!cleanServer) throw new Error("server_number_required");
 
   const guildSlug = sanitizeSlug(cleanName);
   const tagSlug = sanitizeSlug(cleanTag);
@@ -53,9 +57,15 @@ export function buildServerTemplate({ guildName, guildTag, serverNumber }) {
 
     // Defined from lowest to highest in server hierarchy
     roles: [
+      // The names here are a CONTRACT with discord-profile-verification, which
+      // resolves roles by name: findRoleByNormalizedName compares
+      // normalizeTag(role.name), and normalizeTag only strips brackets and
+      // upper-cases. "👽 Visitor" therefore normalises to "👽 VISITOR",
+      // which matched nothing -- every freshly provisioned server hit the
+      // no_matching_role dead end. Personality goes in the colour, not the name.
       {
         key: "visitor",
-        name: "👽 Visitor",
+        name: "[VISITOR]",
         color: 0x9b59b6, // Purple
         hoist: true,
         mentionable: true,
@@ -69,8 +79,12 @@ export function buildServerTemplate({ guildName, guildTag, serverNumber }) {
         ],
       },
       {
+        // Named exactly after the tag: this is the role the verification flow
+        // grants, so the channel permissions attached to it land on verified
+        // members. It used to be `🛡️ [TAG] Member`, which normalised to
+        // "🛡️ [TAG] MEMBER" and could never be matched.
         key: "member",
-        name: `🛡️ [${cleanTag}] Member`,
+        name: `[${cleanTag}]`,
         color: 0x2ecc71, // Green
         hoist: true,
         mentionable: true,
@@ -84,6 +98,22 @@ export function buildServerTemplate({ guildName, guildTag, serverNumber }) {
           PermissionFlagsBits.Connect,
           PermissionFlagsBits.Speak,
           PermissionFlagsBits.UseApplicationCommands,
+        ],
+      },
+      {
+        // Held by someone whose screenshot was read but who is not in the
+        // guild's member list yet (ADR-020). Same read-only reach as a visitor:
+        // the point is that officers can SEE them waiting.
+        key: "pending",
+        name: "[PENDING]",
+        color: 0x3b82f6, // Blue
+        hoist: true,
+        mentionable: true,
+        permissions: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.AddReactions,
         ],
       },
       {
@@ -468,15 +498,12 @@ export async function provisionDiscordServer(
         autoWired.auditChannelId = auditChannel.id;
       }
 
-      if (roleMap.member) {
-        configRows.push({
-          guild: template.guildName,
-          key: "discord_member_role_id",
-          value: roleMap.member.id,
-          updated_at: now,
-        });
-        autoWired.memberRoleId = roleMap.member.id;
-      }
+      // `discord_member_role_id` is deliberately NOT wired any more. The tag
+      // role above already carries membership and is granted by the verification
+      // flow itself; a second, additive role granted by the worker was a second
+      // thing that could leak -- it was handed out on every successful outcome,
+      // including visitors, until ADR-020. An admin who wants a separate
+      // "Verified" role can still set the key by hand.
 
       if (configRows.length > 0) {
         const { error: upsertErr } = await supabase

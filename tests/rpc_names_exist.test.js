@@ -11,8 +11,17 @@
  *
  * That migration's own header claims "every RPC name is a string literal, so a
  * grep for callers is conclusive". It was right about the technique and only
- * ran it over `supabase/`. This is that grep, run over `src/` and over the
+ * ran it over `supabase/`. This is that grep, run over `src/`, over
+ * `supabase/functions/`, over `discord-verification-worker/` and over the
  * mocks, in CI, every time.
+ *
+ * The worker was added on 2026-09-28, and it was not an academic gap: it had
+ * been calling `gm_submit_event_score` since `/update-stats` shipped -- a
+ * function that exists in no migration and in no database. supabase-js answered
+ * `{ data: null, error }`, the worker logged the error to the console and told
+ * the player "✅ Stats Updated" anyway. Every Glory submitted through Discord
+ * was discarded. This directory is not "not the client": it is a live process
+ * holding the service-role key.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -97,6 +106,20 @@ describe('every RPC the client calls is a function that exists', () => {
     expect(missing, 'RPCs called from src/ with no CREATE FUNCTION in supabase/migrations/').toEqual([]);
   });
 
+  it('has migrations for every `.rpc("name")` in the Discord worker', () => {
+    const called = referencedRpcNames(['discord-verification-worker'], [/\.rpc\(\s*['"]([a-z0-9_]+)['"]/gi]);
+    // Wired-to-real-data guard: the worker DOES call RPCs, so an empty result
+    // means the path or the regex is wrong, not that the worker is clean.
+    expect(called.size, 'no .rpc() calls found in discord-verification-worker/ -- check the path').toBeGreaterThan(0);
+    const missing = [];
+    for (const [name, sites] of called) {
+      if (defined.has(name)) continue;
+      const why = dropped.has(name) ? ` (dropped by ${dropped.get(name)})` : ' (never defined)';
+      missing.push(`${name}${why} <- ${sites.join(', ')}`);
+    }
+    expect(missing, 'RPCs called from the Discord worker with no CREATE FUNCTION in supabase/migrations/').toEqual([]);
+  });
+
   it('has migrations for every RPC the unit tests mock', () => {
     // A mock is a claim about the backend. If no migration creates the
     // function, the mock is the only place it exists and the suite is testing
@@ -119,7 +142,7 @@ describe('every RPC the client calls is a function that exists', () => {
   });
 
   it('does not call anything a migration dropped without recreating it', () => {
-    const called = referencedRpcNames(['src', 'supabase/functions'], [/\.rpc\(\s*['"]([a-z0-9_]+)['"]/gi]);
+    const called = referencedRpcNames(['src', 'supabase/functions', 'discord-verification-worker'], [/\.rpc\(\s*['"]([a-z0-9_]+)['"]/gi]);
     const zombies = [];
     for (const [name, sites] of called) {
       if (!dropped.has(name)) continue;
