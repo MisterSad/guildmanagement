@@ -22,13 +22,12 @@
         <!-- ─── Login View ──────────────────────────────────────── -->
         <div id="login-view" class="view active gm-login-wrap">
             <div class="gm-login-centered-container">
-                <!-- Top Status Badge & Language Switcher -->
-                <div class="gm-login-top-bar">
-                    <div class="gm-login-hero-tag">
-                        <span class="gm-live-dot"></span>
-                        <span>SYSTEM SECURE • v3.1</span>
-                    </div>
-                </div>
+                <!-- The "SYSTEM SECURE • v3.1" badge was removed on 2026-09-27.
+                     The version was hardcoded and had read v3.1 since long before
+                     the app reached V3.22.0, so the first thing a visitor read was
+                     wrong. "SYSTEM SECURE" also asserted a property no interface
+                     element can substantiate. The real version is in the app
+                     sidebar, rendered from APP_VERSION. -->
 
                 <!-- Main Card with M3 / Apple Cozy Container -->
                 <div class="gm-animated-card-wrap">
@@ -180,12 +179,10 @@
                     <span data-i18n="login_discord">Join our Discord</span>
                 </a>
 
-                <div class="gm-login-footer">
+                <div class="gm-login-footer gm-login-footer-stacked">
                     <span>Developed by HawkEye #1058</span>
-                    <span class="gm-footer-sep" aria-hidden="true">•</span>
-                    <a href="terms.html" id="terms-link" class="gm-footer-link" data-i18n="footer_terms">Terms &amp; Conditions</a>
-                    <span class="gm-footer-sep" aria-hidden="true">•</span>
                     <a href="privacy.html" class="gm-footer-link" data-i18n="footer_privacy">Privacy Policy</a>
+                    <a href="terms.html" id="terms-link" class="gm-footer-link" data-i18n="footer_terms">Terms &amp; Conditions</a>
                 </div>
             </div>
         </div>
@@ -265,12 +262,10 @@
                     </div>
                 </div>
 
-                <div class="gm-portal-footer" style="margin-top: 1rem;">
+                <div class="gm-portal-footer gm-login-footer-stacked" style="margin-top: 1rem;">
                     <span>Developed by HawkEye #1058</span>
-                    <span class="gm-footer-sep" aria-hidden="true">•</span>
-                    <a href="terms.html" class="gm-footer-link gm-terms-trigger" data-i18n="footer_terms">Terms &amp; Conditions</a>
-                    <span class="gm-footer-sep" aria-hidden="true">•</span>
                     <a href="privacy.html" class="gm-footer-link" data-i18n="footer_privacy">Privacy Policy</a>
+                    <a href="terms.html" class="gm-footer-link gm-terms-trigger" data-i18n="footer_terms">Terms &amp; Conditions</a>
                 </div>
             </div>
         </div>

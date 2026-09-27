@@ -1121,6 +1121,18 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     box-shadow: var(--md-sys-elevation-level2);
 }
 
+/* One item per line, centred. The base rule is a wrapping flex ROW with
+   bullet separators, which is why the three items ran together and wrapped
+   awkwardly once a third was added. */
+.gm-login-footer-stacked {
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.gm-login-footer-stacked .gm-footer-link {
+    display: block;
+}
+
 .gm-login-footer,
 .gm-portal-footer {
     margin-top: 0.75rem;
