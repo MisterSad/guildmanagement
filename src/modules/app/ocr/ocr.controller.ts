@@ -16,13 +16,14 @@ import { getGuildMembers } from '../members/members.store';
 import { renderGuildMembers } from '../members/members.render';
 import {
   ocrDownsampleEvenly,
-  ocrGridDiffRatio,
   upsertPlayerMetrics,
   categorizeOcrDiff,
   parseOcrScore,
   compressImageForUpload,
   fuseOcrPlayers,
-  ocrMeasureFrameSharpness
+  ocrProfileFromRoi,
+  ocrEstimateProfileShift,
+  ocrMeasureVerticalSharpness
 } from '../../ocr/ocr.service';
 import { fetchGuildMembers } from '../members/members.controller';
 import {
@@ -348,11 +349,46 @@ export function initOcrGeminiModule(): void {
 
 // ── Video → frames ───────────────────────────────────────────────────────────
 
-const OCR_VIDEO_GRID_SIZE = 16;
-const OCR_VIDEO_FRAME_DIFF_RATIO = 0.05;
+// The ROI is sampled into a 64 x 256 canvas: wide enough to average away
+// per-pixel noise, tall enough to locate a scroll to under two source pixels.
+const OCR_ROI_SAMPLE_W = 64;
+const OCR_ROI_SAMPLE_H = 256;
 
-/** Captures a downscaled luminance grid restricted to the central scrollable ROI. */
-function ocrCaptureLuminanceGrid(gridCtx: CanvasRenderingContext2D, video: HTMLVideoElement, gridSize: number): number[] {
+/**
+ * Fraction of a frame height that must scroll past before another frame is
+ * kept. The remainder is the guaranteed overlap between two consecutive kept
+ * frames, so no row can fall between them unread.
+ *
+ * Swept against an 88 s, 147-row roster recording, scoring every row for
+ * whether some kept frame showed it whole:
+ *
+ *     0.76 -> 60 frames, 145 whole, 1 never seen
+ *     0.70 -> 64 frames, 146 whole, 0 never seen   <- chosen
+ *     0.58 -> 74 frames, 146 whole, 0 never seen
+ *
+ * It is not perfectly monotonic -- 0.64 lands a commit badly and loses a row --
+ * so this is a measured choice on real footage, not a derived constant. The
+ * value has to absorb the fact that ocrEstimateProfileShift under-reports
+ * travel on a periodic list rather than risk an alias, so the true overlap is
+ * larger than 1 - 0.70 suggests.
+ *
+ * For scale: the old time-based selection kept 35 frames and read 131 of the
+ * 147 rows. This keeps 64 and reads 146. Frame count was never the lever --
+ * which frames were kept was.
+ */
+const OCR_VIDEO_ADVANCE_FRACTION = 0.70;
+/** Below this, the window may still commit its sharpest candidate. */
+const OCR_VIDEO_EARLY_COMMIT = 0.65;
+/** A correlation this poor means the view changed, not scrolled. */
+const OCR_VIDEO_SCENE_CUT_SCORE = 0.5;
+
+interface OcrRoiSample {
+  profile: number[];
+  sharpness: number;
+}
+
+/** Samples the central scrollable ROI: its row profile and its vertical detail. */
+function ocrSampleRoi(roiCtx: CanvasRenderingContext2D, video: HTMLVideoElement): OcrRoiSample {
   const vw = video.videoWidth || 1;
   const vh = video.videoHeight || 1;
   // Region of Interest: middle 72% height (skipping top 16% banner and bottom 12% footer/chat)
@@ -361,13 +397,12 @@ function ocrCaptureLuminanceGrid(gridCtx: CanvasRenderingContext2D, video: HTMLV
   const sw = Math.max(1, Math.round(vw * 0.90));
   const sh = Math.max(1, Math.round(vh * 0.72));
 
-  gridCtx.drawImage(video, sx, sy, sw, sh, 0, 0, gridSize, gridSize);
-  const data = gridCtx.getImageData(0, 0, gridSize, gridSize).data;
-  const out = new Array(gridSize * gridSize);
-  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-    out[p] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
-  }
-  return out;
+  roiCtx.drawImage(video, sx, sy, sw, sh, 0, 0, OCR_ROI_SAMPLE_W, OCR_ROI_SAMPLE_H);
+  const data = roiCtx.getImageData(0, 0, OCR_ROI_SAMPLE_W, OCR_ROI_SAMPLE_H).data;
+  return {
+    profile: ocrProfileFromRoi(data, OCR_ROI_SAMPLE_W, OCR_ROI_SAMPLE_H),
+    sharpness: ocrMeasureVerticalSharpness(data, OCR_ROI_SAMPLE_W, OCR_ROI_SAMPLE_H),
+  };
 }
 
 export function extractFramesFromVideo(
@@ -378,8 +413,14 @@ export function extractFramesFromVideo(
   const stepMs = o.stepMs || 150;
   const maxDurationSec = o.maxDurationSec || 480;
   const maxOutputWidth = o.maxOutputWidth || 1600;
-  const maxFrames = o.maxFrames || 35;
-  const gridSize = OCR_VIDEO_GRID_SIZE;
+  // Was 35, which is below what a normal scan produces: measured on an 88 s,
+  // 147-row roster recording, the detector kept 86 frames and the cap threw 51
+  // of them away by even decimation, leaving 16 of the 147 rows impossible to
+  // read (5 never shown at all, 11 only ever cut across a frame edge). The
+  // detector itself covered 145 of 147. The cap was the defect, not the
+  // detection. This is now a safety ceiling against a pathological recording,
+  // not a budget: nothing about a normal scan should ever reach it.
+  const maxFrames = o.maxFrames || 600;
 
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
@@ -422,13 +463,24 @@ export function extractFramesFromVideo(
       const canvas = document.createElement('canvas');
       canvas.width = outW; canvas.height = outH;
       const ctx = canvas.getContext('2d');
-      const gridCanvas = document.createElement('canvas');
-      gridCanvas.width = gridSize; gridCanvas.height = gridSize;
-      const gridCtx = gridCanvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx || !gridCtx) { fail(new Error('video_invalid')); return; }
+      const roiCanvas = document.createElement('canvas');
+      roiCanvas.width = OCR_ROI_SAMPLE_W; roiCanvas.height = OCR_ROI_SAMPLE_H;
+      const roiCtx = roiCanvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx || !roiCtx) { fail(new Error('video_invalid')); return; }
 
+      // A seek that never fires `seeked` used to leave this promise pending for
+      // good, and the modal with it: seeking to exactly `duration`, or to a
+      // timestamp the browser clamps to the one it is already at, emits no
+      // event at all. The timeout resolves the step instead of stalling the
+      // whole scan -- a frame drawn twice costs one duplicate row, which
+      // fuseOcrPlayers already collapses.
+      const SEEK_TIMEOUT_MS = 3000;
       const seekTo = (t: number): Promise<void> => new Promise((res) => {
-        const onSeeked = (): void => {
+        let done = false;
+        const finish = (): void => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
           video.removeEventListener('seeked', onSeeked);
           // Allow GPU video decoding buffer to settle before canvas draw
           if (typeof requestAnimationFrame === 'function') {
@@ -437,6 +489,8 @@ export function extractFramesFromVideo(
             setTimeout(res, 10);
           }
         };
+        const onSeeked = (): void => { finish(); };
+        const timer = setTimeout(finish, SEEK_TIMEOUT_MS);
         video.addEventListener('seeked', onSeeked);
         video.currentTime = t;
       });
@@ -449,12 +503,32 @@ export function extractFramesFromVideo(
       void (async () => {
         try {
           const kept: Blob[] = [];
-          let lastSavedGrid: number[] | null = null;
-          let prevStepGrid: number[] | null = null;
-          let bestStepBlobInWindow: Blob | null = null;
-          let bestStepSharpnessInWindow = -1;
-          let bestStepGridInWindow: number[] | null = null;
-          let consecutiveMovingSteps = 0;
+
+          // How far the content has scrolled, in ROI sample rows, since the
+          // frame that was last kept. Displacement is what decides when to keep
+          // another frame, because it is the only quantity that answers the
+          // question that matters: could a row have passed by unseen?
+          const advanceTarget = OCR_ROI_SAMPLE_H * OCR_VIDEO_ADVANCE_FRACTION;
+          const earlyCommit = advanceTarget * OCR_VIDEO_EARLY_COMMIT;
+          // One step may not move the content more than the ROI, or the
+          // correlation would be free to lock onto the wrong row of a roster
+          // that repeats every row pitch.
+          const maxStepShift = Math.round(OCR_ROI_SAMPLE_H * 0.45);
+
+          let prevProfile: number[] | null = null;
+          let travelled = 0;
+          let bestBlob: Blob | null = null;
+          let bestSharpness = -1;
+          let bestTravelled = 0;
+
+          const commit = async (blob: Blob | null, consumed: number): Promise<void> => {
+            const b = blob || await captureFrameBlob();
+            if (b) kept.push(b);
+            travelled = Math.max(0, travelled - consumed);
+            bestBlob = null;
+            bestSharpness = -1;
+            bestTravelled = 0;
+          };
 
           const steps = Math.max(1, Math.ceil((duration * 1000) / stepMs));
 
@@ -462,61 +536,54 @@ export function extractFramesFromVideo(
             const t = Math.min(duration, (s * stepMs) / 1000);
             await seekTo(t);
 
-            const grid = ocrCaptureLuminanceGrid(gridCtx, video, gridSize);
-            const rawGridData = gridCtx.getImageData(0, 0, gridSize, gridSize).data;
-            const sharpness = ocrMeasureFrameSharpness(rawGridData, gridSize, gridSize);
-
+            const sample = ocrSampleRoi(roiCtx, video);
             const isStart = (s === 0);
             const isEnd = (t >= duration - 0.08);
-            const diffFromPrev = prevStepGrid ? ocrGridDiffRatio(grid, prevStepGrid) : 1;
-            const diffFromSaved = lastSavedGrid ? ocrGridDiffRatio(grid, lastSavedGrid) : 1;
 
             if (isStart) {
               // Always capture the very first frame (top of leaderboard)
               const blob = await captureFrameBlob();
               if (blob) kept.push(blob);
-              lastSavedGrid = grid;
-            } else if (isEnd) {
-              // Final frame of recording
-              if (diffFromSaved >= 0.04) {
-                const blob = await captureFrameBlob();
-                if (blob) kept.push(blob);
-              }
             } else {
-              // Active scroll tracking:
-              const isMoving = diffFromPrev >= 0.04;
-              if (isMoving) {
-                consecutiveMovingSteps++;
-                // Track sharpest frame seen during movement
-                if (sharpness > bestStepSharpnessInWindow) {
-                  bestStepSharpnessInWindow = sharpness;
-                  bestStepBlobInWindow = await captureFrameBlob();
-                  bestStepGridInWindow = grid;
+              const { shift, score } = ocrEstimateProfileShift(prevProfile, sample.profile, maxStepShift);
+
+              if (score < OCR_VIDEO_SCENE_CUT_SCORE) {
+                // Not a scroll: the view itself changed (a tab switch, a dialog,
+                // a jump to another list). Nothing carries over, so keep this
+                // frame outright and start measuring again from here.
+                await commit(null, travelled);
+              } else {
+                travelled += Math.abs(shift);
+
+                // Past the early-commit mark every frame is a legitimate
+                // candidate, so keep the crispest one rather than whichever
+                // happens to land on the threshold.
+                if (travelled >= earlyCommit && sample.sharpness > bestSharpness) {
+                  const candidate = await captureFrameBlob();
+                  if (candidate) {
+                    bestBlob = candidate;
+                    bestSharpness = sample.sharpness;
+                    bestTravelled = travelled;
+                  }
                 }
 
-                // If continuous scrolling has lasted > 1.2s and content shifted significantly,
-                // commit the sharpest frame seen so far to prevent missing intermediate players
-                if (consecutiveMovingSteps >= 8 && diffFromSaved >= 0.12 && bestStepBlobInWindow) {
-                  kept.push(bestStepBlobInWindow);
-                  lastSavedGrid = bestStepGridInWindow || grid;
-                  bestStepBlobInWindow = null;
-                  bestStepSharpnessInWindow = -1;
-                  consecutiveMovingSteps = 0;
-                }
-              } else {
-                // Screen stabilized / scroll slowed or stopped (crisp stationary text)
-                consecutiveMovingSteps = 0;
-                if (diffFromSaved >= OCR_VIDEO_FRAME_DIFF_RATIO) {
-                  const blob = await captureFrameBlob();
-                  if (blob) kept.push(blob);
-                  lastSavedGrid = grid;
-                  bestStepBlobInWindow = null;
-                  bestStepSharpnessInWindow = -1;
+                if (travelled >= advanceTarget) {
+                  await commit(bestBlob, bestTravelled || travelled);
                 }
               }
             }
 
-            prevStepGrid = grid;
+            if (isEnd) {
+              // The tail of the list lives only on the last frame, and it has
+              // not necessarily scrolled a full advance since the previous one.
+              if (travelled > 0 || kept.length === 0) {
+                const blob = await captureFrameBlob();
+                if (blob) kept.push(blob);
+              }
+              break;
+            }
+
+            prevProfile = sample.profile;
             if (t >= duration) break;
           }
 
@@ -590,9 +657,19 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
     }
   }
 
-  const MAX_OCR_IMAGES = 60;
+  // Safety ceiling, not a budget. ocrDownsampleEvenly drops frames blindly, and
+  // every frame it drops is a screenful of players that no longer reaches the
+  // OCR -- measured at the old cap of 60 (and the extractor's own 35), a single
+  // 88 s roster recording lost 16 of its 147 rows. Images are compressed one
+  // batch at a time below, so a long scan costs requests and time, never a
+  // decimated roster.
+  const MAX_OCR_IMAGES = 500;
   if (imageFiles.length > MAX_OCR_IMAGES) {
-    showToast('Processing maximum ' + MAX_OCR_IMAGES + ' images per batch (300+ players).', 'info');
+    showToast(
+      'That is ' + imageFiles.length + ' images — scanning the first ' + MAX_OCR_IMAGES +
+      ' evenly spread across the set. Split the recording in two to scan all of it.',
+      'warning'
+    );
     imageFiles = ocrDownsampleEvenly(imageFiles, MAX_OCR_IMAGES);
   }
 
@@ -619,11 +696,18 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
 
   let allPlayers: any[] = [];
   try {
-    if (loadingP) loadingP.textContent = 'Optimizing ' + imageFiles.length + ' image(s) for AI processing...';
+    // Calibrated chunk size = 2 images per prompt to maximize Gemini vision accuracy
+    const chunkSize = 2;
+    const chunks: Blob[][] = [];
+    for (let c = 0; c < imageFiles.length; c += chunkSize) chunks.push(imageFiles.slice(c, c + chunkSize));
 
-    // Compress all images in parallel to prevent 413 payload_too_large errors
-    const imageItems: any[] = await Promise.all(
-      imageFiles.map(async (file) => {
+    // Compression is per batch, immediately before that batch is sent, rather
+    // than for every image up front. The old Promise.all held one base64 data
+    // URL per image alive at the same time; at the frame counts a video now
+    // produces that is tens of megabytes of strings on a phone, and lifting the
+    // image cap without this would only trade missing players for an OOM.
+    const prepareChunk = async (blobs: Blob[]): Promise<any[]> => Promise.all(
+      blobs.map(async (file) => {
         try {
           const b64 = await compressImageForUpload(file, 1600, 0.82);
           return { mimeType: 'image/jpeg', base64Data: b64 };
@@ -634,10 +718,34 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
       })
     );
 
-    // Calibrated chunk size = 2 images per prompt to maximize Gemini vision accuracy
-    const chunkSize = 2;
-    const chunks: any[][] = [];
-    for (let c = 0; c < imageItems.length; c += chunkSize) chunks.push(imageItems.slice(c, c + chunkSize));
+    // A batch that fails takes its two screens of players with it, and the
+    // failures that matter here are transient: a Gemini rate limit, a cold
+    // start, a truncated candidate. One retry with a backoff recovers those
+    // without making a real failure take four times as long to report.
+    // Deliberately narrow. `json_parse_failed` is not here: the Edge Function
+    // already retries a truncated candidate against the next model, so retrying
+    // it again from the client only spends the images' tokens a second time to
+    // reach the same answer.
+    const RETRYABLE = ['ocr_processing_failed', 'too_many_attempts'];
+    const callChunkWithRetry = async (
+      blobs: Blob[], rank: string | null, onStatus?: (s: string) => void
+    ): Promise<{ players: any[]; endingRank: string | null }> => {
+      const items = await prepareChunk(blobs);
+      try {
+        return await callGeminiOcrBatchApi(items, metric, activeGuildTag, rank, onStatus);
+      } catch (firstErr: any) {
+        const code = firstErr && firstErr.message ? String(firstErr.message) : '';
+        if (!RETRYABLE.includes(code)) throw firstErr;
+        await new Promise((r) => setTimeout(r, 1200));
+        try {
+          return await callGeminiOcrBatchApi(items, metric, activeGuildTag, rank, onStatus);
+        } catch (_retryErr) {
+          // The first failure is the one that says something useful about why
+          // the scan failed; the retry's is just the same wall hit twice.
+          throw firstErr;
+        }
+      }
+    };
 
     const isMembersMode = metric === 'members';
 
@@ -658,7 +766,7 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
           loadingP.textContent = 'Processing screenshots batch ' + (b + 1) + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
         }
         try {
-          const batchResult = await callGeminiOcrBatchApi(chunks[b], metric, activeGuildTag, carryRank, (statusMsg: string) => {
+          const batchResult = await callChunkWithRetry(chunks[b], carryRank, (statusMsg: string) => {
             if (loadingP) loadingP.textContent = statusMsg;
           });
           allPlayers = allPlayers.concat(batchResult.players);
@@ -683,7 +791,7 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
         while (nextChunkIdx < chunks.length) {
           const idx = nextChunkIdx++;
           try {
-            batchResults[idx] = await callGeminiOcrBatchApi(chunks[idx], metric, activeGuildTag, null);
+            batchResults[idx] = await callChunkWithRetry(chunks[idx], null);
           } catch (batchErr: any) {
             console.error('OCR batch ' + (idx + 1) + ' of ' + chunks.length + ' failed:', batchErr);
             batchErrors.push(batchErr && batchErr.message ? batchErr.message : 'unknown_error');
