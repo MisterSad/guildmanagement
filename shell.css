@@ -1013,6 +1013,20 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     overflow: hidden;
 }
 
+/* The identifier/password route is the SECONDARY one as of 2026-09-27.
+   `.gm-login-submit` hardcodes the primary fill, so the class swap on the
+   button alone had no effect: it needs saying here. */
+.gm-login-submit.gm-btn-ghost {
+    background: transparent;
+    color: var(--md-sys-color-on-surface);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    box-shadow: none;
+}
+
+.gm-login-submit.gm-btn-ghost:hover {
+    background: var(--md-sys-color-surface-container-high, rgba(255, 255, 255, 0.06));
+}
+
 .gm-login-submit:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
@@ -1031,6 +1045,52 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
 }
 
 /* Discord Community / Tenant Request Button */
+/* Discord is the primary route in, as of 2026-09-27: it sits above the
+   credential fields rather than under them. */
+.gm-login-discord-btn.gm-login-discord-primary {
+    background: #5865F2;
+    border-color: #5865F2;
+    color: #fff;
+    margin-bottom: 0.35rem;
+}
+
+.gm-login-discord-btn.gm-login-discord-primary .ph {
+    color: #fff;
+}
+
+.gm-login-discord-btn.gm-login-discord-primary:hover {
+    background: #4752c4;
+    border-color: #4752c4;
+}
+
+.gm-login-discord-hint {
+    margin: 0 0 0.9rem;
+    text-align: center;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text-muted, #94a3b8);
+}
+
+/* "or use your identifier", with a rule either side. */
+.gm-login-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0 0 0.9rem;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.gm-login-divider::before,
+.gm-login-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border-soft, rgba(255, 255, 255, 0.08));
+}
+
 .gm-login-discord-btn {
     display: flex;
     align-items: center;

@@ -36,13 +36,19 @@ describe('TICKET-13 [TEST-01]: Playwright Configuration & E2E Coverage', () => {
 
     expect(specs).toContain('boot.spec.js');
     expect(specs).toContain('dashboard-nav.spec.js');
-    expect(specs).toContain('guild-request.spec.js');
+    // `guild-request.spec.js` was removed on 2026-09-27 with the public
+    // "Request a Guild" tab it covered. Guild creation runs through Discord
+    // sign-in now, and `login-discord-first.spec.js` covers the page it left.
+    expect(specs).not.toContain('guild-request.spec.js');
+    expect(specs).toContain('login-discord-first.spec.js');
     expect(specs).toContain('login.spec.js');
     expect(specs).toContain('ocr-modal.spec.js');
     expect(specs).toContain('portal.spec.js');
     expect(specs).toContain('dialog-a11y.spec.js');
     expect(specs).toContain('custom-msg-modal.spec.js');
     expect(specs).toContain('session-lifecycle.spec.js');
+    expect(specs).toContain('privacy.spec.js');
+    expect(specs).toContain('icons.spec.js');
   });
 });
 
