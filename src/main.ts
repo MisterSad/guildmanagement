@@ -137,8 +137,6 @@ import {
   wireJoinCode,
   initAccountsUi,
   generatePassword,
-  mountMyPasskeysCard,
-  loadMyPasskeysCard
 } from './modules/app/admin/accounts.controller';
 import {
   fetchGuildRequests,
@@ -312,9 +310,7 @@ if (typeof window !== 'undefined') {
     wireJoinCode,
     initAccountsUi,
     generatePassword,
-    mountMyPasskeysCard,
-    loadMyPasskeysCard,
-    fetchGuildRequests,
+      fetchGuildRequests,
     renderGuildRequestsList,
     wireGuildRequestListeners,
     loadGuildSettings,

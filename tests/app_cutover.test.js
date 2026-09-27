@@ -119,12 +119,30 @@ describe('Final cutover: residual app.js wiring re-homed under /src', () => {
     expect(render).toContain("tierSelect.value = tierSelect.value === 'TEMP_UID' ? 'ALL' : 'TEMP_UID'");
   });
 
-  it('re-homes the My Passkeys admin card', () => {
-    expect(main).toContain('loadMyPasskeysCard');
-    const accountsCtrl = read('src/modules/app/admin/accounts.controller.ts');
-    expect(accountsCtrl).toContain('mountPasskeysPanel');
-    expect(accountsCtrl).toContain("byId('my-passkeys-list')");
-    const router = read('src/modules/app/router.ts');
-    expect(router).toContain('loadMyPasskeysCard()');
+  it('no longer carries the My Passkeys admin card, which was removed', () => {
+    // The card was re-homed under /src during the cutover, and removed on
+    // 2026-09-27. It let people REGISTER passkeys that could not be used to
+    // sign in anywhere: both sign-in buttons called `wirePasskeyLoginButton()`
+    // and `openBackupCodeDialog()`, which are exported onto the window.GM
+    // bridge and were never invoked. The card, its mount, its router loader and
+    // its bridge entries went together, so nothing is left to find nothing.
+    //
+    // Comments are stripped first. The code left behind NAMES the removed
+    // functions while explaining why they went, and an absence check over the
+    // raw text reads correct documentation as a regression. This has now caught
+    // seven separate suites in this repository; strip, then assert.
+    const strip = (t) =>
+      t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/<!--[\s\S]*?-->/g, '');
+
+    const accountsCtrl = strip(read('src/modules/app/admin/accounts.controller.ts'));
+    const router = strip(read('src/modules/app/router.ts'));
+    expect(strip(main)).not.toContain('loadMyPasskeysCard');
+    expect(accountsCtrl).not.toContain("byId('my-passkeys-list')");
+    expect(accountsCtrl).not.toContain('mountMyPasskeysCard');
+    expect(router).not.toContain('loadMyPasskeysCard');
+    expect(strip(read('index.html'))).not.toContain('id="my-passkeys-card"');
+    // The portal carried an identical panel; it went too.
+    expect(strip(read('src/modules/portal/views/PortalView.ts')))
+      .not.toContain("document.getElementById('portal-passkeys-list')");
   });
 });

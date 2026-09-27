@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- **"My Passkeys" removed, from both places it lived**
+  - It let people **register passkeys that could not be used to sign in anywhere.** Both sign-in buttons called `wirePasskeyLoginButton()` and `openBackupCodeDialog()`, which are exported onto the `window.GM` bridge and were never invoked; they were removed earlier the same day as dead markup. Registering more only grew a pile of credentials nobody could spend.
+  - **There were two identical cards**, not one: Accounts & Access (static markup in `index.html`) and the player portal's Security section (rendered by `PortalView`). The report named one; leaving the other would have been incoherent, so both went. Said here rather than left to be discovered.
+  - **The wiring went with them**, not just the markup: `mountMyPasskeysCard()`, `loadMyPasskeysCard()`, the router's `my-passkeys` tab loader and the two bridge entries in `main.ts`. A loader left pointing at elements that no longer exist is indistinguishable from one that was never called, which is precisely the `maybeInitOcr()` defect this audit already found once.
+  - **The 14 accounts holding a passkey are untouched.** Those rows are inert either way, since there is no sign-in path to spend them on.
+  - **The server side is deliberately left alone**: `auth-passkey`, `account_passkeys` and `account_backup_codes` stay. Dismantling them is phase D7, gated on how many accounts have linked Discord (7 of 172 today).
+  - **Still in the repo and now unreachable**: `src/modules/auth/PasskeysPanel.ts` and its test suite, plus four bridge references. Left in place on purpose, because that module is what you would remount if passkey sign-in is ever wired properly. Worth a decision rather than a silent deletion.
+  - **A seventh suite caught by the same trap.** The cutover test asserted the card's absence over raw source, and failed on the comment that explains why it was removed, because the comment names the removed functions. Strip comments, then assert.
+  - Gate: 0 TS errors, **155 suites / 1930 tests**, build clean, **38 e2e** green.
+
 - **Player portal: the same two dead buttons removed, and the Discord changelog rewritten (v3.22.0)**
   - The portal's "Sign in with a Passkey" and "Use a backup code instead" were identical unwired copies of the ones on the login page. Both gone.
   - The e2e scan that checks for them is **scoped to `#login-view`**. A whole-document version failed on `add-passkey-btn` and `regen-backup-codes-btn` in the "My Passkeys" card on Accounts & Access, which **are** wired and are registration, not sign-in. Worth noting on its own: that card still lets people register passkeys that **cannot be used to sign in anywhere**, since both sign-in buttons were dead. 14 accounts have one registered.

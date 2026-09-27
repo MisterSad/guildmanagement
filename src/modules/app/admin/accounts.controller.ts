@@ -441,24 +441,8 @@ export function initAccountsUi(): void {
 
 // ── My Passkeys card (admin-home) ─────────────────────────────────────────────
 
-let myPasskeysPanel: any = null;
-
-/** Mounts the shared passkeys panel into the static accounts-tab card. */
-export function mountMyPasskeysCard(): void {
-  if (myPasskeysPanel) return;
-  const x = gm();
-  const wa = x && x.webauthn;
-  if (!wa || typeof wa.mountPasskeysPanel !== 'function') return;
-  myPasskeysPanel = wa.mountPasskeysPanel({
-    listEl: byId('my-passkeys-list'),
-    addBtnEl: byId('add-passkey-btn'),
-    regenBtnEl: byId('regen-backup-codes-btn'),
-    regenLabelEl: byId('backup-codes-btn-label')
-  });
-}
-
-/** Mounts + refreshes the My Passkeys card (called on admin-home activation). */
-export function loadMyPasskeysCard(): void {
-  mountMyPasskeysCard();
-  if (myPasskeysPanel && typeof myPasskeysPanel.reload === 'function') myPasskeysPanel.reload();
-}
+// The "My Passkeys" card was removed on 2026-09-27: it registered passkeys
+// that could not be used to sign in anywhere. mountMyPasskeysCard() and
+// loadMyPasskeysCard() went with it rather than being left to find nothing,
+// which is the failure mode the audit kept meeting (a loader that silently
+// no-ops is indistinguishable from one that was never called).

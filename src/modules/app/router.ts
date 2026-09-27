@@ -24,7 +24,6 @@ import {
   populateAccountGuildSelect,
   wireJoinCode,
   wireAdminInvite,
-  loadMyPasskeysCard
 } from './admin/accounts.controller';
 import { loadGuildSettings, fetchGuildRequests } from './admin/guild-requests.controller';
 import { renderGuildsList } from './admin/guilds.controller';
@@ -200,7 +199,6 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
       await runLoader('account-guild-select', () => populateAccountGuildSelect());
       await runLoader('join-code', () => wireJoinCode());
       await runLoader('admin-invite', () => wireAdminInvite());
-      await runLoader('my-passkeys', () => loadMyPasskeysCard());
     }
     if (tabId === 'admin-discord' || tabId === 'guild-settings') {
       await runLoader('guild-settings', () => loadGuildSettings());

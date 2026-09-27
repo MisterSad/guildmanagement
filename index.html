@@ -348,27 +348,18 @@
                         </div>
                     </header>
 
-                    <div class="gm-card gm-card-padded gm-section" id="my-passkeys-card">
-                        <div class="gm-section-title" style="margin-bottom: 0.25rem;">
-                            <i class="ph ph-fingerprint"></i>
-                            <span>My Passkeys</span> <button class="gm-help-btn" data-help-id="help-my-passkeys" aria-label="Help: My Passkeys"><i class="ph ph-info"></i></button>
-                        </div>
-                        <p class="gm-page-subtitle" style="margin-bottom:1rem;">Sign in to your own account faster, without typing a password, using your device's fingerprint, face, or PIN.</p>
-                        <div id="my-passkeys-list">
-                            <div class="gm-empty">
-                                <i class="ph ph-circle-notch ph-spin gm-icon"></i>
-                                <div class="gm-empty-title">Loading…</div>
-                            </div>
-                        </div>
-                        <div class="gm-row" style="gap:.75rem; margin-top:1rem; flex-wrap:wrap; align-items:center;">
-                            <button type="button" id="add-passkey-btn" class="gm-btn gm-btn-primary">
-                                <i class="ph ph-plus"></i> Add a Passkey
-                            </button>
-                            <button type="button" id="regen-backup-codes-btn" class="gm-btn gm-btn-ghost hidden">
-                                <i class="ph ph-arrows-clockwise"></i> <span id="backup-codes-btn-label">Regenerate Backup Codes</span>
-                            </button>
-                        </div>
-                    </div>
+                    <!-- The "My Passkeys" card was removed on 2026-09-27.
+                    
+                         It let people REGISTER passkeys that could not be used to sign in
+                         anywhere: `wirePasskeyLoginButton()` and `openBackupCodeDialog()` are
+                         exported onto the window.GM bridge and were never called, so both
+                         sign-in buttons were dead markup and were removed earlier the same day.
+                         Registering more of them only grew a pile of credentials nobody could
+                         spend. 14 accounts hold one; those rows are untouched and inert.
+                    
+                         The server side (auth-passkey, account_passkeys, account_backup_codes)
+                         is deliberately left alone: dismantling it is phase D7, which is gated
+                         on how many accounts have linked Discord. -->
 
                     <div class="gm-card gm-card-padded gm-section" id="create-account-card">
                         <div class="gm-section-title" style="margin-bottom: 1rem;">
