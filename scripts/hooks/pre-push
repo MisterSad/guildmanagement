@@ -44,8 +44,15 @@ SHARED_DIR="${FUNCTIONS_DIR}/_shared"
 # Read from stdin: "<local-sha> <local-ref> <remote-sha> <remote-ref>"
 CHANGED_FILES=""
 while read local_sha local_ref remote_sha remote_ref; do
-  # Only process pushes to main
-  if [[ "$local_ref" != "refs/heads/${MAIN_BRANCH}" ]]; then
+  # Only process pushes to main.
+  #
+  # This tests the REMOTE ref, not the local one. It used to test $local_ref,
+  # which is the branch name on this side -- so `git push origin HEAD:main`,
+  # and every push from a worktree whose branch is not literally named "main",
+  # updated production while silently skipping the deploy. That is precisely
+  # the code-vs-deployed drift this hook exists to prevent. What matters is
+  # where the commits land, which is $remote_ref.
+  if [[ "$remote_ref" != "refs/heads/${MAIN_BRANCH}" ]]; then
     continue
   fi
 

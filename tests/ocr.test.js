@@ -358,8 +358,15 @@ describe('2026 OCR Modernization: Sharpness, Fusion & Exhaustive Prompting', () 
     const fnPath = path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts');
     const fnContent = fs.readFileSync(fnPath, 'utf-8');
 
-    it('enforces max_output_tokens: 8192 in generationConfig for exhaustive roster extraction', () => {
-        expect(fnContent).toContain('max_output_tokens: 8192');
+    it('keeps an explicit, generous max_output_tokens for exhaustive roster extraction', () => {
+        // This used to pin the literal 8192, which is how the bug survived: the
+        // budget is shared with the thinking tokens, so a long deliberation left
+        // ~600 tokens for the answer and the JSON came back cut in half. Pinning
+        // the exact number made raising it a test failure. The property that
+        // matters is that a ceiling is set and that it is not that one.
+        const cap = /max_output_tokens:\s*(\d+)/.exec(fnContent);
+        expect(cap).toBeTruthy();
+        expect(Number(cap[1])).toBeGreaterThanOrEqual(32768);
     });
 
     it('contains exhaustive scanning and Unicode gamer symbol guidelines in system prompt', () => {

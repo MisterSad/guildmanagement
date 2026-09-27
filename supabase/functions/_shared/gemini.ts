@@ -44,3 +44,24 @@ export const GEMINI_MODEL_FALLBACKS: readonly string[] = [
 export function geminiGenerateContentUrl(model: string): string {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 }
+
+/**
+ * Whether a model accepts `generationConfig.thinkingConfig`.
+ *
+ * It matters because the thinking tokens are spent out of the SAME
+ * `max_output_tokens` budget as the answer. Measured in production on
+ * 2026-09-27: 147 OCR extractions succeeded in 11.7s on average, and the only
+ * three that failed took 30.4s, 32.7s and 34.0s, each returning a *well-formed
+ * response envelope* whose JSON text stopped mid-object at ~1,900 characters.
+ * That is not a network cut, and it is nowhere near 8,192 tokens of output. The
+ * model had simply thought its budget away before writing the answer.
+ *
+ * OCR here is transcription against a fixed response schema at temperature 0.1.
+ * There is nothing to reason about, so the budget is set to zero.
+ *
+ * Gemini 2.0 predates the parameter and answers 400 INVALID_ARGUMENT to it,
+ * which is why this is a per-model question rather than a constant.
+ */
+export function geminiSupportsThinking(model: string): boolean {
+  return !model.startsWith("gemini-2.0");
+}

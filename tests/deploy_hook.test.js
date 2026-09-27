@@ -53,6 +53,16 @@ describe('the deploy hook does not override verify_jwt', () => {
   });
 });
 
+describe('the deploy hook fires for every push that reaches main', () => {
+  it('decides on the remote ref, not the local branch name', () => {
+    // `git push origin HEAD:main` sends local_ref = "HEAD". Keying the guard
+    // off the local name skipped the deploy for it, and for every push made
+    // from a worktree branch -- which is how most of this work is pushed.
+    expect(hook).toContain('if [[ "$remote_ref" != "refs/heads/${MAIN_BRANCH}" ]]; then');
+    expect(hook).not.toContain('if [[ "$local_ref" != "refs/heads/${MAIN_BRANCH}" ]]; then');
+  });
+});
+
 describe('the deploy hook cannot drift from the functions that exist', () => {
   it('enumerates the function directories instead of hardcoding them', () => {
     expect(code).toMatch(/find "\$\{FUNCTIONS_DIR\}"/);

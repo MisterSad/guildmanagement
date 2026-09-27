@@ -1,3 +1,19 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.24.0**
+
+Quick fix. **Scanning a video into OCR was failing** where the same screens worked as screenshots. Reported on Glory, but it could hit any of the scans. 🛠️
+
+**What was happening.** Every scan is cut into small batches sent to the AI. About one batch in fifty came back with its answer cut off mid-sentence, and when that happened **the whole scan was thrown away**, including every batch that had worked. A screenshot is one batch, so you almost never saw it. A video is about eighteen, so roughly one video scan in three died.
+
+**What I changed.**
+
+- The AI no longer spends its answer budget "thinking" before replying. That is what truncated the answers, and it was also making those scans take 30 seconds instead of 10.
+- If a batch does fail, the scan **keeps the batches that worked** and tells you *"1 of 18 batches failed"* so you know the table is incomplete before you commit it.
+- The results table already greys out and unchecks anyone it did not see, so a partial scan still cannot mark your members as departed by accident. That safety net is unchanged.
+
+**What you should do.** Nothing, just reload the page. If a video scan ever warns you that a batch failed, re-run it or top it up with a screenshot of the missing rows.
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.23.0**
 
 Hey everyone! Short one. **The old "Register Player" tab is gone**, and this post is the new instructions for getting into the Player Portal. If you already signed in with Discord, nothing changes for you. 🛸

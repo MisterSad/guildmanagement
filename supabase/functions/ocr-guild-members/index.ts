@@ -4,7 +4,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
-import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl } from "../_shared/gemini.ts";
+import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl, geminiSupportsThinking } from "../_shared/gemini.ts";
 
 export interface OcrImageItem {
   base64Data: string;
@@ -479,18 +479,26 @@ Deno.serve(async (req: Request) => {
     required: ["metric", "players"],
   };
 
-  const promptPayload = {
+  // `thinking_config` is added per model below: Gemini 2.0 rejects it.
+  const baseGenerationConfig = {
+    response_mime_type: "application/json",
+    response_schema: responseSchema,
+    temperature: 0.1,
+    // Was 8192, shared with the thinking tokens. See geminiSupportsThinking().
+    // A two-image batch answers in well under 2k tokens, so this is headroom,
+    // not a bill: Gemini charges the tokens emitted, not the ceiling.
+    max_output_tokens: 32768,
+  };
+
+  const buildPayload = (modelName: string) => ({
     system_instruction: {
       parts: [{ text: SYSTEM_INSTRUCTION }],
     },
     contents: [{ parts }],
-    generationConfig: {
-      response_mime_type: "application/json",
-      response_schema: responseSchema,
-      temperature: 0.1,
-      max_output_tokens: 8192,
-    },
-  };
+    generationConfig: geminiSupportsThinking(modelName)
+      ? { ...baseGenerationConfig, thinking_config: { thinking_budget: 0 } }
+      : baseGenerationConfig,
+  });
 
   // B1: one shared list; three of the five entries here were identifiers
   // Google has never published. See _shared/gemini.ts.
@@ -501,17 +509,36 @@ Deno.serve(async (req: Request) => {
 
   logger.info("Initiating Gemini OCR scan", { imageCount: imagesArray.length || 1 });
 
+  const callGemini = (modelName: string, payload: unknown): Promise<Response> =>
+    fetch(geminiGenerateContentUrl(modelName), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
+
   for (const modelName of modelsToTry) {
     try {
-      const apiUrl = geminiGenerateContentUrl(modelName);
-      const resp = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": GEMINI_API_KEY,
-        },
-        body: JSON.stringify(promptPayload),
-      });
+      let resp = await callGemini(modelName, buildPayload(modelName));
+
+      // If this build of the model has not heard of thinking_config it answers
+      // 400 rather than ignoring the field, and the whole OCR would fail on a
+      // parameter that is only an optimisation. Drop it and ask again.
+      if (resp.status === 400 && geminiSupportsThinking(modelName)) {
+        const errTxt = await resp.text();
+        logger.warn("Gemini rejected the request; retrying without thinking_config", {
+          modelName,
+          status: 400,
+          detail: errTxt.slice(0, 300),
+        });
+        resp = await callGemini(modelName, {
+          system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+          contents: [{ parts }],
+          generationConfig: baseGenerationConfig,
+        });
+      }
 
       if (!resp.ok) {
         const errTxt = await resp.text();
@@ -521,12 +548,38 @@ Deno.serve(async (req: Request) => {
       }
 
       const respData = await resp.json();
-      const textCandidate = respData?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const candidate = respData?.candidates?.[0];
+      const textCandidate = candidate?.content?.parts?.[0]?.text;
+      const finishReason = candidate?.finishReason ?? null;
+
+      // A truncated answer used to be accepted here, logged as a success, and
+      // then thrown away four lines later by JSON.parse -- a 500 to the user
+      // with no retry, because the loop had already broken out. Anything other
+      // than STOP means the text is not the whole answer, so try the next model
+      // instead of parsing a fragment.
+      if (textCandidate && finishReason && finishReason !== "STOP") {
+        lastError = `Model ${modelName} stopped early: ${finishReason}`;
+        logger.warn("Gemini returned a truncated candidate", {
+          modelName,
+          finishReason,
+          textLength: String(textCandidate).length,
+          usage: respData?.usageMetadata ?? null,
+        });
+        continue;
+      }
+
       if (textCandidate) {
         geminiResultRaw = textCandidate;
-        logger.info("Gemini OCR extraction succeeded", { modelName });
+        logger.info("Gemini OCR extraction succeeded", {
+          modelName,
+          finishReason,
+          usage: respData?.usageMetadata ?? null,
+        });
         break;
       }
+
+      lastError = `Model ${modelName} returned no text (finishReason: ${finishReason ?? "none"})`;
+      logger.warn("Gemini returned no text candidate", { modelName, finishReason });
     } catch (e: any) {
       lastError = `Fetch exception for ${modelName}: ${e.message}`;
       logger.warn("Exception during Gemini fetch", { modelName, error: e.message });

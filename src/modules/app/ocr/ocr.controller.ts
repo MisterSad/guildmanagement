@@ -641,6 +641,14 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
 
     const isMembersMode = metric === 'members';
 
+    // One batch failing used to reject the whole run: `Promise.all(workers)`
+    // rejected, the catch below fired, and every batch that HAD succeeded was
+    // discarded. That is why a video failed where screenshots did not -- not
+    // because video frames are harder, but because a video makes 18 batches
+    // where a screenshot makes one, and any single failure took all of them
+    // down with it. Failures are now counted, not thrown.
+    const batchErrors: string[] = [];
+
     if (isMembersMode) {
       // In Members mode, rank headers ("Executive Manager", "Rank 3 Members", etc.)
       // flow sequentially across batches via carryRank.
@@ -649,11 +657,19 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
         if (loadingP) {
           loadingP.textContent = 'Processing screenshots batch ' + (b + 1) + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
         }
-        const batchResult = await callGeminiOcrBatchApi(chunks[b], metric, activeGuildTag, carryRank, (statusMsg: string) => {
-          if (loadingP) loadingP.textContent = statusMsg;
-        });
-        allPlayers = allPlayers.concat(batchResult.players);
-        if (batchResult.endingRank) carryRank = batchResult.endingRank;
+        try {
+          const batchResult = await callGeminiOcrBatchApi(chunks[b], metric, activeGuildTag, carryRank, (statusMsg: string) => {
+            if (loadingP) loadingP.textContent = statusMsg;
+          });
+          allPlayers = allPlayers.concat(batchResult.players);
+          if (batchResult.endingRank) carryRank = batchResult.endingRank;
+        } catch (batchErr: any) {
+          // The rank carried from the previous batch is kept: a failed batch
+          // tells us nothing about the rank headers, and resetting it would
+          // mis-assign every member after it.
+          console.error('OCR batch ' + (b + 1) + ' of ' + chunks.length + ' failed:', batchErr);
+          batchErrors.push(batchErr && batchErr.message ? batchErr.message : 'unknown_error');
+        }
         if (b < chunks.length - 1) await new Promise((r) => setTimeout(r, 250));
       }
     } else {
@@ -666,8 +682,12 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
       const worker = async (): Promise<void> => {
         while (nextChunkIdx < chunks.length) {
           const idx = nextChunkIdx++;
-          const res = await callGeminiOcrBatchApi(chunks[idx], metric, activeGuildTag, null);
-          batchResults[idx] = res;
+          try {
+            batchResults[idx] = await callGeminiOcrBatchApi(chunks[idx], metric, activeGuildTag, null);
+          } catch (batchErr: any) {
+            console.error('OCR batch ' + (idx + 1) + ' of ' + chunks.length + ' failed:', batchErr);
+            batchErrors.push(batchErr && batchErr.message ? batchErr.message : 'unknown_error');
+          }
           completedChunks++;
           if (loadingP) {
             loadingP.textContent = 'Processed batch ' + completedChunks + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
@@ -685,6 +705,20 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
       }
     }
 
+    // Every batch failed: there is nothing to show, so say so the way a total
+    // failure should be said, with the reason the server actually gave.
+    if (batchErrors.length > 0 && allPlayers.length === 0) {
+      throw new Error(ocrBatchErrorMessage(batchErrors[0]));
+    }
+    if (batchErrors.length > 0) {
+      // Partial is worth keeping -- the results table already flags a partial
+      // scan and leaves missing members unchecked -- but it must not be silent.
+      showToast(
+        batchErrors.length + ' of ' + chunks.length + ' batches failed. The table below is incomplete: review it before committing, or re-run the scan.',
+        'warning'
+      );
+    }
+
     // Multi-frame deduplication and fusion
     const roster = members();
     const fused = fuseOcrPlayers(allPlayers, roster, activeGuildTag);
@@ -696,6 +730,22 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
     showToast(err.message || 'OCR Analysis failed', 'error');
     if (loading) loading.style.display = 'none';
     if (dropzone) dropzone.style.display = 'block';
+  }
+}
+
+/** Turns the Edge Function's error codes into something a guild admin can act on. */
+function ocrBatchErrorMessage(code: string): string {
+  switch (code) {
+    case 'json_parse_failed':
+      return 'The AI returned an incomplete reading. Try again, or scan fewer screens at once.';
+    case 'ocr_processing_failed':
+      return 'The AI OCR engine could not read these images. Try again in a moment.';
+    case 'payload_too_large':
+      return 'Those images are too large. Try a shorter recording or fewer screenshots.';
+    case 'too_many_attempts':
+      return 'Too many scans in a short time. Wait a minute and try again.';
+    default:
+      return code || 'OCR analysis failed. Please try again.';
   }
 }
 
