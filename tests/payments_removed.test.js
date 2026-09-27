@@ -176,16 +176,20 @@ describe('the terms page no longer sells anything', () => {
   it('states plainly that there is no payment surface', () => {
     // The section was renumbered and retitled when the Terms were rewritten in
     // plain English. What matters is the statement, not the heading.
-    expect(terms).toMatch(/IT IS FREE, AND IT STAYS FREE/);
-    expect(terms).toMatch(/No checkout, no subscription, no donation button, no stored card/);
+    // Redrafted in legal register on 2026-09-27; the statement is Article 4.
+    expect(terms).toMatch(/NO CONSIDERATION, AND THE CONSEQUENCES/);
+    expect(terms).toMatch(/no checkout, no subscription, no donation mechanism, no stored payment method/i);
+    // And the legal consequence it draws, which is the part a lawyer checks.
+    expect(terms).toMatch(/&agrave; titre gratuit|titre gratuit/);
+    expect(terms).toMatch(/L\.611-1, 4&deg;|L\.611-1, 4°/);
   });
 
   it('no longer caps liability at an amount that is always zero', () => {
     // §7.3 used to cap liability at "the total amount actually paid by the User
     // ... for the specific access pass", which was never anything.
     // Section 9 in the rewritten Terms ("WHEN SOMETHING GOES WRONG").
-    const clause = terms.slice(terms.indexOf('WHEN SOMETHING GOES WRONG'));
-    expect(clause.slice(0, 2000)).not.toContain('total amount actually paid');
-    expect(clause.slice(0, 2000)).toMatch(/no cap calculated on sums paid can apply/);
+    const clause = terms.slice(terms.indexOf('10. LIABILITY'));
+    expect(clause.slice(0, 3000)).toMatch(/no cap computed on sums paid can apply/);
+    expect(clause.slice(0, 3000)).toMatch(/that stipulation is withdrawn/);
   });
 });

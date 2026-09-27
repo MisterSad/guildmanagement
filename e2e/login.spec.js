@@ -66,10 +66,11 @@ test('clicking Terms & Conditions in footer opens dedicated full page and can re
     await expect(title).toContainText('TERMS OF USE');
 
     await expect(page.locator('body')).toContainText('André Vieira');
-    await expect(page.locator('body')).toContainText('WHO YOU ARE DEALING WITH');
-    await expect(page.locator('body')).toContainText('IT IS FREE, AND IT STAYS FREE');
-    await expect(page.locator('body')).toContainText('MY CODE, AND MY PROMISE ABOUT IT');
-    await expect(page.locator('body')).toContainText('WHICH LAW, AND WHICH COURT');
+    // Redrafted in legal register on 2026-09-27.
+    await expect(page.locator('body')).toContainText('LEGAL NOTICE AND IDENTIFICATION OF THE PUBLISHER');
+    await expect(page.locator('body')).toContainText('NO CONSIDERATION, AND THE CONSEQUENCES');
+    await expect(page.locator('body')).toContainText('INTELLECTUAL PROPERTY AND OPEN-SOURCE UNDERTAKING');
+    await expect(page.locator('body')).toContainText('GOVERNING LAW, CLAIMS AND JURISDICTION');
 
     // Return to platform
     const returnBtn = page.locator('.terms-back-btn');

@@ -45,14 +45,17 @@ test('privacy.html states the things that make it a GDPR notice', async ({ page 
     const body = page.locator('body');
     // Rewritten 2026-09-27 in plain English. Same obligations, different words.
     await expect(body).toContainText('André Vieira');
-    await expect(body).toContainText('WHAT I STORE');
-    await expect(body).toContainText('WHY I STORE IT, AND WHAT ALLOWS ME TO');
-    await expect(body).toContainText('HOW LONG I KEEP THINGS');
-    await expect(body).toContainText('WHO ELSE SEES IT');
-    await expect(body).toContainText('YOUR RIGHTS, AND HOW TO USE THEM');
+    // Redrafted in legal register on 2026-09-27. Same obligations, cited by
+    // article rather than paraphrased.
+    await expect(body).toContainText('CATEGORIES OF DATA PROCESSED');
+    await expect(body).toContainText('PURPOSES AND LEGAL BASES');
+    await expect(body).toContainText('RETENTION PERIODS');
+    await expect(body).toContainText('RECIPIENTS AND TRANSFERS');
+    await expect(body).toContainText('RIGHTS OF DATA SUBJECTS');
     await expect(body).toContainText('CNIL');
-    // The ban-record carve-out is disclosed, not silent.
-    await expect(body).toContainText('kept as it is');
+    // The ban-record carve-out is disclosed with its basis, not applied silently.
+    await expect(body).toContainText('retained in full, including the identifier');
+    await expect(body).toContainText('Article 17(3) GDPR');
 });
 
 test('the two legal pages link to each other, and back to the platform', async ({ page }) => {

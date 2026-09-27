@@ -112,8 +112,11 @@ describe('the terms page no longer states what the database contradicts', () => 
     // that has to carry it. The Terms link to it and incorporate it.
     expect(terms).toContain('privacy.html');
     expect(terms).toMatch(/Privacy Policy/);
-    expect(privacyText).toMatch(/this is personal data/i);
-    expect(privacyText).toMatch(/Article 4\(1\)/);
+    // Both documents were redrafted in formal legal register on 2026-09-27.
+    // The obligations are unchanged; the wording is not. Matched on the
+    // ARTICLE relied on, which is what actually has to be there.
+    expect(privacyText).toMatch(/therefore processes personal data/i);
+    expect(privacyText).toMatch(/Article 4\(1\) GDPR/);
   });
 });
 
@@ -205,8 +208,8 @@ describe('the retention periods on the page are the ones the database enforces',
     // for a closed request's Discord handle, 24 hours for IP addresses.
     // Matched on the period, not on the punctuation: the pages were rewritten
     // in plain English and no longer use dashes as separators.
-    expect(privacyText).toMatch(/audit log[^.]{0,20}12 months/i);
-    expect(privacyText).toMatch(/[Nn]ame change history[^.]{0,20}12 months/);
+    expect(privacyText).toMatch(/[Aa]dministrative audit log[^.]{0,20}12 months/);
+    expect(privacyText).toMatch(/[Pp]seudonym change history[^.]{0,20}12 months/);
     expect(privacyText).toMatch(/24 hours/);
 
     expect(migrations).toMatch(/c_audit_log_months\s+constant integer :=\s*12/);
@@ -243,7 +246,7 @@ describe('erasure matches what the policy promises', () => {
     // seven (guild, pseudo) children away, so a delete-then-anonymise ordering
     // silently anonymised nothing. The rename is the whole operation.
     expect(migrations).toMatch(/SET pseudo = v_token, uid = NULL, timezone = NULL, timezone_offset = NULL/);
-    expect(privacyText).toMatch(/anonymous placeholder/i);
+    expect(privacyText).toMatch(/unattributable placeholder/i);
   });
 
   it('unblocks account deletion, which the wiki foreign keys made impossible', () => {
@@ -252,7 +255,7 @@ describe('erasure matches what the policy promises', () => {
   });
 
   it('discloses the ban-record exception instead of applying it silently', () => {
-    expect(privacyText).toMatch(/kept as it is/i);
+    expect(privacyText).toMatch(/retained in full, including the identifier/i);
     expect(privacyText).toMatch(/Article 17\(3\)/);
     expect(migrations).toMatch(/banned_players/);
   });
@@ -270,12 +273,21 @@ describe('the policy states the things a GDPR notice must state', () => {
     [/fgfwiki@gmail\.com/, 'a contact address'],
     [/Article 6\(1\)\(b\)/, 'contract as a legal basis'],
     [/Article 6\(1\)\(f\)/, 'legitimate interests as a legal basis'],
-    [/Standard Contractual Clauses/, 'the transfer mechanism'],
-    [/[Oo]ne month from when your message arrives/, 'the response deadline'],
+    [/standard contractual clauses/i, 'the transfer mechanism'],
+    [/Implementing Decision \(EU\) 2021\/914/, 'the SCC instrument by reference'],
+    [/Data Privacy Framework/, 'the adequacy route'],
+    [/within one month/i, 'the response deadline'],
+    [/Article 12\(3\) GDPR/, 'the article the deadline comes from'],
     [/CNIL/, 'the supervisory authority'],
-    [/Article 33 of the GDPR/, 'breach notification'],
-    [/Article 22 of the GDPR/, 'the position on automated decision-making'],
-    [/not aimed at children/, 'the position on children']
+    [/Article 33 GDPR/, 'breach notification'],
+    [/72 hours/, 'the breach deadline'],
+    [/Article 22 GDPR/, 'the position on automated decision-making'],
+    [/not directed at children/, 'the position on children'],
+    [/Article 8 GDPR/, 'the article governing a child\u2019s consent'],
+    [/Article 6\(1\)\(f\)/, 'legitimate interests by article'],
+    [/Article 17\(3\) GDPR/, 'the basis for the ban-record exception'],
+    [/Article 28\(3\) GDPR/, 'the processor-contract requirement'],
+    [/Article 82 of Law No\. 78-17/, 'the French transposition on terminal storage']
   ];
   for (const [re, what] of required) {
     it(`states ${what}`, () => {

@@ -27,24 +27,37 @@ describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
 
     it('carries the statutory identification the LCEN requires', () => {
         const termsHtmlContent = fs.readFileSync(termsHtmlPath, 'utf8');
-        expect(termsHtmlContent).toMatch(/2004-575/);           // the LCEN itself
-        expect(termsHtmlContent).toMatch(/micro-entrepreneur/i); // publisher status
-        expect(termsHtmlContent).toMatch(/293 B/);               // VAT position
-        expect(termsHtmlContent).toMatch(/Vercel Inc/);          // host
-        expect(termsHtmlContent).toMatch(/Supabase Inc/);        // host
+        // The owner publishes on a NON-PROFESSIONAL basis and relies on
+        // LCEN art. 1-1, II, which permits disclosing the hosting providers
+        // alone provided his identifying particulars were given to them. So the
+        // page must NOT carry his domicile or telephone number, and must say
+        // which limb it relies on. The micro-entrepreneur and VAT mentions were
+        // dropped: invoking II while advertising a registered trading status
+        // undercuts the very basis relied upon.
+        expect(termsHtmlContent).toMatch(/2004-575/);                    // the LCEN
+        expect(termsHtmlContent).toMatch(/Article 1-1, II/);             // the limb relied on
+        expect(termsHtmlContent).toMatch(/non-professional basis/i);
+        expect(termsHtmlContent).toMatch(/Vercel Inc/);                  // host
+        expect(termsHtmlContent).toMatch(/Supabase Inc/);                // host
+        expect(termsHtmlContent).toMatch(/right of reply/i);             // art. 1-1, III
+        expect(termsHtmlContent).toMatch(/three months/i);
     });
 
     it('covers each subject a user agreement has to cover', () => {
         const termsHtmlContent = fs.readFileSync(termsHtmlPath, 'utf8');
-        expect(termsHtmlContent).toContain('WHO YOU ARE DEALING WITH');
-        expect(termsHtmlContent).toContain('WHAT THIS IS, AND WHAT IT IS NOT');
-        expect(termsHtmlContent).toContain('IT IS FREE, AND IT STAYS FREE');
-        expect(termsHtmlContent).toContain('I AM NOT THE GAME PUBLISHER');
-        expect(termsHtmlContent).toContain('YOUR ACCOUNT, AND HOW TO BEHAVE');
-        expect(termsHtmlContent).toContain('WHOSE DATA IS WHOSE');
-        expect(termsHtmlContent).toContain('MY CODE, AND MY PROMISE ABOUT IT');
-        expect(termsHtmlContent).toContain('WHEN SOMETHING GOES WRONG');
-        expect(termsHtmlContent).toContain('WHICH LAW, AND WHICH COURT');
+        expect(termsHtmlContent).toContain('LEGAL NOTICE AND IDENTIFICATION OF THE PUBLISHER');
+        expect(termsHtmlContent).toContain('DEFINITIONS');
+        expect(termsHtmlContent).toContain('SUBJECT MATTER AND NATURE OF THE SERVICE');
+        expect(termsHtmlContent).toContain('NO CONSIDERATION, AND THE CONSEQUENCES');
+        expect(termsHtmlContent).toContain('INDEPENDENCE FROM THE GAME PUBLISHER');
+        expect(termsHtmlContent).toContain('ACCOUNTS, CONDUCT AND MODERATION');
+        expect(termsHtmlContent).toContain('INTELLECTUAL PROPERTY AND OPEN-SOURCE UNDERTAKING');
+        expect(termsHtmlContent).toContain('LIABILITY');
+        expect(termsHtmlContent).toContain('GOVERNING LAW, CLAIMS AND JURISDICTION');
+        // A contract of adhesion has to acknowledge the two rules that govern it.
+        expect(termsHtmlContent).toMatch(/contract of adhesion/i);
+        expect(termsHtmlContent).toMatch(/Article 1171/);
+        expect(termsHtmlContent).toMatch(/deemed unwritten/i);
     });
 
     it('does not impose a court on a consumer, which would be unenforceable', () => {
@@ -53,7 +66,10 @@ describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
         // term under French law and would not have bound anyone.
         const termsHtmlContent = fs.readFileSync(termsHtmlPath, 'utf8');
         expect(termsHtmlContent).not.toMatch(/exclusive territorial competence/i);
-        expect(termsHtmlContent).toMatch(/right to bring proceedings where you live/i);
+        expect(termsHtmlContent).toMatch(/No exclusive jurisdiction clause is stipulated/i);
+        expect(termsHtmlContent).toMatch(/courts of the place where they are domiciled/i);
+        // The instrument that gives a consumer that right, cited by name.
+        expect(termsHtmlContent).toMatch(/1215\/2012/);
     });
 
     it('makes the open-source undertaking, with both triggers', () => {
