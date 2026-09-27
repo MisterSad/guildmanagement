@@ -1,3 +1,25 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.29.0**
+
+Last piece of the Stats rework. The **Event Deep-Dive** tab is rebuilt, and with it the whole page now runs on the same rules. 🏁
+
+**Your war record is now on the event tab too.** Pick SvS or GvG and you see the opponent and the six day results above the table.
+
+**Two things were quietly wrong there and are fixed.**
+
+The attendance rate on that tab divided by *your own number of rows* rather than by what the guild actually ran — so a member with a single record showed 100%. It now uses the same rule as every other tab.
+
+And that tab was counting scores **still awaiting approval**. An unapproved 999 could sit at the top of the ranking there while being correctly ignored everywhere else. Approved scores only, now, like the rest of the app.
+
+**Shadowfront** also counted a member in both squads of one week as two attendances there and one everywhere else. One rule now.
+
+---
+
+**That closes the Stats rework**, five releases in: the broken week selector, the move of all the counting into the database, one definition of attendance instead of five, a fair denominator for new members, and four cards built on data the app had been recording for months without ever showing you — your war record, your power curve, who is actually turning up, and how complete your own data is.
+
+If a number on that page ever looks wrong to you, tell me. The point of all this was that you should be able to check it yourself. 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.28.0**
 
 The **Stats → Guild Cockpit** tab has been rebuilt. It now shows things the app has been quietly recording for months and never displayed. ⚔️

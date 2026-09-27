@@ -28,12 +28,12 @@ import {
   normalizePseudo,
   round1,
   type EventCoeffs,
-  type ParticipantRow,
-  type MemberRow,
-  type SquadRow,
   type StatsMembersPayload,
   type AggregateMemberRow,
   type StatsHealthPayload,
+  type StatsEventsPayload,
+  type EventsMemberRow,
+  type EventsWar,
   type HealthWar,
   type HealthPowerPoint,
   type HealthWeek,
@@ -164,9 +164,25 @@ function isFutureWeek(weekStart?: string | null): boolean {
   return String(weekStart).localeCompare(cur) > 0;
 }
 
-function keepOnlyPastOrCurrent<T extends { week_start?: string | null }>(rows: T[]): T[] {
-  if (!rows || !rows.length) return rows;
-  return rows.filter((r) => !isFutureWeek(r.week_start));
+// keepOnlyPastOrCurrent() was removed with the last raw-row payload in phase
+// S5. Every RPC now applies `week_start <= date_trunc('week', now())` in SQL,
+// at the source, so a week that has not started cannot reach the client to be
+// filtered out again. isFutureWeek() above is still used, on the week LIST.
+
+/**
+ * The event picker's keys are not the bucket names the aggregation uses.
+ * `gm_stats_events` validates its argument against a fixed set, so this maps
+ * once, here, instead of every call site guessing.
+ */
+function resolveEventBucket(eventName?: string): string {
+  const key = String(eventName || '').trim().toLowerCase();
+  if (key === 'svs') return 'SvS';
+  if (key === 'gvg') return 'GvG';
+  if (key.indexOf('shadowfront') !== -1) return 'Shadowfront';
+  if (key.indexOf('arms race') !== -1) return 'Arms Race';
+  if (key === 'dtr' || key.indexOf('defend trade route') !== -1) return 'DTR';
+  if (key === 'glory') return 'Glory';
+  return 'SvS';
 }
 
 function shortDate(iso?: string | null): string {
@@ -200,6 +216,10 @@ interface StatsState {
   activeWeeksLoaded: string[];
   /** How many weeks the trend comparison covers on each side; 0 when absent. */
   trendWeeks: number;
+  /** war_sessions rows for the selected SvS/GvG bucket; empty otherwise. */
+  eventWar: EventsWar[];
+  /** How many sessions of the selected bucket ran in the window. */
+  eventSessions: number;
   leaderboardData: any[];
   uidMap: Record<string, string>;
   isLoading: boolean;
@@ -219,6 +239,8 @@ function createState(): StatsState {
     allWeeks: [],
     activeWeeksLoaded: [],
     trendWeeks: 0,
+    eventWar: [],
+    eventSessions: 0,
     leaderboardData: [],
     uidMap: {},
     isLoading: false
@@ -969,72 +991,45 @@ export class StatsView {
     }
   }
 
+  /**
+   * The Event Deep-Dive, and the last caller of `gm_stats_data`.
+   *
+   * Phase S5. The bucket is resolved server-side and the per-member counts come
+   * back aggregated, so the browser stops receiving the tenant's entire
+   * participation history to filter it down to one event.
+   */
   private async loadSingleEventMode(eventName: string, explicitWeeks?: string[]): Promise<void> {
     const state = this.state;
     const db = legacy.getDb();
     try {
       const weeksToLoad = explicitWeeks || this.getWeeksToLoad();
       const isAllTime = (state.statsPeriod === 'all');
+      const requested = isAllTime ? state.allWeeks.slice() : weeksToLoad;
 
-      const dataRes = await db.rpc('gm_stats_data', { p_guild: state.activeGuild });
-      const raw = dataRes.data || null;
-      const allParts: ParticipantRow[] = (raw && raw.participants) || [];
-      let allSquads: SquadRow[] = (raw && raw.squads) || [];
+      const res = await db.rpc('gm_stats_events', {
+        p_guild: state.activeGuild,
+        p_bucket: resolveEventBucket(eventName),
+        p_weeks: requested && requested.length ? requested : null
+      });
+      if (res.error) throw res.error;
+      const payload = (res.data || {}) as StatsEventsPayload;
+      if (payload.ok === false) throw new Error(payload.error || 'stats_events_failed');
 
       state.uidMap = state.uidMap || {};
-      ((raw && raw.members) || []).forEach((m: MemberRow) => { if (m.pseudo) state.uidMap[m.pseudo] = m.uid || ''; });
-
-      // Normalize Glory's separate shape into a participant-like row.
-      let rows: ParticipantRow[];
-      if (eventName === 'Glory') {
-        rows = (((raw && raw.glory) || []) as ParticipantRow[]).map((g) => {
-          return {
-            pseudo: g.pseudo,
-            event_name: 'Glory',
-            week_start: g.week_start,
-            session_id: null,
-            participated: (Number(g.score) > 0) ? 1 : 0,
-            score: Number(g.score) || 0,
-            score_prep: 0,
-            score_pvp: 0,
-            is_pending: false,
-            sub_present: false,
-            late: false,
-            excused: false,
-            appointed: false
-          };
-        });
-      } else {
-        rows = allParts.filter((r) => matchesEventName(r.event_name, eventName));
-      }
-      rows = keepOnlyPastOrCurrent(rows);
-
-      if (!isAllTime && weeksToLoad && weeksToLoad.length > 0) {
-        rows = rows.filter((r) => weeksToLoad.indexOf(r.week_start || '') !== -1);
-        allSquads = allSquads.filter((s) => weeksToLoad.indexOf(s.week_start || '') !== -1);
-      }
-
-      const actualWeeks = isAllTime
-        ? Array.from(new Set(rows.map((r) => r.week_start).filter(Boolean) as string[])).sort()
-        : weeksToLoad;
-
-      state.activeWeeksLoaded = actualWeeks;
-
-      const memRes = await db.from('guild_members').select('pseudo').eq('guild', state.activeGuild);
-      const rosterMembers: MemberRow[] = (memRes.data || []) as MemberRow[];
-
-      state.leaderboardData = StatsService.computeEventLeaderboard({
-        eventName,
-        rows,
-        allSquads,
-        rosterMembers,
-        shadowfrontRate: (done, assigned) => legacy.shadowfrontRate(done, assigned)
+      (payload.members || []).forEach((m: EventsMemberRow) => {
+        if (m.pseudo) state.uidMap[m.pseudo] = m.uid || '';
       });
+
+      state.activeWeeksLoaded = (payload.weeks && payload.weeks.length) ? payload.weeks : requested;
+      state.eventWar = payload.war || [];
+      state.eventSessions = (payload.sessions || []).length;
+      state.leaderboardData = StatsService.computeEventLeaderboardFromPayload(payload);
 
       this.renderLeaderboardImpl();
     } catch (err) {
       console.error('[GM_STATS] Erreur loadSingleEventMode', err);
       state.leaderboardData = [];
+      state.eventWar = [];
       this.renderLeaderboardImpl();
     }
   }
@@ -1217,7 +1212,7 @@ export class StatsView {
 
       tableHtml += '</tbody></table></div></div>';
 
-      container.innerHTML = tabsHtml + podHtml + tableHtml;
+      container.innerHTML = tabsHtml + podHtml + this.renderEventWarStrip() + tableHtml;
       this.wireModeTabs(container);
 
       const tbody = container.querySelector('table tbody');
@@ -1243,6 +1238,38 @@ export class StatsView {
    * 0%. "Did not attend" and "was never asked" are different facts, and the old
    * page reported both as zero.
    */
+  /**
+   * The war record for the selected bucket, above its table. SvS and GvG are
+   * the only events with an opponent and a day-by-day result, and until now the
+   * Stats page never showed either.
+   */
+  private renderEventWarStrip(): string {
+    const wars = this.state.eventWar || [];
+    if (!wars.length) return '';
+    const rows = wars.slice(0, 6).map((w) => {
+      const days = ['1', '2', '3', '4', '5', '6'].map((d) => {
+        const r = (w.results || {})[d];
+        if (r !== 'won' && r !== 'lost') return '<span title="Day ' + d + ': not recorded" style="color:var(--fg-dim);">·</span>';
+        return '<span title="Day ' + d + ': ' + r + '" style="color:' + (r === 'won' ? '#34d399' : '#f87171') + '; font-weight:700;">' +
+          (r === 'won' ? 'W' : 'L') + '</span>';
+      }).join(' ');
+      const won = ['1', '2', '3', '4', '5', '6'].filter((d) => (w.results || {})[d] === 'won').length;
+      const lost = ['1', '2', '3', '4', '5', '6'].filter((d) => (w.results || {})[d] === 'lost').length;
+      return '<div class="gm-kpi-row">' +
+        '<span class="gm-kpi-label">' + esc(w.opponent || 'Unknown opponent') + '</span>' +
+        '<span style="letter-spacing:.2em; font-family:var(--font-display);">' + days + '</span>' +
+        '<span class="gm-kpi-value" style="color:' + (won >= lost ? '#34d399' : '#f87171') + ';">' + won + 'W - ' + lost + 'L</span>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="gm-kpi-card" style="margin-bottom:.85rem;">' +
+      '<div class="gm-kpi-card-title"><i class="ph ph-sword"></i> War record</div>' +
+      '<div class="gm-kpi-card-body">' + rows +
+        '<div style="font-size: var(--fs-xs); color:var(--fg-dim); margin-top:.4rem;">Days 1 to 5 are preparation, day 6 is the battle. A dot means that day was never recorded.</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   private renderBucketChips(m: any): string {
     const buckets = (m && m.buckets) || [];
     if (!buckets.length) {

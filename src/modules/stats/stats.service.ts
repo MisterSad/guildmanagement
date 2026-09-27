@@ -159,126 +159,65 @@ export class StatsService {
 
 
   /**
-   * Per-event leaderboard (SvS/GvG/Shadowfront/Arms Race/DTR/Glory).
-   * Ported verbatim from stats.js#loadSingleEventMode's aggregation step,
-   * including Shadowfront squad breakdown and attendance-rate capping.
+   * The per-event board, from gm_stats_events.
+   *
+   * Replaces computeEventLeaderboard, which was the third of the five
+   * divergent attendance formulas and the worst of them: it counted ROWS and
+   * divided by the member's OWN row count, so anyone with exactly one row
+   * scored 100%. It also keyed Shadowfront by session where every other part
+   * of the page keys it by week, so a member in both squads counted twice here
+   * and once everywhere else.
+   *
+   * The rate is now att/opp against the member's own opportunities -- the same
+   * rule as the members board and the Health tab. A member the guild never
+   * asked (opp = 0) gets a null rate and renders as an em dash.
    */
-  public static computeEventLeaderboard(params: EventLeaderboardParams): EventScoreRow[] {
-    const { eventName, rows, allSquads, rosterMembers, shadowfrontRate } = params;
-
-    const byMember: Record<string, ByMemberAcc> = {};
-    const squadCounts: Record<string, number> = {};
-    const participantCounts: Record<string, number> = {};
-    const reserveCounts: Record<string, number> = {};
-    const squad1Counts: Record<string, number> = {};
-    const squad2Counts: Record<string, number> = {};
-    const commanderCounts: Record<string, number> = {};
-
-    if (eventName === 'Shadowfront') {
-      allSquads.forEach((sq) => {
-        const norm = normalizePseudo(sq.pseudo);
-        squadCounts[norm] = (squadCounts[norm] || 0) + 1;
-        if ((sq.role || '').toLowerCase() === 'reserve') {
-          reserveCounts[norm] = (reserveCounts[norm] || 0) + 1;
-        } else {
-          participantCounts[norm] = (participantCounts[norm] || 0) + 1;
-        }
-        if (sq.squad === 'squad1') {
-          squad1Counts[norm] = (squad1Counts[norm] || 0) + 1;
-        } else if (sq.squad === 'squad2') {
-          squad2Counts[norm] = (squad2Counts[norm] || 0) + 1;
-        }
-        if (sq.is_commander) {
-          commanderCounts[norm] = (commanderCounts[norm] || 0) + 1;
-        }
-      });
-    }
-
-    rows.forEach((r) => {
-      const norm = normalizePseudo(r.pseudo);
-      if (!byMember[norm]) {
-        byMember[norm] = emptyByMemberAcc(r.pseudo || '');
-      }
-      const prep = Number(r.score_prep) || 0;
-      const pvp = Number(r.score_pvp) || 0;
-      const sc = Number(r.score) || 0;
-      const tot = sc > 0 ? sc : (prep + pvp);
-      byMember[norm].score_prep += prep;
-      byMember[norm].score_pvp += pvp;
-      byMember[norm].score += tot;
-
-      const attended = Number(r.participated) > 0 || r.sub_present === true || prep > 0 || pvp > 0 || sc > 0;
-      if (attended) {
-        byMember[norm].events_done += 1;
-      }
-      if (r.sub_present === true) {
-        byMember[norm].sub_count += 1;
-      }
-      if (r.late === true) {
-        byMember[norm].late_count += 1;
-      }
-      if (r.excused === true) {
-        byMember[norm].excused_count += 1;
-      }
-
-      const evLower = (r.event_name || '').toLowerCase();
-      const sessionId = r.session_id || '';
-      if (evLower.indexOf('stage a') !== -1 || String(sessionId).indexOf('ARA-') !== -1) {
-        if (attended) byMember[norm].ara_count += 1;
-      }
-      if (evLower.indexOf('stage b') !== -1 || String(sessionId).indexOf('ARB-') !== -1) {
-        if (attended) byMember[norm].arb_count += 1;
-      }
-      byMember[norm].events_total += 1;
-    });
-
-    rosterMembers.forEach((gm) => {
-      const norm = normalizePseudo(gm.pseudo);
-      if (!byMember[norm]) {
-        byMember[norm] = emptyByMemberAcc(gm.pseudo || '');
-      }
-    });
-
-    return Object.values(byMember).map((m) => {
-      const norm = normalizePseudo(m.pseudo);
-      const assignedCount = squadCounts[norm] || 0;
-      let rate = 0;
-      if (eventName === 'Shadowfront') {
-        rate = shadowfrontRate(m.events_done, assignedCount);
-      } else {
-        rate = m.events_total > 0 ? (m.events_done / m.events_total) : 0;
-      }
-
+  public static computeEventLeaderboardFromPayload(payload: StatsEventsPayload): EventScoreRow[] {
+    const rows = (payload.members || []).map((m) => {
+      const opp = Number(m.opp) || 0;
+      const att = Number(m.att) || 0;
+      const sq = m.squad || null;
       return {
         pseudo: m.pseudo,
-        score: m.score,
-        score_prep: m.score_prep,
-        score_pvp: m.score_pvp,
-        events_done: m.events_done,
-        events_total: m.events_total,
-        sub_count: m.sub_count,
-        assigned_count: assignedCount,
-        participant_count: participantCounts[norm] || 0,
-        reserve_count: reserveCounts[norm] || 0,
-        squad1_count: squad1Counts[norm] || 0,
-        squad2_count: squad2Counts[norm] || 0,
-        commander_count: commanderCounts[norm] || 0,
-        ara_count: m.ara_count,
-        arb_count: m.arb_count,
-        late_count: m.late_count,
-        excused_count: m.excused_count,
-        attendance_rate: rate,
+        score: Number(m.score) || 0,
+        score_prep: Number(m.score_prep) || 0,
+        score_pvp: Number(m.score_pvp) || 0,
+        events_done: att,
+        events_total: opp,
+        sub_count: Number(m.sub_count) || 0,
+        assigned_count: sq ? sq.assigned : 0,
+        participant_count: sq ? sq.participant : 0,
+        reserve_count: sq ? sq.reserve : 0,
+        squad1_count: sq ? sq.squad1 : 0,
+        squad2_count: sq ? sq.squad2 : 0,
+        commander_count: sq ? sq.commander : 0,
+        ara_count: Number(m.stage_a) || 0,
+        arb_count: Number(m.stage_b) || 0,
+        late_count: Number(m.late_count) || 0,
+        excused_count: Number(m.excused_count) || 0,
+        attendance_rate: opp > 0 ? att / opp : 0,
         glory_delta: 0,
         glory_bonus: 0,
         consistency_bonus: 0
-      };
-    }).sort((a, b) => {
+      } as EventScoreRow;
+    });
+
+    return rows.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       if (b.events_done !== a.events_done) return b.events_done - a.events_done;
       if (b.attendance_rate !== a.attendance_rate) return b.attendance_rate - a.attendance_rate;
       return a.pseudo.localeCompare(b.pseudo);
     });
   }
+
+  // computeEventLeaderboard() was removed in phase S5, with the raw-row payload
+  // it consumed. It was the third of the five divergent attendance formulas and
+  // the least defensible: it counted ROWS and divided by the member's OWN row
+  // count, so a member with exactly one row scored 100%. It also keyed
+  // Shadowfront by session_id where every other part of the page keys it by
+  // week, so a member in both squads of one week counted twice here and once
+  // everywhere else. computeEventLeaderboardFromPayload() replaces it.
+
 }
 
 // ── Shared types & pure helpers (Stats calculation core) ──────────────────────
@@ -338,6 +277,46 @@ export interface SquadRow {
   is_commander?: boolean;
   week_start?: string;
   [key: string]: unknown;
+}
+
+/* ── gm_stats_events ──────────────────────────────────────────────────────── */
+
+export interface EventsSquad {
+  assigned: number; participant: number; reserve: number;
+  squad1: number; squad2: number; commander: number;
+}
+export interface EventsMemberRow {
+  pseudo: string;
+  uid?: string | null;
+  role?: string | null;
+  overall_power?: number;
+  att: number;
+  opp: number;
+  score: number;
+  score_prep: number;
+  score_pvp: number;
+  late_count: number;
+  excused_count: number;
+  sub_count: number;
+  stage_a: number;
+  stage_b: number;
+  squad?: EventsSquad | null;
+}
+export interface EventsWar {
+  session_id: string;
+  opponent: string | null;
+  start_at: string | null;
+  results: Record<string, string | null>;
+}
+export interface StatsEventsPayload {
+  ok: boolean;
+  error?: string;
+  guild?: string;
+  bucket?: string;
+  weeks?: string[];
+  sessions?: Array<{ key: string; week_start: string; present: number }>;
+  war?: EventsWar[];
+  members?: EventsMemberRow[];
 }
 
 /* ── gm_stats_health ──────────────────────────────────────────────────────── */

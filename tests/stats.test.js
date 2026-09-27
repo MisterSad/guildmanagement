@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { statsView } from '../src/modules/stats/views/StatsView';
-import { mockStatsMembers, mockStatsHealth } from './helpers/stats-aggregate.js';
+import { mockStatsMembers, mockStatsHealth, mockStatsEvents } from './helpers/stats-aggregate.js';
 
 // Bridge the /src StatsView onto the legacy window.GM_STATS surface, exactly
 // like src/main.ts does in production, so the historical suite keeps exercising
@@ -123,7 +123,8 @@ function buildDb() {
                 },
                 error: null
             }),
-            gm_stats_members: mockStatsMembers({ rows: PARTS, glory: GLORY, members: MEMBERS })
+            gm_stats_members: mockStatsMembers({ rows: PARTS, glory: GLORY, members: MEMBERS }),
+            gm_stats_events: mockStatsEvents({ rows: PARTS.concat(GLORY), members: MEMBERS, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] })
         },
         from: {
             guild_members: () => new MockBuilder(MEMBERS),
@@ -291,7 +292,8 @@ describe('GM_STATS reliability across the whole window', () => {
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W3, W2, W1] }, error: null }),
                 gm_stats_data: () => ({ data: { guild: G, members: MEMBERS, participants: futureParts, glory: GLORY, squads: SQUADS }, error: null }),
-                gm_stats_members: mockStatsMembers({ rows: futureParts, glory: GLORY, members: MEMBERS })
+                gm_stats_members: mockStatsMembers({ rows: futureParts, glory: GLORY, members: MEMBERS }),
+                gm_stats_events: mockStatsEvents({ rows: futureParts.concat(GLORY), members: MEMBERS, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] })
             },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS),
@@ -350,7 +352,8 @@ describe('GM_STATS coefficient resolution (regression)', () => {
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W1] }, error: null }),
                 gm_stats_data: () => ({ data: { guild: G, members: DTR_MEMBERS, participants: DTR_PARTS, glory: [], squads: [] }, error: null }),
-                gm_stats_members: mockStatsMembers({ rows: DTR_PARTS, glory: [], members: DTR_MEMBERS })
+                gm_stats_members: mockStatsMembers({ rows: DTR_PARTS, glory: [], members: DTR_MEMBERS }),
+                gm_stats_events: mockStatsEvents({ rows: DTR_PARTS.concat([]), members: DTR_MEMBERS, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] })
             },
             from: {
                 guild_members: () => new MockBuilder(DTR_MEMBERS),
@@ -428,6 +431,7 @@ describe('GM_STATS cockpit', () => {
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }),
                 gm_stats_members: mockStatsMembers({ rows: PARTS_POWER, glory: [], members: MEMBERS_POWER }),
+                gm_stats_events: mockStatsEvents({ rows: PARTS_POWER.concat([]), members: MEMBERS_POWER, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] }),
                 gm_stats_health: mockStatsHealth({ rows: PARTS_POWER, members: MEMBERS_POWER, war: WAR_FIXTURE, power: POWER_FIXTURE })
             },
             from: {
@@ -536,6 +540,7 @@ describe('GM_STATS cockpit', () => {
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W3, W2, W1] }, error: null }),
                 gm_stats_members: mockStatsMembers({ rows: parts, glory: [], members: MEMBERS_POWER }),
+                gm_stats_events: mockStatsEvents({ rows: parts.concat([]), members: MEMBERS_POWER, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] }),
                 gm_stats_health: mockStatsHealth({ rows: parts, members: MEMBERS_POWER, currentWeek: W2 })
             },
             from: {
@@ -605,6 +610,7 @@ describe('GM_STATS cockpit', () => {
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2] }, error: null }),
                 gm_stats_members: mockStatsMembers({ rows: PARTS_POWER, glory: [], members: MEMBERS_POWER }),
+                gm_stats_events: mockStatsEvents({ rows: PARTS_POWER.concat([]), members: MEMBERS_POWER, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] }),
                 gm_stats_health: mockStatsHealth({ rows: PARTS_POWER, members: MEMBERS_POWER })
             },
             from: {
@@ -718,7 +724,8 @@ describe('GM_STATS cockpit', () => {
                     },
                     error: null
                 }),
-                gm_stats_members: mockStatsMembers({ rows: EVENT_PARTS, glory: GLORY, members: MEMBERS })
+                gm_stats_members: mockStatsMembers({ rows: EVENT_PARTS, glory: GLORY, members: MEMBERS }),
+                gm_stats_events: mockStatsEvents({ rows: EVENT_PARTS.concat(GLORY), members: MEMBERS, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] })
             },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS),

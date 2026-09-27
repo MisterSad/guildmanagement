@@ -76,13 +76,15 @@ describe('stats granularity additions (StatsView + StatsService after cutover)',
   const statsService = read('src/modules/stats/stats.service.ts');
 
   it('splits Shadowfront squad assignment into participant/reserve, squad1/squad2, and commander counts', () => {
-    expect(statsService).toContain('participantCounts');
-    expect(statsService).toContain('reserveCounts');
-    expect(statsService).toContain('squad1Counts');
-    expect(statsService).toContain('squad2Counts');
-    expect(statsService).toContain('commanderCounts');
-    expect(statsService).toContain("sq.squad === 'squad1'");
-    expect(statsService).toContain('sq.is_commander');
+    // The split moved into SQL with phase S5: the browser no longer receives
+    // every shadowfront_squads row to tally it. Same six counters, counted once.
+    const migration = read('supabase/migrations/20260927190000_gm_stats_events.sql');
+    expect(migration).toContain("lower(coalesce(sq.role, '')) = 'reserve'");
+    expect(migration).toContain("sq.squad = 'squad1'");
+    expect(migration).toContain("sq.squad = 'squad2'");
+    expect(migration).toContain('sq.is_commander');
+    expect(statsService).toContain('participant_count');
+    expect(statsService).toContain('commander_count');
   });
 
   it('still counts late and excused per row, but no longer spends a column on them', () => {
@@ -99,10 +101,14 @@ describe('stats granularity additions (StatsView + StatsService after cutover)',
     expect(viewCode).not.toContain('Late / Excused');
   });
 
-  it('adds Glory as a normalized-row source in loadSingleEventMode and to the event picker', () => {
-    expect(statsView).toContain("eventName === 'Glory'");
-    expect(statsView).toContain('raw && raw.glory');
+  it('treats Glory as an event bucket rather than a separate array to normalise', () => {
+    // gm_stats_data returned Glory in its own array, which the view reshaped
+    // into participant-like rows by hand. Glory buckets naturally through the
+    // scoring key, so gm_stats_events resolves it like any other event.
+    expect(statsView).toContain("if (key === 'glory') return 'Glory'");
     expect(statsView).toContain("{ key: 'Glory'");
+    const migration = read('supabase/migrations/20260927190000_gm_stats_events.sql');
+    expect(migration).toContain("'Shadowfront', 'DTR', 'Arms Race', 'Glory'");
   });
 
   it('makes leaderboard rows clickable and dispatches to the player-history bridge', () => {

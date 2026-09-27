@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { statsView } from '../src/modules/stats/views/StatsView';
-import { mockStatsMembers } from './helpers/stats-aggregate.js';
+import { mockStatsMembers, mockStatsEvents } from './helpers/stats-aggregate.js';
 
 // Mirror the src/main.ts bridge so window.GM_STATS keeps the same public API.
 window.GM_STATS = {
@@ -159,7 +159,8 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
                     },
                     error: null
                 }),
-                gm_stats_members: mockStatsMembers({ rows: zeroParts, glory: [], members: MEMBERS })
+                gm_stats_members: mockStatsMembers({ rows: zeroParts, glory: [], members: MEMBERS }),
+                gm_stats_events: mockStatsEvents({ rows: zeroParts.concat([]), members: MEMBERS, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] })
             },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS),
@@ -200,7 +201,8 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
                     },
                     error: null
                 }),
-                gm_stats_members: mockStatsMembers({ rows: validParts, glory: [], members: MEMBERS })
+                gm_stats_members: mockStatsMembers({ rows: validParts, glory: [], members: MEMBERS }),
+                gm_stats_events: mockStatsEvents({ rows: validParts.concat([]), members: MEMBERS, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] })
             },
             from: {
                 guild_members: () => new MockBuilder(MEMBERS),

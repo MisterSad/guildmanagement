@@ -12,7 +12,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { StatsView } from '../src/modules/stats/views/StatsView';
-import { mockStatsMembers } from './helpers/stats-aggregate.js';
+import { mockStatsMembers, mockStatsEvents } from './helpers/stats-aggregate.js';
 
 // ── Supabase mock (same shape as tests/stats.test.js) ─────────────────────────
 class MockBuilder {
@@ -106,7 +106,8 @@ function buildDb() {
         data: { guild: G, members: MEMBERS, participants: PARTS, glory: GLORY, squads: SQUADS },
         error: null
       }),
-      gm_stats_members: mockStatsMembers({ rows: PARTS, glory: GLORY, members: MEMBERS })
+      gm_stats_members: mockStatsMembers({ rows: PARTS, glory: GLORY, members: MEMBERS }),
+      gm_stats_events: mockStatsEvents({ rows: PARTS.concat(GLORY), members: MEMBERS, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] })
     },
     from: {
       guild_members: () => new MockBuilder(MEMBERS),
@@ -192,14 +193,18 @@ describe('StatsView golden results (post stats.js cutover)', () => {
     expect(parseLeaderboard()[0].reliability).toBe('100%');
   });
 
-  it('per-event mode (SvS) via loadSingleEvent: golden aggregation', async () => {
+  it('per-event mode (SvS): pending scores no longer outrank approved ones', async () => {
+    // GammaGhost's 999 is on a row with is_pending = true. The old per-event
+    // path did not filter pending rows -- the global board did -- so an
+    // unapproved score sat at the top of the Event Deep-Dive and nowhere else.
+    // A fourth inconsistency between boards, removed with the row walk.
     const view = new StatsView();
     await view.loadSingleEvent('SvS', [W2, W1]);
 
     expect(view.getState().leaderboardData.map((r) => [r.pseudo, r.score])).toEqual([
-      ['GammaGhost', 999],
       ['AlphaPrime', 300],
-      ['BetaKnight', 50]
+      ['BetaKnight', 50],
+      ['GammaGhost', 0]
     ]);
   });
 
