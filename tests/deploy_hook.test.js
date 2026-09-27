@@ -26,6 +26,9 @@ import path from 'node:path';
 
 const rootDir = path.resolve(__dirname, '..');
 const hook = fs.readFileSync(path.join(rootDir, 'scripts/hooks/pre-push'), 'utf8');
+// Absence assertions must not be defeated by the comment that explains the
+// absence. This repository has been caught by that eight times now.
+const hookCode = hook.replace(/^\s*#.*$/gm, '');
 const stripComments = (s) => s.replace(/^\s*#.*$/gm, '');
 const code = stripComments(hook);
 
@@ -69,6 +72,25 @@ describe('the deploy hook fires for every push that reaches main', () => {
     // from a worktree branch -- which is how most of this work is pushed.
     expect(hook).toContain('if [[ "$remote_ref" != "refs/heads/${MAIN_BRANCH}" ]]; then');
     expect(hook).not.toContain('if [[ "$local_ref" != "refs/heads/${MAIN_BRANCH}" ]]; then');
+  });
+});
+
+describe('the deploy hook runs on the bash that is actually installed', () => {
+  it('uses no bash 4 builtin', () => {
+    // macOS ships bash 3.2 at /bin/bash, which is what `#!/usr/bin/env bash`
+    // resolves to on the machine this repository is pushed from. `mapfile`
+    // killed the single-function deploy branch -- the common case -- the first
+    // time it ever ran, with "mapfile: command not found". It failed closed
+    // and blocked the push, which is the right direction, but it had never run
+    // at all before: the stdin field-order bug meant the hook returned early
+    // on every push since it was written.
+    for (const builtin of ['mapfile', 'readarray', 'declare -A', '${var^^}', '${var,,}']) {
+      expect(hookCode, `${builtin} is not available in bash 3.2`).not.toContain(builtin);
+    }
+  });
+
+  it('collects arrays with a portable while-read loop', () => {
+    expect(hookCode).toContain('while IFS= read -r');
   });
 });
 

@@ -231,7 +231,6 @@ async function getGuildAverages(
   admin: ReturnType<typeof createClient>,
   guild: string
 ): Promise<{
-  attendance_rate: number;
   avg_power: number;
   member_count: number;
   overall_power?: number;
@@ -256,17 +255,19 @@ async function getGuildAverages(
     };
     const avgPower = avgOf("overall_power");
 
-    const { data: participants } = await admin
-      .from("event_participants")
-      .select("participated, sub_present")
-      .eq("guild", guild);
-
-    const totalEvents = participants?.length || 0;
-    const attendedEvents = participants?.filter((p: any) => p.participated > 0 || p.sub_present).length || 0;
-    const attendanceRate = totalEvents > 0 ? Math.round((attendedEvents / totalEvents) * 100) : 0;
-
+    // The guild attendance rate used to be computed here as
+    //   attended rows / all rows
+    // over EVERY event_participants row of the guild: no session
+    // de-duplication, no week window, Glory included (it is 100% participated
+    // by construction, 6,038 rows) and rows still awaiting approval included.
+    // Measured on ALPHA it produced 48.1% while the admin's Stats page said
+    // 31.6% for the same guild on the same data. A number a guild leader and a
+    // guild member read differently is worse than no number.
+    //
+    // It now comes from gm_player_stats, on exactly the rules the admin side
+    // uses. The unbounded scan of event_participants goes with it -- this
+    // function ran it on three separate actions.
     return {
-      attendance_rate: attendanceRate,
       avg_power: avgPower,
       member_count: count,
       overall_power: avgPower,
@@ -278,7 +279,7 @@ async function getGuildAverages(
       glory_score: avgOf("glory_score")
     };
   } catch (_) {
-    return { attendance_rate: 0, avg_power: 0, member_count: 0 };
+    return { avg_power: 0, member_count: 0 };
   }
 }
 
@@ -891,12 +892,15 @@ export async function handleRequest(req: Request): Promise<Response> {
         return json({ ok: false, error: "db_error" }, 200);
       }
 
-      let gloryBest = 0;
-      if ((gloryRows ?? []).length > 1) {
-        gloryBest = (gloryRows ?? [])
-          .slice(1)
-          .reduce((m: number, r: any) => Math.max(m, Number(r.score) || 0), 0);
-      }
+      // This used to require more than one Glory week and then `.slice(1)`,
+      // discarding the OLDEST one. Measured across production: 658 of the
+      // 1,686 players with any Glory have exactly one week, so their best was
+      // 0 and they earned no Glory badge at all -- including one holding
+      // 369,393,189, which is seven times the top badge threshold. A further
+      // 287 had their best week silently dropped for being their first.
+      // Nothing documented why, and nothing in the badge catalogue implies it.
+      const gloryBest = (gloryRows ?? [])
+        .reduce((m: number, r: any) => Math.max(m, Number(r.score) || 0), 0);
 
       return json({
         ok: true,
@@ -921,8 +925,20 @@ export async function handleRequest(req: Request): Promise<Response> {
       const member = await getPlayer(admin, uid, identity.guild);
       const targetGuild = member?.guild || identity.guild;
 
-      const [rpcRes, guildAverages] = await Promise.all([
+      // gm_personal_kpis is still called: it carries the density, combativity
+      // and residual-power indices the Military Force card reads. Its
+      // participation figures are ignored in favour of gm_player_stats, which
+      // is the same computation the admin Stats page performs -- the two used
+      // to differ by 16 points on the same guild.
+      //
+      // gm_player_stats returns NO per-member row for anyone else and computes
+      // no rank, so a player cannot read a peer's attendance through it. The
+      // comparison offered is against the guild, not against other members.
+      const [rpcRes, statsRes, guildAverages] = await Promise.all([
         admin.rpc("gm_personal_kpis", { p_uid: uid }),
+        (targetGuild && member?.pseudo)
+          ? admin.rpc("gm_player_stats", { p_guild: targetGuild, p_pseudo: member.pseudo, p_weeks: 4 })
+          : Promise.resolve({ data: null, error: null }),
         targetGuild ? getGuildAverages(admin, targetGuild) : Promise.resolve(null)
       ]);
       if (rpcRes.error) {
@@ -931,7 +947,24 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
       const row = (Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data) as Record<string, any> | null;
       if (!row || !row.ok) return json({ ok: false, error: "kpis_failed" }, 200);
-      return json({ ...row, guild_averages: guildAverages });
+
+      if (statsRes.error) {
+        // Not fatal: the rest of the card still renders. Logged so a silent
+        // degradation is visible, which is the lesson of the week selector.
+        logger.warn("gm_player_stats failed; reliability will be absent", { uid, error: statsRes.error.message });
+      }
+      const stats = (statsRes.data || null) as Record<string, any> | null;
+
+      return json({
+        ...row,
+        guild_averages: guildAverages,
+        reliability: (stats && stats.ok) ? {
+          weeks: stats.weeks,
+          player: stats.player,
+          guild_totals: stats.guild_totals
+        } : null,
+        glory_history: (stats && stats.ok) ? stats.glory : null
+      });
     }
 
     if (action === "update-timezone") {

@@ -21,6 +21,7 @@ import { PortalService } from '../portal.service';
 import { escapeHTML } from '../../../core/utils/text';
 import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
 import { computeBadges as computeBadgesService } from '../../badges/badges.service';
+import { weightedRate, round1 } from '../../../core/scoring/reliability';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -125,6 +126,10 @@ interface PortalState {
   history: any;
   kpis: any;
   guildAverages: Record<string, any>;
+  /** Per-bucket attendance for this player and their guild, from gm_player_stats. */
+  reliability: any;
+  /** Best Glory week ever recorded, and how many weeks exist. */
+  gloryHistory: any;
   activeTab: string;
   period: string;
   chartsDrawn: boolean;
@@ -139,6 +144,8 @@ function createState(): PortalState {
     history: null,
     kpis: null,
     guildAverages: {},
+    reliability: null,
+    gloryHistory: null,
     activeTab: 'dashboard',
     period: 'all',
     chartsDrawn: false,
@@ -253,6 +260,14 @@ export class PortalView {
     this.state.sessions = profile.sessions || [];
     this.state.history = history.ok ? (history.events || {}) : null;
     this.state.guildAverages = Object.assign({}, (kpis && kpis.guild_averages) || {}, (profile && profile.guild_averages) || {}, (history && history.guild_averages) || {});
+    // `state.kpis` was declared, initialised to null and never assigned: the
+    // response was destructured into a local and only `guild_averages` was
+    // read from it. Every card guarded on `if (kpis && kpis.power)`, so the
+    // entire KPI grid had been unreachable, and the rally grade fell back to
+    // grading the player against a multiple of their OWN power.
+    this.state.kpis = kpis && kpis.ok !== false ? kpis : null;
+    this.state.reliability = (kpis && kpis.reliability) || null;
+    this.state.gloryHistory = (kpis && kpis.glory_history) || null;
     this.state.chartsDrawn = false;
 
     this.renderDashboard();
@@ -483,53 +498,85 @@ export class PortalView {
     const residual = legacy.residual(player);
     const combativity = legacy.combativity(player);
 
-    const maxGuildPower = (kpis && kpis.power && kpis.power.guild_max) || (player.overall_power * 1.25) || 100000000;
+    // The rally grade used to be measured against `player.overall_power * 1.25`
+    // because `kpis` was always null -- the player was graded against
+    // themselves, which no amount of progress could change. It is the guild's
+    // real maximum now.
+    const guildTotals = (this.state.reliability && this.state.reliability.guild_totals) || {};
+    const maxGuildPower = Number(guildTotals.max_power) || (player.overall_power * 1.25) || 100000000;
     const playerRallyScore = legacy.rallyScore(player);
     const estimatedMaxRally = Math.max(playerRallyScore, Math.round(maxGuildPower * 5.2));
     const rallyGrade = legacy.rallyGrade(player, estimatedMaxRally);
 
     let kpiHtml = '';
-    if (kpis && kpis.power) {
-      const pw = kpis.power;
-      const gl = kpis.glory || {};
-      const pa = kpis.participation || {};
+    if (this.state.reliability) {
+      const rel = this.state.reliability;
+      // The tenant's coefficient overrides live in `guild_config`, which a
+      // member cannot read. The portal therefore weights with the published
+      // defaults. Stated on the card so the number is not passed off as
+      // identical to the admin's when a guild has customised its weights.
+      const coeffs = undefined;
 
-      const powerDelta = pw.guild_max > 0 ? Math.round((pw.current / pw.guild_max) * 100) : 0;
-      const gloryWeek = (gl.current_week != null) ? legacy.formatNumber(gl.current_week) : '0';
-      const gloryRankTxt = (gl.current_week != null) ? '#' + (gl.rank || '-') + ' in guild' : 'No score yet';
-      const gloryPct = (gl.guild_max_week != null && gl.guild_max_week > 0)
-        ? Math.round(((gl.current_week || 0) / gl.guild_max_week) * 100)
-        : 0;
-      const partVsGuild = (pa.guild_avg_rate != null) ? (pa.rate - pa.guild_avg_rate) : 0;
-      const partVsTxt = (pa.guild_avg_rate != null)
-        ? (partVsGuild >= 0 ? '+' : '') + partVsGuild + '% vs guild avg'
-        : 'No data';
+      // The same weighting the admin Stats page applies, from the same module.
+      // These two screens published different attendance rates for the same
+      // guild on the same day -- 48.1% here against 31.6% there -- because
+      // this one counted rows, and counted Glory and unapproved rows among
+      // them. One definition now, in core/scoring/reliability.ts.
+      const playerBuckets = (rel.player && rel.player.buckets) || {};
+      const mine = weightedRate(playerBuckets, coeffs);
+
+      const guildBuckets: Record<string, { att: number; opp: number }> = {};
+      Object.keys((guildTotals && guildTotals.buckets) || {}).forEach((b) => {
+        const g = guildTotals.buckets[b] || {};
+        guildBuckets[b] = { att: Number(g.attendances) || 0, opp: Number(g.member_opportunities) || 0 };
+      });
+      const theirs = weightedRate(guildBuckets, coeffs);
+
+      const myPct = mine.rate === null ? null : round1(mine.rate);
+      const guildPct = theirs.rate === null ? null : round1(theirs.rate);
+      const delta = (myPct !== null && guildPct !== null) ? round1(myPct - guildPct) : null;
+
+      const breakdown = Object.keys(playerBuckets)
+        .map((b) => ({ bucket: b, ...(playerBuckets[b] || {}) }))
+        .filter((b: any) => Number(b.opp) > 0)
+        .sort((a: any, b: any) => String(a.bucket).localeCompare(String(b.bucket)))
+        .map((b: any) => legacy.esc(b.bucket) + ' ' + b.att + '/' + b.opp)
+        .join(' · ');
+
+      const glory = this.state.gloryHistory || {};
+      const powerPct = maxGuildPower > 0
+        ? Math.min(100, Math.round(((player.overall_power || 0) / maxGuildPower) * 100)) : 0;
 
       kpiHtml =
         '<div class="portal-kpi-grid">' +
+          '<div class="portal-kpi-card portal-kpi-part">' +
+            '<div class="portal-kpi-icon"><i class="ph ph-calendar-check"></i></div>' +
+            '<div class="portal-kpi-value">' + legacy.esc(myPct === null ? '—' : myPct + '%') + '</div>' +
+            '<div class="portal-kpi-label">Your reliability</div>' +
+            '<div class="portal-kpi-rank">' + legacy.esc(breakdown || 'Nothing ran for you yet') + '</div>' +
+            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + (myPct || 0) + '%;"></div></div>' +
+            '<div class="portal-kpi-sub">' +
+              (delta === null
+                ? 'Over the last ' + legacy.esc(rel.weeks || 0) + ' weeks'
+                : legacy.esc((delta >= 0 ? '+' : '') + delta + '% vs your guild (' + guildPct + '%)')) +
+              '<br><span style="opacity:.7;">Weighted by event type, standard weights</span>' +
+            '</div>' +
+          '</div>' +
           '<div class="portal-kpi-card portal-kpi-power">' +
             '<div class="portal-kpi-icon"><i class="ph ph-sword"></i></div>' +
-            '<div class="portal-kpi-value">' + legacy.esc(legacy.formatPower(pw.current)) + '</div>' +
+            '<div class="portal-kpi-value">' + legacy.esc(legacy.formatPower(player.overall_power || 0)) + '</div>' +
             '<div class="portal-kpi-label">Combat Power</div>' +
-            '<div class="portal-kpi-rank">#' + legacy.esc(pw.rank || '-') + ' of ' + legacy.esc(pw.members || '-') + ' members</div>' +
-            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + legacy.esc(powerDelta) + '%;"></div></div>' +
-            '<div class="portal-kpi-sub">Top ' + legacy.esc(pw.percentile != null ? pw.percentile : 0) + '% &middot; vs Avg: ' + legacy.esc(legacy.formatPower(guildAvg.overall_power || pw.guild_avg || 0)) + '</div>' +
+            '<div class="portal-kpi-rank">' + legacy.esc(powerPct) + '% of the strongest in your guild</div>' +
+            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + powerPct + '%;"></div></div>' +
+            '<div class="portal-kpi-sub">Guild average: ' + legacy.esc(legacy.formatPower(guildAvg.overall_power || 0)) + '</div>' +
           '</div>' +
           '<div class="portal-kpi-card portal-kpi-glory">' +
             '<div class="portal-kpi-icon"><i class="ph ph-trophy"></i></div>' +
-            '<div class="portal-kpi-value">' + legacy.esc(gloryWeek) + '</div>' +
-            '<div class="portal-kpi-label">Glory this week</div>' +
-            '<div class="portal-kpi-rank">' + legacy.esc(gloryRankTxt) + '</div>' +
-            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + legacy.esc(gloryPct) + '%;"></div></div>' +
-            '<div class="portal-kpi-sub">Best: ' + legacy.esc(gl.best_ever != null ? legacy.formatNumber(gl.best_ever) : '-') + ' &middot; Avg: ' + legacy.esc(legacy.formatNumber(guildAvg.glory_score || gl.guild_avg_week || 0)) + '</div>' +
-          '</div>' +
-          '<div class="portal-kpi-card portal-kpi-part">' +
-            '<div class="portal-kpi-icon"><i class="ph ph-calendar-check"></i></div>' +
-            '<div class="portal-kpi-value">' + legacy.esc(pa.rate != null ? pa.rate + '%' : '0%') + '</div>' +
-            '<div class="portal-kpi-label">Attendance rate</div>' +
-            '<div class="portal-kpi-rank">' + legacy.esc(pa.attended || 0) + '/' + legacy.esc(pa.total || 0) + ' events</div>' +
-            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + legacy.esc(pa.rate || 0) + '%;"></div></div>' +
-            '<div class="portal-kpi-sub">' + legacy.esc(partVsTxt) + '</div>' +
+            '<div class="portal-kpi-value">' + legacy.esc(glory.best ? legacy.formatNumber(glory.best) : '—') + '</div>' +
+            '<div class="portal-kpi-label">Best Glory week</div>' +
+            '<div class="portal-kpi-rank">' + legacy.esc((glory.weeks_recorded || 0) + ' week' + ((glory.weeks_recorded || 0) === 1 ? '' : 's') + ' recorded') + '</div>' +
+            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:100%;"></div></div>' +
+            '<div class="portal-kpi-sub">Guild average: ' + legacy.esc(legacy.formatNumber(guildAvg.glory_score || 0)) + '</div>' +
           '</div>' +
           '<div class="portal-kpi-card portal-kpi-tenure">' +
             '<div class="portal-kpi-icon"><i class="ph ph-lightning"></i></div>' +
@@ -537,7 +584,7 @@ export class PortalView {
             '<div class="portal-kpi-label">Rally Grade</div>' +
             '<div class="portal-kpi-rank">Combat Density: ' + density + '%</div>' +
             '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + legacy.esc(rallyGrade) + '%; background:#fbbf24;"></div></div>' +
-            '<div class="portal-kpi-sub">Combativity: ' + combativity + 'x &middot; ' + legacy.esc(kpis.role || 'R1') + '</div>' +
+            '<div class="portal-kpi-sub">Combativity: ' + combativity + 'x &middot; ' + legacy.esc(player.role || 'R1') + '</div>' +
           '</div>' +
         '</div>';
     }
@@ -546,7 +593,13 @@ export class PortalView {
       '<div class="portal-stats">' +
         '<div class="portal-stat"><div class="portal-stat-value">' + legacy.esc(totalCount) + '</div><div class="portal-stat-label">Events tracked</div></div>' +
         '<div class="portal-stat"><div class="portal-stat-value">' + legacy.esc(totalAttended) + '</div><div class="portal-stat-label">Participated</div></div>' +
-        '<div class="portal-stat"><div class="portal-stat-value">' + legacy.esc(overallRate) + '%</div><div class="portal-stat-label">Attendance rate</div></div>' +
+        // This strip used to show a third figure, "Attendance rate", computed
+        // as totalAttended / totalCount: a rate pooled across event types, so
+        // a member's Arms Race days outweighed their wars. It sat a few
+        // centimetres from the reliability card, which answers the same
+        // question differently. Two rates on one screen is how a member loses
+        // confidence in both, so the counts stay and the rate is stated once.
+        '' +
         '<div class="portal-stat"><div class="portal-stat-value">' + legacy.esc(legacy.formatPower(player.overall_power)) + '</div><div class="portal-stat-label">Current power</div></div>' +
       '</div>';
 

@@ -61,8 +61,18 @@ describe('Player Portal military metrics response (v127.1)', () => {
     }
     // overall_power average may be inlined via the pre-computed avgPower variable
     expect(avgBlock).toContain('overall_power: avg');
-    // Legacy keys preserved for backward compatibility
-    expect(avgBlock).toContain('attendance_rate');
+
+    // `attendance_rate` used to be returned from here, computed as
+    //   attended rows / all rows
+    // over EVERY event_participants row of the guild: no session
+    // de-duplication, no week window, Glory included (100% participated by
+    // construction) and unapproved rows included. Measured on ALPHA it gave
+    // 48.1% where the admin's Stats page gave 31.6% on the same data. It is
+    // gone, with the unbounded scan that fed it; the rate now comes from
+    // gm_player_stats on the same rules both sides use.
+    expect(avgBlock).not.toContain('attendance_rate');
+    expect(avgBlock, 'the unbounded event_participants scan must not come back')
+      .not.toContain('.from("event_participants")');
     expect(avgBlock).toContain('avg_power');
     expect(avgBlock).toContain('member_count');
   });

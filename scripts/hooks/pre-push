@@ -163,8 +163,24 @@ if [[ "$DEPLOY_ALL" == true ]]; then
   fi
 
 else
-  # Deduplicate
-  mapfile -t DEPLOY_FUNCTIONS < <(printf '%s\n' "${DEPLOY_FUNCTIONS[@]}" | sort -u)
+  # Deduplicate.
+  #
+  # `mapfile` is a bash 4 builtin and macOS ships bash 3.2 at /bin/bash, which
+  # is what `#!/usr/bin/env bash` resolves to here. This branch -- the one that
+  # deploys INDIVIDUAL functions, i.e. the common case -- therefore died with
+  # "mapfile: command not found" the first time it ran, and blocked the push.
+  # It failed closed, which is the right direction, but it had never run at all
+  # before today: the field-order bug fixed in d780276 meant the hook returned
+  # early on every push since it was written.
+  #
+  # A `while read` loop is portable to bash 3.2, and is already the idiom used
+  # by the deploy-all branch above.
+  DEDUPED=()
+  while IFS= read -r fn; do
+    [[ -z "$fn" ]] && continue
+    DEDUPED+=("$fn")
+  done < <(printf '%s\n' "${DEPLOY_FUNCTIONS[@]}" | sort -u)
+  DEPLOY_FUNCTIONS=("${DEDUPED[@]}")
 
   echo "  → Deploying ${#DEPLOY_FUNCTIONS[@]} function(s): ${DEPLOY_FUNCTIONS[*]}"
   echo ""

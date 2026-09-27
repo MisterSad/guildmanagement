@@ -1,3 +1,25 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.30.0**
+
+The **Player Portal** now tells you the same numbers your guild admin sees. Until today it did not, and that was my fault. 🎯
+
+**The problem.** Your Portal said your guild's attendance was one figure; the admin's Stats page said another. On one guild I measured 48% against 32% — same guild, same day, same data. The Portal was counting every record equally, including Glory (which everyone is marked present for automatically) and scores still waiting for an admin to approve them.
+
+There is one calculation now, shared by both screens.
+
+**Your dashboard gets real numbers.** The four cards at the top of the Portal had actually been broken for a long time and were showing nothing at all. They are back, and they show:
+
+- **Your reliability**, with the breakdown per event type, and how you compare to your guild.
+- **Your power** against the strongest member of your guild — not, as before, against a number derived from your own power, which meant you could never move the bar.
+- **Your best Glory week.**
+
+**Glory badges were wrong for more than half of you.** The badge only counted your Glory weeks *after* discarding your oldest one. If you had recorded Glory exactly once — 658 of you — your best counted as zero and you earned no Glory badge at all, whatever the score. One of you is sitting on 369 million. That is fixed; your badges may jump.
+
+**One thing to know.** Your guild's custom event weightings are an admin setting the Portal cannot read, so if your guild has changed them, your figure may differ slightly from your admin's. The card says so.
+
+Reload the page. 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.29.1**
 
 Quick fix on yesterday's Stats release. **Every bar chart on the Guild Cockpit was blank** — the labels and numbers were right, the coloured bars beside them simply were not drawing. My mistake, and my tests could not see it: nothing in an automated browser test measures whether something is actually visible. Thank you to whoever looked at the screen. 🙏
