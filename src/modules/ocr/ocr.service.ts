@@ -231,6 +231,120 @@ export function ocrMeasureFrameSharpness(data: Uint8ClampedArray, width: number,
 }
 
 /**
+ * Row-mean luminance profile of a region, zero-meaned for cross-correlation.
+ *
+ * A leaderboard scrolling vertically is, to a first approximation, a 1-D signal
+ * sliding along the y axis. Collapsing each row to its mean luminance keeps the
+ * part of the frame that moves and throws away the part that does not, which is
+ * what makes the displacement below cheap enough to run on every sampled step.
+ */
+export function ocrProfileFromRoi(data: Uint8ClampedArray, width: number, height: number): number[] {
+  const out = new Array(height).fill(0);
+  if (!data || width <= 0 || height <= 0) return out;
+  for (let y = 0; y < height; y++) {
+    let sum = 0;
+    const row = y * width * 4;
+    for (let x = 0; x < width; x++) {
+      const i = row + x * 4;
+      sum += data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    }
+    out[y] = sum / width;
+  }
+  let mean = 0;
+  for (let y = 0; y < height; y++) mean += out[y];
+  mean /= height;
+  for (let y = 0; y < height; y++) out[y] -= mean;
+  return out;
+}
+
+export interface OcrProfileShift {
+  /** Rows of the profile the content moved by. Positive means it scrolled up. */
+  shift: number;
+  /** Normalised cross-correlation of the best alignment, in [-1, 1]. */
+  score: number;
+}
+
+/**
+ * Estimates how far the content moved between two profiles.
+ *
+ * The search is deliberately bounded. A roster is periodic at the row pitch, so
+ * an unbounded correlation happily locks onto the wrong row and reports a
+ * displacement that is off by a whole number of rows -- measured, that failure
+ * is what makes a naive implementation of this useless. Bounded to less than
+ * the travel one sampling step can produce, the ambiguity does not arise.
+ */
+export function ocrEstimateProfileShift(a?: number[] | null, b?: number[] | null, maxShift?: number): OcrProfileShift {
+  if (!a || !b || a.length !== b.length || a.length === 0) return { shift: 0, score: 0 };
+  const n = a.length;
+  const limit = Math.max(1, Math.min(maxShift || Math.round(n * 0.45), n - 1));
+
+  const scoreAt = (s: number): number => {
+    let num = 0, na = 0, nb = 0, overlap = 0;
+    for (let i = 0; i < n; i++) {
+      const j = i + s;
+      if (j < 0 || j >= n) continue;
+      num += a[i] * b[j];
+      na += a[i] * a[i];
+      nb += b[j] * b[j];
+      overlap++;
+    }
+    if (overlap < n * 0.5) return NaN;
+    const denom = Math.sqrt(na * nb);
+    return denom > 0 ? num / denom : 0;
+  };
+
+  // Candidates are visited nearest-first (0, -1, +1, -2, +2, ...) and a further
+  // one has to be decisively better to displace a nearer one. On a roster, which
+  // repeats at the row pitch, several alignments correlate almost equally well:
+  // a plain argmax then returns whichever the loop happened to reach first, and
+  // two IDENTICAL frames were being reported as a scroll of 80 rows. Between two
+  // frames a fraction of a second apart, the smallest displacement that explains
+  // the data is the right one.
+  const MARGIN = 0.02;
+  let bestShift = 0;
+  let bestScore = scoreAt(0);
+  if (Number.isNaN(bestScore)) bestScore = -Infinity;
+  for (let d = 1; d <= limit; d++) {
+    for (const s of [-d, d]) {
+      const score = scoreAt(s);
+      if (Number.isNaN(score)) continue;
+      if (score > bestScore + MARGIN) { bestScore = score; bestShift = s; }
+    }
+  }
+  return { shift: bestShift, score: bestScore === -Infinity ? 0 : bestScore };
+}
+
+/**
+ * Vertical-gradient sharpness: how much detail survives along the axis a scroll
+ * smears.
+ *
+ * ocrMeasureFrameSharpness sums the horizontal and the vertical gradient, and
+ * the controller fed it a 16x16 thumbnail. Measured against a full-resolution
+ * reading of the same 587 frames, that score ranks them at Spearman -0.272 --
+ * anti-correlated, so "keep the sharpest frame in the window" was reliably
+ * keeping the blurrier one. This measure, on the 64x256 region the controller
+ * now grabs, scores +0.599 on the same footage.
+ */
+export function ocrMeasureVerticalSharpness(data: Uint8ClampedArray, width: number, height: number): number {
+  if (!data || width <= 0 || height <= 1) return 0;
+  let sum = 0;
+  let count = 0;
+  for (let y = 0; y < height - 1; y++) {
+    const row = y * width * 4;
+    const next = (y + 1) * width * 4;
+    for (let x = 0; x < width; x++) {
+      const i = row + x * 4;
+      const j = next + x * 4;
+      const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      const lumD = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
+      sum += Math.abs(lum - lumD);
+      count++;
+    }
+  }
+  return count > 0 ? sum / count : 0;
+}
+
+/**
  * Intelligent cross-frame deduplication and fusion for OCR extracted players.
  * Resolves slight OCR typos, merges identical UIDs, correlates against existing members,
  * and preserves highest/most complete scores.
@@ -241,24 +355,49 @@ export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guild
   const tag = guildTag || null;
 
   const fusedMap: Record<string, any> = {};
+  // Which OCR name first claimed each roster member, and at what score.
+  // findBestMatchingMember answers from a similarity of 0.75 up, so two
+  // DIFFERENT players with close names could both be rewritten to one member,
+  // collapse onto one key, and one of them would vanish with nothing said.
+  //
+  // String distance cannot settle which case is which. Measured on names from a
+  // real roster, an OCR typo and a genuinely different player fall in the same
+  // band: Coreman/C0reman scores 0.857 and is one player, Sonz/Sonz2 scores
+  // 0.800 and is two. The score does separate them -- one row has one value,
+  // however many frames it was read from -- so that is what decides here.
+  const claimedBy: Record<string, { name: string; score: number }> = {};
+  const SCORE_TOLERANCE = 0.01;
 
   for (const p of rawPlayers) {
     if (!p || !p.pseudo || !String(p.pseudo).trim()) continue;
     const cleanPseudo = cleanPlayerPseudo(p.pseudo, tag) || String(p.pseudo).trim();
     if (!cleanPseudo) continue;
 
+    const pScore = p.score != null ? p.score : (p.overall_power || 0);
+
     let canonicalPseudo = cleanPseudo;
     let memberMatch = null;
     if (members.length > 0) {
       const matchRes = findBestMatchingMember(cleanPseudo, members, tag);
       if (matchRes && matchRes.score >= 0.80) {
-        canonicalPseudo = matchRes.member.pseudo;
-        memberMatch = matchRes.member;
+        const memberKey = String(matchRes.member.pseudo).trim().toLowerCase();
+        const owner = claimedBy[memberKey];
+        const sameName = !!owner && owner.name.toLowerCase() === cleanPseudo.toLowerCase();
+        const biggest = owner ? Math.max(Math.abs(owner.score), Math.abs(pScore)) : 0;
+        const sameScore = !!owner && (biggest === 0 || Math.abs(owner.score - pScore) / biggest <= SCORE_TOLERANCE);
+
+        if (!owner || sameName || sameScore) {
+          canonicalPseudo = matchRes.member.pseudo;
+          memberMatch = matchRes.member;
+          if (!owner) claimedBy[memberKey] = { name: cleanPseudo, score: pScore };
+        }
+        // Otherwise: a different player already holds this member. Keeping our
+        // own name shows both rows in the review table, where an admin can see
+        // the two and decide -- which a silent merge never allowed.
       }
     }
 
     const key = canonicalPseudo.toLowerCase().trim();
-    const pScore = p.score != null ? p.score : (p.overall_power || 0);
     const pUid = p.uid ? String(p.uid).trim() : (memberMatch ? (memberMatch.uid || null) : null);
     const pRank = p.rank || null;
 
@@ -288,10 +427,22 @@ export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guild
 }
 
 
-/** Downscales + JPEG-compresses an image to a data URL (falls back to raw). */
+/**
+ * Downscales + JPEG-compresses an image to a data URL (falls back to raw).
+ *
+ * An image that is already a JPEG and already within `maxDimension` is returned
+ * untouched. It used to be decoded and re-encoded anyway, which is a second
+ * generation of JPEG loss for no gain at all: video frames arrive here as
+ * 666-px JPEGs written at q0.85 by the extractor's canvas.toBlob, comfortably
+ * inside the 1600-px bound, and were handed to the OCR re-encoded at q0.82.
+ * Small text is exactly what generational JPEG artefacts damage first, and
+ * reading small text is the entire job.
+ */
 export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, quality?: number): Promise<string> {
   const maxDim = maxDimension || 1280;
   const q = (typeof quality === 'number') ? quality : 0.82;
+  const sourceType = String((fileOrBlob as File).type || '').toLowerCase();
+  const alreadyJpeg = sourceType === 'image/jpeg' || sourceType === 'image/jpg';
 
   return new Promise((resolve, reject) => {
     if (!fileOrBlob || typeof FileReader === 'undefined') {
@@ -307,6 +458,10 @@ export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, 
         try {
           let w = img.width;
           let h = img.height;
+          if (alreadyJpeg && w <= maxDim && h <= maxDim) {
+            // Nothing to gain by re-encoding it, and detail to lose.
+            return resolve(e.target.result);
+          }
           if (w > maxDim || h > maxDim) {
             if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
             else { w = Math.round((w * maxDim) / h); h = maxDim; }
