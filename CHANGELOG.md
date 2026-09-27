@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- **The Discord account chooser was invisible. That was my bug, and it explains the whole report.**
+  - `.gm-modal-overlay` is `opacity: 0` and only appears once the `visible` class is added. `openAccountChooser` never added it. The dialog was **in the DOM, fully wired, and completely invisible**: clicking "Sign in with Discord" appeared to do nothing, and the continuation ticket expired two minutes later. `openLinkAccountDialog`, twenty lines below in the same file, does it correctly with `requestAnimationFrame(() => overlay.classList.add('visible'))`. I did not copy that line.
+  - **The evidence was in the ticket table the whole time.** Five stranded tickets, all carrying the owner's real Discord username, each created and then expiring unconsumed. Those were **continuations**: proof that `redeem` had succeeded and returned `choose`, and that the client had been handed a working payload it then failed to show. Calling the deployed function with a diagnostic ticket confirmed it answers correctly, with both accounts and no session tokens.
+  - **Why no test caught it**: every assertion about the chooser was that the markup existed. Markup existing and markup being visible are different claims, and only the second one matters. There is now a test for the `visible` class, sabotage-verified by removing the line again.
+  - **Verified the way it should have been the first time**: minted a real ticket, loaded the real built bundle, and looked. The dialog renders "Which account?", "You signed in as qu4ck3n", and both rows — HawkEye (Command Center, every guild) and HawkEyePlayer (Player Portal, ALPHA). Measured too: overlay `opacity: 1`, card background solid, z-index 9999.
+  - **A continuation ticket now lasts 15 minutes instead of 2.** Two minutes is right for the ticket that travels in the callback URL and is spent in under a second. It is far too short for one that waits on a person reading two options, or typing a password into the claim form. Both expired under the owner mid-decision. The callback ticket keeps its short life explicitly.
+  - **The chooser can be dismissed.** It had no way out, which is a trap if you change your mind, and expiry is now named rather than reported as a generic failure.
+  - Gate: 0 TS errors, **155 suites / 1933 tests**, build clean, **38 e2e** green.
+
 - **"My Passkeys" removed, from both places it lived**
   - It let people **register passkeys that could not be used to sign in anywhere.** Both sign-in buttons called `wirePasskeyLoginButton()` and `openBackupCodeDialog()`, which are exported onto the `window.GM` bridge and were never invoked; they were removed earlier the same day as dead markup. Registering more only grew a pile of credentials nobody could spend.
   - **There were two identical cards**, not one: Accounts & Access (static markup in `index.html`) and the player portal's Security section (rendered by `PortalView`). The report named one; leaving the other would have been incoherent, so both went. Said here rather than left to be discovered.

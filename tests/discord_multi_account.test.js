@@ -151,9 +151,37 @@ describe('the client asks instead of guessing', () => {
     expect(ctrl).toMatch(/Player Portal/);
   });
 
+  it('makes the dialog VISIBLE, which it did not', () => {
+    // The bug the owner hit. `.gm-modal-overlay` is `opacity: 0` and only shows
+    // with the `visible` class, so the chooser was in the DOM, fully wired, and
+    // completely invisible: Discord sign-in looked broken and the continuation
+    // ticket expired two minutes later. Nothing in the suite could see it,
+    // because every assertion was about markup being present.
+    const dlg = ctrl.slice(ctrl.indexOf('export function openAccountChooser'));
+    const body = dlg.slice(0, dlg.indexOf('export function openLinkAccountDialog'));
+    expect(body).toMatch(/classList\.add\('visible'\)/);
+    expect(body).toMatch(/requestAnimationFrame/);
+  });
+
+  it('can be dismissed, so it is not a trap', () => {
+    const dlg = ctrl.slice(ctrl.indexOf('export function openAccountChooser'));
+    const body = dlg.slice(0, dlg.indexOf('export function openLinkAccountDialog'));
+    expect(body).toMatch(/discord-choose-cancel/);
+  });
+
   it('disables the buttons on the first click, because the ticket is single-use', () => {
     const dlg = ctrl.slice(ctrl.indexOf('export function openAccountChooser'));
     expect(dlg).toMatch(/disabled = true/);
+  });
+
+  it('gives a continuation ticket a human-scale lifetime', () => {
+    // The callback ticket is spent by the SPA in under a second, so two minutes
+    // is right for it. A continuation waits on a PERSON reading two options, or
+    // typing a password into the claim form, and two minutes expired under the
+    // owner mid-decision.
+    const fnSrc = read('supabase/functions/auth-discord/index.ts');
+    expect(fnSrc).toMatch(/const CONTINUATION_TTL_MS = 15 \* 60_000;/);
+    expect(fnSrc).toMatch(/issueTicket\(admin, discordUserId, discordUsername, logger, TICKET_TTL_MS\)/);
   });
 
   it('escapes every value it renders', () => {

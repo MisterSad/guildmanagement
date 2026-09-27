@@ -73,6 +73,13 @@ const DEFAULT_ORIGIN = Deno.env.get("APP_DEFAULT_ORIGIN") ?? "";
 const STATE_TTL_MS = 10 * 60_000;
 const TICKET_TTL_MS = 2 * 60_000;
 
+// A continuation ticket waits on a PERSON, not on a redirect. Two minutes is
+// right for the ticket that travels in the callback URL and is spent
+// immediately; it is far too short for one that sits on screen while someone
+// reads two options, or types a password into the claim form. Both expired
+// under the owner mid-decision.
+const CONTINUATION_TTL_MS = 15 * 60_000;
+
 /** Shared with auth-login and auth-passkey — login_throttle is keyed purely by IP. */
 const IP_LIMIT = { limit: 60, windowMs: 300_000 };
 
@@ -195,14 +202,15 @@ async function issueTicket(
   admin: any,
   discordUserId: string,
   discordUsername: string | null,
-  logger: EdgeLogger
+  logger: EdgeLogger,
+  ttlMs: number = CONTINUATION_TTL_MS
 ): Promise<string | null> {
   const ticket = randomToken(32);
   const { error } = await admin.from("discord_auth_tickets").insert({
     ticket,
     discord_user_id: discordUserId,
     discord_username: discordUsername,
-    expires_at: new Date(Date.now() + TICKET_TTL_MS).toISOString(),
+    expires_at: new Date(Date.now() + ttlMs).toISOString(),
   });
   if (error) {
     logger.error("Failed to persist auth ticket", error);
@@ -346,7 +354,10 @@ async function handleCallback(req: Request, url: URL, admin: any, logger: EdgeLo
   // ── Issue the ticket. Note it is issued whether or not the Discord account
   //    is linked: resolving that is the redeem step's job, and it is what D3
   //    (claim) and D4 (onboarding) will extend.
-  const ticket = await issueTicket(admin, discordUserId, discordUsername, logger);
+  // The SHORT lifetime: this one travels in the callback URL and is spent by
+  // the SPA within a second of landing. Continuations, which wait on a person,
+  // get CONTINUATION_TTL_MS instead.
+  const ticket = await issueTicket(admin, discordUserId, discordUsername, logger, TICKET_TTL_MS);
   if (!ticket) return redirect(buildErrorReturnUrl(origin, "server_error"));
 
   logger.info("Discord authorization completed", { discordUserId });

@@ -607,6 +607,9 @@ export function openAccountChooser(
         '</p>' +
         accounts.map(row).join('') +
         '<div id="discord-choose-error" class="gm-login-error hidden" style="margin-top:.6rem;"></div>' +
+        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; margin-top:.9rem;">' +
+          '<button type="button" class="gm-btn gm-btn-ghost" id="discord-choose-cancel">Cancel</button>' +
+        '</div>' +
       '</div>' +
     '</div>';
 
@@ -615,6 +618,22 @@ export function openAccountChooser(
   const overlay = host.firstElementChild as HTMLElement | null;
   if (!overlay) return;
   document.body.appendChild(overlay);
+
+  // `.gm-modal-overlay` is `opacity: 0` and only becomes visible with the
+  // `visible` class. Without this line the dialog is in the DOM, fully wired,
+  // and COMPLETELY INVISIBLE -- which is exactly what shipped: Discord sign-in
+  // looked broken, nothing appeared, and the continuation ticket quietly
+  // expired two minutes later. `openLinkAccountDialog` below does the same
+  // thing correctly; this was not copied from it.
+  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+
+  const cancelBtn = overlay.querySelector('#discord-choose-cancel');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => { overlay.remove(); }, 200);
+    });
+  }
 
   const fail = (msg: string): void => {
     const box = overlay.querySelector('#discord-choose-error') as HTMLElement | null;
@@ -645,7 +664,9 @@ export function openAccountChooser(
           await handleSuccessfulLogin(resp, resp.id || accountId);
           return;
         }
-        fail(discordErrorMessage(resp.error || 'request_failed'));
+        fail(resp.error === 'ticket_invalid'
+          ? 'That took too long and the sign-in expired. Please click "Sign in with Discord" again.'
+          : discordErrorMessage(resp.error || 'request_failed'));
       } catch (err) {
         console.error('Account selection failed:', err);
         fail(discordErrorMessage('request_failed'));
