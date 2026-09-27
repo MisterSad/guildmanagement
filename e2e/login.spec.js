@@ -34,19 +34,14 @@ test('empty login submit triggers HTML validation, no navigation', async ({ page
     await expect(page.locator('#username')).toBeVisible();
 });
 
-test('can switch to the player registration form and back', async ({ page }) => {
+test('there is no player registration form to switch to', async ({ page }) => {
     await page.goto('/');
-    // Register is reachable from the login card link.
-    const registerLink = page.locator('a,button').filter({ hasText: /register|player account/i }).first();
-    if (await registerLink.count()) {
-        await registerLink.click();
-        await expect(page.locator('#register-form')).toBeVisible();
-        await expect(page.locator('#register-uid')).toBeVisible();
-        await expect(page.locator('#register-code')).toBeVisible();
-        // Back to login
-        await page.locator('#register-back-btn').click();
-        await expect(page.locator('#login-form')).toBeVisible();
-    }
+    // The old test clicked a link "if (await registerLink.count())", so it
+    // passed vacuously the moment the link went away. This one fails if the
+    // password sign-up ever comes back.
+    await expect(page.locator('#register-form')).toHaveCount(0);
+    await expect(page.locator('#auth-tab-register')).toHaveCount(0);
+    await expect(page.locator('#portal-go-register-btn')).toHaveCount(0);
 });
 
 test('clicking Terms & Conditions in footer opens dedicated full page and can return to platform', async ({ page }) => {

@@ -71,13 +71,16 @@ test('nothing in the app wires a passkey sign-in button any more', async ({ page
     expect(orphans, `passkey/backup buttons still on a sign-in screen: ${orphans.join(', ')}`).toEqual([]);
 });
 
-test('the Request a Guild tab and its form are gone', async ({ page }) => {
+test('nothing is left of the Request a Guild or Register Player tabs', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#auth-tab-guild-request')).toHaveCount(0);
     await expect(page.locator('#guild-request-form')).toHaveCount(0);
-    // Sign In and Register Player remain.
-    await expect(page.locator('#auth-tab-signin')).toBeVisible();
-    await expect(page.locator('#auth-tab-register')).toBeVisible();
+    await expect(page.locator('#auth-tab-register')).toHaveCount(0);
+    await expect(page.locator('#register-form')).toHaveCount(0);
+    // With one panel left there is no switcher either, so the login form is
+    // the login screen.
+    await expect(page.locator('.gm-auth-segmented-switch')).toHaveCount(0);
+    await expect(page.locator('#login-form')).toBeVisible();
 });
 
 test('the Discord invite reads "Join our Discord"', async ({ page }) => {
@@ -85,6 +88,7 @@ test('the Discord invite reads "Join our Discord"', async ({ page }) => {
     const cta = page.locator('a.gm-login-discord-btn[href*="discord.gg"]');
     await expect(cta).toBeVisible();
     await expect(cta).toContainText('Join our Discord');
+    await expect(cta).toHaveAttribute('href', 'https://discord.gg/HJ47V6chbw');
     await expect(cta).not.toContainText('Want a guild space');
 });
 

@@ -24,8 +24,6 @@ import { setVerifiedRole } from '../../../core/auth/roles';
 import { shellView } from '../../shell/views/ShellView';
 import { portalView } from '../../portal/views/PortalView';
 
-export type AuthTab = 'signin' | 'register' | 'guild-request' | 'login' | 'request';
-
 export interface LoginResponse {
   ok: boolean;
   role?: string;
@@ -1148,63 +1146,7 @@ function discordErrorMessage(code: string): string {
   }
 }
 
-// ── Auth tabs & forms ────────────────────────────────────────────────────────
-
-/** Switches between the signin / register / guild-request auth panels. */
-export function showAuthTab(tab: AuthTab): void {
-  const tabId = tab === 'login' ? 'signin' : (tab === 'request' ? 'guild-request' : tab);
-  const loginForm = el('login-form');
-  const registerForm = el('register-form');
-  const guildRequestForm = el('guild-request-form');
-  if (loginForm) loginForm.classList.toggle('hidden', tabId !== 'signin');
-  if (registerForm) registerForm.classList.toggle('hidden', tabId !== 'register');
-  if (guildRequestForm) guildRequestForm.classList.toggle('hidden', tabId !== 'guild-request');
-
-  const registerError = el('register-error');
-  if (registerError) registerError.classList.add('hidden');
-  const guildRequestError = el('guild-request-error');
-  if (guildRequestError) guildRequestError.classList.add('hidden');
-  const guildRequestSuccess = el('guild-request-success');
-  if (guildRequestSuccess) guildRequestSuccess.classList.add('hidden');
-
-  const signinTab = el('auth-tab-signin');
-  const registerTab = el('auth-tab-register');
-  const requestTab = el('auth-tab-guild-request');
-  if (signinTab) signinTab.classList.toggle('active', tabId === 'signin');
-  if (registerTab) registerTab.classList.toggle('active', tabId === 'register');
-  if (requestTab) requestTab.classList.toggle('active', tabId === 'guild-request');
-}
-
-/** Boolean-compatible wrapper kept for legacy call sites. */
-export function showRegisterForm(show: boolean): void {
-  showAuthTab(show ? 'register' : 'signin');
-}
-
-const GUILD_REQUEST_ERRORS: Record<string, string> = {
-  invalid_guild_tag: 'Guild tag must be 2-12 letters, numbers or underscores.',
-  invalid_server_number: 'Server number must be exactly 4 digits.',
-  invalid_admin_id: 'Admin login must be 3 to 32 characters.',
-  invalid_discord_handle: 'Please enter a valid Discord handle.',
-  note_too_long: 'Note is too long (max 500 characters).',
-  tag_taken: 'This guild tag is already taken or has a pending request.',
-  admin_id_taken: 'This admin login is already taken or has a pending request.',
-  too_many_pending_requests: 'Too many pending requests right now. Please try again later.',
-  too_many_attempts: 'Too many attempts. Please wait a few minutes and try again.',
-  missing_fields: 'Please fill in all required fields.',
-  request_failed: 'Network error. Please try again.'
-};
-
-const REGISTER_ERRORS: Record<string, string> = {
-  invalid_identifier: 'Identifier must be 3 to 32 characters.',
-  weak_password: 'Password must be at least 8 characters.',
-  invalid_uid: 'Invalid in-game UID.',
-  invalid_code: 'Invalid guild join code.',
-  uid_not_in_guild: 'This UID is not a member of the guild for this join code.',
-  uid_already_claimed: 'This UID is already linked to an account.',
-  identifier_taken: 'This identifier is already taken.',
-  too_many_attempts: 'Too many attempts. Try again later.',
-  request_failed: 'Network error. Please try again.'
-};
+// ── Auth forms ───────────────────────────────────────────────────────────────
 
 async function onLoginSubmit(e: Event): Promise<void> {
   e.preventDefault();
@@ -1255,96 +1197,6 @@ async function onLoginSubmit(e: Event): Promise<void> {
   }
 }
 
-async function onRegisterSubmit(e: Event): Promise<void> {
-  e.preventDefault();
-  const form = e.target as HTMLFormElement;
-  const id = (el<HTMLInputElement>('register-id') || ({} as any)).value || '';
-  const pass = (el<HTMLInputElement>('register-password') || ({} as any)).value || '';
-  const uid = (el<HTMLInputElement>('register-uid') || ({} as any)).value || '';
-  const code = (el<HTMLInputElement>('register-code') || ({} as any)).value || '';
-
-  const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
-  if (btn) btn.disabled = true;
-  const span = btn ? btn.querySelector('span') : null;
-  if (span) span.textContent = 'Submitting...';
-
-  try {
-    const x = g();
-    const resp: LoginResponse = x && typeof x.registerPlayer === 'function'
-      ? await x.registerPlayer(id.trim(), pass, uid.trim(), code.trim())
-      : { ok: false, error: 'no_client' };
-
-    if (resp.ok) {
-      const registerError = el('register-error');
-      if (registerError) registerError.classList.add('hidden');
-      form.reset();
-      showRegisterForm(false);
-      showToast('Registration submitted. A guild admin will approve your account.', 'success');
-    } else {
-      const msg = REGISTER_ERRORS[resp.error || ''] || 'Registration failed. Please try again.';
-      const registerError = el('register-error');
-      if (registerError) {
-        registerError.classList.remove('hidden');
-        const regMsg = registerError.querySelector('span:last-of-type');
-        if (regMsg) regMsg.textContent = msg;
-      }
-    }
-  } catch (err) {
-    console.error('Registration error details:', err);
-    const registerError = el('register-error');
-    if (registerError) registerError.classList.remove('hidden');
-  } finally {
-    if (btn) btn.disabled = false;
-    if (span) span.textContent = 'Create account';
-  }
-}
-
-async function onGuildRequestSubmit(e: Event): Promise<void> {
-  e.preventDefault();
-  const form = e.target as HTMLFormElement;
-  const tag = (el<HTMLInputElement>('guild-request-tag') || ({} as any)).value || '';
-  const server = (el<HTMLInputElement>('guild-request-server') || ({} as any)).value || '';
-  const adminId = (el<HTMLInputElement>('guild-request-admin-id') || ({} as any)).value || '';
-  const discord = (el<HTMLInputElement>('guild-request-discord') || ({} as any)).value || '';
-  const note = (el<HTMLTextAreaElement>('guild-request-note') || ({} as any)).value || '';
-
-  const guildRequestError = el('guild-request-error');
-  const guildRequestSuccess = el('guild-request-success');
-  if (guildRequestError) guildRequestError.classList.add('hidden');
-  if (guildRequestSuccess) guildRequestSuccess.classList.add('hidden');
-
-  const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
-  if (btn) btn.disabled = true;
-  const span = btn ? btn.querySelector('span:last-of-type') : null;
-  const origText = span ? span.textContent : '';
-  if (span) span.textContent = 'Submitting...';
-
-  try {
-    const x = g();
-    const resp: LoginResponse = x && typeof x.submitGuildRequest === 'function'
-      ? await x.submitGuildRequest(tag.trim(), server.trim(), adminId.trim(), discord.trim(), note.trim())
-      : { ok: false, error: 'no_client' };
-
-    if (resp.ok) {
-      form.reset();
-      if (guildRequestSuccess) guildRequestSuccess.classList.remove('hidden');
-    } else {
-      const msg = GUILD_REQUEST_ERRORS[resp.error || ''] || 'Request failed. Please try again.';
-      if (guildRequestError) {
-        guildRequestError.classList.remove('hidden');
-        const errMsg = guildRequestError.querySelector('span:last-of-type');
-        if (errMsg) errMsg.textContent = msg;
-      }
-    }
-  } catch (err) {
-    console.error('Guild request error details:', err);
-    if (guildRequestError) guildRequestError.classList.remove('hidden');
-  } finally {
-    if (btn) btn.disabled = false;
-    if (span) span.textContent = origText;
-  }
-}
-
 function wireOnce(node: HTMLElement | null, flag: string, event: string, handler: (e: Event) => void): void {
   if (!node || (node as any)[flag]) return;
   (node as any)[flag] = true;
@@ -1356,15 +1208,16 @@ export function initAuthForms(): void {
   if (typeof document === 'undefined') return;
 
   wireOnce(el('login-form'), '__gmAuthWired', 'submit', (e) => { void onLoginSubmit(e); });
-  wireOnce(el('register-form'), '__gmAuthWired', 'submit', (e) => { void onRegisterSubmit(e); });
-  wireOnce(el('guild-request-form'), '__gmAuthWired', 'submit', (e) => { void onGuildRequestSubmit(e); });
 
-  wireOnce(el('auth-tab-signin'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
-  wireOnce(el('auth-tab-register'), '__gmAuthWired', 'click', () => showAuthTab('register'));
-  wireOnce(el('auth-tab-guild-request'), '__gmAuthWired', 'click', () => showAuthTab('guild-request'));
-  wireOnce(el('go-to-register-btn'), '__gmAuthWired', 'click', () => showAuthTab('register'));
-  wireOnce(el('register-back-btn'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
-  wireOnce(el('guild-request-back-btn'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
+  // The segmented tab switcher, the "Register Player" form and the
+  // "Request a Guild" form were removed from index.html, so showAuthTab(),
+  // showRegisterForm(), onRegisterSubmit() and onGuildRequestSubmit() went
+  // with them. There is one panel on the login screen now. A player joins
+  // through Discord and a guild join code; a guild is requested on Discord.
+  //
+  // registerPlayer() and submitGuildRequest() stay in core/auth/session.ts:
+  // their Edge Functions are still deployed, and client and function come
+  // out together in phase D7.
 
   wireOnce(el('login-recovery-btn'), '__gmAuthWired', 'click', () => { openRecoveryCodeDialog(); });
 

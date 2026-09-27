@@ -33,16 +33,9 @@
                 <div class="gm-animated-card-wrap">
                     <div class="gm-auth-card-container">
                         <!-- Segmented Pill Switcher (M3 / Apple Pill) -->
-                        <div class="gm-auth-segmented-switch">
-                            <button type="button" class="gm-auth-segment-btn active" id="auth-tab-signin" data-auth-tab="signin">
-                                <i class="ph ph-sign-in"></i>
-                                <span>Sign In</span>
-                            </button>
-                            <button type="button" class="gm-auth-segment-btn" id="auth-tab-register" data-auth-tab="register">
-                                <i class="ph ph-user-plus"></i>
-                                <span>Register Player</span>
-                            </button>
-                        </div>
+                        <!-- The segmented tab switcher is gone with the last tab beside Sign In.
+                             It held Sign In / Register Player / Request a Guild; a switcher
+                             offering one destination is a label pretending to be a control. -->
 
                         <!-- ─── Unified Sign In Form ─────────────────────── -->
                         <form id="login-form" class="gm-login-card login-card">
@@ -102,68 +95,20 @@
                         </form>
 
                         <!-- ─── Player Registration Form ─────────────────── -->
-                        <form id="register-form" class="gm-login-card login-card hidden">
-                            <div class="gm-login-brand-row">
-                                <div class="gm-login-avatar-3d">FGF</div>
-                                <div class="gm-login-title">PLAYER REGISTRATION</div>
-                                <div class="gm-login-sub">Create your account with your in-game UID and join code</div>
-                            </div>
-
-                            <div class="gm-login-form">
-                                <div class="gm-login-field">
-                                    <label for="register-id">Identifier</label>
-                                    <div class="gm-input-with-icon">
-                                        <i class="ph ph-identification-badge gm-icon"></i>
-                                        <input type="text" id="register-id" class="gm-input" required
-                                            placeholder="Choose an identifier" autocomplete="username">
-                                        <span class="gm-input-focus-line"></span>
-                                    </div>
-                                </div>
-                                <div class="gm-login-field">
-                                    <label for="register-password">Password</label>
-                                    <div class="gm-input-with-icon gm-login-pwd-wrap">
-                                        <i class="ph ph-lock gm-icon"></i>
-                                        <input type="password" id="register-password" class="gm-input" required
-                                            placeholder="At least 8 characters" autocomplete="new-password">
-                                        <span class="gm-input-focus-line"></span>
-                                        <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
-                                            <i class="ph ph-eye"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="gm-login-field">
-                                    <label for="register-uid">In-Game UID</label>
-                                    <div class="gm-input-with-icon">
-                                        <i class="ph ph-fingerprint gm-icon"></i>
-                                        <input type="text" id="register-uid" class="gm-input" required
-                                            inputmode="numeric" placeholder="Your 8-digit in-game UID">
-                                        <span class="gm-input-focus-line"></span>
-                                    </div>
-                                    <span class="field-hint" style="font-size: var(--fs-xs); color: var(--text-muted); display: block; margin-top: 0.25rem;">Must be listed in your guild roster by an officer before registering.</span>
-                                </div>
-                                <div class="gm-login-field">
-                                    <label for="register-code">Guild Join Code</label>
-                                    <div class="gm-input-with-icon">
-                                        <i class="ph ph-key gm-icon"></i>
-                                        <input type="text" id="register-code" class="gm-input" required
-                                            placeholder="e.g. FGF-7K2M-X9Q4" autocomplete="off">
-                                        <span class="gm-input-focus-line"></span>
-                                    </div>
-                                </div>
-                                <div id="register-error" class="gm-login-error hidden">
-                                    <i class="ph ph-warning-circle"></i>
-                                    <span>Registration failed.</span>
-                                </div>
-                                <button type="submit" id="register-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                                    <i class="ph ph-user-plus"></i>
-                                    <span>Create account</span>
-                                </button>
-                                <button type="button" id="register-back-btn" class="gm-btn gm-btn-ghost" style="margin-top: 0.5rem; width: 100%;">
-                                    <i class="ph ph-arrow-left"></i>
-                                    <span>Back to Sign In</span>
-                                </button>
-                            </div>
-                        </form>
+                        <!-- The "Register Player" tab and its form were removed on 2026-09-27.
+                             They created a PASSWORD account that would then have to be migrated
+                             to Discord through the claim flow: today's onboarding manufacturing
+                             tomorrow's debt. A player now signs in with Discord and chooses
+                             "Join a guild", giving their guild's join code and their in-game UID,
+                             which creates the same member account already linked.
+                        
+                             Checked before removing: 23 of 26 guilds have a join code, and the
+                             three without (DEMO, RRDR, DAWN) have zero members and zero portal
+                             accounts between them. Nobody is stranded. That is the difference
+                             with password SIGN-IN, which stays: 165 accounts still depend on it.
+                        
+                             The `player-register` Edge Function is untouched; removing it is
+                             phase D7. -->
 
                         <!-- The "Request a Guild" form was removed on 2026-09-27.
                              Creating a guild now runs through Discord sign-in, which asks for
@@ -174,7 +119,7 @@
                 </div>
 
                 <!-- Discord Community / Tenant Request -->
-                <a href="https://discord.gg/daHByNqydE" target="_blank" rel="noopener noreferrer" class="gm-login-discord-btn">
+                <a href="https://discord.gg/HJ47V6chbw" target="_blank" rel="noopener noreferrer" class="gm-login-discord-btn">
                     <i class="ph ph-discord-logo"></i>
                     <span data-i18n="login_discord">Join our Discord</span>
                 </a>
@@ -244,10 +189,9 @@
                                  page carried identical dead copies. -->
 
                             <div class="gm-portal-switch-wrap">
-                                <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%;" id="portal-go-register-btn">
-                                    <i class="ph ph-user-plus"></i>
-                                    <span>Create a player account</span>
-                                </button>
+                                <!-- "Create a player account" was removed with the Register Player tab on
+                                     2026-09-27. A player joins from the login page now: Sign in with
+                                     Discord, then "Join a guild" with their guild join code. -->
                                 <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm portal-back-btn" style="font-size: 0.85rem; width: 100%; margin-top: 0.35rem;">
                                     <i class="ph ph-arrow-left"></i>
                                     <span>Back to Login</span>

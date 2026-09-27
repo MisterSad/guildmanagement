@@ -1,3 +1,43 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.23.0**
+
+Hey everyone! Short one. **The old "Register Player" tab is gone**, and this post is the new instructions for getting into the Player Portal. If you already signed in with Discord, nothing changes for you. 🛸
+
+---
+
+## 🎮 Players: how you get in now
+
+There is one door on the login page, and it is **Sign in with Discord**.
+
+**What you need first:** your guild's **join code**. Ask your guild admin, it is permanent and they can paste it straight into your guild chat.
+
+1. Open the app and click **Sign in with Discord**. Authorise it. It asks Discord for your username and your ID, nothing else. Not your email, not which servers you are in.
+2. You come back to a small window. Pick **"Join a guild"**.
+3. Enter the **join code**, and **your in-game UID**.
+4. Your guild admin approves you, and you are in.
+
+Two things worth knowing:
+
+- **Your UID has to already be on the guild roster.** If your admin has not added you yet, that step fails. Ask them first, then come back.
+- **No password anywhere.** You never pick one, so there is nothing to forget and nothing for me to store.
+
+## 👑 Guild admins: two minutes of work
+
+- **Grab your join code** from **Accounts & Access** and pin it in your guild chat. It is the only thing your members need.
+- **Make sure new members are on the roster** before they try to join. Their UID is what links the two.
+- **Your own account**: if you have not linked your Discord yet, do it from the login page. Your identifier and password still work until then.
+
+## 🧹 Why the old tab went
+
+"Register Player" made you invent an identifier and a password, then waited for approval anyway. Every account it created was one more that would have to be converted to Discord later. It was making work for both of us, so it is gone, along with the "Request a Guild" form. **Starting a new guild** is still self-service: **Sign in with Discord**, then **"Create a guild"**, with your guild tag and server number. Your Discord account needs to be 30 days old, that is the only gate.
+
+Nobody is locked out by this. I checked every guild before removing it: all of them that have members already have a join code.
+
+---
+
+That's it. Reload the page if you have it open from earlier. Ping me if anything looks off. 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.22.0**
 
 Hey everyone! Big one. **You can now sign in with Discord**, and that is going to become the normal way in. There is also a pile of cleanup underneath, and a promise about the code at the end that I want you to read. 🛸

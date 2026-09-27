@@ -17,7 +17,6 @@ import {
   restoreSession,
   handleSuccessfulLogin,
   doLogout,
-  showAuthTab,
   initAuthForms,
   revealAdmin,
   revealPortal
@@ -38,32 +37,8 @@ const AUTH_DOM = `
       <button type="submit"><span id="login-submit-label">Sign in</span></button>
     </form>
     <div id="login-error" class="hidden"><i class="ph"></i><span></span></div>
-    <button id="go-to-register-btn"></button>
-    <button id="auth-tab-signin"></button>
-    <button id="auth-tab-register"></button>
-    <button id="auth-tab-guild-request"></button>
     <button id="logout-btn"></button>
   </div>
-  <form id="register-form" class="hidden">
-    <input id="register-id" />
-    <input id="register-password" />
-    <input id="register-uid" />
-    <input id="register-code" />
-    <button type="submit"><span>Create account</span></button>
-    <button id="register-back-btn" type="button"></button>
-  </form>
-  <div id="register-error" class="hidden"><i class="ph"></i><span></span></div>
-  <form id="guild-request-form" class="hidden">
-    <input id="guild-request-tag" />
-    <input id="guild-request-server" />
-    <input id="guild-request-admin-id" />
-    <input id="guild-request-discord" />
-    <textarea id="guild-request-note"></textarea>
-    <button type="submit"><span>Request</span><span class="label">Submit</span></button>
-    <button id="guild-request-back-btn" type="button"></button>
-  </form>
-  <div id="guild-request-error" class="hidden"><i class="ph"></i><span></span></div>
-  <div id="guild-request-success" class="hidden"></div>
   <div id="dashboard-view" class="hidden"></div>
   <div id="player-portal-view" class="hidden">
     <div class="gm-portal-container">
@@ -109,8 +84,6 @@ beforeEach(() => {
   window.GM.forceRefreshPortalSession = vi.fn(async () => null);
   window.GM.login = vi.fn(async () => ({ ok: false, error: 'invalid_credentials' }));
   window.GM.logout = vi.fn(async () => undefined);
-  window.GM.registerPlayer = vi.fn(async () => ({ ok: false, error: 'request_failed' }));
-  window.GM.submitGuildRequest = vi.fn(async () => ({ ok: false, error: 'request_failed' }));
   window.GM.loginWithPasskey = vi.fn(async () => ({ ok: false, error: 'cancelled' }));
   window.GM.loginWithBackupCode = vi.fn(async () => ({ ok: false, error: 'invalid' }));
   window.GM.startConditionalPasskeyLogin = vi.fn(async () => null);
@@ -349,20 +322,6 @@ describe('doLogout', () => {
   });
 });
 
-describe('showAuthTab', () => {
-  it('toggles the three auth panels and maps legacy tab aliases', () => {
-    showAuthTab('register');
-    expect(document.getElementById('register-form').classList.contains('hidden')).toBe(false);
-    expect(document.getElementById('login-form').classList.contains('hidden')).toBe(true);
-
-    showAuthTab('request');
-    expect(document.getElementById('guild-request-form').classList.contains('hidden')).toBe(false);
-
-    showAuthTab('login');
-    expect(document.getElementById('login-form').classList.contains('hidden')).toBe(false);
-  });
-});
-
 describe('auth forms', () => {
   it('submits a valid login through GM.login and routes on success', async () => {
     window.GM.login = vi.fn(async () => ({ ok: true, role: 'guild_admin', id: 'Alpha' }));
@@ -391,35 +350,6 @@ describe('auth forms', () => {
     expect(document.getElementById('login-error').querySelector('span').textContent).toBeTruthy();
   });
 
-  it('resets the register form and reveals success feedback', async () => {
-    window.GM.registerPlayer = vi.fn(async () => ({ ok: true }));
-    initAuthForms();
-
-    document.getElementById('register-id').value = 'newbie';
-    document.getElementById('register-password').value = 'password1';
-    document.getElementById('register-uid').value = '123456';
-    document.getElementById('register-code').value = 'FGF-AAAA-BBBB';
-    document.getElementById('register-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(window.GM.registerPlayer).toHaveBeenCalled());
-
-    expect(window.GM.registerPlayer).toHaveBeenCalledWith('newbie', 'password1', '123456', 'FGF-AAAA-BBBB');
-    expect(document.getElementById('register-id').value).toBe('');
-    expect(document.getElementById('login-form').classList.contains('hidden')).toBe(false);
-  });
-
-  it('maps a guild-request validation error to a readable message', async () => {
-    window.GM.submitGuildRequest = vi.fn(async () => ({ ok: false, error: 'invalid_server_number' }));
-    initAuthForms();
-
-    document.getElementById('guild-request-tag').value = 'NEW';
-    document.getElementById('guild-request-server').value = '12';
-    document.getElementById('guild-request-admin-id').value = 'admin';
-    document.getElementById('guild-request-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(document.getElementById('guild-request-error').classList.contains('hidden')).toBe(false));
-
-    expect(document.getElementById('guild-request-error').querySelector('span').textContent)
-      .toContain('exactly 4 digits');
-  });
 });
 
 describe('handlePortalLookupSuccess', () => {

@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- **The "Register Player" tab is gone, and so is everything that only existed to serve it.**
+  - It created a **password** account, which the D3 claim flow would then have had to migrate to Discord. Onboarding that manufactures its own debt: every account it made was one more to convert later.
+  - **Measured before removing it, because the failure mode is locking people out.** 23 of the 26 guilds have a join code. The three that do not are `DEMO` (the nightly sandbox), `RRDR` and `DAWN`, which between them have **0 members and 0 portal accounts**. Nobody was stranded. Password *sign-in* is untouched: 165 accounts still depend on it.
+  - Removed from `index.html`: the `auth-tab-register` segment, `register-form` and its four fields, `register-back-btn`, and `portal-go-register-btn` ("Create a player account") in the portal card.
+  - **The segmented switcher went with it.** With Register Player and Request a Guild both gone it had one segment left, which is a label pretending to be a control.
+  - Removed from the controller, because their markup no longer exists: `showAuthTab`, `showRegisterForm`, `onRegisterSubmit`, `onGuildRequestSubmit`, `REGISTER_ERRORS`, `GUILD_REQUEST_ERRORS`, and the eight `wireOnce` calls for ids that are no longer in the page. `showAuthTab` and `showRegisterForm` also came off the `GM_AUTH` bridge, where they had become the M8 class of dead export.
+  - **`registerPlayer()` and `submitGuildRequest()` stay in `core/auth/session.ts` deliberately.** Their Edge Functions are still deployed; client and function come out together in phase D7, so that removing one half never leaves the other reachable.
+  - `tests/login_page_discord_only.test.js` pins both halves: that the sign-up markup and handlers are absent, **and** that a new player still has a door (the Discord button, and `gm_discord_join_guild` with the join code and UID). Every assertion strips comments first, and the absence assertions were sabotage-verified by putting `register-form` back.
+  - **One e2e test was passing vacuously.** `e2e/login.spec.js` clicked the register link "if (await registerLink.count())", so it went green the moment the link disappeared. Replaced with an absence assertion.
+  - The **"Join our Discord"** button now points at `discord.gg/HJ47V6chbw`. A test asserts it is the only invite in the page, so a second stale one cannot creep back.
+  - Gate: 0 TS errors, **157 suites / 1961 tests**, build clean, **38 e2e** green.
+
 - **After a Discord sign-in the app opened on the wrong tab, and that tab was empty. One cause.**
   - Reported live: signing in landed on Accounts & Access instead of Overview, and the panel showed nothing until you switched away and came back.
   - **Both symptoms come from the same omission.** `handleDiscordCallback()` resolves `true`, and the boot path **returns before it reaches `restoreSavedTab()`** — deliberately, so that restoring a session cannot race a sign-in that is installing one. But nothing else activated a tab. The page therefore showed whichever panel carried `active` in the static markup, and because no tab activation had occurred, **`triggerTabDataLoad` never ran for it**. Switching tabs ran the loader, which is why coming back looked as though it had fixed itself.

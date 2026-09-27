@@ -12,8 +12,6 @@ export interface DomRefs {
   readonly dashboardView: HTMLElement | null;
   readonly loginForm: HTMLElement | null;
   readonly loginError: HTMLElement | null;
-  readonly registerForm: HTMLElement | null;
-  readonly registerError: HTMLElement | null;
   readonly logoutBtn: HTMLElement | null;
   readonly memberLogoutBtn: HTMLElement | null;
   readonly createAccountForm: HTMLElement | null;
@@ -52,8 +50,6 @@ export function getDomRefs(): DomRefs {
     get dashboardView() { return getDomRef('dashboard-view'); },
     get loginForm() { return getDomRef('login-form'); },
     get loginError() { return getDomRef('login-error'); },
-    get registerForm() { return getDomRef('register-form'); },
-    get registerError() { return getDomRef('register-error'); },
     get logoutBtn() { return getDomRef('logout-btn'); },
     get memberLogoutBtn() { return getDomRef('member-logout-btn'); },
     get createAccountForm() { return getDomRef('create-account-form'); },
