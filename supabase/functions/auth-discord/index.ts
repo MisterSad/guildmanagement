@@ -522,6 +522,14 @@ async function handleRedeem(req: Request, body: unknown, admin: any, logger: Edg
 
     if (choices.length > 1) {
       const continuation = await issueTicket(admin, discordUserId, row.discord_username ?? null, logger);
+      // issueTicket returns null when the insert fails. Answering `choose` with
+      // no ticket would hand the client a state it cannot act on: it would fall
+      // through to the generic success path and try to build a session out of a
+      // response that carries no tokens. Fail loudly instead.
+      if (!continuation) {
+        logger.error("Could not issue a continuation ticket for the account chooser", null, { discordUserId });
+        return json({ ok: false, error: "server_error" }, 500);
+      }
       logger.info("Discord identity holds several accounts", { discordUserId, count: choices.length });
       return json({
         ok: true,

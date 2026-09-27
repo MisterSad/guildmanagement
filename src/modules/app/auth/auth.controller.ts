@@ -18,7 +18,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeLike } from '../../../core/utils/text';
-import { patchAppState, resetAppState } from '../../../core/state/app-state';
+import { getAppState, patchAppState, resetAppState } from '../../../core/state/app-state';
 import { showToast } from '../dialogs/dialogs.service';
 import { setVerifiedRole } from '../../../core/auth/roles';
 import { shellView } from '../../shell/views/ShellView';
@@ -261,6 +261,9 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
   }
 
   await fetchGuildsIfAvailable();
+  // Same reason as at login: a reloaded tab whose stored selection was cleared
+  // would otherwise restore into an empty Command Center.
+  await ensureInitialGuildSelection(info.accountId || null);
   revealAdmin(role);
   reloadActiveView();
 
@@ -356,12 +359,62 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
   }
   if (x) x.currentAccountId = canonicalUser;
 
+  // An admin who can see several tenants needs one selected, or every loader
+  // bails and the Command Center renders empty (reported live, 2026-09-27).
+  await ensureInitialGuildSelection(canonicalUser || null);
+
   revealAdmin(role);
   showToast(role === 'super_admin'
     ? t('toast_login_ok')
     : (t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !'), 'success');
 
   maybeShowSecureAccountPrompt(resp, role);
+}
+
+
+/**
+ * Picks a starting tenant for an admin who can see more than one.
+ *
+ * Finding H2 removed the `|| 'ALPHA'` fallback inside `getActiveGuild()`, which
+ * was right: silently defaulting to a real tenant is how a super_admin writes
+ * into the wrong guild. But nothing was put in its place for the admins who
+ * legitimately see several, so after signing in `currentGuild` was null, every
+ * tab loader bailed, and the Command Center came up EMPTY until you switched
+ * tenant in the dropdown and switched back.
+ *
+ * This picks one explicitly instead. Never a hardcoded guild: the account's own
+ * `guild` first, otherwise the first guild the switcher is showing. A
+ * `guild_admin` never reaches here, because their branch has already set both
+ * the restriction and the selection.
+ */
+async function ensureInitialGuildSelection(accountId: string | null): Promise<void> {
+  if (getAppState().currentGuild) return;
+
+  let guild: string | null = null;
+
+  const client = db();
+  if (client && accountId) {
+    try {
+      const { data } = await client
+        .from('accounts').select('guild').ilike('id', escapeLike(accountId)).maybeSingle();
+      if (data && data.guild) guild = String(data.guild);
+    } catch (_) { /* fall through to the list */ }
+  }
+
+  if (!guild) {
+    const list = getAppState().guildsList;
+    if (Array.isArray(list) && list.length > 0) guild = String(list[0]);
+  }
+
+  // No guild visible at all: leave it unresolved rather than invent one. The
+  // sidebar renders an explicit "no guild selected" state for exactly this.
+  if (!guild) return;
+
+  // The SELECTION only. Setting `currentGuildRestriction` here would remove the
+  // tenant switcher, which renders on `isSuperAdmin && !restriction`.
+  patchAppState({ currentGuild: guild });
+  const store = ls();
+  try { if (store) store.setItem('gm_current_guild', guild); } catch (_) { /* storage unavailable */ }
 }
 
 // ── Logout / login screens ───────────────────────────────────────────────────
@@ -459,10 +512,20 @@ export async function handleDiscordCallback(): Promise<boolean> {
 
   try {
     const resp: LoginResponse = await x.redeemDiscordTicket(ticket);
-    if (resp.ok && resp.state === 'choose' && resp.ticket) {
+    if (resp.ok && resp.state === 'choose') {
       // One person, several accounts. Ask which, rather than picking for them:
       // an administrator who is also a player wants both, at different times.
-      openAccountChooser(resp.ticket, resp.accounts || [], resp.discordUsername || null);
+      //
+      // A `choose` with no ticket or no accounts is a server fault, not a state
+      // to muddle through: falling past this branch would reach the generic
+      // success path and try to build a session from a response with no tokens,
+      // which surfaces as an unexplained "sign-in failed".
+      if (resp.ticket && Array.isArray(resp.accounts) && resp.accounts.length > 0) {
+        openAccountChooser(resp.ticket, resp.accounts, resp.discordUsername || null);
+      } else {
+        console.error('Discord sign-in returned "choose" without a usable ticket or account list:', resp);
+        setLoginError('Discord sign-in could not list your accounts. Please try again, and tell HawkEye if it keeps happening.');
+      }
       return true;
     }
     if (resp.ok && resp.state === 'unlinked') {
@@ -908,8 +971,18 @@ function discordErrorMessage(code: string): string {
       return 'Discord did not confirm your identity. Please try again.';
     case 'request_timeout':
       return 'The server did not respond in time. Please check your connection and try again.';
+    case 'server_error':
+      return 'Something failed on the server during Discord sign-in. Please try again, and tell HawkEye if it keeps happening.';
+    case 'account_not_linked':
+      return 'That account is not linked to this Discord account.';
+    case 'session_failed':
+    case 'session_set_failed':
+      return 'Your identity was confirmed but the session could not be opened. Please try again.';
     default:
-      return 'Discord sign-in failed. Please try again.';
+      // The code is shown on purpose. "Discord sign-in failed. Please try
+      // again." was the answer to every one of a dozen different causes, which
+      // made a live report impossible to act on without reading server logs.
+      return 'Discord sign-in failed (' + code + '). Please try again, and tell HawkEye if it keeps happening.';
   }
 }
 

@@ -31,20 +31,44 @@ const roles = stripComments(read('src/core/auth/roles.ts'));
 const shell = stripComments(read('src/modules/shell/views/ShellView.ts'));
 
 describe('a super_admin is never scoped by their own accounts.guild', () => {
-  it('reads accounts.guild for a restriction only under a guild_admin check', () => {
-    // Every `select('guild')` against `accounts` that feeds a restriction must
-    // sit inside a role branch. Find them and prove each has one above it.
+  it('never lets an accounts.guild read set a RESTRICTION outside a guild_admin branch', () => {
+    // The first version of this test said "every accounts.guild lookup must be
+    // gated on guild_admin", and it caught its own author: the fix for the
+    // empty Command Center reads accounts.guild for a super_admin on purpose.
+    //
+    // That read is safe, and the distinction is the point. Setting
+    // `currentGuild` is a SELECTION, which is what the tenant dropdown does and
+    // what every loader needs. Setting `currentGuildRestriction` is a LIMIT,
+    // and it is what would remove the switcher and pin the owner to one guild.
+    // So the rule is about the restriction, not about the read.
     const lookups = [...authCtrl.matchAll(/from\('accounts'\)\s*\.select\('guild'[^\n]*/g)];
     expect(lookups.length, 'no account-guild lookup found: the check would be vacuous')
-      .toBeGreaterThanOrEqual(1);
+      .toBeGreaterThanOrEqual(2);
 
     for (const m of lookups) {
+      // Look at the 900 characters after the lookup: whatever it feeds.
+      const after = authCtrl.slice(m.index, m.index + 900);
+      const setsRestriction = /currentGuildRestriction:\s*guild\b/.test(after);
+      if (!setsRestriction) continue;   // feeds a selection only: fine.
+
       const before = authCtrl.slice(Math.max(0, m.index - 600), m.index);
       expect(
         /role\s*===\s*'guild_admin'|info\.role\s*===\s*'guild_admin'/.test(before),
-        'an accounts.guild lookup is not gated on guild_admin — a super_admin could be scoped by it'
+        'an accounts.guild read sets currentGuildRestriction outside a guild_admin branch'
       ).toBe(true);
     }
+  });
+
+  it('picks a starting tenant without ever restricting the caller to it', () => {
+    // The empty-Command-Center fix. It must set the selection and nothing else.
+    const fn = authCtrl.slice(authCtrl.indexOf('async function ensureInitialGuildSelection'));
+    const body = fn.slice(0, fn.indexOf('\n}\n'));
+    expect(body.length, 'ensureInitialGuildSelection not found').toBeGreaterThan(200);
+    expect(body).toMatch(/patchAppState\(\{ currentGuild: guild \}\)/);
+    expect(body, 'it must not set a restriction: that removes the tenant switcher')
+      .not.toMatch(/currentGuildRestriction/);
+    // And it must not invent a tenant when none is visible.
+    expect(body).toMatch(/if \(!guild\) return;/);
   });
 
   it('clears the restriction for every role that is not guild_admin or server_admin', () => {
