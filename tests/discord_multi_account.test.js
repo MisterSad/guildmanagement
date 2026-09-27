@@ -192,3 +192,34 @@ describe('the client asks instead of guessing', () => {
     expect(dlg).toMatch(/escapeDialogText\(discordUsername\)/);
   });
 });
+
+describe('a fresh sign-in lands on Overview, with its data loaded', () => {
+  // Reported live: after a Discord sign-in the app opened on Accounts & Access,
+  // and that tab was EMPTY until you switched away and back.
+  //
+  // One cause for both symptoms. `handleDiscordCallback()` resolves true, so
+  // the boot path returns BEFORE it reaches `restoreSavedTab()`, and nothing
+  // else activated a tab. The page showed whichever panel carried `active` in
+  // the static markup, and because no tab activation had occurred,
+  // `triggerTabDataLoad` never ran for it. Switching tabs ran the loader, which
+  // is why coming back looked like it fixed itself.
+  it('activates a tab explicitly after a successful login', () => {
+    const tail = ctrl.slice(ctrl.indexOf('export async function handleSuccessfulLogin'));
+    const body = tail.slice(0, tail.indexOf('\n// ── Logout'));
+    expect(body.length, 'handleSuccessfulLogin not found').toBeGreaterThan(400);
+    expect(body).toMatch(/shellView\.gotoItem\('overview'\)/);
+  });
+
+  it('does it AFTER the dashboard is revealed, or the panel does not exist yet', () => {
+    const tail = ctrl.slice(ctrl.indexOf('export async function handleSuccessfulLogin'));
+    const body = tail.slice(0, tail.indexOf('\n// ── Logout'));
+    expect(body.indexOf('revealAdmin(role)')).toBeLessThan(body.indexOf("gotoItem('overview')"));
+  });
+
+  it('still restores the last tab on a session restore, which is different', () => {
+    // A reload should come back where you were. Only a fresh sign-in resets to
+    // Overview, so restoreSavedTab must survive.
+    expect(read('src/modules/app/router.ts')).toMatch(/export function restoreSavedTab/);
+    expect(read('src/main.ts')).toMatch(/restoreSavedTab\(\)/);
+  });
+});

@@ -364,6 +364,22 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
   await ensureInitialGuildSelection(canonicalUser || null);
 
   revealAdmin(role);
+
+  // Land on Overview, explicitly.
+  //
+  // Reported live: after a Discord sign-in the app opened on Accounts & Access,
+  // and that tab was EMPTY until you switched away and came back. One cause for
+  // both. `handleDiscordCallback()` resolves true, so the boot path returns
+  // before it reaches `restoreSavedTab()`, and nothing else activated a tab:
+  // the page showed whichever panel carried `active` in the markup, and since
+  // no tab activation had occurred, `triggerTabDataLoad` never ran for it.
+  // Switching tabs ran the loader, which is why coming back looked fixed.
+  //
+  // `gotoItem` activates the panel AND calls `appOnTabActivated`, so the data
+  // loads. A fresh sign-in starts on Overview; a reload still restores the last
+  // tab through `restoreSession`, which is the behaviour worth keeping there.
+  shellView.gotoItem('overview');
+
   showToast(role === 'super_admin'
     ? t('toast_login_ok')
     : (t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !'), 'success');

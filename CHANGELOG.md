@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- **After a Discord sign-in the app opened on the wrong tab, and that tab was empty. One cause.**
+  - Reported live: signing in landed on Accounts & Access instead of Overview, and the panel showed nothing until you switched away and came back.
+  - **Both symptoms come from the same omission.** `handleDiscordCallback()` resolves `true`, and the boot path **returns before it reaches `restoreSavedTab()`** — deliberately, so that restoring a session cannot race a sign-in that is installing one. But nothing else activated a tab. The page therefore showed whichever panel carried `active` in the static markup, and because no tab activation had occurred, **`triggerTabDataLoad` never ran for it**. Switching tabs ran the loader, which is why coming back looked as though it had fixed itself.
+  - `handleSuccessfulLogin` now activates Overview explicitly, after the dashboard is revealed (before it, the panel does not exist yet). `gotoItem` both activates the panel and calls `appOnTabActivated`, so the data loads on arrival.
+  - **A reload still comes back where you were.** Only a fresh sign-in resets to Overview; `restoreSession` keeps calling `restoreSavedTab`, which is the behaviour worth keeping there. The test pins both halves so one cannot be "simplified" into the other.
+  - Sabotage-tested: removing the activation fails the assertion by name.
+
 - **Both legal documents redrafted in legal register, against the texts themselves**
   - Every authority below was read on Légifrance before it was relied on, not recalled. That is not ceremony: **the LCEN was substantially rewritten**, and Article 6 no longer carries the identification obligation at all.
   - **A question I had flagged for a lawyer is now answered, and it went the other way.** [Article L.611-1, 4° of the Consumer Code](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032224815) defines a contract for the supply of services as one *"in consideration of which the consumer undertakes to pay the price"*. **No price, no such contract, and therefore no consumer-mediation obligation** under Book VI. The old Terms promised recourse to "a designated consumer ombudsman" and named none: doubly wrong, since the obligation did not even attach. Article 4.3 now states the position with the citation, and undertakes to designate one should a court hold otherwise.
