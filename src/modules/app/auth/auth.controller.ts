@@ -553,6 +553,131 @@ export async function handleDiscordCallback(): Promise<boolean> {
   return true;
 }
 
+/**
+ * super_admin recovery, for when Discord itself is what broke.
+ *
+ * This is the one account with nobody above it. Every other account can be
+ * unlinked by an administrator, who then issues a relink code; that path is
+ * stronger because it needs a second human. The super_admin has no such
+ * person, so they hold ten one-time codes instead.
+ *
+ * The server side (`auth-discord` action `backup-login`) and the client call
+ * (`loginWithBackupCodeDiscord`) both already existed and were correct. What
+ * was missing was any way to reach them: the login page's old "Use a backup
+ * code instead" button called `openBackupCodeDialog()`, which is exported onto
+ * the window.GM bridge and never invoked, so it did nothing when clicked. The
+ * owner was holding ten valid codes he could not spend.
+ */
+export function openRecoveryCodeDialog(): void {
+  if (typeof document === 'undefined') return;
+  const existing = document.getElementById('recovery-code-overlay');
+  if (existing) existing.remove();
+
+  const html =
+    '<div id="recovery-code-overlay" class="gm-modal-overlay">' +
+      '<div class="gm-modal-card" style="max-width: 420px; width: 94%;">' +
+        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;">' +
+          '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--md-sys-color-primary);"></i>' +
+          '<h3 style="margin:0; font-size: var(--fs-xl);">Recovery code</h3>' +
+        '</div>' +
+        '<p style="margin:0 0 .8rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+          'For the platform owner, when Discord sign-in is unavailable. Each code works once.' +
+        '</p>' +
+        '<div class="gm-login-field">' +
+          '<label for="recovery-id">Identifier</label>' +
+          '<input id="recovery-id" class="gm-input" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">' +
+        '</div>' +
+        '<div class="gm-login-field" style="margin-top:.6rem;">' +
+          '<label for="recovery-code">Recovery code</label>' +
+          '<input id="recovery-code" class="gm-input" type="text" autocomplete="one-time-code" ' +
+            'autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX">' +
+        '</div>' +
+        '<div id="recovery-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
+          '<i class="ph ph-warning-circle"></i><span></span>' +
+        '</div>' +
+        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
+          '<button type="button" class="gm-btn gm-btn-ghost" id="recovery-cancel">Cancel</button>' +
+          '<button type="button" class="gm-btn gm-btn-primary" id="recovery-submit">Sign in</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  const overlay = document.getElementById('recovery-code-overlay');
+  if (!overlay) return;
+  // Without this the dialog is invisible. See openAccountChooser: that exact
+  // omission is what made Discord sign-in look broken for a day.
+  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+
+  const close = (): void => {
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.remove(); }, 200);
+  };
+  const cancel = document.getElementById('recovery-cancel');
+  if (cancel) cancel.addEventListener('click', close);
+  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+
+  const submit = document.getElementById('recovery-submit') as HTMLButtonElement | null;
+  const idEl = document.getElementById('recovery-id') as HTMLInputElement | null;
+  const codeEl = document.getElementById('recovery-code') as HTMLInputElement | null;
+  if (idEl) idEl.focus();
+
+  const fail = (msg: string): void => {
+    const box = overlay.querySelector('#recovery-error') as HTMLElement | null;
+    const span = box ? box.querySelector('span') : null;
+    if (box && span) { span.textContent = msg; box.classList.remove('hidden'); }
+    if (submit) submit.disabled = false;
+  };
+
+  const run = async (): Promise<void> => {
+    const id = idEl ? idEl.value.trim() : '';
+    const code = codeEl ? codeEl.value.trim() : '';
+    if (!id || !code) { fail('Enter your identifier and a recovery code.'); return; }
+
+    if (submit) submit.disabled = true;
+    const x = g();
+    if (!x || typeof x.loginWithBackupCodeDiscord !== 'function') {
+      fail('Recovery is unavailable in this build.');
+      return;
+    }
+    try {
+      const resp: LoginResponse = await x.loginWithBackupCodeDiscord(id, code);
+      if (resp.ok) {
+        close();
+        await handleSuccessfulLogin(resp, resp.id || id);
+        const left = resp.backupCodesRemaining;
+        if (typeof left === 'number') {
+          showToast(
+            left === 0
+              ? 'That was your last recovery code. Issue a new set as soon as you can.'
+              : left + ' recovery code' + (left === 1 ? '' : 's') + ' left.',
+            left <= 2 ? 'warning' : 'info'
+          );
+        }
+        return;
+      }
+      // `invalid_code` is deliberately the same answer for a wrong code, an
+      // unknown account and an account that is not the super_admin: naming
+      // which one would turn this into an account-enumeration oracle.
+      fail(resp.error === 'account_locked'
+        ? 'That account is temporarily locked. Try again later.'
+        : resp.error === 'too_many_attempts'
+          ? 'Too many attempts. Please wait a few minutes.'
+          : 'That identifier and code did not match.');
+    } catch (err) {
+      console.error('Recovery sign-in failed:', err);
+      fail('Something went wrong. Please try again.');
+    }
+  };
+
+  if (submit) submit.addEventListener('click', () => { void run(); });
+  if (codeEl) {
+    codeEl.addEventListener('keydown', (ev) => {
+      if ((ev as KeyboardEvent).key === 'Enter') { ev.preventDefault(); void run(); }
+    });
+  }
+}
+
 interface DiscordAccountChoice { id: string; role: string; guild: string | null }
 
 /**
@@ -1224,6 +1349,8 @@ export function initAuthForms(): void {
   wireOnce(el('go-to-register-btn'), '__gmAuthWired', 'click', () => showAuthTab('register'));
   wireOnce(el('register-back-btn'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
   wireOnce(el('guild-request-back-btn'), '__gmAuthWired', 'click', () => showAuthTab('signin'));
+
+  wireOnce(el('login-recovery-btn'), '__gmAuthWired', 'click', () => { openRecoveryCodeDialog(); });
 
   wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => {
     const x = g();

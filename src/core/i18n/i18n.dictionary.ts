@@ -22,6 +22,7 @@ export const EN: Record<string, string> = {
             login_discord:         'Join our Discord',
             login_discord_hint:    'New here? Sign in with Discord to join your guild with its join code, or to create one.',
             login_or:              'or use your identifier',
+            login_recovery:        'Lost access to Discord? Use a recovery code',
             footer_terms:          'Terms & Conditions',
             footer_privacy:        'Privacy Policy',
             terms_modal_title:     'Terms of Service & General Conditions of Sale (TOS/GCS)',

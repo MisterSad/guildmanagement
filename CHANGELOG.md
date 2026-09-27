@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- **The super_admin's recovery codes are reachable again**
+  - The owner held **ten valid backup codes he could not spend**. Both halves of the mechanism existed and were correct: `auth-discord`'s `backup-login` action (Zod-validated, throttled, super_admin only, lockout-aware, consumes the code, mints a session) and `loginWithBackupCodeDiscord()` in `session.ts`, exported and bridged. **What was missing was any way to reach them.** The login page's old "Use a backup code instead" button called `openBackupCodeDialog()`, which is exported onto the `window.GM` bridge and never invoked. Removing it as dead markup made the gap visible; it did not create it.
+  - A **"Lost access to Discord? Use a recovery code"** link now sits under the sign-in button, and it is actually wired. The dialog takes the identifier and a code, and lands in `handleSuccessfulLogin` like every other route in.
+  - **It uses the Discord path, not the passkey one.** `loginWithBackupCode` goes through `auth-passkey`, which phase D7 removes; `loginWithBackupCodeDiscord` goes through `auth-discord` and survives it.
+  - **It does not leak who exists.** A wrong code, an unknown account and an account that is not the super_admin all answer `invalid_code`. Distinguishing them would make an unauthenticated endpoint into an account-enumeration oracle. Asserted.
+  - **It says how many codes are left**, and warns on the last one. Ten one-time codes with no low-water warning is how someone ends up locked out holding an empty envelope.
+  - **Verified end to end against production**, not just rendered: the dialog opens visible, a wrong code returns "That identifier and code did not match.", the button re-enables and the dialog stays open. The deployed function answers `invalid_code` to a bad code for a real account id.
+  - **Still missing, and worth deciding**: there is no way to *reissue* a set. The "Regenerate Backup Codes" button went with the My Passkeys card. The server action exists; only the entry point does not.
+  - Gate: 0 TS errors, **156 suites / 1942 tests**, build clean, **38 e2e** green.
+
 - **The Discord account chooser was invisible. That was my bug, and it explains the whole report.**
   - `.gm-modal-overlay` is `opacity: 0` and only appears once the `visible` class is added. `openAccountChooser` never added it. The dialog was **in the DOM, fully wired, and completely invisible**: clicking "Sign in with Discord" appeared to do nothing, and the continuation ticket expired two minutes later. `openLinkAccountDialog`, twenty lines below in the same file, does it correctly with `requestAnimationFrame(() => overlay.classList.add('visible'))`. I did not copy that line.
   - **The evidence was in the ticket table the whole time.** Five stranded tickets, all carrying the owner's real Discord username, each created and then expiring unconsumed. Those were **continuations**: proof that `redeem` had succeeded and returned `choose`, and that the client had been handed a working payload it then failed to show. Calling the deployed function with a diagnostic ticket confirmed it answers correctly, with both accounts and no session tokens.
