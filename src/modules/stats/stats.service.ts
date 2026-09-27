@@ -20,304 +20,143 @@ import { eventScoringKey } from '../../core/config/events';
 // One idea, two languages, and the TypeScript copy was the dead one.
 
 export class StatsService {
-  public static computeWeightedLeaderboard(
-    params: WeightedLeaderboardParams
-  ): WeightedLeaderboardResult {
-    const { membersList, partRows, gloryRows, weeks } = params;
-    const coeffs: EventCoeffs = params.coeffs || DEFAULT_EVENT_COEFFS;
-
-    const gloryByWeek: Record<string, Record<string, number>> = {};
-    weeks.forEach((w) => { gloryByWeek[w] = {}; });
-    gloryRows.forEach((r) => {
-      const ws = r.week_start || '';
-      if (!gloryByWeek[ws]) gloryByWeek[ws] = {};
-      gloryByWeek[ws][normalizePseudo(r.pseudo)] = Number(r.score) || 0;
-    });
-
-    const weekStarts = Object.keys(gloryByWeek).sort();
-    const gloryDeltas: Record<string, number> = {};
-    membersList.forEach((pseudo) => {
-      const norm = normalizePseudo(pseudo);
-      const playerWeeks = weekStarts.filter((w) => (gloryByWeek[w][norm] || 0) > 0);
-      // Sum every positive week-on-week gain. The loop used to start at j = 1
-      // and stop at length - 2, which silently discarded BOTH the first
-      // transition and the last one: with two scoring weeks the delta was
-      // always 0, and with three only the middle pair counted. Glory is the
-      // one metric with 78.9% score coverage, so this was throwing away the
-      // best-populated signal on the page.
-      let totalDelta = 0;
-      for (let j = 0; j < playerWeeks.length - 1; j++) {
-        const prev = gloryByWeek[playerWeeks[j]][norm] || 0;
-        const curr = gloryByWeek[playerWeeks[j + 1]][norm] || 0;
-        const diff = curr - prev;
-        if (diff > 0) totalDelta += diff;
-      }
-      gloryDeltas[pseudo] = totalDelta;
-    });
-    const maxGloryDelta = Math.max(...Object.values(gloryDeltas).concat([0]));
-
-    const aggMap: Record<string, { eventsScore: number; eventsAttended: number; eventsTotal: number }> = {};
-    membersList.forEach((pseudo) => { aggMap[pseudo] = { eventsScore: 0, eventsAttended: 0, eventsTotal: 0 }; });
-
-    const validPartRows = partRows.filter((p) => !p.is_pending);
-
-    const tenantEventInstances = new Set<string>();
-    validPartRows.forEach((p) => {
-      if ((p.event_name || '').toLowerCase() === 'glory') return;
-      const evKey = eventScoringKey(p.event_name, p.session_id || undefined, p.week_start);
-      if (evKey) tenantEventInstances.add(evKey);
-    });
-    const totalTenantEvents = tenantEventInstances.size;
-
-    const attendedSessionsByMember: Record<string, Set<string>> = {};
-    membersList.forEach((pseudo) => { attendedSessionsByMember[normalizePseudo(pseudo)] = new Set<string>(); });
-
-    validPartRows.forEach((p) => {
-      if ((p.event_name || '').toLowerCase() === 'glory') return;
-      const norm = normalizePseudo(p.pseudo);
-      const memberMatch = membersList.find((m) => normalizePseudo(m) === norm);
-      if (!memberMatch) return;
-
-      const agg = aggMap[memberMatch];
-      const evName = (p.event_name || '').trim();
-      const coeffBucket = resolveCoeffBucket(evName);
-      const coeff = (coeffBucket && coeffs[coeffBucket] != null) ? coeffs[coeffBucket] : 1;
-      const evKey = eventScoringKey(evName, p.session_id || undefined, p.week_start);
-
-      const attended =
-        Number(p.participated) > 0 ||
-        p.sub_present === true ||
-        Number(p.score) > 0 ||
-        Number(p.score_prep) > 0 ||
-        Number(p.score_pvp) > 0;
-
-      if (attended && !attendedSessionsByMember[norm].has(evKey)) {
-        attendedSessionsByMember[norm].add(evKey);
-        agg.eventsAttended++;
-
-        const baseScore = STATS_WEIGHTS.participation * coeff;
-        let perfScore = 0;
-
-        if (evName === 'SvS' || evName === 'GvG') {
-          const rawSc = (Number(p.score) || 0) + (Number(p.score_prep) || 0) + (Number(p.score_pvp) || 0);
-          perfScore = rawSc > 0 ? (STATS_WEIGHTS.performance * coeff) : 0;
-        }
-
-        agg.eventsScore += (baseScore + perfScore);
-      }
-    });
-
-    membersList.forEach((pseudo) => {
-      if (aggMap[pseudo]) aggMap[pseudo].eventsTotal = totalTenantEvents;
-    });
-
-    const scores = membersList.map((pseudo) => {
-      const agg = aggMap[pseudo] || { eventsScore: 0, eventsAttended: 0, eventsTotal: 0 };
-      const attRate = agg.eventsTotal > 0 ? agg.eventsAttended / agg.eventsTotal : 0;
-      const consistencyBonus = attRate >= STATS_WEIGHTS.threshold ? (STATS_WEIGHTS.consistency * Math.max(1, weeks.length)) : 0;
-      const delta = gloryDeltas[pseudo] || 0;
-      const gloryBonus = (delta > 0 && maxGloryDelta > 0) ? (delta / maxGloryDelta) * STATS_WEIGHTS.gloryMax * Math.max(1, weeks.length) : 0;
-      const totalScore = agg.eventsScore + gloryBonus + consistencyBonus;
-
-      return {
-        pseudo,
-        score: round1(totalScore),
-        events_score: round1(agg.eventsScore),
-        events_done: agg.eventsAttended,
-        events_total: agg.eventsTotal,
-        attendance_rate: attRate,
-        glory_delta: delta,
-        glory_bonus: round1(gloryBonus),
-        consistency_bonus: consistencyBonus
-      };
-    }).sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return a.pseudo.localeCompare(b.pseudo);
-    });
-
-    // `maxPossible` used to be returned here as
-    //   (6 + 4 + 20 + 15) * weeks * 5
-    // where the trailing 5 hardcoded "the highest coefficient is 5" -- wrong
-    // for any tenant that configures a higher one, and moot either way: no
-    // template ever read it. Removed rather than ported into the aggregate
-    // path. The interface keeps the field so both implementations share a
-    // shape; both now return 0.
-    return { scores, maxPossible: 0 };
-  }
 
   /**
-   * The weighted leaderboard, computed from gm_stats_members' counters instead
-   * of from raw participation rows.
+   * Reliability: one rate per event bucket, then one weighted number.
    *
-   * Identical arithmetic to computeWeightedLeaderboard, reached differently:
-   * that one walks every row and de-duplicates scoring keys in a Set, this one
-   * receives the de-duplicated counts. `tests/stats_aggregate_equivalence.test.js`
-   * feeds both the same fixture and asserts the outputs match row for row.
+   *     reliability = 100 * SUM_b coeff(b) * att(m,b) / SUM_b coeff(b) * opp(m,b)
    *
-   * One deliberate difference, and it is a fix rather than a port: the SQL
-   * collapses several attended rows for one scoring key with `bool_or`, where
-   * the row walk kept whichever row the database happened to return first.
-   * Measured across all 55,739 production rows, 20 keys have multiple attended
-   * rows and in none of them does the score verdict differ, so the two rules
-   * agree on every row that exists -- but only one of them is deterministic.
+   * Replaces both the old "Global Score (Composite)" and "Attendance Rate (%)"
+   * boards, which were two answers to one question and disagreed about the
+   * same member.
+   *
+   * Why weighting is the whole point, measured on ALPHA for the week of
+   * 2026-08-31: the guild ran 7 Arms Race sessions, 3 DTR, 1 Shadowfront,
+   * 1 SvS and 1 GvG. Counting instances equally gave Arms Race -- daily, and
+   * skipped by design, 16.2% participation across production -- 54% of the
+   * score, and the SvS 7.7%. With the tenant's coefficients the same week
+   * gives Arms Race 27% and the SvS 19%.
+   *
+   * `opp` arrives per member, already limited to the weeks since they joined
+   * the roster and already excluding what they were excused from, so this is a
+   * weighted sum and nothing more. A bucket with opp = 0 contributes to neither
+   * side and renders as an em dash: a guild that ran no Shadowfront must not
+   * make its members look absent from one.
    */
-  public static computeWeightedLeaderboardFromAggregate(
+  public static computeReliabilityLeaderboard(
     payload: StatsMembersPayload,
-    weeks: string[],
     coeffs?: EventCoeffs
-  ): WeightedLeaderboardResult {
+  ): ReliabilityRow[] {
     const useCoeffs: EventCoeffs = coeffs || DEFAULT_EVENT_COEFFS;
-    const members = payload.members || [];
-    const totalTenantEvents = payload.tenant ? (Number(payload.tenant.total_events) || 0) : 0;
+    const coeffOf = (bucket: string): number => {
+      const key = resolveCoeffBucket(bucket);
+      return (key && useCoeffs[key] != null) ? useCoeffs[key] : 1;
+    };
 
-    // Glory delta: the sum of every positive week-on-week gain, over the weeks
-    // in which the member actually scored. The payload is already windowed by
-    // gm_stats_members, matching what the view did before it (it filtered its
-    // glory rows to the selected weeks). Note the consequence, which predates
-    // this phase: at a 1-week period a delta needs two weeks and can only ever
-    // be zero, so the "Delta Glory" column is structurally empty in the default
-    // view. S3 decides whether that column earns its place.
-    const gloryByWeek: Record<string, Record<string, number>> = {};
-    (payload.glory || []).forEach((g) => {
-      const pseudo = String(g[0] || '');
-      const week = String(g[1] || '');
-      if (!week) return;
-      if (!gloryByWeek[week]) gloryByWeek[week] = {};
-      gloryByWeek[week][normalizePseudo(pseudo)] = Number(g[2]) || 0;
-    });
-    const weekStarts = Object.keys(gloryByWeek).sort();
-
-    const gloryDeltas: Record<string, number> = {};
-    members.forEach((m) => {
-      const norm = normalizePseudo(m.pseudo);
-      const scored = weekStarts.filter((w) => (gloryByWeek[w][norm] || 0) > 0);
-      let total = 0;
-      for (let j = 0; j < scored.length - 1; j++) {
-        const diff = (gloryByWeek[scored[j + 1]][norm] || 0) - (gloryByWeek[scored[j]][norm] || 0);
-        if (diff > 0) total += diff;
-      }
-      gloryDeltas[m.pseudo] = total;
-    });
-    const maxGloryDelta = Math.max(...Object.values(gloryDeltas).concat([0]));
-
-    const weekCount = Math.max(1, weeks.length);
-
-    const scores: WeightedScoreRow[] = members.map((m) => {
-      let eventsScore = 0;
-      const buckets = m.buckets || {};
-      Object.keys(buckets).forEach((bucket) => {
-        const counts = buckets[bucket] || { att: 0, att_scored: 0, present: 0 };
-        // The bucket label IS an event name -- 'SvS', 'Arms Race', or, for
-        // anything unrecognised, the raw event_name -- so the same resolver the
-        // row walk used per row applies here per bucket.
-        const key = resolveCoeffBucket(bucket);
-        const coeff = (key && useCoeffs[key] != null) ? useCoeffs[key] : 1;
-        eventsScore += STATS_WEIGHTS.participation * coeff * (Number(counts.att) || 0);
-        eventsScore += STATS_WEIGHTS.performance * coeff * (Number(counts.att_scored) || 0);
+    const weightedRate = (buckets: Record<string, { att?: number; opp?: number }> | undefined):
+      { rate: number | null; att: number; opp: number } => {
+      let att = 0;
+      let opp = 0;
+      Object.keys(buckets || {}).forEach((bucket) => {
+        const b = (buckets as Record<string, { att?: number; opp?: number }>)[bucket] || {};
+        const c = coeffOf(bucket);
+        att += c * (Number(b.att) || 0);
+        opp += c * (Number(b.opp) || 0);
       });
+      return { rate: opp > 0 ? (att / opp) * 100 : null, att, opp };
+    };
 
-      const eventsAttended = Number(m.attended) || 0;
-      const attRate = totalTenantEvents > 0 ? eventsAttended / totalTenantEvents : 0;
-      const consistencyBonus = attRate >= STATS_WEIGHTS.threshold
-        ? (STATS_WEIGHTS.consistency * weekCount) : 0;
-      const delta = gloryDeltas[m.pseudo] || 0;
-      const gloryBonus = (delta > 0 && maxGloryDelta > 0)
-        ? (delta / maxGloryDelta) * STATS_WEIGHTS.gloryMax * weekCount : 0;
+    const rows: ReliabilityRow[] = (payload.members || []).map((m) => {
+      const bucketMap = (m.buckets || {}) as Record<string, AggregateBucketCounts>;
+      const buckets: ReliabilityBucket[] = Object.keys(bucketMap).map((bucket) => {
+        const b = bucketMap[bucket] || ({} as AggregateBucketCounts);
+        const opp = Number(b.opp) || 0;
+        const att = Number(b.att) || 0;
+        return {
+          bucket,
+          att,
+          opp,
+          exc: Number(b.exc) || 0,
+          coeff: coeffOf(bucket),
+          rate: opp > 0 ? round1((att / opp) * 100) : null
+        };
+      }).sort((a, b) => (b.coeff - a.coeff) || a.bucket.localeCompare(b.bucket));
+
+      const overall = weightedRate(bucketMap as Record<string, { att?: number; opp?: number }>);
+
+      const tr = m.trend || null;
+      const recent = tr ? weightedRate(tr.recent) : { rate: null, att: 0, opp: 0 };
+      const prior = tr ? weightedRate(tr.prior) : { rate: null, att: 0, opp: 0 };
+      // A trend needs something on both sides. Without this guard a member who
+      // simply was not there four weeks ago reads as a collapse.
+      const eligible = !!tr && recent.rate !== null && prior.rate !== null
+        && recent.opp >= MIN_TREND_OPPORTUNITIES && prior.opp >= MIN_TREND_OPPORTUNITIES;
+
+      const unweightedOpp = buckets.reduce((acc, b) => acc + b.opp, 0);
 
       return {
         pseudo: m.pseudo,
-        score: round1(eventsScore + gloryBonus + consistencyBonus),
-        events_score: round1(eventsScore),
-        events_done: eventsAttended,
-        events_total: totalTenantEvents,
-        attendance_rate: attRate,
-        glory_delta: delta,
-        glory_bonus: round1(gloryBonus),
-        consistency_bonus: consistencyBonus
+        uid: m.uid,
+        role: m.role,
+        overall_power: Number(m.overall_power) || 0,
+        reliability: overall.rate === null ? null : round1(overall.rate),
+        weighted_att: overall.att,
+        weighted_opp: overall.opp,
+        buckets,
+        trend: {
+          recent: recent.rate === null ? null : round1(recent.rate),
+          prior: prior.rate === null ? null : round1(prior.rate),
+          delta: eligible ? round1((recent.rate as number) - (prior.rate as number)) : null,
+          eligible
+        },
+        weeks_active: Number(m.weeks_active) || 0,
+        last_seen_week: m.last_seen_week,
+        score: overall.rate === null ? 0 : round1(overall.rate),
+        events_done: Number(m.attended) || 0,
+        events_total: unweightedOpp,
+        attendance_rate: overall.rate === null ? 0 : overall.rate / 100,
+        glory_delta: 0,
+        glory_bonus: 0,
+        consistency_bonus: 0
       };
-    }).sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
+    });
+
+    return rows.sort((a, b) => {
+      // Members with no opportunities at all sort last: they are not bad, they
+      // are unmeasured, and mixing them in with 0% would say the wrong thing.
+      const ar = a.reliability;
+      const br = b.reliability;
+      if (ar === null && br === null) return a.pseudo.localeCompare(b.pseudo);
+      if (ar === null) return 1;
+      if (br === null) return -1;
+      if (br !== ar) return br - ar;
+      if (b.weighted_opp !== a.weighted_opp) return b.weighted_opp - a.weighted_opp;
       return a.pseudo.localeCompare(b.pseudo);
     });
-
-    return { scores, maxPossible: 0 };
   }
 
-  /**
-   * The attendance-rate leaderboard from the same aggregate. Uses `present`
-   * (participation or present substitute), which is the stricter of the two
-   * attendance rules the page already had -- scores do not make a member
-   * present here, where they do on the weighted board.
-   */
-  public static computeParticipationLeaderboardFromAggregate(
-    payload: StatsMembersPayload
-  ): ParticipationScoreRow[] {
-    const members = payload.members || [];
-    const totalTenantEvents = payload.tenant ? (Number(payload.tenant.total_events) || 0) : 0;
 
-    return members.map((m) => {
-      const attended = Number(m.present) || 0;
-      const rate = totalTenantEvents > 0 ? attended / totalTenantEvents : 0;
-      return {
-        pseudo: m.pseudo,
-        score: round1(rate * 100),
-        events_done: attended,
-        events_total: totalTenantEvents,
-        attendance_rate: rate,
-        glory_delta: 0,
-        glory_bonus: 0,
-        consistency_bonus: 0
-      };
-    }).sort((a, b) => b.score - a.score);
-  }
 
-  /**
-   * Pure attendance-rate leaderboard (Stats "Attendance Rate" mode).
-   * Ported verbatim from stats.js#loadParticipationMode's aggregation step.
-   */
-  public static computeParticipationLeaderboard(
-    params: ParticipationLeaderboardParams
-  ): ParticipationScoreRow[] {
-    const { membersList, validRows } = params;
+  // computeWeightedLeaderboard(), computeWeightedLeaderboardFromAggregate(),
+  // computeParticipationLeaderboard() and computeParticipationLeaderboardFromAggregate()
+  // were removed in phase S3, replaced by computeReliabilityLeaderboard above.
+  //
+  // The first two implemented the composite points score: 6*coeff per attended
+  // instance, +4*coeff for a scored SvS/GvG, a +15*weeks cliff at exactly 80%
+  // attendance, and a glory bonus normalised against the best delta in the
+  // guild. It was unbounded, so it could not be compared across guilds or
+  // windows, and it was measured against "everything the guild ran", which let
+  // the daily Arms Race decide over half of it.
+  //
+  // The other two were the second answer to the same question -- the page
+  // offered both in a dropdown, and they disagreed about the same member,
+  // because one counted a recorded score as attendance and the other did not.
+  // That clause turned out to be decorative: across all 49,701 non-Glory rows
+  // in production, ZERO carry a score without also being marked present.
+  //
+  // The equivalence test that pinned the S2 port went with them; its subject
+  // no longer exists. What replaced it is tests/stats_reliability.test.js.
 
-    const tenantEventInstances = new Set<string>();
-    validRows.forEach((r) => {
-      if ((r.event_name || '').toLowerCase() === 'glory') return;
-      const evKey = eventScoringKey(r.event_name, r.session_id || undefined, r.week_start);
-      if (evKey) tenantEventInstances.add(evKey);
-    });
-    const totalTenantEvents = tenantEventInstances.size;
-
-    const attendedSessionsByMember: Record<string, Set<string>> = {};
-    membersList.forEach((m) => { attendedSessionsByMember[normalizePseudo(m)] = new Set<string>(); });
-
-    validRows.forEach((r) => {
-      if ((r.event_name || '').toLowerCase() === 'glory') return;
-      const norm = normalizePseudo(r.pseudo);
-      if (attendedSessionsByMember[norm]) {
-        const evKey = eventScoringKey(r.event_name, r.session_id || undefined, r.week_start);
-        if (Number(r.participated) > 0 || r.sub_present === true) {
-          attendedSessionsByMember[norm].add(evKey);
-        }
-      }
-    });
-
-    return membersList.map((pseudo) => {
-      const norm = normalizePseudo(pseudo);
-      const attendedCount = attendedSessionsByMember[norm] ? attendedSessionsByMember[norm].size : 0;
-      const rate = totalTenantEvents > 0 ? attendedCount / totalTenantEvents : 0;
-      return {
-        pseudo,
-        score: round1(rate * 100),
-        events_done: attendedCount,
-        events_total: totalTenantEvents,
-        attendance_rate: rate,
-        glory_delta: 0,
-        glory_bonus: 0,
-        consistency_bonus: 0
-      };
-    }).sort((a, b) => b.score - a.score);
-  }
 
   /**
    * Per-event leaderboard (SvS/GvG/Shadowfront/Arms Race/DTR/Glory).
@@ -455,6 +294,13 @@ import {
 export { DEFAULT_EVENT_COEFFS };
 export type { EventCoeffBucket, EventCoeffs };
 
+/**
+ * A trend is only shown when both windows carry at least this much weighted
+ * opportunity. Below it the comparison is noise: one missed SvS in a quiet
+ * fortnight would read as a 30-point collapse.
+ */
+export const MIN_TREND_OPPORTUNITIES = 8;
+
 export const STATS_WEIGHTS = {
   participation: 6,
   performance: 4,
@@ -503,12 +349,23 @@ export interface SquadRow {
  */
 
 export interface AggregateBucketCounts {
-  /** Distinct scoring keys in this bucket the member attended (participation, substitute, or any score). */
+  /** Distinct scoring keys in this bucket the member attended. */
   att: number;
-  /** Of those, how many carried a score -- only ever non-zero for the literal names 'SvS'/'GvG'. */
+  /**
+   * Opportunities THIS member had in this bucket: everything the guild ran in
+   * the window from the member's roster week onward, minus the sessions they
+   * were excused from. Per member, not per tenant -- that is the whole point
+   * of phase S3.
+   */
+  opp: number;
+  /** Sessions in this bucket the member was excused from. */
+  exc: number;
+  /** Of the attended ones, how many carried a score. Only ever non-zero for the literal names 'SvS'/'GvG'. */
   att_scored: number;
-  /** The stricter rule: participation or present substitute, ignoring scores. */
-  present: number;
+}
+
+export interface AggregateTrendWindow {
+  [bucket: string]: { att: number; opp: number };
 }
 
 export interface AggregateMemberRow {
@@ -517,13 +374,14 @@ export interface AggregateMemberRow {
   role?: string | null;
   overall_power?: number;
   attended: number;
-  present: number;
   weeks_active: number;
   last_seen_week?: string | null;
   late_count: number;
   excused_count: number;
   sub_count: number;
   buckets: Record<string, AggregateBucketCounts>;
+  /** Present only when the RPC was called with p_trend. */
+  trend?: { recent: AggregateTrendWindow; prior: AggregateTrendWindow } | null;
 }
 
 export interface StatsMembersPayload {
@@ -533,8 +391,52 @@ export interface StatsMembersPayload {
   weeks?: string[];
   tenant?: { total_events: number; buckets: Record<string, number> };
   members?: AggregateMemberRow[];
+  /** Present only when the RPC was called with p_trend. */
+  trend?: { weeks_recent: number; weeks_prior: number } | null;
   /** [pseudo, week_start, score] triples, one per member-week with a score. */
   glory?: Array<[string, string, number]>;
+}
+
+export interface ReliabilityBucket {
+  bucket: string;
+  att: number;
+  /** Opportunities THIS member had: from their roster week, minus their excused. */
+  opp: number;
+  exc: number;
+  coeff: number;
+  /** null when opp is 0 -- "was never asked", which must not render as 0%. */
+  rate: number | null;
+}
+
+export interface ReliabilityTrend {
+  recent: number | null;
+  prior: number | null;
+  delta: number | null;
+  /** False when there is not enough history on either side to compare. */
+  eligible: boolean;
+}
+
+export interface ReliabilityRow {
+  pseudo: string;
+  uid?: string | null;
+  role?: string | null;
+  overall_power: number;
+  /** 0-100, or null when the member had no opportunities at all. */
+  reliability: number | null;
+  weighted_att: number;
+  weighted_opp: number;
+  buckets: ReliabilityBucket[];
+  trend: ReliabilityTrend;
+  weeks_active: number;
+  last_seen_week?: string | null;
+  /* Fields the existing table renderer reads. */
+  score: number;
+  events_done: number;
+  events_total: number;
+  attendance_rate: number;
+  glory_delta: number;
+  glory_bonus: number;
+  consistency_bonus: number;
 }
 
 export interface WeightedScoreRow {

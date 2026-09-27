@@ -122,17 +122,23 @@ function mountContainers() {
     '<div class="stats-leaderboard-area"></div>';
 }
 
+// Phase S3 columns: rank | member | by-event chips | attended | reliability.
+// ("Trend" only appears when the RPC was asked for one, which the leaderboard
+// does and these fixtures, having a single week, do not qualify for.)
 function parseLeaderboard() {
   const area = document.querySelector('.stats-leaderboard-area');
   if (!area) return [];
   return [...area.querySelectorAll('tbody tr')].map((tr) => {
     const tds = tr.querySelectorAll('td');
-    const hasGlory = tds.length > 4;
+    const cell = (label) => {
+      const td = [...tds].find((n) => n.getAttribute('data-label') === label);
+      return td ? td.textContent.trim() : '';
+    };
     return {
       pseudo: tds[1].querySelector('.gm-member-pseudo')?.textContent.trim() ?? '',
-      events: tds[2].textContent.trim(),
-      glory: hasGlory ? tds[3].textContent.trim() : '-',
-      score: (hasGlory ? tds[4] : tds[3]).textContent.trim()
+      buckets: cell('By event'),
+      attended: cell('Attended'),
+      reliability: cell('Reliability')
     };
   });
 }
@@ -161,27 +167,29 @@ describe('StatsView golden results (post stats.js cutover)', () => {
     expect(window.GM_STATS).toBeUndefined();
   });
 
-  it('global weighted mode: golden leaderboard rows and max possible', async () => {
+  it('reliability leaderboard: golden rows, with the breakdown beside the number', async () => {
+    // Phase S3. The old board scored 65 points with no way to see where they
+    // came from; this one shows the components. The fixture's only bucket is
+    // SvS, so reliability is that bucket's rate -- the coefficient cancels.
     const view = new StatsView();
     await view.load();
 
     expect(parseLeaderboard()).toEqual([
-      { pseudo: 'AlphaPrime', events: '1/1', glory: '-', score: '65 pts' },
-      { pseudo: 'BetaKnight', events: '1/1', glory: '-', score: '65 pts' },
-      { pseudo: 'GammaGhost', events: '0/1', glory: '-', score: '0 pts' }
+      { pseudo: 'AlphaPrime', buckets: 'SvS 1/1', attended: '1/1', reliability: '100%' },
+      { pseudo: 'BetaKnight', buckets: 'SvS 1/1', attended: '1/1', reliability: '100%' },
+      { pseudo: 'GammaGhost', buckets: 'SvS 0/1', attended: '0/1', reliability: '0%' }
     ]);
   });
 
-  it('attendance-rate mode: golden leaderboard rows', async () => {
+  it('there is one leaderboard metric, not two competing ones', async () => {
+    // "Global Score (Composite)" and "Attendance Rate (%)" were two answers to
+    // one question, offered in a dropdown, disagreeing about the same member.
     localStorage.setItem('gm_stats_mode', 'participation');
     const view = new StatsView();
     await view.load();
 
-    expect(parseLeaderboard()).toEqual([
-      { pseudo: 'AlphaPrime', events: '2/2', glory: '-', score: '100 pts' },
-      { pseudo: 'BetaKnight', events: '1/2', glory: '-', score: '50 pts' },
-      { pseudo: 'GammaGhost', events: '0/2', glory: '-', score: '0 pts' }
-    ]);
+    expect(document.querySelector('.metric-select')).toBeNull();
+    expect(parseLeaderboard()[0].reliability).toBe('100%');
   });
 
   it('per-event mode (SvS) via loadSingleEvent: golden aggregation', async () => {

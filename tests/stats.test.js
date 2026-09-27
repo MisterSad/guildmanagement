@@ -139,16 +139,33 @@ function mountContainers() {
         '<div class="stats-leaderboard-area"></div>';
 }
 
+// Phase S3 columns: rank | member | by-event chips | attended | reliability,
+// with "Trend" between the last two only when a trend was computed. Read by
+// data-label rather than by position, so adding a column does not silently
+// shift every assertion by one.
+/** Drives the real period control, the way a user does. */
+async function selectPeriod(value) {
+    const sel = document.querySelector('.period-select');
+    sel.value = value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+}
+
 function parseLeaderboard() {
     const area = document.querySelector('.stats-leaderboard-area');
     const rows = [...area.querySelectorAll('tbody tr')].map((tr) => {
         const tds = tr.querySelectorAll('td');
-        const hasGlory = tds.length > 4;
+        const cell = (label) => {
+            const td = [...tds].find((n) => n.getAttribute('data-label') === label);
+            return td ? td.textContent.trim() : '';
+        };
         return {
             pseudo: tds[1].querySelector('.gm-member-pseudo').textContent.trim(),
-            events: tds[2].textContent.trim(),
-            glory: hasGlory ? tds[3].textContent.trim() : '-',
-            score: (hasGlory ? tds[4] : tds[3]).textContent.trim()
+            buckets: cell('By event'),
+            attended: cell('Attended'),
+            trend: cell('Trend'),
+            score: cell('Reliability')
         };
     });
     return rows;
@@ -208,18 +225,21 @@ describe('GM_STATS global mode', () => {
         const rows = parseLeaderboard();
         expect(rows).toHaveLength(3);
         expect(rows[0].pseudo).toBe('AlphaPrime');
-        expect(rows[0].score).toBe('65 pts');
+        expect(rows[0].score).toBe('100%');
         expect(rows[1].pseudo).toBe('BetaKnight');
-        expect(rows[1].score).toBe('65 pts');
+        expect(rows[1].score).toBe('100%');
 
-        expect(rows[0].events).toBe('1/1');
-        expect(rows[0].glory).toBe('-');
+        // The breakdown is the point: a rate the admin can defend, per bucket.
+        expect(rows[0].buckets).toBe('SvS 1/1');
+        expect(rows[0].attended).toBe('1/1');
+        expect(rows[1].buckets).toBe('SvS 1/1');
 
-        expect(rows[1].events).toBe('1/1');
-        expect(rows[1].glory).toBe('-');
+        // The pending row still counts for nobody, and GammaGhost is measured
+        // against the same single opportunity rather than vanishing.
+        expect(rows[2].pseudo).toBe('GammaGhost');
+        expect(rows[2].score).toBe('0%');
+        expect(rows[2].buckets).toBe('SvS 0/1');
 
-        const gamma = rows.find((r) => r.pseudo === 'GammaGhost');
-        expect(gamma.score).toBe('0 pts');
     });
 
     it('renders week/period controls with 5 timeframe options (1w, 2w, 4w, 8w, all)', async () => {
@@ -241,21 +261,21 @@ describe('GM_STATS global mode', () => {
     });
 });
 
-describe('GM_STATS participation mode', () => {
-    it('computes attendance rates as scores', async () => {
+describe('GM_STATS reliability across the whole window', () => {
+    it('rates each member against what their guild actually ran', async () => {
         await window.GM_STATS.load();
-        // switch mode by clicking the participation tab
-        await window.GM_STATS.setView('leaderboard', 'participation');
-        await new Promise((r) => setTimeout(r, 0));
-        await window.GM_STATS.load();
+        await window.GM_STATS.setView('leaderboard');
+        await selectPeriod('all');
 
         const rows = parseLeaderboard();
         const alpha = rows.find((r) => r.pseudo === 'AlphaPrime');
         const beta = rows.find((r) => r.pseudo === 'BetaKnight');
-        expect(alpha.score).toBe('100 pts');
-        expect(alpha.events).toBe('2/2');
-        expect(beta.score).toBe('50 pts');
-        expect(beta.events).toBe('1/2');
+        // Two SvS weeks; Alpha made both, Beta one. One bucket, so the
+        // coefficient cancels and reliability is that bucket's rate.
+        expect(alpha.score).toBe('100%');
+        expect(alpha.attended).toBe('2/2');
+        expect(beta.score).toBe('50%');
+        expect(beta.attended).toBe('1/2');
     });
 
     it('excludes events planned for a future week from the denominator', async () => {
@@ -284,16 +304,15 @@ describe('GM_STATS participation mode', () => {
 
         try {
             await window.GM_STATS.load();
-            await window.GM_STATS.setView('leaderboard', 'participation');
-            await new Promise((r) => setTimeout(r, 0));
-            await window.GM_STATS.load();
+            await window.GM_STATS.setView('leaderboard');
+            await selectPeriod('all');
 
             const rows = parseLeaderboard();
             const alpha = rows.find((r) => r.pseudo === 'AlphaPrime');
             const beta = rows.find((r) => r.pseudo === 'BetaKnight');
-            // Same 2 events as without the future session: W3 is ignored.
-            expect(alpha.events).toBe('2/2');
-            expect(beta.events).toBe('1/2');
+            // Same 2 opportunities as without the future session: W3 is ignored.
+            expect(alpha.attended).toBe('2/2');
+            expect(beta.attended).toBe('1/2');
         } finally {
             // Restore the real implementation (gm-utils.js) rather than
             // deleting it — a prior version of this test used `delete
@@ -315,9 +334,15 @@ describe('GM_STATS coefficient resolution (regression)', () => {
     // weighted score for a Defend Trade Route participation, using the real
     // DB event name throughout (not the short label the old bug's lookup
     // key coincidentally used).
+    // DeltaRunner attends the DTR and misses the SvS. Two buckets is the
+    // minimum for a coefficient to mean anything: with a single bucket it
+    // appears on both sides of the weighted fraction and cancels out, which is
+    // correct -- a coefficient expresses a TRADE-OFF between event types, not
+    // an inflation of one.
     const DTR_MEMBERS = [{ pseudo: 'DeltaRunner', uid: '999', guild: G }];
     const DTR_PARTS = [
-        { pseudo: 'DeltaRunner', event_name: 'Defend Trade Route', session_id: 'd1', week_start: W1, participated: 1, score: 0, score_prep: 0, score_pvp: 0, is_pending: false, guild: G }
+        { pseudo: 'DeltaRunner', event_name: 'Defend Trade Route', session_id: 'd1', week_start: W1, participated: 1, score: 0, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
+        { pseudo: 'DeltaRunner', event_name: 'SvS', session_id: 's1', week_start: W1, participated: 0, score: 0, score_prep: 0, score_pvp: 0, is_pending: false, guild: G }
     ];
 
     function buildDtrDb(guildConfigRows) {
@@ -347,13 +372,18 @@ describe('GM_STATS coefficient resolution (regression)', () => {
     }
 
     it('applies the guild-configured coeff_dtr to a Defend Trade Route row instead of the pre-bug fallback of 1', async () => {
+        // Defaults: DTR 2, SvS 5. Attending the DTR and missing the SvS gives
+        // 2/(2+5) = 29%. Raising coeff_dtr to 50 makes the attended event the
+        // one that matters: 50/(50+5) = 91%.
         window.GM.db = buildDtrDb([]); // no override: falls back to default coeff_dtr = '2'
         await loadInGlobalMode();
         const defaultScore = parseFloat(parseLeaderboard().find((r) => r.pseudo === 'DeltaRunner').score);
+        expect(defaultScore).toBeCloseTo(28.6, 0);
 
         window.GM.db = buildDtrDb([{ key: 'coeff_dtr', guild: G, value: '50' }]);
         await loadInGlobalMode();
         const customScore = parseFloat(parseLeaderboard().find((r) => r.pseudo === 'DeltaRunner').score);
+        expect(customScore).toBeCloseTo(90.9, 0);
 
         // The configured coefficient must actually change the score — under
         // the pre-fix bug it was silently ignored and both runs would match.

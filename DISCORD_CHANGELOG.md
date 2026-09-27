@@ -1,3 +1,41 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.27.0**
+
+**This is the one that changes your Stats numbers.** I said I would warn you, so here it is, with the reasoning. 📊
+
+## What was wrong
+
+Your score was measured against *everything the guild ran*, counted equally. Take ALPHA in the week of 31 August: 7 Arms Race sessions, 3 DTR, 1 Shadowfront, 1 SvS, 1 GvG. The Arms Race is daily and almost nobody does all of it — 16% participation across every guild on the app — and it decided **54%** of your score. The SvS, the thing your guild actually organises around, decided **7.7%**.
+
+That is why a player who showed up to every war could read 14%.
+
+## What replaces it
+
+A rate **per event type**, then one weighted number using **your guild's own coefficients** (the ones in your settings: SvS, GvG, Shadowfront, DTR, Arms Race).
+
+You now see the breakdown next to the score:
+
+`SvS 2/3 · GvG 2/2 · Shadowfront 3/3 · DTR 5/8 · Arms Race 12/24 → 69%`
+
+You can check the number yourself, and so can the member asking about it.
+
+## Three fairness fixes
+
+- **New members are no longer marked absent for wars fought before they joined.** Your opportunities start the week you appear on the roster. On some guilds that is a quarter of the roster affected.
+- **An em dash instead of 0%** when your guild did not run an event type at all. "Did not attend" and "was never asked" are different things, and the old page showed both as zero.
+- **Excused absences leave your denominator** instead of sitting in a column nobody read.
+
+## Also new
+
+A **trend arrow**: your last 4 weeks against the 4 before. It only appears when there is enough on both sides to mean something — a recruit's first month will not show a fake collapse.
+
+## How much will your number move?
+
+I measured it on a real guild before releasing: out of 142 members, **32 went up, 30 went down, and the largest single move was 11 points**. Most of you will barely shift. What changes more is the *order*, because showing up to the wars now counts for more than grinding the dailies.
+
+If a member asks why their number changed, the breakdown beside it is the answer. 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.26.0**
 
 Invisible release. **The Stats leaderboard no longer downloads your whole guild's history into your browser to add it up there.** ⚙️

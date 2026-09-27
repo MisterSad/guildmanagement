@@ -193,6 +193,8 @@ interface StatsState {
   searchQuery: string;
   allWeeks: string[];
   activeWeeksLoaded: string[];
+  /** How many weeks the trend comparison covers on each side; 0 when absent. */
+  trendWeeks: number;
   leaderboardData: any[];
   uidMap: Record<string, string>;
   isLoading: boolean;
@@ -211,6 +213,7 @@ function createState(): StatsState {
     searchQuery: '',
     allWeeks: [],
     activeWeeksLoaded: [],
+    trendWeeks: 0,
     leaderboardData: [],
     uidMap: {},
     isLoading: false
@@ -368,7 +371,7 @@ export class StatsView {
     if (!containers || !containers.length) return;
 
     containers.forEach((el) => {
-      if (state.primaryView === 'cockpit' || state.currentMode === 'participation' || state.currentMode.indexOf('kpi-') === 0) {
+      if (state.primaryView === 'cockpit' || state.currentMode.indexOf('kpi-') === 0) {
         el.innerHTML = '';
         return;
       }
@@ -405,31 +408,17 @@ export class StatsView {
         '</select>';
       }
 
-      // If in Leaderboard view: add metric toggle (Global Composite vs Attendance)
-      let metricPickerHtml = '';
-      if (state.primaryView === 'leaderboard') {
-        metricPickerHtml = '<select class="gm-select metric-select" style="width:auto; min-width:180px; font-weight:700;">' +
-          '<option value="global"' + (state.currentMode === 'global' ? ' selected' : '') + '>🏆 Global Score (Composite)</option>' +
-          '<option value="participation"' + (state.currentMode === 'participation' ? ' selected' : '') + '>📊 Attendance Rate (%)</option>' +
-        '</select>';
-      }
+      // The metric picker offered "Global Score (Composite)" and "Attendance
+      // Rate (%)". Two answers to one question, in a dropdown, disagreeing
+      // about the same member. Removed in phase S3: there is one board, and it
+      // shows its components as columns instead of hiding them behind a choice.
 
       el.innerHTML =
         '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center;">' +
-          metricPickerHtml +
           eventPickerHtml +
           '<select class="gm-select week-select" style="width:auto; min-width:160px;">' + weekOpts + '</select>' +
           '<select class="gm-select period-select" style="width:auto; min-width:140px;">' + periodOpts + '</select>' +
         '</div>';
-
-      const metricSelect = el.querySelector('.metric-select') as HTMLSelectElement | null;
-      if (metricSelect) {
-        metricSelect.addEventListener('change', () => {
-          state.currentMode = metricSelect.value;
-          try { localStorage.setItem('gm_stats_mode', state.currentMode); } catch (_) { /* ignore */ }
-          this.fetchAndComputeLeaderboard();
-        });
-      }
 
       const eventSelect = el.querySelector('.event-select') as HTMLSelectElement | null;
       if (eventSelect) {
@@ -501,8 +490,9 @@ export class StatsView {
    * switching path: the tab buttons call it, and so do the tests, which is what
    * stops the two from drifting.
    *
-   * `mode` picks the leaderboard metric ('global' | 'participation') or the
-   * event bucket ('SvS' | 'GvG' | 'Shadowfront' | 'Arms Race' | 'DTR').
+   * `mode` picks the event bucket when `view` is 'events'
+   * ('SvS' | 'GvG' | 'Shadowfront' | 'Arms Race' | 'DTR'); it is ignored
+   * otherwise, the leaderboard having only one metric since phase S3.
    */
   public async setView(view: PrimaryView, mode?: string): Promise<void> {
     const state = this.state;
@@ -514,7 +504,7 @@ export class StatsView {
       state.currentMode = mode || state.selectedEvent || 'SvS';
       state.selectedEvent = state.currentMode;
     } else {
-      state.currentMode = mode === 'participation' ? 'participation' : 'global';
+      state.currentMode = 'global';
     }
 
     try { localStorage.setItem('gm_stats_mode', state.currentMode); } catch (_) { /* ignore */ }
@@ -834,11 +824,6 @@ export class StatsView {
     const db = legacy.getDb();
     if (!db) return;
 
-    if (state.currentMode === 'participation') {
-      await this.loadParticipationMode();
-      return;
-    }
-
     const weeksToLoad = this.getWeeksToLoad();
 
     if (state.primaryView === 'events' || ['SvS', 'GvG', 'Shadowfront', 'Arms Race', 'DTR'].indexOf(state.currentMode) !== -1) {
@@ -858,12 +843,13 @@ export class StatsView {
    * one object per roster member plus per-bucket counts: 5,118 in-window rows
    * for OMEGA become 142 member objects.
    */
-  private async fetchStatsMembers(weeks: string[]): Promise<StatsMembersPayload | null> {
+  private async fetchStatsMembers(weeks: string[], withTrend?: boolean): Promise<StatsMembersPayload | null> {
     const db = legacy.getDb();
     if (!db) return null;
     const res = await db.rpc('gm_stats_members', {
       p_guild: this.state.activeGuild,
-      p_weeks: weeks && weeks.length ? weeks : null
+      p_weeks: weeks && weeks.length ? weeks : null,
+      p_trend: withTrend === true
     });
     if (res.error) throw res.error;
     const payload = (res.data || null) as StatsMembersPayload | null;
@@ -878,7 +864,7 @@ export class StatsView {
     try {
       const isAllTime = (state.statsPeriod === 'all');
       const requested = isAllTime ? state.allWeeks.slice() : weeksToLoad;
-      const payload = await this.fetchStatsMembers(requested);
+      const payload = await this.fetchStatsMembers(requested, true);
       if (!payload) { state.leaderboardData = []; this.renderLeaderboardImpl(); return; }
 
       // The roster is the member list. Every participation row carries a
@@ -892,8 +878,8 @@ export class StatsView {
       state.activeWeeksLoaded = actualWeeks;
 
       const coeffs = await this.getConfiguredCoeffs();
-      const computed = StatsService.computeWeightedLeaderboardFromAggregate(payload, actualWeeks, coeffs);
-      state.leaderboardData = computed.scores;
+      state.leaderboardData = StatsService.computeReliabilityLeaderboard(payload, coeffs);
+      state.trendWeeks = (payload.trend && payload.trend.weeks_recent) || 0;
 
       this.renderLeaderboardImpl();
     } catch (err) {
@@ -1002,28 +988,11 @@ export class StatsView {
     }
   }
 
-  private async loadParticipationMode(): Promise<void> {
-    const state = this.state;
-    try {
-      // This board has always measured all of history, not the selected
-      // window, and renderControls() hides the period selector for it -- so
-      // the behaviour and the absent control agree. Preserved rather than
-      // quietly changed: S3 decides what this rate should mean.
-      const payload = await this.fetchStatsMembers(state.allWeeks.slice());
-      if (!payload) { state.leaderboardData = []; this.renderLeaderboardImpl(); return; }
-
-      state.uidMap = state.uidMap || {};
-      (payload.members || []).forEach((m: AggregateMemberRow) => { if (m.pseudo) state.uidMap[m.pseudo] = m.uid || ''; });
-
-      state.leaderboardData = StatsService.computeParticipationLeaderboardFromAggregate(payload);
-
-      this.renderLeaderboardImpl();
-    } catch (err) {
-      console.error('[GM_STATS] Erreur loadParticipationMode', err);
-      state.leaderboardData = [];
-      this.renderLeaderboardImpl();
-    }
-  }
+  // loadParticipationMode() was removed in phase S3. The page used to offer
+  // "Global Score (Composite)" and "Attendance Rate (%)" as two options of one
+  // dropdown -- two answers to one question, which disagreed about the same
+  // member because one counted a recorded score as attendance and the other did
+  // not. There is one board now, and it shows its own components as columns.
 
   private renderLeaderboardImpl(): void {
     const state = this.state;
@@ -1121,9 +1090,13 @@ export class StatsView {
                      '<th class="gm-center">' + (legacy.t('col_score_pvp') || 'Day 6 score') + '</th>' +
                      '<th class="gm-right">' + (legacy.t('stats_score_pts') || 'Score Pts') + '</th>';
       } else {
-        theadCols += '<th class="gm-center">' + (legacy.t('stats_events') || 'Events') + '</th>' +
-                     (showGloryCol ? '<th class="gm-center">' + (legacy.t('stats_glory_delta') || 'Glory Δ') + '</th>' : '') +
-                     '<th class="gm-right">' + (legacy.t('stats_score_pts') || 'Score Pts') + '</th>';
+        // Phase S3: the components of the score are columns, not a hidden
+        // formula. "82%" is not an instruction; "attends every SvS, never once
+        // did Shadowfront" is.
+        theadCols += '<th class="gm-center">By event</th>' +
+                     '<th class="gm-center">Attended</th>' +
+                     (state.trendWeeks > 0 ? '<th class="gm-center">Trend</th>' : '') +
+                     '<th class="gm-right">Reliability</th>';
       }
 
       let tableHtml =
@@ -1181,9 +1154,10 @@ export class StatsView {
             '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
         } else {
           rowCells +=
-            '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
-            (showGloryCol ? '<td data-label="Glory Δ" class="gm-center" style="color:var(--fg-dim); font-variant-numeric:tabular-nums;">' + (m.glory_delta > 0 ? '+' + fmt(m.glory_delta) : '-') + '</td>' : '') +
-            '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' + esc(scoreDisplay) + '</span></td>';
+            '<td data-label="By event" class="gm-center">' + this.renderBucketChips(m) + '</td>' +
+            '<td data-label="Attended" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + m.events_done + (m.events_total > 0 ? '/' + m.events_total : '') + '</td>' +
+            (state.trendWeeks > 0 ? '<td data-label="Trend" class="gm-center">' + this.renderTrend(m) + '</td>' : '') +
+            '<td data-label="Reliability" class="gm-right" style="font-family:var(--font-display); font-weight:800; font-size: var(--fs-lg);">' + this.renderReliability(m) + '</td>';
         }
 
         const rowUid = (state.uidMap && state.uidMap[m.pseudo]) || '';
@@ -1211,6 +1185,64 @@ export class StatsView {
     });
   }
 
+  /**
+   * The per-bucket breakdown: "SvS 2/3 · GvG 2/2 · Arms Race 12/24".
+   *
+   * A bucket the guild did not run for this member renders as an em dash, not
+   * 0%. "Did not attend" and "was never asked" are different facts, and the old
+   * page reported both as zero.
+   */
+  private renderBucketChips(m: any): string {
+    const buckets = (m && m.buckets) || [];
+    if (!buckets.length) {
+      return '<span style="color:var(--fg-dim);" title="No events ran for this member in this window">—</span>';
+    }
+    return '<div style="display:flex; gap:.35rem; flex-wrap:wrap; justify-content:center;">' +
+      buckets.map((b: any) => {
+        if (!b.opp) {
+          return '<span class="gm-chip" style="font-size: var(--fs-xs); color:var(--fg-dim);" title="' +
+            esc(b.bucket) + ': not run for this member in this window">' + esc(b.bucket) + ' —</span>';
+        }
+        const pct = b.rate === null ? 0 : b.rate;
+        const colour = pct >= 80 ? '#34d399' : pct >= 50 ? '#fbbf24' : '#f87171';
+        return '<span class="gm-chip" style="font-size: var(--fs-xs); color:' + colour + ';" title="' +
+          esc(b.bucket) + ': ' + b.att + ' of ' + b.opp + ' (weight ' + b.coeff + ')' +
+          (b.exc > 0 ? ', ' + b.exc + ' excused and not counted' : '') + '">' +
+          esc(b.bucket) + ' ' + b.att + '/' + b.opp + '</span>';
+      }).join('') +
+    '</div>';
+  }
+
+  /** The headline, or an em dash when the member had no opportunities at all. */
+  private renderReliability(m: any): string {
+    if (!m || m.reliability === null || m.reliability === undefined) {
+      return '<span style="color:var(--fg-dim); font-weight:600;" title="Nothing ran for this member in this window">—</span>';
+    }
+    const pct = m.reliability;
+    const colour = pct >= 80 ? 'var(--accent-lime)' : pct >= 50 ? '#fbbf24' : '#f87171';
+    // A rate always carries its n. 4/4 and 58/62 are both "94%-ish" and they
+    // are not the same claim.
+    const title = 'Weighted: ' + Math.round(m.weighted_att) + ' of ' + Math.round(m.weighted_opp) +
+      ' opportunities, weighted by this guild\'s event coefficients';
+    return '<span class="gm-score-display" style="color:' + colour + ';" title="' + esc(title) + '">' + pct + '%</span>';
+  }
+
+  /** Recent four weeks against the four before them, or nothing to say. */
+  private renderTrend(m: any): string {
+    const t = (m && m.trend) || null;
+    if (!t || !t.eligible || t.delta === null) {
+      return '<span style="color:var(--fg-dim);" title="Not enough history on both sides to compare">—</span>';
+    }
+    const d = t.delta;
+    if (Math.abs(d) < 5) {
+      return '<span style="color:var(--fg-dim);" title="' + esc(t.prior + '% → ' + t.recent + '%') + '">steady</span>';
+    }
+    const up = d > 0;
+    return '<span style="color:' + (up ? '#34d399' : '#f87171') + '; font-weight:700;" title="' +
+      esc(t.prior + '% → ' + t.recent + '% over the last 4 weeks vs the 4 before') + '">' +
+      (up ? '▲ +' : '▼ ') + d + '</span>';
+  }
+
   private render3DPodiumColumn(member: any, medalClass: string, rankNum: string): string {
     if (!member) return '';
     const initial = legacy.avatarInit(member.pseudo);
@@ -1222,7 +1254,11 @@ export class StatsView {
         '<div class="gm-podium-rank-badge gm-podium-hex-rank">' + rankNum + '</div>' +
       '</div>' +
       '<div class="gm-podium-player-name">' + esc(member.pseudo) + '</div>' +
-      '<div class="gm-podium-score-val">' + fmt(member.score) + ' pts</div>' +
+      '<div class="gm-podium-score-val">' +
+        (member.reliability !== undefined
+          ? (member.reliability === null ? '—' : member.reliability + '%')
+          : fmt(member.score) + ' pts') +
+      '</div>' +
       '<div class="gm-podium-pedestal">' +
         '<div class="gm-podium-pedestal-content">' +
           '<i class="ph ' + (rankNum === '1' ? 'ph-trophy' : rankNum === '2' ? 'ph-medal' : 'ph-seal-check') + ' gm-podium-pedestal-icon"></i>' +

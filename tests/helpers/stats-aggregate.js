@@ -37,31 +37,45 @@ export function aggregateStatsMembers({ rows = [], glory = [], members = [], wee
   const valid = windowed.filter((r) => !r.is_pending);
 
   // keyed -> per_key: one entry per (member, scoring key), folded with bool_or.
+  // ONE attendance rule since phase S3: participated > 0 OR sub_present.
   const perKey = new Map();
   for (const r of valid) {
     const skey = eventScoringKey(r.event_name, r.session_id, r.week_start);
     const id = norm(r.pseudo) + '\u0000' + skey;
-    const attended = Number(r.participated) > 0 || r.sub_present === true ||
-      Number(r.score) > 0 || Number(r.score_prep) > 0 || Number(r.score_pvp) > 0;
     const present = Number(r.participated) > 0 || r.sub_present === true;
     const scored = (r.event_name === 'SvS' || r.event_name === 'GvG') &&
       ((Number(r.score) || 0) + (Number(r.score_prep) || 0) + (Number(r.score_pvp) || 0)) > 0;
     const prev = perKey.get(id) || {
       pseudo: r.pseudo, skey, bucket: skey.split('|')[0], week: r.week_start,
-      attended: false, present: false, scored: false
+      present: false, scored: false, excused: false
     };
-    prev.attended = prev.attended || attended;
     prev.present = prev.present || present;
     prev.scored = prev.scored || scored;
+    prev.excused = prev.excused || r.excused === true;
     perKey.set(id, prev);
   }
   const keys = [...perKey.values()];
 
-  const bucketOpp = {};
-  for (const bucket of new Set(keys.map((k) => k.bucket))) {
-    bucketOpp[bucket] = new Set(keys.filter((k) => k.bucket === bucket).map((k) => k.skey)).size;
+  // Every opportunity the guild ran, once each.
+  const opportunities = [];
+  const seen = new Set();
+  for (const k of keys) {
+    if (seen.has(k.skey)) continue;
+    seen.add(k.skey);
+    opportunities.push({ skey: k.skey, bucket: k.bucket, week: k.week });
   }
-  const totalEvents = Object.values(bucketOpp).reduce((a, b) => a + b, 0);
+
+  const bucketOpp = {};
+  for (const o of opportunities) bucketOpp[o.bucket] = (bucketOpp[o.bucket] || 0) + 1;
+  const totalEvents = opportunities.length;
+
+  const joinedWeek = (m) => {
+    if (!m.created_at) return '0000-01-01';
+    const d = new Date(m.created_at);
+    const day = (d.getUTCDay() + 6) % 7;            // Monday = 0
+    d.setUTCDate(d.getUTCDate() - day);
+    return d.toISOString().slice(0, 10);
+  };
 
   // Flags come from the row level, not the key level, matching the SQL.
   const flagsFor = (pseudo) => {
@@ -75,27 +89,39 @@ export function aggregateStatsMembers({ rows = [], glory = [], members = [], wee
 
   const memberRows = members.map((m) => {
     const pseudo = m.pseudo;
+    const since = joinedWeek(m);
     const mine = keys.filter((k) => norm(k.pseudo) === norm(pseudo));
+    const excusedKeys = new Set(mine.filter((k) => k.excused).map((k) => k.skey));
+
+    // The denominator, per member: opportunities from their roster week
+    // onward, minus the ones they were excused from.
     const buckets = {};
+    for (const o of opportunities) {
+      if (o.week < since) continue;
+      if (excusedKeys.has(o.skey)) continue;
+      buckets[o.bucket] = buckets[o.bucket] || { att: 0, opp: 0, exc: 0, att_scored: 0 };
+      buckets[o.bucket].opp += 1;
+    }
     for (const bucket of new Set(mine.map((k) => k.bucket))) {
       const slice = mine.filter((k) => k.bucket === bucket);
-      buckets[bucket] = {
-        att: slice.filter((k) => k.attended).length,
-        att_scored: slice.filter((k) => k.attended && k.scored).length,
-        present: slice.filter((k) => k.present).length
-      };
+      buckets[bucket] = buckets[bucket] || { att: 0, opp: 0, exc: 0, att_scored: 0 };
+      buckets[bucket].att = slice.filter((k) => k.present).length;
+      buckets[bucket].att_scored = slice.filter((k) => k.present && k.scored).length;
+      buckets[bucket].exc = slice.filter((k) => k.excused).length;
     }
+
     return {
       pseudo,
       uid: m.uid || null,
       role: m.role || null,
       overall_power: m.overall_power || 0,
-      attended: mine.filter((k) => k.attended).length,
-      present: mine.filter((k) => k.present).length,
-      weeks_active: new Set(mine.filter((k) => k.attended).map((k) => k.week)).size,
-      last_seen_week: mine.filter((k) => k.attended).map((k) => k.week).sort().pop() || null,
+      joined_week: since,
+      attended: mine.filter((k) => k.present).length,
+      weeks_active: new Set(mine.filter((k) => k.present).map((k) => k.week)).size,
+      last_seen_week: mine.filter((k) => k.present).map((k) => k.week).sort().pop() || null,
       ...flagsFor(pseudo),
-      buckets
+      buckets,
+      trend: null
     };
   }).sort((a, b) => String(a.pseudo).localeCompare(String(b.pseudo)));
 
@@ -104,6 +130,7 @@ export function aggregateStatsMembers({ rows = [], glory = [], members = [], wee
     guild: null,
     weeks: weeks && weeks.length ? weeks.slice() : [...new Set(valid.map((r) => r.week_start))].sort().reverse(),
     tenant: { total_events: totalEvents, buckets: bucketOpp },
+    trend: null,
     members: memberRows,
     glory: glory
       .filter((g) => Number(g.score) > 0)
