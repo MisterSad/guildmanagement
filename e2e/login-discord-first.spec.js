@@ -41,10 +41,34 @@ test('the page explains where a new guild comes from', async ({ page }) => {
     await expect(page.locator('.gm-login-discord-hint')).toContainText('create one');
 });
 
-test('the dead Passkey and backup-code buttons are gone', async ({ page }) => {
+test('the dead Passkey and backup-code buttons are gone, on both sign-in screens', async ({ page }) => {
     await page.goto('/');
+    // The login page.
     await expect(page.locator('#login-passkey-btn')).toHaveCount(0);
     await expect(page.locator('#login-backup-code-btn')).toHaveCount(0);
+    // And the player portal, which carried identical unwired copies.
+    await expect(page.locator('#portal-passkey-btn')).toHaveCount(0);
+    await expect(page.locator('#portal-backup-code-btn')).toHaveCount(0);
+});
+
+test('nothing in the app wires a passkey sign-in button any more', async ({ page }) => {
+    // The helpers still exist on the bridge for whoever wires them properly one
+    // day. What must not come back is a button that calls neither: that is what
+    // made these look like working features for months.
+    //
+    // Scoped to `#login-view`, which holds both the admin sign-in card and the
+    // player portal one. A whole-document scan also matched `add-passkey-btn`
+    // and `regen-backup-codes-btn` in the "My Passkeys" card on Accounts &
+    // Access: those ARE wired, and they are registration, not sign-in.
+    await page.goto('/');
+    const orphans = await page.evaluate(() => {
+        const view = document.getElementById('login-view');
+        if (!view) return ['#login-view is missing'];
+        return Array.from(view.querySelectorAll('button'))
+            .filter((b) => /passkey|backup code/i.test(b.textContent || ''))
+            .map((b) => b.id || b.textContent.trim().slice(0, 40));
+    });
+    expect(orphans, `passkey/backup buttons still on a sign-in screen: ${orphans.join(', ')}`).toEqual([]);
 });
 
 test('the Request a Guild tab and its form are gone', async ({ page }) => {

@@ -236,13 +236,13 @@
                                 <i class="ph ph-sign-in"></i>
                                 <span>Access My Guild Events</span>
                             </button>
-                            <button type="button" id="portal-passkey-btn" class="gm-btn gm-btn-ghost gm-login-submit" style="margin-top:.5rem;">
-                                <i class="ph ph-fingerprint"></i>
-                                <span>Sign in with a Passkey</span>
-                            </button>
-                            <button type="button" id="portal-backup-code-btn" style="margin-top:.5rem; background:none; border:none; color:var(--fg-dim); font-size:.8rem; text-decoration:underline; cursor:pointer; width:100%; text-align:center;">
-                                Use a backup code instead
-                            </button>
+                            <!-- The "Sign in with a Passkey" button and the "Use a backup code
+                                 instead" link were removed on 2026-09-27. Neither was ever
+                                 wired: `wirePasskeyLoginButton()` and `openBackupCodeDialog()`
+                                 are exported onto the window.GM bridge and never called, so both
+                                 looked like features and did nothing when clicked. The login
+                                 page carried identical dead copies. -->
+
                             <div class="gm-portal-switch-wrap">
                                 <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" style="font-size: 0.85rem; width: 100%;" id="portal-go-register-btn">
                                     <i class="ph ph-user-plus"></i>
