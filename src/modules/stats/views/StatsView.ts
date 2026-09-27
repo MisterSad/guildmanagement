@@ -661,11 +661,11 @@ export class StatsView {
    */
   private renderEngagementCard(segments: Record<string, number>, reliability: ReliabilityRow[], weeks: number): string {
     const order: Array<[string, string, string]> = [
-      ['core', 'Core (60%+)', '#34d399'],
-      ['regular', 'Regular (30-60%)', '#a78bfa'],
-      ['occasional', 'Occasional (under 30%)', '#fbbf24'],
-      ['dormant', 'Dormant (nothing)', '#f87171'],
-      ['unmeasured', 'Not yet measured', 'var(--fg-dim)']
+      ['core', 'Core', '#34d399'],
+      ['regular', 'Regular', '#a78bfa'],
+      ['occasional', 'Occasional', '#fbbf24'],
+      ['dormant', 'Dormant', '#f87171'],
+      ['unmeasured', 'Unmeasured', 'var(--fg-dim)']
     ];
     const total = reliability.length || 1;
     const bars = order.filter(([key]) => (segments[key] || 0) > 0).map(([key, label, colour]) => {
@@ -673,13 +673,17 @@ export class StatsView {
       const pct = Math.round((n / total) * 100);
       return '<div class="gm-kpi-row">' +
         '<span class="gm-kpi-label">' + esc(label) + '</span>' +
-        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + pct + '%; background:' + colour + ';"></span></span>' +
+        '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pct + '%; background:' + colour + ';"></div></div>' +
         '<span class="gm-kpi-value">' + n + '</span>' +
       '</div>';
     }).join('');
 
+    // The thresholds live here rather than in the labels: .gm-kpi-label is a
+    // 96px column that ellipsises, so "Occasional (under 30%)" renders as
+    // "Occasional (u...".
     const subtitle = weeks > 0
-      ? 'Weighted reliability over the last ' + weeks + ' week' + (weeks > 1 ? 's' : '')
+      ? 'Weighted reliability over the last ' + weeks + ' week' + (weeks > 1 ? 's' : '') +
+        ' — core 60%+, regular 30-60%, occasional under 30%, dormant nothing at all'
       : 'No weeks with data yet';
 
     return '<div class="gm-kpi-card" style="margin-top:.85rem;">' +
@@ -764,7 +768,7 @@ export class StatsView {
       const pct = Math.round((p.median / peak) * 100);
       return '<div class="gm-kpi-row">' +
         '<span class="gm-kpi-label">' + esc(legacy.formatWeek(p.week_start).split(' ')[0]) + '</span>' +
-        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + pct + '%; background:#60a5fa;"></span></span>' +
+        '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pct + '%; background:#60a5fa;"></div></div>' +
         '<span class="gm-kpi-value" title="' + p.players + ' players scanned that week">' + formatPower(p.median) + '</span>' +
       '</div>';
     }).join('');
@@ -798,7 +802,7 @@ export class StatsView {
       const colour = share >= 70 ? '#34d399' : share >= 40 ? '#a78bfa' : '#f87171';
       return '<div class="gm-kpi-row">' +
         '<span class="gm-kpi-label">' + esc(legacy.formatWeek(w.week_start).split(' ')[0]) + '</span>' +
-        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + pct + '%; background:' + colour + ';"></span></span>' +
+        '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pct + '%; background:' + colour + ';"></div></div>' +
         '<span class="gm-kpi-value" title="' + w.opportunities + ' events ran that week">' + w.present_members + '</span>' +
       '</div>';
     }).join('');
@@ -827,7 +831,7 @@ export class StatsView {
     const tierBars = ['S', 'A', 'B', 'C', 'D'].map((t) =>
       '<div class="gm-kpi-row">' +
         '<span class="gm-kpi-label">Tier ' + t + '</span>' +
-        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + Math.round((tiers[t] / peak) * 100) + '%; background:' + tierColours[t] + ';"></span></span>' +
+        '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + Math.round((tiers[t] / peak) * 100) + '%; background:' + tierColours[t] + ';"></div></div>' +
         '<span class="gm-kpi-value">' + tiers[t] + '</span>' +
       '</div>').join('');
 
@@ -837,7 +841,7 @@ export class StatsView {
     const roleBars = Object.keys(roles).sort().reverse().map((r) =>
       '<div class="gm-kpi-row">' +
         '<span class="gm-kpi-label">' + esc(r) + '</span>' +
-        '<span class="gm-kpi-bar-track"><span class="gm-kpi-bar" style="width:' + Math.round((roles[r] / rolePeak) * 100) + '%; background:var(--accent);"></span></span>' +
+        '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + Math.round((roles[r] / rolePeak) * 100) + '%; background:var(--accent);"></div></div>' +
         '<span class="gm-kpi-value">' + roles[r] + '</span>' +
       '</div>').join('');
 
@@ -881,6 +885,7 @@ export class StatsView {
           kpiMini('Last week', q.last_week ? String(q.last_week) : '—') +
           kpiMini('Awaiting approval', q.pending_rows) +
           kpiMini('Pending transfers', pendingTransfers.length) +
+          ((q.scheduled_ahead || 0) > 0 ? kpiMini('Scheduled ahead', q.scheduled_ahead as number) : '') +
         '</div>' +
         (sparse.length
           ? '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">Scanned for fewer than 60% of members, so they are left off the cards above: ' +

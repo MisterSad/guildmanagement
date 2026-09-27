@@ -3772,6 +3772,11 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     white-space: nowrap;
 }
 .gm-kpi-bar-track {
+    /* `display:block` is not decoration: height does not apply to a
+       non-replaced inline element, so a <span> carrying these classes renders
+       an invisible bar. The class silently required a <div> until a bar was
+       built from spans and every chart on the Guild Cockpit came out empty. */
+    display: block;
     flex: 1;
     height: 12px;
     background: var(--bg-2);
@@ -3779,6 +3784,7 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     overflow: hidden;
 }
 .gm-kpi-bar {
+    display: block;
     height: 100%;
     border-radius: 4px;
     min-width: 2px;

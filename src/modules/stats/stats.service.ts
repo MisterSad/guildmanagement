@@ -6,6 +6,7 @@
  */
 
 import { eventScoringKey } from '../../core/config/events';
+import { weightedRate, type BucketCounts } from '../../core/scoring/reliability';
 
 
 // ParticipationRecord, PeriodFilter, filterRecordsByPeriod(),
@@ -53,17 +54,12 @@ export class StatsService {
       return (key && useCoeffs[key] != null) ? useCoeffs[key] : 1;
     };
 
-    const weightedRate = (buckets: Record<string, { att?: number; opp?: number }> | undefined):
-      { rate: number | null; att: number; opp: number } => {
-      let att = 0;
-      let opp = 0;
-      Object.keys(buckets || {}).forEach((bucket) => {
-        const b = (buckets as Record<string, { att?: number; opp?: number }>)[bucket] || {};
-        const c = coeffOf(bucket);
-        att += c * (Number(b.att) || 0);
-        opp += c * (Number(b.opp) || 0);
-      });
-      return { rate: opp > 0 ? (att / opp) * 100 : null, att, opp };
+    // The weighting itself lives in core/scoring/reliability.ts, because the
+    // player Portal publishes the same number to a different audience and the
+    // two used to disagree -- 48.1% against 31.6% on the same guild.
+    const rateOf = (buckets: Record<string, { att?: number; opp?: number }> | undefined) => {
+      const w = weightedRate(buckets as Record<string, BucketCounts> | undefined, useCoeffs);
+      return { rate: w.rate, att: w.attended, opp: w.opportunities };
     };
 
     const rows: ReliabilityRow[] = (payload.members || []).map((m) => {
@@ -82,11 +78,11 @@ export class StatsService {
         };
       }).sort((a, b) => (b.coeff - a.coeff) || a.bucket.localeCompare(b.bucket));
 
-      const overall = weightedRate(bucketMap as Record<string, { att?: number; opp?: number }>);
+      const overall = rateOf(bucketMap as Record<string, { att?: number; opp?: number }>);
 
       const tr = m.trend || null;
-      const recent = tr ? weightedRate(tr.recent) : { rate: null, att: 0, opp: 0 };
-      const prior = tr ? weightedRate(tr.prior) : { rate: null, att: 0, opp: 0 };
+      const recent = tr ? rateOf(tr.recent) : { rate: null, att: 0, opp: 0 };
+      const prior = tr ? rateOf(tr.prior) : { rate: null, att: 0, opp: 0 };
       // A trend needs something on both sides. Without this guard a member who
       // simply was not there four weeks ago reads as a collapse.
       const eligible = !!tr && recent.rate !== null && prior.rate !== null
@@ -340,7 +336,13 @@ export interface StatsHealthPayload {
   war?: HealthWar[];
   power?: { series: HealthPowerPoint[]; weeks: number };
   coverage?: Record<string, number>;
-  quality?: { pending_rows: number; weeks_with_data: number; last_week: string | null };
+  quality?: {
+    pending_rows: number;
+    weeks_with_data: number;
+    last_week: string | null;
+    /** Rows already entered for weeks that have not started. */
+    scheduled_ahead?: number;
+  };
 }
 
 /* ── Engagement segmentation ──────────────────────────────────────────────── */

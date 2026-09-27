@@ -1,3 +1,16 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.29.1**
+
+Quick fix on yesterday's Stats release. **Every bar chart on the Guild Cockpit was blank** — the labels and numbers were right, the coloured bars beside them simply were not drawing. My mistake, and my tests could not see it: nothing in an automated browser test measures whether something is actually visible. Thank you to whoever looked at the screen. 🙏
+
+Also fixed while I was in there:
+
+- The attendance chart was showing a couple of **phantom weeks with 0 members**, caused by a handful of records filed on the wrong day of the week. They are now folded into the right week.
+- The "How complete is this data?" card said your last recorded week was **next week**, because events entered in advance were being counted as history. It now counts only weeks that have actually happened, and tells you separately how many events you have scheduled ahead.
+
+Reload the page. 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.29.0**
 
 Last piece of the Stats rework. The **Event Deep-Dive** tab is rebuilt, and with it the whole page now runs on the same rules. 🏁
