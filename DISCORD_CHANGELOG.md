@@ -1,37 +1,88 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.21.0**
+📢 **FGF Guild Management Tool Update — CHANG_V3.22.0**
 
-Hey everyone! This one is a big housekeeping release. Less shiny than a new feature, but it makes the tool faster, safer, and honest about what it does with your data. 🧹
-
----
-
-### 🆓 1. Free, and now it says so everywhere
-The app has been free for a while, but parts of the site still talked about subscriptions and plans. All of that is gone. There is **no checkout, no subscription, no donation button, and no payment information of any kind** anywhere in the tool. Nothing is gated behind paying — and nothing ever will be.
-
-### 🔐 2. A real Privacy Policy
-There is now a **Privacy Policy** (linked in the footer, next to the Terms) that actually lists what the tool stores about you, why, for how long, and who else sees it. In short: your in-game pseudonym, your UID, your event stats, and your Discord ID if you linked one. No real names, no addresses, no phone numbers, no payment data, and **no cookies or tracking of any kind**.
-
-If you want your data deleted, write to **fgfwiki@gmail.com** with your pseudonym and guild and I will handle it. Your stats stay in the guild's totals, but with nothing left that points to you.
-
-Screenshots you upload for roster scanning are still **never stored** — they are read and thrown away.
-
-### 🔔 3. Discord is the only notification channel now
-Browser/phone push notifications are removed. They had already stopped working some time ago, and Discord reaches everybody anyway. Nothing changes for your event reminders — they come from the bot as usual. If you had ever "installed" the site as an app, it will quietly clean itself up next time you open it.
-
-### ⚡ 4. Faster loading
-The icon font now ships only the icons the app actually uses — **87% smaller**. Fonts were trimmed too. The app should feel noticeably quicker to open, especially on mobile data.
-
-### 🎨 5. Icons that were invisible now show up
-42 icons across toasts, confirmation dialogs, UID warnings and Arms Race chips were drawing **nothing at all** — they were asking for an icon style the app never loaded. All fixed.
-
-### 🛠️ 6. "Unassigned Server" on the admin screen
-Reported by HawkEye: every guild admin was showing under "Unassigned Server". The data was never wrong — the screen just was not being told which server each admin belonged to. Fixed at the source, and the admin list now also fills the guild dropdown correctly.
-
-### 🛡️ 7. Security and reliability hardening
-A full audit was run over the whole platform and the findings are fixed: tighter browser security policy, stronger session handling, better rate limiting, and stricter isolation between guilds. **No guild's data was ever exposed to another guild** — the isolation held throughout. These changes make sure it keeps holding.
+Hey everyone! Big one. **You can now sign in with Discord**, and that is going to become the normal way in. There is also a pile of cleanup underneath, and a promise about the code at the end that I want you to read. 🛸
 
 ---
 
-That's it! Nothing you need to do — just reload the page if it is still open from before. As always, ping me if anything looks off. 🫡
+## 🔑 Sign in with Discord
+
+The login page now leads with **Sign in with Discord**. Your identifier and password still work, sitting underneath. Nothing is being taken away from you today.
+
+**Why bother?** No password to remember, no password to lose, and no password for me to store. It is also the only way I can reach you reliably if something goes wrong with your account.
+
+### 👑 Guild admins: linking your existing account
+
+You already have an account, so you are connecting it, not making a new one.
+
+1. Click **Sign in with Discord** and authorise the app. It only ever asks Discord for your username and ID. It never sees your email and never sees which servers you are in.
+2. You come back to a small window. Pick **"I already have an account"**.
+3. Type your usual identifier and password, once.
+4. Done. From then on, Discord is how you sign in.
+
+⚠️ **Read this before you do it.** Once you link, **your password is deleted**. Discord becomes the only way into that account. That is the point of the exercise, but it is not reversible by you. If you lose access to your Discord account, ask me or another admin for a **relink code** and you are back in.
+
+### 🎮 Players: getting into the Player Portal
+
+1. Ask your guild admin for your **guild's join code**. It is permanent, they can paste it in your guild chat.
+2. Click **Sign in with Discord** on the login page.
+3. Pick **"Join a guild"**, then enter the join code and **your in-game UID**.
+4. Your admin approves you, and you are in.
+
+Your UID has to already be on the guild roster. If it is not, your admin adds you first.
+
+### 🧭 Starting a brand new guild
+
+The old "Request a Guild" tab is gone. It filed a form, waited for me to approve it by hand, and then I had to send you a password over Discord. Now:
+
+1. **Sign in with Discord**, pick **"Create a guild"**.
+2. Enter your **guild tag** (2 to 12 letters, numbers or underscores) and your **server number**.
+3. The guild is created immediately and you are its first admin.
+
+Your Discord account needs to be at least 30 days old. That is the only gate.
+
+### 🔀 If you are an admin *and* a player
+
+Some of you run a guild and also play in it, with two separate accounts. Discord now handles both: link each one, and when you sign in you get asked **which account you want**, with a line telling you where each one lands. Pick and go.
+
+To link your second account, ask for a **relink code** and use the **"I have a code"** option.
+
+---
+
+## ✨ What else is new
+
+- **Faster loading.** The icon set now ships only the icons actually used, 87% smaller. Noticeable on mobile data.
+- **42 invisible icons fixed.** Icons in toasts, confirmation dialogs, UID warnings and Arms Race chips were drawing nothing at all. They were asking for an icon style the app never loaded.
+- **"Unassigned Server" fixed.** Every guild admin was showing under "Unassigned Server" on the admin screen. The data was never wrong, the screen just was not being told which server each admin belonged to.
+- **The admin console no longer opens empty.** It was coming up blank until you switched guild and switched back.
+- **Two buttons that did nothing are gone.** "Sign in with a Passkey" and "Use a backup code instead" were never actually connected to anything. They looked like features and did nothing when clicked. Rather than leave them pretending, I removed them.
+
+---
+
+## 🔒 Privacy and terms, rewritten
+
+There is a proper **Privacy Policy** now, linked at the bottom of every page. It lists exactly what I store about you (your in-game name, your UID, your event stats, your Discord ID if you linked it), why, and for how long. No cookies, no analytics, no tracking, no advertising. Screenshots uploaded for roster scanning are read and thrown away, never stored.
+
+**Want your data deleted?** Email **fgfwiki@gmail.com** with your pseudonym and guild. Your guild's historical totals stay, but with nothing left in them that points to you.
+
+The **Terms** were rewritten too, in plain English instead of a wall of capitals. Two things in the old version were simply wrong and are fixed: a clause forcing you into a Paris court (not enforceable against you anyway) and a liability cap calculated on money you never paid.
+
+---
+
+## 🤝 And a promise about the code
+
+I am one person. I maintain this because I play the game. One day I will stop, and I do not want twenty six guilds left with a tool nobody is allowed to run.
+
+So it is now written into the Terms, and into the licence file, that the source code becomes **fully open source (Apache 2.0)** on whichever comes first:
+
+- **2 August 2029**, automatically, whatever happens;
+- the day I announce I have stopped maintaining it;
+- or **twelve months of silence**: no update shipped, no reply from me.
+
+That last one is the one that matters. A promise that needs me to be around is worth nothing at the exact moment you would need it.
+
+---
+
+That's it. Reload the page if you have it open from before. Link your Discord when you get a minute, and ping me if anything looks off. 🫡
 
 ---
 
