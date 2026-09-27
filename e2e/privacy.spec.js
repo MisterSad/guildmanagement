@@ -43,15 +43,16 @@ test('privacy.html is served, styled from legal.css, and free of console errors'
 test('privacy.html states the things that make it a GDPR notice', async ({ page }) => {
     await page.goto('/privacy.html');
     const body = page.locator('body');
+    // Rewritten 2026-09-27 in plain English. Same obligations, different words.
     await expect(body).toContainText('André Vieira');
-    await expect(body).toContainText('SECTION 2. WHAT DATA IS PROCESSED');
-    await expect(body).toContainText('SECTION 3. PURPOSES AND LEGAL BASES');
-    await expect(body).toContainText('SECTION 4. HOW LONG DATA IS KEPT');
-    await expect(body).toContainText('SECTION 5. PROCESSORS AND RECIPIENTS');
-    await expect(body).toContainText('SECTION 6. YOUR RIGHTS');
+    await expect(body).toContainText('WHAT I STORE');
+    await expect(body).toContainText('WHY I STORE IT, AND WHAT ALLOWS ME TO');
+    await expect(body).toContainText('HOW LONG I KEEP THINGS');
+    await expect(body).toContainText('WHO ELSE SEES IT');
+    await expect(body).toContainText('YOUR RIGHTS, AND HOW TO USE THEM');
     await expect(body).toContainText('CNIL');
     // The ban-record carve-out is disclosed, not silent.
-    await expect(body).toContainText('kept intact');
+    await expect(body).toContainText('kept as it is');
 });
 
 test('the two legal pages link to each other, and back to the platform', async ({ page }) => {

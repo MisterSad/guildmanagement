@@ -174,15 +174,18 @@ describe('the terms page no longer sells anything', () => {
   });
 
   it('states plainly that there is no payment surface', () => {
-    expect(terms).toContain('SECTION 4. FREE OF CHARGE');
-    expect(terms).toContain('no payment, subscription, donation or contribution mechanism of any kind');
+    // The section was renumbered and retitled when the Terms were rewritten in
+    // plain English. What matters is the statement, not the heading.
+    expect(terms).toMatch(/IT IS FREE, AND IT STAYS FREE/);
+    expect(terms).toMatch(/No checkout, no subscription, no donation button, no stored card/);
   });
 
   it('no longer caps liability at an amount that is always zero', () => {
     // §7.3 used to cap liability at "the total amount actually paid by the User
     // ... for the specific access pass", which was never anything.
-    const clause = terms.slice(terms.indexOf('7.3. Financial Liability Cap'));
-    expect(clause.slice(0, 1200)).not.toContain('total amount actually paid');
-    expect(clause.slice(0, 1200)).toContain('free of charge and without consideration');
+    // Section 9 in the rewritten Terms ("WHEN SOMETHING GOES WRONG").
+    const clause = terms.slice(terms.indexOf('WHEN SOMETHING GOES WRONG'));
+    expect(clause.slice(0, 2000)).not.toContain('total amount actually paid');
+    expect(clause.slice(0, 2000)).toMatch(/no cap calculated on sums paid can apply/);
   });
 });

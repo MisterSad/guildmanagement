@@ -108,9 +108,12 @@ describe('the terms page no longer states what the database contradicts', () => 
   });
 
   it('acknowledges that personal data is processed, and points at the policy', () => {
-    expect(terms).toMatch(/does<\/strong> process personal data/);
-    expect(terms).toMatch(/Article 4\(1\) GDPR/);
+    // The acknowledgement lives in the Privacy Policy now, which is the page
+    // that has to carry it. The Terms link to it and incorporate it.
     expect(terms).toContain('privacy.html');
+    expect(terms).toMatch(/Privacy Policy/);
+    expect(privacyText).toMatch(/this is personal data/i);
+    expect(privacyText).toMatch(/Article 4\(1\)/);
   });
 });
 
@@ -200,8 +203,10 @@ describe('the retention periods on the page are the ones the database enforces',
   it('enforces each period the page publishes', () => {
     // Page says 12 months for the audit trail and the pseudonym history, 90 days
     // for a closed request's Discord handle, 24 hours for IP addresses.
-    expect(privacyText).toMatch(/Administrative audit log — 12 months/);
-    expect(privacyText).toMatch(/Pseudonym-change history — 12 months/);
+    // Matched on the period, not on the punctuation: the pages were rewritten
+    // in plain English and no longer use dashes as separators.
+    expect(privacyText).toMatch(/audit log[^.]{0,20}12 months/i);
+    expect(privacyText).toMatch(/[Nn]ame change history[^.]{0,20}12 months/);
     expect(privacyText).toMatch(/24 hours/);
 
     expect(migrations).toMatch(/c_audit_log_months\s+constant integer :=\s*12/);
@@ -238,7 +243,7 @@ describe('erasure matches what the policy promises', () => {
     // seven (guild, pseudo) children away, so a delete-then-anonymise ordering
     // silently anonymised nothing. The rename is the whole operation.
     expect(migrations).toMatch(/SET pseudo = v_token, uid = NULL, timezone = NULL, timezone_offset = NULL/);
-    expect(privacyText).toMatch(/unattributable placeholder/);
+    expect(privacyText).toMatch(/anonymous placeholder/i);
   });
 
   it('unblocks account deletion, which the wiki foreign keys made impossible', () => {
@@ -247,7 +252,7 @@ describe('erasure matches what the policy promises', () => {
   });
 
   it('discloses the ban-record exception instead of applying it silently', () => {
-    expect(privacyText).toMatch(/kept intact/);
+    expect(privacyText).toMatch(/kept as it is/i);
     expect(privacyText).toMatch(/Article 17\(3\)/);
     expect(migrations).toMatch(/banned_players/);
   });
@@ -266,11 +271,11 @@ describe('the policy states the things a GDPR notice must state', () => {
     [/Article 6\(1\)\(b\)/, 'contract as a legal basis'],
     [/Article 6\(1\)\(f\)/, 'legitimate interests as a legal basis'],
     [/Standard Contractual Clauses/, 'the transfer mechanism'],
-    [/one month/, 'the response deadline'],
+    [/[Oo]ne month from when your message arrives/, 'the response deadline'],
     [/CNIL/, 'the supervisory authority'],
-    [/Article 33 GDPR/, 'breach notification'],
-    [/Article 22 GDPR/, 'the position on automated decision-making'],
-    [/not directed at children/, 'the position on children']
+    [/Article 33 of the GDPR/, 'breach notification'],
+    [/Article 22 of the GDPR/, 'the position on automated decision-making'],
+    [/not aimed at children/, 'the position on children']
   ];
   for (const [re, what] of required) {
     it(`states ${what}`, () => {

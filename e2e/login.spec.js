@@ -60,12 +60,16 @@ test('clicking Terms & Conditions in footer opens dedicated full page and can re
 
     const title = page.locator('.terms-doc-title');
     await expect(title).toBeVisible();
-    await expect(title).toContainText('TERMS OF SERVICE AND GENERAL CONDITIONS OF USE');
+    // The Terms were rewritten on 2026-09-27 in plain English for a free
+    // community app. Asserted on what the page must SAY, not on the old
+    // block-capital headings.
+    await expect(title).toContainText('TERMS OF USE');
 
     await expect(page.locator('body')).toContainText('André Vieira');
-    await expect(page.locator('body')).toContainText('SECTION 1. LEGAL NOTICE & STATUTORY DISCLOSURES');
-    await expect(page.locator('body')).toContainText('SECTION 4. FREE OF CHARGE');
-    await expect(page.locator('body')).toContainText('SECTION 9. GOVERNING LAW & JURISDICTION');
+    await expect(page.locator('body')).toContainText('WHO YOU ARE DEALING WITH');
+    await expect(page.locator('body')).toContainText('IT IS FREE, AND IT STAYS FREE');
+    await expect(page.locator('body')).toContainText('MY CODE, AND MY PROMISE ABOUT IT');
+    await expect(page.locator('body')).toContainText('WHICH LAW, AND WHICH COURT');
 
     // Return to platform
     const returnBtn = page.locator('.terms-back-btn');

@@ -14,24 +14,65 @@ describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
 
     it('terms.html exists and contains full legal document title and metadata', () => {
         expect(fs.existsSync(termsHtmlPath)).toBe(true);
-        expect(termsHtmlContent).toContain('TERMS OF SERVICE AND GENERAL CONDITIONS OF USE (TOS/GCU)');
-        expect(termsHtmlContent).toContain('September 26, 2026');
+        // The Terms were rewritten on 2026-09-27 for a free community app, in
+        // plain English rather than the previous block-capital style. What is
+        // pinned here is what the document must SAY to be lawful and honest,
+        // not the headings it used to carry.
+        expect(termsHtmlContent).toContain('TERMS OF USE');
+        expect(termsHtmlContent).toContain('September 27, 2026');
         expect(termsHtmlContent).toContain('FGF Guild Management Platform');
         expect(termsHtmlContent).toContain('fgfwiki@gmail.com');
         expect(termsHtmlContent).toContain('André Vieira');
     });
 
-    it('terms.html contains all 9 statutory legal sections and preamble', () => {
-        expect(termsHtmlContent).toContain('PREAMBLE &amp; BINDING LEGAL AGREEMENT');
-        expect(termsHtmlContent).toContain('SECTION 1. LEGAL NOTICE &amp; STATUTORY DISCLOSURES');
-        expect(termsHtmlContent).toContain('SECTION 2. NATURE OF THE SERVICE &amp; TECHNICAL ARCHITECTURE');
-        expect(termsHtmlContent).toContain('SECTION 3. INTELLECTUAL PROPERTY &amp; DISCLAIMER OF NON-AFFILIATION');
-        expect(termsHtmlContent).toContain('SECTION 4. FREE OF CHARGE — NO PAYMENT, NO SUBSCRIPTION, NO DONATION');
-        expect(termsHtmlContent).toContain('SECTION 5. GAME INTEGRITY, TECHNICAL COMPLIANCE &amp; ACCEPTABLE USE');
-        expect(termsHtmlContent).toContain('SECTION 6. PRIVACY BY DESIGN &amp; DATA GOVERNANCE (GDPR &amp; CCPA)');
-        expect(termsHtmlContent).toContain('SECTION 7. LIMITATION OF LIABILITY &amp; WARRANTY DISCLAIMER');
-        expect(termsHtmlContent).toContain('SECTION 8. SEVERABILITY &amp; MODIFICATIONS');
-        expect(termsHtmlContent).toContain('SECTION 9. GOVERNING LAW &amp; JURISDICTION');
+    it('carries the statutory identification the LCEN requires', () => {
+        const termsHtmlContent = fs.readFileSync(termsHtmlPath, 'utf8');
+        expect(termsHtmlContent).toMatch(/2004-575/);           // the LCEN itself
+        expect(termsHtmlContent).toMatch(/micro-entrepreneur/i); // publisher status
+        expect(termsHtmlContent).toMatch(/293 B/);               // VAT position
+        expect(termsHtmlContent).toMatch(/Vercel Inc/);          // host
+        expect(termsHtmlContent).toMatch(/Supabase Inc/);        // host
+    });
+
+    it('covers each subject a user agreement has to cover', () => {
+        const termsHtmlContent = fs.readFileSync(termsHtmlPath, 'utf8');
+        expect(termsHtmlContent).toContain('WHO YOU ARE DEALING WITH');
+        expect(termsHtmlContent).toContain('WHAT THIS IS, AND WHAT IT IS NOT');
+        expect(termsHtmlContent).toContain('IT IS FREE, AND IT STAYS FREE');
+        expect(termsHtmlContent).toContain('I AM NOT THE GAME PUBLISHER');
+        expect(termsHtmlContent).toContain('YOUR ACCOUNT, AND HOW TO BEHAVE');
+        expect(termsHtmlContent).toContain('WHOSE DATA IS WHOSE');
+        expect(termsHtmlContent).toContain('MY CODE, AND MY PROMISE ABOUT IT');
+        expect(termsHtmlContent).toContain('WHEN SOMETHING GOES WRONG');
+        expect(termsHtmlContent).toContain('WHICH LAW, AND WHICH COURT');
+    });
+
+    it('does not impose a court on a consumer, which would be unenforceable', () => {
+        // The previous version assigned "exclusive territorial competence" to
+        // the Court of Appeal of Paris. Against a consumer that is an unfair
+        // term under French law and would not have bound anyone.
+        const termsHtmlContent = fs.readFileSync(termsHtmlPath, 'utf8');
+        expect(termsHtmlContent).not.toMatch(/exclusive territorial competence/i);
+        expect(termsHtmlContent).toMatch(/right to bring proceedings where you live/i);
+    });
+
+    it('makes the open-source undertaking, with both triggers', () => {
+        // The owner's commitment: the code opens if he announces he has stopped,
+        // or if twelve months pass with no deployment and no reply. The second
+        // trigger is the one that does not depend on him being around.
+        const termsHtmlContent = fs.readFileSync(termsHtmlPath, 'utf8');
+        expect(termsHtmlContent).toMatch(/Apache License, Version 2\.0/);
+        expect(termsHtmlContent).toMatch(/Business Source License 1\.1/);
+        expect(termsHtmlContent).toMatch(/2 August 2029/);
+        expect(termsHtmlContent).toMatch(/publicly announce/i);
+        expect(termsHtmlContent).toMatch(/twelve consecutive months/i);
+        expect(termsHtmlContent).toMatch(/irrevocab/i);
+
+        // And it must be mirrored in LICENSE, or the two can be read apart.
+        const license = fs.readFileSync(path.resolve(__dirname, '../LICENSE'), 'utf8');
+        expect(license).toMatch(/Accelerated Change Date/);
+        expect(license).toMatch(/twelve \(12\) consecutive months/);
+        expect(license).toMatch(/does not reserve the right to withdraw it/);
     });
 
     it('terms.html includes navigation controls back to the platform', () => {
