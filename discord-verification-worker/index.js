@@ -1319,21 +1319,32 @@ async function handleSetupButton(interaction) {
 async function sendVerificationDm(author, result, fgfGuild) {
   try {
     const isGuildMember = result.role === "guild_member";
+    const isPending = result.role === "pending";
+    // Three outcomes, three messages. A recruit the roster does not know yet is
+    // NOT a visitor, and must not be told they are one (ADR-020).
+    const color = isGuildMember ? 0x22c55e : isPending ? 0x3b82f6 : 0xf59e0b;
+    const title = isGuildMember
+      ? `🎉 Welcome to ${fgfGuild}! Profile Verified`
+      : isPending
+        ? `⏳ Verification held — waiting on an officer`
+        : `👋 Welcome! Assigned Visitor Role`;
+    const description = isGuildMember
+      ? `Your profile has been verified and registered into the **${fgfGuild}** roster!`
+      : isPending
+        ? `I read your profile, but you are not in the **${fgfGuild}** member list yet, so I can't give you the guild role. Your officers have been notified — once they add you in the Guild Management tool, post your screenshot again.`
+        : `You have been assigned the **Visitor** role. Check in with guild officers if this is unexpected.`;
+    const roleLabel = isGuildMember ? `Member (${fgfGuild})` : isPending ? "Pending" : "Visitor";
     const embed = {
-      color: isGuildMember ? 0x22c55e : 0xf59e0b,
-      title: isGuildMember
-        ? `🎉 Welcome to ${fgfGuild}! Profile Verified`
-        : `👋 Welcome! Assigned Visitor Role`,
-      description: isGuildMember
-        ? `Your profile has been verified and registered into the **${fgfGuild}** roster!`
-        : `You have been assigned the **Visitor** role. Check in with guild officers if this is unexpected.`,
+      color,
+      title,
+      description,
       fields: [
         { name: "In-Game Pseudo", value: result.pseudo || "—", inline: true },
         { name: "UID", value: result.uid || "—", inline: true },
         { name: "Assigned Nickname", value: result.nickname || "—", inline: true },
         { name: "Power", value: formatNumber(result.power), inline: true },
         { name: "Total Glory", value: formatNumber(result.glory), inline: true },
-        { name: "Role", value: isGuildMember ? `Member (${fgfGuild})` : "Visitor", inline: true },
+        { name: "Role", value: roleLabel, inline: true },
       ],
       footer: { text: "FGF Guild Management • Use /profile or /top anytime" },
       timestamp: new Date().toISOString(),
@@ -1352,13 +1363,18 @@ async function postVerificationAuditLog(guild, auditChannelId, author, result, f
     const channel = await guild.channels.fetch(auditChannelId).catch(() => null);
     if (!channel || !channel.isTextBased()) return;
 
+    const status = result.role === "guild_member"
+      ? (result.is_new_player ? "🆕 New Player" : result.uid_backfilled ? "🔗 UID Claimed" : "🔄 Roster Updated")
+      : result.role === "pending"
+        ? `⏳ Pending (${result.reason || "not on roster"})`
+        : "👋 Visitor";
     const embed = {
-      color: result.role === "guild_member" ? 0x6366f1 : 0xf59e0b,
+      color: result.role === "guild_member" ? 0x6366f1 : result.role === "pending" ? 0x3b82f6 : 0xf59e0b,
       title: `📋 Verification Audit Log — ${result.pseudo}`,
       fields: [
         { name: "Discord User", value: `<@${author.id}> (${author.username})`, inline: true },
         { name: "Guild", value: fgfGuild, inline: true },
-        { name: "Status", value: result.role === "guild_member" ? (result.is_new_player ? "🆕 New Player" : "🔄 Roster Updated") : "👋 Visitor", inline: true },
+        { name: "Status", value: status, inline: true },
         { name: "UID", value: result.uid || "—", inline: true },
         { name: "Power", value: formatNumber(result.power), inline: true },
         { name: "Nickname", value: result.nickname || "—", inline: true },
@@ -1495,8 +1511,13 @@ client.on("messageCreate", async (message) => {
 
     if (res.ok && result?.ok === true) {
       await settleFeedback(message, true);
-      // Best-effort: add the verified-member role now that the profile is confirmed.
-      await addVerifiedRole(message, activeGuild);
+      // ONLY for a confirmed roster member. `discord_member_role_id` is
+      // auto-wired by server-provisioner.js to a tag-bearing "[TAG] Member"
+      // role, so granting it on the visitor outcome would hand out exactly
+      // what the roster gate exists to withhold (ADR-020).
+      if (result.role === "guild_member") {
+        await addVerifiedRole(message, activeGuild);
+      }
 
       // 1. Send Welcome DM
       const dmSent = await sendVerificationDm(message.author, result, activeGuild);
@@ -1522,6 +1543,36 @@ client.on("messageCreate", async (message) => {
       }, 5000);
 
       // 4. Auto-delete bot's channel confirmation message after 15s to keep #verification clean
+      if (result?.bot_message_id) {
+        setTimeout(async () => {
+          try {
+            const botMsg = await message.channel.messages.fetch(result.bot_message_id).catch(() => null);
+            if (botMsg) await botMsg.delete().catch(() => {});
+          } catch (_) {}
+        }, 15000);
+      }
+    } else if (result?.role === "pending") {
+      // Not an error and not a visitor: a real recruit the roster does not
+      // know yet. The Edge Function already replied in-channel, posted the
+      // durable officer message and assigned the [PENDING] role; the worker
+      // only adds the Gateway-only parts (reaction, DM, audit embed) and
+      // never the verified-member role.
+      await settleFeedback(message, false);
+      const dmSent = await sendVerificationDm(message.author, result, activeGuild);
+      if (!dmSent) {
+        console.log(`Could not DM pending player ${message.author.id}; the channel reply stands.`);
+      }
+
+      const auditChannelId = result.audit_channel_id || auditChannelByGuild.get(activeGuild) || auditChannelByGuild.get(fgfGuild);
+      if (auditChannelId && message.guild) {
+        await postVerificationAuditLog(message.guild, auditChannelId, message.author, result, activeGuild);
+      }
+
+      // Same privacy cleanup as a success: the officer channel now holds the
+      // durable record, so the screenshot itself does not need to stay.
+      setTimeout(() => {
+        message.delete().catch(() => {});
+      }, 5000);
       if (result?.bot_message_id) {
         setTimeout(async () => {
           try {

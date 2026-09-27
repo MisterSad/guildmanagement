@@ -216,7 +216,12 @@ const CHECKBOX_FIELDS: CheckboxField[] = [
   { key: 'notify_gvg_pvp', el: 'notify-gvg-pvp', def: true, gated: true },
   { key: 'notify_svs_garrison', el: 'notify-svs-garrison', def: true, gated: true },
   { key: 'notify_svs_pvp', el: 'notify-svs-pvp', def: true, gated: true },
-  { key: 'notify_svs_won_prep', el: 'notify-svs-won-prep', def: false, gated: true }
+  { key: 'notify_svs_won_prep', el: 'notify-svs-won-prep', def: false, gated: true },
+  // Opt-in (owner decision, 2026-09-27): a guild with no stored value keeps the
+  // historical behaviour, where a Discord screenshot could create the roster
+  // entry it was being checked against. Ticking it makes the roster the
+  // authority -- see ADR-020.
+  { key: 'discord_verification_require_roster', el: 'discord-verification-require-roster', def: false }
 ];
 
 async function configGet(key: string): Promise<string> {

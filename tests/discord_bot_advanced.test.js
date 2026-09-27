@@ -47,6 +47,9 @@ function makeFakeAdmin({ tableResponses = {}, rpcResponses = {} } = {}) {
       update(payload) { if (!state.op) { state.op = 'update'; calls.push({ table, op: 'update', payload }); } return chain; },
       delete() { if (!state.op) state.op = 'delete'; return chain; },
       eq() { return chain; },
+      neq() { return chain; },
+      in() { return chain; },
+      limit() { return chain; },
       in() { return chain; },
       maybeSingle() { state.single = true; return chain; },
       then(resolve) {
@@ -175,20 +178,18 @@ describe('Discord Bot Advanced: resolveAuditChannelId', () => {
 
 describe('Discord Bot Advanced: evaluateVerification previousPower tracking', () => {
   it('returns previousPower when updating an existing member', async () => {
+    // Since ADR-020 the previous power comes from the target guild's own roster
+    // read, not from the guild-blind gm_find_player_by_uid RPC.
     const admin = makeFakeAdmin({
       tableResponses: {
         'banned_players:select': { data: null, error: null },
+        'guild_members:select': [
+          { data: [{ pseudo: 'Veteran', uid: '123456', overall_power: 100_000_000 }], error: null },
+          { data: [], error: null },
+        ],
         'guild_members:update': { data: null, error: null },
+        'guild_config:select': { data: { value: 'true' }, error: null },
         'guilds:select': { data: { server_number: '1058' }, error: null },
-      },
-      rpcResponses: {
-        gm_find_player_by_uid: {
-          data: {
-            found: true,
-            player: { pseudo: 'Veteran', guild: 'ALPHA', overall_power: 100_000_000 },
-          },
-          error: null,
-        },
       },
     });
 

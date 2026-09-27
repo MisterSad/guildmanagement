@@ -8,19 +8,26 @@
  *
  * Role assignment rule (owner decision): the guild tag read off the
  * screenshot is matched against the Discord server's OWN existing role
- * names -- not a role ID configured anywhere. If a role named after the
- * guild's tag already exists AND the tag matches the guild this
- * verification channel belongs to, that role is assigned and the player's
- * guild_members entry is created/updated. Otherwise (wrong guild for this
- * channel, or the matching role hasn't been created yet) the player gets
- * the "Visitor" role instead and no roster entry is touched -- Visitor is
- * a safe default for an unrecognized or not-yet-configured guild, never a
- * guess at roster data. Every guild_members / ban / cross-guild decision
- * lives in _shared/discord-verification.ts (testable with a fake Supabase
- * client); this file stays the thin caller for OCR, the Discord role
- * lookup, and every Discord-facing action (role, nickname, reply message).
- * The worker itself has no business logic (Gateway listener + forwarder
- * only).
+ * names -- not a role ID configured anywhere. Three outcomes:
+ *
+ *   guild_member -- the tag resolves to a guild sharing this verification
+ *       channel's own game-server number, a role named after that tag exists
+ *       here, and the roster agrees (see ADR-020). Role + nickname assigned,
+ *       stats updated.
+ *   pending -- the tag resolved and the role exists, but the guild has
+ *       `discord_verification_require_roster` on and this player is not in its
+ *       member list. NO guild role, nothing written to the roster, a durable
+ *       message to the officer channel. The "[PENDING]" role if the server has
+ *       one, else Visitor, else nickname only.
+ *   visitor -- no tag, an unknown tag, a tag belonging to another game server,
+ *       or no matching role yet. Visitor is the safe default for an
+ *       unrecognized or not-yet-configured guild, never a guess at roster data.
+ *
+ * Every guild_members / ban / roster / gate decision lives in
+ * _shared/discord-verification.ts (testable with a fake Supabase client); this
+ * file stays the thin caller for OCR, the Discord role lookup, and every
+ * Discord-facing action (role, nickname, reply message). The worker itself has
+ * no business logic (Gateway listener + forwarder only).
  *
  * Trust model (owner decision): the screenshot alone is accepted as proof
  * of identity -- no prior /link required. This only ever writes to
@@ -32,7 +39,7 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkAndRecordDiscordAttempt } from "../_shared/rate-limit.ts";
 import { callGeminiVision } from "../_shared/gemini-vision.ts";
-import { normalizeTag, resolveExpectedTag, resolveTagToGuild, evaluateVerification, resolveAuditChannelId, ExtractedProfile } from "../_shared/discord-verification.ts";
+import { normalizeTag, resolveExpectedTag, resolveHomeServerNumber, resolveTagToGuildOnServer, evaluateVerification, resolveAuditChannelId, postAuditMessage, ExtractedProfile, RefusalReason } from "../_shared/discord-verification.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -43,6 +50,9 @@ const DISCORD_WORKER_SECRET = Deno.env.get("DISCORD_WORKER_SECRET") || "";
 const DISCORD_API = "https://discord.com/api/v10";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const VISITOR_ROLE_NAME = "VISITOR";
+// Resolved by name from the server's live role list, exactly like VISITOR --
+// no new config key. A server without one falls back to Visitor.
+const PENDING_ROLE_NAME = "PENDING";
 
 function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -118,33 +128,41 @@ function findRoleByNormalizedName(roles: DiscordRole[], normalizedTarget: string
   return roles.find((r) => normalizeTag(r.name) === normalizedTarget) || null;
 }
 
+// `roleId` is nullable so the pending path can patch a nickname without ever
+// granting a role: a server with neither a "[PENDING]" nor a "[VISITOR]" role
+// must still not receive a guild role as a consolation prize.
 async function assignRoleAndNickname(
   discordServerId: string,
   discordUserId: string,
-  roleId: string,
+  roleId: string | null,
   nickname: string | null,
   logger: EdgeLogger,
-  removeRoleId?: string | null
+  removeRoleIds?: (string | null | undefined)[]
 ): Promise<boolean> {
   const patchBody: Record<string, unknown> = {};
   if (nickname) patchBody.nick = nickname;
+  const toRemove = new Set((removeRoleIds || []).filter((id): id is string => !!id));
 
   try {
     const memberRes = await discordFetch(`/guilds/${discordServerId}/members/${discordUserId}`, { method: "GET" });
     if (memberRes.ok) {
       const memberData = await memberRes.json();
       let currentRoles: string[] = Array.isArray(memberData?.roles) ? memberData.roles : [];
-      if (removeRoleId) {
-        currentRoles = currentRoles.filter((id) => id !== removeRoleId);
+      currentRoles = currentRoles.filter((id) => !toRemove.has(id));
+      if (roleId) {
+        patchBody.roles = currentRoles.includes(roleId) ? currentRoles : [...currentRoles, roleId];
+      } else if (toRemove.size > 0) {
+        patchBody.roles = currentRoles;
       }
-      patchBody.roles = currentRoles.includes(roleId) ? currentRoles : [...currentRoles, roleId];
-    } else {
+    } else if (roleId) {
       patchBody.roles = [roleId];
     }
   } catch (e) {
     logger.warn("Failed to fetch current Discord member roles before patch", { error: String(e) });
-    patchBody.roles = [roleId];
+    if (roleId) patchBody.roles = [roleId];
   }
+
+  if (Object.keys(patchBody).length === 0) return true;
 
   try {
     const patchRes = await discordFetch(`/guilds/${discordServerId}/members/${discordUserId}`, {
@@ -165,10 +183,51 @@ async function assignRoleAndNickname(
 // "[TAG] Pseudo #Server" -- applied on both the guild-member path and the
 // Visitor path (owner's request: even a Visitor's tag+server should be
 // trackable), truncated defensively to Discord's 32-char nickname limit.
+// An empty tag yields "Pseudo #Server": the pending path must not stamp a
+// membership claim it is in the middle of refusing.
 function buildNickname(tagDisplay: string, pseudo: string, serverNumber: string | null): string {
-  let nickname = `${tagDisplay} ${pseudo}${serverNumber ? ` #${serverNumber}` : ""}`;
+  const prefix = tagDisplay ? `${tagDisplay} ` : "";
+  let nickname = `${prefix}${pseudo}${serverNumber ? ` #${serverNumber}` : ""}`;
   if (nickname.length > 32) nickname = nickname.slice(0, 32);
   return nickname;
+}
+
+// What the player is told, and what the officer channel records, for each way
+// the roster can refuse. Kept next to each other so the two never disagree.
+function pendingAuditReason(reason: RefusalReason, onFileUid?: string): string {
+  switch (reason) {
+    case "pseudo_conflict":
+      return `that pseudo is already on the roster under a different UID (\`${onFileUid || "unknown"}\`)`;
+    case "ambiguous_pseudo":
+      return "several roster entries share that pseudo, so I cannot tell which one this is";
+    case "scan_truncated":
+      return "the roster read came back truncated, so I refused rather than guess (this is a bug -- please report it)";
+    default:
+      return "no roster entry matches this UID or pseudo";
+  }
+}
+
+function pendingPlayerMessage(
+  reason: RefusalReason,
+  tagDisplay: string,
+  targetGuild: string,
+  serverNumber: string,
+  pseudo: string,
+  uid: string,
+  assignedRoleName: string | null,
+  patched: boolean
+): string {
+  const held = assignedRoleName && patched ? ` You have the **${assignedRoleName}** role meanwhile.` : "";
+  switch (reason) {
+    case "pseudo_conflict":
+      return `⏳ I can't give you the **${tagDisplay}** role yet — **${pseudo}** is already in the **${targetGuild}** roster under a different UID, and yours reads \`${uid}\`. An officer has been notified and needs to check it.${held}`;
+    case "ambiguous_pseudo":
+      return `⏳ I can't give you the **${tagDisplay}** role yet — several **${targetGuild}** roster entries share the pseudo **${pseudo}**, so I won't guess which one is you. An officer has been notified.${held}`;
+    case "scan_truncated":
+      return `⏳ I couldn't read the **${targetGuild}** roster completely, so I'm not granting a role on a partial answer. An officer has been notified -- please try again in a few minutes.${held}`;
+    default:
+      return `⏳ I can't give you the **${tagDisplay}** role yet — **${pseudo}** (UID \`${uid}\`) isn't in the **${targetGuild}** member list for server **#${serverNumber}**. An officer has been notified; once they add you in the Guild Management tool, post your screenshot again.${held}`;
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -279,16 +338,65 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     return json({ ok: false, error: "missing_fields_in_ocr", bot_message_id: botMsgId }, 200);
   }
 
-  // Multi-tenant role decision: Does the extracted tag resolve to any known
-  // FGF guild (e.g. [PR1M] -> ALPHA, [OMG] -> OMEGA, [IMK] -> IMK), AND does
-  // a Discord role matching that tag exist on this server?
-  // If yes: real guild member path for that guild.
-  // Otherwise: Visitor path.
+  // ---------------------------------------------------------------------
+  // Role decision. Two guards, both from data, neither with a tenant name or
+  // a game-server literal in it (ADR-003, ADR-020):
+  //   1. the tag resolves ONLY among the guilds sharing this channel's own
+  //      guilds.server_number, so a same-tag guild on another game server can
+  //      neither be granted nor be blocked from here;
+  //   2. the target guild's roster decides, when it asked to.
+  // ---------------------------------------------------------------------
   const serverRoles = await fetchServerRoles(discordServerId);
   const visitorRole = findRoleByNormalizedName(serverRoles, VISITOR_ROLE_NAME);
+  const pendingRole = findRoleByNormalizedName(serverRoles, PENDING_ROLE_NAME);
 
-  const tagMatch = await resolveTagToGuild(admin, extractedTagNormalized);
-  const matchedGuildRole = tagMatch ? findRoleByNormalizedName(serverRoles, normalizeTag(tagMatch.tagDisplay)) : null;
+  const homeServerNumber = await resolveHomeServerNumber(admin, fgfGuild);
+  const tagMatch = await resolveTagToGuildOnServer(admin, extractedTagNormalized, homeServerNumber, fgfGuild);
+
+  // A misconfiguration must fail visibly and must never widen the search back
+  // to every tenant -- an unresolved tenant never falls back to a real guild.
+  if (tagMatch.kind === "home_server_unknown") {
+    logger.error("Verification channel's guild has no server_number; no guild role can be resolved", undefined, { fgfGuild });
+    const auditChannelId = await resolveAuditChannelId(admin, fgfGuild);
+    if (auditChannelId) {
+      await postAuditMessage(
+        auditChannelId,
+        `⚠️ Verification is misconfigured: guild **${fgfGuild}** has no game-server number, so no guild tag can be resolved and every screenshot will be treated as a visitor. Set the server number in the Guild Management tool (Settings > Guild).`
+      );
+    }
+  } else if (tagMatch.kind === "ambiguous") {
+    logger.error("Two guilds on the same game server share this tag; refusing to guess", undefined, {
+      serverNumber: tagMatch.serverNumber,
+      candidates: tagMatch.candidates.join(","),
+      tag: extractedTagNormalized,
+    });
+    const auditChannelId = await resolveAuditChannelId(admin, fgfGuild);
+    if (auditChannelId) {
+      await postAuditMessage(
+        auditChannelId,
+        `⚠️ Verification is misconfigured: guilds **${tagMatch.candidates.join("**, **")}** all use the tag **[${extractedTagNormalized}]** on server **#${tagMatch.serverNumber}**. I will not guess which one a screenshot belongs to -- fix the guild tags in the Guild Management tool. Players are getting the Visitor role meanwhile.`
+      );
+    }
+  }
+
+  const matched = tagMatch.kind === "match" ? tagMatch : null;
+
+  // Strict-if-present: a server number read off the screenshot that disagrees
+  // with the channel's own is a screenshot from another game server, whatever
+  // the tag says. When the OCR read nothing -- the "#1058" line sits at the
+  // very bottom and is often cropped -- the roster check is the authority, so
+  // do not block on it.
+  const serverMismatch = !!(matched && extractedServerNumber && extractedServerNumber !== matched.serverNumber);
+  if (serverMismatch) {
+    logger.warn("Screenshot's server number disagrees with the channel's guild; treating as a visitor", {
+      extractedServerNumber,
+      homeServerNumber,
+    });
+  }
+
+  const matchedGuildRole = matched && !serverMismatch
+    ? findRoleByNormalizedName(serverRoles, normalizeTag(matched.tagDisplay))
+    : null;
 
   if (!matchedGuildRole) {
     if (!visitorRole) {
@@ -302,15 +410,16 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     }
 
     // Visitor path: All external or unrecognized guilds MUST be tagged [VISITOR].
-    const { data: channelGuildRow } = await admin.from("guilds").select("server_number").eq("id", fgfGuild).maybeSingle();
-    const serverNum = extractedServerNumber || (channelGuildRow as { server_number?: string } | null)?.server_number || null;
+    const serverNum = extractedServerNumber || homeServerNumber || null;
     const visitorTagDisplay = `[${VISITOR_ROLE_NAME}]`;
     const visitorNickname = buildNickname(visitorTagDisplay, pseudo, serverNum);
 
-    const patched = await assignRoleAndNickname(discordServerId, discordUserId, visitorRole.id, visitorNickname, logger);
-    const reason = rawExtracted?.guild_tag
-      ? `external guild [${rawExtracted.guild_tag}]`
-      : "no guild tag detected";
+    const patched = await assignRoleAndNickname(discordServerId, discordUserId, visitorRole.id, visitorNickname, logger, [pendingRole?.id]);
+    const reason = serverMismatch
+      ? `guild [${extractedTagNormalized}] belongs to game server #${homeServerNumber}, but the screenshot reads #${extractedServerNumber}`
+      : rawExtracted?.guild_tag
+        ? `external guild [${rawExtracted.guild_tag}]`
+        : "no guild tag detected";
     const auditChannelId = await resolveAuditChannelId(admin, fgfGuild);
     const botMsgId = await postChannelMessage(
       channelId,
@@ -329,27 +438,81 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     }, 200);
   }
 
-  // Real guild member (matched PR1M -> ALPHA, OMG -> OMEGA, IMK -> IMK, etc.):
-  // Run every ban / cross-guild / roster decision for the resolved guild.
-  const targetGuild = tagMatch!.fgfGuild;
+  // Real guild member candidate: the tag resolved to a guild on this game
+  // server and that guild's role exists here. The roster has the last word.
+  const targetGuild = matched!.fgfGuild;
   const extracted: ExtractedProfile = { pseudo, uid: extractedUid, power, glory, serverNumber: extractedServerNumber };
   const result = await evaluateVerification(admin, targetGuild, discordUserId, extracted);
+
+  if (!result.ok && result.error === "not_on_roster") {
+    // PENDING: never the guild role, never a roster write. The tag is the
+    // membership claim being refused, so it is not written into the nickname
+    // either -- and any guild/visitor role a previous run granted is removed.
+    const pendingNickname = buildNickname("", pseudo, extractedServerNumber || matched!.serverNumber);
+    const assigned = pendingRole || visitorRole || null;
+    // Strip the guild role a previous run may have granted, plus whichever of
+    // the two holding roles is not the one being assigned now.
+    const stripRoles = [matchedGuildRole.id, visitorRole?.id, pendingRole?.id].filter(
+      (id) => id && id !== assigned?.id
+    );
+    const patched = await assignRoleAndNickname(
+      discordServerId,
+      discordUserId,
+      assigned?.id || null,
+      pendingNickname,
+      logger,
+      stripRoles
+    );
+
+    const playerMessage = pendingPlayerMessage(result.reason, matched!.tagDisplay, targetGuild, matched!.serverNumber, pseudo, extractedUid, assigned?.name || null, patched);
+    const botMsgId = await postChannelMessage(channelId, playerMessage);
+
+    const auditChannelId = (await resolveAuditChannelId(admin, targetGuild)) || (await resolveAuditChannelId(admin, fgfGuild));
+    if (auditChannelId) {
+      // Durable on purpose (not the 15s auto-deleting reply): this is the only
+      // place an officer can see that someone is waiting to be added.
+      await postAuditMessage(
+        auditChannelId,
+        `⏳ **Verification held** — **${pseudo}** (UID \`${extractedUid}\`) claimed **${matched!.tagDisplay}** on server **#${matched!.serverNumber}** but is not in the **${targetGuild}** member list.\n` +
+        `• Reason: ${pendingAuditReason(result.reason, result.onFileUid)}\n` +
+        (result.otherGuilds.length ? `• That UID is on the roster of: ${result.otherGuilds.join(", ")}\n` : "") +
+        `• Power read: ${power.toLocaleString("en-US")}${glory != null ? ` · Glory: ${glory.toLocaleString("en-US")}` : ""}\n` +
+        `• Action: add them in the Guild Management tool, then ask them to post their screenshot again. No role was granted and nothing was written to the roster.`
+      );
+    }
+
+    return json({
+      ok: false,
+      error: "not_on_roster",
+      role: "pending",
+      reason: result.reason,
+      target_guild: targetGuild,
+      pseudo,
+      uid: extractedUid,
+      nickname: pendingNickname,
+      assigned_role_id: assigned?.id || null,
+      other_guilds: result.otherGuilds,
+      audit_channel_id: auditChannelId,
+      discord_actions_ok: patched,
+      bot_message_id: botMsgId,
+    }, 200);
+  }
 
   if (!result.ok) {
     const messages: Record<string, string> = {
       banned: "❌ This player is banned from this guild's roster. Contact an officer if you believe this is a mistake.",
-      uid_registered_elsewhere: "❌ This UID is already registered under a different guild. If you transferred guilds, ask an officer to update your roster entry.",
       db_error: "❌ Something went wrong updating your roster entry. Please try again later.",
     };
     const botMsgId = await postChannelMessage(channelId, messages[result.error] || "❌ Something went wrong. Please try again later.");
     return json({ ok: false, error: result.error, bot_message_id: botMsgId }, result.error === "db_error" ? 500 : 200);
   }
 
-  const effectiveServerNumber = tagMatch!.serverNumber || extractedServerNumber || null;
-  const nickname = buildNickname(tagMatch!.tagDisplay, result.finalPseudo, effectiveServerNumber);
+  const effectiveServerNumber = matched!.serverNumber || extractedServerNumber || null;
+  const nickname = buildNickname(matched!.tagDisplay, result.finalPseudo, effectiveServerNumber);
 
-  // Assign matched guild role and strip visitor role if previously assigned
-  const patched = await assignRoleAndNickname(discordServerId, discordUserId, matchedGuildRole.id, nickname, logger, visitorRole?.id);
+  // Assign the matched guild role, and strip any visitor/pending role a
+  // previous attempt left behind.
+  const patched = await assignRoleAndNickname(discordServerId, discordUserId, matchedGuildRole.id, nickname, logger, [visitorRole?.id, pendingRole?.id]);
   const summary = result.isNewPlayer ? "added to the roster" : "roster updated";
 
   const botMsgId = await postChannelMessage(
@@ -368,6 +531,7 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     pseudo: result.finalPseudo,
     uid: extractedUid,
     is_new_player: result.isNewPlayer,
+    uid_backfilled: result.uidBackfilled === true,
     previous_power: result.previousPower ?? null,
     power: result.power,
     glory: result.glory,

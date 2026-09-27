@@ -61,6 +61,12 @@ export interface AuditLogEntry {
   guild: string;
   message: string;
   metadata?: Record<string, unknown>;
+  // Optional, and omitted from the RPC payload when absent so the function's
+  // own defaults still apply. Without them every row a caller writes is filed
+  // as service 'member-portal', level 'INFO' -- which is how every
+  // discord_verification row in production ended up attributed to the Portal.
+  service?: string;
+  level?: string;
 }
 
 export async function logPlayerAction(
@@ -76,7 +82,7 @@ export async function logPlayerAction(
 
     const serverNumber = g?.server_number || null;
 
-    await admin.rpc("gm_log_player_audit", {
+    const payload: Record<string, unknown> = {
       p_action_type: entry.action_type,
       p_pseudo: entry.pseudo,
       p_uid: entry.uid,
@@ -84,7 +90,11 @@ export async function logPlayerAction(
       p_server_number: serverNumber,
       p_message: entry.message,
       p_metadata: entry.metadata || {}
-    });
+    };
+    if (entry.level) payload.p_level = entry.level;
+    if (entry.service) payload.p_service = entry.service;
+
+    await admin.rpc("gm_log_player_audit", payload);
   } catch (_) {
     // Non-blocking logging
   }
