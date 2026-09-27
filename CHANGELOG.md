@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- **Sidebar footer: the two legal links were running together on one line**
+  - Reported from a screenshot: the sidebar read **"Terms & ConditionsPrivacy Policy"**, no space, no separator. `.gm-sidebar-legal-link` is an anchor and had no `display` rule, so it was inline. One link looked fine; adding a second put it flush against the first.
+  - Now stacked, in the order asked for: **version, Privacy Policy, Terms & Conditions**, one per line. Verified against the real bundled CSS rather than by reading the rule, by rendering the actual footer markup in the browser and measuring: two distinct `top` values, `display: block`, correct order.
+  - **Nothing in the suite could have caught this**, which is the point of the two assertions added to `tests/app_version.test.js`: one pins the order of the three elements, the other pins the `display: block` rule. Sabotage-tested by putting the links back inline.
+
 - **Both legal pages rewritten: plain English, a free community app, and a binding open-source promise**
   - **Written like a person, on request.** No em dashes anywhere in either document (checked, zero), no "seamless", no "robust", no three-item flourishes. Short sentences, first person for the operator and second person for the reader, with the defined terms stated once in Section 1 so it stays a contract rather than a blog post.
   - **The Terms are a full rewrite, not an edit.** The old document was written for a paid SaaS and read like it: nine block-capital sections, "irrevocable acceptance", "exclusive territorial competence". It now covers who you are dealing with, what the tool is and is not, that it is free, that it is not the game publisher, conduct, whose data is whose, the code, what is promised about the service, what happens when something goes wrong, stopping, changes, and which law applies.

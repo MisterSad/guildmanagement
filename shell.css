@@ -1192,6 +1192,11 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
 }
 
 .gm-sidebar-legal-link {
+    /* One per line. These are inline anchors, so the moment a second one was
+       added next to the first they rendered as "Terms & ConditionsPrivacy
+       Policy" with nothing between them. */
+    display: block;
+    margin-top: 0.15rem;
     color: var(--text-muted, #94a3b8);
     text-decoration: none;
     transition: color 0.18s ease;
