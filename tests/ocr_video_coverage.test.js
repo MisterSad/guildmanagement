@@ -16,14 +16,15 @@
  * budget, it is silent data loss, and it is the whole bug report.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
   ocrProfileFromRoi,
   ocrEstimateProfileShift,
   ocrMeasureVerticalSharpness,
-  fuseOcrPlayers
+  fuseOcrPlayers,
+  compressImageForUpload
 } from '../src/modules/ocr/ocr.service';
 
 const rootDir = path.resolve(__dirname, '..');
@@ -230,5 +231,55 @@ describe('the repeated prompt, not the images, is the token cost', () => {
     expect(Number(cs[1])).toBeGreaterThanOrEqual(3);
     // The Edge Function rejects more than five, in Zod and in an early guard.
     expect(Number(cs[1])).toBeLessThanOrEqual(5);
+  });
+});
+
+describe('an already-compressed frame is not compressed again', () => {
+  // The extractor writes frames as JPEG at q0.85, well under the 1600 px bound,
+  // and they were being decoded and re-encoded at q0.82 on the way out. Small
+  // text is the first thing a second JPEG generation damages, and small text is
+  // the whole job.
+  const ORIGINAL = 'data:image/jpeg;base64,ORIGINALBYTES';
+  const RECODED = 'data:image/jpeg;base64,RECODEDBYTES';
+
+  const stubEnv = (w, h) => {
+    vi.stubGlobal('FileReader', class {
+      readAsDataURL() { queueMicrotask(() => this.onload({ target: { result: ORIGINAL } })); }
+    });
+    vi.stubGlobal('Image', class {
+      constructor() { this.width = w; this.height = h; }
+      set src(_v) { queueMicrotask(() => this.onload && this.onload()); }
+    });
+    const toDataURL = vi.fn(() => RECODED);
+    vi.stubGlobal('document', {
+      createElement: () => ({
+        width: 0, height: 0, toDataURL,
+        getContext: () => ({ drawImage() {} })
+      })
+    });
+    return toDataURL;
+  };
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('passes an in-bounds JPEG through byte for byte', async () => {
+    const toDataURL = stubEnv(666, 590);
+    const out = await compressImageForUpload(new Blob(['x'], { type: 'image/jpeg' }), 1600, 0.82);
+    expect(out).toBe(ORIGINAL);
+    expect(toDataURL, 'the canvas must not be touched at all').not.toHaveBeenCalled();
+  });
+
+  it('still shrinks a JPEG that is over the bound', async () => {
+    const toDataURL = stubEnv(3000, 2000);
+    const out = await compressImageForUpload(new Blob(['x'], { type: 'image/jpeg' }), 1600, 0.82);
+    expect(out).toBe(RECODED);
+    expect(toDataURL).toHaveBeenCalled();
+  });
+
+  it('still converts an in-bounds PNG, which is what the size saving is for', async () => {
+    const toDataURL = stubEnv(666, 590);
+    const out = await compressImageForUpload(new Blob(['x'], { type: 'image/png' }), 1600, 0.82);
+    expect(out).toBe(RECODED);
+    expect(toDataURL).toHaveBeenCalled();
   });
 });

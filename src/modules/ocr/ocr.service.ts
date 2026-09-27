@@ -427,10 +427,22 @@ export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guild
 }
 
 
-/** Downscales + JPEG-compresses an image to a data URL (falls back to raw). */
+/**
+ * Downscales + JPEG-compresses an image to a data URL (falls back to raw).
+ *
+ * An image that is already a JPEG and already within `maxDimension` is returned
+ * untouched. It used to be decoded and re-encoded anyway, which is a second
+ * generation of JPEG loss for no gain at all: video frames arrive here as
+ * 666-px JPEGs written at q0.85 by the extractor's canvas.toBlob, comfortably
+ * inside the 1600-px bound, and were handed to the OCR re-encoded at q0.82.
+ * Small text is exactly what generational JPEG artefacts damage first, and
+ * reading small text is the entire job.
+ */
 export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, quality?: number): Promise<string> {
   const maxDim = maxDimension || 1280;
   const q = (typeof quality === 'number') ? quality : 0.82;
+  const sourceType = String((fileOrBlob as File).type || '').toLowerCase();
+  const alreadyJpeg = sourceType === 'image/jpeg' || sourceType === 'image/jpg';
 
   return new Promise((resolve, reject) => {
     if (!fileOrBlob || typeof FileReader === 'undefined') {
@@ -446,6 +458,10 @@ export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, 
         try {
           let w = img.width;
           let h = img.height;
+          if (alreadyJpeg && w <= maxDim && h <= maxDim) {
+            // Nothing to gain by re-encoding it, and detail to lose.
+            return resolve(e.target.result);
+          }
           if (w > maxDim || h > maxDim) {
             if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
             else { w = Math.round((w * maxDim) / h); h = maxDim; }
