@@ -193,6 +193,18 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
       'request_failed';
     return { ok: false, error: String(detail) };
   }
+  if (data.state === 'choose') {
+    // Several accounts sit behind this Discord identity (an administrator who
+    // is also a player). `ticket` is a CONTINUATION ticket for the same
+    // identity: the one from the URL has just been spent.
+    return {
+      ok: true,
+      state: 'choose',
+      ticket: data.ticket || null,
+      discordUsername: data.discord_username || null,
+      accounts: Array.isArray(data.accounts) ? data.accounts : []
+    };
+  }
   if (data.state === 'unlinked') {
     // `ticket` is a CONTINUATION ticket for the same Discord identity: the one
     // that arrived in the URL has just been spent. It lets the caller present a
@@ -203,6 +215,43 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
       ticket: data.ticket || null,
       discordUsername: data.discord_username || null
     };
+  }
+  return applySessionResponse(data, { state: 'session' });
+}
+
+/**
+ * Picks one of the accounts a Discord identity holds, spending the continuation
+ * ticket from a `choose` response.
+ *
+ * The account id is re-checked server-side against that identity's links, so
+ * this is not "mint me a session for any id" -- naming someone else's account
+ * is answered with `account_not_linked`, the same as naming one that does not
+ * exist.
+ */
+export async function chooseDiscordAccount(ticket: string, accountId: string): Promise<AuthResult> {
+  const c = getClient();
+  if (!c) return { ok: false, error: 'no_client' };
+  let r: any;
+  try {
+    r = await withTimeout(
+      c.functions.invoke('auth-discord', {
+        body: { action: 'choose', ticket: ticket, account_id: accountId }
+      }),
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+  } catch (e: any) {
+    return {
+      ok: false,
+      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+    };
+  }
+  const data = await parseFunctionsInvokeResult(r);
+  if (!data || !data.ok) {
+    const detail =
+      (data && (data.error || data.msg || data.message || data.code)) ||
+      (r && r.error && r.error.message) ||
+      'request_failed';
+    return { ok: false, error: String(detail) };
   }
   return applySessionResponse(data, { state: 'session' });
 }

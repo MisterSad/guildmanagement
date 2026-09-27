@@ -459,6 +459,12 @@ export async function handleDiscordCallback(): Promise<boolean> {
 
   try {
     const resp: LoginResponse = await x.redeemDiscordTicket(ticket);
+    if (resp.ok && resp.state === 'choose' && resp.ticket) {
+      // One person, several accounts. Ask which, rather than picking for them:
+      // an administrator who is also a player wants both, at different times.
+      openAccountChooser(resp.ticket, resp.accounts || [], resp.discordUsername || null);
+      return true;
+    }
     if (resp.ok && resp.state === 'unlinked') {
       // The Discord account is genuine, it simply is not attached yet. If an
       // admin issued a relink code (phase D6), this is where it is spent —
@@ -482,6 +488,107 @@ export async function handleDiscordCallback(): Promise<boolean> {
     setLoginError(discordErrorMessage('request_failed'));
   }
   return true;
+}
+
+interface DiscordAccountChoice { id: string; role: string; guild: string | null }
+
+/**
+ * Asks which account to sign in to, when a Discord identity holds several.
+ *
+ * The list comes from the server and only ever contains accounts linked to the
+ * identity that just authenticated, so nothing here is a secret. Picking spends
+ * the continuation ticket; the id is re-verified server-side.
+ */
+export function openAccountChooser(
+  ticket: string,
+  accounts: DiscordAccountChoice[],
+  discordUsername: string | null
+): void {
+  if (typeof document === 'undefined') return;
+  const existing = document.getElementById('discord-choose-overlay');
+  if (existing) existing.remove();
+
+  const who = discordUsername ? ' as <strong>' + escapeDialogText(discordUsername) + '</strong>' : '';
+
+  // A super_admin or guild_admin lands on the Command Center, a member on the
+  // Player Portal. Saying so removes the guessing.
+  const describe = (a: DiscordAccountChoice): string => {
+    if (a.role === 'super_admin') return 'Command Center, every guild';
+    if (a.role === 'server_admin') return 'Command Center, your server';
+    if (a.role === 'guild_admin') return 'Command Center' + (a.guild ? ', ' + escapeDialogText(a.guild) : '');
+    return 'Player Portal' + (a.guild ? ', ' + escapeDialogText(a.guild) : '');
+  };
+  const iconFor = (a: DiscordAccountChoice): string =>
+    a.role === 'member' ? 'ph-game-controller' : 'ph-shield-star';
+
+  const row = (a: DiscordAccountChoice): string =>
+    '<button type="button" class="gm-btn gm-btn-ghost gm-choose-account" data-account="' +
+      escapeDialogText(a.id) + '" ' +
+      'style="width:100%; justify-content:flex-start; gap:.6rem; padding:.7rem .75rem; margin-top:.4rem; text-align:left;">' +
+      '<i class="ph ' + iconFor(a) + '" style="font-size: var(--fs-xl);"></i>' +
+      '<span style="display:flex; flex-direction:column; gap:.1rem;">' +
+        '<span style="font-weight:600;">' + escapeDialogText(a.id) + '</span>' +
+        '<span style="font-size:.78rem; color: var(--fg-dim);">' + describe(a) + '</span>' +
+      '</span>' +
+    '</button>';
+
+  const html =
+    '<div id="discord-choose-overlay" class="gm-modal-overlay">' +
+      '<div class="gm-modal-card" style="max-width: 430px; width: 94%;">' +
+        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;">' +
+          '<i class="ph ph-discord-logo" style="font-size: var(--fs-2xl); color:#5865F2;"></i>' +
+          '<h3 style="margin:0; font-size: var(--fs-xl);">Which account?</h3>' +
+        '</div>' +
+        '<p style="margin:0 0 .4rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+          'You signed in' + who + '. This Discord account holds more than one account here.' +
+        '</p>' +
+        accounts.map(row).join('') +
+        '<div id="discord-choose-error" class="gm-login-error hidden" style="margin-top:.6rem;"></div>' +
+      '</div>' +
+    '</div>';
+
+  const host = document.createElement('div');
+  host.innerHTML = html;
+  const overlay = host.firstElementChild as HTMLElement | null;
+  if (!overlay) return;
+  document.body.appendChild(overlay);
+
+  const fail = (msg: string): void => {
+    const box = overlay.querySelector('#discord-choose-error') as HTMLElement | null;
+    if (box) { box.textContent = msg; box.classList.remove('hidden'); }
+    overlay.querySelectorAll('button').forEach((b) => { (b as HTMLButtonElement).disabled = false; });
+  };
+
+  overlay.addEventListener('click', (ev) => {
+    const btn = (ev.target as HTMLElement).closest('.gm-choose-account') as HTMLElement | null;
+    if (!btn) return;
+    const accountId = btn.getAttribute('data-account') || '';
+    if (!accountId) return;
+
+    // The ticket is single-use: a second click would spend a ticket that is
+    // already gone and fail with a confusing error.
+    overlay.querySelectorAll('button').forEach((b) => { (b as HTMLButtonElement).disabled = true; });
+
+    const x = g();
+    if (!x || typeof x.chooseDiscordAccount !== 'function') {
+      fail('Account selection is unavailable in this build.');
+      return;
+    }
+    void (async () => {
+      try {
+        const resp: LoginResponse = await x.chooseDiscordAccount(ticket, accountId);
+        if (resp.ok) {
+          overlay.remove();
+          await handleSuccessfulLogin(resp, resp.id || accountId);
+          return;
+        }
+        fail(discordErrorMessage(resp.error || 'request_failed'));
+      } catch (err) {
+        console.error('Account selection failed:', err);
+        fail(discordErrorMessage('request_failed'));
+      }
+    })();
+  });
 }
 
 /**

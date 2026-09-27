@@ -101,6 +101,17 @@ const RedeemSchema = z.object({
  * account) or an `admin_invite` (provision a new one). Making them choose would
  * be an invitation to burn a ticket on the wrong guess.
  */
+// A Discord identity may hold several accounts (an administrator who is also a
+// player). `redeem` answers `state: "choose"` in that case and hands back a
+// continuation ticket; this spends it on one of them. The account id is
+// checked against the LINKS for the ticket's Discord identity, never trusted:
+// without that this endpoint would be "mint me a session for any account id".
+const ChooseSchema = z.object({
+  action: z.literal("choose"),
+  ticket: TicketField,
+  account_id: z.string().min(1).max(64),
+});
+
 const RedeemCodeSchema = z.object({
   action: z.literal("redeem-code"),
   ticket: TicketField,
@@ -366,49 +377,20 @@ async function throttled(req: Request, admin: any, logger: EdgeLogger, what: str
   return !t.allowed;
 }
 
-// ── POST { action: "redeem", ticket } ───────────────────────────────────────
-async function handleRedeem(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
+// ── Minting a session for one already-resolved account ─────────────────────
+//
+// Shared by `redeem` (one linked account) and `choose` (the person picked one
+// of several). It re-reads the account and re-checks `status` rather than
+// trusting whatever the caller resolved earlier: between listing the choices
+// and picking one, an account can be suspended.
+async function mintForAccount(
+  req: Request,
+  admin: any,
+  logger: EdgeLogger,
+  accountId: string,
+  knownRole?: string,
+): Promise<Response> {
   const json = makeJson(req);
-
-  const parsed = RedeemSchema.safeParse(body);
-  if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
-
-  if (await throttled(req, admin, logger, "redeem")) return json({ ok: false, error: "too_many_attempts" }, 429);
-
-  const consumed = await consumeTicket(admin, parsed.data.ticket, logger);
-  if (!consumed.ok) return json({ ok: false, error: consumed.error }, consumed.status);
-  const row = { discord_username: consumed.discordUsername };
-  const discordUserId = consumed.discordUserId;
-
-  const { data: link, error: lErr } = await admin
-    .from("discord_account_links")
-    .select("account_id")
-    .eq("discord_user_id", discordUserId)
-    .maybeSingle();
-  if (lErr) {
-    logger.error("Failed to resolve Discord link", lErr, { discordUserId });
-    return json({ ok: false, error: "server_error" }, 500);
-  }
-
-  // No link yet. The original ticket has just been spent, so a CONTINUATION
-  // ticket is issued for the same Discord identity: without it the caller
-  // would have to restart the whole Discord round trip merely to present a
-  // relink code. It is single-use and short-lived exactly like the first.
-  //
-  // D6 uses this to accept a relink code; D3 (claim) and D4 (onboarding) hang
-  // off the same branch and the same continuation ticket.
-  if (!link || !link.account_id) {
-    logger.info("Discord account is not linked to any account", { discordUserId });
-    const continuation = await issueTicket(admin, discordUserId, row.discord_username ?? null, logger);
-    return json({
-      ok: true,
-      state: "unlinked",
-      ticket: continuation,
-      discord_username: row.discord_username ?? null,
-    });
-  }
-
-  const accountId = link.account_id as string;
   logger.setContext({ userId: accountId });
 
   const { data: acc, error: aErr } = await admin
@@ -421,14 +403,16 @@ async function handleRedeem(req: Request, body: unknown, admin: any, logger: Edg
     return json({ ok: false, error: "server_error" }, 500);
   }
   if (!acc || !acc.role) {
-    // The link outlived its account.
     logger.warn("Discord link points at a missing account", { accountId });
-    return json({ ok: true, state: "unlinked", discord_username: row.discord_username ?? null });
+    return json({ ok: false, error: "account_not_found" }, 200);
   }
   // Finding M14: status must be enforced, not merely returned.
   if (acc.status !== "active") {
     logger.warn("Suspended or pending account attempted Discord sign-in", { accountId, status: acc.status });
     return json({ ok: false, error: "pending_approval" }, 200);
+  }
+  if (knownRole && knownRole !== acc.role) {
+    logger.warn("Role changed between listing and selection", { accountId, knownRole, actual: acc.role });
   }
 
   const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
@@ -446,6 +430,129 @@ async function handleRedeem(req: Request, body: unknown, admin: any, logger: Edg
     refresh_token: shadow.session.refresh_token,
     expires_at: shadow.session.expires_at,
   });
+}
+
+// ── POST { action: "choose", ticket, account_id } ──────────────────────────
+//
+// Spends the continuation ticket issued by a `choose` response. The account id
+// is verified against the LINKS for that ticket's Discord identity, so this is
+// not an endpoint that mints a session for any account id you name -- the
+// person must have just proved control of a Discord identity that holds it.
+async function handleChoose(req: Request, body: any, admin: any, logger: EdgeLogger): Promise<Response> {
+  const json = makeJson(req);
+
+  const parsed = ChooseSchema.safeParse(body);
+  if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
+
+  if (await throttled(req, admin, logger, "choose")) return json({ ok: false, error: "too_many_attempts" }, 429);
+
+  const consumed = await consumeTicket(admin, parsed.data.ticket, logger);
+  if (!consumed.ok) return json({ ok: false, error: consumed.error }, consumed.status);
+
+  const { data: link, error: lErr } = await admin
+    .from("discord_account_links")
+    .select("account_id")
+    .eq("discord_user_id", consumed.discordUserId)
+    .eq("account_id", parsed.data.account_id)
+    .maybeSingle();
+  if (lErr) {
+    logger.error("Failed to verify the chosen link", lErr, { discordUserId: consumed.discordUserId });
+    return json({ ok: false, error: "server_error" }, 500);
+  }
+  if (!link) {
+    // Either a forged account id or a link removed mid-flight. The same answer
+    // for both: naming an account that is not yours must not confirm it exists.
+    logger.warn("Chosen account is not linked to this Discord identity", {
+      discordUserId: consumed.discordUserId, requested: parsed.data.account_id,
+    });
+    return json({ ok: false, error: "account_not_linked" }, 403);
+  }
+
+  return await mintForAccount(req, admin, logger, link.account_id as string);
+}
+
+// ── POST { action: "redeem", ticket } ───────────────────────────────────────
+async function handleRedeem(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
+  const json = makeJson(req);
+
+  const parsed = RedeemSchema.safeParse(body);
+  if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
+
+  if (await throttled(req, admin, logger, "redeem")) return json({ ok: false, error: "too_many_attempts" }, 429);
+
+  const consumed = await consumeTicket(admin, parsed.data.ticket, logger);
+  if (!consumed.ok) return json({ ok: false, error: consumed.error }, consumed.status);
+  const row = { discord_username: consumed.discordUsername };
+  const discordUserId = consumed.discordUserId;
+
+  // Several links are legitimate since 2026-09-27: one person who is both an
+  // administrator and a player holds both accounts. `.maybeSingle()` would
+  // ERROR on that, not pick one, so this reads them all.
+  const { data: links, error: lErr } = await admin
+    .from("discord_account_links")
+    .select("account_id")
+    .eq("discord_user_id", discordUserId);
+  if (lErr) {
+    logger.error("Failed to resolve Discord link", lErr, { discordUserId });
+    return json({ ok: false, error: "server_error" }, 500);
+  }
+  const link = links && links.length === 1 ? links[0] : null;
+
+  // No link yet. The original ticket has just been spent, so a CONTINUATION
+  // ticket is issued for the same Discord identity: without it the caller
+  // would have to restart the whole Discord round trip merely to present a
+  // relink code. It is single-use and short-lived exactly like the first.
+  //
+  // D6 uses this to accept a relink code; D3 (claim) and D4 (onboarding) hang
+  // off the same branch and the same continuation ticket.
+  // More than one account on this identity: let the person say which. Only
+  // ACTIVE accounts are offered, so a suspended one is neither listed nor
+  // selectable, and a suspended account does not reveal that it exists.
+  if (links && links.length > 1) {
+    const ids = links.map((l: any) => l.account_id as string);
+    const { data: accs, error: accErr } = await admin
+      .from("accounts")
+      .select("id, role, guild, status")
+      .in("id", ids);
+    if (accErr) {
+      logger.error("Failed to load linked accounts", accErr, { discordUserId });
+      return json({ ok: false, error: "server_error" }, 500);
+    }
+    const choices = (accs ?? []).filter((a: any) => a.status === "active");
+
+    if (choices.length > 1) {
+      const continuation = await issueTicket(admin, discordUserId, row.discord_username ?? null, logger);
+      logger.info("Discord identity holds several accounts", { discordUserId, count: choices.length });
+      return json({
+        ok: true,
+        state: "choose",
+        ticket: continuation,
+        discord_username: row.discord_username ?? null,
+        accounts: choices.map((a: any) => ({ id: a.id, role: a.role, guild: a.guild ?? null })),
+      });
+    }
+    // Exactly one of them is still active: sign straight in, no pointless
+    // dialog with a single button.
+    if (choices.length === 1) {
+      return await mintForAccount(req, admin, logger, choices[0].id as string, choices[0].role as string);
+    }
+    // All of them suspended. Same answer a single suspended account gets.
+    logger.warn("Every linked account is inactive", { discordUserId });
+    return json({ ok: false, error: "pending_approval" }, 200);
+  }
+
+  if (!link || !link.account_id) {
+    logger.info("Discord account is not linked to any account", { discordUserId });
+    const continuation = await issueTicket(admin, discordUserId, row.discord_username ?? null, logger);
+    return json({
+      ok: true,
+      state: "unlinked",
+      ticket: continuation,
+      discord_username: row.discord_username ?? null,
+    });
+  }
+
+  return await mintForAccount(req, admin, logger, link.account_id as string);
 }
 
 // ── POST { action: "redeem-code", ticket, code } — phases D6 + D5 ──────────
@@ -812,6 +919,7 @@ async function handlePost(req: Request, admin: any, logger: EdgeLogger): Promise
   }
   switch (body?.action) {
     case "redeem":       return handleRedeem(req, body, admin, logger);
+    case "choose":       return handleChoose(req, body, admin, logger);
     case "claim":        return handleClaim(req, body, admin, logger);
     case "onboard":      return handleOnboard(req, body, admin, logger);
     case "redeem-code": return handleRedeemCode(req, body, admin, logger);

@@ -49,7 +49,7 @@ import {
 import { parseOcrScore } from '../modules/ocr/ocr.service';
 import {
   login, logout, registerPlayer, submitGuildRequest, adminAccounts, generateJoinCode,
-  loginWithDiscord, redeemDiscordTicket, redeemLinkCode, claimWithDiscord, onboardWithDiscord,
+  loginWithDiscord, redeemDiscordTicket, chooseDiscordAccount, redeemLinkCode, claimWithDiscord, onboardWithDiscord,
   loginWithBackupCodeDiscord,
   loginWithPasskey, loginWithBackupCode, startConditionalPasskeyLogin, abortConditionalPasskeyLogin
 } from './auth/session';
@@ -119,7 +119,7 @@ export function installGmBridge(): void {
 
     // Auth / sessions
     login, logout, registerPlayer, submitGuildRequest, adminAccounts, generateJoinCode,
-  loginWithDiscord, redeemDiscordTicket, redeemLinkCode, claimWithDiscord, onboardWithDiscord,
+  loginWithDiscord, redeemDiscordTicket, chooseDiscordAccount, redeemLinkCode, claimWithDiscord, onboardWithDiscord,
   loginWithBackupCodeDiscord,
     loginWithPasskey, loginWithBackupCode, startConditionalPasskeyLogin, abortConditionalPasskeyLogin,
 

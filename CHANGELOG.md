@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+- **Discord sign-in: one identity, several accounts, and a choice (reported live)**
+  - **Reported**: signing in with Discord as HawkEye landed on the Player Portal instead of the Command Center. **Nothing was broken.** The Discord identity was linked to `HawkEyePlayer` (role `member`), so a member session was minted and the routing was correct. The gap was structural: `discord_account_links` had `discord_user_id` as its **primary key**, so one person who is both an administrator and a player could only ever attach one of their accounts. And there is no admin-to-portal route in the UI, so no administrator could reach the portal by any path.
+  - **The key now covers the pair**, `(discord_user_id, account_id)`. `redeem` answers `state: "choose"` with a continuation ticket and the list of accounts; a new `choose` action spends it.
+  - **What was deliberately NOT relaxed**: `UNIQUE (account_id)` is added, so an account still belongs to exactly one Discord identity. Without it two people could both sign in as the same administrator.
+  - **The cost was stated before the change, and then measured.** The Discord migration plan leaned on that primary key as an implicit "one guild per Discord account". It turns out **not** to be load-bearing there: `gm_discord_create_guild`, `gm_discord_join_guild`, `gm_claim_account_with_discord` and `gm_redeem_admin_invite` each refuse when the identity already holds **any** link, which is an explicit check untouched by this change. The migration asserts all four still have it, and aborts if one is ever lost.
+  - **One function would have broken silently, and that is why this is a migration and not an ALTER.** `gm_redeem_relink_code` did `INSERT … ON CONFLICT (discord_user_id) DO UPDATE`. That clause names a column that is no longer a unique constraint, so it **raises** — relinking would have started failing for everyone with nothing in the change to hint at it. Rewritten, and the migration asserts the clause is gone.
+  - **`.maybeSingle()` would have made it worse.** It *errors* on more than one row rather than picking one, so the very first multi-account sign-in would have failed outright. The lookup reads every row now.
+  - **The chooser is not an oracle.** Picking spends the continuation ticket, and the account id is re-verified against that identity's links server-side — naming someone else's account answers `account_not_linked`, exactly as naming one that does not exist. Status is re-checked at selection time, not only at listing time, because an account can be suspended in between. Only active accounts are ever listed, and the buttons disable on the first click since the ticket is single-use.
+  - **The dialog says where each account leads** ("Command Center, every guild" / "Player Portal, ALPHA") rather than showing two ids and leaving the choice to memory.
+  - **Applied to production**: both links now exist for the owner's Discord identity, and `auth-discord` is deployed. Its `verify_jwt = false` is unchanged, as declared in `config.toml`.
+  - **Still open, and worth deciding separately**: attaching a second account requires an **admin-issued relink code**. There is no self-service path, which is deliberate, but it means no other admin-who-is-also-a-player gets this until a code is issued to them.
+  - Gate: 0 TS errors, **155 suites / 1925 tests**, build clean, 35 e2e green.
+
 ## [3.21.0] - 2026-09-27 — audit remediation (phases 1-9), **deployed**
 
 > **Shipped to production on 2026-09-27** and verified there, not assumed: `/sw.js` now returns the self-unregistering tombstone with zero push handlers, the CSP is down to `script-src 'self'` with no `*.supabase.co` wildcard, `privacy.html`/`terms.html`/`legal.css` all serve 200, and the app boots with **zero CSP violations**. The 15 Edge Functions were already current with this branch — verified behaviourally, by probing the phase-4 CORS fix from the bypass origin — so none were redeployed and all seven `verify_jwt = true` functions stayed gated.
