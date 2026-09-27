@@ -22,7 +22,8 @@ import path from 'node:path';
 import {
   ocrProfileFromRoi,
   ocrEstimateProfileShift,
-  ocrMeasureVerticalSharpness
+  ocrMeasureVerticalSharpness,
+  fuseOcrPlayers
 } from '../src/modules/ocr/ocr.service';
 
 const rootDir = path.resolve(__dirname, '..');
@@ -158,5 +159,76 @@ describe('a video scan cannot hang or blow up memory', () => {
     expect(ctrl).toContain("RETRYABLE = ['ocr_processing_failed', 'too_many_attempts']");
     // Retrying a truncated candidate client-side just spends the tokens twice.
     expect(ctrl).not.toMatch(/RETRYABLE[^\n]*json_parse_failed/);
+  });
+});
+
+describe('fusion may not make a player disappear', () => {
+  // findBestMatchingMember answers from a similarity of 0.75, and fuseOcrPlayers
+  // rewrote anything from 0.80 to the member's own spelling. Two different
+  // players with close names both became that member, collapsed onto one key,
+  // and the results table silently showed one of them.
+  //
+  // Measured on real roster names, string distance cannot tell the two cases
+  // apart: Coreman/C0reman is 0.857 and is one player misread, Sonz/Sonz2 is
+  // 0.800 and is two players. The score decides instead.
+  const roster = [{ pseudo: 'Sonz', uid: '100001' }, { pseudo: 'Coreman', uid: '100002' }];
+
+  it('keeps two players whose names are close but whose scores are not', () => {
+    const fused = fuseOcrPlayers(
+      [{ pseudo: 'Sonz', score: 103827335 }, { pseudo: 'Sonz2', score: 51671987 }],
+      roster,
+      null
+    );
+    expect(fused).toHaveLength(2);
+    expect(fused.map((f) => f.pseudo).sort()).toEqual(['Sonz', 'Sonz2']);
+    expect(fused.find((f) => f.pseudo === 'Sonz').score).toBe(103827335);
+    expect(fused.find((f) => f.pseudo === 'Sonz2').score).toBe(51671987);
+  });
+
+  it('still corrects a misread name onto its member when the score agrees', () => {
+    // The same row, read off two frames, one of them with a 0 for an O.
+    const fused = fuseOcrPlayers(
+      [{ pseudo: 'Coreman', score: 94740921 }, { pseudo: 'C0reman', score: 94740921 }],
+      roster,
+      null
+    );
+    expect(fused).toHaveLength(1);
+    expect(fused[0].pseudo).toBe('Coreman');
+  });
+
+  it('still merges one player read off several frames', () => {
+    const fused = fuseOcrPlayers(
+      [
+        { pseudo: 'Sonz', score: 103827335 },
+        { pseudo: 'Sonz', score: 103827335 },
+        { pseudo: 'sonz', score: 103827335, uid: '100001' }
+      ],
+      roster,
+      null
+    );
+    expect(fused).toHaveLength(1);
+    expect(fused[0].pseudo).toBe('Sonz');
+    expect(fused[0].uid).toBe('100001');
+  });
+
+  it('corrects a typo onto an unclaimed member, as before', () => {
+    const fused = fuseOcrPlayers([{ pseudo: 'C0reman', score: 500 }], roster, null);
+    expect(fused).toHaveLength(1);
+    expect(fused[0].pseudo).toBe('Coreman');
+  });
+});
+
+describe('the repeated prompt, not the images, is the token cost', () => {
+  const ctrl = stripComments(read('src/modules/app/ocr/ocr.controller.ts'));
+
+  it('sends enough images per call to amortise the system instruction', () => {
+    // Measured on a 64-frame scan: 34,272 tokens of re-sent prompt against
+    // 16,512 of image. Two images per call spends more on the question than
+    // on what is being asked about.
+    const cs = /const chunkSize = (\d+);/.exec(ctrl);
+    expect(cs).toBeTruthy();
+    expect(Number(cs[1])).toBeGreaterThanOrEqual(3);
+    // The Edge Function rejects more than five, in Zod and in an early guard.
+    expect(Number(cs[1])).toBeLessThanOrEqual(5);
   });
 });

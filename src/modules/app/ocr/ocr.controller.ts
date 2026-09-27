@@ -696,8 +696,14 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
 
   let allPlayers: any[] = [];
   try {
-    // Calibrated chunk size = 2 images per prompt to maximize Gemini vision accuracy
-    const chunkSize = 2;
+    // The ~900-token system instruction is re-sent with every call, and at two
+    // images per call it cost MORE than the images themselves: measured on a
+    // 64-frame scan, 34,272 tokens of repeated prompt against 16,512 of image.
+    // Four amortises it across twice the images and stays a margin below the
+    // Edge Function's hard limit of five. The previous value of 2 was described
+    // in this comment as calibrated for accuracy, but nothing in the repository
+    // measures that, so the margin to 5 is deliberate.
+    const chunkSize = 4;
     const chunks: Blob[][] = [];
     for (let c = 0; c < imageFiles.length; c += chunkSize) chunks.push(imageFiles.slice(c, c + chunkSize));
 

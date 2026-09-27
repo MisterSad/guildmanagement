@@ -114,8 +114,19 @@ const MEMBERS = [
   { pseudo: 'Delta', uid: '444444', role: 'R1', guild: 'ALPHA', glory_score: 1 }
 ];
 
-/** Six frames -> three batches of two, which is what a short video produces. */
-const frames = () => new Array(6).fill(0).map(() => new Blob(['frame'], { type: 'image/png' }));
+/**
+ * Enough frames for three batches, whatever the controller's chunk size is.
+ * Pinning six frames here pinned "three batches of two" with them, so raising
+ * the chunk size to amortise the re-sent system prompt broke a test that is
+ * about surviving a failed batch and has no opinion on how big a batch is.
+ */
+const CHUNK_SIZE = Number(
+  /const chunkSize = (\d+);/.exec(
+    fs.readFileSync(path.join(rootDir, 'src/modules/app/ocr/ocr.controller.ts'), 'utf8')
+  )[1]
+);
+const BATCHES = 3;
+const frames = () => new Array(CHUNK_SIZE * BATCHES).fill(0).map(() => new Blob(['frame'], { type: 'image/png' }));
 
 const toastText = () => document.getElementById('toast-container').textContent;
 
@@ -185,7 +196,7 @@ describe('one bad batch does not discard the good ones', () => {
 
     await handleOcrFiles(frames());
 
-    expect(toastText()).toContain('1 of 3 batches failed');
+    expect(toastText()).toContain('1 of ' + BATCHES + ' batches failed');
     expect(toastText()).toContain('incomplete');
   });
 

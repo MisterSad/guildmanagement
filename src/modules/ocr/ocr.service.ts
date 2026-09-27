@@ -355,24 +355,49 @@ export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guild
   const tag = guildTag || null;
 
   const fusedMap: Record<string, any> = {};
+  // Which OCR name first claimed each roster member, and at what score.
+  // findBestMatchingMember answers from a similarity of 0.75 up, so two
+  // DIFFERENT players with close names could both be rewritten to one member,
+  // collapse onto one key, and one of them would vanish with nothing said.
+  //
+  // String distance cannot settle which case is which. Measured on names from a
+  // real roster, an OCR typo and a genuinely different player fall in the same
+  // band: Coreman/C0reman scores 0.857 and is one player, Sonz/Sonz2 scores
+  // 0.800 and is two. The score does separate them -- one row has one value,
+  // however many frames it was read from -- so that is what decides here.
+  const claimedBy: Record<string, { name: string; score: number }> = {};
+  const SCORE_TOLERANCE = 0.01;
 
   for (const p of rawPlayers) {
     if (!p || !p.pseudo || !String(p.pseudo).trim()) continue;
     const cleanPseudo = cleanPlayerPseudo(p.pseudo, tag) || String(p.pseudo).trim();
     if (!cleanPseudo) continue;
 
+    const pScore = p.score != null ? p.score : (p.overall_power || 0);
+
     let canonicalPseudo = cleanPseudo;
     let memberMatch = null;
     if (members.length > 0) {
       const matchRes = findBestMatchingMember(cleanPseudo, members, tag);
       if (matchRes && matchRes.score >= 0.80) {
-        canonicalPseudo = matchRes.member.pseudo;
-        memberMatch = matchRes.member;
+        const memberKey = String(matchRes.member.pseudo).trim().toLowerCase();
+        const owner = claimedBy[memberKey];
+        const sameName = !!owner && owner.name.toLowerCase() === cleanPseudo.toLowerCase();
+        const biggest = owner ? Math.max(Math.abs(owner.score), Math.abs(pScore)) : 0;
+        const sameScore = !!owner && (biggest === 0 || Math.abs(owner.score - pScore) / biggest <= SCORE_TOLERANCE);
+
+        if (!owner || sameName || sameScore) {
+          canonicalPseudo = matchRes.member.pseudo;
+          memberMatch = matchRes.member;
+          if (!owner) claimedBy[memberKey] = { name: cleanPseudo, score: pScore };
+        }
+        // Otherwise: a different player already holds this member. Keeping our
+        // own name shows both rows in the review table, where an admin can see
+        // the two and decide -- which a silent merge never allowed.
       }
     }
 
     const key = canonicalPseudo.toLowerCase().trim();
-    const pScore = p.score != null ? p.score : (p.overall_power || 0);
     const pUid = p.uid ? String(p.uid).trim() : (memberMatch ? (memberMatch.uid || null) : null);
     const pRank = p.rank || null;
 
