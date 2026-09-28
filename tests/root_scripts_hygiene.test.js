@@ -66,7 +66,12 @@ describe('TICKET-12 [MAINT-01]: Root Scripts Hygiene & Build Exclusion', () => {
     expect(activeScripts).toContain('build.js');
     expect(activeScripts).toContain('generate-compliance-pdf.js');
     expect(activeScripts).toContain('generate_demo_data.py');
-    expect(activeScripts).toContain('register-discord-commands.mjs');
+    // register-discord-commands.mjs was DELETED on 2026-09-28, not archived: it
+    // was a third command registry, run by hand, that nothing kept in step with
+    // the worker and the Edge Function. The worker registers every command on
+    // boot -- globally and per guild for instant availability -- so a manual
+    // script could only ever drift or wipe.
+    expect(activeScripts).not.toContain('register-discord-commands.mjs');
 
     // Archived scripts are no longer at scripts/ root
     expect(activeScripts).not.toContain('bump_cache_busters.py');

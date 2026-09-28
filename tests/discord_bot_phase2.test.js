@@ -309,9 +309,13 @@ describe('Regression: discord-bot-interactions exposes the Phase 2 commands via 
   });
 });
 
-describe('Regression: register-discord-commands.mjs registers the full Phase 2 command set', () => {
+// The command definitions used to live in scripts/register-discord-commands.mjs,
+// a third registry run by hand that nothing kept in step with the two handlers.
+// Deleted 2026-09-28: the worker registers every command on boot (globally and
+// per guild), so its definitions are the single source of truth.
+describe('Regression: the worker owns the full Phase 2 command set', () => {
   const scriptSrc = fs.readFileSync(
-    path.resolve(__dirname, '../scripts/register-discord-commands.mjs'),
+    path.resolve(__dirname, '../discord-verification-worker/index.js'),
     'utf-8'
   );
 
@@ -330,7 +334,7 @@ describe('Regression: register-discord-commands.mjs registers the full Phase 2 c
 
   it('declares /absence with set/list/cancel as SUB_COMMAND (type 1) options', () => {
     const idx = scriptSrc.indexOf('name: "absence"');
-    const block = scriptSrc.slice(idx, scriptSrc.indexOf('\n];', idx));
+    const block = scriptSrc.slice(idx, scriptSrc.indexOf('\n};', idx));
     expect(block).toContain('name: "set"');
     expect(block).toContain('name: "list"');
     expect(block).toContain('name: "cancel"');

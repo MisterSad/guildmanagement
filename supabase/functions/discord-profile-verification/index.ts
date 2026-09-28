@@ -192,6 +192,32 @@ function buildNickname(tagDisplay: string, pseudo: string, serverNumber: string 
   return nickname;
 }
 
+// Where an officer will actually see this.
+//
+// Measured 2026-09-28: `guild_config` holds ZERO rows for
+// discord_audit_channel_id and discord_officer_channel_id -- not empty ones,
+// none at all -- across all 28 guilds. So the officer notification the roster
+// gate promises had nowhere to go for anybody, and a held verification would
+// have been silent: the player learns they are pending, nobody who can fix it
+// does. The verification channel is the last resort, because a message nobody
+// reads is still better than a message nobody sends. It is posted with the
+// DURABLE helper, so it survives while the player's reply and the screenshot
+// are cleaned up around it.
+async function resolveOfficerChannel(
+  admin: ReturnType<typeof createClient>,
+  targetGuild: string,
+  fgfGuild: string,
+  verificationChannelId: string,
+  logger: EdgeLogger
+): Promise<{ channelId: string; isFallback: boolean }> {
+  const configured =
+    (await resolveAuditChannelId(admin, targetGuild)) ||
+    (await resolveAuditChannelId(admin, fgfGuild));
+  if (configured) return { channelId: configured, isFallback: false };
+  logger.warn("No audit or officer channel configured; posting the officer notice in the verification channel instead", { targetGuild, fgfGuild });
+  return { channelId: verificationChannelId, isFallback: true };
+}
+
 // What the player is told, and what the officer channel records, for each way
 // the roster can refuse. Kept next to each other so the two never disagree.
 function pendingAuditReason(reason: RefusalReason, onFileUid?: string): string {
@@ -357,26 +383,22 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
   // to every tenant -- an unresolved tenant never falls back to a real guild.
   if (tagMatch.kind === "home_server_unknown") {
     logger.error("Verification channel's guild has no server_number; no guild role can be resolved", undefined, { fgfGuild });
-    const auditChannelId = await resolveAuditChannelId(admin, fgfGuild);
-    if (auditChannelId) {
-      await postAuditMessage(
-        auditChannelId,
-        `⚠️ Verification is misconfigured: guild **${fgfGuild}** has no game-server number, so no guild tag can be resolved and every screenshot will be treated as a visitor. Set the server number in the Guild Management tool (Settings > Guild).`
-      );
-    }
+    const officer = await resolveOfficerChannel(admin, fgfGuild, fgfGuild, channelId, logger);
+    await postAuditMessage(
+      officer.channelId,
+      `⚠️ Verification is misconfigured: guild **${fgfGuild}** has no game-server number, so no guild tag can be resolved and every screenshot will be treated as a visitor. Set the server number in the Guild Management tool (Settings > Guild).`
+    );
   } else if (tagMatch.kind === "ambiguous") {
     logger.error("Two guilds on the same game server share this tag; refusing to guess", undefined, {
       serverNumber: tagMatch.serverNumber,
       candidates: tagMatch.candidates.join(","),
       tag: extractedTagNormalized,
     });
-    const auditChannelId = await resolveAuditChannelId(admin, fgfGuild);
-    if (auditChannelId) {
-      await postAuditMessage(
-        auditChannelId,
-        `⚠️ Verification is misconfigured: guilds **${tagMatch.candidates.join("**, **")}** all use the tag **[${extractedTagNormalized}]** on server **#${tagMatch.serverNumber}**. I will not guess which one a screenshot belongs to -- fix the guild tags in the Guild Management tool. Players are getting the Visitor role meanwhile.`
-      );
-    }
+    const officer = await resolveOfficerChannel(admin, fgfGuild, fgfGuild, channelId, logger);
+    await postAuditMessage(
+      officer.channelId,
+      `⚠️ Verification is misconfigured: guilds **${tagMatch.candidates.join("**, **")}** all use the tag **[${extractedTagNormalized}]** on server **#${tagMatch.serverNumber}**. I will not guess which one a screenshot belongs to -- fix the guild tags in the Guild Management tool. Players are getting the Visitor role meanwhile.`
+    );
   }
 
   const matched = tagMatch.kind === "match" ? tagMatch : null;
@@ -467,17 +489,21 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     const playerMessage = pendingPlayerMessage(result.reason, matched!.tagDisplay, targetGuild, matched!.serverNumber, pseudo, extractedUid, assigned?.name || null, patched);
     const botMsgId = await postChannelMessage(channelId, playerMessage);
 
-    const auditChannelId = (await resolveAuditChannelId(admin, targetGuild)) || (await resolveAuditChannelId(admin, fgfGuild));
-    if (auditChannelId) {
-      // Durable on purpose (not the 15s auto-deleting reply): this is the only
-      // place an officer can see that someone is waiting to be added.
+    // Durable on purpose (not the 15s auto-deleting reply): this is the only
+    // place an officer can see that someone is waiting to be added.
+    const officer = await resolveOfficerChannel(admin, targetGuild, fgfGuild, channelId, logger);
+    const auditChannelId = officer.isFallback ? null : officer.channelId;
+    {
       await postAuditMessage(
-        auditChannelId,
+        officer.channelId,
         `⏳ **Verification held** — **${pseudo}** (UID \`${extractedUid}\`) claimed **${matched!.tagDisplay}** on server **#${matched!.serverNumber}** but is not in the **${targetGuild}** member list.\n` +
         `• Reason: ${pendingAuditReason(result.reason, result.onFileUid)}\n` +
         (result.otherGuilds.length ? `• That UID is on the roster of: ${result.otherGuilds.join(", ")}\n` : "") +
         `• Power read: ${power.toLocaleString("en-US")}${glory != null ? ` · Glory: ${glory.toLocaleString("en-US")}` : ""}\n` +
-        `• Action: add them in the Guild Management tool, then ask them to post their screenshot again. No role was granted and nothing was written to the roster.`
+        `• Action: add them in the Guild Management tool, then ask them to post their screenshot again. No role was granted and nothing was written to the roster.` +
+        (officer.isFallback
+          ? `\n• *This notice is here because **${targetGuild}** has no audit/officer channel configured. Set one in the Guild Management tool to keep these out of the verification channel.*`
+          : "")
       );
     }
 

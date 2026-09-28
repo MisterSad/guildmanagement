@@ -206,3 +206,194 @@ describe('one Gemini model list for the whole backend', () => {
     expect(src).toContain('geminiSupportsThinking');
   });
 });
+
+describe('one transport, one registry, one implementation', () => {
+  // Measured 2026-09-28: discord-bot-interactions was invoked 0 times in 24
+  // hours while discord-profile-verification was invoked 15, and the worker logs
+  // registering nine commands over the Gateway. Discord delivers interactions
+  // over ONE transport and for this application it is the Gateway -- so
+  // /power, /glory, /timezone, /challenges and /absence, which exist on Discord,
+  // had no handler at all and answered "The application did not respond".
+  const botSrc = fs.readFileSync(
+    path.resolve(__dirname, '../supabase/functions/discord-bot-interactions/index.ts'),
+    'utf-8'
+  );
+
+  it('routes the five orphaned commands instead of reimplementing them', () => {
+    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["power", "glory", "timezone", "challenges", "absence"])');
+    expect(workerSrc).toContain('FORWARDED_COMMANDS.has(interaction.commandName)');
+    expect(workerSrc).toContain('INTERACTIONS_FUNCTION_URL');
+    // The validated write helpers stay on the Deno side, shared with the Portal.
+    for (const helper of ['updatePlayerPower', 'updatePlayerGlory', 'updatePlayerTimezone', 'getPlayerChallenges', 'setPlayerAbsence']) {
+      expect(botSrc, `${helper} must stay in the Edge Function`).toContain(helper);
+      expect(workerSrc, `${helper} must NOT be reimplemented in the worker`).not.toContain(helper);
+    }
+  });
+
+  it('acknowledges within Discord\'s 3-second window before the round trip', () => {
+    const fwd = workerSrc.slice(workerSrc.indexOf('async function forwardInteraction'));
+    const deferIdx = fwd.indexOf('deferReply');
+    const fetchIdx = fwd.indexOf('fetch(INTERACTIONS_FUNCTION_URL');
+    expect(deferIdx).toBeGreaterThan(-1);
+    expect(fetchIdx).toBeGreaterThan(deferIdx);
+  });
+
+  it('sends Discord\'s raw option shape, not discord.js toJSON()', () => {
+    // The Edge Function reads interaction.data.options and, for /absence, the
+    // subcommand nested in options[0].options. discord.js toJSON() does not
+    // return that.
+    expect(workerSrc).toContain('function rawOptions');
+    expect(workerSrc).toContain('function toRawInteraction');
+    expect(workerSrc).not.toContain('interaction.toJSON');
+    expect(botSrc).toContain('interaction.data?.options?.[0]');
+  });
+
+  it('accepts the worker secret AND the Ed25519 signature, and refuses a wrong secret outright', () => {
+    expect(botSrc).toContain('DISCORD_WORKER_SECRET');
+    expect(botSrc).toContain('safeEqual(authBearer, DISCORD_WORKER_SECRET)');
+    expect(botSrc).toContain('verifyDiscordSignature');
+    // A present-but-wrong bearer must not fall through to the signature branch.
+    const elseIdx = botSrc.indexOf('} else {', botSrc.indexOf('if (fromWorker)'));
+    const sigIdx = botSrc.indexOf('verifyDiscordSignature(publicKey');
+    const refuseIdx = botSrc.indexOf('Rejected interaction with an invalid worker secret');
+    expect(refuseIdx).toBeGreaterThan(elseIdx);
+    expect(refuseIdx).toBeLessThan(sigIdx);
+  });
+
+  it('has exactly one command registry in the repository', () => {
+    expect(fs.existsSync(path.resolve(__dirname, '../scripts/register-discord-commands.mjs'))).toBe(false);
+    // Every command the worker forwards must also be one the worker defines,
+    // or Discord would serve a command no source file describes.
+    for (const name of ['power', 'glory', 'timezone', 'challenges', 'absence']) {
+      expect(workerSrc, `/${name} must be defined in the worker`).toMatch(
+        new RegExp(`name: "${name}"`)
+      );
+      expect(workerSrc, `/${name} must be registered`).toContain(`["${name}", `);
+    }
+  });
+
+  it('registers per-guild commands without the ids that made every attempt fail', () => {
+    // `body` carries each GLOBAL command's id, which a guild-scoped PUT rejects
+    // with APPLICATION_COMMANDS_INVALID_ID -- 14 warnings on every boot, and
+    // instant availability never once happened.
+    expect(workerSrc).toContain('const guildBody = body.map(({ id, application_id, guild_id, version, ...cmd }) => cmd)');
+    const loopIdx = workerSrc.indexOf('applicationGuildCommands');
+    const loopCall = workerSrc.slice(loopIdx - 200, loopIdx + 200);
+    expect(loopCall).toContain('body: guildBody');
+    expect(loopCall).not.toMatch(/\{ body \}/);
+  });
+});
+
+describe('/mystats reports the app\'s numbers without inventing a new one', () => {
+  it('uses gm_player_stats, the only stats RPC a service-role caller can reach', () => {
+    expect(workerSrc).toContain('.rpc("gm_player_stats"');
+    // The gated ones return false when auth.uid() is NULL, so the worker must
+    // never CALL them. They are named in a comment on purpose, to say why.
+    for (const gated of ['gm_stats_weeks', 'gm_stats_members', 'gm_stats_health', 'gm_stats_events']) {
+      expect(workerSrc, `${gated} is unreachable from the worker`).not.toContain(`.rpc("${gated}"`);
+    }
+  });
+
+  it('computes no weighted score of its own', () => {
+    // The weighting lives in src/core/scoring/reliability.ts, shared by the admin
+    // page and the Portal. A third copy here is how those two came to disagree.
+    const fn = workerSrc.slice(workerSrc.indexOf('async function handleMyStats'), workerSrc.indexOf('async function handleVerifications'));
+    expect(fn).not.toMatch(/coeff|weight|reliability_score/i);
+    // It reports att/opp and the guild's pooled rate, nothing more.
+    expect(fn).toContain('mine.att');
+    expect(fn).toContain('theirs.member_opportunities');
+  });
+
+  it('bounds the week window on the client side too', () => {
+    expect(workerSrc).toContain('Math.min(Math.max(requested ?? 4, 1), 26)');
+  });
+
+  it('is ephemeral, so a player cannot read it off someone else\'s screen', () => {
+    const fn = workerSrc.slice(workerSrc.indexOf('async function handleMyStats'), workerSrc.indexOf('async function handleVerifications'));
+    expect(fn).toContain('ephemeral: true');
+  });
+});
+
+describe('/verifications never takes the guild from the caller', () => {
+  const fn = () => workerSrc.slice(
+    workerSrc.indexOf('async function handleVerifications'),
+    workerSrc.indexOf('function normalizeTag')
+  );
+
+  it('resolves the guild from the channel map or the linked account only', () => {
+    const body = fn();
+    expect(body).toContain('channelToGuild.get(interaction.channelId)');
+    expect(body).toContain('resolveLinkedAccount(interaction.user.id)');
+    // No guild option exists to be supplied.
+    expect(body).not.toMatch(/getString\(\s*["']guild["']/);
+    expect(workerSrc.slice(workerSrc.indexOf('const VERIFICATIONS_COMMAND'), workerSrc.indexOf('const LINK_COMMAND'))).not.toMatch(/name: "guild"/);
+  });
+
+  it('is gated by a Discord permission, not by an app role', () => {
+    const defIdx = workerSrc.indexOf('const VERIFICATIONS_COMMAND');
+    expect(defIdx).toBeGreaterThan(-1);
+    const def = workerSrc.slice(defIdx, workerSrc.indexOf('};', defIdx));
+    expect(def).toContain('default_member_permissions: String(PermissionFlagsBits.ManageMessages)');
+    // And the officer command for role removal is gated too.
+    const recIdx = workerSrc.indexOf('const RECONCILE_ROLES_COMMAND');
+    const rec = workerSrc.slice(recIdx, workerSrc.indexOf('};', recIdx));
+    expect(rec).toContain('default_member_permissions: String(PermissionFlagsBits.ManageRoles)');
+  });
+
+  it('reads the audit rows ADR-020 writes, bounded and ephemeral, pinging nobody', () => {
+    const body = fn();
+    expect(body).toContain('"discord_verification_refused"');
+    expect(body).toContain('.limit(20)');
+    expect(body).toContain('ephemeral: true');
+    expect(body).toContain('allowedMentions: { parse: [] }');
+  });
+});
+
+describe('/reconcile-roles reports before it removes', () => {
+  const fn = () => workerSrc.slice(
+    workerSrc.indexOf('async function handleReconcileRoles'),
+    workerSrc.indexOf('async function handleReconcileButton')
+  );
+
+  it('does not request the privileged members intent unless it was switched on', () => {
+    // Declaring GuildMembers while the Developer Portal toggle is off makes the
+    // bot fail to log in entirely -- the whole bot, for one command.
+    expect(workerSrc).toContain("const MEMBERS_INTENT_ENABLED = (process.env.DISCORD_GUILD_MEMBERS_INTENT || \"\").trim() === \"true\"");
+    expect(workerSrc).toContain('...(MEMBERS_INTENT_ENABLED ? [GatewayIntentBits.GuildMembers] : [])');
+    expect(fn()).toContain('if (!MEMBERS_INTENT_ENABLED)');
+    expect(fn()).toContain('Server Members Intent');
+  });
+
+  it('removes nothing without a confirmation button from the officer who asked', () => {
+    const body = fn();
+    expect(body).toContain('pendingReconciles.set');
+    expect(body).toContain('reconcile_confirm_');
+    expect(body).not.toContain('roles.remove');
+
+    const btn = workerSrc.slice(workerSrc.indexOf('async function handleReconcileButton'));
+    expect(btn).toContain('interaction.user.id !== pending.initiatorId');
+    const guardIdx = btn.indexOf('interaction.user.id !== pending.initiatorId');
+    const removeIdx = btn.indexOf('roles.remove');
+    expect(removeIdx).toBeGreaterThan(guardIdx);
+  });
+
+  it('only ever takes off the tag role, and never kicks', () => {
+    const btn = workerSrc.slice(workerSrc.indexOf('async function handleReconcileButton'));
+    expect(btn).toContain('member.roles.remove(pending.roleId');
+    expect(btn).not.toMatch(/\.kick\(|\.ban\(/);
+    expect(workerSrc).not.toMatch(/\.kick\(|\.ban\(/);
+  });
+
+  it('never touches a member it could not identify', () => {
+    const body = fn();
+    expect(body).toContain('unidentified.push');
+    // The orphan list is what the button acts on; unidentified holders are only
+    // ever reported.
+    expect(body).toContain('memberIds: orphans.map');
+    expect(body).not.toContain('memberIds: unidentified');
+  });
+
+  it('refuses to report anyone as missing on a truncated roster read', () => {
+    expect(fn()).toContain('rosterRows.length >= 5000');
+  });
+});

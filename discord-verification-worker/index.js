@@ -42,6 +42,16 @@ const {
   DISCORD_MEMBER_ROLE_ID,
 } = process.env;
 
+// The player-command Edge Function lives next to the verification one, so its
+// URL is derived rather than made a new Render env var the owner has to set.
+// An explicit INTERACTIONS_FUNCTION_URL still wins if it is ever set.
+const INTERACTIONS_FUNCTION_URL =
+  (process.env.INTERACTIONS_FUNCTION_URL || "").trim() ||
+  (VERIFICATION_FUNCTION_URL || "").replace(/\/discord-profile-verification\/?$/, "/discord-bot-interactions");
+
+// Opt-in, because it is a privileged intent -- see the client's intents below.
+const MEMBERS_INTENT_ENABLED = (process.env.DISCORD_GUILD_MEMBERS_INTENT || "").trim() === "true";
+
 const REQUIRED_ENV = {
   DISCORD_BOT_TOKEN,
   SUPABASE_URL,
@@ -156,6 +166,14 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    // Listing who holds a role means listing members, and that needs the
+    // PRIVILEGED GuildMembers intent. Declaring it while the toggle is off in
+    // the Discord Developer Portal makes the bot fail to log in entirely
+    // ("Used disallowed intents") -- the whole bot, not just one command. So it
+    // is opt-in: flip "Server Members Intent" in the portal, then set
+    // DISCORD_GUILD_MEMBERS_INTENT=true on Render. /reconcile-roles says so
+    // when it is missing.
+    ...(MEMBERS_INTENT_ENABLED ? [GatewayIntentBits.GuildMembers] : []),
   ],
   partials: [Partials.Message, Partials.Channel],
 });
@@ -210,6 +228,95 @@ async function addVerifiedRole(message, fgfGuild) {
       `Check that the bot's role sits above the target role in Server Settings > Roles.`
     );
   }
+}
+
+// Commands whose logic lives in the discord-bot-interactions Edge Function.
+//
+// They already EXIST on Discord -- scripts/register-discord-commands.mjs
+// registered them and this worker preserves commands it does not own -- but the
+// worker had no handler, so running one produced "The application did not
+// respond". Measured 2026-09-28: the Edge Function was invoked 0 times in 24
+// hours, because Discord delivers interactions over the Gateway for this
+// application, not to an Interactions Endpoint URL.
+//
+// The interaction is forwarded rather than reimplemented here: those five
+// commands run the same validated, audited `_shared/player-actions.ts` paths the
+// Player Portal uses, and a second Node copy would drift from them.
+const FORWARDED_COMMANDS = new Set(["power", "glory", "timezone", "challenges", "absence"]);
+
+/** discord.js option tree -> Discord's raw option array, subcommands included. */
+function rawOptions(list) {
+  return (list || []).map((o) => ({
+    name: o.name,
+    type: o.type,
+    ...(o.value !== undefined ? { value: o.value } : {}),
+    ...(o.options && o.options.length ? { options: rawOptions(o.options) } : {}),
+  }));
+}
+
+function toRawInteraction(interaction) {
+  const user = { id: interaction.user.id, username: interaction.user.username };
+  return {
+    // 2 = APPLICATION_COMMAND, the only type forwarded here.
+    type: 2,
+    id: interaction.id,
+    application_id: interaction.applicationId,
+    guild_id: interaction.guildId || null,
+    channel_id: interaction.channelId || null,
+    data: {
+      name: interaction.commandName,
+      options: rawOptions(interaction.options?.data),
+    },
+    ...(interaction.member ? { member: { user } } : {}),
+    user,
+  };
+}
+
+async function forwardInteraction(interaction) {
+  // Discord allows 3 seconds to acknowledge; the Edge round trip plus a database
+  // write can exceed that, so acknowledge first and edit the reply after.
+  await interaction.deferReply({ ephemeral: true });
+
+  const res = await fetch(INTERACTIONS_FUNCTION_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${DISCORD_WORKER_SECRET}`,
+    },
+    // Rebuilt into Discord's own APPLICATION_COMMAND shape, because that is what
+    // the Edge Function reads (interaction.data.name, interaction.data.options,
+    // and the subcommand nested inside options[0].options for /absence).
+    // discord.js `toJSON()` does NOT give the raw gateway payload back.
+    body: JSON.stringify({ interaction: toRawInteraction(interaction) }),
+  });
+
+  let payload = null;
+  try {
+    payload = await res.json();
+  } catch {
+    payload = null;
+  }
+
+  if (!res.ok || !payload) {
+    console.warn(`discord-bot-interactions returned ${res.status} for /${interaction.commandName}`);
+    await interaction.editReply({ content: "Something went wrong running that command. Please try again." });
+    return;
+  }
+
+  // The Edge Function answers in Discord's interaction-response shape.
+  const data = payload.data || {};
+  const content = typeof data.content === "string" && data.content.trim() ? data.content : null;
+  const embeds = Array.isArray(data.embeds) ? data.embeds : [];
+
+  if (!content && embeds.length === 0) {
+    await interaction.editReply({ content: "Done." });
+    return;
+  }
+  await interaction.editReply({
+    ...(content ? { content } : {}),
+    ...(embeds.length ? { embeds } : {}),
+    allowedMentions: { parse: [] },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -314,6 +421,90 @@ const SETUP_SERVER_COMMAND = {
   ],
 };
 
+// The five commands whose logic lives in the discord-bot-interactions Edge
+// Function (see FORWARDED_COMMANDS). Their definitions used to exist ONLY in
+// scripts/register-discord-commands.mjs -- a third registry, run by hand, that
+// nothing kept in step with the two handlers. They live here now, with every
+// other command, so there is one source of truth and Discord cannot end up
+// serving a command no source file describes.
+const POWER_COMMAND = {
+  name: "power",
+  description: "Update your overall power.",
+  options: [
+    { name: "value", description: "Your current Overall Power (digits only, e.g. 150000000)", type: 4, required: true, min_value: 0 },
+  ],
+};
+
+const GLORY_COMMAND = {
+  name: "glory",
+  description: "Submit your Glory score for this week.",
+  options: [
+    { name: "value", description: "Your Glory score for this week", type: 4, required: true, min_value: 0 },
+  ],
+};
+
+const TIMEZONE_COMMAND = {
+  name: "timezone",
+  description: "Set your timezone (UTC offset).",
+  options: [
+    { name: "offset", description: "UTC offset in hours (e.g. -5, 0, 8)", type: 4, required: true, min_value: -12, max_value: 14 },
+  ],
+};
+
+const CHALLENGES_COMMAND = {
+  name: "challenges",
+  description: "Show your weekly challenges progress.",
+};
+
+const ABSENCE_COMMAND = {
+  name: "absence",
+  description: "Manage your absence declarations.",
+  options: [
+    {
+      type: 1,
+      name: "set",
+      description: "Declare an absence period",
+      options: [
+        { type: 3, name: "start_date", description: "Start date (YYYY-MM-DD)", required: true },
+        { type: 3, name: "end_date", description: "End date (YYYY-MM-DD)", required: true },
+        { type: 3, name: "note", description: "Optional reason", required: false },
+      ],
+    },
+    { type: 1, name: "list", description: "List your current absences" },
+    {
+      type: 1,
+      name: "cancel",
+      description: "Cancel a declared absence",
+      options: [
+        { type: 3, name: "id", description: "Absence ID (from /absence list)", required: true },
+      ],
+    },
+  ],
+};
+
+const RECONCILE_ROLES_COMMAND = {
+  name: "reconcile-roles",
+  description: "Officers: who holds the guild role without being on the roster.",
+  default_member_permissions: String(PermissionFlagsBits.ManageRoles),
+};
+
+const MYSTATS_COMMAND = {
+  name: "mystats",
+  description: "Your attendance per event type, and how your guild compares.",
+  options: [
+    { name: "weeks", description: "How many recent weeks to include (1-26, default 4)", type: 4, required: false, min_value: 1, max_value: 26 },
+  ],
+};
+
+const VERIFICATIONS_COMMAND = {
+  name: "verifications",
+  description: "Officers: players whose Discord verification was held back.",
+  default_member_permissions: String(PermissionFlagsBits.ManageMessages),
+  options: [
+    { name: "days", description: "How far back to look (1-30, default 7)", type: 4, required: false, min_value: 1, max_value: 30 },
+  ],
+};
+
 const LINK_COMMAND = {
   name: "link",
   description: "Link your Discord account to your FGF Guild Management player account.",
@@ -348,6 +539,15 @@ async function registerSlashCommands() {
       ["call-to-arms", CALL_TO_ARMS_COMMAND],
       ["update-stats", UPDATE_STATS_COMMAND],
       ["setup-server", SETUP_SERVER_COMMAND],
+      ["mystats", MYSTATS_COMMAND],
+      ["reconcile-roles", RECONCILE_ROLES_COMMAND],
+      ["verifications", VERIFICATIONS_COMMAND],
+      // Forwarded to the Edge Function, but owned here.
+      ["power", POWER_COMMAND],
+      ["glory", GLORY_COMMAND],
+      ["timezone", TIMEZONE_COMMAND],
+      ["challenges", CHALLENGES_COMMAND],
+      ["absence", ABSENCE_COMMAND],
     ]);
 
     const body = [];
@@ -362,24 +562,36 @@ async function registerSlashCommands() {
       if (!desired.has(cmd.name)) body.push(cmd);
     }
 
-    const legacyOverlap = existing.filter((c) => ["absence"].includes(c.name));
-    if (legacyOverlap.length > 0) {
-      console.log(`Preserved legacy commands overlapping the new slash surface: ${legacyOverlap.map((c) => `/${c.name}`).join(", ")}.`);
+    const unowned = existing.filter((c) => !desired.has(c.name));
+    if (unowned.length > 0) {
+      console.log(`Preserved commands this worker does not define: ${unowned.map((c) => `/${c.name}`).join(", ")}.`);
     }
 
     // Global registration
     await rest.put(Routes.applicationCommands(appId), { body });
-    console.log("Slash commands registered globally: /link, /myinfo, /profile, /absent, /top, /absences, /call-to-arms, /update-stats, /setup-server");
+    console.log(`Slash commands registered globally: ${[...desired.keys()].map((n) => `/${n}`).join(", ")}`);
 
-    // Also register directly to all current guilds for instant availability (0s propagation)
+    // Also register directly to every current guild, for instant availability
+    // (global commands can take up to an hour to propagate).
+    //
+    // `body` carries the id of each GLOBAL command, which is what makes the
+    // global PUT an update rather than a recreate. A guild-scoped PUT rejects
+    // those ids outright -- `APPLICATION_COMMANDS_INVALID_ID`, surfaced as
+    // "Invalid Form Body" -- so this loop failed for EVERY guild on EVERY boot
+    // since it was written, 14 warnings at a time, and instant availability
+    // never happened once. Send the definitions without the server-assigned
+    // fields.
+    const guildBody = body.map(({ id, application_id, guild_id, version, ...cmd }) => cmd);
+    let registered = 0;
     for (const guild of client.guilds.cache.values()) {
       try {
-        await rest.put(Routes.applicationGuildCommands(appId, guild.id), { body });
-        console.log(`Slash commands registered directly to guild ${guild.name} (${guild.id})`);
+        await rest.put(Routes.applicationGuildCommands(appId, guild.id), { body: guildBody });
+        registered += 1;
       } catch (err) {
         console.warn(`Could not register direct guild commands for ${guild.id}:`, err.message);
       }
     }
+    console.log(`Slash commands registered directly to ${registered}/${client.guilds.cache.size} guild(s) for instant availability.`);
   } catch (e) {
     console.error("Failed to register slash commands:", e);
   }
@@ -1142,6 +1354,392 @@ async function handleUpdateStats(interaction) {
   await interaction.reply({ embeds: [embed], ephemeral: true });
 }
 
+/**
+ * /mystats -- one player's attendance, on the app's own definition.
+ *
+ * Built on `gm_player_stats`, which is the only stats RPC a service-role caller
+ * can reach: `gm_stats_weeks`, `gm_stats_members`, `gm_stats_health` and
+ * `gm_stats_events` all gate on `gm_can_read_guild_data`, which returns false
+ * when there is no `auth.uid()`. It returns no peer rows and computes no rank by
+ * design, so a player cannot read a guildmate through it.
+ *
+ * It deliberately shows att/opp per event type and the guild's pooled rate, and
+ * computes NO weighted score. The weighting lives in
+ * src/core/scoring/reliability.ts, shared by the admin page and the Portal; a
+ * third copy in this Node process is exactly how those two came to disagree in
+ * the first place. The bot reports the same counts and lets the app do the
+ * weighting.
+ */
+async function handleMyStats(interaction) {
+  const linked = await resolveLinkedAccount(interaction.user.id);
+  if (!linked) {
+    await interaction.reply({
+      content: "Your Discord account isn't linked yet. Run `/link` first, then confirm the code in the Player Portal (My Info ➔ Link Discord).",
+      ephemeral: true,
+    });
+    return;
+  }
+  if (await askWhichAccount(interaction, linked)) return;
+
+  const { data: member, error: memberErr } = await supabase
+    .from("guild_members")
+    .select("pseudo")
+    .eq("guild", linked.guild)
+    .eq("uid", linked.uid)
+    .maybeSingle();
+  if (memberErr || !member) {
+    await interaction.reply({ content: "No roster entry found for your linked account.", ephemeral: true });
+    return;
+  }
+
+  // Bounded here as well as inside the function (AGENTS rule 3).
+  const requested = interaction.options.getInteger("weeks");
+  const weeks = Math.min(Math.max(requested ?? 4, 1), 26);
+
+  const { data, error } = await supabase.rpc("gm_player_stats", {
+    p_guild: linked.guild,
+    p_pseudo: member.pseudo,
+    p_weeks: weeks,
+  });
+  if (error || !data || data.ok !== true) {
+    await interaction.reply({
+      content: `Couldn't read your stats: ${error ? error.message : (data && data.error) || "no data"}.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const playerBuckets = data.player?.buckets || {};
+  const guildBuckets = data.guild_totals?.buckets || {};
+  const names = [...new Set([...Object.keys(playerBuckets), ...Object.keys(guildBuckets)])].sort();
+
+  const pct = (att, opp) => (opp > 0 ? `${Math.round((att / opp) * 100)}%` : "—");
+  const lines = names.map((b) => {
+    const mine = playerBuckets[b] || { att: 0, opp: 0, exc: 0 };
+    const theirs = guildBuckets[b] || { attendances: 0, member_opportunities: 0 };
+    const excused = Number(mine.exc) > 0 ? ` · ${mine.exc} excused` : "";
+    return `**${b}** — you ${mine.att}/${mine.opp} (${pct(Number(mine.att), Number(mine.opp))})` +
+      ` · guild ${pct(Number(theirs.attendances), Number(theirs.member_opportunities))}${excused}`;
+  });
+
+  const glory = data.glory || {};
+  const embed = {
+    color: 0x6366f1,
+    title: `📊 ${member.pseudo} — ${linked.guild}`,
+    description: lines.length
+      ? lines.join("\n")
+      : "No sessions recorded in that window yet.",
+    fields: [
+      { name: "Weeks counted", value: String(data.weeks ?? weeks), inline: true },
+      { name: "Roster size", value: String(data.guild_totals?.roster_size ?? "—"), inline: true },
+      { name: "Best Glory week", value: formatNumber(glory.best), inline: true },
+    ],
+    footer: {
+      text: "Attendance = participated or stood in as a sub. Glory and unapproved scores excluded, " +
+        "the same rule your admin page and the Portal use. Your guild's figure is pooled across every member's own opportunities.",
+    },
+    timestamp: new Date().toISOString(),
+  };
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+/**
+ * /verifications -- the held verifications an officer would otherwise never see.
+ *
+ * ADR-020 writes a `discord_verification_refused` audit row for every refusal,
+ * but `system_audit_logs` is readable in the app by super_admin ONLY, so a
+ * guild_admin has no way to learn that someone is waiting. This is that view.
+ *
+ * Three guards: the guild comes from the verification-channel map or the
+ * caller's own linked account and NEVER from a command option; Discord's own
+ * ManageMessages permission gates the command (the permission the provisioner
+ * grants an R4), so there is no coupling to app roles; the reply is ephemeral and
+ * the row count is bounded.
+ */
+async function handleVerifications(interaction) {
+  const days = Math.min(Math.max(interaction.options.getInteger("days") ?? 7, 1), 30);
+
+  let fgfGuild = channelToGuild.get(interaction.channelId);
+  if (!fgfGuild) {
+    const linked = await resolveLinkedAccount(interaction.user.id).catch(() => null);
+    if (linked && linked.guild) fgfGuild = linked.guild;
+  }
+  if (!fgfGuild) {
+    await interaction.reply({
+      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or link your account with `/link`.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data, error } = await supabase
+    .from("system_audit_logs")
+    .select("created_at, pseudo, uid, message, metadata")
+    .eq("guild", fgfGuild)
+    .eq("action_type", "discord_verification_refused")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    await interaction.reply({ content: `Couldn't read the verification log: ${error.message}`, ephemeral: true });
+    return;
+  }
+
+  const rows = data || [];
+  if (rows.length === 0) {
+    await interaction.reply({
+      content: `✅ No held verifications for **${fgfGuild}** in the last ${days} day(s).`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const reasonLabel = {
+    absent: "not on the roster",
+    pseudo_conflict: "pseudo already on file under a different UID",
+    ambiguous_pseudo: "several roster entries share that pseudo",
+    scan_truncated: "roster read failed — retry",
+  };
+
+  const lines = rows.map((r) => {
+    const m = r.metadata || {};
+    const reason = reasonLabel[m.reason] || m.reason || "refused";
+    const others = Array.isArray(m.other_guilds) && m.other_guilds.length
+      ? ` · also on ${m.other_guilds.join(", ")}`
+      : "";
+    const who = m.discord_user_id ? `<@${m.discord_user_id}>` : "unknown Discord user";
+    return `• **${r.pseudo}** (UID \`${r.uid}\`) — ${reason}${others}\n  ${who} · ${String(r.created_at).slice(0, 16).replace("T", " ")}`;
+  });
+
+  await interaction.reply({
+    embeds: [{
+      color: 0x3b82f6,
+      title: `⏳ Held verifications — ${fgfGuild}`,
+      description: lines.join("\n"),
+      footer: { text: `Last ${days} day(s), newest first, up to 20. Add the player in the Guild Management tool, then ask them to post their screenshot again.` },
+      timestamp: new Date().toISOString(),
+    }],
+    ephemeral: true,
+    // Never ping the players being listed.
+    allowedMentions: { parse: [] },
+  });
+}
+
+/** Same rule as the Edge Function's normalizeTag: strip brackets, trim, upper. */
+function normalizeTag(raw) {
+  return (raw || "").replace(/[[\]]/g, "").trim().toUpperCase();
+}
+
+const pendingReconciles = new Map();
+
+/**
+ * /reconcile-roles -- who still holds the guild role without a roster row.
+ *
+ * ADR-020 stops the role being GRANTED wrongly; it says nothing about someone who
+ * held it legitimately and then left the guild. This is that gap, and it is a
+ * report first: the removal only happens behind a confirmation button, only ever
+ * takes the tag role off, and never kicks anybody.
+ *
+ * Identity, in order: the player's linked account, else the `[TAG] Pseudo #Server`
+ * nickname this bot wrote itself. Someone the bot cannot identify is listed as
+ * "unidentified" and is NEVER touched -- guessing there would remove the role of
+ * a member whose nickname an officer happened to edit.
+ */
+async function handleReconcileRoles(interaction) {
+  if (!interaction.guild) {
+    await interaction.reply({ content: "❌ This command only works inside a Discord server.", ephemeral: true });
+    return;
+  }
+  if (!MEMBERS_INTENT_ENABLED) {
+    await interaction.reply({
+      content:
+        "❌ I can't list who holds a role yet: that needs Discord's **Server Members Intent**, which is privileged.\n" +
+        "1. Discord Developer Portal ➔ your application ➔ **Bot** ➔ enable **Server Members Intent**.\n" +
+        "2. On Render, set `DISCORD_GUILD_MEMBERS_INTENT=true` and restart the worker.\n" +
+        "I deliberately do not request it by default: declaring it while the toggle is off makes me fail to log in entirely.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  let fgfGuild = channelToGuild.get(interaction.channelId);
+  if (!fgfGuild) {
+    const linked = await resolveLinkedAccount(interaction.user.id).catch(() => null);
+    if (linked && linked.guild) fgfGuild = linked.guild;
+  }
+  if (!fgfGuild) {
+    await interaction.reply({
+      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or link your account with `/link`.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const { data: tagRow } = await supabase
+    .from("guild_config")
+    .select("value")
+    .eq("guild", fgfGuild)
+    .eq("key", "guild_tag")
+    .maybeSingle();
+  const tagDisplay = (tagRow?.value || "").trim() || `[${fgfGuild}]`;
+  const wanted = normalizeTag(tagDisplay);
+
+  const role = interaction.guild.roles.cache.find((r) => normalizeTag(r.name) === wanted);
+  if (!role) {
+    await interaction.editReply({
+      content: `No role on this server matches **${fgfGuild}**'s tag \`${tagDisplay}\`. Nothing to reconcile.`,
+    });
+    return;
+  }
+
+  let holders;
+  try {
+    await interaction.guild.members.fetch();
+    holders = [...role.members.values()];
+  } catch (e) {
+    await interaction.editReply({ content: `Couldn't list the members holding **${role.name}**: ${e.message}` });
+    return;
+  }
+
+  const { data: roster, error: rosterErr } = await supabase
+    .from("guild_members")
+    .select("pseudo, uid")
+    .eq("guild", fgfGuild)
+    .limit(5000);
+  if (rosterErr) {
+    await interaction.editReply({ content: `Couldn't read the **${fgfGuild}** roster: ${rosterErr.message}` });
+    return;
+  }
+  const rosterRows = roster || [];
+  // A truncated roster read would report real members as strangers, so refuse.
+  if (rosterRows.length >= 5000) {
+    await interaction.editReply({ content: "The roster read came back truncated, so I won't report anyone as missing from it." });
+    return;
+  }
+  const byUid = new Set(rosterRows.map((r) => (r.uid || "").trim()).filter(Boolean));
+  const byPseudo = new Set(rosterRows.map((r) => (r.pseudo || "").normalize("NFKC").trim().toLowerCase()));
+
+  const orphans = [];
+  const unidentified = [];
+
+  for (const member of holders) {
+    const linked = await resolveLinkedAccount(member.id).catch(() => null);
+    if (linked && linked.guild === fgfGuild && byUid.has((linked.uid || "").trim())) continue;
+
+    // The nickname this bot writes is "[TAG] Pseudo #Server".
+    const nick = member.nickname || member.user.username || "";
+    const m = nick.match(/^\[[^\]]+\]\s+(.+?)(?:\s+#\d+)?$/);
+    const pseudo = m ? m[1].trim() : null;
+
+    if (linked && linked.guild && linked.guild !== fgfGuild) {
+      orphans.push({ member, pseudo: pseudo || nick, why: `linked to ${linked.guild}` });
+      continue;
+    }
+    if (!pseudo) {
+      unidentified.push({ member, nick });
+      continue;
+    }
+    if (!byPseudo.has(pseudo.normalize("NFKC").toLowerCase())) {
+      orphans.push({ member, pseudo, why: "not on the roster" });
+    }
+  }
+
+  if (orphans.length === 0) {
+    await interaction.editReply({
+      content:
+        `✅ All ${holders.length} holder(s) of **${role.name}** are on the **${fgfGuild}** roster.` +
+        (unidentified.length ? `\n\n⚠️ ${unidentified.length} I could not identify (no linked account and a nickname I did not write): ${unidentified.map((u) => `\`${u.nick}\``).join(", ")}. I never touch those.` : ""),
+    });
+    return;
+  }
+
+  const reconcileId = `${interaction.guild.id}_${Date.now()}`;
+  pendingReconciles.set(reconcileId, {
+    initiatorId: interaction.user.id,
+    guildId: interaction.guild.id,
+    roleId: role.id,
+    roleName: role.name,
+    fgfGuild,
+    memberIds: orphans.map((o) => o.member.id),
+  });
+  setTimeout(() => pendingReconciles.delete(reconcileId), 10 * 60 * 1000);
+
+  const list = orphans
+    .slice(0, 25)
+    .map((o) => `• **${o.pseudo}** — <@${o.member.id}> (${o.why})`)
+    .join("\n");
+
+  await interaction.editReply({
+    embeds: [{
+      color: 0xf59e0b,
+      title: `🧹 ${orphans.length} holder(s) of ${role.name} are not on the ${fgfGuild} roster`,
+      description: list + (orphans.length > 25 ? `\n… and ${orphans.length - 25} more.` : ""),
+      footer: {
+        text: unidentified.length
+          ? `${unidentified.length} more could not be identified and will not be touched. Removing takes off ${role.name} only — nobody is kicked.`
+          : `Removing takes off ${role.name} only — nobody is kicked.`,
+      },
+      timestamp: new Date().toISOString(),
+    }],
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`reconcile_confirm_${reconcileId}`).setLabel(`Remove ${role.name} from ${orphans.length}`).setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId(`reconcile_cancel_${reconcileId}`).setLabel("Cancel").setStyle(ButtonStyle.Secondary)
+      ),
+    ],
+    allowedMentions: { parse: [] },
+  });
+}
+
+async function handleReconcileButton(interaction) {
+  const cancel = interaction.customId.startsWith("reconcile_cancel_");
+  const reconcileId = interaction.customId.replace(/^reconcile_(confirm|cancel)_/, "");
+  const pending = pendingReconciles.get(reconcileId);
+
+  if (!pending) {
+    await interaction.update({ content: "This reconciliation has expired. Run `/reconcile-roles` again.", embeds: [], components: [] });
+    return;
+  }
+  // Only whoever asked may act on it, same rule as /setup-server's confirmation.
+  if (interaction.user.id !== pending.initiatorId) {
+    await interaction.reply({ content: "Only the officer who ran the command can confirm it.", ephemeral: true });
+    return;
+  }
+  if (cancel) {
+    pendingReconciles.delete(reconcileId);
+    await interaction.update({ content: "Cancelled. No roles were changed.", embeds: [], components: [] });
+    return;
+  }
+
+  pendingReconciles.delete(reconcileId);
+  await interaction.update({ content: `Removing **${pending.roleName}** from ${pending.memberIds.length} member(s)…`, embeds: [], components: [] });
+
+  let removed = 0;
+  const failed = [];
+  for (const id of pending.memberIds) {
+    try {
+      const member = await interaction.guild.members.fetch(id);
+      await member.roles.remove(pending.roleId, `FGF roster reconciliation by ${interaction.user.tag}`);
+      removed += 1;
+    } catch (e) {
+      failed.push(`<@${id}> (${e.message})`);
+    }
+  }
+
+  await interaction.editReply({
+    content:
+      `✅ Removed **${pending.roleName}** from **${removed}** member(s).` +
+      (failed.length ? `\n⚠️ Could not change ${failed.length}: ${failed.slice(0, 5).join(", ")}. Check my role sits above **${pending.roleName}** in Server Settings ➔ Roles.` : "") +
+      `\nNobody was kicked and no other role was touched.`,
+    allowedMentions: { parse: [] },
+  });
+}
+
 const pendingSetups = new Map();
 
 
@@ -1714,6 +2312,8 @@ client.on("interactionCreate", async (interaction) => {
         await handleCtaButton(interaction);
       } else if (interaction.customId.startsWith("setup_")) {
         await handleSetupButton(interaction);
+      } else if (interaction.customId.startsWith("reconcile_")) {
+        await handleReconcileButton(interaction);
       }
       return;
     }
@@ -1738,6 +2338,14 @@ client.on("interactionCreate", async (interaction) => {
       await handleUpdateStats(interaction);
     } else if (interaction.commandName === "setup-server") {
       await handleSetupServer(interaction);
+    } else if (interaction.commandName === "reconcile-roles") {
+      await handleReconcileRoles(interaction);
+    } else if (interaction.commandName === "mystats") {
+      await handleMyStats(interaction);
+    } else if (interaction.commandName === "verifications") {
+      await handleVerifications(interaction);
+    } else if (FORWARDED_COMMANDS.has(interaction.commandName)) {
+      await forwardInteraction(interaction);
     }
   } catch (e) {
     console.error(`Error handling interaction /${interaction.commandName || interaction.customId}:`, e);

@@ -1,3 +1,29 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.31.0**
+
+**🔒 Server #1058 — the guild role now follows the roster, not the screenshot.**
+
+Posting a profile screenshot in verification used to be enough to be handed **[PR1M]**, **[OMG]** or **[IMK]** — and it wrote you into that guild's member list at the same time. The check and the thing being checked were the same write.
+
+The member list decides now. If your officers have already added you: role assigned, stats updated, exactly as before. If not: you get **[PENDING]**, **nothing** is written to the roster, and your officers get a message naming you. They add you in the tool, you post your screenshot again, done.
+
+You are matched on your in-game **UID**. If your roster line still carried a placeholder UID — 11 of you in OMEGA, 55 in PSA — your screenshot fills the real one in. A pseudo already on file under a *different* UID is refused on purpose: that one is an officer's call, not mine.
+
+**Officers: create a role named `[PENDING]`** on your server, below my own role, or a held player falls back to `[VISITOR]`.
+
+Guilds on other game servers are untouched: a tag from another server resolves to `[VISITOR]` here, and can never be blocked over there.
+
+**🛠️ `/update-stats glory:` never saved anything — and told you it had.**
+
+Six weeks of "✅ Stats Updated" on a write that was refused every single time: it called a database function that does not exist. Fixed, and a refused write now fails out loud instead of lying to you. Resubmit your Glory. `/glory` was refused too, same cause, same fix.
+
+**⚔️ Leaders:** picking a **guild** as a war opponent failed every time (only "server" worked). Fixed. `/setup-server` now refuses a guild that is not registered, instead of building 31 channels for a typo.
+
+**👥 Two accounts on one Discord** (admin + player)? `/myinfo`, `/absent`, `/update-stats` and `/profile` were crashing for you. The bot asks which one you mean now.
+
+Reload the page. **If something looks wrong, tell me.** 🫡
+
+---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.30.0**
 
 **The Stats page has been rebuilt and your scores have changed.** Here is why. 📊

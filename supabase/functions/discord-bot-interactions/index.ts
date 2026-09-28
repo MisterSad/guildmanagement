@@ -1,11 +1,29 @@
 /**
  * supabase/functions/discord-bot-interactions/index.ts
  *
- * Receives Discord Interactions (slash commands only -- no Gateway
- * connection, see _shared/discord.ts). Public endpoint (verify_jwt: false),
- * authenticated by Ed25519 signature instead of a Supabase JWT. Runtime
- * support for crypto.subtle.verify('Ed25519', ...) confirmed live against
- * this exact Supabase project before this file was written.
+ * Holds the business logic for the player-facing slash commands. Public
+ * endpoint (verify_jwt: false), authenticated EITHER by an Ed25519 signature
+ * (a direct Discord Interactions webhook) OR by the shared worker secret (the
+ * Gateway worker forwarding an interaction it received). Runtime support for
+ * crypto.subtle.verify('Ed25519', ...) confirmed live against this exact
+ * Supabase project before this file was written.
+ *
+ * WHY BOTH. Measured on 2026-09-28: this function was invoked **0 times** in 24
+ * hours while discord-profile-verification was invoked 15 times, and the worker
+ * logs it registering nine commands over the Gateway. Discord delivers
+ * interactions over ONE transport, and for this application it is the Gateway --
+ * so no Interactions Endpoint URL is configured and the Ed25519 path has never
+ * carried a single request. Meanwhile /power, /glory, /timezone, /challenges and
+ * /absence exist on Discord (scripts/register-discord-commands.mjs registered
+ * them, and the worker preserves commands it does not own), the worker had no
+ * handler for any of them, and a player running one got "The application did not
+ * respond".
+ *
+ * Rather than reimplement five validated, audited commands in the worker's Node
+ * process, the worker forwards the raw interaction here with the worker secret
+ * and relays the reply. One implementation, one transport. The Ed25519 path is
+ * kept because it costs nothing and is the only thing that would work if the
+ * owner ever switches Discord to an Interactions Endpoint URL.
  *
  * Phase 1 commands:
  *   /link    -- generates a short-lived code, confirmed from the already-
@@ -45,6 +63,15 @@ import {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const DISCORD_WORKER_SECRET = Deno.env.get("DISCORD_WORKER_SECRET") || "";
+
+/** Constant-time compare, same as discord-profile-verification's. */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 function ephemeral(content: string, embeds?: unknown[]) {
   return discordJson({
@@ -64,25 +91,45 @@ function randomLinkCode(): string {
 const NOT_LINKED_MSG = "Your Discord account isn't linked yet. Run `/link` first, then confirm the code in the Player Portal (My Info -> Link Discord).";
 const NO_UID_MSG = "Your linked account doesn't have an in-game UID on file. Contact your guild admin.";
 
+/**
+ * One Discord identity may hold SEVERAL accounts since migration
+ * 20260927120000 re-keyed `discord_account_links` to
+ * (discord_user_id, account_id) -- an administrator who is also a player.
+ * `.maybeSingle()` ERRORS on that rather than picking one, so it is not used
+ * here; and a tie is never broken silently, because silently picking is how an
+ * admin's command lands on their player account. Only ACTIVE accounts count.
+ */
 async function resolveLinkedAccount(
   admin: ReturnType<typeof createClient>,
   discordUserId: string
 ): Promise<{ ok: true; uid: string; guild: string } | { ok: false; message: string }> {
-  const { data: link } = await admin
+  const { data: links } = await admin
     .from("discord_account_links")
     .select("account_id")
-    .eq("discord_user_id", discordUserId)
-    .maybeSingle();
-  if (!link) return { ok: false, message: NOT_LINKED_MSG };
+    .eq("discord_user_id", discordUserId);
+  if (!links || links.length === 0) return { ok: false, message: NOT_LINKED_MSG };
 
-  const { data: account } = await admin
+  const { data: accounts } = await admin
     .from("accounts")
-    .select("uid, guild")
-    .eq("id", link.account_id)
-    .maybeSingle();
-  if (!account?.uid) return { ok: false, message: NO_UID_MSG };
+    .select("id, uid, guild, role, status")
+    .in("id", (links as { account_id: string }[]).map((l) => l.account_id));
 
-  return { ok: true, uid: account.uid, guild: account.guild };
+  const usable = ((accounts as { id: string; uid?: string; guild?: string; role?: string; status?: string }[]) || [])
+    .filter((a) => a.status === "active" && a.uid && a.guild);
+
+  if (usable.length === 0) return { ok: false, message: NO_UID_MSG };
+  if (usable.length > 1) {
+    const list = usable
+      .map((a) => `${a.guild} (\`${a.id}\`)`)
+      .sort()
+      .join(", ");
+    return {
+      ok: false,
+      message: `Your Discord account is linked to ${usable.length} player accounts — ${list} — so I don't know which one you mean. Use the app for this, or ask an admin to unlink the other.`,
+    };
+  }
+
+  return { ok: true, uid: usable[0].uid!, guild: usable[0].guild! };
 }
 
 function getOptionValue(options: any[] | undefined, name: string): any {
@@ -93,27 +140,55 @@ Deno.serve(async (req: Request) => {
   const logger = new EdgeLogger("discord-bot-interactions", req);
   if (req.method !== "POST") return discordJson({ error: "method_not_allowed" }, 405);
 
-  const publicKey = discordPublicKeyHex();
-  if (!publicKey) {
-    logger.error("DISCORD_PUBLIC_KEY is not configured");
-    return discordJson({ error: "not_configured" }, 500);
-  }
-
-  const signature = req.headers.get("x-signature-ed25519") || "";
-  const timestamp = req.headers.get("x-signature-timestamp") || "";
   const rawBody = await req.text();
 
-  const valid = await verifyDiscordSignature(publicKey, signature, timestamp, rawBody);
-  if (!valid) {
-    logger.warn("Rejected interaction with invalid signature");
-    return discordJson({ error: "invalid_signature" }, 401);
-  }
+  // Transport A: the Gateway worker, authenticated by the shared secret. Its
+  // body wraps the interaction it received: { "interaction": { ... } }.
+  const authHeader = req.headers.get("Authorization") || "";
+  const authBearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const fromWorker = !!DISCORD_WORKER_SECRET && !!authBearer && safeEqual(authBearer, DISCORD_WORKER_SECRET);
 
   let interaction: any;
-  try {
-    interaction = JSON.parse(rawBody);
-  } catch {
-    return discordJson({ error: "bad_payload" }, 400);
+  if (fromWorker) {
+    try {
+      const wrapped = JSON.parse(rawBody);
+      interaction = wrapped?.interaction ?? wrapped;
+    } catch {
+      return discordJson({ error: "bad_payload" }, 400);
+    }
+    if (!interaction || typeof interaction !== "object") {
+      return discordJson({ error: "bad_payload" }, 400);
+    }
+    logger.info("Interaction forwarded by the Gateway worker");
+  } else {
+    // Transport B: a direct Discord Interactions webhook, Ed25519-signed.
+    // An Authorization header that is present but wrong must NOT fall through
+    // to the signature path and be treated as an unauthenticated request it
+    // might accidentally satisfy -- refuse it outright.
+    if (authBearer) {
+      logger.warn("Rejected interaction with an invalid worker secret");
+      return discordJson({ error: "unauthorized" }, 401);
+    }
+
+    const publicKey = discordPublicKeyHex();
+    if (!publicKey) {
+      logger.error("DISCORD_PUBLIC_KEY is not configured");
+      return discordJson({ error: "not_configured" }, 500);
+    }
+
+    const signature = req.headers.get("x-signature-ed25519") || "";
+    const timestamp = req.headers.get("x-signature-timestamp") || "";
+    const valid = await verifyDiscordSignature(publicKey, signature, timestamp, rawBody);
+    if (!valid) {
+      logger.warn("Rejected interaction with invalid signature");
+      return discordJson({ error: "invalid_signature" }, 401);
+    }
+
+    try {
+      interaction = JSON.parse(rawBody);
+    } catch {
+      return discordJson({ error: "bad_payload" }, 400);
+    }
   }
 
   if (interaction.type === InteractionType.PING) {
