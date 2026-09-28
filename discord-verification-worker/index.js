@@ -557,27 +557,36 @@ async function registerSlashCommands() {
     await rest.put(Routes.applicationCommands(appId), { body });
     console.log(`Slash commands registered globally: ${[...desired.keys()].map((n) => `/${n}`).join(", ")}`);
 
-    // Also register directly to every current guild, for instant availability
-    // (global commands can take up to an hour to propagate).
+    // ONE SCOPE, and it is global.
     //
-    // `body` carries the id of each GLOBAL command, which is what makes the
-    // global PUT an update rather than a recreate. A guild-scoped PUT rejects
-    // those ids outright -- `APPLICATION_COMMANDS_INVALID_ID`, surfaced as
-    // "Invalid Form Body" -- so this loop failed for EVERY guild on EVERY boot
-    // since it was written, 14 warnings at a time, and instant availability
-    // never happened once. Send the definitions without the server-assigned
-    // fields.
-    const guildBody = body.map(({ id, application_id, guild_id, version, ...cmd }) => cmd);
-    let registered = 0;
+    // Discord lists global and guild-scoped commands separately, so a command
+    // registered in BOTH shows up TWICE in the picker. This loop used to
+    // register the same set per guild for instant availability, and it failed
+    // every time -- `body` carries each global command's id, which a
+    // guild-scoped PUT rejects with APPLICATION_COMMANDS_INVALID_ID ("Invalid
+    // Form Body"). Stripping the ids made it succeed, and every command promptly
+    // appeared twice for every player. The duplicate was the fix working.
+    //
+    // So the guild scope is CLEARED instead, every boot: idempotent, cheap, and
+    // it repairs any server still holding a duplicate set. The cost is that a
+    // NEW or CHANGED command now waits on global propagation, which is the
+    // honest trade for a command list players can read.
+    let cleared = 0;
     for (const guild of client.guilds.cache.values()) {
       try {
-        await rest.put(Routes.applicationGuildCommands(appId, guild.id), { body: guildBody });
-        registered += 1;
+        const guildCommands = (await rest.get(Routes.applicationGuildCommands(appId, guild.id))) || [];
+        if (guildCommands.length === 0) continue;
+        await rest.put(Routes.applicationGuildCommands(appId, guild.id), { body: [] });
+        cleared += 1;
       } catch (err) {
-        console.warn(`Could not register direct guild commands for ${guild.id}:`, err.message);
+        console.warn(`Could not clear guild-scoped commands for ${guild.id}:`, err.message);
       }
     }
-    console.log(`Slash commands registered directly to ${registered}/${client.guilds.cache.size} guild(s) for instant availability.`);
+    console.log(
+      cleared > 0
+        ? `Cleared duplicate guild-scoped command sets from ${cleared}/${client.guilds.cache.size} guild(s) -- the global set is the only one.`
+        : `No guild-scoped command sets to clear; the global set is the only one (${client.guilds.cache.size} guild(s)).`
+    );
   } catch (e) {
     console.error("Failed to register slash commands:", e);
   }
@@ -2035,20 +2044,12 @@ client.once("ready", async () => {
 });
 
 client.on("guildCreate", async (guild) => {
-  try {
-    console.log(`Bot joined new server: ${guild.name} (${guild.id}), registering instant slash commands...`);
-    const appId = client.user?.id;
-    if (appId) {
-      const rest = new REST({ version: "10" }).setToken(DISCORD_BOT_TOKEN);
-      const existing = (await rest.get(Routes.applicationCommands(appId))) || [];
-      if (existing.length > 0) {
-        await rest.put(Routes.applicationGuildCommands(appId, guild.id), { body: existing });
-        console.log(`Successfully registered ${existing.length} instant commands for new guild ${guild.name}`);
-      }
-    }
-  } catch (err) {
-    console.warn(`Could not register instant commands on guildCreate (${guild.id}):`, err.message);
-  }
+  // Deliberately does NOT register commands. It used to copy the global set into
+  // this guild's scope for instant availability, which is the same duplication
+  // the boot path just stopped doing: Discord lists the two scopes separately,
+  // so a command in both appears twice. Global commands already reach every
+  // server the bot is in, including this one.
+  console.log(`Bot joined new server: ${guild.name} (${guild.id}); global commands already apply.`);
 });
 
 client.on("messageCreate", async (message) => {

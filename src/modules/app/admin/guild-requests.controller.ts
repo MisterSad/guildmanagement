@@ -195,7 +195,8 @@ const VALUE_FIELDS: ConfigField[] = [
   { key: 'discord_role_id_calamity', el: 'discord-role-id-calamity', gated: true },
   { key: 'discord_role_id_gvg', el: 'discord-role-id-gvg', gated: true },
   { key: 'discord_role_id_svs', el: 'discord-role-id-svs', gated: true },
-  { key: 'discord_verification_channel_id', el: 'discord-verification-channel-id' }
+  { key: 'discord_verification_channel_id', el: 'discord-verification-channel-id' },
+  { key: 'discord_audit_channel_id', el: 'discord-audit-channel-id' }
 ];
 
 const CHECKBOX_FIELDS: CheckboxField[] = [

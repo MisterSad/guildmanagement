@@ -12,8 +12,9 @@ import { t, getLang, setLang, applyTranslations } from '../src/core/i18n/i18n';
 import { EN } from '../src/core/i18n/i18n.dictionary';
 
 describe('i18n dictionary (golden)', () => {
-  it('keeps the full 539-key English dictionary', () => {
-    // 539 since ADR-020 added the roster-gate switch
+  it('keeps the full 541-key English dictionary', () => {
+    // 541 since the audit/officers channel became configurable from the app
+    // (label_discord_audit_channel_id and its hint). 539 since ADR-020 added the roster-gate switch
     // (label_discord_verification_require_roster and its _hint). 537 since the
     // recovery-code link was wired (login_recovery). 536 since the
     // login page put Discord first and added login_discord_hint
@@ -22,7 +23,7 @@ describe('i18n dictionary (golden)', () => {
     // `sf_commanders_full`. 531 since finding H2 added `guild_unresolved`, the
     // message shown when the active tenant cannot be resolved -- which used to
     // silently become ALPHA.
-    expect(Object.keys(EN).length).toBe(539);
+    expect(Object.keys(EN).length).toBe(541);
   });
 
   it('has no empty translation value', () => {

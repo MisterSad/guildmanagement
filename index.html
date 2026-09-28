@@ -558,6 +558,12 @@
                                     <input type="text" id="discord-verification-channel-id" class="gm-ui-input-field" style="font-family:var(--font-mono, monospace);" placeholder="e.g. 1487153638580289701">
                                 </span>
                                 </div>
+                                <div class="gm-col" style="gap: 0.5rem; flex: 1; min-width: 260px;">
+                                    <label class="gm-dim" style="font-size: 0.85rem; font-weight: 500;" for="discord-audit-channel-id" data-i18n="label_discord_audit_channel_id">Audit / Officers Channel ID</label>
+                                    <span class="gm-ui-input gm-ui-input-md">
+                                    <input type="text" id="discord-audit-channel-id" class="gm-ui-input-field" style="font-family:var(--font-mono, monospace);" placeholder="e.g. 1554015179979759616">
+                                </span>
+                                </div>
                             </div>
                             <label class="notification-option gm-ui-switch" style="margin-top: 0.75rem;">
                                 <span class="gm-ui-switch-hit">
@@ -566,6 +572,7 @@
                                 </span>
                                 <span class="gm-ui-switch-label"><span class="gm-ui-switch-text" data-i18n="label_discord_verification_require_roster" style="font-weight: 500;">Only grant the guild role to players already on the roster</span></span>
                             </label>
+                            <span style="font-size: 0.78rem; color: var(--fg-dim); display: block;" data-i18n="label_discord_audit_channel_hint">Where the bot posts the durable officer notices: a verification held back because the player is not on the roster, and any misconfiguration it finds. Leave empty and those notices land in the verification channel instead, where your players see them. The bot needs View Channel and Send Messages there.</span>
                             <span style="font-size: 0.78rem; color: var(--fg-dim); margin-bottom: 0.5rem; display: block;" data-i18n="label_discord_verification_require_roster_hint">When off, a verified player who is not on the roster yet is added to it automatically. When on, the roster is the authority: the guild role is only ever granted to a player who is already in the member list, matched on their in-game UID -- or on their pseudo when that roster entry has no real UID yet, in which case the UID read off the screenshot is written to it. Anyone else gets the "[PENDING]" role, nothing is written to the roster, and your audit/officer channel receives a durable message naming the player so an officer can add them in the tool.</span>
                             <span style="font-size: 0.78rem; color: var(--fg-dim); margin-top: 0.5rem; display: block;" data-i18n="label_discord_verification_hint">Leave the channel ID empty to disable. When set, players posting a profile screenshot in that channel are matched against your server's existing Discord roles: if a role named after their bracketed guild tag already exists (e.g. "[PR1M]"), it's assigned automatically and their roster entry is created or updated; otherwise they get the "[VISITOR]" role and no roster entry is touched. Their nickname is also set to "[TAG] Pseudo #Server" when a matching role is found. Role names must always use the bracketed "[TAG]" format. The bot needs Manage Roles and Manage Nicknames permissions, with its own role positioned above every role it assigns (including "[VISITOR]").</span>
                         </div>

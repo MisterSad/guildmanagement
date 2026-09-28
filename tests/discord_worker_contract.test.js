@@ -268,15 +268,24 @@ describe('one transport, one registry, one implementation', () => {
     }
   });
 
-  it('registers per-guild commands without the ids that made every attempt fail', () => {
-    // `body` carries each GLOBAL command's id, which a guild-scoped PUT rejects
-    // with APPLICATION_COMMANDS_INVALID_ID -- 14 warnings on every boot, and
-    // instant availability never once happened.
-    expect(workerSrc).toContain('const guildBody = body.map(({ id, application_id, guild_id, version, ...cmd }) => cmd)');
-    const loopIdx = workerSrc.indexOf('applicationGuildCommands');
-    const loopCall = workerSrc.slice(loopIdx - 200, loopIdx + 200);
-    expect(loopCall).toContain('body: guildBody');
-    expect(loopCall).not.toMatch(/\{ body \}/);
+  it('registers commands in ONE scope, and clears the other', () => {
+    // Discord lists global and guild-scoped commands separately, so a command in
+    // both appears TWICE in the picker. Registering per guild for instant
+    // availability used to fail on every boot (the global ids a guild-scoped PUT
+    // rejects); making it succeed made every command show up twice. The guild
+    // scope is cleared instead.
+    expect(workerSrc).toContain('Routes.applicationCommands(appId), { body }');
+    expect(workerSrc).toContain('body: [] }');
+    expect(workerSrc).not.toContain('const guildBody =');
+    // And nothing may register into guild scope any more, on boot or on join.
+    const guildPuts = workerSrc.match(/rest\.put\(Routes\.applicationGuildCommands\([^)]*\), \{ body: (?!\[\] )/g) || [];
+    expect(guildPuts).toEqual([]);
+  });
+
+  it('does not re-create the duplication when the bot joins a server', () => {
+    const gc = workerSrc.slice(workerSrc.indexOf('client.on("guildCreate"'), workerSrc.indexOf('client.on("messageCreate"'));
+    expect(gc).not.toContain('applicationGuildCommands');
+    expect(gc).toContain('global commands already apply');
   });
 });
 
