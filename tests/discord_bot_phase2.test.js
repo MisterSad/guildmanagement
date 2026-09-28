@@ -286,20 +286,30 @@ describe('Regression: discord-bot-interactions exposes the Phase 2 commands via 
   it('imports the shared write/read functions rather than reimplementing them', () => {
     for (const name of [
       'updatePlayerPower', 'updatePlayerGlory', 'updatePlayerTimezone',
-      'getPlayerChallenges', 'listPlayerAbsences', 'setPlayerAbsence', 'deletePlayerAbsence',
+      'getPlayerChallenges', 'listPlayerAbsences', 'deletePlayerAbsence',
     ]) {
       expect(botSrc).toContain(`  ${name},`);
     }
+    // setPlayerAbsence is NOT imported any more: /absence set was retired on
+    // 2026-09-28 because /absent does the same write and also alerts the officer
+    // channel, which this path never did. member-portal still uses it.
+    expect(botSrc).not.toContain('  setPlayerAbsence,');
   });
 
-  it('routes every Phase 2 command name and resolves the linked account first', () => {
-    for (const name of ['power', 'glory', 'timezone', 'challenges', 'absence']) {
+  it('routes every live command name and resolves the linked account first', () => {
+    // /power and /glory were retired the same day: /update-stats does both
+    // writes, and now does them through these audited helpers rather than
+    // calling the RPCs directly as the worker's own version did.
+    for (const name of ['update-stats', 'timezone', 'challenges', 'absence']) {
       expect(botSrc).toContain(`commandName === "${name}"`);
+    }
+    for (const retired of ['power', 'glory']) {
+      expect(botSrc, `/${retired} is retired`).not.toContain(`commandName === "${retired}"`);
     }
     // Every command must gate on resolveLinkedAccount before touching player data,
     // same as /myinfo -- no command should invent its own lookup path.
     const resolverCalls = (botSrc.match(/await resolveLinkedAccount\(admin, discordUserId\)/g) || []).length;
-    expect(resolverCalls).toBe(6); // myinfo + power + glory + timezone + challenges + absence
+    expect(resolverCalls).toBe(5); // myinfo + update-stats + timezone + challenges + absence
   });
 
   it('routes all three /absence subcommands', () => {
@@ -332,14 +342,21 @@ describe('Regression: the worker owns the full Phase 2 command set', () => {
     expect(block).toContain('max_value: 14');
   });
 
-  it('declares /absence with set/list/cancel as SUB_COMMAND (type 1) options', () => {
+  it('declares /absence with list/cancel as SUB_COMMAND (type 1) options', () => {
     const idx = scriptSrc.indexOf('name: "absence"');
     const block = scriptSrc.slice(idx, scriptSrc.indexOf('\n};', idx));
-    expect(block).toContain('name: "set"');
+    // `set` retired: /absent declares an absence AND alerts the officers.
+    expect(block).not.toContain('name: "set"');
     expect(block).toContain('name: "list"');
     expect(block).toContain('name: "cancel"');
-    expect(block).toContain('name: "start_date"');
-    expect(block).toContain('name: "end_date"');
     expect(block).toContain('name: "id"');
+  });
+
+  it('retires the two commands /update-stats already covered', () => {
+    expect(scriptSrc).toContain('const RETIRED_COMMANDS = new Set(["power", "glory"])');
+    // Dropping a name from `desired` is not enough: the merge folds unknown
+    // existing commands back in, so a retired one must be excluded explicitly
+    // or Discord keeps serving it.
+    expect(scriptSrc).toContain('if (desired.has(cmd.name) || RETIRED_COMMANDS.has(cmd.name)) continue;');
   });
 });

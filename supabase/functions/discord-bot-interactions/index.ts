@@ -49,7 +49,6 @@ import {
   updatePlayerTimezone,
   getPlayerChallenges,
   listPlayerAbsences,
-  setPlayerAbsence,
   deletePlayerAbsence,
 } from "../_shared/player-actions.ts";
 import {
@@ -264,36 +263,53 @@ Deno.serve(async (req: Request) => {
     return ephemeral("", [embed]);
   }
 
-  if (commandName === "power") {
+  // /update-stats replaces /power and /glory, which did the same two writes
+  // under two more names. One command, both fields optional, and both writes go
+  // through the same validated, audited helpers member-portal uses -- which the
+  // worker's own /update-stats did NOT: it called the RPCs directly, so it
+  // clamped nothing and wrote no audit row.
+  if (commandName === "update-stats") {
     const resolved = await resolveLinkedAccount(admin, discordUserId);
     if (!resolved.ok) return ephemeral(resolved.message);
 
-    const value = getOptionValue(interaction.data?.options, "value");
-    const res = await updatePlayerPower(admin, resolved.uid, resolved.guild, value);
-    if (!res.ok) {
-      const msg = res.error === "invalid_power"
-        ? "That doesn't look like a valid power value."
-        : "Couldn't update your power. Please try again later.";
-      return ephemeral(msg);
+    const powerInput = getOptionValue(interaction.data?.options, "power");
+    const gloryInput = getOptionValue(interaction.data?.options, "glory");
+    if (powerInput === undefined && gloryInput === undefined) {
+      return ephemeral("Give me a **power** or a **glory** value to update (or both).");
     }
-    logger.info("Player updated power via Discord", { power: res.power });
-    return ephemeral(`Power updated to **${res.power!.toLocaleString("en-US")}**.`);
-  }
 
-  if (commandName === "glory") {
-    const resolved = await resolveLinkedAccount(admin, discordUserId);
-    if (!resolved.ok) return ephemeral(resolved.message);
+    const lines: string[] = [];
 
-    const value = getOptionValue(interaction.data?.options, "value");
-    const res = await updatePlayerGlory(admin, resolved.uid, resolved.guild, value);
-    if (!res.ok) {
-      const msg = res.error === "invalid_glory"
-        ? "That doesn't look like a valid Glory value."
-        : "Couldn't submit your Glory score. Please try again later.";
-      return ephemeral(msg);
+    if (powerInput !== undefined) {
+      const res = await updatePlayerPower(admin, resolved.uid, resolved.guild, powerInput);
+      if (!res.ok) {
+        return ephemeral(
+          res.error === "invalid_power"
+            ? "That doesn't look like a valid power value."
+            : "Couldn't update your power. Please try again later."
+        );
+      }
+      logger.info("Player updated power via Discord", { power: res.power });
+      lines.push(`• **Power**: ${res.power!.toLocaleString("en-US")}`);
     }
-    logger.info("Player updated glory via Discord", { week: res.week, glory: res.glory });
-    return ephemeral(`Glory score for week ${res.week} submitted: **${res.glory!.toLocaleString("en-US")}**.`);
+
+    if (gloryInput !== undefined) {
+      const res = await updatePlayerGlory(admin, resolved.uid, resolved.guild, gloryInput);
+      if (!res.ok) {
+        // Power may already have been written; say so rather than implying
+        // nothing happened.
+        const prefix = lines.length ? "Power was updated, but " : "";
+        return ephemeral(
+          prefix + (res.error === "invalid_glory"
+            ? "that doesn't look like a valid Glory value."
+            : `couldn't submit your Glory score (${res.error || "unknown error"}).`)
+        );
+      }
+      logger.info("Player updated glory via Discord", { week: res.week, glory: res.glory });
+      lines.push(`• **Glory** (week of ${res.week}): ${res.glory!.toLocaleString("en-US")}`);
+    }
+
+    return ephemeral(`✅ Updated:\n${lines.join("\n")}`);
   }
 
   if (commandName === "timezone") {
@@ -335,23 +351,12 @@ Deno.serve(async (req: Request) => {
     const subName: string = sub?.name || "";
     const subOptions = sub?.options;
 
+    // `set` was retired on 2026-09-28: /absent does the same write AND alerts the
+    // officer channel, which this never did. `list` and `cancel` stay, because
+    // nothing else offers them -- /absences lists the GUILD's absences, not
+    // the caller's own.
     if (subName === "set") {
-      const startDate = getOptionValue(subOptions, "start_date");
-      const endDate = getOptionValue(subOptions, "end_date");
-      const note = getOptionValue(subOptions, "note");
-      const res = await setPlayerAbsence(admin, resolved.uid, resolved.guild, {
-        startDate,
-        endDate,
-        kind: "full",
-        note: note || null,
-      });
-      if (!res.ok) {
-        const msg = res.error === "missing_dates"
-          ? "You need to provide both a start and end date."
-          : "Couldn't save your absence. Make sure the dates are valid (YYYY-MM-DD, end date on or after start date) and try again.";
-        return ephemeral(msg);
-      }
-      return ephemeral(`Absence declared from **${startDate}** to **${endDate}**.`);
+      return ephemeral("Use `/absent <start_date> <end_date> [reason]` to declare an absence — it also notifies your officers.");
     }
 
     if (subName === "list") {

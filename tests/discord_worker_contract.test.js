@@ -23,8 +23,6 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { getWeekStartIso } from '../supabase/functions/_shared/player-actions.ts';
-import { getWeekStartIso as workerWeekStart } from '../discord-verification-worker/week.js';
 
 const workerPath = path.resolve(__dirname, '../discord-verification-worker/index.js');
 const provisionerPath = path.resolve(__dirname, '../discord-verification-worker/server-provisioner.js');
@@ -49,7 +47,14 @@ describe('the worker reads a Discord identity that may hold several accounts', (
     expect(workerSrc).toContain('function askWhichAccount');
     // Every interactive command that acts AS the player must offer the choice.
     const guards = workerSrc.match(/if \(await askWhichAccount\(interaction, linked\)\) return;/g) || [];
+    // /myinfo, /absent, /mystats. /update-stats is forwarded now, so its
+    // ambiguity check lives in the Edge Function's own resolveLinkedAccount.
     expect(guards.length).toBeGreaterThanOrEqual(3);
+    const botSrc2 = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/discord-bot-interactions/index.ts'),
+      'utf-8'
+    );
+    expect(botSrc2).toContain('linked to ${usable.length} player accounts'.replace('${usable.length}', '${usable.length}'));
   });
 
   it('treats an ambiguous link as resolving no guild in the best-effort paths', () => {
@@ -61,43 +66,27 @@ describe('the worker reads a Discord identity that may hold several accounts', (
   });
 });
 
-describe('the worker never reports a write it did not get', () => {
-  it('checks the ok flag returned by the metrics and glory RPCs, not just the transport error', () => {
-    // Both RPCs answer with a row/object carrying `ok` and neither RAISEs, so a
-    // null error proves nothing.
-    expect(workerSrc).toContain('function rpcRowOk');
-    expect(workerSrc).toMatch(/const powerRes = rpcRowOk\(powerData\)/);
-    expect(workerSrc).toMatch(/const gloryRes = rpcRowOk\(gloryData\)/);
-    expect(workerSrc).toMatch(/if \(rpcErr \|\| !powerRes\.ok\)/);
-    expect(workerSrc).toMatch(/if \(rpcErr \|\| !gloryRes\.ok\)/);
+describe('the worker does not write player stats at all any more', () => {
+  it('forwards /update-stats instead of calling the RPCs directly', () => {
+    // It used to call gm_upsert_player_metrics and gm_upsert_player_glory itself,
+    // which meant no MAX_ALLOWED_POWER clamp and no audit row -- unlike
+    // updatePlayerPower/updatePlayerGlory, which do both. Retiring /power and
+    // /glory in favour of /update-stats would have LOST that, so /update-stats
+    // moved to the Edge Function's audited helpers instead.
+    expect(workerSrc).toContain('"update-stats"');
+    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence"])');
+    expect(workerSrc).not.toMatch(/\.rpc\("gm_upsert_player_metrics"/);
+    expect(workerSrc).not.toMatch(/\.rpc\("gm_upsert_player_glory"/);
+    expect(workerSrc).not.toContain('function handleUpdateStats');
   });
 
-  it('calls the glory RPC that exists, and never the phantom one', () => {
-    expect(workerSrc).toMatch(/\.rpc\("gm_upsert_player_glory"/);
-    expect(workerSrc).not.toMatch(/\.rpc\("gm_submit_event_score"/);
-  });
-
-  it('files the Glory score under the same ISO Monday the app uses', () => {
-    // The worker is plain Node and cannot import the Deno module, so the rule
-    // exists twice. Both copies are imported here and compared, rather than
-    // trusting a comment: if they drift, the bot and the app disagree about
-    // which week a score belongs to -- and the Stats page groups by that week.
-    expect(workerSrc).toContain('from "./week.js"');
-    const cases = [
-      '2026-09-28T00:00:00Z', // a Monday
-      '2026-09-27T23:59:59Z', // the Sunday before it -- the off-by-one that matters
-      '2026-10-01T12:00:00Z',
-      '2026-01-01T00:00:00Z', // year boundary
-      '2026-12-31T23:00:00Z', // ISO year boundary the other way
-      '2026-03-29T01:30:00Z', // a European DST switch
-    ];
-    for (const iso of cases) {
-      expect(workerWeekStart(new Date(iso)), iso).toBe(getWeekStartIso(new Date(iso)));
-    }
-    // And the shared rule really does land on Mondays.
-    for (const iso of cases) {
-      expect(new Date(`${workerWeekStart(new Date(iso))}T00:00:00Z`).getUTCDay(), iso).toBe(1);
-    }
+  it('no longer carries a second copy of the ISO-Monday rule', () => {
+    // week.js existed only so the worker could file a Glory score under the same
+    // week as the app. The write went back to the Deno side, which has the
+    // original, so the duplicate is deleted rather than left to drift.
+    expect(fs.existsSync(path.resolve(__dirname, '../discord-verification-worker/week.js'))).toBe(false);
+    expect(workerSrc).not.toContain('week.js');
+    expect(workerSrc).not.toContain('function getWeekStartIso');
   });
 });
 
@@ -219,12 +208,12 @@ describe('one transport, one registry, one implementation', () => {
     'utf-8'
   );
 
-  it('routes the five orphaned commands instead of reimplementing them', () => {
-    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["power", "glory", "timezone", "challenges", "absence"])');
+  it('routes the orphaned commands instead of reimplementing them', () => {
+    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence"])');
     expect(workerSrc).toContain('FORWARDED_COMMANDS.has(interaction.commandName)');
     expect(workerSrc).toContain('INTERACTIONS_FUNCTION_URL');
     // The validated write helpers stay on the Deno side, shared with the Portal.
-    for (const helper of ['updatePlayerPower', 'updatePlayerGlory', 'updatePlayerTimezone', 'getPlayerChallenges', 'setPlayerAbsence']) {
+    for (const helper of ['updatePlayerPower', 'updatePlayerGlory', 'updatePlayerTimezone', 'getPlayerChallenges']) {
       expect(botSrc, `${helper} must stay in the Edge Function`).toContain(helper);
       expect(workerSrc, `${helper} must NOT be reimplemented in the worker`).not.toContain(helper);
     }
@@ -264,11 +253,18 @@ describe('one transport, one registry, one implementation', () => {
     expect(fs.existsSync(path.resolve(__dirname, '../scripts/register-discord-commands.mjs'))).toBe(false);
     // Every command the worker forwards must also be one the worker defines,
     // or Discord would serve a command no source file describes.
-    for (const name of ['power', 'glory', 'timezone', 'challenges', 'absence']) {
+    for (const name of ['update-stats', 'timezone', 'challenges', 'absence']) {
       expect(workerSrc, `/${name} must be defined in the worker`).toMatch(
         new RegExp(`name: "${name}"`)
       );
       expect(workerSrc, `/${name} must be registered`).toContain(`["${name}", `);
+    }
+    // And a retired command must be actively excluded, not merely dropped.
+    expect(workerSrc).toContain('const RETIRED_COMMANDS = new Set(["power", "glory"])');
+    const desiredBlock = workerSrc.slice(workerSrc.indexOf('const desired = new Map(['), workerSrc.indexOf('const body = []'));
+    expect(desiredBlock.length).toBeGreaterThan(100);
+    for (const retired of ['power', 'glory']) {
+      expect(desiredBlock, `/${retired} must not be registered`).not.toContain(`["${retired}", `);
     }
   });
 

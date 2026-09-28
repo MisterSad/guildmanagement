@@ -26,7 +26,6 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { provisionDiscordServer } from "./server-provisioner.js";
-import { getWeekStartIso } from "./week.js";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 
@@ -242,7 +241,7 @@ async function addVerifiedRole(message, fgfGuild) {
 // The interaction is forwarded rather than reimplemented here: those five
 // commands run the same validated, audited `_shared/player-actions.ts` paths the
 // Player Portal uses, and a second Node copy would drift from them.
-const FORWARDED_COMMANDS = new Set(["power", "glory", "timezone", "challenges", "absence"]);
+const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence"]);
 
 /** discord.js option tree -> Discord's raw option array, subcommands included. */
 function rawOptions(list) {
@@ -427,21 +426,13 @@ const SETUP_SERVER_COMMAND = {
 // nothing kept in step with the two handlers. They live here now, with every
 // other command, so there is one source of truth and Discord cannot end up
 // serving a command no source file describes.
-const POWER_COMMAND = {
-  name: "power",
-  description: "Update your overall power.",
-  options: [
-    { name: "value", description: "Your current Overall Power (digits only, e.g. 150000000)", type: 4, required: true, min_value: 0 },
-  ],
-};
-
-const GLORY_COMMAND = {
-  name: "glory",
-  description: "Submit your Glory score for this week.",
-  options: [
-    { name: "value", description: "Your Glory score for this week", type: 4, required: true, min_value: 0 },
-  ],
-};
+// Retired 2026-09-28: /power and /glory did exactly what /update-stats does, and
+// /absence's `set` subcommand did what /absent does (and /absent also alerts the
+// officer channel). Dropping a name from `desired` is NOT enough to remove it
+// from Discord, because the merge step below folds unknown existing commands
+// back in so this worker never wipes one it does not own -- so they are named
+// here and excluded from that fold.
+const RETIRED_COMMANDS = new Set(["power", "glory"]);
 
 const TIMEZONE_COMMAND = {
   name: "timezone",
@@ -460,17 +451,8 @@ const ABSENCE_COMMAND = {
   name: "absence",
   description: "Manage your absence declarations.",
   options: [
-    {
-      type: 1,
-      name: "set",
-      description: "Declare an absence period",
-      options: [
-        { type: 3, name: "start_date", description: "Start date (YYYY-MM-DD)", required: true },
-        { type: 3, name: "end_date", description: "End date (YYYY-MM-DD)", required: true },
-        { type: 3, name: "note", description: "Optional reason", required: false },
-      ],
-    },
-    { type: 1, name: "list", description: "List your current absences" },
+    // `set` retired -- /absent declares an absence and alerts the officers.
+    { type: 1, name: "list", description: "List your own absences" },
     {
       type: 1,
       name: "cancel",
@@ -543,8 +525,6 @@ async function registerSlashCommands() {
       ["reconcile-roles", RECONCILE_ROLES_COMMAND],
       ["verifications", VERIFICATIONS_COMMAND],
       // Forwarded to the Edge Function, but owned here.
-      ["power", POWER_COMMAND],
-      ["glory", GLORY_COMMAND],
       ["timezone", TIMEZONE_COMMAND],
       ["challenges", CHALLENGES_COMMAND],
       ["absence", ABSENCE_COMMAND],
@@ -559,7 +539,13 @@ async function registerSlashCommands() {
     // Unchanged commands are folded back in untouched -- legacy commands never
     // get wiped or overwritten by this register step.
     for (const cmd of existing) {
-      if (!desired.has(cmd.name)) body.push(cmd);
+      if (desired.has(cmd.name) || RETIRED_COMMANDS.has(cmd.name)) continue;
+      body.push(cmd);
+    }
+
+    const retiring = existing.filter((c) => RETIRED_COMMANDS.has(c.name));
+    if (retiring.length > 0) {
+      console.log(`Retiring commands: ${retiring.map((c) => `/${c.name}`).join(", ")} -- superseded by /update-stats.`);
     }
 
     const unowned = existing.filter((c) => !desired.has(c.name));
@@ -1260,100 +1246,6 @@ async function handleCtaButton(interaction) {
   });
 }
 
-async function handleUpdateStats(interaction) {
-  const power = interaction.options.getInteger("power");
-  const glory = interaction.options.getInteger("glory");
-
-  if (power === null && glory === null) {
-    await interaction.reply({
-      content: "Please provide either a **power** or a **glory** value to update.",
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const linked = await resolveLinkedAccount(interaction.user.id);
-  if (!linked) {
-    await interaction.reply({
-      content: "Your Discord account isn't linked yet. Run `/link` to connect your player account first.",
-      ephemeral: true,
-    });
-    return;
-  }
-  if (await askWhichAccount(interaction, linked)) return;
-
-  const { data: member, error: memberErr } = await supabase
-    .from("guild_members")
-    .select("pseudo, overall_power, glory_score")
-    .eq("guild", linked.guild)
-    .eq("uid", linked.uid)
-    .maybeSingle();
-
-  if (memberErr || !member) {
-    await interaction.reply({
-      content: "No roster entry found for your linked account.",
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const changes = [];
-
-  if (power !== null) {
-    const { data: powerData, error: rpcErr } = await supabase.rpc("gm_upsert_player_metrics", {
-      p_guild: linked.guild,
-      p_pseudo: member.pseudo,
-      p_total_power: power,
-    });
-    const powerRes = rpcRowOk(powerData);
-    if (rpcErr || !powerRes.ok) {
-      const why = rpcErr ? rpcErr.message : powerRes.error || "the database refused the write";
-      await interaction.reply({ content: `Failed to update power: ${why}`, ephemeral: true });
-      return;
-    }
-    const oldP = Number(member.overall_power) || 0;
-    const diff = power - oldP;
-    const sign = diff >= 0 ? "+" : "";
-    changes.push(`• **Power**: ${formatNumber(oldP)} ➔ **${formatNumber(power)}** (${sign}${formatNumber(diff)})`);
-  }
-
-  if (glory !== null) {
-    // Was `gm_submit_event_score`, a function that exists in no migration and in
-    // no database -- the error was logged to the console and the player was told
-    // "✅ Stats Updated" anyway. This is the RPC the app itself uses, keyed on
-    // the same ISO Monday, and a refusal now fails the reply.
-    const week = getWeekStartIso(new Date());
-    const { data: gloryData, error: rpcErr } = await supabase.rpc("gm_upsert_player_glory", {
-      p_guild: linked.guild,
-      p_pseudo: member.pseudo,
-      p_week_start: week,
-      p_glory: glory,
-    });
-    const gloryRes = rpcRowOk(gloryData);
-    if (rpcErr || !gloryRes.ok) {
-      const why = rpcErr ? rpcErr.message : gloryRes.error || "the database refused the write";
-      console.warn(`gm_upsert_player_glory refused ${member.pseudo} (${linked.guild}): ${why}`);
-      await interaction.reply({
-        content: `Failed to update glory: ${why}. Your power${power !== null ? " was" : " was not"} affected.`,
-        ephemeral: true,
-      });
-      return;
-    }
-    const oldG = Number(member.glory_score) || 0;
-    changes.push(`• **Glory**: ${formatNumber(oldG)} ➔ **${formatNumber(glory)}** (week of ${week})`);
-  }
-
-  const embed = {
-    color: 0x22c55e,
-    title: `✅ Stats Updated — ${member.pseudo} (${linked.guild})`,
-    description: changes.join("\n"),
-    footer: { text: "FGF Guild Management • Updated via Discord" },
-    timestamp: new Date().toISOString(),
-  };
-
-  await interaction.reply({ embeds: [embed], ephemeral: true });
-}
-
 /**
  * /mystats -- one player's attendance, on the app's own definition.
  *
@@ -1743,14 +1635,6 @@ async function handleReconcileButton(interaction) {
 const pendingSetups = new Map();
 
 
-// Both RPCs answer with a row/object carrying `ok`, and neither RAISEs on a
-// refusal -- so a null transport error proves nothing. Every earlier caller here
-// inspected only the transport error and reported success regardless, which is
-// how `/update-stats glory:` announced a save it never made.
-function rpcRowOk(data) {
-  const row = Array.isArray(data) ? data[0] : data;
-  return { ok: !!(row && row.ok), error: (row && row.error) || null };
-}
 
 function generateProgressBar(percent) {
   const totalBars = 16;
@@ -2334,8 +2218,6 @@ client.on("interactionCreate", async (interaction) => {
       await handleAbsences(interaction);
     } else if (interaction.commandName === "call-to-arms") {
       await handleCallToArms(interaction);
-    } else if (interaction.commandName === "update-stats") {
-      await handleUpdateStats(interaction);
     } else if (interaction.commandName === "setup-server") {
       await handleSetupServer(interaction);
     } else if (interaction.commandName === "reconcile-roles") {
