@@ -360,6 +360,15 @@ describe('/reconcile-roles reports before it removes', () => {
     expect(fn()).toContain('Server Members Intent');
   });
 
+  it('says at startup whether the intent is in effect', () => {
+    // A successful login is IDENTICAL whether the intent was declared and
+    // accepted or never requested, so the log has to state which -- otherwise
+    // the only way to know is to run the command and read its refusal.
+    const ready = workerSrc.slice(workerSrc.indexOf('logged in as'));
+    expect(ready).toContain('MEMBERS_INTENT_ENABLED');
+    expect(ready).toContain('GuildMembers intent:');
+  });
+
   it('removes nothing without a confirmation button from the officer who asked', () => {
     const body = fn();
     expect(body).toContain('pendingReconciles.set');

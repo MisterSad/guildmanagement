@@ -2007,6 +2007,15 @@ async function safeReplyToInteraction(interaction, content) {
 
 client.once("ready", async () => {
   console.log(`discord-verification-worker logged in as ${client.user.tag}`);
+  // A successful login looks identical whether the privileged GuildMembers intent
+  // was declared and accepted or never requested at all, so say which --
+  // otherwise there is no way to confirm DISCORD_GUILD_MEMBERS_INTENT took
+  // effect short of running /reconcile-roles and reading its refusal.
+  console.log(
+    MEMBERS_INTENT_ENABLED
+      ? "GuildMembers intent: REQUESTED and accepted -- /reconcile-roles is available."
+      : "GuildMembers intent: not requested (DISCORD_GUILD_MEMBERS_INTENT is unset) -- /reconcile-roles will explain how to enable it."
+  );
   discordReady = true;
   await refreshChannelMap();
   await refreshMemberRoleMap();
