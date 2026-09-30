@@ -21,7 +21,7 @@ A transfer moves a player **with their history** (events, scores, sanctions) fro
 2. The tool says **"Player ID already exists"**: the player belongs to another guild.
 3. Tick the box, then click **Request Transfer**.
 
-The request appears in **Pending Transfers** (**Members** page).
+The **player's current guild** decides: the request appears in *their* **Pending Transfers**. You see *Awaiting approval from…*, and you can withdraw it with ✗.
 
 ## Way 3: A player asks to move
 
@@ -33,9 +33,10 @@ In the **Player Portal**: **My Info** → **Request Guild Transfer** → pick th
 
 ## ✅ Approve or reject a request
 
-Open **Members** → **Pending Transfers**:
-- **IN** = a player coming **to your guild**. Click ✓ to approve, ✗ to reject.
-- **OUT** = a player leaving your guild. You'll see *Awaiting approval from…*: the **receiving** guild decides.
+Open **Members** → **Pending Transfers**. **Whoever asked never decides:**
+- A **player asked to join you** → **you** approve ✓ or reject ✗.
+- **Another guild asked to take one of your players** → **you** approve ✓ or reject ✗.
+- **You asked to take a player** → you wait for their guild. You can withdraw ✗.
 
 ⚠️ There is **no notification** for new requests. Check **Pending Transfers** regularly (see Guide 16).
 

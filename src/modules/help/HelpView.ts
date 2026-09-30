@@ -88,7 +88,7 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-pending-transfers': {
     icon: 'ph-arrows-left-right',
     title: 'Pending Guild Transfers',
-    body: '<p>When a player requests to move to another guild via the Player Portal, a transfer request appears here.</p><p>Approve to move the player to their requested guild (their portal account follows them). Reject to keep them in your guild.</p>'
+    body: '<p>Pending moves between your guild and another one. Whoever asked for a move never decides it:</p><ul><li><strong>A player asked to join you</strong> (Player Portal): <strong>you</strong> approve or reject it.</li><li><strong>Another guild asked to take one of your players</strong>: <strong>you</strong> approve or reject it.</li><li><strong>You asked to take a player</strong>: the player\'s current guild decides. You can withdraw your request.</li></ul><p>An approved move takes the player\'s history and portal account with them. There is no notification: check this list regularly.</p>'
   },
   'help-absences': {
     icon: 'ph-calendar-x',
@@ -194,7 +194,7 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-portal-transfer': {
     icon: 'ph-arrows-left-right',
     title: 'Request a Guild Transfer',
-    body: '<p>If you want to move to a different guild, use this form to submit a transfer request.</p><p>Your current guild admin will be notified and must approve the transfer. Once approved, your account automatically follows you to the new guild and your history is preserved.</p>'
+    body: '<p>If you want to move to a different guild, use this form to submit a transfer request.</p><p>The officers of the guild you want to join decide. There is no notification, so let them know on Discord. Once approved, your account automatically follows you to the new guild and your history is preserved.</p>'
   },
   'help-portal-events': {
     icon: 'ph-calendar-check',

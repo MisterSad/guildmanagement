@@ -135,6 +135,12 @@ export async function handleAddBannedPlayer(): Promise<void> {
   if (uidErr) { showToast(t(uidErr), 'error'); return; }
 
   if (getBannedPlayers().some((bp) => bp.uid === uidVal)) { showToast(t('toast_player_already_banned'), 'error'); return; }
+  // Banning removes the player from the roster, which the database refuses for
+  // the R5: the ban would be recorded while the leader stayed on the roster.
+  if (getGuildMembers().some((m) => m.uid === uidVal && m.role === 'R5')) {
+    showToast('The R5 leader cannot be banned. Change their role first (Members → Edit).', 'warning');
+    return;
+  }
 
   const form = byId<HTMLFormElement>('add-banned-form');
   const btn = form ? form.querySelector('button[type="submit"]') as HTMLButtonElement | null : null;

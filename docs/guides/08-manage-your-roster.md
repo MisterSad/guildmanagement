@@ -39,6 +39,7 @@ On a card:
 - 🗑️ **Delete**: removes the player.
 
 ⚠️ **Deleting a player also deletes their whole history**: participations, scores, squads and sanctions. If a player only changes guild, use **Transfer** instead.
+-# The **R5** cannot be deleted, banned or removed by OCR. New leader? Change the old R5's rank with ✏️ **Edit** first.
 
 ## 🎖️ Change many ranks at once
 

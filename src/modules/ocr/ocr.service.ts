@@ -120,6 +120,10 @@ export function categorizeOcrDiff(
   if (opMode === 'members' && members.length > 0) {
     members.forEach((m) => {
       if (!m || !m.pseudo) return;
+      // The R5 is never proposed for removal: a leader missing from one
+      // screenshot used to be ticked for deletion, history and all. The
+      // database refuses it too (migration 20260930150000).
+      if (m.role === 'R5') return;
       const pseudoKey = m.pseudo.trim().toLowerCase();
       if (!seenMemberPseudos.has(pseudoKey)) {
         removedList.push({

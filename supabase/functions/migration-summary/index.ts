@@ -5,6 +5,8 @@ import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
 import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl } from "../_shared/gemini.ts";
+import { canReadIntel } from "../_shared/intel-access.ts";
+import { checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
@@ -32,7 +34,7 @@ const RequestSchema = z
   })
   .strict();
 
-const SYSTEM_INSTRUCTION = `You are an elite intelligence analyst for a competitive gaming community (Whiteout Survival / FGF Guild Management).
+const SYSTEM_INSTRUCTION = `You are an elite intelligence analyst for a competitive gaming community (Foundation: Galactic Frontier / FGF Guild Management).
 Your mission is to analyze and summarize cross-server migration intelligence notes, player dossiers, recruit discussions, and alliance diplomacy agreements.
 
 Guidelines:
@@ -74,21 +76,37 @@ Deno.serve(async (req: Request) => {
 
   const { mode, pageId, scope, guildId, serverNumber } = parsed.data;
 
-  // Enforce Tenant & Role Scoping
-  if (caller.role !== "super_admin") {
-    if (scope === "guild") {
-      if (!guildId || (caller.role === "guild_admin" && caller.guild !== guildId)) {
-        logger.warn("Cross-tenant guild intel access denied", { callerGuild: caller.guild, targetGuild: guildId });
-        return json({ ok: false, error: "forbidden" }, 403);
-      }
-    }
-    if (caller.role === "server_admin" && caller.serverNumber && caller.serverNumber !== serverNumber) {
-      logger.warn("Cross-server intel access denied", { callerServer: caller.serverNumber, targetServer: serverNumber });
+  const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+  // Each summary is a paid model call over up to 25 pages: bound it per
+  // account (its own bucket, apart from the per-IP login budgets). Fails
+  // closed with the helper.
+  const budget = await checkAndRecordIpAttempt(adminClient, `migration-summary:${caller.accountId}`, { limit: 10, windowMs: 600_000 });
+  if (!budget.allowed) {
+    return json({ ok: false, error: "rate_limited", message: "Too many AI summaries in a short time. Please wait a few minutes." }, 429);
+  }
+
+  const guildServer = async (g: string | null | undefined): Promise<string | null> => {
+    if (!g) return null;
+    const { data } = await adminClient.from("guilds").select("server_number").eq("id", g).maybeSingle();
+    return data?.server_number ?? null;
+  };
+  const callerScope = { role: caller.role, guild: caller.guild ?? null, serverNumber: caller.serverNumber ?? null };
+
+  // Scope digest: the request's scope IS what is read, so check it here.
+  // Guild Intel needs an explicit guild: without one the query below would
+  // read every guild's pages on the server.
+  if (mode === "scope") {
+    if (scope === "guild" && !guildId) return json({ ok: false, error: "missing_guild_id" }, 400);
+    const allowed = canReadIntel(callerScope, {
+      scope, guildId: guildId ?? null, serverNumber,
+      guildServerNumber: scope === "guild" ? await guildServer(guildId) : null,
+    });
+    if (!allowed) {
+      logger.warn("Cross-tenant intel digest denied", { callerGuild: caller.guild, scope, guildId, serverNumber });
       return json({ ok: false, error: "forbidden" }, 403);
     }
   }
-
-  const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
   let intelData: unknown;
 
@@ -105,6 +123,19 @@ Deno.serve(async (req: Request) => {
 
     if (pageErr || !page) {
       logger.error("Failed to load page for summary", pageErr, { pageId });
+      return json({ ok: false, error: "page_not_found" }, 404);
+    }
+
+    // Checked against the PAGE's own scope, never the request's: the page is
+    // read with the service role, so this is the only thing between an admin
+    // and another tenant's page. Same answer as a missing page, so a page id
+    // reveals nothing about pages the caller cannot read.
+    const allowed = canReadIntel(callerScope, {
+      scope: page.scope, guildId: page.guild_id ?? null, serverNumber: page.server_number ?? null,
+      guildServerNumber: page.scope === "guild" ? await guildServer(page.guild_id) : null,
+    });
+    if (!allowed) {
+      logger.warn("Cross-tenant intel page summary denied", { callerGuild: caller.guild, pageId });
       return json({ ok: false, error: "page_not_found" }, 404);
     }
 
@@ -255,11 +286,12 @@ Deno.serve(async (req: Request) => {
 
   if (!summaryText) {
     logger.error("All Gemini models failed for migration-summary", undefined, { lastError });
+    // The provider's raw error text stays in the logs, not in the browser.
     return json(
       {
         ok: false,
         error: "ai_summary_failed",
-        message: lastError || "Failed to generate AI summary",
+        message: "The AI summary could not be generated. Please try again later.",
       },
       500
     );

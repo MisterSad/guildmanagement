@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- **Three defects found while writing the user guides. Each was reproduced on production inside a rolled-back transaction before it was fixed.**
+  - **A guild admin could take any player from another guild on the same server.** "Player ID already exists → Request Transfer" always filed the request with the caller's own guild as target, and `resolve_guild_transfer` let the target guild approve. So the officer approved their own request, and the player moved with history, sanctions and portal account without the losing guild being asked. Reproduced: `ok, approved`, player now in the puller's guild.
+    - `guild_transfers.requested_by` now records who asked. Whoever asked never decides: a player's own request is decided by the receiving guild, an admin pull by the guild the player is leaving. The puller may only withdraw.
+    - A `gm_authenticated_update` policy also let the target guild's admins rewrite pending rows directly, walking around any rule in the RPC. It is dropped. The API roles keep SELECT only, and `anon` loses Supabase's default ALL.
+    - The `'ALPHA'` fallback in `gm_admin_request_transfer` is gone.
+    - Migration `20260930140000`. After the fix: the puller gets `permission_denied`, a direct UPDATE gets `42501`, and the losing guild's approval works.
+  - **The Migration Hub AI summary could read another tenant's intel.** In page mode it loaded the page by id with the service role, and checked only the scope, guild and server the *request* claimed. In digest mode, Server Intel had no server check for guild admins.
+    - Access is now checked on the data actually read (`_shared/intel-access.ts`, mirroring the wiki's policies). A page the caller cannot read answers exactly like a missing one.
+    - Summaries are rate-limited per account (10 per 10 minutes, failing closed), and the provider's raw error no longer reaches the browser. The prompt names the right game.
+    - `privacy.html` now declares that note text goes to Gemini for summaries, and that bug reports go to the operator's Discord channel.
+  - **A Members OCR scan could delete the R5 leader.** A leader missing from the screenshots was listed under "Removed Members", ticked by default, and one confirmation erased their history.
+    - The R5 is no longer listed for removal, and the commit filters it out regardless.
+    - The single Delete button and Ban explain instead of failing.
+    - A `BEFORE DELETE` trigger refuses to delete an R5 from any user session except a super_admin's (migration `20260930150000`). System paths (the nightly DEMO reset) are unaffected, and so is the handover: change the old R5's role, then remove them.
+
 - **The Overview now says when Discord reminders cannot work.** Measured on 2026-09-30: **17 of 31 guilds have no Discord webhook anywhere**, so no reminder, event post or GvG task list can reach them, whatever their switches say, and nothing in the app told them. Admins now see a callout, "Discord reminders are not set up", with a **Set up** button that opens Discord notifications. It disappears as soon as any webhook exists: the default one or any event's own. It reads one `guild_config` query, and a failed read shows nothing rather than a false alarm.
   - **Reminders were *not* made "on by default"**, which was the first idea. Every guild that has a webhook already has every switch saved explicitly, so the change would have altered nothing. It would also have reopened the P0 "ghost notifications" bug, where a missing setting counted as enabled and reminders fired while the panel showed them off.
 

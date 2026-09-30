@@ -710,6 +710,7 @@ export type Database = {
           created_at: string | null
           id: string
           pseudo: string
+          requested_by: string
           resolved_at: string | null
           resolved_by: string | null
           source_guild: string
@@ -721,6 +722,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           pseudo: string
+          requested_by?: string
           resolved_at?: string | null
           resolved_by?: string | null
           source_guild: string
@@ -732,6 +734,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           pseudo?: string
+          requested_by?: string
           resolved_at?: string | null
           resolved_by?: string | null
           source_guild?: string

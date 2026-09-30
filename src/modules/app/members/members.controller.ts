@@ -12,7 +12,7 @@
 import { t, esc, winAny, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { patchAppState } from '../../../core/state/app-state';
-import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers } from './members.store';
+import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers, transferActionFor } from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
 import { eventsView } from '../../events/views/EventsView';
@@ -133,7 +133,7 @@ export async function fetchGuildMembers(opts?: { signal?: AbortSignal }): Promis
   try {
     const [res, transfersRes, absencesRes, gloryRes] = await Promise.all([
       applySignal(client.from('guild_members').select('*').eq('guild', currentG).order('pseudo', { ascending: true }), signal),
-      applySignal(client.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild').eq('status', 'pending').order('created_at', { ascending: true }), signal),
+      applySignal(client.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild, requested_by').eq('status', 'pending').order('created_at', { ascending: true }), signal),
       applySignal(client.from('player_absences').select('*').eq('guild', currentG), signal),
       applySignal(client.from('event_participants').select('pseudo, score, week_start').eq('guild', currentG).eq('event_name', 'Glory').not('score', 'is', null).order('week_start', { ascending: false }), signal)
     ]);
@@ -200,13 +200,18 @@ export function renderPendingTransfers(): void {
   let html = '';
   transfers.forEach((tr) => {
     const isIncoming = tr.target_guild === currentG;
+    const mode = transferActionFor(tr, currentG);
+    const approverGuild = tr.requested_by === 'admin' ? tr.source_guild : tr.target_guild;
     const directionBadge = isIncoming
       ? '<span class="gm-chip gm-chip-success" style="font-size: var(--fs-xs);"><i class="ph ph-arrow-down-left"></i> IN</span>'
       : '<span class="gm-chip" style="font-size: var(--fs-xs); background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.3);"><i class="ph ph-arrow-up-right"></i> OUT</span>';
-    const actions = isIncoming
-      ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" data-transfer-action="approve" data-transfer-id="' + esc(tr.id) + '" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
-        '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" data-transfer-action="reject" data-transfer-id="' + esc(tr.id) + '" title="Reject Transfer"><i class="ph ph-x"></i></button>'
-      : '<span style="font-size: var(--fs-xs); color:var(--text-dim);"><i class="ph ph-hourglass"></i> Awaiting approval from ' + esc(tr.target_guild) + '</span>';
+    const actions = mode === 'decide'
+      ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" data-transfer-action="approve" data-transfer-dir="' + (isIncoming ? 'in' : 'out') + '" data-transfer-id="' + esc(tr.id) + '" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
+        '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" data-transfer-action="reject" data-transfer-dir="' + (isIncoming ? 'in' : 'out') + '" data-transfer-id="' + esc(tr.id) + '" title="Reject Transfer"><i class="ph ph-x"></i></button>'
+      : mode === 'withdraw'
+        ? '<span style="font-size: var(--fs-xs); color:var(--text-dim); margin-right: 0.35rem;"><i class="ph ph-hourglass"></i> Awaiting approval from ' + esc(approverGuild) + '</span>' +
+          '<button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-transfer-action="reject" data-transfer-dir="withdraw" data-transfer-id="' + esc(tr.id) + '" title="Withdraw your request"><i class="ph ph-x"></i></button>'
+        : '<span style="font-size: var(--fs-xs); color:var(--text-dim);"><i class="ph ph-hourglass"></i> Awaiting approval from ' + esc(approverGuild) + '</span>';
 
     html += '<tr>' +
       '<td data-label="Player"><div class="gm-member-name"><div class="gm-avatar gm-avatar-sm gm-avatar-info">' + esc(avatarInit(tr.pseudo)) + '</div>' + esc(tr.pseudo) + '</div></td>' +
@@ -219,16 +224,22 @@ export function renderPendingTransfers(): void {
   list.innerHTML = html;
   list.querySelectorAll('[data-transfer-action]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      void resolveTransfer(btn.getAttribute('data-transfer-id') || '', btn.getAttribute('data-transfer-action') || '');
+      void resolveTransfer(btn.getAttribute('data-transfer-id') || '', btn.getAttribute('data-transfer-action') || '', btn.getAttribute('data-transfer-dir') || 'in');
     });
   });
 }
 
-export async function resolveTransfer(transferId: string, action: string): Promise<void> {
+export async function resolveTransfer(transferId: string, action: string, dir: string = 'in'): Promise<void> {
   const client = db();
   if (!client) return;
-  const title = action === 'approve' ? 'Approve Transfer' : 'Reject Transfer';
-  const message = action === 'approve' ? 'Approve this transfer and add the player to your guild?' : 'Reject this transfer request?';
+  const title = dir === 'withdraw' ? 'Withdraw Request' : action === 'approve' ? 'Approve Transfer' : 'Reject Transfer';
+  const message = dir === 'withdraw'
+    ? 'Withdraw your transfer request?'
+    : action === 'approve'
+      ? (dir === 'out'
+        ? 'Another guild asked to take this player. Approve, and the player leaves your guild with their history?'
+        : 'Approve this transfer and add the player to your guild?')
+      : 'Reject this transfer request?';
   const confirm = winAny().showConfirm;
   if (!confirm) return;
 
@@ -328,7 +339,7 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
     '</div>' +
     '<label style="display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.85rem; cursor:pointer; font-size: var(--fs-sm); color:var(--text-muted);">' +
       '<input type="checkbox" id="uid-taken-confirm" style="margin-top:2px; accent-color: var(--accent);">' +
-      '<span>I understand this process cannot be undone without reporting an issue or bug, and that the transfer must be approved by an admin.</span>' +
+      '<span>I understand this process cannot be undone without reporting an issue or bug, and that the transfer must be approved by the player\'s current guild.</span>' +
     '</label>';
     footerHtml = '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
       '<button type="button" class="gm-btn gm-btn-ghost gm-close-uid">Cancel</button>' +
@@ -393,7 +404,7 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
           if (error) throw error;
           if (!data || !data.ok) throw new Error((data && data.error) || 'request_failed');
           closeDialog();
-          showToast('Transfer request sent to ' + currentG + '. It will appear in the pending list for approval.', 'success');
+          showToast('Transfer request sent. The player\'s current guild must approve it: it appears in their Pending Transfers.', 'success');
           void fetchGuildMembers();
         } catch (err: any) {
           showToast('Could not request transfer: ' + err.message, 'error');
@@ -529,9 +540,13 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
   }
 }
 
+const R5_DELETE_MESSAGE = 'The R5 leader cannot be removed. Change their role first (Edit), then remove them.';
+
 export async function deleteGuildMember(pseudo: string): Promise<void> {
   const client = db();
   if (!client) return;
+  const target = getGuildMembers().find((m) => m.pseudo === pseudo);
+  if (target && target.role === 'R5') { showToast(R5_DELETE_MESSAGE, 'warning'); return; }
   try {
     const currentG = activeGuild();
     const res = await client.from('guild_members').delete().eq('pseudo', pseudo).eq('guild', currentG);

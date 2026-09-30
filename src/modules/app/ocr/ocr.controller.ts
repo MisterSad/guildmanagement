@@ -1027,8 +1027,11 @@ export async function commitOcrUpdates(): Promise<void> {
   if (tbody) tbody.querySelectorAll('.ocr-row-cb:checked').forEach((cb) => selectedExistingIndices.push(parseInt(cb.getAttribute('data-index') || '0', 10)));
   const selectedNewIndices: number[] = [];
   if (tbodyNew) tbodyNew.querySelectorAll('.ocr-row-cb:checked').forEach((cb) => selectedNewIndices.push(parseInt(cb.getAttribute('data-index') || '0', 10)));
+  // Never send an R5 for removal, whatever the table held (the database
+  // refuses it too, migration 20260930150000).
+  const r5Pseudos = new Set(getGuildMembers().filter((m: any) => m && m.role === 'R5').map((m: any) => String(m.pseudo).toLowerCase()));
   const checkedRemovalPseudos: string[] = [];
-  if (tbodyRemoved) tbodyRemoved.querySelectorAll('.ocr-removal-cb:checked').forEach((cb) => { const p = cb.getAttribute('data-removal-pseudo'); if (p) checkedRemovalPseudos.push(p); });
+  if (tbodyRemoved) tbodyRemoved.querySelectorAll('.ocr-removal-cb:checked').forEach((cb) => { const p = cb.getAttribute('data-removal-pseudo'); if (p && !r5Pseudos.has(p.toLowerCase())) checkedRemovalPseudos.push(p); });
 
   if (selectedExistingIndices.length === 0 && selectedNewIndices.length === 0 && checkedRemovalPseudos.length === 0) { showToast('No players selected.', 'error'); return; }
 
