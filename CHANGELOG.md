@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- **The Overview now says when Discord reminders cannot work.** Measured on 2026-09-30: **17 of 31 guilds have no Discord webhook anywhere**, so no reminder, event post or GvG task list can reach them, whatever their switches say, and nothing in the app told them. Admins now see a callout, "Discord reminders are not set up", with a **Set up** button that opens Discord notifications. It disappears as soon as any webhook exists: the default one or any event's own. It reads one `guild_config` query, and a failed read shows nothing rather than a false alarm.
+  - **Reminders were *not* made "on by default"**, which was the first idea. Every guild that has a webhook already has every switch saved explicitly, so the change would have altered nothing. It would also have reopened the P0 "ghost notifications" bug, where a missing setting counted as enabled and reminders fired while the panel showed them off.
+
 - **Three bot problems found while writing the user guides.**
   - **`/setup-server` doubled a server when re-run.** Roles were reused by name, but every category and channel was created again, and the app was repointed at the new copies. Categories are now matched by name, and channels by name, parent category and type. The match uses the name Discord actually stores, which is lower-cased for text channels, so it does not miss a channel Discord renamed on creation. A re-run only adds what is missing, keeps permissions an admin may have tuned, and does not repost the welcome embeds. The success message reports "created / already there".
   - **Its confirmation prompt described a template that no longer exists**: "28 Text, 3 Voice" and four roles, two of them with obsolete names, for a build of 32 text channels, 3 voice channels and 5 roles. The prompt is now counted from the template itself (`summarizeTemplate`), so it cannot drift again.

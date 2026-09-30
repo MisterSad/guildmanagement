@@ -5,6 +5,7 @@
  * jsdom. The legacy root `overview.js` is untouched during Phase 1.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { hasDiscordWebhook } from '../src/modules/overview/overview.service';
 import { OverviewView } from '../src/modules/overview/views/OverviewView';
 
 const W_CUR = '2026-08-03';
@@ -25,7 +26,8 @@ const TABLES = {
   sanctions: [
     { id: 1, pseudo: 'Bravo', guild: 'ALPHA', comment: 'x', created_by: 'HawkEye', created_at: '2026-08-02T09:00:00Z' }
   ],
-  guild_transfers: []
+  guild_transfers: [],
+  guild_config: []
 };
 
 function chained(value) {
@@ -40,6 +42,7 @@ function chained(value) {
     order: () => chain,
     limit: () => chain,
     eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
+    in: (field, vals) => { filters.push((r) => vals.indexOf(r[field]) !== -1); return chain; },
     or: () => chain,
     then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve)
   };
@@ -162,5 +165,52 @@ describe('OverviewView — Clocks modal', () => {
     expect(addBtn).toBeTruthy();
     expect(addBtn.textContent.trim()).toBe('Add Clock');
     expect(addBtn.textContent).not.toContain('modal_add_clock_btn');
+  });
+});
+
+
+describe('Overview: "Discord reminders are not set up" callout', () => {
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  afterEach(() => { TABLES.guild_config = []; });
+
+  it('shows when the guild has no webhook anywhere', async () => {
+    await new OverviewView().load();
+    await flush();
+    expect(document.getElementById('gm-overview').textContent).toContain('Discord reminders are not set up');
+  });
+
+  it('stays hidden once any webhook is configured, even an event-specific one', async () => {
+    TABLES.guild_config = [{ guild: 'ALPHA', key: 'webhook_gvg', value: 'https://discord.com/api/webhooks/1/x' }];
+    await new OverviewView().load();
+    await flush();
+    expect(document.getElementById('gm-overview').textContent).not.toContain('Discord reminders are not set up');
+  });
+
+  it('ignores another guild\'s webhook', async () => {
+    TABLES.guild_config = [{ guild: 'OMEGA', key: 'discord_webhook_url', value: 'https://discord.com/api/webhooks/1/x' }];
+    await new OverviewView().load();
+    await flush();
+    expect(document.getElementById('gm-overview').textContent).toContain('Discord reminders are not set up');
+  });
+
+  it('"Set up" goes to the Discord notifications page through the shell\'s own nav entry', async () => {
+    const nav = document.createElement('button');
+    nav.setAttribute('data-gm-nav-item', 'discord');
+    const clicked = vi.fn();
+    nav.addEventListener('click', clicked);
+    document.body.appendChild(nav);
+    await new OverviewView().load();
+    await flush();
+    document.querySelector('[data-gm-discord-setup-go]').click();
+    expect(clicked).toHaveBeenCalled();
+  });
+});
+
+describe('hasDiscordWebhook', () => {
+  it('treats blank values and unrelated keys as absent', () => {
+    expect(hasDiscordWebhook([{ key: 'discord_webhook_url', value: '   ' }])).toBe(false);
+    expect(hasDiscordWebhook([{ key: 'discord_role_id', value: '123' }])).toBe(false);
+    expect(hasDiscordWebhook(null)).toBe(false);
+    expect(hasDiscordWebhook([{ key: 'discord_webhook_url', value: 'https://discord.com/api/webhooks/1/x' }])).toBe(true);
   });
 });

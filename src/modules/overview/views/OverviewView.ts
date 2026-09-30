@@ -22,7 +22,9 @@ import {
   getDefaultClocks,
   parseTimezoneClocks,
   serializeTimezoneClocks,
-  buildOfficerClocks
+  buildOfficerClocks,
+  DISCORD_WEBHOOK_KEYS,
+  hasDiscordWebhook
 } from '../overview.service';
 import { escapeHTML } from '../../../core/utils/text';
 import {
@@ -144,6 +146,8 @@ export class OverviewView {
     const db = legacy.getDb();
     if (!db) return;
 
+    void this.renderDiscordSetupCallout(panel, db);
+
     try {
       const week = legacy.getWeekStart();
       const prevWeek = legacy.getPrevWeekStart(week);
@@ -248,6 +252,40 @@ export class OverviewView {
     }
   }
 
+  /**
+   * "Discord reminders are not set up" -- shown to the guild's admins while no
+   * webhook exists anywhere in its config. Without one, no reminder, creation
+   * post or GvG task list can be sent, and the toggles give no hint of it.
+   * A failed read shows nothing rather than a false alarm.
+   */
+  private async renderDiscordSetupCallout(panel: HTMLElement, db: any): Promise<void> {
+    const slot = panel.querySelector('[data-gm-discord-setup]') as HTMLElement | null;
+    const guild = legacy.getActiveGuild();
+    if (!slot || !guild) return;
+    try {
+      const res = await db.from('guild_config').select('key, value').eq('guild', guild).in('key', DISCORD_WEBHOOK_KEYS);
+      if (res.error || hasDiscordWebhook(res.data)) return;
+    } catch (_) {
+      return;
+    }
+    slot.innerHTML =
+      '<div class="gm-card" role="status" style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap; padding:0.85rem 1rem; margin-bottom:1.25rem; border-left:3px solid var(--warning);">' +
+        '<i class="ph ph-bell-slash" style="font-size: var(--fs-2xl); color: var(--warning);" aria-hidden="true"></i>' +
+        '<div style="flex:1; min-width: 200px;">' +
+          '<div style="font-weight:700;">Discord reminders are not set up</div>' +
+          '<div class="gm-dim" style="font-size: var(--fs-sm);">Add a Discord webhook so your players get event reminders, GvG daily tasks and SvS alerts automatically.</div>' +
+        '</div>' +
+        '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" data-gm-discord-setup-go><i class="ph ph-arrow-right"></i> <span>Set up</span></button>' +
+      '</div>';
+    const go = slot.querySelector('[data-gm-discord-setup-go]');
+    if (go) go.addEventListener('click', () => {
+      // The shell owns navigation and already imports this view; going through
+      // its own nav entry avoids an import cycle.
+      const nav = document.querySelector('[data-gm-nav-item="discord"]') as HTMLElement | null;
+      if (nav) nav.click();
+    });
+  }
+
   private renderShell(panel: HTMLElement): void {
     // Reset any previous tickers before re-rendering.
     if (this.countdownTimer) { clearInterval(this.countdownTimer); this.countdownTimer = null; }
@@ -264,6 +302,7 @@ export class OverviewView {
             '<i class="ph ph-download-simple"></i> <span>' + legacy.t('overview_export_guild_data') + '</span>' +
           '</button>' +
         '</header>' +
+        '<div data-gm-discord-setup></div>' +
         '<div class="gm-section-head" style="margin-bottom: 0.75rem; align-items: center;">' +
           '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;"><i class="ph ph-clock"></i> Clocks</h3>' +
           '<button class="gm-mini-btn" id="gm-manage-clocks-btn"><i class="ph ph-gear"></i> ' + legacy.t('manage_clocks') + '</button>' +
