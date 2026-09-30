@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **New functions are no longer executable by `anon` by default** (migration `20260930170000`). PostgreSQL grants EXECUTE to PUBLIC on every new function, and Supabase adds `anon`, so each migration had to revoke both by hand. Forgetting it once on a SECURITY DEFINER function would have published it to anyone holding the publishable key. The global PUBLIC default is revoked for `postgres` (it cannot be revoked per schema), and so is `anon`'s schema default. `authenticated` and `service_role` keep theirs. Of 108 functions, `anon` can now execute exactly one: `gm_report_client_error`, which is anonymous on purpose (ADR-011). `gm_event_scoring_key`, a helper reached only through PUBLIC, got explicit grants. Verified in a rollback by creating a function and reading its ACL.
+
 - **Least-privilege table grants** (migration `20260930160000`; AGENTS.md rule 2, finding C0). Supabase's default grants had never been removed.
   - **`anon` held ALL (TRUNCATE included) on 25 of 40 tables.** No policy anywhere names `anon`, and TRUNCATE ignores RLS. It now holds nothing, and `postgres`'s default privileges no longer hand new tables to `anon`.
   - **`authenticated` loses TRUNCATE/TRIGGER/REFERENCES everywhere.** It also loses all access to the 8 tables that have no policy and no browser caller (backup codes, passkeys, Discord links, tickets…).

@@ -69,3 +69,16 @@ describe('least-privilege table grants', () => {
     expect(browserOps('migration_wiki_comments').has('upsert')).toBe(false);
   });
 });
+
+describe('least-privilege function defaults (20260930170000)', () => {
+  const fsql = fs.readFileSync(path.join(root, 'supabase/migrations/20260930170000_least_privilege_function_defaults.sql'), 'utf-8');
+  it('new functions are born without PUBLIC or anon EXECUTE', () => {
+    // PUBLIC's EXECUTE is a GLOBAL default: it cannot be revoked IN SCHEMA.
+    expect(fsql).toContain('ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;');
+    expect(fsql).toContain('ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM anon;');
+  });
+  it('leaves the deliberately anonymous crash reporter alone (ADR-011)', () => {
+    const code = fsql.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+    expect(code).not.toContain('gm_report_client_error');
+  });
+});
