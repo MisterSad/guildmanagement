@@ -74,12 +74,18 @@ describe('war_aggregate_day0 migration — SQL surface', () => {
 });
 
 describe('member-portal integrity guard', () => {
-  it('rejects direct score_prep writes when a war_sessions row exists', () => {
+  // A player's own SvS/GvG submission used to be REJECTED on a war session
+  // (granular_session_use_daily), so the Days 1-5 score could never be sent.
+  // The invariant is unchanged -- the daily grid stays the single source of
+  // truth, and score_prep is never written directly on a war session -- but
+  // the scores now go THROUGH the grid instead of being refused.
+  it('routes war-session scores through gm_upsert_daily_scores, never a direct score_prep write', () => {
     const portal = read('supabase/functions/member-portal/index.ts');
-    expect(portal).toContain('payload.score_prep !== undefined');
     expect(portal).toContain('.from("war_sessions")');
-    expect(portal).toContain('.eq("event_name", eventName)');
-    expect(portal).toContain('"granular_session_use_daily"');
+    expect(portal).toContain('admin.rpc("gm_upsert_daily_scores"');
+    expect(portal).toContain('warSubmissionRows(member.pseudo, prep, pvp)');
+    expect(portal).toMatch(/if \(isWarSession\) \{\s*delete rowUpdate\.score_prep;\s*delete rowUpdate\.score_pvp;/);
+    expect(portal).not.toContain('"granular_session_use_daily"');
   });
 });
 

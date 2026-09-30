@@ -9,6 +9,9 @@ import {
   MAX_ALLOWED_POWER,
   MAX_ALLOWED_EVENT_SCORE,
   parseSafeScore,
+  participantEventName,
+  isOfficerRecorded,
+  warSubmissionRows,
   getWeekStartIso,
   eventScoringKey,
   logPlayerAction,
@@ -393,7 +396,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       const merged = (activeSessions || []).map((s: any) => {
         const p = participantRows.find(
-          (r) => r.event_name === s.event_name && r.session_id === s.session_id
+          (r) => r.event_name === participantEventName(s.event_name) && r.session_id === s.session_id
         );
         return {
           event_name: s.event_name,
@@ -404,6 +407,8 @@ export async function handleRequest(req: Request): Promise<Response> {
           score_pvp: p ? p.score_pvp : 0,
           participated: p ? p.participated > 0 : false,
           is_pending: p ? p.is_pending : false,
+          validated: p ? isOfficerRecorded(p) : false,
+          in_session: !!p,
           late: p ? p.late : false,
           excused: p ? p.excused : false,
           sub_present: p ? p.sub_present : false
@@ -462,39 +467,32 @@ export async function handleRequest(req: Request): Promise<Response> {
         return json({ ok: false, error: "session_inactive" }, 400);
       }
 
-      // Granular guard: when a war_sessions row exists for this session the
-      // daily grid is the single source of truth for prep scores — a direct
-      // score_prep write would be silently overwritten by the next
-      // gm_upsert_daily_scores derivation, so reject it before any write.
-      if (payload && payload.score_prep !== undefined) {
-        const { data: warRows, error: warErr } = await admin
-          .from("war_sessions")
-          .select("session_id")
-          .eq("guild", member.guild)
-          .eq("event_name", eventName)
-          .eq("session_id", sessionId)
-          .limit(1);
-        if (warErr) {
-          logger.error("DB error checking war-session guard", warErr, { guild: member.guild, eventName, sessionId });
-          return json({ ok: false, error: "db_error" }, 200);
-        }
-        if (warRows && warRows.length > 0) {
-          return json({ ok: false, error: "granular_session_use_daily" }, 400);
-        }
-      }
+      const rowEventName = participantEventName(eventName);
 
-      const { data: existingRows } = await admin
+      const { data: existingRows, error: exErr } = await admin
         .from("event_participants")
-        .select("is_pending")
+        .select("is_pending, participated, score, score_prep, score_pvp")
         .eq("guild", member.guild)
-        .eq("event_name", eventName)
+        .eq("event_name", rowEventName)
         .eq("session_id", sessionId)
         .eq("pseudo", member.pseudo)
         .limit(1);
+      if (exErr) {
+        logger.error("DB error reading participant row", exErr, { eventName, sessionId });
+        return json({ ok: false, error: "db_error" }, 200);
+      }
 
       const existing = existingRows?.[0] ?? null;
 
-      if (existing && existing.is_pending === false) {
+      // Starting an event creates a row for every member (and a Shadowfront
+      // squad for every assigned player). No row means the player is not part
+      // of this session -- say so, rather than update zero rows and report a
+      // success, which is what every submission that ever "worked" did.
+      if (!existing) {
+        return json({ ok: false, error: "not_in_session" }, 400);
+      }
+
+      if (isOfficerRecorded(existing)) {
         return json({ ok: false, error: "score_already_validated" }, 400);
       }
 
@@ -510,28 +508,73 @@ export async function handleRequest(req: Request): Promise<Response> {
         const parsed = parseSafeScore(payload.score);
         if (parsed !== null) update.score = parsed;
       }
-      if (payload.score_prep !== undefined) {
-        const parsed = parseSafeScore(payload.score_prep);
-        if (parsed !== null) update.score_prep = parsed;
-      }
-      if (payload.score_pvp !== undefined) {
-        const parsed = parseSafeScore(payload.score_pvp);
-        if (parsed !== null) update.score_pvp = parsed;
-      }
+      const prep = payload.score_prep !== undefined ? parseSafeScore(payload.score_prep) : null;
+      const pvp = payload.score_pvp !== undefined ? parseSafeScore(payload.score_pvp) : null;
       if (payload.late !== undefined) {
         update.late = !!payload.late;
       }
       // Stripped client-supplied excused and appointed (sanction-evasion / attendance credit vectors)
 
-      const { error: uErr } = await admin
-        .from("event_participants")
-        .update(update)
-        .eq("guild", member.guild)
-        .eq("event_name", eventName)
-        .eq("session_id", sessionId)
-        .eq("pseudo", member.pseudo);
+      // A war session's daily grid is the single source of truth for the
+      // prep/PvP columns: route the scores through it, as the officers' own
+      // entry and the OCR do, instead of writing columns it would overwrite.
+      let isWarSession = false;
+      if ((eventName === "SvS" || eventName === "GvG") && (prep !== null || pvp !== null)) {
+        const { data: warRows, error: warErr } = await admin
+          .from("war_sessions")
+          .select("session_id")
+          .eq("guild", member.guild)
+          .eq("event_name", eventName)
+          .eq("session_id", sessionId)
+          .limit(1);
+        if (warErr) {
+          logger.error("DB error checking war session", warErr, { guild: member.guild, eventName, sessionId });
+          return json({ ok: false, error: "db_error" }, 200);
+        }
+        isWarSession = !!(warRows && warRows.length > 0);
+      }
 
-      if (uErr) {
+      if (isWarSession) {
+        const rows = warSubmissionRows(member.pseudo, prep, pvp);
+        if (rows.length > 0) {
+          const { data: dsData, error: dsErr } = await admin.rpc("gm_upsert_daily_scores", {
+            p_guild: member.guild,
+            p_event_name: eventName,
+            p_session_id: sessionId,
+            p_rows: rows,
+          });
+          const dsRow = (Array.isArray(dsData) ? dsData[0] : dsData) as { ok?: boolean; error?: string } | null;
+          if (dsErr || !dsRow || dsRow.ok !== true) {
+            logger.error("Failed to record war scores", dsErr ?? dsRow?.error, { eventName, sessionId });
+            return json({ ok: false, error: "update_failed" }, 200);
+          }
+          if (prep !== null && prep > 0) update.score_prep = prep;
+          if (pvp !== null && pvp > 0) update.score_pvp = pvp;
+          // The RPC derived score_prep/score_pvp/participated itself; only the
+          // flags remain to be written below.
+          if (update.participated === 0) delete update.participated;
+        }
+      } else {
+        if (prep !== null) update.score_prep = prep;
+        if (pvp !== null) update.score_pvp = pvp;
+      }
+
+      const rowUpdate = { ...update };
+      if (isWarSession) {
+        delete rowUpdate.score_prep;
+        delete rowUpdate.score_pvp;
+      }
+
+      const { data: updatedRows, error: uErr } = await admin
+        .from("event_participants")
+        .update(rowUpdate)
+        .eq("guild", member.guild)
+        .eq("event_name", rowEventName)
+        .eq("session_id", sessionId)
+        .eq("pseudo", member.pseudo)
+        .select("pseudo");
+
+      if (uErr || !updatedRows || updatedRows.length === 0) {
         logger.error("Failed to update participant score", uErr, { eventName, sessionId });
         return json({ ok: false, error: "update_failed" }, 200);
       }

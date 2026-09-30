@@ -16,14 +16,14 @@ vi.mock('../src/modules/badges/badges.service', async (importOriginal) => {
   return { ...actual, computeBadges: vi.fn() };
 });
 import { computeBadges } from '../src/modules/badges/badges.service';
-import { PortalView } from '../src/modules/portal/views/PortalView';
+import { PortalView, submitErrorMessage } from '../src/modules/portal/views/PortalView';
 import { resetSupabaseClient } from '../src/core/api/supabase';
 
 const FIXTURES = {
   'get-active-sessions': {
     ok: true, pseudo: 'AlphaPrime', guild: 'ALPHA',
     overall_power: 80000000, timezone_offset: 1, glory: 5000,
-    sessions: [{ event_name: 'GvG', session_id: 'GVG-2026-W32', start_at: null, current_data: { participated: 1, score_prep: 1000 } }]
+    sessions: [{ event_name: 'GvG', session_id: 'GVG-2026-W32', start_at: null, participated: true, score_prep: 1000, is_pending: false, validated: true, in_session: true }]
   },
   'get-history': { ok: true, events: {} },
   'get-personal-kpis': {
@@ -183,6 +183,10 @@ describe('PortalView — gotoTab() lazy panels', () => {
 
     clickNav('events');
     expect(document.getElementById('portal-panel-events').textContent).toContain('GvG');
+    // The server returns each session's fields flat; the card used to read a
+    // `current_data` key that never existed and always said "Not submitted yet".
+    expect(document.getElementById('portal-panel-events').textContent).toContain('Confirmed by an officer');
+    expect(document.querySelector('#portal-panel-events .portal-submit-event-btn')).toBeNull();
 
     clickNav('absence');
     await tick();
@@ -223,5 +227,54 @@ describe('PortalView — chart delegation & cleanup', () => {
     const after = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
     expect(after).toEqual(baseline);
     expect(window.GM_PORTAL).toBeUndefined();
+  });
+});
+
+
+describe('PortalView — Active Events card states', () => {
+  const baseSessions = FIXTURES['get-active-sessions'].sessions;
+  afterEach(() => { FIXTURES['get-active-sessions'].sessions = baseSessions; });
+
+  async function renderEvents(sessions) {
+    FIXTURES['get-active-sessions'].sessions = sessions;
+    const view = newView();
+    await view.loadDashboard();
+    root().querySelector('[data-portal-nav="events"]').click();
+    return document.getElementById('portal-panel-events');
+  }
+
+  it('shows a pending submission as awaiting approval, with its button disabled', async () => {
+    const panel = await renderEvents([{ event_name: 'Defend Trade Route', session_id: 'DTR-20260930-1', participated: true, is_pending: true, validated: false, in_session: true }]);
+    expect(panel.textContent).toContain('Awaiting approval');
+    expect(panel.querySelector('.portal-submit-event-btn').disabled).toBe(true);
+  });
+
+  it('treats a squad-named Shadowfront session as Shadowfront: no score field, late/excused toggles', async () => {
+    const panel = await renderEvents([{ event_name: 'Shadowfront Squad 1', session_id: 'SF1-20260930-1', participated: false, is_pending: false, validated: false, in_session: true }]);
+    expect(panel.querySelector('.portal-score')).toBeNull();
+    expect(panel.querySelector('.portal-check-late')).not.toBeNull();
+    expect(panel.querySelector('.portal-submit-event-btn')).not.toBeNull();
+  });
+
+  it('offers no toggle the server would discard (appointed, excused)', async () => {
+    const dtr = await renderEvents([{ event_name: 'Defend Trade Route', session_id: 'DTR-20260930-1', is_pending: false, validated: false, in_session: true }]);
+    expect(dtr.querySelector('.portal-check-appointed')).toBeNull();
+    const sf = await renderEvents([{ event_name: 'Shadowfront Squad 1', session_id: 'SF1-20260930-1', is_pending: false, validated: false, in_session: true }]);
+    expect(sf.querySelector('.portal-check-excused')).toBeNull();
+  });
+
+  it('tells a player outside the squad so, instead of offering a Submit that cannot land', async () => {
+    const panel = await renderEvents([{ event_name: 'Shadowfront Squad 2', session_id: 'SF2-20260930-1', is_pending: false, validated: false, in_session: false }]);
+    expect(panel.textContent).toContain('Not in this squad');
+    expect(panel.querySelector('.portal-submit-event-btn')).toBeNull();
+  });
+});
+
+describe('submitErrorMessage', () => {
+  it('explains each refusal in player terms', () => {
+    expect(submitErrorMessage('score_already_validated')).toMatch(/already recorded/);
+    expect(submitErrorMessage('not_in_session')).toMatch(/not part of this event/);
+    expect(submitErrorMessage('session_inactive')).toMatch(/ended/);
+    expect(submitErrorMessage('boom')).toBe('Submission failed. Please try again.');
   });
 });

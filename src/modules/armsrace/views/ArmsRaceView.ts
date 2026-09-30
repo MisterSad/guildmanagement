@@ -32,6 +32,7 @@ import {
   type ArmsRaceParticipantRow
 } from '../armsrace.service';
 import { escapeHTML } from '../../../core/utils/text';
+import { pendingApprovalHtml, wirePendingApprovals } from '../../events/pending-approval';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -531,6 +532,7 @@ export class ArmsRaceView {
             '<div class="gm-row" style="gap:.6rem;">' +
               '<div class="gm-avatar">' + legacy.esc(initial) + '</div>' +
               '<strong>' + legacy.esc(p.pseudo) + '</strong>' +
+              pendingApprovalHtml(p.pseudo, p.is_pending) +
             '</div>' +
           '</td>' +
           '<td class="gm-center" data-label="' + legacy.t('col_participated') + '">' +
@@ -609,6 +611,19 @@ export class ArmsRaceView {
         });
       });
     });
+
+    const stg = this.state.stages[this.activeStage];
+    const db = legacy.getDb();
+    const guild = legacy.getActiveGuild();
+    if (db && guild && stg.sessionId) {
+      wirePendingApprovals(area, {
+        db, guild, eventName: ARMSRACE_STAGE_EVENTS[this.activeStage], sessionId: stg.sessionId, showToast: legacy.showToast
+      }, (pseudo) => {
+        const pp = stg.participants.find((p) => p.pseudo === pseudo);
+        if (pp) pp.is_pending = false;
+        this.render();
+      });
+    }
 
     const searchInput = area.querySelector('.event-search-input') as HTMLInputElement | null;
     if (searchInput) {

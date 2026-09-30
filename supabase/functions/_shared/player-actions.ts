@@ -28,6 +28,54 @@ export function parseSafeScore(val: unknown): number | null {
   return Math.min(Math.round(num), MAX_ALLOWED_EVENT_SCORE);
 }
 
+/**
+ * The `event_participants.event_name` a session's rows are stored under.
+ *
+ * `event_status` names a Shadowfront session per squad ("Shadowfront Squad 1"),
+ * but ShadowfrontView stores every squad's participant rows under the single
+ * name "Shadowfront", told apart by session_id. Reading or writing with the
+ * status name matched nothing -- so every Player Portal submission for
+ * Shadowfront updated zero rows and was reported as a success.
+ */
+export function participantEventName(statusEventName: string): string {
+  return /^Shadowfront Squad [12]$/.test(statusEventName) ? "Shadowfront" : statusEventName;
+}
+
+/**
+ * Whether an officer has already recorded this row, so a player may no longer
+ * overwrite it.
+ *
+ * `is_pending` defaults to false, and starting an event pre-creates a row for
+ * every member -- so "is_pending === false" alone described every untouched
+ * row too, and refused every submission as already validated. A row counts as
+ * recorded once it carries something: participation or a score.
+ */
+export function isOfficerRecorded(row: {
+  is_pending?: boolean | null;
+  participated?: number | null;
+  score?: number | string | null;
+  score_prep?: number | string | null;
+  score_pvp?: number | string | null;
+}): boolean {
+  if (row.is_pending === true) return false;
+  return Number(row.participated) > 0 ||
+    Number(row.score) > 0 || Number(row.score_prep) > 0 || Number(row.score_pvp) > 0;
+}
+
+/**
+ * The `gm_upsert_daily_scores` rows for a player's own SvS/GvG submission:
+ * the Days 1-5 total as the aggregate day 0, the Day 6 score as day 6. A war
+ * session's daily grid is the single source of truth for those columns, so a
+ * direct `score_prep` write would be overwritten by the next derivation. Zero
+ * or missing values are left out rather than written as zeros.
+ */
+export function warSubmissionRows(pseudo: string, prep: number | null, pvp: number | null): Array<{ pseudo: string; day: number; score: number }> {
+  const rows: Array<{ pseudo: string; day: number; score: number }> = [];
+  if (prep !== null && prep > 0) rows.push({ pseudo, day: 0, score: prep });
+  if (pvp !== null && pvp > 0) rows.push({ pseudo, day: 6, score: pvp });
+  return rows;
+}
+
 export function getWeekStartIso(date: Date): string {
   const d = new Date(date);
   const day = d.getUTCDay();

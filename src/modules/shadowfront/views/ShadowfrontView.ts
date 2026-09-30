@@ -41,6 +41,7 @@ import {
   type ShadowfrontCategory
 } from '../shadowfront.service';
 import { escapeHTML } from '../../../core/utils/text';
+import { pendingApprovalHtml, wirePendingApprovals } from '../../events/pending-approval';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -1106,6 +1107,7 @@ export class ShadowfrontView {
           '<td class="pseudo-cell" style="display: flex; align-items: center; gap: 0.5rem;">' +
             '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: var(--fs-xs); padding: 0.1rem 0.35rem;">' + rateText + '</span>' +
             '<strong style="font-size: var(--fs-base);">' + legacy.esc(p.pseudo) + '</strong>' +
+            pendingApprovalHtml(p.pseudo, p.is_pending) +
           '</td>' +
           '<td><span class="squad-chip ' + (assignment ? assignment.squad : '') + '">' + squadLbl + '</span></td>' +
           '<td class="check-cell">' +
@@ -1257,6 +1259,19 @@ export class ShadowfrontView {
         chip.innerHTML = '<i class="ph ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated');
       }
     };
+
+    const sfSession = this.state.squads[this.activeSquad] ? this.state.squads[this.activeSquad].sessionId : null;
+    const sfDb = legacy.getDb();
+    const sfGuild = legacy.getActiveGuild();
+    if (sfDb && sfGuild && sfSession) {
+      wirePendingApprovals(area, {
+        db: sfDb, guild: sfGuild, eventName: SHADOWFRONT_EVENT_NAME, sessionId: sfSession, showToast: legacy.showToast
+      }, (pseudo) => {
+        const pp = this.state.participants.find((p) => p.pseudo === pseudo && p.session_id === sfSession);
+        if (pp) pp.is_pending = false;
+        this.render();
+      });
+    }
 
     area.querySelectorAll('.sf-participation-checkbox').forEach((el) => {
       const cb = el as HTMLInputElement;

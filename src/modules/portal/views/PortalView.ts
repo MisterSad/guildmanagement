@@ -154,6 +154,16 @@ function createState(): PortalState {
   };
 }
 
+/** Player-facing wording for a refused `submit-scores`. */
+export function submitErrorMessage(code: string | undefined): string {
+  switch (code) {
+    case 'score_already_validated': return 'An officer has already recorded this event for you.';
+    case 'not_in_session': return 'You are not part of this event (for Shadowfront: not in this squad). Ask an officer.';
+    case 'session_inactive': return 'This event has ended. Ask an officer if something is missing.';
+    default: return 'Submission failed. Please try again.';
+  }
+}
+
 export class PortalView {
   private state: PortalState = createState();
   private resizeHandler?: () => void;
@@ -948,7 +958,7 @@ export class PortalView {
     if (!panel) return;
 
     const sessions = this.state.sessions || [];
-    const submittedCount = sessions.filter((s) => s.current_data && s.current_data.is_pending).length;
+    const submittedCount = sessions.filter((s) => s.is_pending || s.validated).length;
 
     const headerHtml =
       '<header class="gm-page-header">' +
@@ -981,24 +991,31 @@ export class PortalView {
   private renderEventCard(sess: any): string {
     const eventName = sess.event_name;
     const isSvsOrGvg = eventName === 'SvS' || eventName === 'GvG';
-    const isDtr = eventName === 'Defend Trade Route';
-    const isShadowfront = eventName === 'Shadowfront';
+    // Shadowfront sessions are named per squad ("Shadowfront Squad 1").
+    const isShadowfront = /^Shadowfront( Squad [12])?$/.test(eventName);
     const icon = legacy.getEventIcon(eventName);
     const accent = this.eventAccent(eventName);
 
-    const EVENTS_WITHOUT_SCORE = ['Defend Trade Route', 'Shadowfront', 'ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
-    const hasScore = EVENTS_WITHOUT_SCORE.indexOf(eventName) === -1;
+    const EVENTS_WITHOUT_SCORE = ['Defend Trade Route', 'ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
+    const hasScore = !isShadowfront && EVENTS_WITHOUT_SCORE.indexOf(eventName) === -1;
 
-    const curr = sess.current_data || {};
+    // get-active-sessions returns each session's row fields flat. This read a
+    // `current_data` key the server never sent, so every card said "Not
+    // submitted yet" whatever the database held.
+    const curr = sess;
+    const isValidated = !!curr.validated;
+    const notInSession = curr.in_session === false;
     const isChecked = curr.participated > 0;
     const isLateChecked = !!curr.late;
-    const isExcusedChecked = !!curr.excused;
-    const isAppointedChecked = !!curr.appointed;
     const isPending = !!curr.is_pending;
 
-    const statusHtml = isPending
-      ? '<span class="portal-status portal-status-pending"><i class="ph ph-hourglass"></i> Awaiting approval</span>'
-      : '<span class="portal-status portal-status-todo"><i class="ph ph-pencil-line"></i> Not submitted yet</span>';
+    const statusHtml = isValidated
+      ? '<span class="portal-status portal-status-done"><i class="ph ph-seal-check"></i> Confirmed by an officer</span>'
+      : isPending
+        ? '<span class="portal-status portal-status-pending"><i class="ph ph-hourglass"></i> Awaiting approval</span>'
+        : notInSession
+          ? '<span class="portal-status portal-status-todo"><i class="ph ph-info"></i> ' + (isShadowfront ? 'Not in this squad' : 'Not in this event') + '</span>'
+          : '<span class="portal-status portal-status-todo"><i class="ph ph-pencil-line"></i> Not submitted yet</span>';
 
     const startLabel = sess.start_at ? legacy.formatDateTimeUTC(sess.start_at) : '';
 
@@ -1016,17 +1033,15 @@ export class PortalView {
         '</label>' +
       '</div>';
 
+    // "I was appointed" (DTR) and "I was excused" (Shadowfront) are not
+    // offered: member-portal discards both on purpose -- a player cannot
+    // credit their own appointment or excuse their own absence -- so the
+    // toggles looked saved and wrote nothing. Officers set them.
     let detailsHtml = '';
-    if (isDtr || isShadowfront) {
-      detailsHtml = '<div class="portal-details-label">Details (optional)</div><div class="portal-details-row">';
-      if (isDtr) {
-        detailsHtml += '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-appointed" ' + (isAppointedChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>I was appointed</span></label>';
-      }
-      if (isShadowfront) {
-        detailsHtml += '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-late" ' + (isLateChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>I was late</span></label>' +
-          '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-excused" ' + (isExcusedChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>I was excused</span></label>';
-      }
-      detailsHtml += '</div>';
+    if (isShadowfront) {
+      detailsHtml = '<div class="portal-details-label">Details (optional)</div><div class="portal-details-row">' +
+        '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-late" ' + (isLateChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>I was late</span></label>' +
+        '</div>';
     }
 
     let scoreHtml = '';
@@ -1049,11 +1064,13 @@ export class PortalView {
       scoreHtml += '</div>';
     }
 
-    const submitBtnHtml = isPending
+    const submitBtnHtml = (isValidated || notInSession)
+      ? ''
+      : isPending
       ? '<button type="button" class="gm-btn gm-btn-success gm-btn-sm portal-submit-event-btn" disabled><i class="ph ph-check-circle"></i><span>Submitted</span></button>'
       : '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm portal-submit-event-btn"><i class="ph ph-paper-plane-right"></i><span>Submit</span></button>';
 
-    return '<div class="portal-event-card' + (isPending ? ' portal-event-submitted' : '') + '" data-event="' + legacy.esc(eventName) + '" data-session="' + legacy.esc(sess.session_id) + '">' +
+    return '<div class="portal-event-card' + ((isPending || isValidated) ? ' portal-event-submitted' : '') + '" data-event="' + legacy.esc(eventName) + '" data-session="' + legacy.esc(sess.session_id) + '">' +
               '<div class="portal-event-head">' +
                 '<div class="portal-event-icon" style="background:' + accent + '1f; color:' + accent + ';"><i class="ph ' + icon + '"></i></div>' +
                 '<div class="portal-event-head-info">' +
@@ -1133,10 +1150,19 @@ export class PortalView {
           const res = await this.invoke('submit-scores', payload);
           if (!res.ok) throw new Error(res.error || 'submit_failed');
           legacy.showToast('Submitted! An officer will confirm it shortly.', 'success');
+          const sess = (this.state.sessions || []).find((x: any) => x.event_name === eventName && x.session_id === sessionId);
+          if (sess) {
+            sess.is_pending = true;
+            if (participated !== undefined) sess.participated = !!participated;
+            if (payload.score !== undefined) sess.score = payload.score;
+            if (payload.score_prep !== undefined) sess.score_prep = payload.score_prep;
+            if (payload.score_pvp !== undefined) sess.score_pvp = payload.score_pvp;
+            if (late !== undefined) sess.late = !!late;
+          }
           this.renderEventsPanel();
         } catch (err: any) {
           console.error(err);
-          legacy.showToast('Submission failed. Check your parameters.', 'error');
+          legacy.showToast(submitErrorMessage(err && err.message), 'error');
           (btn as HTMLButtonElement).disabled = false;
           if (span) span.textContent = origText;
         }
