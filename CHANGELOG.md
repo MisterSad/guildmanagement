@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- **Three bot problems found while writing the user guides.**
+  - **`/setup-server` doubled a server when re-run.** Roles were reused by name, but every category and channel was created again, and the app was repointed at the new copies. Categories are now matched by name, and channels by name, parent category and type. The match uses the name Discord actually stores, which is lower-cased for text channels, so it does not miss a channel Discord renamed on creation. A re-run only adds what is missing, keeps permissions an admin may have tuned, and does not repost the welcome embeds. The success message reports "created / already there".
+  - **Its confirmation prompt described a template that no longer exists**: "28 Text, 3 Voice" and four roles, two of them with obsolete names, for a build of 32 text channels, 3 voice channels and 5 roles. The prompt is now counted from the template itself (`summarizeTemplate`), so it cannot drift again.
+  - **`/call-to-arms` forgot every answer on each worker restart.** The tally lived in a `Map`, so the next click repainted the post with that one click. The embed cannot serve as a backup, because it shows at most 15 or 10 names per list. Answers are now stored in `discord_rally_responses` (migration `20260930130000`): RLS forced, no policy, service role only, purged daily after 7 days. `privacy.html` §3 and §4 declare it. A failed write says so instead of repainting a partial tally.
+  - The bot invite link goes into the install guide.
+
 - **Player Portal event submissions had never recorded anything.** Measured on 2026-09-30: 8 `score_submission` audit entries since 2026-08-19, and **not one** has a matching `event_participants` row. Each updated zero rows and reported success. Every other attempt was refused, for one of three reasons:
   - **Every pre-created row counted as "validated".** `is_pending` defaults to `false`, and starting an event creates a row for every member, so `is_pending === false` described every untouched row too. The rule is now "an officer recorded something": participation or a score (`isOfficerRecorded`). A player can submit into the row created at Start and cannot overwrite one an officer filled.
   - **Shadowfront wrote to a name no row carries.** The status is named per squad ("Shadowfront Squad 1"), but the rows are stored under "Shadowfront". Both the read and the write now go through `participantEventName`. The portal card had the same mismatch: it showed a Score field and none of the Shadowfront toggles.

@@ -17,6 +17,8 @@ import {
   sanitizeSlug,
   buildServerTemplate,
   provisionDiscordServer,
+  summarizeTemplate,
+  storedChannelName,
 } from "../discord-verification-worker/server-provisioner.js";
 
 describe("Discord Server Provisioner: sanitizeSlug", () => {
@@ -284,6 +286,73 @@ describe("Discord Server Provisioner: provisionDiscordServer Execution", () => {
 
     expect(res.ok).toBe(true);
     expect(oldChannel.delete).toHaveBeenCalled();
+  });
+});
+
+describe("Discord Server Provisioner: re-runs and the confirmation plan", () => {
+  function makeGuild() {
+    const everyoneRole = { id: "role_everyone", name: "@everyone" };
+    const roles = new Map([["role_everyone", everyoneRole]]);
+    const channels = new Map();
+    let n = 0;
+    return {
+      roles: {
+        everyone: everyoneRole,
+        fetch: vi.fn(async () => Array.from(roles.values())),
+        create: vi.fn(async (data) => { const r = { id: `role_${n++}`, ...data }; roles.set(r.id, r); return r; }),
+      },
+      channels: {
+        fetch: vi.fn(async () => new Map(channels)),
+        // Mimic Discord: text channel names are stored lower-cased, dashes for spaces.
+        create: vi.fn(async (data) => {
+          const ch = { id: `ch_${n++}`, ...data, name: storedChannelName(data.name, data.type), parentId: data.parent ?? null, send: vi.fn(async () => ({})) };
+          channels.set(ch.id, ch);
+          return ch;
+        }),
+      },
+      _channels: channels,
+    };
+  }
+  const opts = { guildName: "ALPHA", guildTag: "PR1M", serverNumber: "1058", rateLimitDelayMs: 0 };
+  const supa = { from: () => ({ upsert: vi.fn(async () => ({ error: null })) }) };
+
+  it("a second run creates nothing, keeps the wiring, and does not repost the welcome embeds", async () => {
+    const g = makeGuild();
+    const first = await provisionDiscordServer(g, opts, { supabase: supa });
+    const plan = summarizeTemplate(buildServerTemplate(opts));
+    expect(first.createdCounts).toEqual({ roles: plan.roles, categories: plan.categories, channels: plan.channels });
+    const countAfterFirst = g._channels.size;
+    const verif = first.autoWired.verificationChannelId;
+    const sendsAfterFirst = g._channels.get(verif).send.mock.calls.length;
+
+    const second = await provisionDiscordServer(g, opts, { supabase: supa });
+    expect(second.ok).toBe(true);
+    expect(second.createdCounts).toEqual({ roles: 0, categories: 0, channels: 0 });
+    expect(second.reusedCounts).toEqual({ roles: plan.roles, categories: plan.categories, channels: plan.channels });
+    expect(g._channels.size).toBe(countAfterFirst);
+    expect(second.autoWired.verificationChannelId).toBe(verif);
+    expect(g._channels.get(verif).send.mock.calls.length).toBe(sendsAfterFirst);
+  });
+
+  it("repairs a server by adding only what is missing", async () => {
+    const g = makeGuild();
+    await provisionDiscordServer(g, opts, { supabase: supa });
+    const victim = Array.from(g._channels.values()).find((c) => c.type !== 4 && !String(c.name).includes("verification"));
+    g._channels.delete(victim.id);
+    const res = await provisionDiscordServer(g, opts, { supabase: supa });
+    expect(res.createdCounts.channels).toBe(1);
+    expect(res.createdCounts.categories).toBe(0);
+  });
+
+  it("counts the plan from the template, not from a hand-written summary", () => {
+    const plan = summarizeTemplate(buildServerTemplate(opts));
+    expect(plan.roles).toBe(5);
+    expect(plan.categories).toBe(7);
+    expect(plan.textChannels + plan.voiceChannels).toBe(plan.channels);
+    expect(plan.roleNames).toContain("[PENDING]");
+    const worker = fs.readFileSync(path.resolve(__dirname, "../discord-verification-worker/index.js"), "utf-8");
+    expect(worker).not.toContain("28 Text, 3 Voice");
+    expect(worker).toContain("summarizeTemplate(buildServerTemplate(");
   });
 });
 

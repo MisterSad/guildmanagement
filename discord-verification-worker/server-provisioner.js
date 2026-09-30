@@ -14,6 +14,58 @@
 import { ChannelType, PermissionFlagsBits } from "discord.js";
 
 /**
+ * What a template will build, counted from the template itself -- so the
+ * confirmation prompt can never drift from what the provisioner does. It used
+ * to be a hand-written "28 Text, 3 Voice" and four role names, two of them
+ * obsolete, for a template that builds 32 text and 3 voice channels and 5 roles.
+ * @param {ReturnType<typeof buildServerTemplate>} template
+ */
+export function summarizeTemplate(template) {
+  const channels = template.categories.flatMap((c) => c.channels);
+  const voice = channels.filter((ch) => ch.type === ChannelType.GuildVoice).length;
+  return {
+    roleNames: template.roles.map((r) => r.name),
+    categoryNames: template.categories.map((c) => c.name),
+    roles: template.roles.length,
+    categories: template.categories.length,
+    textChannels: channels.length - voice,
+    voiceChannels: voice,
+    channels: channels.length,
+  };
+}
+
+/**
+ * The name Discord actually stores for a channel. Text and announcement channel
+ * names are lower-cased with spaces turned into dashes; categories and voice
+ * channels keep what they were given. Matching on the requested name alone
+ * would miss a channel Discord renamed on creation, and build it again.
+ */
+export function storedChannelName(name, type) {
+  const n = String(name || "");
+  if (type === ChannelType.GuildText || type === ChannelType.GuildAnnouncement) {
+    return n.toLowerCase().replace(/\s+/g, "-");
+  }
+  return n;
+}
+
+function parentIdOf(ch) {
+  if (!ch) return null;
+  if (ch.parentId !== undefined) return ch.parentId;
+  if (typeof ch.parent === "string") return ch.parent;
+  return ch.parent && ch.parent.id ? ch.parent.id : null;
+}
+
+function findExistingChannel(existing, { name, type, parentId }) {
+  const wanted = storedChannelName(name, type);
+  for (const ch of existing) {
+    if (!ch || ch.type !== type) continue;
+    if (parentId !== undefined && parentIdOf(ch) !== parentId) continue;
+    if (ch.name === name || ch.name === wanted) return ch;
+  }
+  return null;
+}
+
+/**
  * Converts a text string into a clean lowercase slug suitable for Discord channel names.
  * @param {string} text
  * @returns {string}
@@ -407,9 +459,11 @@ export async function provisionDiscordServer(
     await onProgress(15, "Generating dynamic roles...");
     const existingRoles = await discordGuild.roles.fetch();
 
+    let createdRoleCount = 0;
     for (const roleDef of template.roles) {
       let role = existingRoles.find((r) => r.name === roleDef.name);
       if (!role) {
+        createdRoleCount++;
         role = await discordGuild.roles.create({
           name: roleDef.name,
           color: roleDef.color,
@@ -423,46 +477,71 @@ export async function provisionDiscordServer(
       roleMap[roleDef.key] = role;
     }
 
-    // 3. Categories and Channels creation
+    // 3. Categories and Channels -- reused when they already exist.
+    //
+    // Running /setup-server a second time used to build every category and
+    // channel again, then repoint the app at the new copies. Matching by name
+    // (and, for channels, by parent category and type) makes a re-run repair a
+    // server instead of doubling it: whatever is missing is created, whatever
+    // is there is left alone -- permissions included, since an admin may have
+    // tuned them.
     const totalCategories = template.categories.length;
     let categoryIndex = 0;
     let createdChannelCount = 0;
+    let reusedChannelCount = 0;
+    let createdCategoryCount = 0;
     let verificationChannel = null;
     let auditChannel = null;
     let rulesChannel = null;
+    const freshlyCreated = new Set();
+
+    const fetched = await discordGuild.channels.fetch();
+    const existing = Array.from(fetched && typeof fetched.values === "function" ? fetched.values() : []);
 
     for (const catDef of template.categories) {
       categoryIndex++;
       const currentProgress = Math.round(25 + (categoryIndex / totalCategories) * 60);
       await onProgress(
         currentProgress,
-        `Creating category [${catDef.name}] and sub-channels (${categoryIndex}/${totalCategories})...`
+        `Preparing category [${catDef.name}] and sub-channels (${categoryIndex}/${totalCategories})...`
       );
 
-      const categoryOverwrites = buildOverwrites(discordGuild, catDef.overwrites, roleMap);
-      const category = await discordGuild.channels.create({
-        name: catDef.name,
-        type: ChannelType.GuildCategory,
-        permissionOverwrites: categoryOverwrites,
-        reason: `FGF Server Provisioning Category: ${catDef.name}`,
-      });
-      await throttle(50);
+      let category = findExistingChannel(existing, { name: catDef.name, type: ChannelType.GuildCategory });
+      if (!category) {
+        const categoryOverwrites = buildOverwrites(discordGuild, catDef.overwrites, roleMap);
+        category = await discordGuild.channels.create({
+          name: catDef.name,
+          type: ChannelType.GuildCategory,
+          permissionOverwrites: categoryOverwrites,
+          reason: `FGF Server Provisioning Category: ${catDef.name}`,
+        });
+        existing.push(category);
+        createdCategoryCount++;
+        await throttle(50);
+      }
 
       for (const chDef of catDef.channels) {
-        const channelOverwrites = chDef.overwrites
-          ? buildOverwrites(discordGuild, chDef.overwrites, roleMap)
-          : undefined;
+        let channel = findExistingChannel(existing, { name: chDef.name, type: chDef.type, parentId: category.id });
+        if (channel) {
+          reusedChannelCount++;
+        } else {
+          const channelOverwrites = chDef.overwrites
+            ? buildOverwrites(discordGuild, chDef.overwrites, roleMap)
+            : undefined;
 
-        const channel = await discordGuild.channels.create({
-          name: chDef.name,
-          type: chDef.type,
-          parent: category.id,
-          topic: chDef.topic,
-          permissionOverwrites: channelOverwrites,
-          reason: `FGF Server Provisioning Channel: ${chDef.name}`,
-        });
-        createdChannelCount++;
-        await throttle();
+          channel = await discordGuild.channels.create({
+            name: chDef.name,
+            type: chDef.type,
+            parent: category.id,
+            topic: chDef.topic,
+            permissionOverwrites: channelOverwrites,
+            reason: `FGF Server Provisioning Channel: ${chDef.name}`,
+          });
+          existing.push(channel);
+          freshlyCreated.add(channel.id);
+          createdChannelCount++;
+          await throttle();
+        }
 
         if (chDef.isVerificationChannel) verificationChannel = channel;
         if (chDef.isAuditChannel) auditChannel = channel;
@@ -517,7 +596,8 @@ export async function provisionDiscordServer(
 
     // 5. Post introductory embeds in verification and rules channels
     await onProgress(95, "Publishing onboarding instructions...");
-    if (verificationChannel) {
+    // Only into a channel built just now: a re-run must not repost them.
+    if (verificationChannel && freshlyCreated.has(verificationChannel.id)) {
       try {
         await verificationChannel.send({
           embeds: [
@@ -540,7 +620,7 @@ export async function provisionDiscordServer(
       }
     }
 
-    if (rulesChannel) {
+    if (rulesChannel && freshlyCreated.has(rulesChannel.id)) {
       try {
         await rulesChannel.send({
           embeds: [
@@ -568,9 +648,14 @@ export async function provisionDiscordServer(
     return {
       ok: true,
       createdCounts: {
-        roles: Object.keys(roleMap).length,
-        categories: totalCategories,
+        roles: createdRoleCount,
+        categories: createdCategoryCount,
         channels: createdChannelCount,
+      },
+      reusedCounts: {
+        roles: template.roles.length - createdRoleCount,
+        categories: totalCategories - createdCategoryCount,
+        channels: reusedChannelCount,
       },
       autoWired,
     };

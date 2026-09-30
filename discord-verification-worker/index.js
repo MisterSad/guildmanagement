@@ -25,7 +25,8 @@ import {
   ButtonStyle,
   PermissionFlagsBits,
 } from "discord.js";
-import { provisionDiscordServer } from "./server-provisioner.js";
+import { provisionDiscordServer, buildServerTemplate, summarizeTemplate } from "./server-provisioner.js";
+import { CTA_CLICK_SUFFIX, ctaSessionFromRows, ctaHeaderFromEmbed } from "./rally.js";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 
@@ -1104,9 +1105,6 @@ async function handleAbsences(interaction) {
   await interaction.reply({ embeds: [embed] });
 }
 
-// In-memory call to arms state tracker
-const ctaSessions = new Map();
-
 function buildCtaEmbed(session) {
   const present = Array.from(session.present.values());
   const late = Array.from(session.late.values());
@@ -1131,7 +1129,7 @@ function buildCtaEmbed(session) {
     color: 0x6366f1,
     title: `⚔️ Call to Arms: ${session.eventName}`,
     description: session.description
-      ? `${session.description}\n\n**Click a button below to declare your attendance:**`
+      ? `${session.description}${CTA_CLICK_SUFFIX}`
       : "**Click a button below to declare your attendance for this battle:**",
     fields: [
       { name: `🟢 Present (${present.length})`, value: presentText, inline: false },
@@ -1182,36 +1180,18 @@ async function handleCallToArms(interaction) {
     absent: new Map(),
   };
 
-  const reply = await interaction.reply({
+  await interaction.reply({
     embeds: [buildCtaEmbed(session)],
     components: buildCtaComponents(),
-    fetchReply: true,
   });
-
-  ctaSessions.set(reply.id, session);
 }
 
 async function handleCtaButton(interaction) {
   const messageId = interaction.message.id;
-  let session = ctaSessions.get(messageId);
-
-  if (!session) {
-    const title = interaction.message.embeds?.[0]?.title || "⚔️ Call to Arms";
-    const eventName = title.replace("⚔️ Call to Arms: ", "").trim();
-    session = {
-      eventName,
-      description: null,
-      present: new Map(),
-      late: new Map(),
-      absent: new Map(),
-    };
-    ctaSessions.set(messageId, session);
-  }
-
   const userId = interaction.user.id;
-  session.present.delete(userId);
-  session.late.delete(userId);
-  session.absent.delete(userId);
+  const action = interaction.customId;
+  const status = action === "cta_present" ? "present" : action === "cta_late" ? "late" : action === "cta_absent" ? "absent" : null;
+  if (!status) return;
 
   let pseudo = interaction.member?.nickname || interaction.user.username;
   let power = 0;
@@ -1232,23 +1212,36 @@ async function handleCtaButton(interaction) {
     }
   }
 
-  const entry = { pseudo, power, fleet };
-  const action = interaction.customId;
+  const { error: upErr } = await supabase
+    .from("discord_rally_responses")
+    .upsert({
+      message_id: messageId, discord_user_id: userId, status, pseudo, power, fleet,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "message_id,discord_user_id" });
 
-  if (action === "cta_present") {
-    session.present.set(userId, entry);
-  } else if (action === "cta_late") {
-    session.late.set(userId, entry);
-  } else if (action === "cta_absent") {
-    session.absent.set(userId, entry);
+  const { data: rows, error: readErr } = upErr
+    ? { data: null, error: upErr }
+    : await supabase
+      .from("discord_rally_responses")
+      .select("discord_user_id, status, pseudo, power, fleet")
+      .eq("message_id", messageId);
+
+  // Fail visibly rather than repaint the post from a partial tally.
+  if (upErr || readErr) {
+    console.error("call-to-arms: could not record the answer", upErr || readErr);
+    await interaction.reply({ content: "⚠️ I couldn't record your answer. Please try again in a moment.", ephemeral: true });
+    return;
   }
+
+  const { eventName, description } = ctaHeaderFromEmbed(interaction.message.embeds?.[0]);
+  const session = ctaSessionFromRows(eventName, description, rows);
 
   await interaction.message.edit({
     embeds: [buildCtaEmbed(session)],
     components: buildCtaComponents(),
   });
 
-  const label = action === "cta_present" ? "🟢 Present" : action === "cta_late" ? "🟡 Late" : "🔴 Absent";
+  const label = status === "present" ? "🟢 Present" : status === "late" ? "🟡 Late" : "🔴 Absent";
   await interaction.reply({
     content: `You have been registered as **${label}** (${pseudo}).`,
     ephemeral: true,
@@ -1737,6 +1730,11 @@ async function handleSetupServer(interaction) {
   // Auto expire after 5 minutes
   setTimeout(() => pendingSetups.delete(setupId), 5 * 60 * 1000);
 
+  // Counted from the template the provisioner will actually run.
+  const plan = summarizeTemplate(buildServerTemplate({
+    guildName: rawGuild, guildTag: finalTag, serverNumber: finalServerNumber,
+  }));
+
   const confirmEmbed = {
     color: 0xf59e0b,
     title: `⚠️ Confirm Discord Server Setup: [${rawGuild}]`,
@@ -1746,10 +1744,11 @@ async function handleSetupServer(interaction) {
       `• **FGF Guild**: \`${rawGuild}\` (Tag: \`[${finalTag}]\`)\n` +
       `• **Game Server**: \`#${finalServerNumber}\`\n` +
       `• **Clean Mode**: ${cleanMode ? "⚠️ **Enabled** (All existing channels will be wiped!)" : "Disabled (Existing channels preserved)"}\n` +
-      `• **Roles to Create**: 👑 \`[${finalTag}] R5\`, ⭐ \`[${finalTag}] R4\`, 🛡️ \`[${finalTag}] Member\`, 👽 \`Visitor\`\n` +
-      `• **Categories**: 7 (Welcome, Visitors, Game Updates, Reminders, Server #${finalServerNumber}, Dominion, 🔴 ${rawGuild})\n` +
-      `• **Channels**: 28 Text, 3 Voice with Zero-Trust permission overrides\n` +
-      `• **SaaS Auto-Wiring**: Connects \`#verification\`, \`#r4-chat\`, and member role into Supabase \`guild_config\`.\n\n` +
+      `• **Roles** (${plan.roles}): ${plan.roleNames.map((n) => `\`${n}\``).join(", ")}\n` +
+      `• **Categories** (${plan.categories}): ${plan.categoryNames.join(", ")}\n` +
+      `• **Channels**: ${plan.textChannels} text, ${plan.voiceChannels} voice, with per-role permissions\n` +
+      `• **Already there?** Roles, categories and channels with the same name are **kept**, not duplicated: running this again only adds what is missing.\n` +
+      `• **App wiring**: connects the verification channel and the officers channel (r4-chat) to the Guild Management tool.\n\n` +
       `*Please confirm to launch the automated provisioning pipeline.*`,
     footer: { text: "FGF Server Provisioner • Administrator Authorized" },
     timestamp: new Date().toISOString(),
@@ -1889,9 +1888,9 @@ async function handleSetupButton(interaction) {
     description:
       `The server structure has been created and customized for **${pending.guildName}**.\n\n` +
       `**Summary:**\n` +
-      `• **Roles Created**: ${res.createdCounts.roles}\n` +
-      `• **Categories**: ${res.createdCounts.categories}\n` +
-      `• **Channels**: ${res.createdCounts.channels}\n` +
+      `• **Roles**: ${res.createdCounts.roles} created, ${res.reusedCounts.roles} already there\n` +
+      `• **Categories**: ${res.createdCounts.categories} created, ${res.reusedCounts.categories} already there\n` +
+      `• **Channels**: ${res.createdCounts.channels} created, ${res.reusedCounts.channels} already there\n` +
       `• **Verification Channel**: <#${res.autoWired.verificationChannelId || "unknown"}>\n` +
       `• **Audit / Officers Channel**: <#${res.autoWired.auditChannelId || "unknown"}>\n` +
       `• **Verification Roles**: \`[PENDING]\`, \`[VISITOR]\` and the guild tag role — drag my own role **above** all three in Server Settings ➜ Roles, or I cannot assign them.\n\n` +

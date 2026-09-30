@@ -5,11 +5,11 @@ The bot checks your players' in-game profile, gives them the right role and nick
 **Before you start:**
 - Your guild must already exist in the tool (see Guide 1).
 - You must be an **Administrator** of your Discord server.
-- Ask the developer for the **bot invite link**. It is not public.
 
 ## Step 1: Invite the bot
 
-1. Open the invite link and pick your server.
+1. Open this link and pick your server:
+https://discord.com/oauth2/authorize?client_id=1544404813926768740
 2. Keep **all the permissions** it asks for, then click **Authorize**.
 
 -# The simplest setup is to give the bot **Administrator**. Without it, `/setup-server` cannot work, and you must give it **Manage Roles**, **Manage Nicknames** and **Manage Messages** yourself.
@@ -29,7 +29,7 @@ In any channel, type:
 
 ✅ You get 5 roles (`[VISITOR]`, `[PR1M]`, `[PENDING]`, `⭐ [PR1M] R4`, `👑 [PR1M] R5`), your categories and channels (verification, r4-chat, event channels, voice…). The verification and officer channels are **connected to the tool for you**.
 
-⚠️ **Run it only ONCE.** A second run creates every channel again.
+-# Something missing or deleted by mistake? Run `/setup-server` again: it only adds what is missing and keeps what is already there.
 ⚠️ **Do not use `clean_mode`** on a server you already use: it **deletes all your channels**.
 
 -# Refused with "not registered" or "no game-server number"? Check the tag, or ask the developer.

@@ -244,7 +244,7 @@ export type Database = {
           {
             foreignKeyName: "discord_account_links_account_id_fkey"
             columns: ["account_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
@@ -337,6 +337,36 @@ export type Database = {
           expires_at?: string
           origin?: string
           state?: string
+        }
+        Relationships: []
+      }
+      discord_rally_responses: {
+        Row: {
+          discord_user_id: string
+          fleet: number
+          message_id: string
+          power: number
+          pseudo: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          discord_user_id: string
+          fleet?: number
+          message_id: string
+          power?: number
+          pseudo: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          discord_user_id?: string
+          fleet?: number
+          message_id?: string
+          power?: number
+          pseudo?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -720,6 +750,56 @@ export type Database = {
           {
             foreignKeyName: "guild_transfers_target_guild_fkey"
             columns: ["target_guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guild_weekly_snapshots: {
+        Row: {
+          computed_at: string
+          guild: string
+          median_power: number | null
+          opportunities: number
+          pending_rows: number
+          per_bucket: Json
+          power_players: number
+          present_members: number
+          roster_size: number
+          source: string
+          week_start: string
+        }
+        Insert: {
+          computed_at?: string
+          guild: string
+          median_power?: number | null
+          opportunities?: number
+          pending_rows?: number
+          per_bucket?: Json
+          power_players?: number
+          present_members?: number
+          roster_size?: number
+          source?: string
+          week_start: string
+        }
+        Update: {
+          computed_at?: string
+          guild?: string
+          median_power?: number | null
+          opportunities?: number
+          pending_rows?: number
+          per_bucket?: Json
+          power_players?: number
+          present_members?: number
+          roster_size?: number
+          source?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guild_weekly_snapshots_guild_fkey"
+            columns: ["guild"]
             isOneToOne: false
             referencedRelation: "guilds"
             referencedColumns: ["id"]
@@ -1603,6 +1683,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      gm_apply_data_retention: { Args: never; Returns: Json }
       gm_approve_guild_request: {
         Args: { p_request_id: string }
         Returns: Json
@@ -1770,6 +1851,11 @@ export type Database = {
           previous_discord_user_id: string
         }[]
       }
+      gm_erase_account: { Args: { p_account_id: string }; Returns: Json }
+      gm_erase_player: {
+        Args: { p_guild: string; p_uid: string }
+        Returns: Json
+      }
       gm_event_scoring_key:
         | {
             Args: {
@@ -1852,10 +1938,6 @@ export type Database = {
           open_codes: number
         }[]
       }
-      gm_leaderboard: {
-        Args: { p_guild?: string; p_period?: string; p_week?: string }
-        Returns: Json
-      }
       gm_list_event_sessions: {
         Args: { p_guild?: string }
         Returns: {
@@ -1919,6 +2001,10 @@ export type Database = {
         Returns: string
       }
       gm_personal_kpis: { Args: { p_uid: string }; Returns: Json }
+      gm_player_stats: {
+        Args: { p_guild: string; p_pseudo: string; p_weeks?: number }
+        Returns: Json
+      }
       gm_populate_event_participants: {
         Args: {
           p_event_name: string
@@ -2009,7 +2095,24 @@ export type Database = {
         Args: { p_snowflake: string }
         Returns: string
       }
-      gm_stats_data: { Args: { p_guild?: string }; Returns: Json }
+      gm_stats_events: {
+        Args: { p_bucket: string; p_guild: string; p_weeks?: string[] }
+        Returns: Json
+      }
+      gm_stats_health: {
+        Args: { p_guild: string; p_weeks?: number }
+        Returns: Json
+      }
+      gm_stats_members: {
+        Args: { p_guild: string; p_trend?: boolean; p_weeks?: string[] }
+        Returns: Json
+      }
+      gm_stats_snapshot_run: { Args: never; Returns: number }
+      gm_stats_snapshot_upsert: {
+        Args: { p_guild: string; p_source?: string; p_week_start: string }
+        Returns: boolean
+      }
+      gm_stats_weeks: { Args: { p_guild?: string }; Returns: Json }
       gm_submit_guild_request: {
         Args: {
           p_admin_id: string
@@ -2057,12 +2160,10 @@ export type Database = {
           server_number: string
         }[]
       }
-      gm_update_player_timezone:
-        | { Args: { p_offset: number; p_uid: string }; Returns: Json }
-        | {
-            Args: { p_offset: number; p_timezone?: string; p_uid: string }
-            Returns: Json
-          }
+      gm_update_player_timezone: {
+        Args: { p_offset: number; p_timezone?: string; p_uid: string }
+        Returns: Json
+      }
       gm_update_ticket_status: {
         Args: { p_id: number; p_status: string }
         Returns: {
