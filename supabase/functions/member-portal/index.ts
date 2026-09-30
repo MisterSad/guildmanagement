@@ -130,11 +130,15 @@ export const DeleteAbsenceSchema = z.object({
   id: z.string().trim().min(1, "id is required").max(64)
 }).passthrough();
 
+// Offsets are hours in quarter-hour steps: Adelaide is +9.5, Kathmandu +5.75.
+// `.int()` used to reject every half-hour zone the portal itself offers.
+const isQuarterHourOffset = (v: number) => Number.isFinite(v) && v >= -12 && v <= 14 && Number.isInteger(v * 4);
+
 export const UpdateTimezoneSchema = z.object({
   offset: z.union([
-    z.number().int().min(-12).max(14),
-    z.string().regex(/^-?\d+$/).transform(v => parseInt(v, 10))
-      .refine(v => v >= -12 && v <= 14, { message: "Offset must be between -12 and 14" })
+    z.number().refine(isQuarterHourOffset, { message: "Offset must be between -12 and 14, in quarter hours" }),
+    z.string().regex(/^-?\d+(\.\d+)?$/).transform(v => Number(v))
+      .refine(isQuarterHourOffset, { message: "Offset must be between -12 and 14, in quarter hours" })
   ]),
   timezone: z.string().trim().max(64).optional()
 }).passthrough();
@@ -968,7 +972,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     if (action === "update-timezone") {
-      const offset = parseInt(payload?.offset, 10);
+      const offset = Number(payload?.offset);
       const timezone = payload?.timezone ? String(payload.timezone).trim() : null;
       const res = await updatePlayerTimezone(admin, uid, identity.guild, offset, timezone);
       if (!res.ok) {

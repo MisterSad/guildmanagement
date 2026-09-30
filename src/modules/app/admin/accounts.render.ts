@@ -258,6 +258,28 @@ export function renderAccountCardsToContainer(
   wireAccountCardListeners(container);
 }
 
+/**
+ * Unmask a freshly issued password on the account's card(s) and copy it.
+ *
+ * Passwords are never readable afterwards -- the server returns them exactly
+ * once, from `create` or `reset-password` -- so this is the only moment an
+ * officer can see what to hand over. Account creation used to skip this step,
+ * leaving every new account behind a mask nobody could lift.
+ */
+export function revealAccountPassword(accId: string, pass: string): void {
+  setPendingPassword(accId, pass);
+  document.querySelectorAll<HTMLElement>('.gm-cred-pass').forEach((wrap) => {
+    if (wrap.getAttribute('data-acc-id') !== accId) return;
+    wrap.setAttribute('data-acc-pass-temp', pass);
+    wrap.classList.remove('gm-masked');
+    const pwdSpan = wrap.querySelector('.gm-pwd-text');
+    if (pwdSpan) pwdSpan.textContent = pass;
+    const copyBtn = wrap.querySelector('.gm-cred-copy');
+    if (copyBtn) copyBtn.classList.remove('hidden');
+  });
+  if (navigator.clipboard) navigator.clipboard.writeText(pass).catch(() => undefined);
+}
+
 export function wireAccountCardListeners(container: HTMLElement | null): void {
   if (!container) return;
 
@@ -266,8 +288,6 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
       const wrap = btn.closest('.gm-cred-pass') as HTMLElement | null;
       if (!wrap) return;
       const accId = wrap.getAttribute('data-acc-id') || '';
-      const pwdSpan = wrap.querySelector('.gm-pwd-text');
-      const copyBtn = wrap.querySelector('.gm-cred-copy');
       const icon = btn.querySelector('i');
 
       (btn as HTMLButtonElement).disabled = true;
@@ -278,12 +298,7 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
         const res = await g.adminAccounts('reset-password', { id: accId });
         if (!res.ok) throw new Error(res.error || 'reset_failed');
         const pass = res.password;
-        setPendingPassword(accId, pass);
-        wrap.setAttribute('data-acc-pass-temp', pass);
-        wrap.classList.remove('gm-masked');
-        if (pwdSpan) pwdSpan.textContent = pass;
-        if (copyBtn) copyBtn.classList.remove('hidden');
-        if (navigator.clipboard) navigator.clipboard.writeText(pass).catch(() => undefined);
+        revealAccountPassword(accId, pass);
         g.showToast ? g.showToast('Password renewed: ' + pass + ' (copied to clipboard)', 'success') : undefined;
       } catch (err: any) {
         const g = gm();

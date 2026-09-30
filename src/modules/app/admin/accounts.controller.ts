@@ -10,26 +10,11 @@
 
 import { t, esc, gm, winAny, byId, getDb, ls } from './utils';
 import { getActiveGuild } from '../../../core/auth/roles';
-import { setAccounts, filterAccountsOut, unshiftAccount, setPendingPassword, getAccounts } from './admin-store';
-import { renderAccounts } from './accounts.render';
+import { setAccounts, filterAccountsOut, unshiftAccount, getAccounts } from './admin-store';
+import { renderAccounts, revealAccountPassword } from './accounts.render';
 import { showToast } from '../dialogs/dialogs.service';
 import { shellView } from '../../shell/views/ShellView';
 import { patchAppState } from '../../../core/state/app-state';
-
-/** crypto.getRandomValues-based password generator (app.js#generatePassword). */
-export function generatePassword(length: number): string {
-  const chars = '23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ!@#$%';
-  let result = '';
-  const limit = 256 - (256 % chars.length);
-  while (result.length < length) {
-    const values = new Uint8Array(length * 2);
-    crypto.getRandomValues(values);
-    for (let i = 0; i < values.length && result.length < length; i++) {
-      if (values[i] < limit) result += chars[values[i] % chars.length];
-    }
-  }
-  return result;
-}
 
 export async function fetchAccounts(): Promise<void> {
   const g = gm();
@@ -320,18 +305,15 @@ async function onCreateAccountSubmit(e: Event): Promise<void> {
   const span = btn ? btn.querySelector('span') : null;
   if (span) span.textContent = t('btn_generating');
 
-  const newPassword = generatePassword(12);
   try {
     const g = gm();
     const res = await g.adminAccounts('create', {
       id: identifier,
-      password: newPassword,
       role: 'guild_admin',
       guild: (guildSelected === 'ALL' ? null : guildSelected),
       created_by: g.currentAccountId
     });
-    if (!res.ok) throw new Error(res.error || 'create_failed');
-    setPendingPassword(identifier, newPassword);
+    if (!res.ok || !res.password) throw new Error(res.error || 'create_failed');
     unshiftAccount({
       id: identifier,
       role: 'guild_admin',
@@ -339,8 +321,9 @@ async function onCreateAccountSubmit(e: Event): Promise<void> {
       created_at: new Date().toISOString()
     });
     renderAccounts();
+    revealAccountPassword(identifier, res.password);
     if (idInput) idInput.value = '';
-    showToast(t('toast_account_created'), 'success');
+    showToast(t('toast_account_created') + ' Password: ' + res.password + ' (copied to clipboard, shown only this once)', 'success');
   } catch (err: any) {
     showToast(err.message || t('toast_err_create'), 'error');
   } finally {
@@ -372,14 +355,13 @@ async function onCreateAdminAccountSubmit(e: Event): Promise<void> {
   const origText = span ? span.textContent : '';
   if (span) span.textContent = 'Creating...';
 
-  const newPassword = generatePassword(12);
   try {
     const g = gm();
-    const res = await g.adminAccounts('create', { id: identifier, password: newPassword, role: roleSelected, guild: guildSelected });
-    if (!res.ok) throw new Error(res.error || 'create_failed');
-    setPendingPassword(identifier, newPassword);
+    const res = await g.adminAccounts('create', { id: identifier, role: roleSelected, guild: guildSelected });
+    if (!res.ok || !res.password) throw new Error(res.error || 'create_failed');
     unshiftAccount({ id: identifier, role: roleSelected, guild: guildSelected, created_at: new Date().toISOString() });
     renderAccounts();
+    revealAccountPassword(identifier, res.password);
     if (idInput) idInput.value = '';
     showToast('Admin account ' + identifier + ' (' + roleSelected + ') created for guild ' + guildSelected + '!', 'success');
   } catch (err: any) {

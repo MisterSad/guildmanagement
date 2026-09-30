@@ -187,7 +187,7 @@ export async function updatePlayerTimezone(
   offset: number,
   timezone?: string | null
 ): Promise<{ ok: boolean; error?: string }> {
-  if (isNaN(offset) || offset < -12 || offset > 14) return { ok: false, error: "invalid_offset" };
+  if (!Number.isFinite(offset) || offset < -12 || offset > 14 || !Number.isInteger(offset * 4)) return { ok: false, error: "invalid_offset" };
 
   const member = await getPlayer(admin, uid, guildContext);
 

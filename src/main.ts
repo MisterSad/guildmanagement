@@ -134,7 +134,6 @@ import {
   wireAdminInvite,
   wireJoinCode,
   initAccountsUi,
-  generatePassword,
 } from './modules/app/admin/accounts.controller';
 import {
   fetchGuildRequests,
@@ -305,7 +304,6 @@ if (typeof window !== 'undefined') {
     wireAdminInvite,
     wireJoinCode,
     initAccountsUi,
-    generatePassword,
       fetchGuildRequests,
     renderGuildRequestsList,
     wireGuildRequestListeners,

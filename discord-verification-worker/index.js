@@ -438,7 +438,7 @@ const TIMEZONE_COMMAND = {
   name: "timezone",
   description: "Set your timezone (UTC offset).",
   options: [
-    { name: "offset", description: "UTC offset in hours (e.g. -5, 0, 8)", type: 4, required: true, min_value: -12, max_value: 14 },
+    { name: "offset", description: "UTC offset in hours (e.g. -5, 0, 8, 9.5)", type: 10, required: true, min_value: -12, max_value: 14 },
   ],
 };
 

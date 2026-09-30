@@ -167,6 +167,17 @@ describe('updatePlayerTimezone', () => {
     expect(await updatePlayerTimezone(admin, 'uid1', 'ALPHA', -13)).toEqual({ ok: false, error: 'invalid_offset' });
     expect(await updatePlayerTimezone(admin, 'uid1', 'ALPHA', 15)).toEqual({ ok: false, error: 'invalid_offset' });
     expect(await updatePlayerTimezone(admin, 'uid1', 'ALPHA', NaN)).toEqual({ ok: false, error: 'invalid_offset' });
+    expect(await updatePlayerTimezone(admin, 'uid1', 'ALPHA', 9.4)).toEqual({ ok: false, error: 'invalid_offset' });
+  });
+
+  it('accepts half- and quarter-hour offsets (TICKET-0010: Adelaide +9.5, Kathmandu +5.75)', async () => {
+    for (const offset of [9.5, 10.5, 5.5, 5.75, -3.5]) {
+      const admin = makeFakeAdmin({
+        tableResponses: { 'guild_members:select': { data: [MEMBER_ROW], error: null } },
+        rpcResponses: { gm_update_player_timezone: { data: { ok: true }, error: null } },
+      });
+      expect(await updatePlayerTimezone(admin, 'uid1', 'ALPHA', offset)).toEqual({ ok: true });
+    }
   });
 
   it('accepts a valid offset', async () => {
@@ -340,6 +351,8 @@ describe('Regression: the worker owns the full Phase 2 command set', () => {
     const block = scriptSrc.slice(idx, idx + 400);
     expect(block).toContain('min_value: -12');
     expect(block).toContain('max_value: 14');
+    // NUMBER (10), not INTEGER (4): half-hour zones such as Adelaide are +9.5.
+    expect(block).toContain('type: 10');
   });
 
   it('declares /absence with list/cancel as SUB_COMMAND (type 1) options', () => {

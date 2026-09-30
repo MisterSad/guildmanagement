@@ -115,11 +115,13 @@ export const DeleteAbsenceSchema = z.object({
   id: z.string().trim().min(1, "id is required").max(64)
 }).passthrough();
 
+const isQuarterHourOffset = (v) => Number.isFinite(v) && v >= -12 && v <= 14 && Number.isInteger(v * 4);
+
 export const UpdateTimezoneSchema = z.object({
   offset: z.union([
-    z.number().int().min(-12).max(14),
-    z.string().regex(/^-?\d+$/).transform(v => parseInt(v, 10))
-      .refine(v => v >= -12 && v <= 14, { message: "Offset must be between -12 and 14" })
+    z.number().refine(isQuarterHourOffset, { message: "Offset must be between -12 and 14, in quarter hours" }),
+    z.string().regex(/^-?\d+(\.\d+)?$/).transform(v => Number(v))
+      .refine(isQuarterHourOffset, { message: "Offset must be between -12 and 14, in quarter hours" })
   ])
 }).passthrough();
 
@@ -156,6 +158,7 @@ describe('Ticket 2.3: Static Containment - Zod Schema Validation in member-porta
     expect(portalContent).toContain('export const SetAbsenceSchema =');
     expect(portalContent).toContain('export const DeleteAbsenceSchema =');
     expect(portalContent).toContain('export const UpdateTimezoneSchema =');
+    expect(portalContent).toContain('Number.isInteger(v * 4)');
     expect(portalContent).toContain('export const ConfirmDiscordLinkSchema =');
     // Web Push was removed with the PWA: the schema and both push-prefs
     // actions are gone from member-portal, and must not come back.
@@ -384,12 +387,17 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
       expect(UpdateTimezoneSchema.safeParse({ offset: 14 }).success).toBe(true);
       expect(UpdateTimezoneSchema.safeParse({ offset: -12 }).success).toBe(true);
       expect(UpdateTimezoneSchema.safeParse({ offset: '5' }).success).toBe(true);
+      // TICKET-0010: half- and quarter-hour zones (Adelaide, India, Nepal).
+      expect(UpdateTimezoneSchema.safeParse({ offset: 9.5 }).success).toBe(true);
+      expect(UpdateTimezoneSchema.safeParse({ offset: 5.75 }).success).toBe(true);
+      expect(UpdateTimezoneSchema.safeParse({ offset: '10.5' }).success).toBe(true);
     });
 
     it('rejects offset out of bounds', () => {
       expect(UpdateTimezoneSchema.safeParse({ offset: 15 }).success).toBe(false);
       expect(UpdateTimezoneSchema.safeParse({ offset: -13 }).success).toBe(false);
       expect(UpdateTimezoneSchema.safeParse({ offset: 'abc' }).success).toBe(false);
+      expect(UpdateTimezoneSchema.safeParse({ offset: 9.4 }).success).toBe(false);
       expect(UpdateTimezoneSchema.safeParse({}).success).toBe(false);
     });
   });

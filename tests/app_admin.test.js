@@ -17,7 +17,8 @@ import {
   fetchAccounts,
   fetchGuilds,
   populateAccountGuildSelect,
-  deleteAccount
+  deleteAccount,
+  initAccountsUi
 } from '../src/modules/app/admin/accounts.controller';
 import {
   fetchGuildRequests,
@@ -161,6 +162,35 @@ describe('fetchAccounts + account cards', () => {
     expect(grouped.textContent).toContain('Server #1058');
 
     delete window.guildsData;
+  });
+
+  // "none of us can actually view any of the passwords we're meant to give
+  // each other" -- the create path generated a password and re-rendered the
+  // card masked, with its Copy button hidden. The server now issues it and the
+  // card must show it.
+  it('shows the server-issued password on the new card after "Generate Access"', async () => {
+    window.GM.roleFromStorage = () => 'guild_admin';
+    window.GM.adminAccounts = vi.fn(async (action) => {
+      if (action === 'list') return { ok: true, accounts: [] };
+      if (action === 'create') return { ok: true, password: 'Srv3rIssued!Pw' };
+      return { ok: true };
+    });
+    document.body.insertAdjacentHTML('beforeend',
+      '<form id="create-account-form"><input id="account-id" value="NewOfficer" />' +
+      '<button type="submit"><span>Generate Access</span></button></form>');
+    document.getElementById('account-guild').innerHTML = '<option value="ALPHA" selected>ALPHA</option>';
+
+    initAccountsUi();
+    document.getElementById('create-account-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await tick(); await tick();
+
+    const [, payload] = window.GM.adminAccounts.mock.calls.find(([a]) => a === 'create');
+    expect(payload).not.toHaveProperty('password');
+    const wrap = document.querySelector('.gm-cred-pass[data-acc-id="NewOfficer"]');
+    expect(wrap).toBeTruthy();
+    expect(wrap.classList.contains('gm-masked')).toBe(false);
+    expect(wrap.querySelector('.gm-pwd-text').textContent).toBe('Srv3rIssued!Pw');
+    expect(wrap.querySelector('.gm-cred-copy').classList.contains('hidden')).toBe(false);
   });
 
   it('removes an account through deleteAccount and re-renders', async () => {

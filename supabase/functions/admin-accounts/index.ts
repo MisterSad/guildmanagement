@@ -22,7 +22,8 @@ const guildField = z.string().trim().min(1).max(64).nullish();
 const ResetPasswordSchema = z.object({ id: idField });
 const CreateSchema = z.object({
   id: idField,
-  password: z.string().min(1).max(256),
+  // Accepted and ignored, for clients built before the server generated it.
+  password: z.string().max(256).optional(),
   serverNumber: z.string().trim().max(32).nullish(),
   guild: guildField,
   role: z.string().trim().max(32).optional(),
@@ -180,9 +181,9 @@ function randomSecret(): string {
   return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-// Same alphabet/rejection-sampling shape as the client's generatePassword()
-// in app.js -- used here because approve-guild-request generates the login
-// credential server-side (the requester never chooses it themselves).
+// Readable alphabet (no 0/O, 1/l/I) with rejection sampling. Every password
+// an admin hands over is generated here -- `create` and approve-guild-request
+// -- because officers relay them by hand over Discord.
 function generatePassword(length: number): string {
   const chars = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ!@#$%";
   const limit = 256 - (256 % chars.length);
@@ -560,7 +561,10 @@ Deno.serve(async (req: Request) => {
     const createParsed = CreateSchema.safeParse(body);
     if (!createParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
     const id = createParsed.data.id;
-    const password = createParsed.data.password;
+    // Generated here, exactly like `reset-password`, and returned once. The
+    // client used to generate it and never display it, so every officer who
+    // clicked "Generate Access" got an account nobody could sign in to.
+    const password = generatePassword(16);
     const serverNumber = createParsed.data.serverNumber ?? null;
 
     let accRole = "guild_admin";
@@ -635,7 +639,7 @@ Deno.serve(async (req: Request) => {
     }
 
     logger.info("Admin created account", { createdId: id, role: accRole, guild: accGuild, serverNumber: accServerNum });
-    return json({ ok: true });
+    return json({ ok: true, password });
   }
 
   if (action === "update-role") {
