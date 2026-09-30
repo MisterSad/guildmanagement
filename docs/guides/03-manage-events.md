@@ -68,7 +68,7 @@ Typing 100 scores by hand is boring. Let the AI read your screenshots!
 
 ## 👥 Bonus: import your whole roster
 
-On the **Members** page: **AI Metric Scanners** → **1. Members OCR**. Take screenshots of your in-game member list, **with the rank headers** (R4, R3…). The AI adds new players, updates ranks and shows who left.
+On the **Members** page: **AI Metric Scanners** → **1. Members OCR**. Take screenshots of your in-game member list, **with the rank headers** ("Executive Manager", "Rank 3 Members"…). The AI adds new players, updates ranks and shows who left.
 -# If a scan looks incomplete, removals stay unticked for safety. Check before you remove anyone: removing a member **deletes their history**.
 
 ---8<---
