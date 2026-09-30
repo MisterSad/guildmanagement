@@ -34,7 +34,7 @@ describe('HelpView', () => {
     expect(popover).toBeTruthy();
     expect(popover.classList.contains('gm-help-open')).toBe(true);
     expect(popover.querySelector('#gm-help-title').textContent).toBe('Server vs Server (SvS)');
-    expect(popover.querySelector('#gm-help-body').innerHTML).toContain('Tracks participation');
+    expect(popover.querySelector('#gm-help-body').innerHTML).toContain('Tracks the weekly SvS');
     expect(popover.querySelector('#gm-help-icon').className).toContain('ph-sword');
 
     view.destroy();

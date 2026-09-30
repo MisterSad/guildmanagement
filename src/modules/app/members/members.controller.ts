@@ -12,6 +12,7 @@
 import { t, esc, winAny, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { patchAppState } from '../../../core/state/app-state';
+import { getWeekStart } from '../../../core/utils/date';
 import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers, transferActionFor } from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
@@ -660,6 +661,18 @@ export async function renameGuildMember(
         p_glory_score: update.glory_score !== undefined ? update.glory_score : (member ? member.glory_score : 0)
       });
     } catch (rpcErr) { console.warn('Metrics snapshot RPC fallback', rpcErr); }
+
+    // A changed Glory is also this week's Glory Tracker entry, as when it is
+    // typed on the Glory page. It used to stop at the profile field.
+    if (update.glory_score !== undefined && member && update.glory_score !== (Number(member.glory_score) || 0)) {
+      try {
+        const glRes = await client.rpc('gm_upsert_player_glory', {
+          p_guild: activeG, p_pseudo: newPseudo, p_week_start: getWeekStart(), p_glory: update.glory_score
+        });
+        const glRow = glRes.error ? null : (Array.isArray(glRes.data) ? glRes.data[0] : glRes.data);
+        if (glRes.error || !glRow || !glRow.ok) console.warn('Glory Tracker update failed', glRes.error || glRow);
+      } catch (glErr) { console.warn('Glory Tracker update failed', glErr); }
+    }
 
     await fetchGuildMembers();
     showToast(t('toast_member_updated'), 'success');

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- **The rest of the guide-writing findings.**
+  - **A stored XSS in the Migration Hub, found while fixing its Delete button.** The page title went unescaped into the HTML confirm dialog. A Server Intel page is shared with rival guilds on the same server, so one of their admins could title a page so that it ran script in the session of whoever clicked Delete. The title is now escaped. No other `showConfirm` call interpolates user data.
+  - **Migration Hub Delete** only shows to the page's creator or a super admin, matching `gm_migration_wiki_delete`. A refused delete used to return zero rows and no error, and was announced as "Page deleted". It now asks for the deleted row back and says when there is none.
+  - **Banning a roster member asks first.** It used to erase the member's history silently (the roster row cascades), and it now spells that out and suggests a sanction instead. The R5 cannot be banned.
+  - **Glory typed outside the Glory page now reaches the Glory Tracker.** This covers the Player Portal's My Info form (through `updatePlayerGlory`, the `/update-stats glory:` path, which also ticks the weekly challenge) and Members → Edit (through `gm_upsert_player_glory`). Only a *changed* value is filed, so re-saving a form never records last week's Glory as this week's. The portal's metrics save now reads the RPC's own `ok`, not only the transport error.
+  - **Event pages show the guild's own weights.** "coeff. 5×" was hard-coded in `index.html`, and is now read from `coeff_*`.
+  - **Stats' Shadowfront deep-dive** said "titulaire(s)" and "réserve(s)". It now reads "main" / "subs".
+  - **In-app help** is rewritten wherever it described removed features: "Start SvS", "Validate", "import from Discord", a "date range" filter, sanction types, "Top 5 share", self-registration on the login screen, and "one DTR per day".
+
 - **Three defects found while writing the user guides. Each was reproduced on production inside a rolled-back transaction before it was fixed.**
   - **A guild admin could take any player from another guild on the same server.** "Player ID already exists → Request Transfer" always filed the request with the caller's own guild as target, and `resolve_guild_transfer` let the target guild approve. So the officer approved their own request, and the player moved with history, sanctions and portal account without the losing guild being asked. Reproduced: `ok, approved`, player now in the puller's guild.
     - `guild_transfers.requested_by` now records who asked. Whoever asked never decides: a player's own request is decided by the receiving guild, an admin pull by the guild the player is leaving. The puller may only withdraw.

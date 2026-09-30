@@ -142,6 +142,31 @@ export async function handleAddBannedPlayer(): Promise<void> {
     return;
   }
 
+  // Banning a player on the roster removes them from it, and the roster row
+  // carries their history (ON DELETE CASCADE). That used to happen silently.
+  const onRoster = getGuildMembers().find((m) => m.uid === uidVal);
+  if (onRoster) {
+    const confirm = winAny().showConfirm;
+    if (typeof confirm !== 'function') return;
+    confirm(
+      'Ban and remove from the guild',
+      '<strong>' + esc(onRoster.pseudo) + '</strong> is on your member list. Banning removes them from it.<br><br>' +
+        '<span style="color:#f87171;">' + esc(t('confirm_remove_member_cascade')) + '</span><br><br>' +
+        'To keep a record without losing their history, give a sanction instead.',
+      () => executeBan(uidVal, pseudoVal, reasonVal)
+    );
+    return;
+  }
+  await executeBan(uidVal, pseudoVal, reasonVal);
+}
+
+async function executeBan(uidVal: string, pseudoVal: string, reasonVal: string): Promise<void> {
+  const client = db();
+  if (!client) return;
+  const gm = g();
+  const uidInput = byId<HTMLInputElement>('banned-uid');
+  const pseudoInput = byId<HTMLInputElement>('banned-pseudo');
+  const reasonInput = byId<HTMLInputElement>('banned-reason');
   const form = byId<HTMLFormElement>('add-banned-form');
   const btn = form ? form.querySelector('button[type="submit"]') as HTMLButtonElement | null : null;
   if (btn) btn.disabled = true;

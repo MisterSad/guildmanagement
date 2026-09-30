@@ -78,6 +78,12 @@ const CATEGORY_CHIP_CLASSES: Record<MigrationWikiCategory, string> = {
   blacklist: 'gm-chip-danger'
 };
 
+/** Mirrors the gm_migration_wiki_delete policy: creator or super admin. */
+export function canDeleteWikiPage(page: { created_by_account_id?: string | null }, accountId: string | null, role: string | null): boolean {
+  if (role === 'super_admin') return true;
+  return !!accountId && !!page.created_by_account_id && page.created_by_account_id === accountId;
+}
+
 export class MigrationHubView {
   private pages: MigrationWikiPage[] = [];
   private activeComments: MigrationWikiComment[] = [];
@@ -507,6 +513,12 @@ export class MigrationHubView {
     if (viewEmpty) viewEmpty.style.display = 'none';
     if (viewDetail) viewDetail.style.display = 'block';
 
+    // Only the page's creator or a super admin may delete it (policy
+    // gm_migration_wiki_delete). The button used to show for everyone, and a
+    // refused delete looked like a success.
+    const delBtn = document.getElementById('migration-hub-delete-btn');
+    if (delBtn) delBtn.style.display = canDeleteWikiPage(activePage, currentAccountId(), roleFromStorage()) ? '' : 'none';
+
     // Reset AI summary box
     const aiBox = document.getElementById('migration-hub-page-ai-box');
     if (aiBox) aiBox.style.display = 'none';
@@ -810,14 +822,19 @@ export class MigrationHubView {
 
     legacy.showConfirm(
       'Delete Page',
-      `Are you sure you want to delete "${page.title}"? This cannot be undone.`,
+      // The confirm dialog renders HTML: the title is escaped, or a Server
+      // Intel page titled by a rival guild's admin runs script in the session
+      // of whoever clicks Delete.
+      `Are you sure you want to delete "${escapeHTML(page.title)}"? This cannot be undone.`,
       async () => {
         const db = legacy.getDb();
         if (!db) return;
 
-        const { error } = await db.from('migration_wiki_pages').delete().eq('id', page.id);
-        if (error) {
-          legacy.showToast('Failed to delete page: ' + (error.message || 'Forbidden'), 'error');
+        // RLS filters a refused delete to zero rows without an error, so ask
+        // for the deleted rows back and check one came.
+        const { data, error } = await db.from('migration_wiki_pages').delete().eq('id', page.id).select('id');
+        if (error || !data || data.length === 0) {
+          legacy.showToast(error ? 'Failed to delete page: ' + (error.message || 'Forbidden') : 'Only the page\'s creator can delete it.', 'error');
           return;
         }
 

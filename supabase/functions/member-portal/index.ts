@@ -646,9 +646,23 @@ export async function handleRequest(req: Request): Promise<Response> {
         p_glory_score: gloryScore,
       });
 
-      if (rpcErr) {
+      // The RPC reports refusals in its rows, not as a transport error.
+      const metricsRow = (Array.isArray(rpcRes) ? rpcRes[0] : rpcRes) as { ok?: boolean } | null;
+      if (rpcErr || (metricsRow && metricsRow.ok === false)) {
         logger.error("Failed to update player metrics via rpc", rpcErr, { uid, pseudo: member.pseudo });
         return json({ ok: false, error: "update_failed" }, 200);
+      }
+
+      // A Glory entered here used to stop at the profile: no Glory Tracker row
+      // for the week, and the "Submit your Glory score" challenge never ticked.
+      // A CHANGED value is filed for the current week through the same path as
+      // `/update-stats glory:`; an unchanged one is not, or re-saving the form
+      // would record last week's Glory as this week's.
+      let gloryWeek: string | null = null;
+      if (payload?.glory_score !== undefined && gloryScore !== (Number(member.glory_score) || 0)) {
+        const g = await updatePlayerGlory(admin, uid, identity.guild, gloryScore);
+        if (g.ok) gloryWeek = g.week ?? null;
+        else logger.error("Failed to file portal Glory for the week", g.error, { uid, pseudo: member.pseudo });
       }
 
       await logPlayerAction(admin, {
@@ -689,6 +703,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         flagship_power: flagshipPower,
         fleet_rating: fleetRating,
         glory_score: gloryScore,
+        glory_week: gloryWeek,
       });
     }
 

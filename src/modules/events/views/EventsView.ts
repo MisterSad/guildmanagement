@@ -29,6 +29,7 @@ import { formatCompactNumber, formatNumber } from '../../../core/utils/numbers';
 import { openDialog } from '../../../components/ui/Dialog';
 import { getGuildConfig, setGuildConfig } from '../../../core/config/guild-config';
 import { escapeHTML } from '../../../core/utils/text';
+import { paintEventCoeffLabels } from '../../../core/config/event-coeff-labels';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -152,6 +153,7 @@ export class EventsView {
     if (customGuildId) this.guildOverride = customGuildId;
     const db = legacy.getDb();
     if (!db || !TAB_TO_DB_EVENTS[tabKey]) return;
+    void paintEventCoeffLabels();
     try {
       const dbEvents = TAB_TO_DB_EVENTS[tabKey];
       const currentG = this.currentGuild();

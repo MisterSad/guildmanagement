@@ -1182,8 +1182,7 @@ export class StatsView {
                'S1: ' + m.squad1_count + ' · S2: ' + m.squad2_count +
                '</div>' +
                '<div style="font-size: var(--fs-sm); font-weight:400; color:var(--fg-dim);">' +
-               m.participant_count + ' titulaire' + (m.participant_count !== 1 ? 's' : '') +
-               ' · ' + m.reserve_count + ' réserve' + (m.reserve_count !== 1 ? 's' : '') + '</div>')
+               m.participant_count + ' main · ' + m.reserve_count + ' sub' + (m.reserve_count !== 1 ? 's' : '') + '</div>')
             : '-';
           rowCells +=
             '<td data-label="Squads" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' + squadBreakdown + '</td>' +

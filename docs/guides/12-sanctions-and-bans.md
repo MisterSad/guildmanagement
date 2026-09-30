@@ -30,7 +30,8 @@ At the **3rd sanction** for the same player, the tool shows a **🚨 RECIDIVIST 
 - They **cannot join** with your join code.
 - The **Discord bot refuses** to give them your guild role.
 
-⚠️ **A ban deletes the player's history** in your guild (events, scores, sanctions), because it removes them from the list. If you only want to keep a record, give a **sanction** instead.
+⚠️ **A ban deletes the player's history** in your guild (events, scores, sanctions), because it removes them from the list. The tool asks you to confirm first. If you only want to keep a record, give a **sanction** instead.
+-# The R5 cannot be banned: change their rank first.
 
 ---8<---
 

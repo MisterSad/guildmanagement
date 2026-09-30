@@ -75,12 +75,17 @@ beforeEach(() => {
   setBannedPlayers([]);
   setGuildMembers([]);
   window.GM = { validateUid: () => '', currentAccountId: 'TheAdmin' };
+  // Banning a roster member now asks first (it erases their history); the
+  // stub confirms and records what was shown.
+  window.showConfirm = vi.fn((_title, _body, onConfirm) => { window.__confirmRun = Promise.resolve(onConfirm()); });
   vi.clearAllMocks();
 });
 
 afterEach(() => {
   document.body.innerHTML = '';
   delete window.GM;
+  delete window.showConfirm;
+  delete window.__confirmRun;
   localStorage.clear();
   setBannedPlayers([]);
   setGuildMembers([]);
@@ -181,12 +186,41 @@ describe('handleAddBannedPlayer', () => {
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
+    await window.__confirmRun;
 
+    // It asked first, and said what the removal costs.
+    expect(window.showConfirm).toHaveBeenCalledTimes(1);
+    expect(window.showConfirm.mock.calls[0][1]).toContain('Cheater');
     const kick = db.calls.find((c) => c.table === 'guild_members' && c.op === 'delete');
     expect(kick, 'a banned member must be removed from the roster').toBeTruthy();
     expect(kick.filters).toMatchObject({ uid: '900', guild: 'ALPHA' });
     expect(getGuildMembers().map((m) => m.uid)).toEqual(['901']);
     expect(renderGuildMembers).toHaveBeenCalled();
+  });
+
+  it('bans nothing when the officer cancels the confirmation', async () => {
+    setGuildMembers([{ uid: '900', pseudo: 'Cheater' }]);
+    const db = fakeDb();
+    window.GM.db = db;
+    window.showConfirm = vi.fn();
+    document.getElementById('banned-uid').value = '900';
+
+    await handleAddBannedPlayer();
+
+    expect(db.calls).toHaveLength(0);
+    expect(getGuildMembers()).toHaveLength(1);
+  });
+
+  it('refuses to ban the R5 leader', async () => {
+    setGuildMembers([{ uid: '900', pseudo: 'Boss', role: 'R5' }]);
+    const db = fakeDb();
+    window.GM.db = db;
+    document.getElementById('banned-uid').value = '900';
+
+    await handleAddBannedPlayer();
+
+    expect(db.calls).toHaveLength(0);
+    expect(window.showConfirm).not.toHaveBeenCalled();
   });
 
   it('does not touch the roster when the banned uid is not a member', async () => {
@@ -207,6 +241,7 @@ describe('handleAddBannedPlayer', () => {
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
+    await window.__confirmRun;
 
     // The ban is recorded, but a refused delete must not make the UI claim the
     // player was removed.

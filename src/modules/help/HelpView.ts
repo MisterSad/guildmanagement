@@ -30,7 +30,7 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-create-account': {
     icon: 'ph-key',
     title: 'New Account',
-    body: '<p>Create a login account for a guild admin. Enter a username (e.g. the person\'s in-game name), select the guild, and click <strong>Generate Access</strong>.</p><p>A secure password is generated automatically. Copy and share it with the admin - they can use it to log in immediately.</p><p>The account gets <strong>Guild Admin</strong> access and can only manage their own guild\'s data.</p>'
+    body: '<p>Create a login for an officer. Enter a username (e.g. their in-game name), select the guild, and click <strong>Generate Access</strong>.</p><p>A secure password is generated and <strong>shown once</strong> on the new account, already copied for you. Send it privately: nobody can read it again later, but you can always issue a new one with <strong>Renew Password</strong>.</p><p>Prefer no password at all? Use <strong>Invite an Admin</strong>: the officer signs in with Discord.</p>'
   },
   'help-active-accounts': {
     icon: 'ph-shield-check',
@@ -40,12 +40,12 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-member-accounts': {
     icon: 'ph-users-three',
     title: 'Player Portal Accounts',
-    body: '<p>Lists player accounts created via the <strong>Join Code</strong> self-registration flow.</p><p>Players with status <strong>Pending</strong> are waiting for your approval before they can access the portal. Click <i class="ph ph-check"></i> to approve or <i class="ph ph-x"></i> to reject.</p><p>Approved players can log into the <strong>Player Portal</strong> to update their power, declare absences, and view their event history.</p>'
+    body: '<p>Lists player accounts created when players join with your <strong>Join Code</strong> (Sign in with Discord → Join a guild).</p><p>Players with status <strong>Pending</strong> are waiting for your approval before they can access the portal. Click <i class="ph ph-check"></i> to approve or <i class="ph ph-x"></i> to reject.</p><p>Approved players can use the <strong>Player Portal</strong> to report event participation, update their stats and declare absences.</p>'
   },
   'help-join-code': {
     icon: 'ph-key',
     title: 'Guild Join Code',
-    body: '<p>This is the unique code for your guild. Give it to players who want to self-register on the Player Portal.</p><p>On the login screen, players enter their <strong>username</strong> and this <strong>Join Code</strong> to create an account. Their account will be <em>pending</em> until you approve it in the <strong>Player Portal Accounts</strong> section above.</p><p>The code is permanent and never changes - you can freely share it in Discord.</p>'
+    body: '<p>The permanent code players use to join your guild.</p><p>A player clicks <strong>Sign in with Discord</strong> → <strong>Join a guild</strong>, then enters this code and their <strong>in-game UID</strong>. Their UID must already be on your member list. Their account stays <em>pending</em> until you approve it in <strong>Pending Account Validations</strong>.</p><p>The code never changes. Share it in your guild\'s Discord.</p>'
   },
 
   // ====================================================
@@ -83,7 +83,7 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-members-list': {
     icon: 'ph-users',
     title: 'Member Roster',
-    body: '<p>The full list of your guild\'s members. You can:</p><ul><li><strong>Search</strong> by name using the filter box.</li><li><strong>Sort</strong> by power, rank, or name.</li><li><strong>Edit</strong> a member (click <i class="ph ph-pencil"></i>) to update their username, UID, power, or rank.</li><li><strong>Delete</strong> a member (click <i class="ph ph-trash"></i>) to remove them from the roster entirely.</li><li><strong>Add</strong> a new member using the form at the top.</li></ul><p>Changes propagate to all event participation records that reference this member.</p>'
+    body: '<p>Your guild\'s member list, in two views:</p><ul><li><strong>Roster Cards</strong>: grouped by rank, with power, UID, time zone and absences.</li><li><strong>Military Matrix</strong>: every stat side by side, with the Rally Score and the top 16 rally leaders.</li></ul><p>Search by name or UID, filter by tier, and sort with the menu. On a card: <i class="ph ph-pencil"></i> edit, <i class="ph ph-arrows-left-right"></i> transfer, <i class="ph ph-trash"></i> delete.</p><p><strong>Deleting a member also deletes their history</strong>: use Transfer when they move to another guild. The R5 cannot be deleted: change their rank first.</p><p>Update everyone\'s stats at once with <strong>AI Metric Scanners</strong>.</p>'
   },
   'help-pending-transfers': {
     icon: 'ph-arrows-left-right',
@@ -98,7 +98,7 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-timezones': {
     icon: 'ph-globe-hemisphere-west',
     title: 'Member Timezones',
-    body: '<p>Shows the UTC timezone offset declared by each player in the Player Portal. Useful for scheduling events across different regions.</p><p>The offset is set by the player themselves and is informational - it doesn\'t change how event times are displayed.</p>'
+    body: '<p>What time it is right now for each member, based on the time zone they (or an officer) declared. The peak hour shows when most of your guild is awake: a good time for events.</p><p>Players set it in the Player Portal; officers can set it in Edit member.</p>'
   },
 
   // ====================================================
@@ -107,37 +107,37 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-event-svs': {
     icon: 'ph-sword',
     title: 'Server vs Server (SvS)',
-    body: '<p>Tracks participation for the weekly SvS event. To use:</p><ol><li>Click <strong>Start SvS</strong> to open the current week\'s session.</li><li>Check off the members who participated (or import from Discord).</li><li>Set each player\'s score if applicable.</li><li>Click <strong>Validate</strong> to save. The session auto-groups by ISO week.</li></ol><p>Re-opening the same week reuses the existing session - no duplicate data.</p>'
+    body: '<p>Tracks the weekly SvS. To use:</p><ol><li>Click <strong>Start</strong> and set the start time (UTC). All members are added automatically.</li><li>Tick <strong>Participated</strong> and enter the day scores, by hand or with the OCR buttons. Everything saves by itself.</li><li>Mark each day Won / Lost in the war banner.</li><li>Click <strong>End</strong> when the week is over.</li></ol><p>SvS counts once per week in Stats. Starting again in the same week reuses the same session.</p>'
   },
   'help-event-gvg': {
     icon: 'ph-flag-banner',
     title: 'Guild vs Guild (GvG)',
-    body: '<p>Tracks weekly GvG participation. Start a session for the current week, mark participants, optionally log scores, then validate.</p><p>GvG counts once per ISO week per player, regardless of how many battles happen in that week.</p>'
+    body: '<p>Tracks the weekly GvG, like SvS: <strong>Start</strong> (UTC time), fill in participation and day scores (by hand or OCR), mark days Won / Lost, then <strong>End</strong>.</p><p>GvG counts once per week per player in Stats, however many battles happen.</p>'
   },
   'help-event-shadowfront': {
     icon: 'ph-shield-chevron',
     title: 'Shadowfront',
-    body: '<p>Manage Shadowfront Squads 1 and 2. Each squad session is separate and runs weekly.</p><p>Assign players to squads, track participation per session. Players not in a squad are not tracked for that session.</p>'
+    body: '<p>Squad One and Squad Two each have their own session.</p><ol><li><strong>1. Squad Composition</strong>: pick up to 20 main players and 10 substitutes.</li><li><strong>2. Participation Tracking</strong>: tick who played, who was late, excused, or a substitute who showed up.</li></ol><p>Only squad members are tracked. Shadowfront counts once per week in Stats. A session ends by itself 24 hours after it starts.</p>'
   },
   'help-event-dtr': {
     icon: 'ph-truck',
     title: 'Defend Trade Route (DTR)',
-    body: '<p>Track participation for each DTR session (identified by date). One session per calendar day.</p><p>Start a session, mark participants, validate. Multiple DTR sessions in the same week each count separately in the participation score.</p>'
+    body: '<p>Each DTR run is its own session: you can run several in one day. Start it (UTC time), tick <strong>Appointed</strong> and <strong>Participated</strong>, then End it.</p><p>Every session counts separately in Stats. A session ends by itself 24 hours after it starts.</p>'
   },
   'help-event-armsrace': {
     icon: 'ph-target',
     title: 'Arms Race',
-    body: '<p>Arms Race has two stages: <strong>Stage A</strong> and <strong>Stage B</strong>. Each stage is a separate session tracked by date.</p><p>Scoring: Stage A and Stage B count independently - a player who does both A and B in the same week earns two participation points.</p>'
+    body: '<p>Arms Race has two stages, <strong>Stage A</strong> and <strong>Stage B</strong>, each with its own sessions.</p><p>Each session counts separately in Stats: a player who does both stages earns two participations. A session ends by itself 24 hours after it starts.</p>'
   },
   'help-event-glory': {
     icon: 'ph-trophy',
     title: 'Glory',
-    body: '<p>Record weekly Glory scores per player. Each entry is keyed to the ISO week.</p><p>You can enter scores manually or import from a Discord message. The leaderboard ranks players by Glory earned in the selected week.</p>'
+    body: '<p>Enter each member\'s Glory for the current week (Monday 00:00 UTC to Sunday). It saves by itself as you type, and <strong>Evolution</strong> compares with last week.</p><p>Faster: <strong>Members → AI Metric Scanners → 8. Glory OCR</strong>, or players use <code>/update-stats glory:</code> in Discord. To fix a past week, use History → Glory.</p><p>Glory does not count in Reliability.</p>'
   },
   'help-event-history': {
     icon: 'ph-clock-counter-clockwise',
     title: 'Event History',
-    body: '<p>Browse all past event sessions across all event types. Filter by event type or date range.</p><p>Click a session to see the full participant list and scores for that session.</p>'
+    body: '<p>Every past session, newest first. Filter by event type.</p><p>Click a session to see every participant and <strong>fix mistakes</strong>: participation, scores, late, excused. Each change saves immediately.</p><p><strong>Delete</strong> erases a session\'s scores for good. The "Delete … history" button erases every session of that type, including the running one.</p>'
   },
 
   // ====================================================
@@ -146,7 +146,7 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-stats': {
     icon: 'ph-chart-bar',
     title: 'Guild Statistics',
-    body: '<p>A dashboard of key performance indicators for your guild:</p><ul><li><strong>Participation rate</strong>: % of members attending events over the selected period, counting distinct sessions (not duplicate rows).</li><li><strong>Power distribution</strong>: how combat power is spread across ranks.</li><li><strong>Top 5 share</strong>: how much of total guild power the top 5 players hold.</li></ul><p>Use the period selector (2 weeks / 4 weeks / all time) to adjust the time window.</p>'
+    body: '<p>Who shows up, and how reliably.</p><ul><li><strong>Guild Cockpit</strong>: engagement, war record, power progression and data completeness.</li><li><strong>Leaderboard</strong>: each member\'s attendance per event and <strong>Reliability</strong>, a weighted score (SvS and GvG count most; set the weights in Discord notifications → Event Coefficients).</li><li><strong>Event Deep-Dive</strong>: one event type in detail.</li></ul><p>Excused sessions are not counted; late still counts as present; pending player submissions count once approved.</p>'
   },
 
   // ====================================================
@@ -155,12 +155,12 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-sanctions': {
     icon: 'ph-warning-octagon',
     title: 'Sanctions',
-    body: '<p>Log disciplinary actions for members (warnings, bench, removal).</p><ul><li>Select the member, pick a sanction type, and add a reason.</li><li>Sanctions are visible to all admins of your guild.</li><li>A sanction does not automatically restrict access - it is a record-keeping tool.</li></ul>'
+    body: '<p>A warning log for your guild.</p><ul><li>Pick the member, write the reason, click <strong>Apply Sanction</strong>.</li><li>From the 3rd sanction, a recidivist alert reminds you.</li><li>Sanctions are visible to your guild\'s admins and follow a player who is transferred.</li><li>A sanction does not restrict anything: it is a record-keeping tool.</li></ul>'
   },
   'help-banned': {
     icon: 'ph-prohibit',
     title: 'Banned Players',
-    body: '<p>Permanently block a player UID from joining your guild via the Player Portal.</p><p>Add the player\'s UID and an optional reason. They will be rejected at self-registration even if they have the correct join code.</p><p>Remove the ban by clicking <i class="ph ph-trash"></i> next to the entry.</p>'
+    body: '<p>A per-guild blacklist of player UIDs.</p><p>A banned UID is <strong>removed from your member list</strong> (which deletes their history) and cannot be added back, by hand, OCR or transfer. It also cannot join with your join code, and the Discord bot refuses them your guild role.</p><p>Remove the ban with <i class="ph ph-trash"></i>. The player is not added back automatically.</p>'
   },
 
   // ====================================================
@@ -199,7 +199,7 @@ export const HELP_DB: Record<string, HelpEntry> = {
   'help-portal-events': {
     icon: 'ph-calendar-check',
     title: 'Active Events',
-    body: '<p>Lists the events currently open for score submission by your guild. Select the event, enter your score or mark your participation, and click <strong>Submit</strong>.</p><p>Your submission is reviewed by your admin before it is validated.</p>'
+    body: '<p>The events your guild is running right now. Tick <strong>I participated in this event</strong>, add your score if there is a box, and click <strong>Submit</strong>.</p><p>It shows <strong>Awaiting approval</strong> until an officer confirms it, then <strong>Confirmed by an officer</strong>.</p>'
   }
 };
 
