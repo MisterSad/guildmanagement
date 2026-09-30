@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- **Least-privilege table grants** (migration `20260930160000`; AGENTS.md rule 2, finding C0). Supabase's default grants had never been removed.
+  - **`anon` held ALL (TRUNCATE included) on 25 of 40 tables.** No policy anywhere names `anon`, and TRUNCATE ignores RLS. It now holds nothing, and `postgres`'s default privileges no longer hand new tables to `anon`.
+  - **`authenticated` loses TRUNCATE/TRIGGER/REFERENCES everywhere.** It also loses all access to the 8 tables that have no policy and no browser caller (backup codes, passkeys, Discord links, tickets…).
+  - **Direct writes to 6 RPC-only tables are closed:** `event_daily_scores`, `war_sessions`, `weekly_scores` and others. That was the shape of the transfer bypass, a validating RPC with an unvalidated door beside it.
+  - What the browser keeps is exactly what a policy allows **and** `src/` issues. A test fails if the client starts writing a table it can no longer write.
+  - Proven on production inside a rolled-back transaction: a DEMO guild_admin session still reads the roster, edits a member, saves config and calls `gm_upsert_daily_scores`. A direct `event_daily_scores` insert, reading `tickets`, `TRUNCATE`, and any `anon` read all answer `42501`.
+
 - **The rest of the guide-writing findings.**
   - **A stored XSS in the Migration Hub, found while fixing its Delete button.** The page title went unescaped into the HTML confirm dialog. A Server Intel page is shared with rival guilds on the same server, so one of their admins could title a page so that it ran script in the session of whoever clicked Delete. The title is now escaped. No other `showConfirm` call interpolates user data.
   - **Migration Hub Delete** only shows to the page's creator or a super admin, matching `gm_migration_wiki_delete`. A refused delete used to return zero rows and no error, and was announced as "Page deleted". It now asks for the deleted row back and says when there is none.
