@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- **Video OCR, phase 1 of 4: the server can read a whole recording with Gemini** (ADR-021 to come; nothing calls it yet). The browser's frame extractor found 3 or 4 players out of 40 on some recordings, because its scroll estimator was tuned on one desktop capture.
+  - **The video travels through a private `ocr-videos` bucket** (migration `20261001200000`), not the request body. Measured on production: a 1 MB binary body hung `ocr-guild-members` for 160 s, and 60 MB bodies ended in a gateway 502. Upload, read and delete are gated on `check_user_guild_write_access` for the guild in the first path segment. The function reads and deletes under the caller's JWT, so RLS decides what it can reach.
+  - `ocr-guild-members` sends the file to the Gemini File API and reads it at high media resolution. The frame rate is set from the duration Gemini measured, not from a client claim.
+  - **Completeness is checked, not assumed.** Missing rank positions, or a total below the on-screen "40/40" counter, trigger one targeted second pass at a higher frame rate. That pass can only add players. The response reports `coverage: { expected, found, missingPositions }`.
+  - Video scans are throttled per account (20 per 10 minutes, failing closed). The Gemini file and the staged object are deleted whatever happens.
+  - The image path is unchanged. Its model loop, task metadata and player normalisation are now shared functions.
+
 - **Node.js 24** (`package.json` engines `24.x`, `.nvmrc`, CI). Vercel discontinued Node 20 and refused to build: "Node.js Version \"20.x\" is discontinued". Without this, every new deployment fails, `main` included. The full gate passes under Node 24.14.1 after a clean `npm ci`: type-check, 2274 unit tests, build, 42 e2e.
 
 - **V3.33.0: the Discord sign-in redesign (phases 1–4 below).** The app version is bumped. `DISCORD_CHANGELOG.md` is rewritten for players and officers. Announce it only once the front end is live on Vercel. The back-end half (phase 1) has been live since 2026-10-02.
