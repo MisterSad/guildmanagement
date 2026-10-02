@@ -247,7 +247,7 @@ async function addVerifiedRole(message, fgfGuild) {
 // The interaction is forwarded rather than reimplemented here: those five
 // commands run the same validated, audited `_shared/player-actions.ts` paths the
 // Player Portal uses, and a second Node copy would drift from them.
-const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence"]);
+const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence", "invite"]);
 
 /** discord.js option tree -> Discord's raw option array, subcommands included. */
 function rawOptions(list) {
@@ -487,6 +487,17 @@ const ABSENCE_COMMAND = {
   ],
 };
 
+// Officers: post a "Join <TAG>" button for players. Authorization is NOT a
+// Discord permission -- the Edge Function checks the caller's linked app
+// account -- so the command is visible to everyone and refuses politely.
+const INVITE_COMMAND = {
+  name: "invite",
+  description: "Officers: post a button that lets players join your guild.",
+  options: [
+    { name: "guild", description: "Guild tag, if you manage more than one", type: 3, required: false, max_length: 12 },
+  ],
+};
+
 const RECONCILE_ROLES_COMMAND = {
   name: "reconcile-roles",
   description: "Officers: who holds the guild role without being on the roster.",
@@ -545,6 +556,7 @@ async function registerSlashCommands() {
       ["timezone", TIMEZONE_COMMAND],
       ["challenges", CHALLENGES_COMMAND],
       ["absence", ABSENCE_COMMAND],
+      ["invite", INVITE_COMMAND],
     ]);
 
     const body = [];

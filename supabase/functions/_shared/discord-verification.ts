@@ -338,6 +338,28 @@ export async function postAuditMessage(channelId: string, content: string): Prom
 }
 
 /**
+ * Posts a message (content, embeds, components) to a channel as the bot.
+ * Mentions are always disabled. Returns whether Discord accepted it.
+ */
+export async function postChannelMessage(
+  channelId: string,
+  message: { content?: string; embeds?: unknown[]; components?: unknown[] },
+): Promise<boolean> {
+  const token = Deno.env.get("DISCORD_BOT_TOKEN");
+  if (!token || !/^\d{17,20}$/.test(channelId || "")) return false;
+  try {
+    const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...message, allowed_mentions: { parse: [] } }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Sends a direct message from the bot to one Discord user.
  *
  * Best-effort, like `postAuditMessage`: a person who blocks DMs from server

@@ -74,7 +74,7 @@ describe('the worker does not write player stats at all any more', () => {
     // /glory in favour of /update-stats would have LOST that, so /update-stats
     // moved to the Edge Function's audited helpers instead.
     expect(workerSrc).toContain('"update-stats"');
-    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence"])');
+    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence", "invite"])');
     expect(workerSrc).not.toMatch(/\.rpc\("gm_upsert_player_metrics"/);
     expect(workerSrc).not.toMatch(/\.rpc\("gm_upsert_player_glory"/);
     expect(workerSrc).not.toContain('function handleUpdateStats');
@@ -209,7 +209,7 @@ describe('one transport, one registry, one implementation', () => {
   );
 
   it('routes the orphaned commands instead of reimplementing them', () => {
-    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence"])');
+    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence", "invite"])');
     expect(workerSrc).toContain('FORWARDED_COMMANDS.has(interaction.commandName)');
     expect(workerSrc).toContain('INTERACTIONS_FUNCTION_URL');
     // The validated write helpers stay on the Deno side, shared with the Portal.

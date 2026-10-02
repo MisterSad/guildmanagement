@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- **Discord bot, phase C: `/invite` for officers** (`discord-bot-interactions` deployed; the worker needs a Render redeploy to register the command).
+  - **What it posts.** An embed "Join [TAG] on FGF Guild Management" in the current channel. It has a **Join [TAG]** LINK button to the guild's `#join=` invite link and the four steps: Continue with Discord, pick "I'm a player — join my guild" (code already filled in), type the UID, wait for an officer.
+  - **Authority comes from the caller's linked app account, never from a Discord permission.** The command is forwarded to the Edge Function, which:
+    - keeps the caller's active non-member accounts;
+    - resolves the target guild (the `guild` option, or the officer's only guild);
+    - checks it with the shared `isGuildInScope()` against the guild's real server number;
+    - only then reads the join code.
+  - **Every refusal is polite and ephemeral:**
+    - "only a guild officer", with a Continue with Discord button;
+    - "not an officer of TAG";
+    - "no join code yet — open Accounts & Access";
+    - outside a server channel;
+    - when the bot cannot post in the channel.
+  - **New `postChannelMessage()`** in `_shared/discord-verification.ts` posts the message, with mentions disabled.
+
 - **Discord bot, phase B: the next step is a button** (`discord-bot-interactions` deployed; the Gateway worker needs a Render redeploy).
   - **Every "not linked" reply** carries a **Continue with Discord** LINK button (style 5) to the app instead of a URL at the end of a sentence. So do the "could not determine your guild" replies. This covers the worker's own commands and the forwarded ones, whose Edge replies now carry `components`. The worker relays a component row only when every button in it is an https link button, so a relayed row can never produce an interaction nobody handles.
   - **After a roster-confirmed screenshot verification, the DM offers the Player Portal.**
