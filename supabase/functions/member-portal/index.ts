@@ -146,10 +146,6 @@ export const UpdateTimezoneSchema = z.object({
   timezone: z.string().trim().max(64).optional()
 }).passthrough();
 
-export const ConfirmDiscordLinkSchema = z.object({
-  code: z.string().trim().min(1, "code is required").max(64)
-}).passthrough();
-
 export const ActionPayloadSchemas: Record<string, z.ZodType<any>> = {
   "submit-scores": SubmitScoresSchema,
   "update-power": UpdatePowerSchema,
@@ -160,7 +156,6 @@ export const ActionPayloadSchemas: Record<string, z.ZodType<any>> = {
   "set-absence": SetAbsenceSchema,
   "delete-absence": DeleteAbsenceSchema,
   "update-timezone": UpdateTimezoneSchema,
-  "confirm-discord-link": ConfirmDiscordLinkSchema,
 };
 
 function makeJson(req: Request) {
@@ -352,7 +347,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         return json({ ok: false, error: "player_not_found" }, 200);
       }
 
-      const [activeSessionsRes, gloryRowsRes, guildAverages] = await Promise.all([
+      const [activeSessionsRes, gloryRowsRes, guildAverages, discordLinkRes] = await Promise.all([
         admin
           .from("event_status")
           .select("event_name, session_id, start_at")
@@ -366,7 +361,12 @@ export async function handleRequest(req: Request): Promise<Response> {
           .eq("week_start", getWeekStartIso(new Date()))
           .eq("pseudo", member.pseudo)
           .limit(1),
-        getGuildAverages(admin, member.guild)
+        getGuildAverages(admin, member.guild),
+        // Only whether a link exists, for the My Info card: never the Discord id.
+        admin
+          .from("discord_account_links")
+          .select("account_id", { count: "exact", head: true })
+          .eq("account_id", identity.accountId),
       ]);
 
       if (activeSessionsRes.error) {
@@ -436,7 +436,8 @@ export async function handleRequest(req: Request): Promise<Response> {
         timezone: member.timezone ?? null,
         power_updated_at: member.power_updated_at ?? null,
         metrics_updated_at: member.metrics_updated_at ?? null,
-        guild_averages: guildAverages
+        guild_averages: guildAverages,
+        discord_linked: !discordLinkRes.error && (discordLinkRes.count ?? 0) > 0,
       });
     }
 
@@ -1041,44 +1042,11 @@ export async function handleRequest(req: Request): Promise<Response> {
       return json(res);
     }
 
-    if (action === "confirm-discord-link") {
-      // Never trust a self-typed Discord user id: the code was generated
-      // by the /link Discord command and shown only to that Discord user;
-      // confirming it here (from an already-authenticated web session) is
-      // what actually proves ownership, not the code by itself.
-      const code = (payload?.code ?? "").toString().trim().toUpperCase();
-      if (!code) return json({ ok: false, error: "missing_code" }, 400);
-
-      const { data: linkCode } = await admin
-        .from("discord_link_codes")
-        .select("code, discord_user_id, discord_username, expires_at")
-        .eq("code", code)
-        .maybeSingle();
-
-      if (!linkCode) return json({ ok: false, error: "invalid_code" }, 200);
-      if (new Date(linkCode.expires_at).getTime() < Date.now()) {
-        await admin.from("discord_link_codes").delete().eq("code", code);
-        return json({ ok: false, error: "code_expired" }, 200);
-      }
-
-      const { error: insertErr } = await admin
-        .from("discord_account_links")
-        .insert({ discord_user_id: linkCode.discord_user_id, account_id: identity.accountId });
-
-      if (insertErr) {
-        if (insertErr.code === "23505") {
-          // Either this Discord account or this FGF account is already linked.
-          return json({ ok: false, error: "already_linked" }, 200);
-        }
-        logger.error("Failed to write discord_account_links", insertErr, { accountId: identity.accountId });
-        return json({ ok: false, error: "server_error" }, 500);
-      }
-
-      await admin.from("discord_link_codes").delete().eq("code", code);
-
-      logger.info("Discord account linked", { accountId: identity.accountId, discordUserId: linkCode.discord_user_id });
-      return json({ ok: true, discord_username: linkCode.discord_username || null });
-    }
+    // `confirm-discord-link` was removed on 2026-10-03 with the bot's /link
+    // command. It wrote discord_account_links outside every guard the Discord
+    // sign-in relies on: the password survived, the claim then refused the
+    // account for good, and a Discord identity could attach a second account
+    // without an admin relink code. Signing in with Discord now does the link.
 
     return json({ ok: false, error: "unknown_action" }, 400);
   } catch (unhandledErr) {

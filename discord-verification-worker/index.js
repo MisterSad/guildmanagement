@@ -49,6 +49,11 @@ const INTERACTIONS_FUNCTION_URL =
   (process.env.INTERACTIONS_FUNCTION_URL || "").trim() ||
   (VERIFICATION_FUNCTION_URL || "").replace(/\/discord-profile-verification\/?$/, "/discord-bot-interactions");
 
+// Where the bot sends people to sign in. A constant with an override rather
+// than a new required Render variable: the production origin is the one
+// auth-discord's APP_DEFAULT_ORIGIN already names.
+const APP_URL = ((process.env.APP_URL || "").trim() || "https://guildmanagement.vercel.app").replace(/\/+$/, "");
+
 // Opt-in, because it is a privileged intent -- see the client's intents below.
 const MEMBERS_INTENT_ENABLED = (process.env.DISCORD_GUILD_MEMBERS_INTENT || "").trim() === "true";
 
@@ -433,7 +438,15 @@ const SETUP_SERVER_COMMAND = {
 // from Discord, because the merge step below folds unknown existing commands
 // back in so this worker never wipes one it does not own -- so they are named
 // here and excluded from that fold.
-const RETIRED_COMMANDS = new Set(["power", "glory"]);
+//
+// Retired 2026-10-03: /link. Its code was confirmed from a web session that only
+// the old password route can open, and it wrote discord_account_links outside
+// every guard the Discord sign-in relies on: the password survived (two ways in
+// at once), the claim then refused the account forever, and a Discord identity
+// could attach a SECOND account without the admin relink code that rule
+// requires. Signing in to the app with Discord links the account, and retires
+// the password, in one step.
+const RETIRED_COMMANDS = new Set(["power", "glory", "link"]);
 
 const TIMEZONE_COMMAND = {
   name: "timezone",
@@ -488,11 +501,6 @@ const VERIFICATIONS_COMMAND = {
   ],
 };
 
-const LINK_COMMAND = {
-  name: "link",
-  description: "Link your Discord account to your FGF Guild Management player account.",
-};
-
 const MYINFO_COMMAND = {
   name: "myinfo",
   description: "Show your linked player stats (power, glory, role, timezone).",
@@ -513,7 +521,6 @@ async function registerSlashCommands() {
     const existingByName = new Map(existing.map((c) => [c.name, c]));
 
     const desired = new Map([
-      ["link", LINK_COMMAND],
       ["myinfo", MYINFO_COMMAND],
       ["profile", PROFILE_COMMAND],
       ["absent", ABSENT_COMMAND],
@@ -546,7 +553,7 @@ async function registerSlashCommands() {
 
     const retiring = existing.filter((c) => RETIRED_COMMANDS.has(c.name));
     if (retiring.length > 0) {
-      console.log(`Retiring commands: ${retiring.map((c) => `/${c.name}`).join(", ")} -- superseded by /update-stats.`);
+      console.log(`Retiring commands: ${retiring.map((c) => `/${c.name}`).join(", ")}.`);
     }
 
     const unowned = existing.filter((c) => !desired.has(c.name));
@@ -694,51 +701,22 @@ async function getPlayerActiveAbsence(uid, guild) {
   }
 }
 
-function randomLinkCode() {
-  const alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-  const bytes = new Uint8Array(6);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
-}
+/** What every player command says to someone whose Discord account is not linked. */
+const NOT_LINKED_TEXT =
+  "Your Discord account isn't linked to a player account yet. Sign in to FGF Guild Management with " +
+  "**Continue with Discord** and it is linked automatically: " + APP_URL;
 
-async function handleLink(interaction) {
-  const discordUserId = interaction.user.id;
-  const discordUsername = interaction.user.username;
-  const code = randomLinkCode();
-
-  // Invalidate any previously pending code for this user
-  await supabase.from("discord_link_codes").delete().eq("discord_user_id", discordUserId);
-  const { error } = await supabase.from("discord_link_codes").insert({
-    code,
-    discord_user_id: discordUserId,
-    discord_username: discordUsername || null,
-  });
-
-  if (error) {
-    console.error("Failed to create discord_link_codes row:", error.message);
-    await interaction.reply({
-      content: "❌ Something went wrong generating your link code. Please try again.",
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const embed = {
-    color: 0x3b82f6,
-    title: "🔗 Link Your Discord Account",
-    description:
-      `Your link code is: **\`${code}\`**\n\n` +
-      `⏱️ *This code expires in 10 minutes.*\n\n` +
-      `**How to complete linking:**\n` +
-      `1. Open the FGF Guild Management web app.\n` +
-      `2. Go to **Player Portal** ➔ **My Info** ➔ **Link Discord**.\n` +
-      `3. Enter the code **\`${code}\`** and confirm to link your player profile!`,
-    footer: { text: "FGF Guild Management • Account Link" },
-    timestamp: new Date().toISOString(),
-  };
-
+/**
+ * Answers a /link still cached in someone's Discord client in the minutes
+ * before the global command list catches up. The command itself is retired
+ * (see RETIRED_COMMANDS).
+ */
+async function handleRetiredLink(interaction) {
   await interaction.reply({
-    embeds: [embed],
+    content:
+      "`/link` has been retired. Sign in to FGF Guild Management with **Continue with Discord** " +
+      "and your Discord account is linked automatically. Already have an identifier and password? " +
+      "Choose **I already have an account** after signing in with Discord.\n" + APP_URL,
     ephemeral: true,
   });
 }
@@ -747,7 +725,7 @@ async function handleMyInfo(interaction) {
   const linked = await resolveLinkedAccount(interaction.user.id);
   if (!linked) {
     await interaction.reply({
-      content: "Your Discord account isn't linked yet. Run `/link` first, then enter the code in the Player Portal (**My Info** ➔ **Link Discord**).",
+      content: NOT_LINKED_TEXT,
       ephemeral: true,
     });
     return;
@@ -814,7 +792,7 @@ async function handleProfile(interaction) {
     const linked = await resolveLinkedAccount(targetUser.id);
     if (!linked) {
       await interaction.reply({
-        content: `<@${targetUser.id}> has no linked FGF account yet. They must run \`/link\` and confirm it in the Player Portal first.`,
+        content: `<@${targetUser.id}> has no linked FGF account yet. Signing in to the app with Continue with Discord links it.`,
         ephemeral: true,
       });
       return;
@@ -917,7 +895,7 @@ async function handleAbsent(interaction) {
   const linked = await resolveLinkedAccount(interaction.user.id);
   if (!linked) {
     await interaction.reply({
-      content: "Your Discord account isn't linked yet. Run `/link`, then confirm the code in the Player Portal (My Info -> Link Discord).",
+      content: NOT_LINKED_TEXT,
       ephemeral: true,
     });
     return;
@@ -983,7 +961,7 @@ async function handleTop(interaction) {
 
   if (!fgfGuild) {
     await interaction.reply({
-      content: "Could not determine your guild. Run `/link` first or use this command in a designated guild channel.",
+      content: "Could not determine your guild. Use this command in your guild's channel, or sign in to the app with Continue with Discord so I know which guild is yours: " + APP_URL,
       ephemeral: true,
     });
     return;
@@ -1048,7 +1026,7 @@ async function handleAbsences(interaction) {
 
   if (!fgfGuild) {
     await interaction.reply({
-      content: "Could not determine your guild. Run `/link` first or use this command in a designated guild channel.",
+      content: "Could not determine your guild. Use this command in your guild's channel, or sign in to the app with Continue with Discord so I know which guild is yours: " + APP_URL,
       ephemeral: true,
     });
     return;
@@ -1268,7 +1246,7 @@ async function handleMyStats(interaction) {
   const linked = await resolveLinkedAccount(interaction.user.id);
   if (!linked) {
     await interaction.reply({
-      content: "Your Discord account isn't linked yet. Run `/link` first, then confirm the code in the Player Portal (My Info ➔ Link Discord).",
+      content: NOT_LINKED_TEXT,
       ephemeral: true,
     });
     return;
@@ -1361,7 +1339,7 @@ async function handleVerifications(interaction) {
   }
   if (!fgfGuild) {
     await interaction.reply({
-      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or link your account with `/link`.",
+      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or sign in to the app with Continue with Discord so I know which guild is yours: " + APP_URL,
       ephemeral: true,
     });
     return;
@@ -1466,7 +1444,7 @@ async function handleReconcileRoles(interaction) {
   }
   if (!fgfGuild) {
     await interaction.reply({
-      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or link your account with `/link`.",
+      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or sign in to the app with Continue with Discord so I know which guild is yours: " + APP_URL,
       ephemeral: true,
     });
     return;
@@ -2214,7 +2192,7 @@ client.on("interactionCreate", async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
     if (interaction.commandName === "link") {
-      await handleLink(interaction);
+      await handleRetiredLink(interaction);
     } else if (interaction.commandName === "myinfo") {
       await handleMyInfo(interaction);
     } else if (interaction.commandName === "profile") {
