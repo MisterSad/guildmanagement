@@ -64,11 +64,16 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-function ephemeral(content: string, embeds?: unknown[]) {
+function ephemeral(content: string, embeds?: unknown[], components?: unknown[]) {
   return discordJson({
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: { content, embeds, flags: EPHEMERAL_FLAG },
+    data: { content, embeds, components, flags: EPHEMERAL_FLAG },
   });
+}
+
+/** One LINK button (style 5) to the app; the worker relays link buttons only. */
+function appLinkRow(label: string): unknown[] {
+  return [{ type: 1, components: [{ type: 2, style: 5, label, url: APP_URL }] }];
 }
 
 // Signing in to the app with Discord is what links an account now (/link is
@@ -76,7 +81,7 @@ function ephemeral(content: string, embeds?: unknown[]) {
 const APP_URL = (Deno.env.get("APP_DEFAULT_ORIGIN") ?? "https://guildmanagement.vercel.app").replace(/\/+$/, "");
 const NOT_LINKED_MSG =
   "Your Discord account isn't linked to a player account yet. Sign in to FGF Guild Management with " +
-  "**Continue with Discord** and it is linked automatically: " + APP_URL;
+  "**Continue with Discord** and it is linked automatically.";
 const NO_UID_MSG = "Your linked account doesn't have an in-game UID on file. Contact your guild admin.";
 
 /**
@@ -90,12 +95,14 @@ const NO_UID_MSG = "Your linked account doesn't have an in-game UID on file. Con
 async function resolveLinkedAccount(
   admin: ReturnType<typeof createClient>,
   discordUserId: string
-): Promise<{ ok: true; uid: string; guild: string } | { ok: false; message: string }> {
+): Promise<{ ok: true; uid: string; guild: string } | { ok: false; message: string; components?: unknown[] }> {
   const { data: links } = await admin
     .from("discord_account_links")
     .select("account_id")
     .eq("discord_user_id", discordUserId);
-  if (!links || links.length === 0) return { ok: false, message: NOT_LINKED_MSG };
+  if (!links || links.length === 0) {
+    return { ok: false, message: NOT_LINKED_MSG, components: appLinkRow("Continue with Discord") };
+  }
 
   const { data: accounts } = await admin
     .from("accounts")
@@ -209,7 +216,7 @@ Deno.serve(async (req: Request) => {
   // clamped nothing and wrote no audit row.
   if (commandName === "update-stats") {
     const resolved = await resolveLinkedAccount(admin, discordUserId);
-    if (!resolved.ok) return ephemeral(resolved.message);
+    if (!resolved.ok) return ephemeral(resolved.message, undefined, resolved.components);
 
     const powerInput = getOptionValue(interaction.data?.options, "power");
     const gloryInput = getOptionValue(interaction.data?.options, "glory");
@@ -253,7 +260,7 @@ Deno.serve(async (req: Request) => {
 
   if (commandName === "timezone") {
     const resolved = await resolveLinkedAccount(admin, discordUserId);
-    if (!resolved.ok) return ephemeral(resolved.message);
+    if (!resolved.ok) return ephemeral(resolved.message, undefined, resolved.components);
 
     const offset = Number(getOptionValue(interaction.data?.options, "offset"));
     const res = await updatePlayerTimezone(admin, resolved.uid, resolved.guild, offset);
@@ -264,7 +271,7 @@ Deno.serve(async (req: Request) => {
 
   if (commandName === "challenges") {
     const resolved = await resolveLinkedAccount(admin, discordUserId);
-    if (!resolved.ok) return ephemeral(resolved.message);
+    if (!resolved.ok) return ephemeral(resolved.message, undefined, resolved.components);
 
     const res = await getPlayerChallenges(admin, resolved.uid, resolved.guild);
     if (!res.ok) return ephemeral("Couldn't load your weekly challenges. Please try again later.");
@@ -284,7 +291,7 @@ Deno.serve(async (req: Request) => {
 
   if (commandName === "absence") {
     const resolved = await resolveLinkedAccount(admin, discordUserId);
-    if (!resolved.ok) return ephemeral(resolved.message);
+    if (!resolved.ok) return ephemeral(resolved.message, undefined, resolved.components);
 
     const sub = interaction.data?.options?.[0];
     const subName: string = sub?.name || "";

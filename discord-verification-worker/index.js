@@ -312,6 +312,14 @@ async function forwardInteraction(interaction) {
   const data = payload.data || {};
   const content = typeof data.content === "string" && data.content.trim() ? data.content : null;
   const embeds = Array.isArray(data.embeds) ? data.embeds : [];
+  // Link buttons only (style 5): the Edge Function is trusted (worker secret),
+  // but a relayed row must never carry a button whose click would come back to
+  // this worker as an interaction nobody handles.
+  const components = Array.isArray(data.components)
+    ? data.components.filter((row) =>
+      row && row.type === 1 && Array.isArray(row.components) &&
+      row.components.every((c) => c && c.type === 2 && c.style === 5 && /^https:\/\//.test(String(c.url || ""))))
+    : [];
 
   if (!content && embeds.length === 0) {
     await interaction.editReply({ content: "Done." });
@@ -320,6 +328,7 @@ async function forwardInteraction(interaction) {
   await interaction.editReply({
     ...(content ? { content } : {}),
     ...(embeds.length ? { embeds } : {}),
+    ...(components.length ? { components } : {}),
     allowedMentions: { parse: [] },
   });
 }
@@ -701,10 +710,24 @@ async function getPlayerActiveAbsence(uid, guild) {
   }
 }
 
+/**
+ * A row with one LINK button to the app (style 5: Discord opens the URL itself,
+ * no interaction comes back to the bot). A button reads as the next step; a
+ * bare URL at the end of a sentence was easy to miss.
+ */
+function appLinkRow(label = "Open FGF Guild Management", url = APP_URL) {
+  return [{ type: 1, components: [{ type: 2, style: 5, label, url }] }];
+}
+
 /** What every player command says to someone whose Discord account is not linked. */
 const NOT_LINKED_TEXT =
   "Your Discord account isn't linked to a player account yet. Sign in to FGF Guild Management with " +
-  "**Continue with Discord** and it is linked automatically: " + APP_URL;
+  "**Continue with Discord** and it is linked automatically.";
+
+/** The ephemeral "not linked" reply, with its button. */
+function notLinkedReply() {
+  return { content: NOT_LINKED_TEXT, components: appLinkRow("Continue with Discord"), ephemeral: true };
+}
 
 /**
  * Answers a /link still cached in someone's Discord client in the minutes
@@ -716,7 +739,8 @@ async function handleRetiredLink(interaction) {
     content:
       "`/link` has been retired. Sign in to FGF Guild Management with **Continue with Discord** " +
       "and your Discord account is linked automatically. Already have an identifier and password? " +
-      "Choose **I already have an account** after signing in with Discord.\n" + APP_URL,
+      "Choose **I already have an account** after signing in with Discord.",
+    components: appLinkRow("Continue with Discord"),
     ephemeral: true,
   });
 }
@@ -724,10 +748,7 @@ async function handleRetiredLink(interaction) {
 async function handleMyInfo(interaction) {
   const linked = await resolveLinkedAccount(interaction.user.id);
   if (!linked) {
-    await interaction.reply({
-      content: NOT_LINKED_TEXT,
-      ephemeral: true,
-    });
+    await interaction.reply(notLinkedReply());
     return;
   }
   if (await askWhichAccount(interaction, linked)) return;
@@ -894,10 +915,7 @@ async function handleAbsent(interaction) {
 
   const linked = await resolveLinkedAccount(interaction.user.id);
   if (!linked) {
-    await interaction.reply({
-      content: NOT_LINKED_TEXT,
-      ephemeral: true,
-    });
+    await interaction.reply(notLinkedReply());
     return;
   }
   if (await askWhichAccount(interaction, linked)) return;
@@ -961,7 +979,8 @@ async function handleTop(interaction) {
 
   if (!fgfGuild) {
     await interaction.reply({
-      content: "Could not determine your guild. Use this command in your guild's channel, or sign in to the app with Continue with Discord so I know which guild is yours: " + APP_URL,
+      content: "Could not determine your guild. Use this command in your guild's channel, or sign in to the app with **Continue with Discord** so I know which guild is yours.",
+      components: appLinkRow("Continue with Discord"),
       ephemeral: true,
     });
     return;
@@ -1026,7 +1045,8 @@ async function handleAbsences(interaction) {
 
   if (!fgfGuild) {
     await interaction.reply({
-      content: "Could not determine your guild. Use this command in your guild's channel, or sign in to the app with Continue with Discord so I know which guild is yours: " + APP_URL,
+      content: "Could not determine your guild. Use this command in your guild's channel, or sign in to the app with **Continue with Discord** so I know which guild is yours.",
+      components: appLinkRow("Continue with Discord"),
       ephemeral: true,
     });
     return;
@@ -1245,10 +1265,7 @@ async function handleCtaButton(interaction) {
 async function handleMyStats(interaction) {
   const linked = await resolveLinkedAccount(interaction.user.id);
   if (!linked) {
-    await interaction.reply({
-      content: NOT_LINKED_TEXT,
-      ephemeral: true,
-    });
+    await interaction.reply(notLinkedReply());
     return;
   }
   if (await askWhichAccount(interaction, linked)) return;
@@ -1339,7 +1356,8 @@ async function handleVerifications(interaction) {
   }
   if (!fgfGuild) {
     await interaction.reply({
-      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or sign in to the app with Continue with Discord so I know which guild is yours: " + APP_URL,
+      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or sign in to the app with **Continue with Discord** so I know which guild is yours.",
+      components: appLinkRow("Continue with Discord"),
       ephemeral: true,
     });
     return;
@@ -1444,7 +1462,8 @@ async function handleReconcileRoles(interaction) {
   }
   if (!fgfGuild) {
     await interaction.reply({
-      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or sign in to the app with Continue with Discord so I know which guild is yours: " + APP_URL,
+      content: "Could not determine which guild you mean. Run this in a channel configured for verification, or sign in to the app with **Continue with Discord** so I know which guild is yours.",
+      components: appLinkRow("Continue with Discord"),
       ephemeral: true,
     });
     return;
@@ -1735,11 +1754,11 @@ async function handleSetupServer(interaction) {
   const actionRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`setup_confirm_${setupId}`)
-      .setLabel("🚀 Confirmer et Déployer")
+      .setLabel("🚀 Confirm and deploy")
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId(`setup_cancel_${setupId}`)
-      .setLabel("❌ Annuler")
+      .setLabel("❌ Cancel")
       .setStyle(ButtonStyle.Danger)
   );
 
@@ -1885,6 +1904,44 @@ async function handleSetupButton(interaction) {
   });
 }
 
+/**
+ * The next step offered to a player the roster just confirmed. Already linked:
+ * open the Portal. Not linked yet: the guild's invite link, so the join code is
+ * filled in and only the UID (shown right here) is left to type. Handing the
+ * join code to a roster-confirmed member reveals nothing: joining still needs
+ * an officer's approval, and the code is what officers share anyway.
+ */
+async function portalInvitation(discordUserId, fgfGuild, uid) {
+  try {
+    const { count } = await supabase
+      .from("discord_account_links")
+      .select("account_id", { count: "exact", head: true })
+      .eq("discord_user_id", discordUserId);
+    if ((count ?? 0) > 0) {
+      return {
+        label: "Open your Player Portal",
+        url: APP_URL,
+        text: "Sign in with **Continue with Discord** to see your events, scores and stats.",
+      };
+    }
+    const { data } = await supabase.rpc("gm_get_join_code", { p_guild: fgfGuild });
+    const code = data && typeof data.code === "string" ? data.code.trim() : "";
+    const url = code ? `${APP_URL}/#join=${encodeURIComponent(code)}` : APP_URL;
+    return {
+      label: "Get your Player Portal",
+      url,
+      text:
+        "Press the button, **Continue with Discord**, then choose **I'm a player — join my guild**." +
+        (code ? " Your guild's join code is already filled in" : "") +
+        (uid ? `; your UID is \`${uid}\`.` : ".") +
+        " An officer approves you, and I'll DM you when it's done.",
+    };
+  } catch (e) {
+    console.log(`Could not build the Portal invitation for ${discordUserId}: ${e.message}`);
+    return null;
+  }
+}
+
 async function sendVerificationDm(author, result, fgfGuild) {
   try {
     const isGuildMember = result.role === "guild_member";
@@ -1918,7 +1975,11 @@ async function sendVerificationDm(author, result, fgfGuild) {
       footer: { text: "FGF Guild Management • Use /profile or /top anytime" },
       timestamp: new Date().toISOString(),
     };
-    await author.send({ embeds: [embed] });
+    const portal = isGuildMember ? await portalInvitation(author.id, fgfGuild, result.uid) : null;
+    if (portal) {
+      embed.fields.push({ name: "Your Player Portal", value: portal.text, inline: false });
+    }
+    await author.send({ embeds: [embed], ...(portal ? { components: appLinkRow(portal.label, portal.url) } : {}) });
     return true;
   } catch (e) {
     console.log(`Could not send verification DM to ${author.id}: ${e.message}`);
