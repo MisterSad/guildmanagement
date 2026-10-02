@@ -136,7 +136,7 @@ describe('a relink code alone is not enough', () => {
     const fn = discordFn.slice(discordFn.indexOf('async function handleRedeem'));
     expect(fn).toContain('state: "unlinked"');
     expect(fn).toContain('ticket: continuation');
-    expect(fn).toContain('issueTicket(admin, discordUserId');
+    expect(fn).toContain('issueTicket(admin, identity, logger)');
   });
 
   it('is single-use and expiring, enforced in SQL', () => {

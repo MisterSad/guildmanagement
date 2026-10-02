@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- **Discord sign-in, phase 1 of 4: a mistake no longer costs a Discord round trip, and a join request is announced** (migration `20261002120000`, `auth-discord` and `admin-accounts` deployed).
+  - **Recoverable errors hand back a fresh continuation ticket.** This covers a wrong join code, a UID not on the roster, a taken tag, a wrong password and an invalid invite or relink code. Previously every one of them spent the ticket, and the corrected retry failed with `ticket_invalid`. The response carries `ticket` and `attempts_left`.
+  - **The chain is bounded in SQL.** `discord_auth_tickets.attempts` has `CHECK (attempts BETWEEN 0 AND 5)`, so one Discord authorization buys at most six attempts. Errors a retry cannot fix spend the chain: identity already linked, account too young, daily cap, locked account, server fault, rate limit.
+  - **The claim's per-Discord-account throttle now fails closed.** It failed open because every attempt used to cost a round trip, and that is no longer true.
+  - `unlinked` without a continuation ticket is now a `server_error`, aligned with `choose`. `unlinked` and `choose` carry Discord's `global_name` as `display_name`. It is stored on the ticket only, for its 2–15 minute lifetime.
+  - **A Discord join request is posted to the guild's audit channel**, and **the player gets a Discord DM when an admin approves or rejects it** (`sendDirectMessage`, best-effort, mentions disabled, recipient read from `discord_account_links`).
+  - Verified on production with a synthetic Discord identity and a deliberately wrong join code:
+    - from `attempts=4`, the error came back with a new ticket and `attempts_left: 1`;
+    - at the cap, it came back with no ticket;
+    - the replayed old ticket returned `ticket_invalid`;
+    - no account or link was created.
+  - Grants checked in SQL: the consume RPC is executable by `service_role` only.
+
 - **New functions are no longer executable by `anon` by default** (migration `20260930170000`). PostgreSQL grants EXECUTE to PUBLIC on every new function, and Supabase adds `anon`, so each migration had to revoke both by hand. Forgetting it once on a SECURITY DEFINER function would have published it to anyone holding the publishable key. The global PUBLIC default is revoked for `postgres` (it cannot be revoked per schema), and so is `anon`'s schema default. `authenticated` and `service_role` keep theirs. Of 108 functions, `anon` can now execute exactly one: `gm_report_client_error`, which is anonymous on purpose (ADR-011). `gm_event_scoring_key`, a helper reached only through PUBLIC, got explicit grants. Verified in a rollback by creating a function and reading its ACL.
 
 - **Least-privilege table grants** (migration `20260930160000`; AGENTS.md rule 2, finding C0). Supabase's default grants had never been removed.

@@ -6,7 +6,7 @@ import { canManageAccount, maxAssignableRole, isGuildInScope, normalizeRole, Rol
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { escapeLike } from "../_shared/like.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
-import { resolveAuditChannelId, postAuditMessage } from "../_shared/discord-verification.ts";
+import { resolveAuditChannelId, postAuditMessage, sendDirectMessage } from "../_shared/discord-verification.ts";
 import { randomBackupCode, sha256Hex, issueBackupCodes, BACKUP_CODE_COUNT } from "../_shared/backup-codes.ts";
 import { isSessionRevoked } from "../_shared/session-epoch.ts";
 
@@ -173,6 +173,45 @@ async function emailFor(id: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id));
   const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
   return `gm_${hex}@no-reply.guildmgmt.app`;
+}
+
+/** The Discord identity linked to an account, or null. Never taken from a request. */
+async function linkedDiscordUserId(admin: any, accountId: string): Promise<string | null> {
+  const { data } = await admin
+    .from("discord_account_links")
+    .select("discord_user_id")
+    .eq("account_id", accountId)
+    .maybeSingle();
+  return (data?.discord_user_id as string | undefined) ?? null;
+}
+
+/**
+ * DMs a player the outcome of their join request, so they are not left
+ * refreshing a login page. Best-effort: the approval or rejection has already
+ * committed, and a player who blocks DMs simply is not told.
+ */
+async function notifyRegistrationOutcome(
+  admin: any,
+  logger: EdgeLogger,
+  accountId: string,
+  guild: string | null,
+  outcome: "approved" | "rejected",
+  knownDiscordId?: string | null,
+): Promise<void> {
+  try {
+    const discordId = knownDiscordId ?? await linkedDiscordUserId(admin, accountId);
+    if (!discordId) return; // A password-era registration: nobody to message.
+    const appUrl = Deno.env.get("APP_DEFAULT_ORIGIN") ?? "";
+    const where = guild ? `**${guild}**` : "your guild";
+    const content = outcome === "approved"
+      ? `✅ Your request to join ${where} was approved. Sign in with Discord to open your Player Portal` +
+        (appUrl ? `: ${appUrl}` : ".")
+      : `Your request to join ${where} was not approved. If you think this is a mistake, ask an officer of your guild.`;
+    const sent = await sendDirectMessage(discordId, content);
+    logger.info("Registration outcome DM", { accountId, outcome, delivered: sent });
+  } catch (err) {
+    logger.warn("Registration outcome DM threw", { accountId, err: String(err) });
+  }
 }
 
 function randomSecret(): string {
@@ -906,6 +945,7 @@ Deno.serve(async (req: Request) => {
     }
 
     logger.info("Player registration approved", { id, guild: targetAcc.guild });
+    await notifyRegistrationOutcome(admin, logger, id, targetAcc.guild, "approved");
     return json({ ok: true });
   }
 
@@ -929,6 +969,10 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: "forbidden" }, 403);
     }
 
+    // Read BEFORE the rejection: whatever it does to the account, the link that
+    // says who to tell must still be there when we look it up.
+    const rejectedDiscordId = await linkedDiscordUserId(admin, id);
+
     const { data, error } = await admin.rpc("gm_reject_player_account", { p_id: id });
     if (error) {
       logger.error("Failed gm_reject_player_account", error, { id });
@@ -940,6 +984,7 @@ Deno.serve(async (req: Request) => {
     await bumpSessionVersion(admin, id, targetAcc.role || "member", null);
 
     logger.info("Player registration rejected", { id, guild: targetAcc.guild });
+    await notifyRegistrationOutcome(admin, logger, id, targetAcc.guild, "rejected", rejectedDiscordId);
     return json(data);
   }
 

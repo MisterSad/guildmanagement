@@ -270,23 +270,29 @@ export type Database = {
       }
       discord_auth_tickets: {
         Row: {
+          attempts: number
           created_at: string
           discord_user_id: string
           discord_username: string | null
+          display_name: string | null
           expires_at: string
           ticket: string
         }
         Insert: {
+          attempts?: number
           created_at?: string
           discord_user_id: string
           discord_username?: string | null
+          display_name?: string | null
           expires_at: string
           ticket: string
         }
         Update: {
+          attempts?: number
           created_at?: string
           discord_user_id?: string
           discord_username?: string | null
+          display_name?: string | null
           expires_at?: string
           ticket?: string
         }
@@ -1766,8 +1772,10 @@ export type Database = {
       gm_consume_discord_auth_ticket: {
         Args: { p_ticket: string }
         Returns: {
+          attempts: number
           discord_user_id: string
           discord_username: string
+          display_name: string
         }[]
       }
       gm_consume_discord_oauth_state: {
