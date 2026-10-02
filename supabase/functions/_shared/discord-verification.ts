@@ -337,6 +337,43 @@ export async function postAuditMessage(channelId: string, content: string): Prom
   }
 }
 
+/**
+ * Sends a direct message from the bot to one Discord user.
+ *
+ * Best-effort, like `postAuditMessage`: a person who blocks DMs from server
+ * members, or who shares no server with the bot, makes Discord refuse the
+ * channel or the message, and that must never fail the action being notified.
+ * Returns whether Discord accepted it, for the caller's log line only.
+ *
+ * The recipient id must come from `discord_account_links`, never from a
+ * request body: this is the bot speaking, and it only speaks to the person the
+ * database says the account belongs to.
+ */
+export async function sendDirectMessage(discordUserId: string, content: string): Promise<boolean> {
+  const token = Deno.env.get("DISCORD_BOT_TOKEN");
+  if (!token || !/^\d{17,20}$/.test(discordUserId || "")) return false;
+  const headers = { Authorization: `Bot ${token}`, "Content-Type": "application/json" };
+  try {
+    const ch = await fetch("https://discord.com/api/v10/users/@me/channels", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ recipient_id: discordUserId }),
+    });
+    if (!ch.ok) return false;
+    const channel = await ch.json();
+    const channelId = String(channel?.id ?? "");
+    if (!channelId) return false;
+    const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface ExtractedProfile {
   pseudo: string;
   uid: string;

@@ -90,7 +90,7 @@ describe('the Edge Function resolves several links without erroring', () => {
   it('answers `choose` with a continuation ticket when there is more than one', () => {
     expect(fn).toMatch(/state: "choose"/);
     expect(fn).toMatch(/accounts: choices\.map/);
-    expect(fn).toMatch(/issueTicket\(admin, discordUserId/);
+    expect(fn).toMatch(/issueTicket\(admin, identity, logger\)/);
   });
 
   it('offers only ACTIVE accounts, and signs straight in when only one is', () => {
@@ -181,7 +181,7 @@ describe('the client asks instead of guessing', () => {
     // owner mid-decision.
     const fnSrc = read('supabase/functions/auth-discord/index.ts');
     expect(fnSrc).toMatch(/const CONTINUATION_TTL_MS = 15 \* 60_000;/);
-    expect(fnSrc).toMatch(/issueTicket\(admin, discordUserId, discordUsername, logger, TICKET_TTL_MS\)/);
+    expect(fnSrc).toMatch(/issueTicket\(\s*admin, \{ discordUserId, discordUsername, displayName, attempts: 0 \}, logger, TICKET_TTL_MS,?\s*\)/);
   });
 
   it('escapes every value it renders', () => {

@@ -1,7 +1,7 @@
 /**
  * supabase/functions/auth-discord/index.ts
  *
- * Discord sign-in (Phase D2). Three routes:
+ * Discord sign-in. Three routes:
  *
  *   GET  /auth-discord/start?origin=<app origin>
  *        Validates the origin, mints a state + PKCE pair, 302s to Discord.
@@ -11,8 +11,13 @@
  *        identity, revokes the token, issues a one-time ticket and 302s back to
  *        the origin the flow started from.
  *
- *   POST /auth-discord            { action: "redeem", ticket }
- *        Spends the ticket and mints the real GoTrue session.
+ *   POST /auth-discord            { action, ticket, ... }
+ *        `redeem` spends the callback ticket: a session, an account chooser
+ *        (`choose`), or `unlinked` with a continuation ticket. `claim`,
+ *        `onboard` and `redeem-code` spend a continuation; on a recoverable
+ *        mistake they hand back a fresh one, at most MAX_TICKET_ATTEMPTS times
+ *        per Discord authorization. `backup-login` is the super_admin's
+ *        ticketless recovery.
  *
  * WHY THE REDIRECT URI POINTS HERE AND NOT AT THE APP
  * Discord requires an exact redirect match, and the app is reachable from the
@@ -40,6 +45,7 @@ import { getCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { escapeLike } from "../_shared/like.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { establishShadowSession } from "../_shared/shadow-session.ts";
+import { postAuditMessage, resolveAuditChannelId } from "../_shared/discord-verification.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
 import {
   BACKUP_CODE_LENGTH,
@@ -79,6 +85,32 @@ const TICKET_TTL_MS = 2 * 60_000;
 // reads two options, or types a password into the claim form. Both expired
 // under the owner mid-decision.
 const CONTINUATION_TTL_MS = 15 * 60_000;
+
+/**
+ * How many times a continuation may be re-issued after a recoverable mistake.
+ * Mirrors the CHECK on `discord_auth_tickets.attempts` (migration
+ * 20261002120000), which is the real bound: one Discord authorization is worth
+ * at most MAX_TICKET_ATTEMPTS + 1 attempts.
+ */
+const MAX_TICKET_ATTEMPTS = 5;
+
+/**
+ * Errors the person can fix by editing a field and trying again. Everything
+ * else -- an identity already linked, an account too young, a daily cap, a
+ * locked account, a server fault, a rate limit -- is not fixed by retyping,
+ * so it spends the chain and the client offers a fresh Discord sign-in.
+ */
+const RECOVERABLE_ERRORS = new Set([
+  "invalid_code",
+  "code_invalid",
+  "invalid_uid",
+  "uid_not_in_guild",
+  "uid_already_claimed",
+  "invalid_guild_tag",
+  "invalid_server_number",
+  "tag_taken",
+  "invalid_credentials",
+]);
 
 /** Shared with auth-login and auth-passkey — login_throttle is keyed purely by IP. */
 const IP_LIMIT = { limit: 60, windowMs: 300_000 };
@@ -197,19 +229,28 @@ function resolveOrigin(raw: string | null): string {
   return DEFAULT_ORIGIN;
 }
 
+/** The Discord identity a ticket attests, carried from one ticket to the next. */
+interface TicketIdentity {
+  discordUserId: string;
+  discordUsername: string | null;
+  displayName: string | null;
+  attempts: number;
+}
+
 /** Mints a single-use ticket for a Discord identity. Returns null on failure. */
 async function issueTicket(
   admin: any,
-  discordUserId: string,
-  discordUsername: string | null,
+  identity: TicketIdentity,
   logger: EdgeLogger,
   ttlMs: number = CONTINUATION_TTL_MS
 ): Promise<string | null> {
   const ticket = randomToken(32);
   const { error } = await admin.from("discord_auth_tickets").insert({
     ticket,
-    discord_user_id: discordUserId,
-    discord_username: discordUsername,
+    discord_user_id: identity.discordUserId,
+    discord_username: identity.discordUsername,
+    display_name: identity.displayName,
+    attempts: identity.attempts,
     expires_at: new Date(Date.now() + ttlMs).toISOString(),
   });
   if (error) {
@@ -317,6 +358,7 @@ async function handleCallback(req: Request, url: URL, admin: any, logger: EdgeLo
   //    Discord token at rest: everything we need is the user id.
   let discordUserId = "";
   let discordUsername: string | null = null;
+  let displayName: string | null = null;
   try {
     const res = await fetch(DISCORD_ME_URL, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) {
@@ -326,6 +368,9 @@ async function handleCallback(req: Request, url: URL, admin: any, logger: EdgeLo
     const me = await res.json();
     discordUserId = String(me?.id ?? "");
     discordUsername = me?.username ? String(me.username) : null;
+    // `global_name` is the name friends see; null when the person never set
+    // one. Display only, capped to the column's CHECK.
+    displayName = me?.global_name ? String(me.global_name).slice(0, 64) : null;
     if (!/^\d{17,20}$/.test(discordUserId)) {
       return redirect(buildErrorReturnUrl(origin, "identity_failed"));
     }
@@ -357,7 +402,9 @@ async function handleCallback(req: Request, url: URL, admin: any, logger: EdgeLo
   // The SHORT lifetime: this one travels in the callback URL and is spent by
   // the SPA within a second of landing. Continuations, which wait on a person,
   // get CONTINUATION_TTL_MS instead.
-  const ticket = await issueTicket(admin, discordUserId, discordUsername, logger, TICKET_TTL_MS);
+  const ticket = await issueTicket(
+    admin, { discordUserId, discordUsername, displayName, attempts: 0 }, logger, TICKET_TTL_MS,
+  );
   if (!ticket) return redirect(buildErrorReturnUrl(origin, "server_error"));
 
   logger.info("Discord authorization completed", { discordUserId });
@@ -369,7 +416,7 @@ async function consumeTicket(
   admin: any,
   ticket: string,
   logger: EdgeLogger
-): Promise<{ ok: true; discordUserId: string; discordUsername: string | null } | { ok: false; error: string; status: number }> {
+): Promise<({ ok: true } & TicketIdentity) | { ok: false; error: string; status: number }> {
   const { data: rows, error } = await admin.rpc("gm_consume_discord_auth_ticket", { p_ticket: ticket });
   if (error) {
     logger.error("Failed to consume auth ticket", error);
@@ -377,7 +424,37 @@ async function consumeTicket(
   }
   const row = Array.isArray(rows) ? rows[0] : rows;
   if (!row) return { ok: false, error: "ticket_invalid", status: 200 };
-  return { ok: true, discordUserId: row.discord_user_id as string, discordUsername: row.discord_username ?? null };
+  return {
+    ok: true,
+    discordUserId: row.discord_user_id as string,
+    discordUsername: row.discord_username ?? null,
+    displayName: row.display_name ?? null,
+    attempts: Number(row.attempts ?? 0),
+  };
+}
+
+/**
+ * Answers a failed continuation action. On a recoverable mistake, and while
+ * the chain has attempts left, it hands back a fresh continuation ticket for
+ * the same identity so the person can correct the field without another
+ * Discord round trip. `attempts_left` counts the tries the new ticket allows,
+ * including itself.
+ */
+async function failContinuation(
+  json: (body: unknown, status?: number) => Response,
+  admin: any,
+  logger: EdgeLogger,
+  consumed: TicketIdentity,
+  error: string,
+  status = 200,
+): Promise<Response> {
+  if (RECOVERABLE_ERRORS.has(error) && consumed.attempts < MAX_TICKET_ATTEMPTS) {
+    const ticket = await issueTicket(admin, { ...consumed, attempts: consumed.attempts + 1 }, logger);
+    if (ticket) {
+      return json({ ok: false, error, ticket, attempts_left: MAX_TICKET_ATTEMPTS - consumed.attempts }, status);
+    }
+  }
+  return json({ ok: false, error }, status);
 }
 
 /** Shared IP budget check for every POST action. */
@@ -493,8 +570,9 @@ async function handleRedeem(req: Request, body: unknown, admin: any, logger: Edg
 
   const consumed = await consumeTicket(admin, parsed.data.ticket, logger);
   if (!consumed.ok) return json({ ok: false, error: consumed.error }, consumed.status);
-  const row = { discord_username: consumed.discordUsername };
   const discordUserId = consumed.discordUserId;
+  // A fresh authorization: the retry budget starts over.
+  const identity: TicketIdentity = { ...consumed, attempts: 0 };
 
   // Several links are legitimate since 2026-09-27: one person who is both an
   // administrator and a player holds both accounts. `.maybeSingle()` would
@@ -532,7 +610,7 @@ async function handleRedeem(req: Request, body: unknown, admin: any, logger: Edg
     const choices = (accs ?? []).filter((a: any) => a.status === "active");
 
     if (choices.length > 1) {
-      const continuation = await issueTicket(admin, discordUserId, row.discord_username ?? null, logger);
+      const continuation = await issueTicket(admin, identity, logger);
       // issueTicket returns null when the insert fails. Answering `choose` with
       // no ticket would hand the client a state it cannot act on: it would fall
       // through to the generic success path and try to build a session out of a
@@ -546,7 +624,8 @@ async function handleRedeem(req: Request, body: unknown, admin: any, logger: Edg
         ok: true,
         state: "choose",
         ticket: continuation,
-        discord_username: row.discord_username ?? null,
+        discord_username: consumed.discordUsername,
+        display_name: consumed.displayName,
         accounts: choices.map((a: any) => ({ id: a.id, role: a.role, guild: a.guild ?? null })),
       });
     }
@@ -562,12 +641,19 @@ async function handleRedeem(req: Request, body: unknown, admin: any, logger: Edg
 
   if (!link || !link.account_id) {
     logger.info("Discord account is not linked to any account", { discordUserId });
-    const continuation = await issueTicket(admin, discordUserId, row.discord_username ?? null, logger);
+    const continuation = await issueTicket(admin, identity, logger);
+    // Same rule as the chooser: `unlinked` without a ticket is a state the
+    // client cannot act on, so it is reported as the server fault it is.
+    if (!continuation) {
+      logger.error("Could not issue a continuation ticket for an unlinked identity", null, { discordUserId });
+      return json({ ok: false, error: "server_error" }, 500);
+    }
     return json({
       ok: true,
       state: "unlinked",
       ticket: continuation,
-      discord_username: row.discord_username ?? null,
+      discord_username: consumed.discordUsername,
+      display_name: consumed.displayName,
     });
   }
 
@@ -615,7 +701,7 @@ async function handleRedeemCode(req: Request, body: unknown, admin: any, logger:
     logger.error("Failed to classify link code", lookupErr);
     return json({ ok: false, error: "server_error" }, 500);
   }
-  if (!codeRow) return json({ ok: false, error: "code_invalid" }, 200);
+  if (!codeRow) return failContinuation(json, admin, logger, consumed, "code_invalid");
 
   let row: any;
   if (codeRow.kind === "admin_invite") {
@@ -645,7 +731,7 @@ async function handleRedeemCode(req: Request, body: unknown, admin: any, logger:
     logger.warn("Link code rejected", { kind: codeRow.kind, reason: row?.err ?? "unknown" });
     // `discord_already_linked` is surfaced verbatim: it is actionable, and it
     // describes the caller's own Discord account, not someone else's.
-    return json({ ok: false, error: row?.err || "code_invalid" }, 200);
+    return failContinuation(json, admin, logger, consumed, row?.err || "code_invalid");
   }
 
   const accountId = row.account_id as string;
@@ -747,10 +833,11 @@ async function handleBackupLogin(req: Request, body: unknown, admin: any, logger
 // `password_enc` copy, every passkey and every backup code, in the same
 // transaction that creates the link. One sign-in method at any instant.
 //
-// Three things stand between this and a password-guessing oracle, in order of
-// how much they cost an attacker: every attempt spends a ticket, and a ticket
-// costs a full Discord round trip; a tighter per-IP budget than the other
-// actions; and a per-Discord-account budget so rotating IPs buys nothing.
+// Three things stand between this and a password-guessing oracle: one Discord
+// authorization buys at most MAX_TICKET_ATTEMPTS + 1 attempts (the chain cap,
+// enforced by a CHECK in the table); a tighter per-IP budget than the other
+// actions; and a per-Discord-account budget, failing closed, so rotating IPs
+// buys nothing.
 async function handleClaim(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
   const json = makeJson(req);
 
@@ -769,18 +856,21 @@ async function handleClaim(req: Request, body: unknown, admin: any, logger: Edge
 
   // Budget the Discord account itself, now that we know which one it is.
   const bucket = new Date(Math.floor(Date.now() / 60000) * 60000).toISOString();
-  const { data: tRows } = await admin.rpc("gm_check_discord_throttle", {
+  const { data: tRows, error: tErr } = await admin.rpc("gm_check_discord_throttle", {
     p_discord_user_id: consumed.discordUserId,
     p_limit: CLAIM_DISCORD_LIMIT.limit,
     p_window_ms: CLAIM_DISCORD_LIMIT.windowMs,
     p_bucket: bucket,
   });
   const tRow = Array.isArray(tRows) ? tRows[0] : tRows;
-  // Fails OPEN on a database error, matching _shared/rate-limit.ts, because
-  // the ticket cost already bounds this path hard. (Finding B3 proposes
-  // flipping every limiter to fail closed; that is a Phase 4 decision to take
-  // across all of them at once, not one endpoint at a time.)
-  if (tRow && tRow.allowed === false) {
+  // Fails CLOSED. It used to fail open on the grounds that every attempt cost
+  // a Discord round trip; a recoverable mistake now returns a fresh ticket, so
+  // this budget is a real bound and a database error must not lift it.
+  if (tErr || !tRow) {
+    logger.error("Discord-account throttle unavailable on claim", tErr, { discordUserId: consumed.discordUserId });
+    return json({ ok: false, error: "too_many_attempts" }, 429);
+  }
+  if (tRow.allowed === false) {
     logger.warn("Discord-account rate limit exceeded on claim", { discordUserId: consumed.discordUserId });
     return json({ ok: false, error: "too_many_attempts" }, 429);
   }
@@ -797,7 +887,7 @@ async function handleClaim(req: Request, body: unknown, admin: any, logger: Edge
   const row = Array.isArray(rows) ? rows[0] : rows;
   if (!row || row.ok !== true) {
     logger.warn("Claim rejected", { reason: row?.err ?? "unknown", id: parsed.data.id });
-    return json({ ok: false, error: row?.err || "invalid_credentials" }, 200);
+    return failContinuation(json, admin, logger, consumed, row?.err || "invalid_credentials");
   }
 
   const accountId = row.account_id as string;
@@ -888,7 +978,7 @@ async function handleOnboard(req: Request, body: unknown, admin: any, logger: Ed
 
   if (!row || row.ok !== true) {
     logger.warn("Onboarding rejected", { mode: parsed.data.mode, reason: row?.err ?? "unknown" });
-    return json({ ok: false, error: row?.err || "onboarding_failed" }, 200);
+    return failContinuation(json, admin, logger, consumed, row?.err || "onboarding_failed");
   }
 
   const accountId = row.account_id as string;
@@ -900,6 +990,7 @@ async function handleOnboard(req: Request, body: unknown, admin: any, logger: Ed
   // Report that plainly instead of minting a session that would be refused.
   if (row.status === "pending") {
     logger.info("Player registered through Discord, awaiting approval", { accountId, guild: row.guild });
+    await announceJoinRequest(admin, logger, row.guild as string, accountId, parsed.data.uid);
     return json({
       ok: true,
       state: "pending_approval",
@@ -925,6 +1016,36 @@ async function handleOnboard(req: Request, body: unknown, admin: any, logger: Ed
     refresh_token: shadow.session.refresh_token,
     expires_at: shadow.session.expires_at,
   });
+}
+
+/**
+ * Tells a guild's admins that someone is waiting for them. Best-effort: the
+ * pending account is the authoritative record, and a missing channel or a
+ * Discord outage must not turn a successful request into an error.
+ */
+async function announceJoinRequest(
+  admin: any,
+  logger: EdgeLogger,
+  guild: string,
+  accountId: string,
+  uid: string,
+): Promise<void> {
+  if (!guild) return;
+  try {
+    const channelId = await resolveAuditChannelId(admin, guild);
+    if (!channelId) {
+      logger.info("No Discord audit channel configured for guild", { guild });
+      return;
+    }
+    const sent = await postAuditMessage(
+      channelId,
+      `🆕 **Join request** — \`${accountId}\` (UID \`${uid}\`) asked to join **${guild}** with Discord.` +
+      `\nApprove or reject it in Guild Management → Accounts → Pending.`,
+    );
+    if (!sent) logger.warn("Join request announcement was not delivered", { guild });
+  } catch (err) {
+    logger.warn("Join request announcement threw", { guild, err: String(err) });
+  }
 }
 
 /** Routes a POST by its `action`, parsing the body exactly once. */
