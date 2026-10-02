@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **Node.js 24** (`package.json` engines `24.x`, `.nvmrc`, CI). Vercel discontinued Node 20 and refused to build: "Node.js Version \"20.x\" is discontinued". Without this, every new deployment fails, `main` included. The full gate passes under Node 24.14.1 after a clean `npm ci`: type-check, 2274 unit tests, build, 42 e2e.
+
 - **V3.33.0: the Discord sign-in redesign (phases 1–4 below).** The app version is bumped. `DISCORD_CHANGELOG.md` is rewritten for players and officers. Announce it only once the front end is live on Vercel. The back-end half (phase 1) has been live since 2026-10-02.
 
 - **Discord sign-in, phase 4 of 4: shareable invite links.**
