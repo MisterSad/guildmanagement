@@ -91,7 +91,11 @@ describe('admin-accounts Edge (H1/H2/H3, M4)', () => {
   });
 
   it('bumps session_version on registration rejection (suspension)', () => {
-    expect(adminAccountsContent).toMatch(/await bumpSessionVersion\(admin, id, targetAcc\.role/);
+    // The decision moved to _shared/registration-decision.ts on 2026-10-03,
+    // shared by the app and the Discord join-request buttons.
+    const decision = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/registration-decision.ts'), 'utf8');
+    expect(decision).toMatch(/await bumpSessionVersion\(admin, id, target\.role/);
+    expect(adminAccountsContent).toContain('decideRegistration(');
   });
 });
 

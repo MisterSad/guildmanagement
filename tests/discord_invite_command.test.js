@@ -29,14 +29,18 @@ describe('/invite is declared by the worker and handled by the Edge Function', (
 
 describe('authorization', () => {
   it('reads the caller from discord_account_links, active non-member accounts only', () => {
-    expect(handler).toContain('.from("discord_account_links")');
-    expect(handler).toContain('.eq("discord_user_id", discordUserId)');
-    expect(handler).toContain('a.status === "active"');
-    expect(handler).toContain('a.role !== "member"');
+    expect(handler).toContain('const officers = await officerAccounts(admin, discordUserId);');
+    const helper = edge.slice(edge.indexOf('async function officerAccounts('), edge.indexOf('const NOT_AN_OFFICER_MSG'));
+    expect(helper).toContain('.from("discord_account_links")');
+    expect(helper).toContain('.eq("discord_user_id", discordUserId)');
+    expect(helper).toContain('if (a.status !== "active") continue;');
+    expect(helper).toContain('if (role === "member") continue;');
+    // Server number derived from the guild when unset, like getCallerInfo().
+    expect(helper).toContain('.from("guilds").select("server_number").eq("id", a.guild)');
   });
 
   it('checks scope with the shared isGuildInScope against the guild\'s real server', () => {
-    expect(edge).toContain('import { isGuildInScope, normalizeRole } from "../_shared/admin-authz.ts";');
+    expect(edge).toContain('import { canManageAccount, isGuildInScope, normalizeRole } from "../_shared/admin-authz.ts";');
     expect(handler).toContain('.from("guilds").select("id, server_number").eq("id", target)');
     expect(handler).toContain('officers.some((o) => isGuildInScope(o, target, (guildRow as any).server_number ?? null))');
     // The scope check comes before the join code is ever read.

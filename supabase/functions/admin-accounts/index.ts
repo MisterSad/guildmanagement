@@ -6,7 +6,14 @@ import { canManageAccount, maxAssignableRole, isGuildInScope, normalizeRole, Rol
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { escapeLike } from "../_shared/like.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
-import { resolveAuditChannelId, postAuditMessage, sendDirectMessage } from "../_shared/discord-verification.ts";
+import { resolveAuditChannelId, postAuditMessage } from "../_shared/discord-verification.ts";
+import {
+  bumpSessionVersion,
+  decideRegistration,
+  emailFor,
+  getTargetCtx,
+  randomSecret,
+} from "../_shared/registration-decision.ts";
 import { randomBackupCode, sha256Hex, issueBackupCodes, BACKUP_CODE_COUNT } from "../_shared/backup-codes.ts";
 import { isSessionRevoked } from "../_shared/session-epoch.ts";
 
@@ -68,31 +75,6 @@ function makeJson(req: Request) {
 // Strict normalization, imported from _shared/admin-authz.ts. Legacy ranks
 // ('R5'/'R4') and the historical 'admin' alias now normalize to 'member'.
 
-// Bumps the account's session_version epoch (M4): increments the accounts row
-// AND re-stamps the GoTrue app_metadata so the next minted/refreshed JWT carries
-// the new version. Call on password reset, role change, or suspension so that
-// tokens issued before the event stop matching gm_session_is_valid().
-async function bumpSessionVersion(
-  admin: ReturnType<typeof createClient>,
-  accountId: string,
-  role: string,
-  authUserId: string | null
-): Promise<number> {
-  const { data: cur } = await admin
-    .from("accounts")
-    .select("session_version")
-    .eq("id", accountId)
-    .maybeSingle();
-  const next = ((cur?.session_version ?? 0) | 0) + 1;
-  await admin.from("accounts").update({ session_version: next }).eq("id", accountId);
-  if (authUserId) {
-    await admin.auth.admin.updateUserById(authUserId, {
-      app_metadata: { app_role: role, account_id: accountId, session_version: next },
-    });
-  }
-  return next;
-}
-
 async function getCallerInfo(
   req: Request,
   admin: ReturnType<typeof createClient>
@@ -145,79 +127,6 @@ async function getCallerInfo(
     guild: acc.guild ?? null,
     serverNumber,
   };
-}
-
-async function getTargetCtx(
-  admin: ReturnType<typeof createClient>,
-  targetAcc: { role?: string | null; guild?: string | null; server_number?: string | null }
-): Promise<{ role: Role | null; guild: string | null; serverNumber: string | null }> {
-  let sNum = targetAcc.server_number ?? null;
-  if (!sNum && targetAcc.guild) {
-    const { data: g } = await admin
-      .from("guilds")
-      .select("server_number")
-      .eq("id", targetAcc.guild)
-      .maybeSingle();
-    if (g?.server_number) {
-      sNum = g.server_number;
-    }
-  }
-  return {
-    role: normalizeRole(targetAcc.role),
-    guild: targetAcc.guild ?? null,
-    serverNumber: sNum,
-  };
-}
-
-async function emailFor(id: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id));
-  const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return `gm_${hex}@no-reply.guildmgmt.app`;
-}
-
-/** The Discord identity linked to an account, or null. Never taken from a request. */
-async function linkedDiscordUserId(admin: any, accountId: string): Promise<string | null> {
-  const { data } = await admin
-    .from("discord_account_links")
-    .select("discord_user_id")
-    .eq("account_id", accountId)
-    .maybeSingle();
-  return (data?.discord_user_id as string | undefined) ?? null;
-}
-
-/**
- * DMs a player the outcome of their join request, so they are not left
- * refreshing a login page. Best-effort: the approval or rejection has already
- * committed, and a player who blocks DMs simply is not told.
- */
-async function notifyRegistrationOutcome(
-  admin: any,
-  logger: EdgeLogger,
-  accountId: string,
-  guild: string | null,
-  outcome: "approved" | "rejected",
-  knownDiscordId?: string | null,
-): Promise<void> {
-  try {
-    const discordId = knownDiscordId ?? await linkedDiscordUserId(admin, accountId);
-    if (!discordId) return; // A password-era registration: nobody to message.
-    const appUrl = Deno.env.get("APP_DEFAULT_ORIGIN") ?? "";
-    const where = guild ? `**${guild}**` : "your guild";
-    const content = outcome === "approved"
-      ? `✅ Your request to join ${where} was approved. Sign in with Discord to open your Player Portal` +
-        (appUrl ? `: ${appUrl}` : ".")
-      : `Your request to join ${where} was not approved. If you think this is a mistake, ask an officer of your guild.`;
-    const sent = await sendDirectMessage(discordId, content);
-    logger.info("Registration outcome DM", { accountId, outcome, delivered: sent });
-  } catch (err) {
-    logger.warn("Registration outcome DM threw", { accountId, err: String(err) });
-  }
-}
-
-function randomSecret(): string {
-  const b = new Uint8Array(48);
-  crypto.getRandomValues(b);
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 // Readable alphabet (no 0/O, 1/l/I) with rejection sampling. Every password
@@ -893,99 +802,23 @@ Deno.serve(async (req: Request) => {
     return json(data);
   }
 
-  if (action === "approve-registration") {
-    const approveParsed = ApproveRejectSchema.safeParse(body);
-    if (!approveParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
-    const id = approveParsed.data.id;
-
-    const { data: targetAcc } = await admin
-      .from("accounts")
-      .select("role, guild, server_number, status, id")
-      .eq("id", id)
-      .maybeSingle();
-    if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
-    if (targetAcc.status !== "pending" || targetAcc.role !== "member") {
-      return json({ ok: false, error: "not_pending" }, 200);
+  // Approve / reject a pending player registration. The whole decision --
+  // authorization, shadow-user provisioning, epoch bump, audit row, DM -- lives
+  // in _shared/registration-decision.ts, shared with the Discord buttons.
+  if (action === "approve-registration" || action === "reject-registration") {
+    const parsed = ApproveRejectSchema.safeParse(body);
+    if (!parsed.success) return json({ ok: false, error: "missing_fields" }, 400);
+    const res = await decideRegistration(
+      admin,
+      logger,
+      { role: info.role, guild: info.guild, serverNumber: info.serverNumber, accountId: info.accountId, via: "app" },
+      parsed.data.id,
+      action === "approve-registration" ? "approve" : "reject",
+    );
+    if (!res.ok) {
+      return json({ ok: false, error: res.error, ...(res.message ? { message: res.message } : {}) }, res.status);
     }
-
-    const targetCtx = await getTargetCtx(admin, targetAcc);
-    if (!canManageAccount(info, targetCtx)) {
-      return json({ ok: false, error: "forbidden" }, 403);
-    }
-
-    const { data, error } = await admin.rpc("gm_approve_player_account", { p_id: id });
-    if (error) {
-      logger.error("Failed gm_approve_player_account", error, { id });
-      return json({ ok: false, error: "server_error", message: error.message }, 500);
-    }
-    if (!data || data.ok !== true) {
-      return json({ ok: false, error: data?.error || "approve_failed" }, 200);
-    }
-
-    const email = await emailFor(id);
-    const secret = randomSecret();
-    const meta = { app_role: "member", account_id: id };
-    const { data: created, error: cuErr } = await admin.auth.admin.createUser({
-      email, password: secret, email_confirm: true, app_metadata: meta,
-    });
-    let uid = created?.user?.id;
-    if (cuErr || !uid) {
-      const ex = await findUserByEmail(admin, email);
-      if (!ex) {
-        logger.error("Failed to provision shadow user on approval", cuErr, { email, id });
-        return json({ ok: false, error: "provision_failed" }, 500);
-      }
-      uid = ex.id;
-      await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
-    }
-    const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: id, p_auth_user_id: uid, p_secret: secret });
-    if (aErr) {
-      logger.error("Failed gm_attach_shadow on approval", aErr, { id, uid });
-      return json({ ok: false, error: "server_error" }, 500);
-    }
-
-    logger.info("Player registration approved", { id, guild: targetAcc.guild });
-    await notifyRegistrationOutcome(admin, logger, id, targetAcc.guild, "approved");
     return json({ ok: true });
-  }
-
-  if (action === "reject-registration") {
-    const rejectParsed = ApproveRejectSchema.safeParse(body);
-    if (!rejectParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
-    const id = rejectParsed.data.id;
-
-    const { data: targetAcc } = await admin
-      .from("accounts")
-      .select("role, guild, server_number, status")
-      .eq("id", id)
-      .maybeSingle();
-    if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
-    if (targetAcc.status !== "pending" || targetAcc.role !== "member") {
-      return json({ ok: false, error: "not_pending" }, 200);
-    }
-
-    const targetCtx = await getTargetCtx(admin, targetAcc);
-    if (!canManageAccount(info, targetCtx)) {
-      return json({ ok: false, error: "forbidden" }, 403);
-    }
-
-    // Read BEFORE the rejection: whatever it does to the account, the link that
-    // says who to tell must still be there when we look it up.
-    const rejectedDiscordId = await linkedDiscordUserId(admin, id);
-
-    const { data, error } = await admin.rpc("gm_reject_player_account", { p_id: id });
-    if (error) {
-      logger.error("Failed gm_reject_player_account", error, { id });
-      return json({ ok: false, error: "server_error", message: error.message }, 500);
-    }
-
-    // Suspension: bump the epoch so any session minted while the account was
-    // pending stops matching gm_session_is_valid().
-    await bumpSessionVersion(admin, id, targetAcc.role || "member", null);
-
-    logger.info("Player registration rejected", { id, guild: targetAcc.guild });
-    await notifyRegistrationOutcome(admin, logger, id, targetAcc.guild, "rejected", rejectedDiscordId);
-    return json(data);
   }
 
   // ==========================================================================

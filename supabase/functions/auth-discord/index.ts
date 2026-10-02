@@ -45,7 +45,7 @@ import { getCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { escapeLike } from "../_shared/like.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { establishShadowSession } from "../_shared/shadow-session.ts";
-import { postAuditMessage, resolveAuditChannelId } from "../_shared/discord-verification.ts";
+import { postChannelMessage, resolveAuditChannelId } from "../_shared/discord-verification.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
 import {
   BACKUP_CODE_LENGTH,
@@ -1037,11 +1037,21 @@ async function announceJoinRequest(
       logger.info("No Discord audit channel configured for guild", { guild });
       return;
     }
-    const sent = await postAuditMessage(
-      channelId,
-      `🆕 **Join request** — \`${accountId}\` (UID \`${uid}\`) asked to join **${guild}** with Discord.` +
-      `\nApprove or reject it in Guild Management → Accounts → Pending.`,
-    );
+    // Approve / Reject act through discord-bot-interactions, which checks the
+    // clicker's LINKED app account with the same canManageAccount() the app
+    // uses. A Discord role or permission grants nothing.
+    const sent = await postChannelMessage(channelId, {
+      content:
+        `🆕 **Join request** — \`${accountId}\` (UID \`${uid}\`) asked to join **${guild}** with Discord.` +
+        `\nApprove or reject it here, or in Guild Management → Accounts → Pending.`,
+      components: [{
+        type: 1,
+        components: [
+          { type: 2, style: 3, label: "Approve", custom_id: `gmjoin:approve:${accountId}` },
+          { type: 2, style: 4, label: "Reject", custom_id: `gmjoin:reject:${accountId}` },
+        ],
+      }],
+    });
     if (!sent) logger.warn("Join request announcement was not delivered", { guild });
   } catch (err) {
     logger.warn("Join request announcement threw", { guild, err: String(err) });

@@ -17,6 +17,9 @@ const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$
 const migration = read('supabase/migrations/20261002120000_discord_signin_retry.sql');
 const fn = stripComments(read('supabase/functions/auth-discord/index.ts'));
 const adminFn = stripComments(read('supabase/functions/admin-accounts/index.ts'));
+// The approve/reject decision moved here on 2026-10-03, shared with the
+// Discord join-request buttons.
+const decisionFn = stripComments(read('supabase/functions/_shared/registration-decision.ts'));
 // Not comment-stripped: the naive stripper would eat the `//` inside API URLs.
 const verification = read('supabase/functions/_shared/discord-verification.ts');
 
@@ -119,7 +122,7 @@ describe('a join request is announced to the guild', () => {
     expect(onboard.indexOf('announceJoinRequest(')).toBeGreaterThan(pending);
     const announce = slice(fn, 'async function announceJoinRequest', '\nasync function ');
     expect(announce).toContain('resolveAuditChannelId(admin, guild)');
-    expect(announce).toContain('postAuditMessage(');
+    expect(announce).toContain('postChannelMessage(channelId, {');
     expect(announce).toMatch(/catch/);
   });
 });
@@ -134,20 +137,44 @@ describe('the player hears the outcome by DM', () => {
   });
 
   it('resolves the recipient from the link table, never from the request', () => {
-    const helper = slice(adminFn, 'async function linkedDiscordUserId', '\nasync function ');
+    const helper = slice(decisionFn, 'export async function linkedDiscordUserId', '\nexport async function ');
     expect(helper).toContain('.from("discord_account_links")');
     expect(helper).toContain('.eq("account_id", accountId)');
   });
 
   it('notifies on approval and on rejection, after the decision commits', () => {
-    const approve = slice(adminFn, 'if (action === "approve-registration")', 'if (action === "reject-registration")');
+    const decide = slice(decisionFn, 'export async function decideRegistration', 'async function auditDecision');
+    const approve = decide.slice(decide.indexOf('if (decision === "approve")'), decide.indexOf('const rejectedDiscordId'));
     expect(approve.indexOf('notifyRegistrationOutcome(')).toBeGreaterThan(approve.indexOf('gm_approve_player_account'));
     expect(approve).toContain('"approved"');
 
-    const reject = slice(adminFn, 'if (action === "reject-registration")', 'Self-service guild creation');
+    const reject = decide.slice(decide.indexOf('const rejectedDiscordId'));
     // The recipient is read BEFORE the rejection, the message sent after it.
     expect(reject.indexOf('linkedDiscordUserId(')).toBeLessThan(reject.indexOf('gm_reject_player_account'));
     expect(reject.indexOf('notifyRegistrationOutcome(')).toBeGreaterThan(reject.indexOf('gm_reject_player_account'));
     expect(reject).toContain('"rejected"');
+  });
+});
+
+describe('one decision path for the app and for Discord', () => {
+  it('admin-accounts delegates both actions to decideRegistration', () => {
+    const block = slice(adminFn, 'if (action === "approve-registration" || action === "reject-registration")', 'Self-service guild creation');
+    expect(block).toContain('decideRegistration(');
+    expect(block).toContain('via: "app"');
+    expect(adminFn).not.toContain('gm_approve_player_account');
+    expect(adminFn).not.toContain('gm_reject_player_account');
+  });
+
+  it('authorizes inside the shared function, before any write', () => {
+    const decide = slice(decisionFn, 'export async function decideRegistration', 'async function auditDecision');
+    expect(decide.indexOf('canManageAccount(actor, targetCtx)')).toBeLessThan(decide.indexOf('gm_approve_player_account'));
+    expect(decide.indexOf('canManageAccount(actor, targetCtx)')).toBeLessThan(decide.indexOf('gm_reject_player_account'));
+    expect(decide).toContain('target.status !== "pending" || target.role !== "member"');
+  });
+
+  it('writes an audit row naming the decider and where they decided', () => {
+    const audit = slice(decisionFn, 'async function auditDecision');
+    expect(audit).toContain('user_identifier: actor.accountId');
+    expect(audit).toContain('via: actor.via');
   });
 });
