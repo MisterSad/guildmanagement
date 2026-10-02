@@ -87,6 +87,92 @@ function setLoginError(message: string): void {
   const span = box.querySelector('span:last-of-type');
   if (span) span.textContent = message;
   box.classList.remove('hidden');
+  // The password form is folded away by default; an error inside a closed
+  // <details> would be invisible.
+  const legacy = el<HTMLDetailsElement>('login-legacy');
+  if (legacy) legacy.open = true;
+}
+
+type DiscordStatusTone = 'error' | 'info' | 'success';
+
+/**
+ * Shows a Discord sign-in outcome beside the Discord button. Every Discord
+ * message goes here rather than into #login-error, which sits under the
+ * password field of a form the person never touched.
+ */
+export function setDiscordStatus(message: string, tone: DiscordStatusTone = 'error'): void {
+  const box = el('login-discord-status');
+  if (!box) { setLoginError(message); return; }
+  const span = box.querySelector('span:last-of-type');
+  if (span) span.textContent = message;
+  const icon = box.querySelector('i');
+  if (icon) {
+    icon.className = 'ph ' + (tone === 'error' ? 'ph-warning-circle' : tone === 'success' ? 'ph-check-circle' : 'ph-info');
+  }
+  box.classList.remove('gm-login-notice-error', 'gm-login-notice-info', 'gm-login-notice-success');
+  box.classList.add('gm-login-notice-' + tone);
+  box.classList.remove('hidden');
+}
+
+function clearDiscordStatus(): void {
+  const box = el('login-discord-status');
+  if (box) box.classList.add('hidden');
+}
+
+/**
+ * Swaps the login card into a "Signing you in…" state while a returning
+ * Discord ticket is redeemed, so the page does not sit there looking idle and
+ * clickable for the second or two the round trip takes.
+ */
+function setLoginBusy(busy: boolean): void {
+  const busyBox = el('login-busy');
+  if (busyBox) busyBox.classList.toggle('hidden', !busy);
+  for (const id of ['login-discord-btn', 'login-legacy']) {
+    const node = el(id);
+    if (node) node.classList.toggle('hidden', busy);
+  }
+  const hint = typeof document !== 'undefined' ? document.querySelector('.gm-login-discord-hint') : null;
+  if (hint) hint.classList.toggle('hidden', busy);
+}
+
+/** Per-device memory of the last sign-in route, so the right door is open. */
+const LAST_METHOD_KEY = 'gm_last_signin_method';
+
+function rememberSignInMethod(method: 'discord' | 'password'): void {
+  try { const store = ls(); if (store) store.setItem(LAST_METHOD_KEY, method); } catch { /* storage blocked */ }
+}
+
+function lastSignInMethod(): string | null {
+  try { const store = ls(); return store ? store.getItem(LAST_METHOD_KEY) : null; } catch { return null; }
+}
+
+/** Puts the Discord button back to its idle state. */
+function resetDiscordButton(): void {
+  const btn = el<HTMLButtonElement>('login-discord-btn');
+  if (!btn) return;
+  btn.disabled = false;
+  btn.classList.remove('is-loading');
+  const span = btn.querySelector('span');
+  if (span) span.textContent = t('login_btn_discord');
+}
+
+/** Starts the Discord redirect, with visible feedback while the page leaves. */
+export function startDiscordSignIn(): void {
+  const x = g();
+  if (!x || typeof x.loginWithDiscord !== 'function') {
+    setDiscordStatus('Discord sign-in is unavailable in this build.');
+    return;
+  }
+  const btn = el<HTMLButtonElement>('login-discord-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    const span = btn.querySelector('span');
+    if (span) span.textContent = 'Opening Discord…';
+  }
+  clearDiscordStatus();
+  rememberSignInMethod('discord');
+  x.loginWithDiscord();
 }
 
 // ── UI reveal helpers ────────────────────────────────────────────────────────
@@ -95,13 +181,11 @@ export function revealPortal(): void {
   const loginView = el('login-view');
   const dashboardView = el('dashboard-view');
   const playerPortalView = el('player-portal-view');
-  const portalStepLookup = el('portal-step-lookup');
   const portalStepForm = el('portal-step-form');
 
   if (loginView) loginView.classList.add('hidden');
   if (dashboardView) { dashboardView.classList.add('hidden'); dashboardView.classList.remove('active'); }
   if (playerPortalView) playerPortalView.classList.remove('hidden');
-  if (portalStepLookup) portalStepLookup.classList.add('hidden');
   if (portalStepForm) portalStepForm.classList.remove('hidden');
   if (playerPortalView) playerPortalView.classList.add('portal-connected');
 
@@ -278,6 +362,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
   const canonicalUser = resp.id || typedUser || '';
   const loginError = el('login-error');
   if (loginError) loginError.classList.add('hidden');
+  clearDiscordStatus();
   const password = el<HTMLInputElement>('password');
   if (password) password.value = '';
 
@@ -457,6 +542,12 @@ export async function doLogout(): Promise<void> {
 export function showLogin(): void {
   const dashboardView = el('dashboard-view');
   if (dashboardView) { dashboardView.classList.add('hidden'); dashboardView.classList.remove('active'); }
+  // Signing out from the Player Portal must land somewhere: before this, the
+  // portal stayed on screen and the person had to reload to see a login page.
+  const portalView = el('player-portal-view');
+  if (portalView) { portalView.classList.add('hidden'); portalView.classList.remove('portal-connected'); }
+  setLoginBusy(false);
+  resetDiscordButton();
   const loginView = el('login-view');
   if (loginView) { loginView.classList.remove('hidden'); loginView.classList.add('active'); }
   startConditionalPasskeyListener();
@@ -514,16 +605,17 @@ export async function handleDiscordCallback(): Promise<boolean> {
   } catch { /* replaceState is unavailable in some embedded webviews */ }
 
   if (errorCode) {
-    setLoginError(discordErrorMessage(errorCode));
+    setDiscordStatus(discordErrorMessage(errorCode), errorCode === 'cancelled' ? 'info' : 'error');
     return true;
   }
 
   const x = g();
   if (!x || typeof x.redeemDiscordTicket !== 'function') {
-    setLoginError('Discord sign-in is unavailable in this build.');
+    setDiscordStatus('Discord sign-in is unavailable in this build.');
     return true;
   }
 
+  setLoginBusy(true);
   try {
     const resp: LoginResponse = await x.redeemDiscordTicket(ticket);
     if (resp.ok && resp.state === 'choose') {
@@ -538,7 +630,7 @@ export async function handleDiscordCallback(): Promise<boolean> {
         openAccountChooser(resp.ticket, resp.accounts, resp.discordUsername || null);
       } else {
         console.error('Discord sign-in returned "choose" without a usable ticket or account list:', resp);
-        setLoginError('Discord sign-in could not list your accounts. Please try again, and tell HawkEye if it keeps happening.');
+        setDiscordStatus('Discord sign-in could not list your accounts. Please try again, and tell HawkEye if it keeps happening.');
       }
       return true;
     }
@@ -551,18 +643,23 @@ export async function handleDiscordCallback(): Promise<boolean> {
         openLinkAccountDialog(resp.ticket, resp.discordUsername || null);
         return true;
       }
-      const who = resp.discordUsername ? ' (' + resp.discordUsername + ')' : '';
-      setLoginError('This Discord account' + who + ' is not linked to any account yet. Sign in with your identifier and password, then ask an admin for a relink code.');
+      // The server now answers `server_error` rather than an unlinked state
+      // with no ticket; this stays as a guard against an older deploy.
+      setDiscordStatus('Something went wrong on our side. Please continue with Discord again.');
       return true;
     }
     if (resp.ok) {
       await handleSuccessfulLogin(resp, resp.id || '');
       return true;
     }
-    setLoginError(discordErrorMessage(resp.error || 'request_failed'));
+    setDiscordStatus(discordErrorMessage(resp.error || 'request_failed'), resp.error === 'pending_approval' ? 'info' : 'error');
   } catch (err: any) {
     console.error('Discord sign-in error:', err);
-    setLoginError(discordErrorMessage('request_failed'));
+    setDiscordStatus(discordErrorMessage('request_failed'));
+  } finally {
+    // The success path has already swapped the view; on every other path the
+    // login card must come back.
+    setLoginBusy(false);
   }
   return true;
 }
@@ -996,10 +1093,11 @@ export function openLinkAccountDialog(ticket: string, discordUsername: string | 
         // first. Say so rather than dropping them on a blank login screen.
         if (resp.state === 'pending_approval') {
           closeModal();
-          setLoginError(
+          setDiscordStatus(
             'Your request to join ' + (resp.guild || 'the guild') +
             ' was submitted as ' + (resp.id || 'a new account') +
-            '. An admin has to approve it — sign in with Discord again once they have.'
+            '. An admin has to approve it — sign in with Discord again once they have.',
+            'info'
           );
           return;
         }
@@ -1168,6 +1266,7 @@ async function onLoginSubmit(e: Event): Promise<void> {
       : { ok: false, error: 'no_client' };
 
     if (resp.ok) {
+      rememberSignInMethod('password');
       await handleSuccessfulLogin(resp, user);
     } else if (resp.error === 'pending_approval') {
       setLoginError('Your account is awaiting approval by a guild admin.');
@@ -1221,13 +1320,22 @@ export function initAuthForms(): void {
 
   wireOnce(el('login-recovery-btn'), '__gmAuthWired', 'click', () => { openRecoveryCodeDialog(); });
 
-  wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => {
-    const x = g();
-    if (x && typeof x.loginWithDiscord === 'function') x.loginWithDiscord();
-  });
+  wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => { startDiscordSignIn(); });
+
+  // Back from Discord's consent screen with the browser's Back button: the
+  // page can come out of the bfcache with the button still saying "Opening
+  // Discord…" and disabled.
+  if (typeof window !== 'undefined' && !(window as any).__gmDiscordPageshowWired) {
+    (window as any).__gmDiscordPageshowWired = true;
+    window.addEventListener('pageshow', (e: PageTransitionEvent) => { if (e.persisted) resetDiscordButton(); });
+  }
+
+  // Open the password route for whoever used it last on this device; Discord
+  // users never see it unfolded.
+  const legacy = el<HTMLDetailsElement>('login-legacy');
+  if (legacy && lastSignInMethod() === 'password') legacy.open = true;
 
   wireOnce(el('logout-btn'), '__gmAuthWired', 'click', () => { void doLogout(); });
-  wireOnce(el('member-logout-btn'), '__gmAuthWired', 'click', () => { void doLogout(); });
 }
 
 // ── Passkey nudge ────────────────────────────────────────────────────────────

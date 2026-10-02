@@ -113,6 +113,19 @@ const legacy = {
   }
 };
 
+/** Signs out of the Player Portal and shows the login page. */
+function exitPortalToLogin(): void {
+  try { localStorage.removeItem('gm_portal_session'); } catch { /* storage blocked */ }
+  const finish = (): void => {
+    const portalView = document.getElementById('player-portal-view');
+    const loginView = document.getElementById('login-view');
+    if (portalView) portalView.classList.add('hidden');
+    if (portalView) portalView.classList.remove('portal-connected');
+    if (loginView) { loginView.classList.remove('hidden'); loginView.classList.add('active'); }
+  };
+  legacy.logout().then(finish).catch(finish);
+}
+
 const PERIODS = [
   { key: 'all', label: 'All Time' },
   { key: '8w', label: '8 Weeks' },
@@ -244,9 +257,9 @@ export class PortalView {
           '</div>' +
         '</div>';
       const signOutBtn = root.querySelector('[data-portal-error-signout]');
-      if (signOutBtn) signOutBtn.addEventListener('click', () => {
-        if (gm() && gm().logout) { gm().logout(); } else { localStorage.clear(); location.reload(); }
-      });
+      // Same exit as the sidebar's sign-out: before, this cleared the session
+      // and left the error card on screen, so the person had to reload.
+      if (signOutBtn) signOutBtn.addEventListener('click', () => { exitPortalToLogin(); });
       const retryBtn = root.querySelector('[data-portal-error-retry]');
       if (retryBtn) retryBtn.addEventListener('click', () => { location.reload(); });
       return;
@@ -417,17 +430,7 @@ export class PortalView {
     if (drawerBackdrop) drawerBackdrop.addEventListener('click', () => this.closePortalDrawer());
 
     root.querySelectorAll('[data-portal-exit]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        localStorage.removeItem('gm_portal_session');
-        const finish = (): void => {
-          const portalView = document.getElementById('player-portal-view');
-          const loginView = document.getElementById('login-view');
-          if (portalView) portalView.classList.add('hidden');
-          if (portalView) portalView.classList.remove('portal-connected');
-          if (loginView) loginView.classList.remove('hidden');
-        };
-        legacy.logout().then(finish).catch(finish);
-      });
+      btn.addEventListener('click', () => { exitPortalToLogin(); });
     });
 
     this.renderDashboardPanel();

@@ -13,7 +13,6 @@ export interface DomRefs {
   readonly loginForm: HTMLElement | null;
   readonly loginError: HTMLElement | null;
   readonly logoutBtn: HTMLElement | null;
-  readonly memberLogoutBtn: HTMLElement | null;
   readonly createAccountForm: HTMLElement | null;
   readonly accountList: HTMLElement | null;
   readonly accountCount: HTMLElement | null;
@@ -51,7 +50,6 @@ export function getDomRefs(): DomRefs {
     get loginForm() { return getDomRef('login-form'); },
     get loginError() { return getDomRef('login-error'); },
     get logoutBtn() { return getDomRef('logout-btn'); },
-    get memberLogoutBtn() { return getDomRef('member-logout-btn'); },
     get createAccountForm() { return getDomRef('create-account-form'); },
     get accountList() { return getDomRef('account-list'); },
     get accountCount() { return getDomRef('account-count'); },

@@ -46,51 +46,80 @@
                             </div>
 
                             <div class="gm-login-form">
+                                <!-- Shown when the page was opened from a shared invite link
+                                     (#join=… / #code=…). The code itself never reaches a server
+                                     log: it travels in the fragment and is kept in sessionStorage
+                                     across the Discord round trip. -->
+                                <div id="login-invite-banner" class="gm-login-notice gm-login-notice-info hidden" role="status">
+                                    <i class="ph ph-envelope-simple-open"></i>
+                                    <span data-i18n="login_invite_banner">You've been invited to join a guild. Continue with Discord to accept.</span>
+                                </div>
+
                                 <button type="button" id="login-discord-btn" class="gm-login-discord-btn gm-login-discord-primary">
                                     <i class="ph ph-discord-logo"></i>
-                                    <span data-i18n="login_btn_discord">Sign in with Discord</span>
+                                    <span data-i18n="login_btn_discord">Continue with Discord</span>
                                 </button>
                                 <p class="gm-login-discord-hint" data-i18n="login_discord_hint">
-                                    New here? Sign in with Discord to join your guild with its join code, or to create one.
+                                    One button for admins, players and newcomers. New here? You'll join your guild, or create one, right after.
                                 </p>
 
-                                <div class="gm-login-divider"><span data-i18n="login_or">or use your identifier</span></div>
+                                <!-- Every Discord outcome lands HERE, beside the button that started
+                                     it, not under the password field of a form the person never used. -->
+                                <div id="login-discord-status" class="gm-login-notice hidden" role="status" aria-live="polite">
+                                    <i class="ph ph-info"></i>
+                                    <span></span>
+                                </div>
 
-                                <div class="gm-login-field">
-                                    <label for="username" data-i18n="login_label_id">Identifier</label>
-                                    <div class="gm-input-with-icon">
-                                        <i class="ph ph-user gm-icon"></i>
-                                        <input type="text" id="username" class="gm-input" required
-                                            data-i18n-placeholder="login_placeholder_id"
-                                            placeholder="Your identifier" autocomplete="username webauthn">
-                                        <span class="gm-input-focus-line"></span>
-                                    </div>
+                                <!-- While a returning ?gm_auth ticket is redeemed. -->
+                                <div id="login-busy" class="gm-login-busy hidden" role="status" aria-live="polite">
+                                    <span class="gm-login-spinner" aria-hidden="true"></span>
+                                    <span data-i18n="login_busy">Signing you in…</span>
                                 </div>
-                                <div class="gm-login-field">
-                                    <label for="password" data-i18n="login_label_pass">Password</label>
-                                    <div class="gm-input-with-icon gm-login-pwd-wrap">
-                                        <i class="ph ph-lock gm-icon"></i>
-                                        <input type="password" id="password" class="gm-input" required
-                                            data-i18n-placeholder="login_placeholder_pass"
-                                            placeholder="Your password" autocomplete="current-password">
-                                        <span class="gm-input-focus-line"></span>
-                                        <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
-                                            <i class="ph ph-eye"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div id="login-error" class="gm-login-error hidden">
-                                    <i class="ph ph-warning-circle"></i>
-                                    <span data-i18n="login_error">Invalid credentials.</span>
-                                </div>
-                                <button type="submit" id="login-btn" class="gm-btn gm-btn-ghost gm-login-submit">
-                                    <i class="ph ph-sign-in"></i>
-                                    <span data-i18n="login_btn">Sign in</span>
-                                </button>
-                                <button type="button" id="login-recovery-btn" style="margin-top:.75rem; background:none; border:none; color:var(--fg-dim); font-size:.78rem; text-decoration:underline; cursor:pointer; width:100%; text-align:center;" data-i18n="login_recovery">
-                                    Lost access to Discord? Use a recovery code
-                                </button>
 
+                                <!-- The identifier/password route, kept for the accounts not yet
+                                     moved to Discord, folded away so it no longer competes with the
+                                     one door. Opens by default for whoever last used it. -->
+                                <details id="login-legacy" class="gm-login-legacy">
+                                    <summary data-i18n="login_or">I still sign in with an identifier and password</summary>
+
+                                    <div class="gm-login-field">
+                                        <label for="username" data-i18n="login_label_id">Identifier</label>
+                                        <div class="gm-input-with-icon">
+                                            <i class="ph ph-user gm-icon"></i>
+                                            <input type="text" id="username" class="gm-input" required
+                                                data-i18n-placeholder="login_placeholder_id"
+                                                placeholder="Your identifier" autocomplete="username webauthn">
+                                            <span class="gm-input-focus-line"></span>
+                                        </div>
+                                    </div>
+                                    <div class="gm-login-field">
+                                        <label for="password" data-i18n="login_label_pass">Password</label>
+                                        <div class="gm-input-with-icon gm-login-pwd-wrap">
+                                            <i class="ph ph-lock gm-icon"></i>
+                                            <input type="password" id="password" class="gm-input" required
+                                                data-i18n-placeholder="login_placeholder_pass"
+                                                placeholder="Your password" autocomplete="current-password">
+                                            <span class="gm-input-focus-line"></span>
+                                            <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
+                                                <i class="ph ph-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="login-error" class="gm-login-error hidden">
+                                        <i class="ph ph-warning-circle"></i>
+                                        <span data-i18n="login_error">Invalid credentials.</span>
+                                    </div>
+                                    <button type="submit" id="login-btn" class="gm-btn gm-btn-ghost gm-login-submit">
+                                        <i class="ph ph-sign-in"></i>
+                                        <span data-i18n="login_btn">Sign in</span>
+                                    </button>
+                                    <p class="gm-login-legacy-note" data-i18n="login_legacy_note">
+                                        Moving to Discord? Press Continue with Discord, then choose "I already have an account". Your password is retired once Discord is linked.
+                                    </p>
+                                    <button type="button" id="login-recovery-btn" class="gm-login-link-btn" data-i18n="login_recovery">
+                                        Administrator recovery code
+                                    </button>
+                                </details>
                             </div>
                         </form>
 
@@ -150,57 +179,12 @@
                             <div class="gm-login-sub">Submit your scores for active guild events</div>
                         </div>
 
-                        <!-- Step 1: Sign in with account -->
-                        <div id="portal-step-lookup" class="gm-login-form">
-                            <div class="gm-login-field">
-                                <label for="portal-id">Identifier</label>
-                                <div class="gm-input-with-icon">
-                                    <i class="ph ph-user gm-icon"></i>
-                                    <input type="text" id="portal-id" class="gm-input" required
-                                        placeholder="Your account identifier" autocomplete="username webauthn">
-                                    <span class="gm-input-focus-line"></span>
-                                </div>
-                            </div>
-                            <div class="gm-login-field">
-                                <label for="portal-password">Password</label>
-                                <div class="gm-input-with-icon gm-login-pwd-wrap">
-                                    <i class="ph ph-lock gm-icon"></i>
-                                    <input type="password" id="portal-password" class="gm-input" required
-                                        placeholder="Your password" autocomplete="current-password">
-                                    <span class="gm-input-focus-line"></span>
-                                    <button type="button" class="gm-login-pwd-toggle" data-gm-pwd-toggle aria-label="Show / hide password">
-                                        <i class="ph ph-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="portal-lookup-error" class="gm-login-error hidden">
-                                <i class="ph ph-warning-circle"></i>
-                                <span>Unable to sign in. Check your credentials.</span>
-                            </div>
-                            <button type="button" id="portal-lookup-btn" class="gm-btn gm-btn-primary gm-login-submit">
-                                <i class="ph ph-sign-in"></i>
-                                <span>Access My Guild Events</span>
-                            </button>
-                            <!-- The "Sign in with a Passkey" button and the "Use a backup code
-                                 instead" link were removed on 2026-09-27. Neither was ever
-                                 wired: `wirePasskeyLoginButton()` and `openBackupCodeDialog()`
-                                 are exported onto the window.GM bridge and never called, so both
-                                 looked like features and did nothing when clicked. The login
-                                 page carried identical dead copies. -->
-
-                            <div class="gm-portal-switch-wrap">
-                                <!-- "Create a player account" was removed with the Register Player tab on
-                                     2026-09-27. A player joins from the login page now: Sign in with
-                                     Discord, then "Join a guild" with their guild join code. -->
-                                <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm portal-back-btn" style="font-size: 0.85rem; width: 100%; margin-top: 0.35rem;">
-                                    <i class="ph ph-arrow-left"></i>
-                                    <span>Back to Login</span>
-                                </button>
-                            </div>
-                        </div>
+                        <!-- The portal's own identifier/password step was removed on 2026-10-02.
+                             Nothing had wired it since sign-in moved to one page: a member signs
+                             in on #login-view and the role routes them here. -->
 
                         <!-- Step 2: Player dashboard (rendered by the /src PortalView) -->
-                        <div id="portal-step-form" class="hidden" style="max-height: 80vh; overflow-y: auto; padding-right: 0.25rem;">
+                        <div id="portal-step-form" style="max-height: 80vh; overflow-y: auto; padding-right: 0.25rem;">
                             <div id="portal-dashboard-root"></div>
                         </div>
                     </div>

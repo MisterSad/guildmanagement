@@ -83,7 +83,7 @@ describe('the handlers went with the markup', () => {
 
   it('stops exporting them on the GM_AUTH bridge', () => {
     // A bridge member no caller can reach is the M8 class of dead export.
-    const bridge = main.slice(main.indexOf('wAny.GM_AUTH = {'), main.indexOf('handlePortalLookupSuccess'));
+    const bridge = main.slice(main.indexOf('wAny.GM_AUTH = {'), main.indexOf('};', main.indexOf('wAny.GM_AUTH = {')));
     expect(bridge).not.toContain('showAuthTab');
     expect(bridge).not.toContain('showRegisterForm');
   });
@@ -113,5 +113,57 @@ describe('a new player still has a way in', () => {
   it('points the invitation button at the current server', () => {
     const invites = [...read('index.html').matchAll(/https:\/\/discord\.gg\/([A-Za-z0-9]+)/g)].map((m) => m[1]);
     expect(invites).toEqual(['HJ47V6chbw']);
+  });
+});
+
+describe('the one-door login page (2026-10-02)', () => {
+  it('folds the password route behind a summary', () => {
+    const legacy = html.slice(html.indexOf('<details id="login-legacy"'), html.indexOf('</details>'));
+    for (const id of ['username', 'password', 'login-btn', 'login-error', 'login-recovery-btn']) {
+      expect(legacy, `#${id} must live inside #login-legacy`).toContain(`id="${id}"`);
+    }
+    expect(html.indexOf('id="login-discord-btn"')).toBeLessThan(html.indexOf('<details id="login-legacy"'));
+  });
+
+  it('routes every Discord outcome to the status area beside the button', () => {
+    expect(html).toMatch(/id="login-discord-status"[^>]*aria-live="polite"/);
+    const callback = controller.slice(
+      controller.indexOf('export async function handleDiscordCallback'),
+      controller.indexOf('\n}\n', controller.indexOf('export async function handleDiscordCallback')),
+    );
+    expect(callback).toContain('setDiscordStatus(');
+    expect(callback).not.toContain('setLoginError(');
+  });
+
+  it('shows a busy state while a ticket is redeemed, and always clears it', () => {
+    const callback = controller.slice(controller.indexOf('export async function handleDiscordCallback'));
+    expect(callback.indexOf('setLoginBusy(true)')).toBeLessThan(callback.indexOf('redeemDiscordTicket('));
+    expect(callback).toMatch(/finally \{\s*setLoginBusy\(false\);/);
+  });
+
+  it('gives the Discord button feedback and restores it after a Back navigation', () => {
+    expect(controller).toContain("wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => { startDiscordSignIn(); })");
+    expect(controller).toContain("'Opening Discord…'");
+    expect(controller).toMatch(/addEventListener\('pageshow'[\s\S]{0,80}resetDiscordButton\(\)/);
+  });
+
+  it('remembers the last route in a try/catch-guarded localStorage key', () => {
+    expect(controller).toMatch(/function rememberSignInMethod[\s\S]{0,120}try \{/);
+    expect(controller).toMatch(/function lastSignInMethod[\s\S]{0,120}try \{/);
+  });
+
+  it('drops the portal password step and the unwired member logout button', () => {
+    for (const id of ['portal-step-lookup', 'portal-id', 'portal-password', 'portal-lookup-btn', 'member-logout-btn']) {
+      expect(html, `#${id} is dead markup`).not.toContain(`id="${id}"`);
+    }
+    expect(controller).not.toContain("el('member-logout-btn')");
+    expect(fs.existsSync(path.join(rootDir, 'src/modules/app/auth/portal.controller.ts'))).toBe(false);
+  });
+
+  it('brings the login page back when signing out of the portal', () => {
+    const show = controller.slice(controller.indexOf('export function showLogin'), controller.indexOf('export function startConditionalPasskeyListener'));
+    expect(show).toContain("el('player-portal-view')");
+    const portal = stripJs(read('src/modules/portal/views/PortalView.ts'));
+    expect(portal).toContain("signOutBtn.addEventListener('click', () => { exitPortalToLogin(); })");
   });
 });

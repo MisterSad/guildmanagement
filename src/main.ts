@@ -116,7 +116,6 @@ import {
   initVersionCheck,
   resetVersionCheck
 } from './modules/app/auth/version-check';
-import { handlePortalLookupSuccess } from './modules/app/auth/portal.controller';
 import {
   triggerTabDataLoad,
   onTabActivated,
@@ -269,8 +268,7 @@ if (typeof window !== 'undefined') {
     checkForNewVersion,
     showNewVersionBanner,
     initVersionCheck,
-    resetVersionCheck,
-    handlePortalLookupSuccess
+    resetVersionCheck
   };
 
   // Sous-lot 6.4/6.8 (Strangler): tab router / view switching now routes every
