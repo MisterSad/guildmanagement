@@ -569,6 +569,12 @@
                                     <span class="gm-ui-input gm-ui-input-md">
                                     <input type="text" id="discord-audit-channel-id" class="gm-ui-input-field" style="font-family:var(--font-mono, monospace);" placeholder="e.g. 1554015179979759616">
                                 </span>
+                                    <!-- Shown while the field is empty: without this channel, a Discord
+                                         join request is announced nowhere, and cannot be approved from Discord. -->
+                                    <div id="discord-audit-channel-warning" class="gm-login-notice gm-login-notice-error hidden" role="status" style="margin: 0.25rem 0 0; font-size: 0.8rem;">
+                                        <i class="ph ph-warning-circle"></i>
+                                        <span>No officers channel set: new players' join requests are not announced on Discord and cannot be approved from there. Run <code>/setup-server</code> in your Discord server, or paste the ID of a channel only your officers can read.</span>
+                                    </div>
                                 </div>
                             </div>
                             <label class="notification-option gm-ui-switch" style="margin-top: 0.75rem;">

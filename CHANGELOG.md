@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- **V3.34.0: the Discord bot rework (phases A–E).** The app version is bumped, and `DISCORD_CHANGELOG.md` is rewritten for officers and players. Announce it only once the worker is redeployed on Render and the front end is live.
+
+- **Discord bot, phase E: a warning when join requests would go nowhere, and the documentation catches up.**
+  - **Admin → Discord Notifications warns while the Audit / Officers Channel ID is empty.** Without that channel, `auth-discord` posts a join request nowhere, and no Approve / Reject buttons appear. The warning follows typing and points to `/setup-server`.
+  - **Guides updated:**
+    - 01, 02, 04, 05, 06, 15 and 16, plus the worker README and header, no longer present `/link` as the way to link;
+    - they describe Continue with Discord, Switch to Discord sign-in, `/invite`, the join-request buttons, and what the officers channel is for.
+
 - **Discord bot, phase D: approve or reject a join request from Discord** (`admin-accounts`, `auth-discord` and `discord-bot-interactions` deployed; the worker needs a Render redeploy to route the clicks).
   - **The join-request message carries the buttons.** The message `auth-discord` posts in the guild's audit channel now has **Approve** / **Reject** buttons (`gmjoin:approve|reject:<accountId>`).
   - **The worker only forwards the click.** It sends the custom_id and the message id to `discord-bot-interactions` with the worker secret.

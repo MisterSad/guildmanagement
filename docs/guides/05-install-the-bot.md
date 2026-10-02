@@ -45,7 +45,7 @@ In any channel, type:
 
 **2. Connect your channels in the tool.** Go to **Discord notifications** → **Player Verification (Screenshot OCR)**:
 - **Verification Channel ID** → the channel where players post their screenshot
-- **Audit / Officers Channel ID** → your officers-only channel. The bot posts its notes there.
+- **Audit / Officers Channel ID** → your officers-only channel. The bot posts its notes there, and **new players' join requests with Approve / Reject buttons**. Without it, join requests are announced nowhere.
 
 Click **Save Configuration**.
 

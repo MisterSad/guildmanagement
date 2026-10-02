@@ -2,12 +2,12 @@
 
 Type `/` in Discord to see all the commands. Most answers are **private**: only you can see them.
 
-## 🔗 First: link your account (players, one time)
+## 🔗 First: sign in once with Discord (players)
 
-1. Type `/link`. The bot gives you a code (valid 10 minutes).
-2. In the tool: **Player Portal** → **My Info** → **Link Discord** → paste the code → **Confirm**.
+Sign in to the tool with **Continue with Discord**. That links your Discord account, and the player commands now know who you are.
 
-Without this, the player commands answer "*Run `/link` first*".
+Not linked yet? The bot answers with a **Continue with Discord** button: press it.
+-# Still using an identifier and password? **My Info** → **Switch to Discord sign-in**.
 
 ---8<---
 
@@ -39,6 +39,10 @@ Without this, the player commands answer "*Run `/link` first*".
 
 ## 🛡️ Officer commands
 
+- `/invite`: posts a **Join [TAG]** button in the channel. Players press it, continue with Discord, and only have to type their UID: the join code is already filled in. Add `guild:TAG` if you manage more than one guild.
+  -# Only officers whose Discord account is linked to an officer account in the tool can use it.
+- **Join requests**: when a player asks to join, the bot posts it in your officers channel with **Approve** / **Reject** buttons. Reject asks you to confirm. The player gets a DM either way.
+  -# Same rule as in the tool: only an officer of that player's guild can decide.
 - `/verifications`: players the bot put on hold (`[PENDING]`) in the last 7 days. Add them in **Members**, then ask them to post their screenshot again.
 - `/reconcile-roles`: who still has your guild role but is **not** in your member list anymore (players who left). The bot shows the list first, and removes the role **only if you confirm**. It never kicks anyone.
   -# `/reconcile-roles` needs a special Discord setting. If it says so, ask the developer.
@@ -46,7 +50,7 @@ Without this, the player commands answer "*Run `/link` first*".
 ## 💡 Best practices
 
 1. **Pin a message in your verification channel:** "Post a screenshot of your in-game profile here to get your role."
-2. **Ask every player to `/link`**, so they update their stats themselves with `/update-stats`.
+2. **Run `/invite` in your welcome channel**, so new players join in one click, then update their stats themselves with `/update-stats`.
 3. **Ask players to use `/absent`** instead of a DM. It lands in the tool, and your officers are told.
 4. **Check `/verifications` once a week**, and run `/reconcile-roles` after a wave of departures.
 5. **Set up the automatic reminders** (Guide 7). The bot and the reminders work together.

@@ -242,6 +242,23 @@ function setChecked(id: string, value: string | null, defaultValue: boolean): vo
   }
 }
 
+/**
+ * Warns while no officers (audit) channel is set. Without one, a Discord join
+ * request is posted nowhere -- auth-discord skips it silently -- so new players
+ * wait on officers who were never told, and the Approve / Reject buttons
+ * never appear.
+ */
+function refreshAuditChannelWarning(): void {
+  const input = byId<HTMLInputElement>('discord-audit-channel-id');
+  const warning = byId('discord-audit-channel-warning');
+  if (!input || !warning) return;
+  warning.classList.toggle('hidden', input.value.trim() !== '');
+  if (!(input as any).__gmAuditWarnWired) {
+    (input as any).__gmAuditWarnWired = true;
+    input.addEventListener('input', refreshAuditChannelWarning);
+  }
+}
+
 export async function loadGuildSettings(): Promise<void> {
   const form = byId('guild-settings-form');
   if (!form) return;
@@ -260,6 +277,7 @@ export async function loadGuildSettings(): Promise<void> {
   for (const field of CHECKBOX_FIELDS) {
     setChecked(field.el, await configGet(field.key), field.def);
   }
+  refreshAuditChannelWarning();
 
   const tagSettingEl = byId<HTMLInputElement>('guild-tag-setting');
   if (tagSettingEl) {

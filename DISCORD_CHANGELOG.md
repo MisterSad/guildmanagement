@@ -1,28 +1,23 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.33.0**
+📢 **FGF Guild Management Tool Update — CHANG_V3.34.0**
 
-**🚀 Signing in with Discord, rebuilt to be quick and painless**
+**🤖 The bot now walks your players in, and lets officers approve them from Discord**
 
-I went through the whole sign-in journey, for officers, players and newcomers alike, and removed every bump I could find.
+Last update made signing in with Discord smooth. This one brings the bot along.
 
-**One button for everyone**
-• The login page now has a single **Continue with Discord** button. Officers land in the Command Center, players in their Player Portal, automatically.
-• Still on an old identifier and password? It's tucked under *"I still sign in with an identifier and password"*, and it opens by itself if that's how you signed in last time.
-• You can now see what's happening: the button shows *Opening Discord…*, and you get *Signing you in…* when you come back.
+**⚔️ For officers**
+• **New `/invite` command.** Run it in your welcome channel: the bot posts a **Join [TAG]** button. Players press it, continue with Discord, and only type their UID. The join code is already filled in.
+• **Approve new players without leaving Discord.** When someone asks to join, the request lands in your officers channel with **Approve** and **Reject** buttons. Reject asks you to confirm, the player gets a DM either way, and the buttons disappear once it's decided.
+• Only an officer of that player's guild can decide, exactly like in the tool. A Discord role alone isn't enough.
+• No officers channel set? The tool now warns you in **Admin → Discord Notifications**: without one, join requests aren't announced anywhere. `/setup-server` creates it for you.
 
-**🧭 A clearer welcome for newcomers**
-• First time here? You now pick from three simple choices: **join my guild**, **I already have an account**, or **create a guild**. Each one says what you'll need.
-• **A typo no longer sends you back to Discord.** Wrong join code, a UID that isn't on the roster yet, or a tag that's already taken? The form stays filled in, the error shows right under the field, and you just fix it.
-• A stray click outside the window no longer throws away what you typed.
+**🎮 For players**
+• **`/link` is gone.** Signing in to the tool with **Continue with Discord** links your account, and that's all the bot needs.
+• Not linked yet? The bot's answer comes with a **Continue with Discord** button. One tap, done.
+• Still signing in with a password? **My Info → Switch to Discord sign-in** moves you over in one step.
+• Got your guild role after posting your screenshot? The welcome DM now has a button to your Player Portal. If you're not in the tool yet, it opens with your guild's code filled in.
 
-**🔗 Invite links for officers**
-• In **Accounts & Access**, the new **Copy invite link** button sits next to your guild's join code. Share the link on your Discord: your players open it, continue with Discord, and the code is already filled in. All they type is their UID.
-• Admin invitations and relink codes get a link button too.
+**🔒 Under the hood**
+• `/link` could keep an old password alive next to Discord. That door is closed: Discord sign-in is the only way to link an account now.
+• Every approval or rejection, from the tool or from Discord, now leaves a trace of who decided.
 
-**⏳ No more waiting in the dark**
-• After asking to join a guild, players now see a clear **"Waiting for approval"** screen.
-• Your officers get a message in the guild's audit channel when someone asks to join.
-• The player gets a **Discord DM** as soon as an officer approves or declines (if their DMs are open).
-
-**What changes for you:** nothing to do. Next time you sign in, it's just smoother.
-
--# Something feels off in the new sign-in? Tell me with the 🐞 **Report a bug** button, and say which step you were on. 💪
+-# Something feels off with the bot? Tell me with the 🐞 **Report a bug** button, and say which command or button you used. 💪

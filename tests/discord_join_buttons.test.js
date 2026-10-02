@@ -82,3 +82,20 @@ describe('the Edge Function decides', () => {
     expect(canManageAccount(officer, { role: 'member', guild: 'OMEGA', serverNumber: '1058' })).toBe(false);
   });
 });
+
+describe('the app warns when join requests would be announced nowhere', () => {
+  const html = read('index.html');
+  const ctrl = read('src/modules/app/admin/guild-requests.controller.ts');
+
+  it('has a warning under the officers channel field, hidden by default', () => {
+    expect(html).toMatch(/id="discord-audit-channel-warning" class="[^"]*hidden"/);
+  });
+
+  it('shows it while the field is empty, and follows typing', () => {
+    const fn = ctrl.slice(ctrl.indexOf('function refreshAuditChannelWarning'), ctrl.indexOf('export async function loadGuildSettings'));
+    expect(fn).toContain("warning.classList.toggle('hidden', input.value.trim() !== '')");
+    expect(fn).toContain("input.addEventListener('input', refreshAuditChannelWarning)");
+    const load = ctrl.slice(ctrl.indexOf('export async function loadGuildSettings'));
+    expect(load).toContain('refreshAuditChannelWarning();');
+  });
+});

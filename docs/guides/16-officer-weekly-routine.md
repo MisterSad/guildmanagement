@@ -38,7 +38,7 @@ A checklist to keep your guild's data clean in **15 minutes a week**. Each step 
 
 You don't have to do it all alone:
 - Give your R4s their own access (**Guide 2**). Each one can own an event.
-- Ask players to **`/link`**, then update their stats with `/update-stats` and declare absences with `/absent` (**Guide 6**).
+- Post an **`/invite`** button for new players, and ask everyone to update their stats with `/update-stats` and declare absences with `/absent` (**Guide 6**).
 - Turn on the automatic **Discord reminders** once, and forget them (**Guide 7**).
 
 -# Problem? Check the **FAQ** (Guide 15), or report a bug (Guide 14).
