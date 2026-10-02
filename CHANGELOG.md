@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- **Discord sign-in, phase 4 of 4: shareable invite links.**
+  - **Admins can copy a link instead of a raw code**:
+    - "Copy invite link" sits next to the guild join code;
+    - a link button sits next to each freshly issued admin invitation and each relink code.
+  - **The code travels in the URL fragment** (`/#join=…`, `/#code=…`), never the query string. A fragment is not sent to Vercel, to Supabase or in a Referer header, so the code never reaches an access log.
+  - **At boot, `captureIntentFromHash()` runs before the Discord callback:**
+    - it validates the code against the auth-discord schema bounds;
+    - it parks the code as a pending intent (sessionStorage, same tab);
+    - it strips the fragment from the address bar.
+  - A malformed code is dropped silently. `#terms` is left alone.
+  - **When the person is signed out,** the login page shows an invitation banner. After Discord, the wizard opens on the right path with the code filled in, so a player joining a guild only types their UID.
+  - **When the person is already signed in, or already has an account,** a toast says the link was not used and why.
+
 - **Discord sign-in, phase 3 of 4: the four-button "Welcome" modal is a two-step wizard.**
   - **Step 1 offers three described cards:**
     - "I'm a player — join my guild";

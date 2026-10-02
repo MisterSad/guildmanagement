@@ -118,3 +118,43 @@ export function clearPendingIntent(): void {
   if (!s) return;
   try { s.removeItem(KEY); } catch { /* blocked storage */ }
 }
+
+// ── Shared invite links ─────────────────────────────────────────────────────
+//
+// `https://<app>/#join=<guild join code>` and `https://<app>/#code=<invite or
+// relink code>`. The FRAGMENT, never the query string: a fragment is not sent
+// to Vercel, to Supabase or in a Referer header, so the code never lands in an
+// access log. It is read once at boot, stored as a pending intent, and
+// stripped from the address bar before anything else runs.
+
+const LINK_KEYS: Record<string, PendingIntentKind> = { join: 'join', code: 'code' };
+
+/** Builds a shareable link for a join code or an invitation/relink code. */
+export function buildInviteLink(origin: string, kind: 'join' | 'code', code: string): string {
+  return origin.replace(/\/+$/, '') + '/#' + kind + '=' + encodeURIComponent(code.trim());
+}
+
+/**
+ * Reads `#join=` / `#code=` from the current URL, stores it as a pending
+ * intent and removes it from the address bar. Returns the intent, or null when
+ * the fragment carries none (or carries an invalid one, which is dropped).
+ */
+export function captureIntentFromHash(): PendingIntent | null {
+  if (typeof window === 'undefined' || !window.location) return null;
+  const hash = window.location.hash || '';
+  const m = /^#(join|code)=([^&]*)$/.exec(hash);
+  if (!m) return null;
+
+  // Strip first: whatever happens next, the code must not stay in the address
+  // bar, the history entry or a bookmark.
+  try {
+    window.history.replaceState({}, '', window.location.pathname + window.location.search);
+  } catch { /* replaceState unavailable in some embedded webviews */ }
+
+  let code = '';
+  try { code = decodeURIComponent(m[2]); } catch { return null; }
+  const intent = sanitizeIntent({ kind: LINK_KEYS[m[1]], code, fromLink: true });
+  if (!intent || !intent.code) return null;
+  savePendingIntent(intent);
+  return intent;
+}

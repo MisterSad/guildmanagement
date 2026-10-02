@@ -101,6 +101,7 @@ import {
 import {
   restoreSession,
   handleDiscordCallback,
+  applyLinkIntentAtBoot,
   handleSuccessfulLogin,
   revealPortal,
   doLogout,
@@ -110,6 +111,7 @@ import {
   initAuthForms,
   startConditionalPasskeyListener
 } from './modules/app/auth/auth.controller';
+import { captureIntentFromHash } from './core/auth/pending-intent';
 import {
   checkForNewVersion,
   showNewVersionBanner,
@@ -595,6 +597,11 @@ if (typeof window !== 'undefined') {
     // letting restoreSession win the race would settle the page into a
     // logged-out state with the ticket still unspent. It resolves false when
     // the URL carries no ticket, which is every other page load.
+    //
+    // A shared invite link (`#join=` / `#code=`) is captured even earlier: it
+    // is stripped from the address bar and parked in sessionStorage, where the
+    // onboarding wizard finds it after the Discord round trip.
+    captureIntentFromHash();
     void handleDiscordCallback().then((handled) => {
       if (handled) return;
       // Restore the persisted session, then the last active tab on success.
@@ -605,6 +612,7 @@ if (typeof window !== 'undefined') {
             restoreSavedTab();
           }
         }
+        applyLinkIntentAtBoot(!!(res && res.restored));
       });
     });
   });
