@@ -10,6 +10,7 @@
 
 import { t, esc, gm, winAny, byId, getDb, ls } from './utils';
 import { getActiveGuild } from '../../../core/auth/roles';
+import { buildInviteLink } from '../../../core/auth/pending-intent';
 import { setAccounts, filterAccountsOut, unshiftAccount, getAccounts } from './admin-store';
 import { renderAccounts, revealAccountPassword } from './accounts.render';
 import { showToast } from '../dialogs/dialogs.service';
@@ -169,10 +170,13 @@ export function wireAdminInvite(): void {
           '<div class="gm-cred-pass" style="display:inline-flex;">' +
             '<span class="gm-pwd-text">' + esc(res.invite_code) + '</span>' +
             '<button class="gm-mini-btn gm-invite-copy" title="Copy invitation code"><i class="ph ph-copy"></i></button>' +
+            '<button class="gm-mini-btn gm-invite-link-copy" title="Copy invite link"><i class="ph ph-link"></i></button>' +
           '</div>' +
           '<div style="margin-top:.4rem; font-size:.78rem; color:var(--text-dim);">' +
             esc(String(res.open_codes)) + ' of ' + esc(String(res.max_open_codes)) + ' invitations open for ' + esc(guild) + '. Shown once.' +
           '</div>';
+        const linkCopyBtn = result.querySelector('.gm-invite-link-copy');
+        if (linkCopyBtn) linkCopyBtn.addEventListener('click', () => { copyInviteLink('code', res.invite_code); });
         const copyBtn = result.querySelector('.gm-invite-copy');
         if (copyBtn) copyBtn.addEventListener('click', () => {
           if (navigator.clipboard) navigator.clipboard.writeText(res.invite_code)
@@ -201,8 +205,22 @@ function joinCodeStorageKey(): string | null {
 }
 
 /** Guild join-code card (permanent code, generated once, persisted server-side). */
+/**
+ * Copies a shareable invite link to the clipboard. The code rides in the URL
+ * FRAGMENT (see core/auth/pending-intent.ts), so it never reaches a server log.
+ */
+function copyInviteLink(kind: 'join' | 'code', code: string): void {
+  const link = buildInviteLink(window.location.origin, kind, code);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(link)
+      .then(() => showToast("Invite link copied — share it on your guild's Discord.", 'success'))
+      .catch(() => undefined);
+  }
+}
+
 export function wireJoinCode(): void {
   const copyBtn = byId<HTMLButtonElement>('join-code-copy-btn');
+  const linkBtn = byId<HTMLButtonElement>('join-link-copy-btn');
   const resultBox = byId('join-code-result');
   const resultVal = byId('join-code-value');
   const infoEl = byId('join-code-info');
@@ -218,9 +236,11 @@ export function wireJoinCode(): void {
       if (code) {
         resultBox.classList.remove('gm-join-code-empty');
         if (copyBtn) copyBtn.classList.remove('hidden');
+        if (linkBtn) linkBtn.classList.remove('hidden');
       } else {
         resultBox.classList.add('gm-join-code-empty');
         if (copyBtn) copyBtn.classList.add('hidden');
+        if (linkBtn) linkBtn.classList.add('hidden');
       }
     }
   }
@@ -277,6 +297,12 @@ export function wireJoinCode(): void {
       const code = currentCode || (resultVal ? resultVal.textContent : '') || '';
       if (!code || code === 'No code yet') return;
       if (navigator.clipboard) navigator.clipboard.writeText(code).then(() => { showToast('Join code copied.', 'success'); }).catch(() => undefined);
+    });
+  }
+  if (linkBtn && !(linkBtn as any).__gmLinkWired) {
+    (linkBtn as any).__gmLinkWired = true;
+    linkBtn.addEventListener('click', () => {
+      if (currentCode) copyInviteLink('join', currentCode);
     });
   }
 }

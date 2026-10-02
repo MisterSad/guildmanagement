@@ -126,3 +126,21 @@ test('signing in with an identifier still works, as the secondary route', async 
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator('#login-form')).toBeVisible();
 });
+
+test('an invite link shows the invitation banner and leaves no code in the URL', async ({ page }) => {
+    await page.goto('/#join=FGF-ABCD-EFGH');
+    const banner = page.locator('#login-invite-banner');
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText('join code is already filled in');
+    // Stripped from the address bar before anything else runs.
+    expect(new URL(page.url()).hash).toBe('');
+    // Parked for the onboarding wizard, in this tab only.
+    const stored = await page.evaluate(() => sessionStorage.getItem('gm_pending_intent'));
+    expect(JSON.parse(stored)).toMatchObject({ kind: 'join', code: 'FGF-ABCD-EFGH', fromLink: true });
+});
+
+test('a malformed invite link is dropped silently', async ({ page }) => {
+    await page.goto('/#code=%3Cscript%3E');
+    await expect(page.locator('#login-invite-banner')).toBeHidden();
+    expect(new URL(page.url()).hash).toBe('');
+});

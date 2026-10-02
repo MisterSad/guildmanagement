@@ -53,3 +53,37 @@ describe('pending intent', () => {
     expect(src).not.toMatch(/from ['"][^'"]*modules\//);
   });
 });
+
+describe('shared invite links', () => {
+  it('builds fragment links, never query strings', async () => {
+    const { buildInviteLink } = await import('../src/core/auth/pending-intent');
+    expect(buildInviteLink('https://guildmanagement.vercel.app/', 'join', 'FGF-7K2M-X9Q4'))
+      .toBe('https://guildmanagement.vercel.app/#join=FGF-7K2M-X9Q4');
+    expect(buildInviteLink('https://x.app', 'code', 'ABCDE-FGHIJ')).toBe('https://x.app/#code=ABCDE-FGHIJ');
+  });
+
+  it('captures #join=, stores it and strips it from the URL', async () => {
+    const { captureIntentFromHash } = await import('../src/core/auth/pending-intent');
+    window.history.replaceState({}, '', '/?keep=1#join=FGF-7K2M-X9Q4');
+    const intent = captureIntentFromHash();
+    expect(intent).toMatchObject({ kind: 'join', code: 'FGF-7K2M-X9Q4', fromLink: true });
+    expect(window.location.hash).toBe('');
+    expect(window.location.search).toBe('?keep=1');
+    expect(peekPendingIntent()).toMatchObject({ kind: 'join', code: 'FGF-7K2M-X9Q4' });
+  });
+
+  it('strips but ignores a malformed code', async () => {
+    const { captureIntentFromHash } = await import('../src/core/auth/pending-intent');
+    window.history.replaceState({}, '', '/#code=%3Cscript%3E');
+    expect(captureIntentFromHash()).toBeNull();
+    expect(window.location.hash).toBe('');
+    expect(peekPendingIntent()).toBeNull();
+  });
+
+  it('leaves unrelated fragments alone', async () => {
+    const { captureIntentFromHash } = await import('../src/core/auth/pending-intent');
+    window.history.replaceState({}, '', '/#terms');
+    expect(captureIntentFromHash()).toBeNull();
+    expect(window.location.hash).toBe('#terms');
+  });
+});

@@ -167,3 +167,20 @@ describe('the one-door login page (2026-10-02)', () => {
     expect(portal).toContain("signOutBtn.addEventListener('click', () => { exitPortalToLogin(); })");
   });
 });
+
+describe('shared invite links (2026-10-02)', () => {
+  it('captures the fragment before the Discord callback and the session restore', () => {
+    const boot = main.slice(main.indexOf('captureIntentFromHash();'));
+    expect(boot.indexOf('captureIntentFromHash();')).toBeLessThan(boot.indexOf('handleDiscordCallback()'));
+    expect(boot).toContain('applyLinkIntentAtBoot(!!(res && res.restored))');
+  });
+
+  it('lets admins copy a fragment link for join, invite and relink codes', () => {
+    const ctrl = stripJs(read('src/modules/app/admin/accounts.controller.ts'));
+    const render = stripJs(read('src/modules/app/admin/accounts.render.ts'));
+    expect(html).toContain('id="join-link-copy-btn"');
+    expect(ctrl).toContain("copyInviteLink('join', currentCode)");
+    expect(ctrl).toContain("copyInviteLink('code', res.invite_code)");
+    expect(render).toContain("buildInviteLink(window.location.origin, 'code', res.relink_code)");
+  });
+});

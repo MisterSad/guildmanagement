@@ -136,6 +136,31 @@ function setLoginBusy(busy: boolean): void {
   if (hint) hint.classList.toggle('hidden', busy);
 }
 
+/**
+ * Boot-time follow-up for a shared invite link (`#join=` / `#code=`), once the
+ * session restore has settled. Signed out: show the invitation banner, so the
+ * person knows why they are here and what the button will do. Already signed
+ * in: the link cannot apply to this session, so say so and drop it.
+ */
+export function applyLinkIntentAtBoot(alreadySignedIn: boolean): void {
+  const intent = peekPendingIntent();
+  if (!intent || !intent.fromLink) return;
+  if (alreadySignedIn) {
+    clearPendingIntent();
+    showToast("You're already signed in. Sign out first to use this invitation link.", 'info');
+    return;
+  }
+  const banner = el('login-invite-banner');
+  if (!banner) return;
+  const span = banner.querySelector('span');
+  if (span) {
+    span.textContent = intent.kind === 'join'
+      ? "You've been invited to join a guild. Continue with Discord to accept — your join code is already filled in."
+      : "You've received an invitation code. Continue with Discord to use it — it's already filled in.";
+  }
+  banner.classList.remove('hidden');
+}
+
 /** Per-device memory of the last sign-in route, so the right door is open. */
 const LAST_METHOD_KEY = 'gm_last_signin_method';
 
@@ -364,6 +389,18 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
   const loginError = el('login-error');
   if (loginError) loginError.classList.add('hidden');
   clearDiscordStatus();
+  // An invite link someone followed while already holding an account was not
+  // used -- say so, rather than let them think the invitation was accepted.
+  // (The wizard clears the intent itself when it does spend the code.)
+  const unusedLink = peekPendingIntent();
+  if (unusedLink && unusedLink.fromLink) {
+    showToast(
+      unusedLink.kind === 'join'
+        ? 'You already have an account, so the join link was not needed. You are signed in to it.'
+        : 'You already have an account, so the invitation was not used. Ask the admin to issue it to an account without a Discord link.',
+      'info'
+    );
+  }
   clearPendingIntent();
   const password = el<HTMLInputElement>('password');
   if (password) password.value = '';

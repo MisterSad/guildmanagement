@@ -434,11 +434,15 @@
                             <span>Guild Join Code</span> <button class="gm-help-btn" data-help-id="help-join-code" aria-label="Help: Guild Join Code"><i class="ph ph-info"></i></button>
                         </div>
                         <p class="gm-page-subtitle" style="margin-bottom: 0.75rem;">
-                            Players use this permanent code to create their own account from the login screen.
-                            It is unique to your guild and never changes.
+                            Players join with Discord using this permanent code. Share the invite link and the
+                            code is filled in for them. It is unique to your guild and never changes.
                         </p>
                         <div class="gm-row" style="gap: 0.6rem; flex-wrap: wrap;">
-                            <button type="button" id="join-code-copy-btn" class="gm-btn gm-btn-primary">
+                            <button type="button" id="join-link-copy-btn" class="gm-btn gm-btn-primary hidden">
+                                <i class="ph ph-link"></i>
+                                <span>Copy invite link</span>
+                            </button>
+                            <button type="button" id="join-code-copy-btn" class="gm-btn gm-btn-ghost">
                                 <i class="ph ph-copy"></i>
                                 <span>Copy Code</span>
                             </button>

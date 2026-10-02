@@ -11,6 +11,7 @@
 
 import { t, esc, gm, winAny, byId } from './utils';
 import { getActiveGuild } from '../../../core/auth/roles';
+import { buildInviteLink } from '../../../core/auth/pending-intent';
 import {
   type AccountRow,
   getAccounts,
@@ -377,8 +378,17 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
               holder.style.display = 'inline-flex';
               holder.innerHTML =
                 '<span class="gm-pwd-text">' + esc(res.relink_code) + '</span>' +
-                '<button class="gm-mini-btn gm-relink-copy" title="Copy relink code"><i class="ph ph-copy"></i></button>';
+                '<button class="gm-mini-btn gm-relink-copy" title="Copy relink code"><i class="ph ph-copy"></i></button>' +
+                '<button class="gm-mini-btn gm-relink-link-copy" title="Copy relink link"><i class="ph ph-link"></i></button>';
               wrap.insertAdjacentElement('afterend', holder);
+              // The fragment link opens the sign-in with the code already filled in.
+              const linkCopyBtn = holder.querySelector('.gm-relink-link-copy');
+              if (linkCopyBtn) linkCopyBtn.addEventListener('click', () => {
+                const link = buildInviteLink(window.location.origin, 'code', res.relink_code);
+                if (navigator.clipboard) navigator.clipboard.writeText(link)
+                  .then(() => { const gg = gm(); if (gg && gg.showToast) gg.showToast('Relink link copied.', 'success'); })
+                  .catch(() => undefined);
+              });
               const copyBtn = holder.querySelector('.gm-relink-copy');
               if (copyBtn) copyBtn.addEventListener('click', () => {
                 if (navigator.clipboard) navigator.clipboard.writeText(res.relink_code)
