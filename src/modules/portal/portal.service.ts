@@ -77,10 +77,6 @@ export class PortalService {
     return this.invokeAction('get-transfer-guilds');
   }
 
-  public static async confirmDiscordLink(code: string): Promise<PortalResponse> {
-    return this.invokeAction('confirm-discord-link', { code });
-  }
-
   public static async updateTimezone(offset: number): Promise<PortalResponse> {
     return this.invokeAction('update-timezone', { offset });
   }

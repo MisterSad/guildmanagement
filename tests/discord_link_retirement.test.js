@@ -54,6 +54,9 @@ describe('the Portal card replaces the code box', () => {
   it('has no code input and no confirm-discord-link call any more', () => {
     expect(portal).not.toContain('portal-discord-code-input');
     expect(portal).not.toContain("'confirm-discord-link'");
+    // The service wrapper outlived the card by one release; nothing in the
+    // client may name the removed action.
+    expect(strip(read('src/modules/portal/portal.service.ts'))).not.toContain('confirm-discord-link');
   });
 
   it('moves a password account to Discord through the claim, saving the intent AFTER logout', () => {
