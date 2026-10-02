@@ -1,8 +1,19 @@
 📢 **FGF Guild Management Tool Update — CHANG_V3.34.0**
 
-**🤖 The bot now walks your players in, and lets officers approve them from Discord**
+**🚀 Signing in with Discord, rebuilt — and the bot walks your players in**
 
-Last update made signing in with Discord smooth. This one brings the bot along.
+This update covers two releases: a new sign-in (V3.33) and a bot that now works hand in hand with it (V3.34).
+
+**🔑 Signing in (V3.33)**
+• **One button for everyone:** **Continue with Discord**. Officers land in the Command Center, players in their Player Portal, automatically. Old identifier and password? Tucked underneath, and it opens by itself if that's how you signed in last time.
+• **First time here?** Pick **join my guild**, **I already have an account** or **create a guild**. Each says what you'll need.
+• **A typo no longer sends you back to Discord.** The form stays filled in, the error shows under the field, and you just fix it.
+• **Invite links:** in **Accounts & Access**, **Copy invite link** sits next to your join code. Players open it and the code is already filled in; all they type is their UID.
+• **No more waiting in the dark:** after asking to join, players see a clear **"Waiting for approval"** screen, and get a Discord DM once an officer decides.
+
+---8<---
+
+**🤖 The bot (V3.34)**
 
 **⚔️ For officers**
 • **New `/invite` command.** Run it in your welcome channel: the bot posts a **Join [TAG]** button. Players press it, continue with Discord, and only type their UID. The join code is already filled in.
@@ -20,4 +31,6 @@ Last update made signing in with Discord smooth. This one brings the bot along.
 • `/link` could keep an old password alive next to Discord. That door is closed: Discord sign-in is the only way to link an account now.
 • Every approval or rejection, from the tool or from Discord, now leaves a trace of who decided.
 
--# Something feels off with the bot? Tell me with the 🐞 **Report a bug** button, and say which command or button you used. 💪
+**What changes for you:** nothing to do. Next time you sign in, it's just smoother.
+
+-# Something feels off with the sign-in or the bot? Tell me with the 🐞 **Report a bug** button, and say which step, command or button you used. 💪
