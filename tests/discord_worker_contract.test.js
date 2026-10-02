@@ -260,10 +260,10 @@ describe('one transport, one registry, one implementation', () => {
       expect(workerSrc, `/${name} must be registered`).toContain(`["${name}", `);
     }
     // And a retired command must be actively excluded, not merely dropped.
-    expect(workerSrc).toContain('const RETIRED_COMMANDS = new Set(["power", "glory"])');
+    expect(workerSrc).toContain('const RETIRED_COMMANDS = new Set(["power", "glory", "link"])');
     const desiredBlock = workerSrc.slice(workerSrc.indexOf('const desired = new Map(['), workerSrc.indexOf('const body = []'));
     expect(desiredBlock.length).toBeGreaterThan(100);
-    for (const retired of ['power', 'glory']) {
+    for (const retired of ['power', 'glory', 'link']) {
       expect(desiredBlock, `/${retired} must not be registered`).not.toContain(`["${retired}", `);
     }
   });

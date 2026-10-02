@@ -320,7 +320,9 @@ describe('Regression: discord-bot-interactions exposes the Phase 2 commands via 
     // Every command must gate on resolveLinkedAccount before touching player data,
     // same as /myinfo -- no command should invent its own lookup path.
     const resolverCalls = (botSrc.match(/await resolveLinkedAccount\(admin, discordUserId\)/g) || []).length;
-    expect(resolverCalls).toBe(5); // myinfo + update-stats + timezone + challenges + absence
+    // update-stats + timezone + challenges + absence. /myinfo is answered by the
+    // worker, and its unreachable copy here was removed with /link.
+    expect(resolverCalls).toBe(4);
   });
 
   it('routes all three /absence subcommands', () => {
@@ -340,10 +342,11 @@ describe('Regression: the worker owns the full Phase 2 command set', () => {
     'utf-8'
   );
 
-  it('declares all 7 commands', () => {
-    for (const name of ['link', 'myinfo', 'power', 'glory', 'timezone', 'challenges', 'absence']) {
+  it('declares the live commands, and no longer declares /link', () => {
+    for (const name of ['myinfo', 'timezone', 'challenges', 'absence']) {
       expect(scriptSrc).toContain(`name: "${name}"`);
     }
+    expect(scriptSrc).not.toContain('name: "link"');
   });
 
   it('declares /timezone bounded natively by Discord (-12..14), matching updatePlayerTimezone', () => {
@@ -365,8 +368,8 @@ describe('Regression: the worker owns the full Phase 2 command set', () => {
     expect(block).toContain('name: "id"');
   });
 
-  it('retires the two commands /update-stats already covered', () => {
-    expect(scriptSrc).toContain('const RETIRED_COMMANDS = new Set(["power", "glory"])');
+  it('retires /power, /glory and /link explicitly', () => {
+    expect(scriptSrc).toContain('const RETIRED_COMMANDS = new Set(["power", "glory", "link"])');
     // Dropping a name from `desired` is not enough: the merge folds unknown
     // existing commands back in, so a retired one must be excluded explicitly
     // or Discord keeps serving it.

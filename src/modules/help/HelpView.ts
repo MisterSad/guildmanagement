@@ -188,8 +188,8 @@ export const HELP_DB: Record<string, HelpEntry> = {
   },
   'help-portal-discord-link': {
     icon: 'ph-discord-logo',
-    title: 'Link Discord',
-    body: '<p>Type <code>/link</code> in Discord to get a one-time code, then paste it here to confirm. Confirming here — while you\'re already signed in — is what proves the Discord account is really yours.</p><p>Once linked, player commands like <code>/myinfo</code> work in Discord for your account.</p>'
+    title: 'Discord sign-in',
+    body: '<p>Your Discord account is linked when you sign in with <strong>Continue with Discord</strong>. Bot commands like <code>/myinfo</code> and <code>/mystats</code> then know who you are.</p><p>Still signing in with an identifier and password? Press <strong>Switch to Discord sign-in</strong>: you sign in with Discord once and confirm your password, then Discord becomes your only way in and the password is retired.</p>'
   },
   'help-portal-transfer': {
     icon: 'ph-arrows-left-right',

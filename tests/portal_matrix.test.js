@@ -125,10 +125,6 @@ export const UpdateTimezoneSchema = z.object({
   ])
 }).passthrough();
 
-export const ConfirmDiscordLinkSchema = z.object({
-  code: z.string().trim().min(1, "code is required").max(64)
-}).passthrough();
-
 export const ActionPayloadSchemas = {
   "submit-scores": SubmitScoresSchema,
   "update-power": UpdatePowerSchema,
@@ -139,7 +135,6 @@ export const ActionPayloadSchemas = {
   "set-absence": SetAbsenceSchema,
   "delete-absence": DeleteAbsenceSchema,
   "update-timezone": UpdateTimezoneSchema,
-  "confirm-discord-link": ConfirmDiscordLinkSchema,
 };
 
 describe('Ticket 2.3: Static Containment - Zod Schema Validation in member-portal', () => {
@@ -159,7 +154,8 @@ describe('Ticket 2.3: Static Containment - Zod Schema Validation in member-porta
     expect(portalContent).toContain('export const DeleteAbsenceSchema =');
     expect(portalContent).toContain('export const UpdateTimezoneSchema =');
     expect(portalContent).toContain('Number.isInteger(v * 4)');
-    expect(portalContent).toContain('export const ConfirmDiscordLinkSchema =');
+    // Removed with /link on 2026-10-03.
+    expect(portalContent).not.toContain('ConfirmDiscordLinkSchema');
     // Web Push was removed with the PWA: the schema and both push-prefs
     // actions are gone from member-portal, and must not come back.
     expect(portalContent).not.toContain('SetPushPrefsSchema');
@@ -185,7 +181,6 @@ describe('Ticket 2.3: Static Containment - Zod Schema Validation in member-porta
     expect(portalContent).toContain('parseSafeScore(payload.score_pvp)');
     expect(portalContent).not.toContain('update.excused = !!payload.excused');
     expect(portalContent).not.toContain('update.appointed = !!payload.appointed');
-    expect(portalContent).toContain('account_id: identity.accountId');
     expect(portalContent).not.toMatch(/account_id:\s*payload/);
   });
 });
@@ -399,18 +394,6 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
       expect(UpdateTimezoneSchema.safeParse({ offset: 'abc' }).success).toBe(false);
       expect(UpdateTimezoneSchema.safeParse({ offset: 9.4 }).success).toBe(false);
       expect(UpdateTimezoneSchema.safeParse({}).success).toBe(false);
-    });
-  });
-
-  describe('ConfirmDiscordLinkSchema', () => {
-    it('accepts non-empty code', () => {
-      expect(ConfirmDiscordLinkSchema.safeParse({ code: 'CODE-1234' }).success).toBe(true);
-    });
-
-    it('rejects empty or missing code', () => {
-      expect(ConfirmDiscordLinkSchema.safeParse({}).success).toBe(false);
-      expect(ConfirmDiscordLinkSchema.safeParse({ code: '' }).success).toBe(false);
-      expect(ConfirmDiscordLinkSchema.safeParse({ code: '   ' }).success).toBe(false);
     });
   });
 

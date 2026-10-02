@@ -19,6 +19,7 @@
 
 import { PortalService } from '../portal.service';
 import { escapeHTML } from '../../../core/utils/text';
+import { savePendingIntent } from '../../../core/auth/pending-intent';
 import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
 import { computeBadges as computeBadgesService } from '../../badges/badges.service';
 import { weightedRate, round1 } from '../../../core/scoring/reliability';
@@ -278,7 +279,8 @@ export class PortalView {
       metrics_updated_at: profile.metrics_updated_at || null,
       timezone_offset: profile.timezone_offset != null ? profile.timezone_offset : null,
       timezone: profile.timezone || null,
-      glory: profile.glory != null ? profile.glory : null
+      glory: profile.glory != null ? profile.glory : null,
+      discord_linked: profile.discord_linked === true
     };
     this.state.sessions = profile.sessions || [];
     this.state.history = history.ok ? (history.events || {}) : null;
@@ -1185,6 +1187,25 @@ export class PortalView {
   }
 
   // ── Panel: My Info ──────────────────────────────────────────────────────
+  /** My Info card: linked already, or one button to move to Discord sign-in. */
+  private renderDiscordCard(): string {
+    const linked = !!(this.state.player && this.state.player.discord_linked);
+    const title =
+      '<div class="portal-card-title"><i class="ph ph-discord-logo"></i> Discord sign-in' +
+        '<button class="gm-help-btn" data-help-id="help-portal-discord-link" aria-label="Help: Discord sign-in"><i class="ph ph-info"></i></button>' +
+      '</div>';
+    if (linked) {
+      return '<div class="portal-card">' + title +
+        '<div class="portal-msg" style="display:block; color: var(--success);"><i class="ph ph-check-circle"></i> Linked to Discord.</div>' +
+        '<div class="portal-timezone-hint"><i class="ph ph-info"></i> You sign in with <strong>Continue with Discord</strong>, and bot commands like <code>/myinfo</code> and <code>/mystats</code> know who you are.</div>' +
+      '</div>';
+    }
+    return '<div class="portal-card">' + title +
+      '<div class="portal-row"><button type="button" id="portal-discord-switch-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-discord-logo"></i><span>Switch to Discord sign-in</span></button></div>' +
+      '<div class="portal-timezone-hint"><i class="ph ph-info"></i> You will sign in with Discord once and confirm your current password. After that, Discord is your only way in, your password is retired, and bot commands like <code>/myinfo</code> work.</div>' +
+    '</div>';
+  }
+
   private renderSettingsPanel(): void {
     const panel = document.getElementById('portal-panel-settings');
     if (!panel) return;
@@ -1231,12 +1252,7 @@ export class PortalView {
           '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Helps officers plan events when most players are available.</div>' +
         '</div>' +
 
-        '<div class="portal-card">' +
-          '<div class="portal-card-title"><i class="ph ph-discord-logo"></i> Link Discord<button class="gm-help-btn" data-help-id="help-portal-discord-link" aria-label="Help: Link Discord"><i class="ph ph-info"></i></button></div>' +
-          '<div class="portal-row"><input type="text" id="portal-discord-code-input" class="gm-input" maxlength="6" placeholder="Code from /link in Discord" autocomplete="off" style="text-transform:uppercase;"><button type="button" id="portal-discord-link-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-link"></i><span>Confirm</span></button></div>' +
-          '<div class="portal-msg" id="portal-discord-link-msg"></div>' +
-          '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Run <code>/link</code> in Discord first, then paste the code here to enable player commands like <code>/myinfo</code>.</div>' +
-        '</div>' +
+        this.renderDiscordCard() +
 
         '<div class="portal-card">' +
           '<div class="portal-card-title"><i class="ph ph-swap"></i> Request Guild Transfer<button class="gm-help-btn" data-help-id="help-portal-transfer" aria-label="Help: Guild Transfer"><i class="ph ph-info"></i></button></div>' +
@@ -1418,45 +1434,21 @@ export class PortalView {
       });
     }
 
-    // Link Discord
-    const discordCodeInput = document.getElementById('portal-discord-code-input') as HTMLInputElement | null;
-    const discordLinkBtn = document.getElementById('portal-discord-link-btn') as HTMLButtonElement | null;
-    const discordLinkMsg = document.getElementById('portal-discord-link-msg');
-    if (discordLinkBtn && discordCodeInput) {
-      discordLinkBtn.addEventListener('click', async () => {
-        const code = discordCodeInput.value.trim().toUpperCase();
-        if (!code) return;
-        discordLinkBtn.disabled = true;
-        const span = discordLinkBtn.querySelector('span');
-        const origText = span ? span.textContent : '';
-        if (span) span.textContent = 'Linking...';
-        try {
-          const res = await this.invoke('confirm-discord-link', { code });
-          if (!res.ok) {
-            const errMap: Record<string, string> = {
-              invalid_code: 'That code is invalid or already used.',
-              code_expired: 'That code has expired — run /link in Discord again.',
-              already_linked: 'This Discord account or player account is already linked.'
-            };
-            throw new Error(errMap[res.error] || res.error || 'link_failed');
-          }
-          discordCodeInput.value = '';
-          if (discordLinkMsg) {
-            discordLinkMsg.textContent = 'Discord account linked! Player commands like /myinfo are now available.';
-            (discordLinkMsg as HTMLElement).style.color = 'var(--success)';
-            (discordLinkMsg as HTMLElement).style.display = 'block';
-          }
-          legacy.showToast('Discord linked!', 'success');
-        } catch (err: any) {
-          if (discordLinkMsg) {
-            discordLinkMsg.textContent = err.message;
-            (discordLinkMsg as HTMLElement).style.color = 'var(--danger)';
-            (discordLinkMsg as HTMLElement).style.display = 'block';
-          }
-        } finally {
-          discordLinkBtn.disabled = false;
-          if (span) span.textContent = origText;
-        }
+    // Switch to Discord sign-in. Logging out clears sessionStorage, so the
+    // intent is saved AFTER it: the wizard then opens on "I already have an
+    // account" with the identifier filled in, and the claim retires the password.
+    const switchBtn = document.getElementById('portal-discord-switch-btn') as HTMLButtonElement | null;
+    if (switchBtn) {
+      switchBtn.addEventListener('click', () => {
+        switchBtn.disabled = true;
+        let accountId = '';
+        try { accountId = localStorage.getItem('gm_user') || ''; } catch { /* storage blocked */ }
+        const go = (): void => {
+          if (accountId) savePendingIntent({ kind: 'claim', accountId });
+          const g = gm();
+          if (g && typeof g.loginWithDiscord === 'function') g.loginWithDiscord();
+        };
+        legacy.logout().then(go).catch(go);
       });
     }
 

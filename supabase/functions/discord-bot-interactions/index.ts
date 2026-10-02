@@ -25,24 +25,16 @@
  * kept because it costs nothing and is the only thing that would work if the
  * owner ever switches Discord to an Interactions Endpoint URL.
  *
- * Phase 1 commands:
- *   /link    -- generates a short-lived code, confirmed from the already-
- *               authenticated web Portal (My Info -> Link Discord). The
- *               code alone never proves account ownership; the Portal
- *               confirmation does.
- *   /myinfo  -- reads the caller's own stats via the same guild_members
- *               lookup member-portal uses (_shared/member-lookup.ts),
- *               once their Discord account is linked.
+ * /link (retired 2026-10-03) and /myinfo are answered by the Gateway worker,
+ * not here. An account is linked by signing in to the app with Discord.
  *
- * Phase 2 commands (all require a linked account, same resolution as
- * /myinfo): /power, /glory, /timezone, /challenges, /absence (set/list/
+ * Forwarded commands (all require a linked account): /power, /glory, /timezone, /challenges, /absence (set/list/
  * cancel). Every write goes through _shared/player-actions.ts -- the exact
  * same validated, audited code path member-portal uses, not a
  * reimplementation.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
-import { getPlayer } from "../_shared/member-lookup.ts";
 import {
   updatePlayerPower,
   updatePlayerGlory,
@@ -79,15 +71,12 @@ function ephemeral(content: string, embeds?: unknown[]) {
   });
 }
 
-function randomLinkCode(): string {
-  // 6 uppercase alphanumeric chars, unambiguous alphabet (no 0/O/1/I).
-  const alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-  const bytes = new Uint8Array(6);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
-}
-
-const NOT_LINKED_MSG = "Your Discord account isn't linked yet. Run `/link` first, then confirm the code in the Player Portal (My Info -> Link Discord).";
+// Signing in to the app with Discord is what links an account now (/link is
+// retired), so that is what this tells people to do.
+const APP_URL = (Deno.env.get("APP_DEFAULT_ORIGIN") ?? "https://guildmanagement.vercel.app").replace(/\/+$/, "");
+const NOT_LINKED_MSG =
+  "Your Discord account isn't linked to a player account yet. Sign in to FGF Guild Management with " +
+  "**Continue with Discord** and it is linked automatically: " + APP_URL;
 const NO_UID_MSG = "Your linked account doesn't have an in-game UID on file. Contact your guild admin.";
 
 /**
@@ -200,7 +189,6 @@ Deno.serve(async (req: Request) => {
 
   const discordUser = interaction.member?.user || interaction.user;
   const discordUserId: string | undefined = discordUser?.id;
-  const discordUsername: string | undefined = discordUser?.username;
   const commandName: string = interaction.data?.name || "";
 
   if (!discordUserId) {
@@ -210,58 +198,9 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
   logger.setContext({ userId: discordUserId });
 
-  if (commandName === "link") {
-    const code = randomLinkCode();
-    // Replace any still-pending code for this Discord user, so running
-    // /link again invalidates a previous unused code instead of leaving
-    // multiple valid codes around.
-    await admin.from("discord_link_codes").delete().eq("discord_user_id", discordUserId);
-    const { error } = await admin.from("discord_link_codes").insert({
-      code,
-      discord_user_id: discordUserId,
-      discord_username: discordUsername || null,
-    });
-    if (error) {
-      logger.error("Failed to create discord_link_codes row", error);
-      return ephemeral("Something went wrong generating your link code. Please try again.");
-    }
-    logger.info("Generated Discord link code");
-    return ephemeral(
-      `Your link code is **${code}**. It expires in 10 minutes.\n\n` +
-      `Go to the FGF Guild Management web app -> Player Portal -> My Info -> "Link Discord", ` +
-      `sign in if needed, and enter this code to finish linking your account.`
-    );
-  }
-
-  if (commandName === "myinfo") {
-    const resolved = await resolveLinkedAccount(admin, discordUserId);
-    if (!resolved.ok) return ephemeral(resolved.message);
-
-    const member = await getPlayer(admin, resolved.uid, resolved.guild);
-    if (!member) {
-      return ephemeral("Couldn't find your roster entry. Your admin may need to re-scan the roster.");
-    }
-
-    const embed = {
-      title: `${member.pseudo} — ${member.guild}`,
-      color: 0x6366f1,
-      fields: [
-        { name: "Overall Power", value: member.overall_power != null ? member.overall_power.toLocaleString("en-US") : "—", inline: true },
-        { name: "Glory", value: member.glory_score != null ? member.glory_score.toLocaleString("en-US") : "—", inline: true },
-        { name: "Role", value: member.role || "—", inline: true },
-        { name: "Fleet Rating", value: member.fleet_rating != null ? member.fleet_rating.toLocaleString("en-US") : "—", inline: true },
-        { name: "Tech Power", value: member.tech_power != null ? member.tech_power.toLocaleString("en-US") : "—", inline: true },
-        {
-          name: "Timezone",
-          value: member.timezone
-            ? `${member.timezone} (UTC${(member.timezone_offset ?? 0) >= 0 ? "+" : ""}${member.timezone_offset ?? 0})`
-            : (member.timezone_offset != null ? `UTC${member.timezone_offset >= 0 ? "+" : ""}${member.timezone_offset}` : "—"),
-          inline: true
-        },
-      ],
-    };
-    return ephemeral("", [embed]);
-  }
+  // /link and /myinfo are answered by the Gateway worker; /link is retired
+  // (see RETIRED_COMMANDS in discord-verification-worker/index.js). Only the
+  // forwarded commands below ever reach this function.
 
   // /update-stats replaces /power and /glory, which did the same two writes
   // under two more names. One command, both fields optional, and both writes go

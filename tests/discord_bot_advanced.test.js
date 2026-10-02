@@ -243,11 +243,13 @@ describe('Discord Bot Advanced: Worker Security & Invariants', () => {
     expect(workerSrc).toContain('cta_absent');
   });
 
-  it('registers and handles /link and /myinfo commands without timing out', () => {
-    expect(workerSrc).toContain('interaction.commandName === "link"');
+  it('handles /myinfo, and answers a stale /link with the new way to link', () => {
     expect(workerSrc).toContain('interaction.commandName === "myinfo"');
-    expect(workerSrc).toContain('handleLink');
     expect(workerSrc).toContain('handleMyInfo');
-    expect(workerSrc).toContain('randomLinkCode()');
+    // /link is retired (2026-10-03): a client that still shows it gets pointed
+    // at Discord sign-in, and no code is ever minted again.
+    expect(workerSrc).toContain('await handleRetiredLink(interaction)');
+    expect(workerSrc).not.toContain('randomLinkCode()');
+    expect(workerSrc).not.toContain('discord_link_codes');
   });
 });

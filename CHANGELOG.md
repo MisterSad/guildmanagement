@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- **Discord bot, phase A: `/link` is retired, and with it a way around the Discord sign-in rules** (`member-portal` and `discord-bot-interactions` deployed; the Gateway worker needs a Render redeploy).
+  - **Why.** `/link` plus the Portal's "Link Discord" box (`confirm-discord-link`) inserted into `discord_account_links` directly, outside every guard the Discord sign-in relies on:
+    - the password survived, so the account had two ways in at once;
+    - `gm_claim_account_with_discord` then answered `already_linked` for good, so that password could never be retired;
+    - a Discord identity already holding one account could attach a second without the admin relink code that migration `20260927120000` requires;
+    - no audit row was written and no session epoch was bumped.
+  - **Removed:** the `confirm-discord-link` action and its schema (`member-portal`), the `/link` command (now in `RETIRED_COMMANDS`, so the next worker boot deletes it from Discord), its link-code minting, and the unreachable `/link` and `/myinfo` copies in `discord-bot-interactions`.
+  - **A `/link` still cached in a Discord client** gets an ephemeral answer pointing to Continue with Discord.
+  - **Every "not linked" reply** (worker and Edge Function) now says to sign in with Continue with Discord, with the app URL. The URL is `APP_URL`, defaulting to the production origin, so Render needs no new variable.
+  - **The Portal's My Info card** shows "Linked to Discord" when the account has a link: `get-active-sessions` now returns `discord_linked`, a boolean and never the Discord id. Otherwise it offers **Switch to Discord sign-in**. That button signs out, saves a `claim` pending intent *after* logout (which clears sessionStorage), and starts Discord. The wizard then opens on "I already have an account" with the identifier filled in, and the claim retires the password. The help text is rewritten to match.
+  - **Existing links made through `/link` are left in place**, and those accounts keep their password. Count them before deciding anything.
+  - Smoke-tested after deploy: both functions boot and refuse an anonymous call (401).
+
 - **Node.js 24** (`package.json` engines `24.x`, `.nvmrc`, CI). Vercel discontinued Node 20 and refused to build: "Node.js Version \"20.x\" is discontinued". Without this, every new deployment fails, `main` included. The full gate passes under Node 24.14.1 after a clean `npm ci`: type-check, 2274 unit tests, build, 42 e2e.
 
 - **V3.33.0: the Discord sign-in redesign (phases 1–4 below).** The app version is bumped. `DISCORD_CHANGELOG.md` is rewritten for players and officers. Announce it only once the front end is live on Vercel. The back-end half (phase 1) has been live since 2026-10-02.

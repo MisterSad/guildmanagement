@@ -59,31 +59,30 @@ describe('verifyDiscordSignature (Ed25519)', () => {
     });
 });
 
-describe('Regression: /link never lets a self-typed value prove account ownership', () => {
-    // The code confirmation must happen through member-portal's
-    // authenticated getIdentity() gate (a real login session), not by
-    // accepting a client-supplied account/discord id directly -- otherwise
-    // anyone could claim anyone else's Discord link.
+describe('Regression: nothing outside the guarded RPCs writes discord_account_links', () => {
+    // /link + member-portal `confirm-discord-link` used to insert a link
+    // directly: the password survived, the claim then refused the account for
+    // good, and a Discord identity could attach a second account without the
+    // admin relink code. Both were removed on 2026-10-03. A link is now created
+    // only by the SECURITY DEFINER RPCs behind auth-discord.
     const memberPortalSrc = fs.readFileSync(
         path.resolve(__dirname, '../supabase/functions/member-portal/index.ts'),
         'utf-8'
     );
+    const workerSrc = fs.readFileSync(
+        path.resolve(__dirname, '../discord-verification-worker/index.js'),
+        'utf-8'
+    );
+    const strip = (x) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
-    it('confirm-discord-link writes account_id from identity.accountId, never from the request payload', () => {
-        const idx = memberPortalSrc.indexOf('action === "confirm-discord-link"');
-        expect(idx).toBeGreaterThan(-1);
-        const block = memberPortalSrc.slice(idx, idx + 1500);
-        expect(block).toContain('account_id: identity.accountId');
-        expect(block).not.toMatch(/account_id:\s*payload/);
+    it('member-portal no longer has a confirm-discord-link action', () => {
+        expect(strip(memberPortalSrc)).not.toContain('confirm-discord-link');
+        expect(memberPortalSrc).not.toMatch(/from\("discord_account_links"\)\s*\.insert/);
     });
 
-    it('confirm-discord-link sits behind the same authenticated identity gate as every other action', () => {
-        // getIdentity() runs once, before the action dispatch -- confirm the
-        // action block itself is below that check, not a special early exit.
-        const identityCheckIdx = memberPortalSrc.indexOf('if (!identity || !identity.uid)');
-        const actionIdx = memberPortalSrc.indexOf('action === "confirm-discord-link"');
-        expect(identityCheckIdx).toBeGreaterThan(-1);
-        expect(actionIdx).toBeGreaterThan(identityCheckIdx);
+    it('the worker never inserts a link or mints a link code', () => {
+        expect(workerSrc).not.toMatch(/from\("discord_account_links"\)\s*\.insert/);
+        expect(workerSrc).not.toContain('discord_link_codes');
     });
 });
 
@@ -93,7 +92,7 @@ describe('Regression: discord_account_links enforces a 1:1 mapping at the DB lev
         'utf-8'
     );
 
-    it('account_id has a unique constraint (a Discord account can only claim one FGF account, and vice versa)', () => {
+    it('account_id has a unique constraint (an FGF account belongs to at most one Discord identity)', () => {
         expect(migrationSrc).toMatch(/CREATE UNIQUE INDEX[^;]*discord_account_links\(account_id\)/);
     });
 
