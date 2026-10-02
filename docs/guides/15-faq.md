@@ -60,8 +60,11 @@ Too late to submit. Ask an officer if something is missing.
 **My time zone won't save.**
 Pick your city in **My Info** → **My Timezone**, or click **Auto**, then **Save**. Half-hour zones (India, Adelaide…) work.
 
-**The bot says "Run `/link` first".**
-Type `/link` in Discord, then paste the code in **My Info** → **Link Discord** → **Confirm**. The code lasts 10 minutes.
+**The bot says my Discord account isn't linked.**
+Press the **Continue with Discord** button in its answer and sign in. That links your account. Still using a password? **My Info** → **Switch to Discord sign-in**.
+
+**A player asked to join, but nobody was told.**
+Set an **Audit / Officers Channel ID** (Admin → Discord Notifications), or run `/setup-server`. Join requests and their **Approve** / **Reject** buttons are posted there.
 
 ---8<---
 

@@ -7,8 +7,10 @@
  * small as possible -- it listens for image attachments in configured
  * verification channels, gives the player immediate feedback (⏳ while the
  * screenshot is being processed, then ✅/❌), forwards the screenshot to the
- * discord-profile-verification Edge Function, and handles the /profile and
- * /absent slash commands (registered at startup via the REST API). The Edge
+ * discord-profile-verification Edge Function, and registers and serves every
+ * slash command (see `desired` in registerSlashCommands) -- some answered here,
+ * some forwarded to discord-bot-interactions (FORWARDED_COMMANDS, and the
+ * join-request buttons). The Edge
  * Function keeps the authoritative business logic; this file only handles
  * the Gateway-only surface (reactions, replies, slash command handlers) that
  * no stateless function can do.

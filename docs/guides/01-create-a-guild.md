@@ -63,7 +63,7 @@ Give your R4s their own access. See **Guide 2**.
 
 Go to **Discord notifications** (left menu):
 - **Default Discord Webhook URL**: where event announcements are posted. Click **Test Webhook** to check it works.
-- **Verification Channel ID** and **Audit / Officers Channel ID**: for the verification bot.
+- **Verification Channel ID** and **Audit / Officers Channel ID**: for the verification bot. The officers channel also receives join requests, with **Approve** / **Reject** buttons.
 - **Event Channels & Reminders**: one channel and role per event type.
 
 Click **Save Configuration** when you are done.

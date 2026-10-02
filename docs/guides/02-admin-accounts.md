@@ -72,4 +72,6 @@ In **Accounts & access**, click the 🗑️ button on their account. They lose a
 
 - **Invitation code** → for **officers** → *Sign in with Discord → I have a code*
 - **Guild Join Code** → for **players** → *Sign in with Discord → Join a guild* (see Guide 1)
-- **`/link` code** (from the Discord bot) → for **players** → *Player Portal → Link Discord*. It only turns on the bot commands.
+- **Invite link** (*Copy invite link* next to the join code, or `/invite` in Discord) → for **players** → opens *Continue with Discord* with the join code already filled in.
+
+-# `/link` was retired: signing in with Discord links the account, and that is what turns on the bot commands.

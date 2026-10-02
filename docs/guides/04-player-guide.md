@@ -51,7 +51,7 @@ The card now says **Awaiting approval** ⏳. An officer checks it and approves i
 
 - **My Military Force Metrics**: your power, Fleet Rating, Technology, Flagship, Champions, Crew and Glory. Update them, then click **Save Military Metrics**. Officers use them to build the best squads!
 - **My Timezone**: pick your city, or click **Auto**, then **Save**. Officers can then plan events at a good time for everyone.
-- **Link Discord**: turns on the bot commands (see below).
+- **Discord sign-in**: shows *Linked to Discord* once you sign in with Discord. Still using a password? **Switch to Discord sign-in** moves you over in one step.
 - **Request Guild Transfer**: ask to move to another guild.
 
 ## 🌴 Absence: going away?
@@ -73,8 +73,8 @@ Click **Save**. Your officers will see it, so nobody wonders where you are.
 
 ## 🤖 Use the Discord bot
 
-Linking lets you check your stats from Discord, without opening the tool:
-1. In Discord, type `/link`. The bot answers with a code (only you can see it, and it lasts 10 minutes).
-2. In the Portal, go to **My Info** → **Link Discord**, paste the code, and click **Confirm**.
+If you sign in with **Continue with Discord**, your Discord account is already linked: the bot knows who you are, so you can check your stats from Discord without opening the tool.
+
+Still signing in with an identifier and password? Go to **My Info** → **Switch to Discord sign-in** once.
 
 Now try `/myinfo` in Discord! 🎉 See the bot guide for all the commands.
