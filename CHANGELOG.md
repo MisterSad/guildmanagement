@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- **Discord bot, phase B: the next step is a button** (`discord-bot-interactions` deployed; the Gateway worker needs a Render redeploy).
+  - **Every "not linked" reply** carries a **Continue with Discord** LINK button (style 5) to the app instead of a URL at the end of a sentence. So do the "could not determine your guild" replies. This covers the worker's own commands and the forwarded ones, whose Edge replies now carry `components`. The worker relays a component row only when every button in it is an https link button, so a relayed row can never produce an interaction nobody handles.
+  - **After a roster-confirmed screenshot verification, the DM offers the Player Portal.**
+    - An already linked player gets "Open your Player Portal".
+    - Anyone else gets "Get your Player Portal", pointing to the guild's `#join=` invite link (via `gm_get_join_code`, service role) with their UID shown, so the join code is filled in and the UID is in front of them.
+    - Best-effort: a failure here never costs the player their verification DM.
+  - The `/setup-server` buttons read "Confirm and deploy" / "Cancel"; they were in French.
+
 - **Discord bot, phase A: `/link` is retired, and with it a way around the Discord sign-in rules** (`member-portal` and `discord-bot-interactions` deployed; the Gateway worker needs a Render redeploy).
   - **Why.** `/link` plus the Portal's "Link Discord" box (`confirm-discord-link`) inserted into `discord_account_links` directly, outside every guard the Discord sign-in relies on:
     - the password survived, so the account had two ways in at once;
