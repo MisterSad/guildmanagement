@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20.0.0 <21.0.0"
+    "node": "24.x"
   },
   "description": "FGF Guild Management Tool — client-side app (vanilla JS + Supabase)",
   "scripts": {
