@@ -1584,3 +1584,138 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     transform: translateY(-1px);
 }
 
+
+/* ── Discord onboarding wizard (2026-10-02) ──────────────────────────────
+   Step 1 is three described cards; step 2 one short form with errors under
+   the field they belong to. */
+.gm-onboard-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+.gm-onboard-header h3 { margin: 0; font-size: var(--fs-xl); }
+.gm-onboard-logo { font-size: var(--fs-2xl); color: #5865F2; }
+.gm-onboard-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    background: transparent;
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+}
+.gm-onboard-back:hover { background: var(--md-sys-color-surface-container-high); }
+.gm-onboard-lead {
+    margin: 0 0 0.9rem;
+    color: var(--fg-dim);
+    font-size: var(--fs-md);
+    line-height: 1.45;
+}
+.gm-onboard-cards { display: flex; flex-direction: column; gap: 0.55rem; }
+.gm-onboard-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.85rem 0.9rem;
+    text-align: left;
+    border-radius: var(--md-sys-shape-corner-medium);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    background: var(--md-sys-color-surface-container);
+    color: var(--md-sys-color-on-surface);
+    font-family: var(--font);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.gm-onboard-card:hover,
+.gm-onboard-card:focus-visible {
+    border-color: #5865F2;
+    background: var(--md-sys-color-surface-container-high);
+    transform: translateY(-1px);
+    outline: none;
+}
+.gm-onboard-card > .ph:first-child { font-size: var(--fs-2xl); color: #5865F2; flex-shrink: 0; }
+.gm-onboard-card-text { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; min-width: 0; }
+.gm-onboard-card-title { font-weight: 600; font-size: var(--fs-md); }
+.gm-onboard-card-body { font-size: 0.8rem; line-height: 1.4; color: var(--fg-dim); }
+.gm-onboard-card-caret { color: var(--fg-dim); flex-shrink: 0; }
+
+.gm-onboard-panel-title { margin: 0 0 0.4rem; font-size: var(--fs-md); }
+.gm-onboard-field { margin-top: 0.7rem; }
+.gm-onboard-help {
+    margin: 0.3rem 0 0;
+    font-size: 0.76rem;
+    line-height: 1.4;
+    color: var(--fg-dim);
+}
+.gm-onboard-field-error {
+    margin: 0.35rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--gm-accent-coral, #e07a70);
+}
+.gm-onboard .gm-input[aria-invalid="true"] { border-color: var(--gm-accent-coral, #e07a70); }
+.gm-onboard-note {
+    display: flex;
+    gap: 0.45rem;
+    margin: 0.8rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--fg-dim);
+}
+.gm-onboard-note .ph { color: var(--accent); flex-shrink: 0; margin-top: 0.1rem; }
+.gm-onboard-warning { margin-top: 0.8rem; font-size: var(--fs-sm); line-height: 1.4; }
+
+.gm-onboard-tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    margin-top: 0.3rem;
+    border-radius: var(--md-sys-shape-corner-medium);
+    background: var(--md-sys-color-surface-container);
+}
+.gm-onboard-tab {
+    flex: 1;
+    padding: 0.45rem 0.5rem;
+    border: none;
+    border-radius: var(--md-sys-shape-corner-small);
+    background: transparent;
+    color: var(--fg-dim);
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.gm-onboard-tab[aria-selected="true"] {
+    background: var(--md-sys-color-surface-container-highest, rgba(255, 255, 255, 0.1));
+    color: var(--md-sys-color-on-surface);
+}
+.gm-onboard-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.gm-onboard-footer {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.gm-onboard-footer .gm-btn.is-loading { cursor: progress; opacity: 0.75; }
+
+/* ── Waiting for approval ─────────────────────────────────────────────── */
+.gm-login-pending { text-align: center; padding: 0.4rem 0 0.2rem; }
+.gm-login-pending-icon { font-size: 2.4rem; color: var(--accent); }
+.gm-login-pending-title { margin: 0.4rem 0 0.35rem; font-size: var(--fs-xl); }
+.gm-login-pending-text { margin: 0 0 0.9rem; color: var(--fg-dim); line-height: 1.45; }
+.gm-login-pending-steps {
+    margin: 0 0 1rem;
+    padding-left: 1.2rem;
+    text-align: left;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--md-sys-color-on-surface);
+}
+.gm-login-pending-steps li + li { margin-top: 0.3rem; }

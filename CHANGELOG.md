@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+- **Discord sign-in, phase 3 of 4: the four-button "Welcome" modal is a two-step wizard.**
+  - **Step 1 offers three described cards:**
+    - "I'm a player — join my guild";
+    - "I already have an account", with *Identifier & password* and *I have a code* as tabs;
+    - "I lead a guild — create it".
+  - The greeting uses the Discord display name. **Step 2** is one short form with a Back button, help under each field (where to find the UID, what a join code looks like) and a loading state on submit.
+  - **Errors appear under the field they concern**, with `aria-invalid` set on that field. Empty or malformed input is refused locally, so it never spends an attempt.
+    - On a recoverable error, the client swaps in the fresh ticket from phase 1. The form stays filled in and says how many attempts are left once there are two or fewer.
+    - When the ticket is gone, a **"Restart with Discord"** button appears. It carries the chosen path and the non-secret fields across the round trip.
+  - **New `src/core/auth/pending-intent.ts` carries those fields.**
+    - It stores them in sessionStorage with a 30-minute TTL and validates every value against the auth-discord schema bounds.
+    - Its type has no password field, and only whitelisted fields are copied.
+    - The intent is cleared on any successful sign-in.
+  - **Closing the wizard:**
+    - The backdrop no longer closes it.
+    - Escape or Cancel asks before discarding typed input: the first click shows "Discard and close?".
+    - Closing tells the person they can continue with Discord whenever they are ready. The account chooser does the same when cancelled, and greets returning users by name.
+  - **A join request ends on a "Waiting for approval" screen** in the login card. It says the officers were notified, that a DM follows approval, and what to do next. A later sign-in on a pending account shows the same screen instead of an error.
+
 - **Discord sign-in, phase 2 of 4: the login page has one door.**
   - **"Continue with Discord" is the only visible action.** The hint under it says the one button serves admins, players and newcomers.
   - **The identifier/password form is folded** behind "I still sign in with an identifier and password", along with its note on moving to Discord and the "Administrator recovery code" link. It opens by default on a device whose last sign-in used a password (`gm_last_signin_method`, guarded by try/catch).

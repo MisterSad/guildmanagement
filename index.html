@@ -76,6 +76,24 @@
                                     <span data-i18n="login_busy">Signing you in…</span>
                                 </div>
 
+                                <!-- After a join request, and on any later sign-in while it waits.
+                                     A screen of its own rather than a line of text in an error box:
+                                     nothing went wrong, the person is simply waiting on an officer. -->
+                                <div id="login-pending" class="gm-login-pending hidden" role="status" aria-live="polite">
+                                    <i class="ph ph-hourglass-medium gm-login-pending-icon" aria-hidden="true"></i>
+                                    <h2 class="gm-login-pending-title">Waiting for approval</h2>
+                                    <p id="login-pending-text" class="gm-login-pending-text">Your request is waiting for an officer of your guild.</p>
+                                    <ol class="gm-login-pending-steps">
+                                        <li>Your guild's officers have been notified on Discord.</li>
+                                        <li>The bot sends you a Discord DM once you're approved (if your DMs are open).</li>
+                                        <li>Then press <strong>Continue with Discord</strong> — you'll land straight in your Player Portal.</li>
+                                    </ol>
+                                    <button type="button" id="login-pending-back" class="gm-btn gm-btn-ghost gm-login-submit">
+                                        <i class="ph ph-arrow-left"></i>
+                                        <span>Back to sign-in</span>
+                                    </button>
+                                </div>
+
                                 <!-- The identifier/password route, kept for the accounts not yet
                                      moved to Discord, folded away so it no longer competes with the
                                      one door. Opens by default for whoever last used it. -->

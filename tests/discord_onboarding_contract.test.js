@@ -178,7 +178,11 @@ describe('the onboarding action', () => {
   it('explains a pending join rather than dropping the person on a blank screen', () => {
     const ctrl = read('src/modules/app/auth/auth.controller.ts');
     expect(ctrl).toContain("resp.state === 'pending_approval'");
-    expect(ctrl).toContain('An admin has to approve it');
+    // A screen of its own since 2026-10-02, not a line in an error box.
+    expect(ctrl).toContain('showPendingScreen(resp.guild || null, resp.id || null)');
+    const html = read('index.html');
+    expect(html).toContain('id="login-pending"');
+    expect(html).toContain('Waiting for approval');
   });
 });
 
