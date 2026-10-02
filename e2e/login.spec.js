@@ -14,7 +14,7 @@ test('login page loads with title, footer and both Discord affordances', async (
     // the community server. A bare class selector would match both and fail
     // Playwright's strict mode -- which is how this was caught.
     await expect(page.locator('#login-discord-btn')).toBeVisible();
-    await expect(page.locator('#login-discord-btn')).toContainText(/Sign in with Discord/i);
+    await expect(page.locator('#login-discord-btn')).toContainText(/Continue with Discord/i);
     await expect(page.locator('a.gm-login-discord-btn[href*="discord.gg"]')).toBeVisible();
 
     await expect(page.locator('.gm-login-footer')).toContainText('Developed by HawkEye #1058');
@@ -22,6 +22,8 @@ test('login page loads with title, footer and both Discord affordances', async (
 
 test('login form has identifier, password and sign-in button', async ({ page }) => {
     await page.goto('/');
+    // Folded behind a summary since 2026-10-02: Discord is the one door.
+    await page.locator('#login-legacy > summary').click();
     await expect(page.locator('#username')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
     await expect(page.locator('#login-btn')).toBeVisible();
@@ -29,6 +31,7 @@ test('login form has identifier, password and sign-in button', async ({ page }) 
 
 test('empty login submit triggers HTML validation, no navigation', async ({ page }) => {
     await page.goto('/');
+    await page.locator('#login-legacy > summary').click();
     await page.locator('#login-btn').click();
     // HTML5 required validation keeps us on the page; identifier still visible.
     await expect(page.locator('#username')).toBeVisible();

@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- **Discord sign-in, phase 2 of 4: the login page has one door.**
+  - **"Continue with Discord" is the only visible action.** The hint under it says the one button serves admins, players and newcomers.
+  - **The identifier/password form is folded** behind "I still sign in with an identifier and password", along with its note on moving to Discord and the "Administrator recovery code" link. It opens by default on a device whose last sign-in used a password (`gm_last_signin_method`, guarded by try/catch).
+  - The password button reads "Sign in", where it used to read "Access".
+  - **Every Discord outcome lands in `#login-discord-status`, beside the Discord button**, with error, info and success tones. Before, it landed in `#login-error` under the password field. A cancelled authorization reads as information, not as an error.
+  - **Loading states:**
+    - The Discord button disables itself and says "Opening Discord…". A `pageshow` handler restores it after a Back navigation out of the bfcache.
+    - The card shows "Signing you in…" while a returning ticket is redeemed. A `finally` always restores the card.
+  - **Signing out of the Player Portal now shows the login page.** "Reconnect / Sign Out" on the portal's error card used to clear the session and leave the card on screen. It now shares the sidebar's exit, and `showLogin()` hides the portal view.
+  - **Dead code removed:**
+    - the portal's never-wired identifier/password step;
+    - `portal.controller.ts`;
+    - its `GM_AUTH.handlePortalLookupSuccess` export;
+    - the wiring and DOM ref for a `#member-logout-btn` that did not exist.
+
 - **Discord sign-in, phase 1 of 4: a mistake no longer costs a Discord round trip, and a join request is announced** (migration `20261002120000`, `auth-discord` and `admin-accounts` deployed).
   - **Recoverable errors hand back a fresh continuation ticket.** This covers a wrong join code, a UID not on the roster, a taken tag, a wrong password and an invalid invite or relink code. Previously every one of them spent the ticket, and the corrected retry failed with `ticket_invalid`. The response carries `ticket` and `attempts_left`.
   - **The chain is bounded in SQL.** `discord_auth_tickets.attempts` has `CHECK (attempts BETWEEN 0 AND 5)`, so one Discord authorization buys at most six attempts. Errors a retry cannot fix spend the chain: identity already linked, account too young, daily cap, locked account, server fault, rate limit.

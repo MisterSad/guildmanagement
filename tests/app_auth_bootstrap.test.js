@@ -26,7 +26,6 @@ import {
   showNewVersionBanner,
   resetVersionCheck
 } from '../src/modules/app/auth/version-check';
-import { handlePortalLookupSuccess } from '../src/modules/app/auth/portal.controller';
 import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
 
 const AUTH_DOM = `
@@ -42,11 +41,9 @@ const AUTH_DOM = `
   <div id="dashboard-view" class="hidden"></div>
   <div id="player-portal-view" class="hidden">
     <div class="gm-portal-container">
-      <div id="portal-step-lookup"></div>
       <div id="portal-step-form" class="hidden"></div>
     </div>
   </div>
-  <div id="portal-lookup-error" class="hidden"><i class="ph"></i><span></span></div>
   <div id="toast-container"></div>
 `;
 
@@ -352,40 +349,3 @@ describe('auth forms', () => {
 
 });
 
-describe('handlePortalLookupSuccess', () => {
-  it('reveals the portal dashboard when member-portal succeeds', async () => {
-    window.GM.db = {
-      functions: { invoke: vi.fn(async () => ({ data: { ok: true }, error: null })) }
-    };
-
-    await handlePortalLookupSuccess({ ok: true, id: 'Player1' }, 'Player1');
-
-    expect(localStorage.getItem('gm_portal_session')).toBe('1');
-    expect(document.getElementById('portal-step-form').classList.contains('hidden')).toBe(false);
-    expect(portalView.loadDashboard).toHaveBeenCalled();
-  });
-
-  it('shows the connection error for a player_not_found response (legacy order parity)', async () => {
-    window.GM.db = {
-      functions: { invoke: vi.fn(async () => ({ data: { ok: false, error: 'player_not_found' }, error: null })) }
-    };
-
-    await handlePortalLookupSuccess({ ok: true, id: 'Player1' }, 'Player1');
-
-    // app.js checks `!data.ok` before `data.error === 'player_not_found'`; the
-    // live Edge returns ok:false for this case, so the generic branch wins.
-    expect(document.getElementById('portal-lookup-error').classList.contains('hidden')).toBe(false);
-    expect(document.getElementById('portal-lookup-error').textContent).toContain('Unable to connect');
-  });
-
-  it('shows the unlinked-account message when the payload carries the error flag', async () => {
-    window.GM.db = {
-      functions: { invoke: vi.fn(async () => ({ data: { ok: true, error: 'player_not_found' }, error: null })) }
-    };
-
-    await handlePortalLookupSuccess({ ok: true, id: 'Player1' }, 'Player1');
-
-    expect(document.getElementById('portal-lookup-error').classList.contains('hidden')).toBe(false);
-    expect(document.getElementById('portal-lookup-error').textContent).toContain('not linked');
-  });
-});

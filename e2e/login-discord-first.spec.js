@@ -16,17 +16,22 @@
 
 import { test, expect } from '@playwright/test';
 
-test('Discord is the primary route in, above the credential fields', async ({ page }) => {
+test('Discord is the one door; the password route is folded away', async ({ page }) => {
     await page.goto('/');
 
     const discord = page.locator('#login-discord-btn');
-    const username = page.locator('#username');
     await expect(discord).toBeVisible();
-    await expect(username).toBeVisible();
+    await expect(discord).toContainText('Continue with Discord');
 
-    // Position, not just presence: "put Discord first" is the requirement.
+    // A first-time visitor sees one action, not two competing forms.
+    await expect(page.locator('#username')).toBeHidden();
+    await expect(page.locator('#login-legacy')).not.toHaveAttribute('open', '');
+
+    // Unfolded, the identifier field sits BELOW the Discord button.
+    await page.locator('#login-legacy > summary').click();
+    await expect(page.locator('#username')).toBeVisible();
     const dBox = await discord.boundingBox();
-    const uBox = await username.boundingBox();
+    const uBox = await page.locator('#username').boundingBox();
     expect(dBox.y, 'the Discord button must sit above the identifier field').toBeLessThan(uBox.y);
 
     // And it must read as the primary action rather than a pale alternative.
@@ -35,10 +40,27 @@ test('Discord is the primary route in, above the credential fields', async ({ pa
         .not.toBe('rgba(0, 0, 0, 0)');
 });
 
-test('the page explains where a new guild comes from', async ({ page }) => {
+test('the page says the one button serves admins, players and newcomers', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('.gm-login-discord-hint')).toContainText('join your guild with its join code');
-    await expect(page.locator('.gm-login-discord-hint')).toContainText('create one');
+    const hint = page.locator('.gm-login-discord-hint');
+    await expect(hint).toContainText('admins, players and newcomers');
+    await expect(hint).toContainText('join your guild');
+});
+
+test('the password route opens by default for whoever used it last on this device', async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem('gm_last_signin_method', 'password'); });
+    await page.goto('/');
+    await expect(page.locator('#username')).toBeVisible();
+});
+
+test('a Discord error lands beside the Discord button, not under the password field', async ({ page }) => {
+    await page.goto('/?gm_auth_error=cancelled');
+    const status = page.locator('#login-discord-status');
+    await expect(status).toBeVisible();
+    await expect(status).toContainText('cancelled');
+    await expect(page.locator('#login-error')).toBeHidden();
+    // The parameter is stripped so a reload does not replay it.
+    await expect(page).toHaveURL(/\/$/);
 });
 
 test('the dead Passkey and backup-code buttons are gone, on both sign-in screens', async ({ page }) => {
@@ -94,9 +116,11 @@ test('the Discord invite reads "Join our Discord"', async ({ page }) => {
 
 test('signing in with an identifier still works, as the secondary route', async ({ page }) => {
     await page.goto('/');
+    await page.locator('#login-legacy > summary').click();
     await expect(page.locator('#username')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
     await expect(page.locator('#login-btn')).toBeVisible();
+    await expect(page.locator('#login-btn')).toContainText('Sign in');
     // Empty submit is refused by HTML validation, with no navigation.
     await page.locator('#login-btn').click();
     await expect(page).toHaveURL(/\/$/);
