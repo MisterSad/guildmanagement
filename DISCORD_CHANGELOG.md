@@ -1,15 +1,28 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.32.1**
+📢 **FGF Guild Management Tool Update — CHANG_V3.33.0**
 
-**🔒 A security update you won't see (and that's the point)**
+**🚀 Signing in with Discord, rebuilt to be quick and painless**
 
-After today's fixes, I went through the whole database door by door and locked everything that didn't need to be open.
+I went through the whole sign-in journey, for officers, players and newcomers alike, and removed every bump I could find.
 
-**What I did:**
-• **Visitors who aren't signed in can't touch your guild's data.** They never could read it, but the doors were still technically unlocked. Now they're shut, on every table.
-• **Every change goes through the right checks.** Some of your data (war scores, daily scores, weekly scores…) could in theory be written without going through the rules that validate it. That path is closed: the tool itself is the only way in.
-• **Private things stay private.** Sign-in codes, passkeys, Discord links and bug reports were already protected; now the browser has no way to even ask for them.
-• **Safe by default.** Anything I add in the future starts locked to visitors, and I open only what's needed. Nobody has to remember to lock the door anymore.
+**One button for everyone**
+• The login page now has a single **Continue with Discord** button. Officers land in the Command Center, players in their Player Portal, automatically.
+• Still on an old identifier and password? It's tucked under *"I still sign in with an identifier and password"*, and it opens by itself if that's how you signed in last time.
+• You can now see what's happening: the button shows *Opening Discord…*, and you get *Signing you in…* when you come back.
 
-**What changes for you:** nothing. Everything works exactly as before.
+**🧭 A clearer welcome for newcomers**
+• First time here? You now pick from three simple choices: **join my guild**, **I already have an account**, or **create a guild**. Each one says what you'll need.
+• **A typo no longer sends you back to Discord.** Wrong join code, a UID that isn't on the roster yet, or a tag that's already taken? The form stays filled in, the error shows right under the field, and you just fix it.
+• A stray click outside the window no longer throws away what you typed.
 
--# Something shows "permission denied" where it didn't before? Tell me with the 🐞 **Report a bug** button, and include the page and what you clicked. 💪
+**🔗 Invite links for officers**
+• In **Accounts & Access**, the new **Copy invite link** button sits next to your guild's join code. Share the link on your Discord: your players open it, continue with Discord, and the code is already filled in. All they type is their UID.
+• Admin invitations and relink codes get a link button too.
+
+**⏳ No more waiting in the dark**
+• After asking to join a guild, players now see a clear **"Waiting for approval"** screen.
+• Your officers get a message in the guild's audit channel when someone asks to join.
+• The player gets a **Discord DM** as soon as an officer approves or declines (if their DMs are open).
+
+**What changes for you:** nothing to do. Next time you sign in, it's just smoother.
+
+-# Something feels off in the new sign-in? Tell me with the 🐞 **Report a bug** button, and say which step you were on. 💪

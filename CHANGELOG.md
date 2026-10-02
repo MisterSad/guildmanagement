@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **V3.33.0: the Discord sign-in redesign (phases 1–4 below).** The app version is bumped. `DISCORD_CHANGELOG.md` is rewritten for players and officers. Announce it only once the front end is live on Vercel. The back-end half (phase 1) has been live since 2026-10-02.
+
 - **Discord sign-in, phase 4 of 4: shareable invite links.**
   - **Admins can copy a link instead of a raw code**:
     - "Copy invite link" sits next to the guild join code;
