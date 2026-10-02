@@ -35,6 +35,8 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
+import { isGuildInScope, normalizeRole } from "../_shared/admin-authz.ts";
+import { postChannelMessage } from "../_shared/discord-verification.ts";
 import {
   updatePlayerPower,
   updatePlayerGlory,
@@ -208,6 +210,87 @@ Deno.serve(async (req: Request) => {
   // /link and /myinfo are answered by the Gateway worker; /link is retired
   // (see RETIRED_COMMANDS in discord-verification-worker/index.js). Only the
   // forwarded commands below ever reach this function.
+
+  // /invite -- an officer posts a "Join <TAG>" button in the channel. The
+  // button is the guild's #join= invite link, so a player lands on Continue
+  // with Discord with the join code already filled in. Authority comes from the
+  // caller's LINKED app account and the same isGuildInScope() the app uses,
+  // never from Discord permissions: anyone can be a Discord server admin.
+  if (commandName === "invite") {
+    const channelId: string | null = interaction.channel_id || null;
+    if (!interaction.guild_id || !channelId) {
+      return ephemeral("Run `/invite` in a channel of your Discord server, where your players can see it.");
+    }
+
+    const { data: links } = await admin
+      .from("discord_account_links")
+      .select("account_id")
+      .eq("discord_user_id", discordUserId);
+    const ids = ((links as { account_id: string }[]) || []).map((l) => l.account_id);
+    const { data: accs } = ids.length
+      ? await admin.from("accounts").select("id, role, guild, server_number, status").in("id", ids)
+      : { data: [] };
+    const officers = ((accs as any[]) || [])
+      .filter((a) => a.status === "active")
+      .map((a) => ({ id: a.id as string, role: normalizeRole(a.role), guild: a.guild ?? null, serverNumber: a.server_number ?? null }))
+      .filter((a) => a.role !== "member");
+    if (officers.length === 0) {
+      return ephemeral(
+        "Only a guild officer can post an invite. Sign in to the app with **Continue with Discord** using your officer account first.",
+        undefined,
+        appLinkRow("Continue with Discord"),
+      );
+    }
+
+    const requested = String(getOptionValue(interaction.data?.options, "guild") ?? "").trim().toUpperCase();
+    const ownGuilds = [...new Set(officers.map((o) => o.guild).filter(Boolean))] as string[];
+    const target = requested || (ownGuilds.length === 1 ? ownGuilds[0] : "");
+    if (!target) {
+      return ephemeral("You manage more than one guild here. Run `/invite guild:<TAG>` to say which one.");
+    }
+    if (!/^[A-Z0-9_]{2,12}$/.test(target)) return ephemeral("That is not a guild tag.");
+
+    const { data: guildRow } = await admin.from("guilds").select("id, server_number").eq("id", target).maybeSingle();
+    if (!guildRow) return ephemeral(`I don't know a guild called **${target}**.`);
+    const allowed = officers.some((o) => isGuildInScope(o, target, (guildRow as any).server_number ?? null));
+    if (!allowed) {
+      logger.warn("Refused /invite outside the caller's scope", { target });
+      return ephemeral(`Your account is not an officer of **${target}**.`);
+    }
+
+    const { data: codeRes } = await admin.rpc("gm_get_join_code", { p_guild: target });
+    const code = codeRes && typeof (codeRes as any).code === "string" ? String((codeRes as any).code).trim() : "";
+    if (!code) {
+      return ephemeral(
+        `**${target}** has no join code yet. Open **Accounts & Access** in the app once and it is created.`,
+        undefined,
+        appLinkRow("Open FGF Guild Management"),
+      );
+    }
+
+    const link = `${APP_URL}/#join=${encodeURIComponent(code)}`;
+    const posted = await postChannelMessage(channelId, {
+      embeds: [{
+        color: 0x5865f2,
+        title: `⚔️ Join ${target} on FGF Guild Management`,
+        description:
+          "Your events, scores and stats, in one place.\n\n" +
+          `**1.** Press **Join ${target}** below.\n` +
+          "**2.** Choose **Continue with Discord**.\n" +
+          "**3.** Pick **I'm a player — join my guild**: the join code is already filled in, just type your in-game UID.\n" +
+          "**4.** An officer approves you, and the bot DMs you when it's done.",
+        footer: { text: "FGF Guild Management • Player Portal" },
+      }],
+      components: [{ type: 1, components: [{ type: 2, style: 5, label: `Join ${target}`, url: link }] }],
+    });
+    if (!posted) {
+      return ephemeral("I couldn't post in this channel. Check that I can **Send Messages** and **Embed Links** here.");
+    }
+    logger.info("Invite posted", { target });
+    return ephemeral(
+      `Posted. Anyone who can read this channel can use the button; an officer still approves each request.`,
+    );
+  }
 
   // /update-stats replaces /power and /glory, which did the same two writes
   // under two more names. One command, both fields optional, and both writes go
