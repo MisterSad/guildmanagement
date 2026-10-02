@@ -360,6 +360,29 @@ export async function postChannelMessage(
 }
 
 /**
+ * Replaces a message the bot posted (content and components). Used to strip the
+ * buttons off a join request once it is decided, so nobody clicks a stale one.
+ */
+export async function editChannelMessage(
+  channelId: string,
+  messageId: string,
+  message: { content?: string; components?: unknown[] },
+): Promise<boolean> {
+  const token = Deno.env.get("DISCORD_BOT_TOKEN");
+  if (!token || !/^\d{17,20}$/.test(channelId || "") || !/^\d{17,20}$/.test(messageId || "")) return false;
+  try {
+    const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...message, allowed_mentions: { parse: [] } }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Sends a direct message from the bot to one Discord user.
  *
  * Best-effort, like `postAuditMessage`: a person who blocks DMs from server

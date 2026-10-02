@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+- **Discord bot, phase D: approve or reject a join request from Discord** (`admin-accounts`, `auth-discord` and `discord-bot-interactions` deployed; the worker needs a Render redeploy to route the clicks).
+  - **The join-request message carries the buttons.** The message `auth-discord` posts in the guild's audit channel now has **Approve** / **Reject** buttons (`gmjoin:approve|reject:<accountId>`).
+  - **The worker only forwards the click.** It sends the custom_id and the message id to `discord-bot-interactions` with the worker secret.
+  - **The Edge Function decides:**
+    - it re-validates the custom_id against a strict pattern;
+    - it takes the clicker's authority from their linked active officer accounts (`officerAccounts()`, with the server number derived from the guild as `getCallerInfo()` does);
+    - it picks the account allowed to act with the app's `canManageAccount()`;
+    - it runs the decision.
+    - A Discord role or permission grants nothing.
+  - **Reject asks once**, in an ephemeral "Yes, reject" confirmation that carries the original message id. The first click decides nothing.
+  - **A decided request loses its buttons**, and the message says who decided. A request already handled in the app is marked as such.
+  - **One decision path.** Approval and rejection moved verbatim from `admin-accounts` into the new `_shared/registration-decision.ts`. It covers:
+    - authorization (target pending and a member, then `canManageAccount`);
+    - shadow-user provisioning;
+    - the session-epoch bump on rejection;
+    - the player's DM.
+    - `admin-accounts` and the Discord buttons both call `decideRegistration()`, so they cannot drift. It also adds an audit row (`registration_approved` / `registration_rejected`) naming the decider and `via: app | discord`.
+  - The helpers it needed (`bumpSessionVersion`, `getTargetCtx`, `emailFor`, `randomSecret`, `linkedDiscordUserId`, `notifyRegistrationOutcome`) moved with it.
+  - **Checked:** `deno check` reports no new class of error in the changed functions. The only new findings are the untyped-client `never` errors that already existed, in the code moved verbatim. After deploy, `admin-accounts` answers `forbidden` to a non-admin caller, and the other two refuse anonymous calls.
+
 - **Discord bot, phase C: `/invite` for officers** (`discord-bot-interactions` deployed; the worker needs a Render redeploy to register the command).
   - **What it posts.** An embed "Join [TAG] on FGF Guild Management" in the current channel. It has a **Join [TAG]** LINK button to the guild's `#join=` invite link and the four steps: Continue with Discord, pick "I'm a player — join my guild" (code already filled in), type the UID, wait for an officer.
   - **Authority comes from the caller's linked app account, never from a Discord permission.** The command is forwarded to the Edge Function, which:

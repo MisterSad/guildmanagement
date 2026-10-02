@@ -35,8 +35,9 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EdgeLogger } from "../_shared/logger.ts";
-import { isGuildInScope, normalizeRole } from "../_shared/admin-authz.ts";
-import { postChannelMessage } from "../_shared/discord-verification.ts";
+import { canManageAccount, isGuildInScope, normalizeRole } from "../_shared/admin-authz.ts";
+import { editChannelMessage, postChannelMessage } from "../_shared/discord-verification.ts";
+import { decideRegistration, getTargetCtx } from "../_shared/registration-decision.ts";
 import {
   updatePlayerPower,
   updatePlayerGlory,
@@ -129,8 +130,151 @@ async function resolveLinkedAccount(
   return { ok: true, uid: usable[0].uid!, guild: usable[0].guild! };
 }
 
+interface OfficerAccount {
+  id: string;
+  role: ReturnType<typeof normalizeRole>;
+  guild: string | null;
+  serverNumber: string | null;
+}
+
+/**
+ * The ACTIVE officer accounts (any role above member) linked to a Discord
+ * identity, each with its server number resolved from its guild when unset --
+ * the same derivation admin-accounts' getCallerInfo() applies to a JWT caller.
+ * This is the only source of authority for /invite and the join-request
+ * buttons: Discord roles and permissions grant nothing.
+ */
+async function officerAccounts(
+  admin: ReturnType<typeof createClient>,
+  discordUserId: string,
+): Promise<OfficerAccount[]> {
+  const { data: links } = await admin
+    .from("discord_account_links")
+    .select("account_id")
+    .eq("discord_user_id", discordUserId);
+  const ids = ((links as { account_id: string }[]) || []).map((l) => l.account_id);
+  if (ids.length === 0) return [];
+  const { data: accs } = await admin
+    .from("accounts")
+    .select("id, role, guild, server_number, status")
+    .in("id", ids);
+  const out: OfficerAccount[] = [];
+  for (const a of (accs as any[]) || []) {
+    if (a.status !== "active") continue;
+    const role = normalizeRole(a.role);
+    if (role === "member") continue;
+    let serverNumber: string | null = a.server_number ?? null;
+    if (!serverNumber && a.guild) {
+      const { data: g } = await admin.from("guilds").select("server_number").eq("id", a.guild).maybeSingle();
+      serverNumber = (g as any)?.server_number ?? null;
+    }
+    out.push({ id: a.id, role, guild: a.guild ?? null, serverNumber });
+  }
+  return out;
+}
+
+const NOT_AN_OFFICER_MSG =
+  "Only a guild officer can do this. Sign in to the app with **Continue with Discord** using your officer account first.";
+
 function getOptionValue(options: any[] | undefined, name: string): any {
   return options?.find((o: any) => o.name === name)?.value;
+}
+
+/**
+ * Approve / Reject on a join request posted by auth-discord.
+ *
+ * custom_id shapes (all minted by this codebase, all re-validated here):
+ *   gmjoin:approve:<accountId>            -- on the channel message
+ *   gmjoin:reject:<accountId>             -- on the channel message; asks first
+ *   gmjoin:rejectok:<accountId>:<msgId>   -- on that ephemeral confirmation
+ *
+ * The clicker's authority is their linked officer account, checked with the
+ * same canManageAccount() the app uses, and the decision itself runs through
+ * _shared/registration-decision.ts -- the code the app's buttons run.
+ */
+async function handleJoinRequestButton(interaction: any, logger: EdgeLogger): Promise<Response> {
+  const customId = String(interaction.data?.custom_id || "");
+  const m = /^gmjoin:(approve|reject|rejectok):([A-Za-z0-9_]{1,64})(?::(\d{17,20}))?$/.exec(customId);
+  if (!m) return ephemeral("This button is no longer active.");
+  const [, action, targetId, confirmedMessageId] = m;
+
+  const discordUserId: string | undefined = (interaction.member?.user || interaction.user)?.id;
+  const channelId: string | null = interaction.channel_id || null;
+  if (!discordUserId || !channelId) return ephemeral("Could not identify who clicked.");
+  logger.setContext({ userId: discordUserId });
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const officers = await officerAccounts(admin, discordUserId);
+  if (officers.length === 0) {
+    return ephemeral(NOT_AN_OFFICER_MSG, undefined, appLinkRow("Continue with Discord"));
+  }
+
+  const { data: targetAcc } = await admin
+    .from("accounts")
+    .select("id, role, guild, server_number, status")
+    .eq("id", targetId)
+    .maybeSingle();
+  // The message the buttons sit on: the clicked one, or for a confirmation the
+  // one whose id the confirmation carries.
+  const requestMessageId: string | null = action === "rejectok"
+    ? (confirmedMessageId || null)
+    : (interaction.message?.id ? String(interaction.message.id) : null);
+
+  if (!targetAcc || (targetAcc as any).status !== "pending") {
+    if (requestMessageId) {
+      await editChannelMessage(channelId, requestMessageId, {
+        content: `🆕 Join request — \`${targetId}\`: already handled.`,
+        components: [],
+      });
+    }
+    return ephemeral("This request was already handled.");
+  }
+
+  const targetCtx = await getTargetCtx(admin, targetAcc as any);
+  const officer = officers.find((o) => canManageAccount(o, targetCtx));
+  if (!officer) {
+    logger.warn("Join-request button refused outside the clicker's scope", { targetId });
+    return ephemeral(`Your account cannot manage players of **${(targetAcc as any).guild ?? "this guild"}**.`);
+  }
+
+  // Rejecting is not undone with a click, so it asks once. The confirmation is
+  // ephemeral: only the officer who clicked sees it.
+  if (action === "reject") {
+    if (!requestMessageId) return ephemeral("This button is no longer active.");
+    return ephemeral(
+      `Reject \`${targetId}\`? They will be told by DM.`,
+      undefined,
+      [{ type: 1, components: [
+        { type: 2, style: 4, label: "Yes, reject", custom_id: `gmjoin:rejectok:${targetId}:${requestMessageId}` },
+      ] }],
+    );
+  }
+
+  const decision = action === "approve" ? "approve" : "reject";
+  const res = await decideRegistration(
+    admin,
+    logger,
+    { role: officer.role, guild: officer.guild, serverNumber: officer.serverNumber, accountId: officer.id, via: "discord" },
+    targetId,
+    decision,
+  );
+  if (!res.ok) {
+    if (res.error === "not_pending") return ephemeral("This request was already handled.");
+    if (res.error === "forbidden") return ephemeral("Your account cannot manage this player.");
+    return ephemeral("Something went wrong. Please try again, or decide in the app.");
+  }
+
+  if (requestMessageId) {
+    await editChannelMessage(channelId, requestMessageId, {
+      content: decision === "approve"
+        ? `✅ \`${targetId}\` joined **${res.guild ?? ""}** — approved by \`${officer.id}\`.`
+        : `🚫 \`${targetId}\` was not approved for **${res.guild ?? ""}** — rejected by \`${officer.id}\`.`,
+      components: [],
+    });
+  }
+  return ephemeral(decision === "approve"
+    ? `Approved \`${targetId}\`. They have been told by DM.`
+    : `Rejected \`${targetId}\`. They have been told by DM.`);
 }
 
 Deno.serve(async (req: Request) => {
@@ -192,6 +336,10 @@ Deno.serve(async (req: Request) => {
     return discordJson({ type: InteractionResponseType.PONG });
   }
 
+  if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
+    return await handleJoinRequestButton(interaction, logger);
+  }
+
   if (interaction.type !== InteractionType.APPLICATION_COMMAND) {
     return discordJson({ error: "unsupported_interaction_type" }, 400);
   }
@@ -222,24 +370,9 @@ Deno.serve(async (req: Request) => {
       return ephemeral("Run `/invite` in a channel of your Discord server, where your players can see it.");
     }
 
-    const { data: links } = await admin
-      .from("discord_account_links")
-      .select("account_id")
-      .eq("discord_user_id", discordUserId);
-    const ids = ((links as { account_id: string }[]) || []).map((l) => l.account_id);
-    const { data: accs } = ids.length
-      ? await admin.from("accounts").select("id, role, guild, server_number, status").in("id", ids)
-      : { data: [] };
-    const officers = ((accs as any[]) || [])
-      .filter((a) => a.status === "active")
-      .map((a) => ({ id: a.id as string, role: normalizeRole(a.role), guild: a.guild ?? null, serverNumber: a.server_number ?? null }))
-      .filter((a) => a.role !== "member");
+    const officers = await officerAccounts(admin, discordUserId);
     if (officers.length === 0) {
-      return ephemeral(
-        "Only a guild officer can post an invite. Sign in to the app with **Continue with Discord** using your officer account first.",
-        undefined,
-        appLinkRow("Continue with Discord"),
-      );
+      return ephemeral(NOT_AN_OFFICER_MSG, undefined, appLinkRow("Continue with Discord"));
     }
 
     const requested = String(getOptionValue(interaction.data?.options, "guild") ?? "").trim().toUpperCase();

@@ -261,6 +261,22 @@ function rawOptions(list) {
 
 function toRawInteraction(interaction) {
   const user = { id: interaction.user.id, username: interaction.user.username };
+  // A button click (join-request Approve / Reject): 3 = MESSAGE_COMPONENT. Only
+  // the custom_id and the message it sits on travel; the Edge Function
+  // re-validates the id and decides who the clicker is from their app link.
+  if (interaction.isButton && interaction.isButton()) {
+    return {
+      type: 3,
+      id: interaction.id,
+      application_id: interaction.applicationId,
+      guild_id: interaction.guildId || null,
+      channel_id: interaction.channelId || null,
+      data: { custom_id: interaction.customId, component_type: 2 },
+      message: interaction.message ? { id: interaction.message.id } : null,
+      ...(interaction.member ? { member: { user } } : {}),
+      user,
+    };
+  }
   return {
     // 2 = APPLICATION_COMMAND, the only type forwarded here.
     type: 2,
@@ -303,7 +319,7 @@ async function forwardInteraction(interaction) {
   }
 
   if (!res.ok || !payload) {
-    console.warn(`discord-bot-interactions returned ${res.status} for /${interaction.commandName}`);
+    console.warn(`discord-bot-interactions returned ${res.status} for ${interaction.commandName ? "/" + interaction.commandName : interaction.customId}`);
     await interaction.editReply({ content: "Something went wrong running that command. Please try again." });
     return;
   }
@@ -312,13 +328,17 @@ async function forwardInteraction(interaction) {
   const data = payload.data || {};
   const content = typeof data.content === "string" && data.content.trim() ? data.content : null;
   const embeds = Array.isArray(data.embeds) ? data.embeds : [];
-  // Link buttons only (style 5): the Edge Function is trusted (worker secret),
-  // but a relayed row must never carry a button whose click would come back to
-  // this worker as an interaction nobody handles.
+  // Link buttons (style 5, https), or buttons whose custom_id this worker
+  // routes back (gmjoin:, the join-request reject confirmation). The Edge
+  // Function is trusted (worker secret), but a relayed row must never carry a
+  // button whose click would come back as an interaction nobody handles.
+  const relayable = (c) => c && c.type === 2 && (
+    (c.style === 5 && /^https:\/\//.test(String(c.url || ""))) ||
+    (c.style !== 5 && /^gmjoin:/.test(String(c.custom_id || "")))
+  );
   const components = Array.isArray(data.components)
     ? data.components.filter((row) =>
-      row && row.type === 1 && Array.isArray(row.components) &&
-      row.components.every((c) => c && c.type === 2 && c.style === 5 && /^https:\/\//.test(String(c.url || ""))))
+      row && row.type === 1 && Array.isArray(row.components) && row.components.every(relayable))
     : [];
 
   if (!content && embeds.length === 0) {
@@ -2258,6 +2278,8 @@ client.on("interactionCreate", async (interaction) => {
         await handleSetupButton(interaction);
       } else if (interaction.customId.startsWith("reconcile_")) {
         await handleReconcileButton(interaction);
+      } else if (interaction.customId.startsWith("gmjoin:")) {
+        await forwardInteraction(interaction);
       }
       return;
     }
