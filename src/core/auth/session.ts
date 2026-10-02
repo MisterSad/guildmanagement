@@ -160,6 +160,25 @@ export function loginWithDiscord(): void {
 }
 
 /**
+ * Shapes a failed auth-discord continuation. A recoverable mistake comes back
+ * with a FRESH continuation ticket (and how many tries it allows), so the
+ * caller can let the person correct the field instead of restarting the whole
+ * Discord round trip.
+ */
+function discordFailure(data: any, r: any): AuthResult {
+  const detail =
+    (data && (data.error || data.msg || data.message || data.code)) ||
+    (r && r.error && r.error.message) ||
+    'request_failed';
+  const out: AuthResult = { ok: false, error: String(detail) };
+  if (data && typeof data.ticket === 'string' && data.ticket) {
+    out.ticket = data.ticket;
+    if (typeof data.attempts_left === 'number') out.attemptsLeft = data.attempts_left;
+  }
+  return out;
+}
+
+/**
  * Spends a one-time ticket for a real session.
  *
  * The ticket carries no token of its own -- it only attests that this browser
@@ -186,13 +205,7 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
     };
   }
   const data = await parseFunctionsInvokeResult(r);
-  if (!data || !data.ok) {
-    const detail =
-      (data && (data.error || data.msg || data.message || data.code)) ||
-      (r && r.error && r.error.message) ||
-      'request_failed';
-    return { ok: false, error: String(detail) };
-  }
+  if (!data || !data.ok) return discordFailure(data, r);
   if (data.state === 'choose') {
     // Several accounts sit behind this Discord identity (an administrator who
     // is also a player). `ticket` is a CONTINUATION ticket for the same
@@ -202,6 +215,7 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
       state: 'choose',
       ticket: data.ticket || null,
       discordUsername: data.discord_username || null,
+      displayName: data.display_name || null,
       accounts: Array.isArray(data.accounts) ? data.accounts : []
     };
   }
@@ -213,7 +227,8 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
       ok: true,
       state: 'unlinked',
       ticket: data.ticket || null,
-      discordUsername: data.discord_username || null
+      discordUsername: data.discord_username || null,
+      displayName: data.display_name || null
     };
   }
   return applySessionResponse(data, { state: 'session' });
@@ -246,13 +261,7 @@ export async function chooseDiscordAccount(ticket: string, accountId: string): P
     };
   }
   const data = await parseFunctionsInvokeResult(r);
-  if (!data || !data.ok) {
-    const detail =
-      (data && (data.error || data.msg || data.message || data.code)) ||
-      (r && r.error && r.error.message) ||
-      'request_failed';
-    return { ok: false, error: String(detail) };
-  }
+  if (!data || !data.ok) return discordFailure(data, r);
   return applySessionResponse(data, { state: 'session' });
 }
 
@@ -283,13 +292,7 @@ export async function redeemLinkCode(ticket: string, code: string): Promise<Auth
     };
   }
   const data = await parseFunctionsInvokeResult(r);
-  if (!data || !data.ok) {
-    const detail =
-      (data && (data.error || data.msg || data.message || data.code)) ||
-      (r && r.error && r.error.message) ||
-      'request_failed';
-    return { ok: false, error: String(detail) };
-  }
+  if (!data || !data.ok) return discordFailure(data, r);
   return applySessionResponse(data, { state: 'session' });
 }
 
@@ -322,13 +325,7 @@ export async function claimWithDiscord(ticket: string, id: string, password: str
     };
   }
   const data = await parseFunctionsInvokeResult(r);
-  if (!data || !data.ok) {
-    const detail =
-      (data && (data.error || data.msg || data.message || data.code)) ||
-      (r && r.error && r.error.message) ||
-      'request_failed';
-    return { ok: false, error: String(detail) };
-  }
+  if (!data || !data.ok) return discordFailure(data, r);
   return applySessionResponse(data, { state: 'session', claimed: true, backupCodes: data.backup_codes || null });
 }
 
@@ -366,13 +363,7 @@ export async function onboardWithDiscord(
     };
   }
   const data = await parseFunctionsInvokeResult(r);
-  if (!data || !data.ok) {
-    const detail =
-      (data && (data.error || data.msg || data.message || data.code)) ||
-      (r && r.error && r.error.message) ||
-      'request_failed';
-    return { ok: false, error: String(detail) };
-  }
+  if (!data || !data.ok) return discordFailure(data, r);
   // A joined member has no session yet, by design.
   if (data.state === 'pending_approval') {
     return { ok: true, state: 'pending_approval', id: data.id, guild: data.guild };
