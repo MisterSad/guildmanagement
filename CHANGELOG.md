@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+- **Security: the event-roster RPCs no longer write into other guilds** (audit SEC-04, BE-B-02 and BE-B-03; migration `20261003105039`).
+  - **Dropped `gm_populate_event_participants_v2`.** It had no authorization at all and was executable by any signed-in user, so any player could insert absent rows into any guild's sessions. It existed only in production and had no caller anywhere.
+  - **Dropped `gm_event_session_id`**, whose only caller was `_v2`.
+  - **Dropped `gm_remove_member_from_active_events`.** It refused only `member`, matched the caller by JWT e-mail, and deleted rows in whatever guild it was handed. It had no caller.
+  - **`gm_add_member_to_active_events` and `gm_populate_event_participants` keep their production behaviour row for row.** Only their gate changed.
+    - Before, add let a JWT with no account through, and let a guild_admin enrol into any guild. Populate let server_admin and super_admin reach every guild, never checked `status`, and fell back to the real tenant `ALPHA`.
+    - Now both require `check_user_guild_write_access(guild)` from a browser, the same check every other guild-scoped write uses. A missing guild raises `guild_required`.
+    - The repository's never-applied definitions are superseded. Their (text, text) parameter order differed from production, which is what the client sends by name.
+  - **Verified on production before applying,** in a rolled-back transaction under real identities. A DEMO guild_admin was accepted on DEMO and refused on another guild. A JWT with no account was refused, a missing guild was refused, and the service role still worked.
+  - `database.generated.ts` regenerated: only the three dropped functions left it. Tests: `tests/event_rpcs_tenant_checks.test.js`. Gate: type-check clean, 2400 unit tests, build, 44 e2e.
+
 - **Nightly encrypted database backup** (audit finding INF-01; migration `20261003091725`, `docs/BACKUP_RUNBOOK.md`). The Supabase Free plan keeps no backups, and nothing else did.
   - **`.github/workflows/db-backup.yml`** runs at 02:17 UTC and on demand.
     - It runs `pg_dump` 17 on `public`, `auth`, `storage`, `cron` and `supabase_migrations`. The rows of `cron.job_run_details` are left out: they are 57% of the database and pure log.

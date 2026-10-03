@@ -1919,10 +1919,6 @@ export type Database = {
             }
             Returns: string
           }
-      gm_event_session_id: {
-        Args: { p_date: string; p_event_name: string }
-        Returns: string
-      }
       gm_expire_empty_guilds: { Args: never; Returns: Json }
       gm_find_player_by_uid: { Args: { p_uid: string }; Returns: Json }
       gm_generate_account_id: { Args: { p_base: string }; Returns: string }
@@ -2061,10 +2057,6 @@ export type Database = {
         }
         Returns: number
       }
-      gm_populate_event_participants_v2: {
-        Args: { p_event_name: string; p_guild: string; p_week_start: string }
-        Returns: number
-      }
       gm_purge_discord_ephemera: { Args: never; Returns: Json }
       gm_purge_guild_data: { Args: { p_guild: string }; Returns: Json }
       gm_redeem_admin_invite: {
@@ -2104,10 +2096,6 @@ export type Database = {
         Returns: Json
       }
       gm_reject_player_account: { Args: { p_id: string }; Returns: Json }
-      gm_remove_member_from_active_events: {
-        Args: { p_guild: string; p_pseudo: string }
-        Returns: number
-      }
       gm_rename_guild: {
         Args: { p_guild: string; p_new_tag: string }
         Returns: Json
