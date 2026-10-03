@@ -35,10 +35,13 @@ describe('M14 — a suspended account is authorized for nothing', () => {
   });
 
   it('every consumer gates on the role, which is what makes this work', () => {
-    for (const f of ['tickets', 'ocr-guild-members', 'migration-summary', 'discord-webhook-proxy', 'guild-data-export', 'event-reminders']) {
+    for (const f of ['tickets', 'ocr-guild-members', 'migration-summary', 'discord-webhook-proxy', 'guild-data-export']) {
       const src = read(`supabase/functions/${f}/index.ts`);
       expect(src, `${f} must gate on caller.role`).toMatch(/caller\.role/);
     }
+    // event-reminders no longer authenticates users at all (audit SEC-06):
+    // only the cron secret and the service role reach it.
+    expect(read('supabase/functions/event-reminders/index.ts')).not.toContain('validateCallerAuth');
   });
 });
 

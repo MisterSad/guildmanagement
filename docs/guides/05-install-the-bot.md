@@ -20,11 +20,13 @@ Now pick **ONE** of the two ways below.
 
 ## 🚀 Way A: Let the bot build your server (new or empty server)
 
-In any channel, type:
+First, sign in to the app with **Continue with Discord** using your **officer account**, so the bot knows you lead that guild. Being a Discord administrator is not enough.
+
+Then, in any channel, type:
 `/setup-server guild:PR1M`
 (use **your** guild tag)
 
-1. The bot shows what it will create. Click **🚀 Confirmer et Déployer**.
+1. The bot shows what it will create. Click **🚀 Confirm and deploy**.
 2. Wait for the progress bar to finish.
 
 ✅ You get 5 roles (`[VISITOR]`, `[PR1M]`, `[PENDING]`, `⭐ [PR1M] R4`, `👑 [PR1M] R5`), your categories and channels (verification, r4-chat, event channels, voice…). The verification and officer channels are **connected to the tool for you**.

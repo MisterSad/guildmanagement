@@ -29,6 +29,7 @@ import {
 } from "discord.js";
 import { provisionDiscordServer, buildServerTemplate, summarizeTemplate } from "./server-provisioner.js";
 import { CTA_CLICK_SUFFIX, ctaSessionFromRows, ctaHeaderFromEmbed } from "./rally.js";
+import { isOfficerOf, escapeLike } from "./officer-scope.js";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 
@@ -840,6 +841,23 @@ async function handleProfile(interaction) {
     return;
   }
 
+  // A profile is read inside the caller's own guild only, resolved the way
+  // /top resolves it: the channel's guild, else the caller's linked account.
+  // It used to search every tenant's roster (audit BE-A-04).
+  let callerGuild = channelToGuild.get(interaction.channelId);
+  if (!callerGuild) {
+    const self = await resolveLinkedAccount(interaction.user.id).catch(() => null);
+    if (self && self.guild) callerGuild = self.guild;
+  }
+  if (!callerGuild) {
+    await interaction.reply({
+      content: "Could not determine your guild. Use this command in your guild's channel, or sign in to the app with **Continue with Discord** so I know which guild is yours.",
+      components: appLinkRow("Continue with Discord"),
+      ephemeral: true,
+    });
+    return;
+  }
+
   let member = null;
   let note = null;
 
@@ -859,6 +877,13 @@ async function handleProfile(interaction) {
       });
       return;
     }
+    if (linked.guild !== callerGuild) {
+      await interaction.reply({
+        content: `<@${targetUser.id}> is not in **${callerGuild}**.`,
+        ephemeral: true,
+      });
+      return;
+    }
     const { data, error } = await supabase
       .from("guild_members")
       .select(PROFILE_FIELDS)
@@ -868,10 +893,12 @@ async function handleProfile(interaction) {
     if (error) throw error;
     member = data;
   } else {
+    // Escaped: `%` must not match an arbitrary player.
     const { data, error } = await supabase
       .from("guild_members")
       .select(PROFILE_FIELDS)
-      .ilike("pseudo", ingameName.trim())
+      .eq("guild", callerGuild)
+      .ilike("pseudo", escapeLike(ingameName.trim()))
       .limit(4);
     if (error) throw error;
     if (data && data.length > 1) {
@@ -884,7 +911,7 @@ async function handleProfile(interaction) {
     await interaction.reply({
       content: targetUser
         ? `<@${targetUser.id}>'s linked account has no roster entry yet.`
-        : `No roster entry found for **${ingameName.trim()}**.`,
+        : `No roster entry found for **${ingameName.trim()}** in **${callerGuild}**.`,
       ephemeral: true,
     });
     return;
@@ -892,8 +919,10 @@ async function handleProfile(interaction) {
 
   const localTime = formatPlayerLocalTime(member.timezone_offset);
   const activeAbsence = await getPlayerActiveAbsence(member.uid, member.guild);
+  // The absence reason is the player's own, often personal: officers read it
+  // in the app and in the officers' channel, not in a lookup anyone can run.
   const statusValue = activeAbsence
-    ? `🔴 Absent until ${activeAbsence.end_date}${activeAbsence.note ? ` (${activeAbsence.note})` : ""}`
+    ? `🔴 Absent until ${activeAbsence.end_date}`
     : "🟢 Active";
 
   const fields = [
@@ -916,7 +945,8 @@ async function handleProfile(interaction) {
     title: `${member.pseudo} — ${member.guild}`,
     fields,
   };
-  await interaction.reply({ embeds: [embed], content: note || "" });
+  // Ephemeral: a lookup is for the person asking, not for the channel.
+  await interaction.reply({ embeds: [embed], content: note || "", ephemeral: true });
 }
 
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -1721,6 +1751,20 @@ async function handleSetupServer(interaction) {
   if (!guildRow) {
     await interaction.reply({
       content: `❌ Guild \`${rawGuild}\` is not registered in the Guild Management tool. Check the identifier (e.g. \`ALPHA\`, \`OMEGA\`, \`IMK\`) or create the guild in the app first — I won't build a server for a tenant that doesn't exist.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // Being Administrator of THIS Discord server only proves you may reshape it.
+  // Wiring it to an FGF guild repoints that guild's audit and verification
+  // channels, so it takes an officer of that guild: anyone can create a Discord
+  // server, invite the bot and name any tag (audit SEC-09).
+  if (!(await isOfficerOf(supabase, interaction.user.id, guildRow.id, guildRow.server_number))) {
+    console.warn(`Refused /setup-server for ${guildRow.id}: caller is not one of its officers`);
+    await interaction.reply({
+      content: `❌ Your linked FGF account is not an officer of \`${guildRow.id}\`. Sign in to the app with **Continue with Discord** using that guild's officer account, then run this again.`,
+      components: appLinkRow("Continue with Discord"),
       ephemeral: true,
     });
     return;

@@ -30,7 +30,7 @@ Not linked yet? The bot answers with a **Continue with Discord** button: press i
 
 - `/top category:Glory Score`: the guild's top 10 (also *Overall Power* or *Fleet Rating*)
 - `/absences`: who is away, picked from the list: *Today (Currently Active)* or *Upcoming (Next 7 Days)*
-- `/profile user:@Someone`: a player's card (or `ingame_name:Name`)
+- `/profile user:@Someone`: a player's card from your guild (or `ingame_name:Name`), shown only to you
 - `/call-to-arms event_name:SvS Saturday description:Everyone on portal at 14:00`: a rally post with **Present / Late / Absent** buttons and the total power that is ready
 
 -# 💡 Use `/call-to-arms` 1 hour before a big fight: you see at a glance who is coming.

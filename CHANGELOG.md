@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+- **Security: no more cross-tenant actions from Discord or event-reminders** (audit SEC-06, SEC-09, BE-A-03, BE-A-04 and BE-A-07). This change is user-facing for officers and players on Discord.
+  - **`/setup-server` now needs a linked FGF officer of the target guild**, not just Discord Administrator.
+    - The bot's invite link is public, so anyone could create a server, invite the bot and run `/setup-server guild:<any tag>`.
+    - That repointed the victim guild's audit channel to the caller's server, along with its join requests, unlinks, admin invitations and absences. It also stopped the victim's verification channel from being served.
+    - Authority now comes from `discord_account_links` and an active guild_admin, server_admin or super_admin account in scope. These are the same rules as `/invite`.
+  - **`/profile` stays inside the caller's guild.** The guild is resolved like `/top`: the channel's guild, else the caller's linked account.
+    - The pseudo search escapes LIKE wildcards; `ingame_name:%` used to return any player of any guild.
+    - The reply is ephemeral.
+    - An absence shows its end date but no longer its reason.
+  - **`event-reminders` accepts only the cron secret and the service role.**
+    - Before, a guild_admin JWT without `guild` ran every guild's reminders, and with `force` re-sent them.
+    - Nothing in the app called it that way; the pg_cron job authenticates with `x-cron-secret`.
+  - **New `discord-verification-worker/officer-scope.js`** mirrors `_shared/admin-authz.ts` and `like.ts`, because the Node worker cannot import Deno code. `tests/discord_officer_scope.test.js` runs both over the same 1,000+ role, guild and server cases, so they cannot drift.
+  - Worker README and guides 05 and 06 updated. Guide 05 also had the old French button label.
+  - Gate: type-check clean, 2411 unit tests, build, 44 e2e.
+
 - **Security: the event-roster RPCs no longer write into other guilds** (audit SEC-04, BE-B-02 and BE-B-03; migration `20261003105039`).
   - **Dropped `gm_populate_event_participants_v2`.** It had no authorization at all and was executable by any signed-in user, so any player could insert absent rows into any guild's sessions. It existed only in production and had no caller anywhere.
   - **Dropped `gm_event_session_id`**, whose only caller was `_v2`.

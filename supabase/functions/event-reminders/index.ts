@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from "../_shared/gvg-tasks.ts"
 import { isToggleEnabled, resolveGuildWebhook, isStandardEventName, isSvsEventName, eventPrefixForName, normalizeEventName, isSvsActiveForWeek } from "../_shared/reminder-rules.ts"
-import { validateCallerAuth } from "../_shared/auth.ts"
 import { EdgeLogger } from "../_shared/logger.ts"
 import { getCorsHeaders } from "../_shared/cors.ts"
 
@@ -221,36 +220,21 @@ serve(async (req) => {
   const xCronSecret = req.headers.get('x-cron-secret') || '';
   const cronSecret = Deno.env.get('CRON_SECRET');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const reqUrl = new URL(req.url);
   const forceGvg = reqUrl.searchParams.get('force') === 'gvg' || reqUrl.searchParams.get('force') === 'all';
   const targetGuildParam = reqUrl.searchParams.get('guild');
 
   const authBearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  let isAuthorized = false;
 
-  if (cronSecret && (safeEqual(authBearer, cronSecret) || safeEqual(xCronSecret, cronSecret))) {
-    isAuthorized = true;
-  } else if (serviceRoleKey && safeEqual(authBearer, serviceRoleKey)) {
-    isAuthorized = true;
-  } else if (anonKey && authBearer) {
-    const caller = await validateCallerAuth(req, SUPABASE_URL, anonKey, serviceRoleKey);
-    if (caller.authenticated && (caller.role === 'super_admin' || caller.role === 'server_admin' || caller.role === 'guild_admin')) {
-      isAuthorized = true;
-      if (targetGuildParam) {
-        if (caller.role === 'guild_admin' && caller.guild !== targetGuildParam) {
-          return json({ error: 'Forbidden' }, 403);
-        }
-        if (caller.role === 'server_admin') {
-          const { data: tg } = await supabase.from('guilds').select('server_number').eq('id', targetGuildParam).maybeSingle();
-          if (!tg || String(tg.server_number) !== String(caller.serverNumber)) {
-            return json({ error: 'Forbidden' }, 403);
-          }
-        }
-      }
-    }
-  }
+  // Machine callers only: the pg_cron job (gm_invoke_event_reminders, which
+  // sends x-cron-secret) and the service role. A user JWT used to be accepted
+  // too, and without `guild` it ran -- and with `force` re-sent -- every
+  // guild's reminders: any guild_admin could trigger a cross-tenant run at will
+  // (audit SEC-06). Nothing in the app ever called it that way.
+  const isAuthorized =
+    (!!cronSecret && (safeEqual(authBearer, cronSecret) || safeEqual(xCronSecret, cronSecret))) ||
+    (!!serviceRoleKey && safeEqual(authBearer, serviceRoleKey));
 
   if (!isAuthorized) {
     logger.warn('Unauthorized invocation of event-reminders', { hasAuth: !authHeader, hasXCron: !xCronSecret });
