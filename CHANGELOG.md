@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+- **Database: production and the repository describe the same schema again** (short-term plan, phase 4b; audit DB-01, DB-04, BE-B-05). No app code changes.
+  - **`20261003170654_reconcile_schema_objects`** adds what the base migrations declared but production never built, and versions what only production had.
+    - **Indexes.** The index on `accounts.auth_user_id`, which every RLS helper filters on, did not exist: the audit measured 11.9 M sequential scans of `accounts`. It served 14,194 lookups in the first minutes. Also new: `guild_members(uid)` and `event_daily_scores(guild, pseudo)`.
+    - **Versioned.** 19 production-only indexes are now in a migration, including the UNIQUE `idx_accounts_uid` and `guild_config_join_code_hash_unique`. Three UNIQUE constraints take production's names, and `shadowfront_squads (guild, session_id, pseudo)`, which the squad upserts rely on, now exists in the repository.
+    - **Foreign keys to `guilds`.** Eight columns get one (ADR-022): `accounts`, `account_link_codes`, `banned_players`, `event_status`, `guild_config`, `guild_members`, `player_absences` and `war_opponents.guild_ref`.
+      - The keys are `ON UPDATE CASCADE`, `ON DELETE NO ACTION`, `DEFERRABLE INITIALLY IMMEDIATE`. A rename moves the rows. Deletion stays explicit, through `gm_purge_guild_data`.
+      - A direct `DELETE` on `guilds` that would leave rows behind is now refused (DB-13).
+      - `system_audit_logs` deliberately gets no key: a log line must never fail because of the tag it carries.
+    - **`updated_at`.** `handle_updated_at()` and its triggers on `guild_config`, `player_absences` and `event_status`, so the reminder-lock cleanup ages locks by the server's clock.
+    - **Dead code.** The unused `gm_session_id_base` is dropped.
+    - **Checked before applying,** on production in a rolled-back transaction:
+      - a direct delete of DEMO is refused;
+      - a rename the way `gm_rename_guild` does it moves 3 accounts, 12 config rows and 60 members by cascade;
+      - `gm_purge_guild_data` still removes the whole guild;
+      - the trigger stamps `updated_at`.
+    - 0 orphans measured beforehand.
+  - **`snapshot_drifted_functions_1` to `_4`.** On 2026-10-03, 49 production functions had a body that no migration contained verbatim. Most had been rewritten by DO blocks; a few had been changed outside migrations.
+    - Each is restated exactly as `pg_get_functiondef` printed it, with its EXECUTE grants read from `proacl`. The files were generated from the catalogue, not written by hand.
+    - Every file ends by checking the md5 of each body and each grantee list against production, so applying it is provably a no-op there.
+  - **Verified afterwards.**
+    - Every cron run since the migration has succeeded. No error lines appear in the audit log.
+    - The Supabase security advisors show nothing new.
+    - Types are regenerated: 8 new relationships, and `gm_session_id_base` is gone.
+  - **Still open.** The chain does not replay from an empty database yet (DB-03): md5-guarded DO blocks and a volume assertion in `20261003080433` assume production's data. Phase 5 adds the CI replay job that will prove it.
+  - **Tests.** New `tests/schema_reconcile.test.js`. Gate: type-check clean, 2433 unit tests, build, 44 e2e.
+
 - **Passkeys removed entirely** (owner decision, restated 2026-10-03). Sign-in is Discord, with ID + password kept during the transition. This change is user-facing.
   - **Why now.** The UI went on 2026-09-27, but the server side never did. `auth-passkey` stayed deployed, so the 10 accounts holding a passkey could still sign in with it by calling the API directly. The front also still wired three things to it:
     - passkey autofill on the sign-in form (`autocomplete="username webauthn"` plus a conditional listener);

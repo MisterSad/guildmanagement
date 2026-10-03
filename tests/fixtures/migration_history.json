@@ -528,6 +528,26 @@
     {
       "version": "20261003165501",
       "name": "remove_passkeys"
+    },
+    {
+      "version": "20261003170654",
+      "name": "reconcile_schema_objects"
+    },
+    {
+      "version": "20261003171358",
+      "name": "snapshot_drifted_functions_1"
+    },
+    {
+      "version": "20261003171625",
+      "name": "snapshot_drifted_functions_2"
+    },
+    {
+      "version": "20261003171910",
+      "name": "snapshot_drifted_functions_3"
+    },
+    {
+      "version": "20261003172058",
+      "name": "snapshot_drifted_functions_4"
     }
   ]
 }

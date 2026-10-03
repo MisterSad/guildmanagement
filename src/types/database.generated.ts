@@ -94,6 +94,13 @@ export type Database = {
             referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "account_link_codes_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
         ]
       }
       accounts: {
@@ -148,7 +155,15 @@ export type Database = {
           status?: string
           uid?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "accounts_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       banned_players: {
         Row: {
@@ -178,7 +193,15 @@ export type Database = {
           reason?: string | null
           uid?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "banned_players_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       discord_account_links: {
         Row: {
@@ -542,7 +565,15 @@ export type Database = {
           start_at?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "event_status_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guild_config: {
         Row: {
@@ -563,7 +594,15 @@ export type Database = {
           updated_at?: string
           value?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "guild_config_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guild_creation_requests: {
         Row: {
@@ -665,7 +704,15 @@ export type Database = {
           timezone_offset?: number | null
           uid?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "guild_members_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guild_tag_history: {
         Row: {
@@ -1067,7 +1114,15 @@ export type Database = {
           uid?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "player_absences_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_metrics_history: {
         Row: {
@@ -1489,6 +1544,13 @@ export type Database = {
             referencedRelation: "guilds"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "war_opponents_guild_ref_fkey"
+            columns: ["guild_ref"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
         ]
       }
       war_sessions: {
@@ -1617,7 +1679,15 @@ export type Database = {
           total: number | null
           unlinked: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "accounts_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
@@ -2090,7 +2160,6 @@ export type Database = {
         Args: { p_event_name: string; p_guild: string; p_tiers: Json }
         Returns: Json
       }
-      gm_session_id_base: { Args: { p_session_id: string }; Returns: string }
       gm_session_is_valid: { Args: never; Returns: boolean }
       gm_set_join_code: {
         Args: { p_code: string; p_guild: string }
