@@ -2066,6 +2066,7 @@ export type Database = {
         Returns: number
       }
       gm_purge_discord_ephemera: { Args: never; Returns: Json }
+      gm_purge_guild_data: { Args: { p_guild: string }; Returns: Json }
       gm_redeem_admin_invite: {
         Args: {
           p_code_hash: string

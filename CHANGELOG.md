@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- **Fixed: deleting a guild left part of it behind** (migration `20261003080433`).
+  - **Two deleters, two hand-kept lists, the same four tables missing.** `gm_delete_guild` and `gm_expire_empty_guilds` never removed `banned_players`, `player_absences`, `account_link_codes` or `system_audit_logs`, and left `war_opponents.guild_ref` pointing at nothing. The deleted CLAW still owned 6 bans, 12 absences and 59 audit lines; OBSIDANSTAR kept a config row.
+  - **`gm_purge_guild_data(p_guild)` is now the one place that knows every tag-carrying table.** It is not callable over the API. Both deleters go through it.
+  - **Owner decision: the guild's audit lines go with it.** The deletion itself is recorded on a `WARN` line with `guild = NULL` and the TAG in `metadata.deleted_guild`, so the line neither belongs to a tenant nor keeps the TAG reserved.
+  - **A latent blocker is gone.** `migration_wiki_comments.author_guild_id` was `ON DELETE NO ACTION`, so deleting a guild whose officer had commented on a server wiki would have failed. Those comments now stay, with the author's guild cleared.
+  - **The existing orphans were deleted:** CLAW 6 / 12 / 59, OBSIDANSTAR 1. The migration asserted those exact counts and would have aborted on anything else.
+  - **Rehearsed on production inside `BEGIN … ROLLBACK`:**
+    - deleting STW left 0 rows under its TAG in every tag column;
+    - another guild could then be renamed to `STW`;
+    - `gm_expire_empty_guilds` ran clean.
+
+    After applying: 0 orphans, 35 guilds.
+  - **`privacy.html`** now states that a deleted guild's bans, absences and audit entries are deleted with it, and that bans are kept "for as long as the guild exists". The effective date is now October 3, 2026.
+  - **Tests:** `tests/guild_purge_migration.test.js` reads the tag-column inventory from the generated types and fails on any column the purge would leave behind. Types regenerated: only `gm_purge_guild_data` was added.
+
 - **Fixed: saving chest tiers had never worked in production** (migration `20261003074711`).
   - `gm_save_chest_tiers` wrote its audit line with level `'info'`, and `system_audit_logs` accepts only `DEBUG`/`INFO`/`WARN`/`ERROR`/`FATAL`.
   - The INSERT is the function's last statement, so the `23514` it raised rolled back the tiers as well, after every validation had passed. Every save since 2026-09-15 showed "Could not save chest tiers." `event_chest_tiers` held 0 rows across all 35 guilds.

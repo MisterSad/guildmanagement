@@ -71,6 +71,9 @@ answer instantly.
     `gm_delete_guild` leaves rows behind in the non-FK tables: the deleted CLAW
     still owns 6 bans, 12 absences and 59 audit lines. Reusing its TAG would
     hand those rows to another tenant.
+    Since migration `20261003080433`, a deletion removes everything through
+    `gm_purge_guild_data`, and the orphans already in production were cleaned
+    up. The check stays as defence in depth.
 - **Cooldown:** 7 days, enforced through `guild_tag_history`. The
   `super_admin` is exempt.
 - **Display tag:** `guild_config.guild_tag`, the in-game display tag used by
