@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- **Fixed: saving chest tiers had never worked in production** (migration `20261003074711`).
+  - `gm_save_chest_tiers` wrote its audit line with level `'info'`, and `system_audit_logs` accepts only `DEBUG`/`INFO`/`WARN`/`ERROR`/`FATAL`.
+  - The INSERT is the function's last statement, so the `23514` it raised rolled back the tiers as well, after every validation had passed. Every save since 2026-09-15 showed "Could not save chest tiers." `event_chest_tiers` held 0 rows across all 35 guilds.
+  - Reproduced on DEMO inside `BEGIN … ROLLBACK` before the fix. After it, a save returns `{ok: true}`, writes the tiers and one `INFO` audit line.
+  - The body is the live definition with only the literal changed, and a drift guard aborts the migration if the live text differs.
+  - The other six SQL writers and every Edge Function insert already used upper case (checked live).
+  - `tests/audit_log_levels.test.js` reads the latest definition of every function across the migrations, plus the Edge Functions' direct inserts, and fails on any literal level the CHECK would reject. It fails without this migration.
+
 - **V3.34.1: guild TAG rename (the three phases below).** The app version is bumped. `DISCORD_CHANGELOG.md` opens with a V3.34.1 note for guild leaders; the V3.34.0 note stays below it, after a `---8<---` marker, in case it has not been posted yet. Guides 02 (Accounts & access) and 15 (FAQ) document the rename. Live on Vercel since `9913eb5`.
 
 - **Guild rename, phase 3 of 3: documentation and Discord side effects.**
