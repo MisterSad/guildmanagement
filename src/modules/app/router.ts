@@ -30,6 +30,7 @@ import {
 import { loadGuildSettings, fetchGuildRequests } from './admin/guild-requests.controller';
 import { renderGuildsList } from './admin/guilds.controller';
 import { renderMigrationGroupsList } from './admin/migration-groups.controller';
+import { loadGuildTagCard } from './admin/guild-rename';
 import { migrationHubView } from '../migration/views/MigrationHubView';
 import { ticketsView } from '../tickets/views/TicketsView';
 import { sanctionsView } from '../sanctions/views/SanctionsView';
@@ -202,6 +203,7 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
       await runLoader('guild-settings', () => loadGuildSettings());
       await runLoader('account-guild-select', () => populateAccountGuildSelect());
       await runLoader('join-code', () => wireJoinCode());
+      await runLoader('guild-tag', () => loadGuildTagCard());
       await runLoader('admin-invite', () => wireAdminInvite());
     }
     if (tabId === 'admin-discord' || tabId === 'guild-settings') {

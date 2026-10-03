@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- **Guild rename, phase 2 of 3: the UI.**
+  - **A "Guild TAG" card on Accounts & Access.** It shows the current TAG, the last changes and when the next change is possible, plus a "Change TAG" button.
+  - **The server decides who sees the card.** `gm_guild_tag_history` (migration `20261003071704`) now returns `can_rename` and `cooldown_applies`, with the same rule `gm_rename_guild` enforces. Checked live for all three roles: guild_admin and super_admin may rename, the super_admin is exempt from the cooldown, and a server_admin, who can read the history but not rename, never sees a button that would always fail.
+  - **The super-admin guild list gains a "Rename" button.** It opens the same dialog.
+  - **The dialog validates as you type**, using the same format as the server; brackets are stripped and the TAG is uppercased. It lists the consequences, including that Discord roles and channels named after the old TAG are not renamed. A server refusal (TAG taken, reserved, cooldown with its date) is shown inline and the dialog stays open.
+  - **After renaming the active guild, the page reloads on the new TAG.** First, this browser's tag-keyed cache entries (`gm_config_<TAG>_*`, server number, join code) and the guild pointers move to the new TAG. A TAG may contain `_`, so `AB`'s config keys are told apart from `AB_C`'s by the lowercase key that follows: a test pins this.
+  - **A stale selection no longer points at a guild that is gone.** At sign-in or session restore, a guild saved in `localStorage` that the switcher no longer lists is dropped, and a valid one is picked. This covers a guild renamed or deleted since this browser last chose it.
+  - **Tests:** `tests/guild_rename_ui.test.js` (21 tests) and `e2e/guild-rename.spec.js`. The e2e spec runs the card and dialog against the built bundle, with no CSP or console error.
+
 - **Guild rename, phase 1 of 3: the database can change a guild's TAG** (migration `20261003070904`; no UI yet). In game a guild can change its tag. The app could not, because the tag *is* the tenant key: `guilds.id`, carried by 28 columns across 25 tables. Renamed guilds had to ask for their tenant to be deleted and recreated.
   - **`gm_rename_guild(p_guild, p_new_tag)` moves every one of those columns in one transaction.**
     - Who: a `super_admin`, or a `guild_admin` of that guild. A `server_admin` cannot rename.

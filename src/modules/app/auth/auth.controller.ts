@@ -526,7 +526,17 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
  * the restriction and the selection.
  */
 async function ensureInitialGuildSelection(accountId: string | null): Promise<void> {
-  if (getAppState().currentGuild) return;
+  const st = getAppState();
+  if (st.currentGuild) {
+    // A selection persisted in localStorage can name a guild that no longer
+    // exists under that tag -- renamed (gm_rename_guild) or deleted since this
+    // browser last chose it. Keep it only if the switcher still lists it; an
+    // empty list means the guilds could not be loaded, which proves nothing.
+    const list = Array.isArray(st.guildsList) ? st.guildsList : [];
+    if (list.length === 0 || list.includes(st.currentGuild)) return;
+    patchAppState({ currentGuild: null });
+    try { ls()?.removeItem('gm_current_guild'); } catch (_) { /* storage unavailable */ }
+  }
 
   let guild: string | null = null;
 

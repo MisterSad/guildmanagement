@@ -453,6 +453,31 @@
                         </div>
                         <div id="join-code-info" class="gm-dim" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
                     </div>
+
+                    <!-- Guild TAG. Hidden by default: revealed by loadGuildTagCard for a
+                         guild_admin or the super_admin (gm_rename_guild refuses everyone else). -->
+                    <div class="gm-card gm-card-padded gm-section hidden" id="guild-tag-card">
+                        <div class="gm-section-title" style="margin-bottom: 0.5rem;">
+                            <i class="ph ph-tag"></i>
+                            <span>Guild TAG</span>
+                        </div>
+                        <p class="gm-page-subtitle" style="margin-bottom: 0.75rem;">
+                            Changed your TAG in game? Change it here too. Every member, score, event and
+                            setting follows, so there is no need to recreate the guild.
+                        </p>
+                        <div class="gm-row" style="gap: 0.6rem; flex-wrap: wrap; align-items: center;">
+                            <div class="gm-join-code">
+                                <i class="ph ph-shield"></i>
+                                <span id="guild-tag-current" style="font-family: var(--font-mono); letter-spacing: 0.08em; font-size: 1.05rem;"></span>
+                            </div>
+                            <button type="button" id="guild-tag-rename-btn" class="gm-btn gm-btn-primary">
+                                <i class="ph ph-pencil-simple"></i>
+                                <span>Change TAG</span>
+                            </button>
+                        </div>
+                        <div id="guild-tag-info" class="gm-dim" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
+                        <ul id="guild-tag-history" class="gm-dim hidden" style="margin-top: 0.5rem; font-size: 0.8rem; padding-left: 1.1rem;"></ul>
+                    </div>
                 </div>
             </main>
 
