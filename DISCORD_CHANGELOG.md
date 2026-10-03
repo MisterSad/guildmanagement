@@ -1,3 +1,29 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.34.1**
+
+**🏷️ Changed your guild TAG in game? Change it in the tool too**
+
+Until now, a new TAG in game meant asking me to delete your guild and create it again, and losing its history. Not anymore.
+
+**⚔️ For guild leaders**
+• Go to **Accounts & Access** → **Guild TAG** → **Change TAG**.
+• Type the new TAG (2 to 12 letters, digits or `_`). Everything follows: members, scores, events, sanctions, absences, stats and settings. Your join code and invite links keep working.
+• You can change it **once every 7 days**. The card shows your past TAGs and when the next change is possible.
+
+**🤖 On Discord, one thing to do by hand**
+• Rename your guild's **Discord role** to the new TAG (and your channels, if you like). The bot finds the role by its name.
+• Screenshot verification picks up the new TAG within **5 minutes**.
+
+**🎮 For players and other officers**
+• Nothing to do. If you had the tool open during the change, just **reload the page**.
+
+**🔒 Safety**
+• Only the guild's admin (or me) can change its TAG.
+• A TAG that is already taken, or that still holds data from a deleted guild, is refused, so nobody ever inherits another guild's history.
+
+-# Something odd after changing your TAG? Tell me with the 🐞 **Report a bug** button. 💪
+
+---8<---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.34.0**
 
 **🚀 Signing in with Discord, rebuilt — and the bot walks your players in**

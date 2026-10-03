@@ -19,6 +19,15 @@ Someone already joined with this UID. Contact the developer, who can check who h
 **"This attempt expired — each one is single-use."**
 You waited more than 15 minutes. Close the window and click **Sign in with Discord** again.
 
+**Our guild changed its TAG in game.**
+Officers: **Accounts & access** → **Guild TAG** → **Change TAG**. Everything follows; there is no need to recreate the guild. Then rename the guild's Discord role. See Guide 2.
+
+**"The TAG was changed less than 7 days ago."**
+A TAG can change once every 7 days. The **Guild TAG** card shows the date of the next possible change.
+
+**"This TAG is reserved or still holds data from a former guild."**
+Pick another TAG, or contact the developer.
+
 **We can't see an officer's password.**
 Nobody can, on purpose. Make a new one: **Accounts & access** → the officer's account → 🔄 **Renew Password**. See Guide 2.
 

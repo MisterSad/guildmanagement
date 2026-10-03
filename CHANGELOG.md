@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **V3.34.1: guild TAG rename (the three phases below).** The app version is bumped. `DISCORD_CHANGELOG.md` opens with a V3.34.1 note for guild leaders; the V3.34.0 note stays below it, after a `---8<---` marker, in case it has not been posted yet. Guides 02 (Accounts & access) and 15 (FAQ) document the rename. Live on Vercel since `9913eb5`.
+
 - **Guild rename, phase 3 of 3: documentation and Discord side effects.**
   - **ADR-022, "The guild TAG is a mutable tenant key".** It records why the key is renamed in place by a deferred cascade rather than moved to a UUID surrogate, and the invariants this sets:
     - a new tag-carrying column needs a deferrable FK, or an entry in `gm_rename_guild`;

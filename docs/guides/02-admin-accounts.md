@@ -64,6 +64,17 @@ An officer who has a password can switch to Discord login:
 
 ⚠️ This is **one-way**. After that, the password is deleted and they can **only** sign in with Discord.
 
+## 🏷️ Changing your guild TAG
+
+Changed your TAG in game? Change it here too, no need to recreate the guild:
+1. Go to **Accounts & access** → **Guild TAG**.
+2. Click **Change TAG** and type the new one (2 to 12 letters, digits or `_`).
+3. Confirm. The page reloads on the new TAG.
+
+Members, scores, events, settings and your join code all follow. You can change it **once every 7 days**.
+
+⚠️ Rename your guild's **Discord role** by hand: the bot finds it by its name. Other officers with the tool open just reload the page.
+
 ## 🧹 Removing an officer
 
 In **Accounts & access**, click the 🗑️ button on their account. They lose access immediately.

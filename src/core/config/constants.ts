@@ -5,7 +5,7 @@
  */
 
 /** Single source of truth for the user-facing app version (see AGENTS.md §6). */
-export const APP_VERSION = 'V3.34.0';
+export const APP_VERSION = 'V3.34.1';
 
 export const SUPABASE_URL = 'https://vgweufzwmfwplusskmuf.supabase.co';
 export const SUPABASE_KEY = 'sb_publishable_c79HkCPMv7FmNvi1wGwlIg_N3isrSKo';
