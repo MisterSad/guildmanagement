@@ -711,6 +711,41 @@ export type Database = {
         }
         Relationships: []
       }
+      guild_tag_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          guild: string
+          id: number
+          new_tag: string
+          old_tag: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          guild: string
+          id?: never
+          new_tag: string
+          old_tag: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          guild?: string
+          id?: never
+          new_tag?: string
+          old_tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guild_tag_history_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guild_transfers: {
         Row: {
           created_at: string | null
@@ -1932,6 +1967,7 @@ export type Database = {
         Args: { p_event_name: string; p_guild: string; p_session_id: string }
         Returns: Json
       }
+      gm_guild_tag_history: { Args: { p_guild: string }; Returns: Json }
       gm_invoke_event_reminders: { Args: never; Returns: undefined }
       gm_is_admin_caller: { Args: never; Returns: boolean }
       gm_issue_admin_invite: {
@@ -2070,6 +2106,10 @@ export type Database = {
       gm_remove_member_from_active_events: {
         Args: { p_guild: string; p_pseudo: string }
         Returns: number
+      }
+      gm_rename_guild: {
+        Args: { p_guild: string; p_new_tag: string }
+        Returns: Json
       }
       gm_report_client_error: {
         Args: {

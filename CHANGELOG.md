@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+- **Guild rename, phase 1 of 3: the database can change a guild's TAG** (migration `20261003070904`; no UI yet). In game a guild can change its tag. The app could not, because the tag *is* the tenant key: `guilds.id`, carried by 28 columns across 25 tables. Renamed guilds had to ask for their tenant to be deleted and recreated.
+  - **`gm_rename_guild(p_guild, p_new_tag)` moves every one of those columns in one transaction.**
+    - Who: a `super_admin`, or a `guild_admin` of that guild. A `server_admin` cannot rename.
+    - Format: the same as at creation, 2 to 12 characters `[A-Z0-9_]`, uppercased, unique regardless of case.
+    - Never `DEMO`, in either direction.
+    - Cooldown: 7 days between renames. A `super_admin` bypasses it.
+    - The in-game display tag (`guild_config.guild_tag`) is reset to `[NEW]`.
+    - Each rename writes a `guild_tag_history` row and an audit log line.
+  - **Every foreign key carrying a tag column is now `DEFERRABLE INITIALLY IMMEDIATE`, and the 14 to `guilds(id)` are `ON UPDATE CASCADE`.**
+    - Only the rename defers them; every other statement still checks immediately.
+    - This is needed because some children hang off two parents. `player_metrics_history` and `event_daily_scores` point at both `guilds` and `guild_members`. `event_daily_scores` also points at `war_sessions`. A rehearsal on production inside `BEGIN … ROLLBACK` caught that last one.
+    - The constraints are rebuilt from the catalogue. The migration aborts if any one is left out.
+  - **A tag is refused while a deleted guild's rows still sit under it.** `gm_delete_guild` leaves rows behind in the tables without a foreign key: the deleted CLAW still owns 6 bans, 12 absences and 59 audit lines. Taking that tag would hand them to another tenant.
+  - **Verified on production, then rolled back.** STW (202 members) was renamed: all 21 tag tables had 0 rows left under the old tag and the same count under the new one. The audit log gained exactly one line. All six refusals answered correctly.
+  - `tests/guild_rename_migration.test.js` reads the inventory from the generated types. It fails when a future tag column is neither covered by a foreign key nor moved by the function.
+
 - **Video OCR, phase 1 of 4: the server can read a whole recording with Gemini** (ADR-021 to come; nothing calls it yet). The browser's frame extractor found 3 or 4 players out of 40 on some recordings, because its scroll estimator was tuned on one desktop capture.
   - **The video travels through a private `ocr-videos` bucket** (migration `20261001200000`), not the request body. Measured on production: a 1 MB binary body hung `ocr-guild-members` for 160 s, and 60 MB bodies ended in a gateway 502. Upload, read and delete are gated on `check_user_guild_write_access` for the guild in the first path segment. The function reads and deletes under the caller's JWT, so RLS decides what it can reach.
   - `ocr-guild-members` sends the file to the Gemini File API and reads it at high media resolution. The frame rate is set from the duration Gemini measured, not from a client claim.
