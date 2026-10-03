@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+- **Nightly encrypted database backup** (audit finding INF-01; migration `20261003091725`, `docs/BACKUP_RUNBOOK.md`). The Supabase Free plan keeps no backups, and nothing else did.
+  - **`.github/workflows/db-backup.yml`** runs at 02:17 UTC and on demand.
+    - It runs `pg_dump` 17 on `public`, `auth`, `storage`, `cron` and `supabase_migrations`. The rows of `cron.job_run_details` are left out: they are 57% of the database and pure log.
+    - The run fails if `pg_restore --list` cannot read the dump, or if the core tables have no data.
+    - The dump is then encrypted with age to the owner's public key, and the plaintext is shredded.
+    - Only the `.age` file is uploaded, as an artifact kept 30 days. The private key is not in GitHub.
+  - **`gm_backup`, a dedicated login role.** It holds `pg_read_all_data` and `BYPASSRLS`, which `pg_dump` needs with `row_security = off`, and its sessions are read-only by default. It holds no administrative attribute and has no password in the repo. A rolled-back probe on production read `auth.users`, `accounts`, `guild_members`, `cron.job` and the migration history, and was refused a write (`42501`).
+  - **Not active until the owner finishes the setup** in the runbook: an age key pair, a password for `gm_backup`, the secret `BACKUP_DATABASE_URL` and the variable `BACKUP_AGE_RECIPIENT`. Until then the workflow fails with an explicit error.
+  - **Not covered:** Vault secrets (`gm_accounts_key` above all), Edge, Vercel and Render secrets, and Storage file contents. The runbook says where each must be kept. The full-project restore procedure has not been rehearsed yet.
+  - `.gitignore` now excludes dumps, decrypted restores and the private key. Tests: `tests/db_backup.test.js`.
+
 - **Security: three account-takeover paths closed** (audit of 2026-10-03, `audit/06-securite.md` SEC-01 to SEC-03; migration `20261003090434`).
   - **Creating an account can no longer overwrite one.**
     - `gm_admin_upsert` ended in `ON CONFLICT (id) DO UPDATE`, and `authenticated` could execute it. Its gate checked only the target guild, so any guild_admin could rewrite the role, guild and password of any account, the super_admin's included.

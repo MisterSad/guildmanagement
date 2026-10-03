@@ -16,3 +16,9 @@ deploy_backup_*.sql*
 .vercel
 .env*
 .mcp.json
+
+# Database backups (docs/BACKUP_RUNBOOK.md): never commit a dump or a key
+*.dump
+*.dump.age
+restore/
+gm-backup-key.txt

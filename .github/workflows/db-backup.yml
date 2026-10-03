@@ -1,0 +1,106 @@
+name: Database Backup
+
+# Nightly encrypted pg_dump of the production database (audit finding INF-01:
+# the Supabase Free plan keeps no backups). Setup, restore and key custody:
+# docs/BACKUP_RUNBOOK.md.
+#
+# Only the age-encrypted file ever leaves the runner. The plaintext dump is
+# written to RUNNER_TEMP, checked, encrypted, then shredded. The private key
+# that decrypts it is not in GitHub at all.
+
+on:
+  schedule:
+    - cron: '17 2 * * *'   # 02:17 UTC, clear of the 03:00 DEMO reset
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check configuration
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          [ -n "$DATABASE_URL" ] || { echo "::error::Secret BACKUP_DATABASE_URL is not set (docs/BACKUP_RUNBOOK.md)"; exit 1; }
+          case "$AGE_RECIPIENT" in
+            age1*) ;;
+            *) echo "::error::Variable BACKUP_AGE_RECIPIENT must be an age public key, age1... (docs/BACKUP_RUNBOOK.md)"; exit 1 ;;
+          esac
+
+      - name: Install pg_dump 17 and age
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17 age
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Dump, check, encrypt
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          pg_dump --version
+
+          STAMP=$(date -u +%Y%m%dT%H%MZ)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          DUMP="$RUNNER_TEMP/gm-$STAMP.dump"
+          OUT="$RUNNER_TEMP/out"
+          mkdir -p "$OUT"
+
+          # The application's data and everything needed to restore it:
+          # public (the app), auth (sign-in identities), storage (bucket
+          # metadata), cron (job definitions), supabase_migrations (history).
+          # cron.job_run_details is 57% of the database and pure log: its
+          # definition is kept, its rows are not.
+          pg_dump "$DATABASE_URL" \
+            --format=custom --compress=9 --no-password \
+            --schema=public --schema=auth --schema=storage \
+            --schema=cron --schema=supabase_migrations \
+            --exclude-table-data='cron.job_run_details' \
+            --file="$DUMP"
+
+          # A dump that cannot be listed, or that lacks the tables this app
+          # cannot live without, is a failed backup, not a smaller one.
+          TOC="$RUNNER_TEMP/toc.txt"
+          pg_restore --list "$DUMP" > "$TOC"
+          for t in "public accounts" "public guilds" "public guild_members" \
+                   "public event_participants" "auth users" "supabase_migrations schema_migrations"; do
+            grep -q "TABLE DATA $t " "$TOC" || { echo "::error::The dump holds no data for $t"; exit 1; }
+          done
+          SIZE=$(stat -c %s "$DUMP")
+          [ "$SIZE" -gt 1000000 ] || { echo "::error::The dump is only $SIZE bytes"; exit 1; }
+
+          age --encrypt --recipient "$AGE_RECIPIENT" --output "$OUT/gm-$STAMP.dump.age" "$DUMP"
+          shred -u "$DUMP"
+
+          {
+            echo "### Database backup $STAMP"
+            echo "- Dump: $(numfmt --to=iec "$SIZE"), $(grep -c 'TABLE DATA' "$TOC") tables with data"
+            echo "- Encrypted artifact: $(numfmt --to=iec "$(stat -c %s "$OUT/gm-$STAMP.dump.age")"), kept 30 days"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.STAMP }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
