@@ -1,3 +1,24 @@
+📢 **FGF Guild Management Tool Update — CHANG_V3.34.2**
+
+**🛠️ Two fixes for guild leaders**
+
+**⚔️ Chest tiers finally save**
+• In **Discord notifications → SvS / GvG — Chest Tiers**, saving your chest thresholds always ended with *"Could not save chest tiers."* Fixed: set them once and they stick.
+• Honest note: it had never worked since it shipped. If you gave up on it, now is the time to fill it in.
+
+**🧹 Deleting a guild now deletes all of it**
+• When a guild is removed, its bans, absences, settings and activity log now go with it. Before, a few of those stayed behind.
+• Its TAG becomes free again, and a new guild taking it starts with a clean slate, never with someone else's history.
+
+**🔒 Privacy policy updated**
+• The policy now says this plainly: deleting a guild deletes everything it holds, and a ban is kept only as long as the guild exists. Nothing else changes.
+
+**What changes for you:** nothing to do.
+
+-# Something still won't save? Tell me with the 🐞 **Report a bug** button. 💪
+
+---8<---
+
 📢 **FGF Guild Management Tool Update — CHANG_V3.34.1**
 
 **🏷️ Changed your guild TAG in game? Change it in the tool too**

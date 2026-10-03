@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **V3.34.2: the chest-tiers and guild-deletion fixes, announced.** The app version is bumped. `DISCORD_CHANGELOG.md` opens with a V3.34.2 note for guild leaders. It covers chest tiers saving again, guild deletion removing everything, and the privacy-policy clarification. The V3.34.1 and V3.34.0 notes stay below it, after `---8<---` markers.
+
 - **Fixed: deleting a guild left part of it behind** (migration `20261003080433`).
   - **Two deleters, two hand-kept lists, the same four tables missing.** `gm_delete_guild` and `gm_expire_empty_guilds` never removed `banned_players`, `player_absences`, `account_link_codes` or `system_audit_logs`, and left `war_opponents.guild_ref` pointing at nothing. The deleted CLAW still owned 6 bans, 12 absences and 59 audit lines; OBSIDANSTAR kept a config row.
   - **`gm_purge_guild_data(p_guild)` is now the one place that knows every tag-carrying table.** It is not callable over the API. Both deleters go through it.
