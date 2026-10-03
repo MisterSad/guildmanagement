@@ -1,5 +1,4 @@
 import { z } from "https://esm.sh/zod@3.23.8";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -21,6 +20,8 @@ import {
   ocrVideoFps,
   type VideoCoverage,
 } from "./video.ts";
+import { serviceClient, anonClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 export interface OcrImageItem {
   base64Data: string;
@@ -570,14 +571,13 @@ const OCR_VIDEO_STALE_MS = 60 * 60 * 1000;
 async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
   const { req, json, logger, caller, video, metricType, guildTag, taskMetadata, isMultiGuild, isMembersRoster } = ctx;
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
   // A video costs a few hundred thousand tokens: budget it per account. Fails
   // closed, like every throttle built on this helper.
   const budget = await checkAndRecordIpAttempt(admin, `ocr-video:${caller.accountId}`, { limit: 20, windowMs: 600_000 });
   if (!budget.allowed) return json({ ok: false, error: "too_many_attempts" }, 429);
 
-  const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-    auth: { persistSession: false },
+  const userClient = anonClient({
     global: { headers: { Authorization: req.headers.get("Authorization") || "" } },
   });
   const bucket = userClient.storage.from(OCR_VIDEO_BUCKET);
@@ -703,7 +703,7 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
   }
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("ocr-guild-members", req);
 
@@ -811,7 +811,7 @@ Deno.serve(async (req: Request) => {
     scanDay: scanDay ?? null,
   });
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
   try {
     const { data: cached } = await admin
       .from("ocr_cache")
@@ -934,4 +934,6 @@ Deno.serve(async (req: Request) => {
       500
     );
   }
-});
+}
+
+serveUnlessTest(handler);

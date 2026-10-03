@@ -1,10 +1,11 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { establishShadowSession } from "../_shared/shadow-session.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
+import { serviceClient, anonClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const LoginSchema = z.object({
   id: z.string().trim().min(1).max(128),
@@ -24,7 +25,7 @@ function makeJson(req: Request) {
     });
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("auth-login", req);
 
@@ -43,7 +44,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "bad_request" }, 400);
   }
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
 
   // IP sliding window throttle: 60 attempts per 5 minutes, on the
   // login_throttle table auth-discord also counts against (keyed purely by IP).
@@ -82,7 +83,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "pending_approval" }, 200);
   }
 
-  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const anon = anonClient();
   const shadowResult = await establishShadowSession(admin, anon, canonicalId, role, logger);
   if (!shadowResult.ok) {
     return json({ ok: false, error: shadowResult.error }, shadowResult.status);
@@ -98,4 +99,6 @@ Deno.serve(async (req: Request) => {
     refresh_token: shadowResult.session.refresh_token,
     expires_at: shadowResult.session.expires_at,
   });
-});
+}
+
+serveUnlessTest(handler);

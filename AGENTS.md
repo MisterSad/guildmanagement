@@ -38,6 +38,11 @@ npm test               # vitest run, all green, plus a coverage floor
 npm run build
 npx playwright test    # e2e, against the REAL built bundle in dist/
 ```
+CI also runs, and so should you before touching SQL or an Edge Function:
+- `deno check` + `deno test` on `supabase/functions/` (handlers run against `_test/fake-supabase.ts`);
+- `scripts/replay-migrations.sh`, the schema fingerprint, then `scripts/sql-tests.sh` (RLS, grants and RPCs exercised as each role on a replayed Postgres 17 — `supabase/migrations/README.md`).
+
+Prefer a test that RUNS the code over one that reads its text. A regex over the source is for guarding an absence (a flag, a URL), not a behaviour.
 The e2e suite runs against `dist/` and is the only check that catches CSP violations and asset 404s. It is not optional.
 
 ## Skills

@@ -97,8 +97,13 @@ jobs:
             exit 1
           fi
 
-  # Type-check every Edge Function (audit QA-08, INF-09). --no-config keeps
-  # Deno away from the front end's package.json and node_modules.
+      # Behaviour, not text: RLS, grants and RPCs exercised as each role, on the
+      # replayed database (audit QA-01, QA-02). Each file rolls back.
+      - name: SQL tests
+        run: bash scripts/sql-tests.sh
+
+  # Type-check and test every Edge Function (audit QA-01, QA-08, INF-09).
+  # --no-config keeps Deno away from the front end's package.json and node_modules.
   deno-check:
     runs-on: ubuntu-latest
     steps:
@@ -112,6 +117,11 @@ jobs:
 
       - name: deno check
         run: deno check --no-config --node-modules-dir=none supabase/functions/*/index.ts
+
+      # The handlers run for real against an in-memory Supabase
+      # (supabase/functions/_test/fake-supabase.ts). No network to a project.
+      - name: deno test
+        run: deno test --no-config --node-modules-dir=none --allow-env --allow-net --allow-read supabase/functions/
 
   # Deploys only from main, and only once everything above is green. The
   # pre-push hook used to do this from a laptop, before CI had run at all.

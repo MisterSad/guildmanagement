@@ -1,7 +1,8 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import { serviceClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -32,14 +33,14 @@ function getDbErrorStatus(errCode: string): number {
   }
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("player-register", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
 
   // Safe client IP extraction via _shared/rate-limit.ts (prioritizes cf-connecting-ip, nearest hop, x-real-ip)
   const clientIp = extractClientIp(req.headers);
@@ -95,4 +96,6 @@ Deno.serve(async (req: Request) => {
 
   logger.info("Player registered successfully", { id, uid, status: row.status });
   return json({ ok: true, status: row.status || "pending" });
-});
+}
+
+serveUnlessTest(handler);

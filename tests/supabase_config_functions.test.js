@@ -20,7 +20,9 @@ const configSrc = fs.readFileSync(CONFIG_PATH, 'utf-8');
 function listFunctionNames() {
   return fs
     .readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name !== '_shared')
+    // A leading underscore marks a non-function directory (_shared, _test), as the
+    // Supabase CLI and scripts/deploy-edge-functions.sh treat it.
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('_'))
     .map((entry) => entry.name)
     .sort();
 }

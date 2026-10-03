@@ -125,9 +125,9 @@ describe('OCR Cache Deduplication & SHA-256 Hashing (TICKET-10 / PERF-03)', () =
   describe('Edge Function Implementation Inspection', () => {
     const fnPath = path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts');
 
-    it('imports createClient and exports computeOcrPayloadHash', () => {
+    it('gets its clients from _shared/clients.ts and exports computeOcrPayloadHash', () => {
       const content = fs.readFileSync(fnPath, 'utf-8');
-      expect(content).toContain('import { createClient }');
+      expect(content).toContain('from "../_shared/clients.ts"');
       expect(content).toContain('export async function computeOcrPayloadHash');
     });
 

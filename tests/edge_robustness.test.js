@@ -33,16 +33,6 @@ describe('the Discord verification limiter fails closed (SEC-12, AGENTS.md rule 
 });
 
 describe('bounded inputs (BE-A-15, SEC-13)', () => {
-  it('tickets: Zod schemas for create and update-status, and a rate limit on create', () => {
-    const src = read('supabase/functions/tickets/index.ts');
-    expect(src).toContain('const CreateTicketSchema = z.object({');
-    expect(src).toContain('title: z.string().trim().min(1).max(300),');
-    expect(src).toContain('description: z.string().trim().min(1).max(20_000),');
-    expect(src).toContain('CreateTicketSchema.safeParse(body)');
-    expect(src).toContain('UpdateStatusSchema.safeParse(body)');
-    expect(src).toContain('checkAndRecordIpAttempt(admin, extractClientIp(req.headers), CREATE_LIMIT)');
-    expect(src).not.toMatch(/body\?\.(title|description|severity|category|attachments|env|id|status)\b/);
-  });
 
   it('player-register bounds the password and the code, and leaks no DB message', () => {
     const src = read('supabase/functions/player-register/index.ts');

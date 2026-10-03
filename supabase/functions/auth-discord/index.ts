@@ -38,7 +38,6 @@
  * route authenticates by its own means (single-use state, single-use ticket).
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
@@ -64,6 +63,8 @@ import {
   generatePkcePair,
   randomToken,
 } from "../_shared/discord-oauth.ts";
+import { serviceClient, anonClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const env = getValidatedEnv();
 const SUPABASE_URL = env.SUPABASE_URL;
@@ -503,7 +504,7 @@ async function mintForAccount(
     logger.warn("Role changed between listing and selection", { accountId, knownRole, actual: acc.role });
   }
 
-  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const anon = anonClient();
   const shadow = await establishShadowSession(admin, anon, accountId, acc.role, logger);
   if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
 
@@ -738,7 +739,7 @@ async function handleRedeemCode(req: Request, body: unknown, admin: any, logger:
   const role = (row.role as string) || "member";
   logger.setContext({ userId: accountId });
 
-  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const anon = anonClient();
   const shadow = await establishShadowSession(admin, anon, accountId, role, logger);
   if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
 
@@ -809,7 +810,7 @@ async function handleBackupLogin(req: Request, body: unknown, admin: any, logger
     .update({ failed_login_count: 0, locked_until: null, last_login_at: new Date().toISOString() })
     .eq("id", acc.id);
 
-  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const anon = anonClient();
   const shadow = await establishShadowSession(admin, anon, acc.id, acc.role, logger);
   if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
 
@@ -907,7 +908,7 @@ async function handleClaim(req: Request, body: unknown, admin: any, logger: Edge
     }
   }
 
-  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const anon = anonClient();
   const shadow = await establishShadowSession(admin, anon, accountId, role, logger);
   if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
 
@@ -1000,7 +1001,7 @@ async function handleOnboard(req: Request, body: unknown, admin: any, logger: Ed
     });
   }
 
-  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+  const anon = anonClient();
   const shadow = await establishShadowSession(admin, anon, accountId, role, logger);
   if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
 
@@ -1079,7 +1080,7 @@ async function handlePost(req: Request, admin: any, logger: EdgeLogger): Promise
   }
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("auth-discord", req);
   const url = new URL(req.url);
@@ -1099,11 +1100,13 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "not_configured" }, 503);
   }
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
 
   if (req.method === "GET" && route === "/start") return handleStart(req, url, admin, logger);
   if (req.method === "GET" && route === "/callback") return handleCallback(req, url, admin, logger);
   if (req.method === "POST" && (route === "" || route === "/")) return handlePost(req, admin, logger);
 
   return json({ ok: false, error: "not_found" }, 404);
-});
+}
+
+serveUnlessTest(handler);

@@ -224,7 +224,7 @@ describe('ocr-guild-members, video branch', () => {
 
   it('reaches storage only under the caller\'s own JWT, so RLS decides', () => {
     const body = fn.slice(fn.indexOf('async function handleVideoScan'));
-    expect(body).toContain('createClient(SUPABASE_URL, ANON_KEY');
+    expect(body).toMatch(/anonClient\(\{\s*global: \{ headers: \{ Authorization: req\.headers\.get\("Authorization"\)/);
     expect(body).toContain('Authorization: req.headers.get("Authorization")');
     expect(body).not.toMatch(/admin\.storage/);
   });

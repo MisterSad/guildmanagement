@@ -38,11 +38,26 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
 
+-- GoTrue's own definitions: the claims PostgREST puts in request.jwt.claims.
+-- SQL tests (supabase/tests) sign in by setting that GUC and SET ROLE; with
+-- none set, auth.uid() is NULL, exactly like the service role or the SQL editor.
 CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
-LANGUAGE sql STABLE AS $$ SELECT '{}'::jsonb; $$;
+LANGUAGE sql STABLE AS $$
+    SELECT coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
+$$;
 
 CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid
-LANGUAGE sql STABLE AS $$ SELECT '00000000-0000-0000-0000-000000000000'::uuid; $$;
+LANGUAGE sql STABLE AS $$
+    SELECT nullif(coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
+                           (nullif(current_setting('request.jwt.claims', true), '')::jsonb) ->> 'sub'), '')::uuid;
+$$;
+
+CREATE OR REPLACE FUNCTION auth.role() RETURNS text
+LANGUAGE sql STABLE AS $$
+    SELECT coalesce((nullif(current_setting('request.jwt.claims', true), '')::jsonb) ->> 'role', 'anon');
+$$;
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.jwt(), auth.uid(), auth.role() TO anon, authenticated, service_role;
 
 -- GoTrue tables, reduced to the columns the migrations touch.
 CREATE TABLE IF NOT EXISTS auth.users (

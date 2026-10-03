@@ -1,10 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { serviceClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -120,14 +120,14 @@ const UpdateStatusSchema = z.object({
 // One report a minute on average is far above any real use.
 const CREATE_LIMIT = { limit: 10, windowMs: 10 * 60_000 };
 
-serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("tickets", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
 
   const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
   if (!caller.authenticated || !caller.role || !ADMIN_ROLES.includes(caller.role)) {
@@ -384,4 +384,6 @@ serve(async (req: Request) => {
   }
 
   return json({ ok: false, error: "unknown_action" }, 400);
-});
+}
+
+serveUnlessTest(handler);

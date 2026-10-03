@@ -73,7 +73,7 @@ describe('there is one weighting, in core, and both screens import it', () => {
 describe('the portal no longer computes a rate of its own', () => {
   it('has dropped the row-pooled guild attendance rate and its unbounded scan', () => {
     const block = edge.slice(edge.indexOf('async function getGuildAverages'),
-                             edge.indexOf('export async function handleRequest'));
+                             edge.indexOf('export async function handler('));
     expect(block).not.toContain('attendance_rate');
     expect(block, 'it fetched every participation row of the tenant to count two things')
       .not.toContain('.from("event_participants")');

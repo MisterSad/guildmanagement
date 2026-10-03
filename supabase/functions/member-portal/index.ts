@@ -1,4 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -24,6 +23,8 @@ import {
   deletePlayerAbsence,
 } from "../_shared/player-actions.ts";
 import type { AdminClient } from "../_shared/db.ts";
+import { serviceClient, anonClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const SUPABASE_URL = typeof Deno !== "undefined" && Deno.env ? (Deno.env.get("SUPABASE_URL") || "") : "";
 const ANON_KEY     = typeof Deno !== "undefined" && Deno.env ? (Deno.env.get("SUPABASE_ANON_KEY") || "") : "";
@@ -186,8 +187,8 @@ async function getIdentity(
   if (!match) return null;
 
   const jwt = match[1].trim();
-  const anonClient = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
-  const { data: { user }, error } = await anonClient.auth.getUser(jwt);
+  const authClient = anonClient();
+  const { data: { user }, error } = await authClient.auth.getUser(jwt);
   if (error || !user) return null;
 
   const { data: acc } = await admin
@@ -286,7 +287,7 @@ async function getGuildAverages(
   }
 }
 
-export async function handleRequest(req: Request): Promise<Response> {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("member-portal", req);
 
@@ -325,7 +326,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       payload = payloadParsed.data;
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+    const admin = serviceClient();
 
     const clientIp = extractClientIp(req.headers);
     const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 60, windowMs: 300_000 });
@@ -1052,6 +1053,4 @@ export async function handleRequest(req: Request): Promise<Response> {
   }
 }
 
-if (typeof Deno !== "undefined" && typeof (Deno as any).serve === "function") {
-  (Deno as any).serve(handleRequest);
-}
+serveUnlessTest(handler);

@@ -33,7 +33,6 @@
  * same validated, audited code path member-portal uses, not a
  * reimplementation.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { canManageAccount, isGuildInScope, normalizeRole } from "../_shared/admin-authz.ts";
 import { editChannelMessage, postChannelMessage } from "../_shared/discord-verification.ts";
@@ -55,6 +54,8 @@ import {
   discordJson,
 } from "../_shared/discord.ts";
 import type { AdminClient } from "../_shared/db.ts";
+import { serviceClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -204,7 +205,7 @@ async function handleJoinRequestButton(interaction: any, logger: EdgeLogger): Pr
   if (!discordUserId || !channelId) return ephemeral("Could not identify who clicked.");
   logger.setContext({ userId: discordUserId });
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
   const officers = await officerAccounts(admin, discordUserId);
   if (officers.length === 0) {
     return ephemeral(NOT_AN_OFFICER_MSG, undefined, appLinkRow("Continue with Discord"));
@@ -278,7 +279,7 @@ async function handleJoinRequestButton(interaction: any, logger: EdgeLogger): Pr
     : `Rejected \`${targetId}\`. They have been told by DM.`);
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const logger = new EdgeLogger("discord-bot-interactions", req);
   if (req.method !== "POST") return discordJson({ error: "method_not_allowed" }, 405);
 
@@ -353,7 +354,7 @@ Deno.serve(async (req: Request) => {
     return ephemeral("Could not identify your Discord account for this command.");
   }
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
   logger.setContext({ userId: discordUserId });
 
   // /link and /myinfo are answered by the Gateway worker; /link is retired
@@ -549,4 +550,6 @@ Deno.serve(async (req: Request) => {
   }
 
   return ephemeral("Unknown command.");
-});
+}
+
+serveUnlessTest(handler);

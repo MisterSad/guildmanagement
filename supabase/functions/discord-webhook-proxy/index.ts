@@ -1,9 +1,9 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import { serviceClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -46,7 +46,7 @@ function isValidDiscordWebhook(url: string): boolean {
   }
 }
 
-serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("discord-webhook-proxy", req);
 
@@ -120,7 +120,7 @@ serve(async (req: Request) => {
         return json({ ok: false, error: "forbidden_client_webhook_url" }, 403);
       }
       if (requestedGuild && caller.serverNumber) {
-        const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+        const adminClient = serviceClient();
         const { data: g } = await adminClient.from("guilds").select("server_number").eq("id", requestedGuild).maybeSingle();
         if (!g || g.server_number !== caller.serverNumber) {
           logger.warn("Server admin attempted cross-server discord webhook dispatch", {
@@ -152,7 +152,7 @@ serve(async (req: Request) => {
     // Server-side resolution from guild_config
     requestedGuild = requestedGuild || caller.guild || "";
     if (!webhookUrl && requestedGuild) {
-      const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+      const adminClient = serviceClient();
       const { data: rows } = await adminClient
         .from("guild_config")
         .select("key, value")
@@ -208,7 +208,7 @@ serve(async (req: Request) => {
 
   // Rate-limiting: max 30 dispatches per minute per client IP
   const clientIp = extractClientIp(req.headers);
-  const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const adminClient = serviceClient();
   const rateLimitResult = await checkAndRecordIpAttempt(adminClient, clientIp, { limit: 30, windowMs: 60000 });
   if (!rateLimitResult.allowed) {
     logger.warn("Rate limit exceeded for discord webhook proxy", { clientIp, guild: requestedGuild });
@@ -266,4 +266,6 @@ serve(async (req: Request) => {
     logger.error("Fetch to Discord failed", err);
     return json({ ok: false, error: `Server fetch to Discord failed: ${err?.message ?? err}` }, 200);
   }
-});
+}
+
+serveUnlessTest(handler);

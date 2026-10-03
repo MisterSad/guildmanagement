@@ -34,13 +34,14 @@
  * guild_members (roster/stats), never to accounts (no login credentials
  * are ever created from an image).
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkAndRecordDiscordAttempt } from "../_shared/rate-limit.ts";
 import { callGeminiVision } from "../_shared/gemini-vision.ts";
 import { normalizeTag, resolveExpectedTag, resolveHomeServerNumber, resolveTagToGuildOnServer, evaluateVerification, resolveAuditChannelId, postAuditMessage, ExtractedProfile, RefusalReason } from "../_shared/discord-verification.ts";
 import type { AdminClient } from "../_shared/db.ts";
+import { serviceClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -257,7 +258,7 @@ function pendingPlayerMessage(
   }
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("discord-profile-verification", req);
 
@@ -301,7 +302,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "payload_too_large" }, 413);
   }
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
   logger.setContext({ tenantId: fgfGuild, userId: discordUserId });
 
   const throttle = await checkAndRecordDiscordAttempt(admin, discordUserId, {
@@ -568,4 +569,6 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     discord_actions_ok: patched,
     bot_message_id: botMsgId,
   });
-});
+}
+
+serveUnlessTest(handler);

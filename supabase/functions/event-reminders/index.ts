@@ -1,9 +1,9 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2"
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from "../_shared/gvg-tasks.ts"
 import { isToggleEnabled, resolveGuildWebhook, isStandardEventName, isSvsEventName, eventPrefixForName, normalizeEventName, isSvsActiveForWeek } from "../_shared/reminder-rules.ts"
 import { EdgeLogger } from "../_shared/logger.ts"
 import { getCorsHeaders } from "../_shared/cors.ts"
+import { serviceClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 let logger = new EdgeLogger("event-reminders");
 
@@ -210,7 +210,7 @@ function makeJson(req: Request) {
     });
 }
 
-serve(async (req) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   logger = new EdgeLogger("event-reminders", req);
 
@@ -220,7 +220,7 @@ serve(async (req) => {
   const xCronSecret = req.headers.get('x-cron-secret') || '';
   const cronSecret = Deno.env.get('CRON_SECRET');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || SUPABASE_SERVICE_ROLE_KEY;
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = serviceClient();
   const reqUrl = new URL(req.url);
   const forceGvg = reqUrl.searchParams.get('force') === 'gvg' || reqUrl.searchParams.get('force') === 'all';
   const targetGuildParam = reqUrl.searchParams.get('guild');
@@ -1256,4 +1256,6 @@ serve(async (req) => {
     logger.error('Event reminders execution error', err);
     return json({ error: err.message }, 500);
   }
-})
+}
+
+serveUnlessTest(handler);

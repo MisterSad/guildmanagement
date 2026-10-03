@@ -48,22 +48,9 @@ describe('a member cannot move players (SEC-05)', () => {
 });
 
 describe('migration wiki: the author guild owns its pages (SEC-08, DB-07)', () => {
-  it('stamps authorship from the session and freezes what a page is', () => {
-    expect(sql).toContain('CREATE TRIGGER trg_migration_wiki_pages_stamp');
-    expect(sql).toContain('CREATE TRIGGER trg_migration_wiki_comments_stamp');
-    expect(sql).toContain('NEW.created_by_account_id := OLD.created_by_account_id;');
-    expect(sql).toContain('NEW.owner_guild           := OLD.owner_guild;');
-    expect(sql).toContain('NEW.author_role       := v_role;');
-  });
 
   it('gives owner_guild an ADR-022 foreign key', () => {
     expect(sql).toMatch(/FOREIGN KEY \(owner_guild\)\s+REFERENCES public\.guilds\(id\) ON UPDATE CASCADE ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE/);
-  });
-
-  it('limits update and delete to the owner guild, and UPDATE to content columns', () => {
-    expect(sql.match(/owner_guild = public\.gm_caller_guild\(\)/g).length).toBeGreaterThanOrEqual(3);
-    expect(sql).toContain('REVOKE UPDATE ON public.migration_wiki_pages FROM authenticated;');
-    expect(sql).toMatch(/GRANT UPDATE \(title, content, category, is_pinned, attachments, updated_at, updated_by_account_id, updated_by_pseudo\)/);
   });
 
   it('the front shows Edit and Delete only to the author guild, and sends no author fields', async () => {
@@ -86,9 +73,6 @@ describe('banned players stay off the roster (BE-B-06)', () => {
 });
 
 describe('deleting an account ends its sessions (SEC-07, BE-B-21, DB-05)', () => {
-  it('never deletes a sign-in identity (owner decision)', () => {
-    expect(sql).not.toMatch(/DELETE FROM auth\.users/i);
-  });
 
   it('revokes sessions on guild deletion and GDPR erasure, service-role only', () => {
     expect(sql).toContain("GRANT EXECUTE ON FUNCTION public.gm_revoke_auth_sessions(uuid) TO service_role;");
@@ -96,11 +80,6 @@ describe('deleting an account ends its sessions (SEC-07, BE-B-21, DB-05)', () =>
     expect(sql).toContain('DELETE FROM auth.refresh_tokens WHERE user_id = p_auth_user_id::text;');
     expect(sql).toContain("RAISE EXCEPTION 'guild deletion still deletes server_admin accounts or leaves sessions'");
     expect(sql).toContain("RAISE EXCEPTION 'GDPR erasure still leaves sessions'");
-  });
-
-  it('keeps a server_admin attached to a deleted guild, with its server', () => {
-    expect(sql).toContain("(a.role IS NULL OR a.role IN (''guild_admin'', ''member''))");
-    expect(sql).toContain("WHERE a.guild = v_guild AND a.role IN (''server_admin'', ''super_admin'');");
   });
 
   it('bumpSessionVersion ends the sessions instead of re-stamping the next token only', () => {

@@ -6,7 +6,7 @@
  * duration tracking, and structured output.
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import { serviceClient } from "./clients.ts";
 
 export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL";
 
@@ -183,7 +183,7 @@ export class EdgeLogger {
     if (!supabaseUrl || !serviceKey) return;
 
     try {
-      const client = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+      const client = serviceClient();
       await client.from("system_audit_logs").insert({
         level: entry.level,
         service: entry.service,

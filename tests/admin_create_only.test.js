@@ -54,7 +54,7 @@ describe('gm_admin_upsert is create-only', () => {
 describe('admin-accounts claims the id before touching the shadow user', () => {
   const src = read(EDGE);
   const helperStart = src.indexOf('async function provisionNewAccount(');
-  const helperEnd = src.indexOf('Deno.serve(');
+  const helperEnd = src.indexOf('export async function handler(');
   const helper = src.slice(helperStart, helperEnd);
 
   it('creates the account row first, then the shadow user, then attaches it', () => {

@@ -90,6 +90,19 @@ describe('the CI pipeline', () => {
     expect(ci).toContain('deno check --no-config --node-modules-dir=none supabase/functions/*/index.ts');
   });
 
+  it('runs the Edge handlers and the SQL tests, not only their text (QA-01)', () => {
+    expect(ci).toContain('deno test --no-config --node-modules-dir=none --allow-env --allow-net --allow-read supabase/functions/');
+    expect(ci).toContain('bash scripts/sql-tests.sh');
+    const fns = fs.readdirSync(path.join(root, 'supabase/functions'), { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith('_')).map((e) => e.name);
+    for (const fn of fns) {
+      const src = read(`supabase/functions/${fn}/index.ts`);
+      expect(src, fn).toMatch(/export async function handler\(/);
+      expect(src, fn).toContain('serveUnlessTest(handler);');
+      expect(src, fn).not.toMatch(/createClient\(/);
+    }
+  });
+
   it('deploys only from main, only after every other job, with the token as a secret', () => {
     const job = ci.slice(ci.indexOf('  deploy-edge-functions:'));
     expect(job).toContain('needs: [build-and-test, migrations-replay, deno-check]');

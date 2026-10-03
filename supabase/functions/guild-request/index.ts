@@ -1,7 +1,8 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import { serviceClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 // Public, unauthenticated endpoint: anyone can submit a request to create a
 // new guild. Real validation (format, uniqueness, volume cap) happens
@@ -50,14 +51,14 @@ function makeJson(req: Request) {
     });
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("guild-request", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
 
   const clientIp = extractClientIp(req.headers);
   const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: MAX_ATTEMPTS, windowMs: WINDOW_MS });
@@ -111,4 +112,6 @@ Deno.serve(async (req: Request) => {
 
   logger.info("Guild creation request submitted", { guildTag, adminId });
   return json({ ok: true });
-});
+}
+
+serveUnlessTest(handler);

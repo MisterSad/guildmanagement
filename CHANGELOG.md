@@ -2,6 +2,39 @@
 
 ## [Unreleased]
 
+- **Tests that run the code** (medium-term plan, phase M1; audit QA-01, QA-02, QA-05). No behaviour change in production.
+  - **Starting point.** 41% of the suite only read the source text; no test executed an Edge Function handler or any SQL.
+  - **SQL tests on a real database.**
+    - `scripts/sql-tests.sh` runs `supabase/tests/*.sql` after the CI replay. Each file creates its fixtures (3 guilds on 2 servers, every role), signs in the way PostgREST does (`request.jwt.claims` + `SET ROLE authenticated`) and rolls back.
+    - 8 files and 84 assertions cover:
+      - tenant isolation for every role;
+      - session revocation and `gm_revoke_auth_sessions`;
+      - credential columns and service-only functions out of a browser's reach;
+      - wiki ownership;
+      - bans, the UID guard and R5 protection;
+      - guild rename and purge, with the foreign keys from phase 4b;
+      - GDPR erasure;
+      - password sign-in, lockout and the legacy-copy migration.
+    - Checked: re-granting `password_hash` to `authenticated` makes the suite fail.
+    - The prelude's `auth.uid()` and `auth.jwt()` now read the claims, as GoTrue does. The replay and its fingerprint are unchanged.
+  - **Edge Function handlers run under `deno test`.**
+    - Every `index.ts` exports `handler` and serves it through `_shared/serve.ts` (nothing listens when `GM_EDGE_TEST` is set).
+    - Every Supabase client comes from `_shared/clients.ts`, which replaced 28 inline `createClient` calls plus the logger's, so a test can install `_test/fake-supabase.ts`: in-memory tables, scripted RPCs and GoTrue, every call recorded.
+    - 19 tests cover:
+      - `admin-accounts`: who may call it, rate limit failing closed, the create clamps for guild_admin and server_admin, list scoping;
+      - `event-reminders`: machine callers only;
+      - `tickets`: admins only, bounds, strict schema, rate limit;
+      - `member-portal`: action validation, session required, rate limit before identity.
+    - Checked: removing the guild_admin clamp in `admin-accounts` makes a test fail.
+  - **CI.** `migrations-replay` now also runs the SQL tests; `deno-check` now also runs `deno test`. AGENTS.md's quality gate says so.
+  - **Regex tests retired** where the behaviour is now executed:
+    - 5 blocks in `privacy_phase6.test.js`;
+    - 4 in `tenant_isolation_sessions.test.js`;
+    - 1 in `edge_robustness.test.js`;
+    - plus `deploy_hook`-era markers updated in 5 files that sliced the source at `Deno.serve(`, `handleRequest` or `createClient(`.
+    - Tests that guard an absence stay.
+  - **Deployment.** All 14 functions redeploy with this change: their entry point moved, their behaviour did not.
+
 - **`auth-passkey` is deleted, from the platform and from the repository.** The owner deleted it from the Supabase dashboard on 2026-10-03.
   - Verified: `list_edge_functions` shows 14 functions, and its URL answers 404.
   - The directory and its `[functions.auth-passkey]` block are gone. The tests that read the tombstone now assert its absence.

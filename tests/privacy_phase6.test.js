@@ -19,23 +19,6 @@ function body(name) {
 }
 
 describe('GDPR erasure', () => {
-  it('gm_erase_player runs for the operator, without a session (BE-B-12)', () => {
-    const b = body('gm_erase_player');
-    expect(b).toContain('IF auth.uid() IS NOT NULL AND NOT public.check_user_guild_write_access(p_guild) THEN');
-    expect(b).not.toMatch(/IF NOT public\.check_user_guild_write_access\(p_guild\) THEN/);
-  });
-
-  it('gm_erase_player also clears the game identifier from the claiming account', () => {
-    expect(body('gm_erase_player')).toMatch(/UPDATE public\.accounts\s+SET uid = NULL\s+WHERE uid = p_uid AND guild = p_guild;/);
-  });
-
-  it('gm_erase_account strips the account identifier from the kept sign-in record', () => {
-    const b = body('gm_erase_account');
-    expect(b).toContain("raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) - 'account_id' - 'app_role'");
-    // auth.users is never deleted (owner decision): sessions are revoked instead.
-    expect(b).not.toMatch(/DELETE FROM auth\.users/);
-    expect(b).toContain('PERFORM public.gm_revoke_auth_sessions(v_auth);');
-  });
 
   it('neither erasure is executable by anon', () => {
     expect(sql).toContain('REVOKE ALL ON FUNCTION public.gm_erase_player(text, text) FROM PUBLIC, anon;');
@@ -52,10 +35,6 @@ describe('no reversible password copy is written any more (C0)', () => {
     expect(body('gm_reset_account_password')).toContain('SET password_enc = NULL,');
   });
 
-  it('a successful sign-in drops the copy', () => {
-    expect(body('gm_verify_password')).toMatch(/last_login_at = now\(\),\s+password_enc = NULL/);
-  });
-
   it('existing copies go only where the hash verifies the same password', () => {
     expect(sql).toContain('extensions.crypt(extensions.pgp_sym_decrypt(v_row.password_enc, v_key), v_row.password_hash)');
     expect(sql).toContain('= v_row.password_hash;');
@@ -64,12 +43,6 @@ describe('no reversible password copy is written any more (C0)', () => {
 });
 
 describe('no fallback to a real tenant (AGENTS.md)', () => {
-  it('gm_list_event_sessions lists nothing when the guild is unresolved', () => {
-    const b = body('gm_list_event_sessions');
-    expect(b).not.toContain("'ALPHA'),");
-    expect(b).not.toMatch(/COALESCE\([^)]*'ALPHA'\)/);
-    expect(b).toMatch(/IF v_target_guild IS NULL OR v_target_guild = '' THEN\s+RETURN;/);
-  });
 
   it('the end-state check refuses any ALPHA fallback left in the three functions', () => {
     expect(sql).toContain("RAISE EXCEPTION 'a function still falls back to the ALPHA tenant'");

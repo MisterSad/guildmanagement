@@ -1,4 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { findUserByEmail } from "../_shared/pagination.ts";
@@ -17,6 +16,8 @@ import {
 import { randomBackupCode, sha256Hex, issueBackupCodes, BACKUP_CODE_COUNT } from "../_shared/backup-codes.ts";
 import { isSessionRevoked } from "../_shared/session-epoch.ts";
 import type { AdminClient } from "../_shared/db.ts";
+import { serviceClient, anonClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -85,8 +86,8 @@ async function getCallerInfo(
   if (!match) return { role: null, accountId: null, guild: null, serverNumber: null };
 
   const jwt = match[1].trim();
-  const anonClient = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
-  const { data: { user }, error } = await anonClient.auth.getUser(jwt);
+  const authClient = anonClient();
+  const { data: { user }, error } = await authClient.auth.getUser(jwt);
   if (error || !user) return { role: null, accountId: null, guild: null, serverNumber: null };
 
   const { data: acc } = await admin
@@ -204,14 +205,14 @@ async function provisionNewAccount(
   return { ok: true };
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("admin-accounts", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
 
   const clientIp = extractClientIp(req.headers);
   const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 60, windowMs: 300_000 });
@@ -973,4 +974,6 @@ Deno.serve(async (req: Request) => {
   }
 
   return json({ ok: false, error: "unknown_action" }, 400);
-});
+}
+
+serveUnlessTest(handler);

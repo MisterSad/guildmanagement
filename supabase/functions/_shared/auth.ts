@@ -6,7 +6,7 @@
  * authoritative role, account id, and guild from the accounts table.
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import { anonClient, serviceClient } from "./clients.ts";
 import { isSessionRevoked } from "./session-epoch.ts";
 
 export interface CallerInfo {
@@ -73,12 +73,14 @@ export async function validateCallerAuth(
   if (!match) return denied({});
 
   const jwt = match[1].trim();
-  const anonClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
-  const { data: { user }, error: authErr } = await anonClient.auth.getUser(jwt);
+  // The URL and keys stay in the signature for the callers; the clients come
+  // from _shared/clients.ts so tests can run this without a live project.
+  void supabaseUrl; void anonKey; void serviceKey;
+  const { data: { user }, error: authErr } = await anonClient().auth.getUser(jwt);
 
   if (authErr || !user) return denied({});
 
-  const adminClient = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const adminClient = serviceClient();
   const { data: acc } = await adminClient
     .from("accounts")
     .select("id, role, guild, server_number, status, session_version")

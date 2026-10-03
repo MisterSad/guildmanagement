@@ -1,5 +1,4 @@
 import { z } from "https://esm.sh/zod@3.23.8";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -7,6 +6,8 @@ import { getValidatedEnv } from "../_shared/env.ts";
 import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl } from "../_shared/gemini.ts";
 import { canReadIntel } from "../_shared/intel-access.ts";
 import { checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import { serviceClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
@@ -48,7 +49,7 @@ Guidelines:
 4. If analyzing multiple pages (scope digest), synthesize common themes, conflicts, and overall status.
 5. Format strictly in clean GitHub-Flavored Markdown. Be objective, concise, and professional.`;
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const logger = new EdgeLogger("migration-summary", req);
   const json = makeJson(req);
 
@@ -76,7 +77,7 @@ Deno.serve(async (req: Request) => {
 
   const { mode, pageId, scope, guildId, serverNumber } = parsed.data;
 
-  const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const adminClient = serviceClient();
 
   // Each summary is a paid model call over up to 25 pages: bound it per
   // account (its own bucket, apart from the per-IP login budgets). Fails
@@ -304,4 +305,6 @@ Deno.serve(async (req: Request) => {
     pageId: pageId || null,
     generatedAt: new Date().toISOString(),
   });
-});
+}
+
+serveUnlessTest(handler);

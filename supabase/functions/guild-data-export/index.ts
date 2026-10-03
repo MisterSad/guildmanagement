@@ -17,7 +17,6 @@
  * forced onto their own guild (never a client-supplied one), server_admin
  * must match the target guild's server_number, super_admin always passes.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import ExcelJS from "npm:exceljs@4.4.0";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -26,6 +25,8 @@ import { escapeOrFilterValue } from "../_shared/like.ts";
 import { isGuildInScope } from "../_shared/admin-authz.ts";
 import { fetchAllRows } from "../_shared/pagination.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import { serviceClient } from "../_shared/clients.ts";
+import { serveUnlessTest } from "../_shared/serve.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -89,14 +90,14 @@ function makeJson(req: Request) {
     });
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("guild-data-export", req);
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const admin = serviceClient();
   const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
 
   if (!caller.authenticated || !caller.role || caller.status !== "active") {
@@ -334,4 +335,6 @@ Deno.serve(async (req: Request) => {
     logger.error("Guild data export failed", err, { guild: targetGuild });
     return json({ ok: false, error: "export_failed", message: err.message }, 500);
   }
-});
+}
+
+serveUnlessTest(handler);
