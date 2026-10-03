@@ -60,7 +60,7 @@ import {
 } from '../modules/ocr/ocr.service';
 import {
   getAllowedBulkRoles, isRoleAllowedForBulk, filterBulkEligibleMembers,
-  shareMatchupRosterToDiscord, formatTicketDescription
+  formatTicketDescription
 } from '../modules/members/members.service';
 
 function winAny(): any {
@@ -130,7 +130,7 @@ export function installGmBridge(): void {
 
     // Members / tickets
     getAllowedBulkRoles, isRoleAllowedForBulk, filterBulkEligibleMembers,
-    shareMatchupRosterToDiscord, formatTicketDescription,
+    formatTicketDescription,
 
     // GvG daily tasks (legacy GM.gvgTasks shape)
     gvgTasks: { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed }

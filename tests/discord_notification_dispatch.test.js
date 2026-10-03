@@ -44,11 +44,13 @@ describe('Discord Webhook & Reminders Regression Guard', () => {
     expect(discordContent).toContain("authHeader = 'Bearer ' + token;");
   });
 
-  it('ensures members.service.ts saves prompted webhook and calls proxy without client webhookUrl', () => {
-    expect(membersContent).toContain("setGuildConfig('webhook_' + eventPrefix + '_opponent', webhookUrl)");
-    expect(membersContent).toContain("eventPrefix: eventPrefix + '_opponent'");
-    expect(membersContent).toContain('allowEveryoneMention: true');
-    expect(membersContent).not.toMatch(/client\.functions\.invoke\('discord-webhook-proxy',\s*\{\s*body:\s*\{\s*webhookUrl:/);
+  it('members.service.ts no longer touches Discord or webhook URLs at all', () => {
+    // Its roster-share helper had no caller, prompted for a webhook URL, saved
+    // it from the browser and POSTed to Discord when the proxy refused. Removed
+    // (audit ARC-04); see tests/discord_no_direct_webhook.test.js.
+    expect(membersContent).not.toContain('shareMatchupRosterToDiscord');
+    expect(membersContent).not.toMatch(/webhook/i);
+    expect(membersContent).not.toContain('fetch(');
   });
 
   it('verifies discord-webhook-proxy and frontend payload contracts are mutually compatible', () => {

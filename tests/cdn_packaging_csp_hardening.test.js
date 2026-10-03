@@ -32,7 +32,9 @@ describe('TICKET-08 [SEC-04]: CDN Packaging & CSP Hardening', () => {
     // Supabase project on the internet.
     expect(csp).toContain('https://vgweufzwmfwplusskmuf.supabase.co');
     expect(csp).not.toContain('*.supabase.co');
-    expect(csp).toContain('https://discord.com');
+    // The browser never talks to Discord: webhooks go through the Edge proxy
+    // (audit ARC-04), so connect-src must not let a direct POST through.
+    expect(csp).not.toContain('https://discord.com');
     expect(csp).toContain('https://*.ingest.sentry.io');
   });
 

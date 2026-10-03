@@ -3,7 +3,7 @@
  *
  * Discord webhook dispatch ported from gm-utils.js: role-mention formatting,
  * webhook resolution (per-event → default → fallback keys), the Edge Function
- * proxy with a raw-fetch fallback, and event notifications/reminders.
+ * proxy -- the only path to Discord -- and event notifications/reminders.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -127,20 +127,10 @@ export async function sendDiscordWebhookDetailed(eventPrefix: string, body: any,
     }
   }
 
-  if (!webhookUrl) return { ok: false, error: 'No webhook URL found' };
-
-  try {
-    const res = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (res.ok || res.status === 204) return { ok: true };
-    return { ok: false, error: 'HTTP ' + res.status + ' ' + res.statusText };
-  } catch (e: any) {
-    console.error('Discord webhook fetch error:', e);
-    return { ok: false, error: e.message || e };
-  }
+  // Never post to Discord from the browser. The proxy resolves the webhook
+  // server-side, enforces the caller's guild and rate-limits; a direct POST
+  // would bypass all three (audit ARC-04), and the CSP no longer allows it.
+  return { ok: false, error: 'proxy_unavailable' };
 }
 
 /** Boolean convenience wrapper. */

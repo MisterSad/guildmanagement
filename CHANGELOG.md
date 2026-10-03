@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- **Security: the browser never posts to a Discord webhook** (audit ARC-04, AGENTS.md rule 5).
+  - **Removed the fallback in `shareMatchupRosterToDiscord`.** When `discord-webhook-proxy` refused, including with its `429` rate limit, the browser POSTed straight to the webhook. That bypassed the proxy's server-side resolution, guild scoping and rate limit. The helper had no caller anywhere, and it also prompted for a webhook URL and saved it from the browser, so it is deleted outright with its `window.GM` export.
+  - **Removed the direct POST in `sendDiscordWebhookDetailed`.** Without a Supabase client it now fails with `proxy_unavailable`. Every webhook goes through the proxy.
+  - **CSP: `https://discord.com` removed from `connect-src`.** The front no longer contacts Discord at all, so a future regression is blocked by the browser too. Discord sign-in is a navigation, not a `connect`, and is unaffected.
+  - Tests: `tests/discord_no_direct_webhook.test.js` allows a `fetch()` in `src/` only toward Supabase or `/version.json`. The CSP tests now forbid `discord.com`. Gate: type-check clean, 2416 unit tests, build, 44 e2e.
+
 - **Security: no more cross-tenant actions from Discord or event-reminders** (audit SEC-06, SEC-09, BE-A-03, BE-A-04 and BE-A-07). This change is user-facing for officers and players on Discord.
   - **`/setup-server` now needs a linked FGF officer of the target guild**, not just Discord Administrator.
     - The bot's invite link is public, so anyone could create a server, invite the bot and run `/setup-server guild:<any tag>`.
