@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+- **Security: three account-takeover paths closed** (audit of 2026-10-03, `audit/06-securite.md` SEC-01 to SEC-03; migration `20261003090434`).
+  - **Creating an account can no longer overwrite one.**
+    - `gm_admin_upsert` ended in `ON CONFLICT (id) DO UPDATE`, and `authenticated` could execute it. Its gate checked only the target guild, so any guild_admin could rewrite the role, guild and password of any account, the super_admin's included.
+    - admin-accounts `create` reached the same overwrite under the service role. It first re-keyed the existing shadow user, then returned a working password.
+    - The RPC is now create-only: a taken id raises `23505 account_exists`, case-insensitively. Only `service_role` can execute it.
+    - `create` and `approve-guild-request` now share `provisionNewAccount`, which claims the account row before touching GoTrue.
+    - The admin UI shows the duplicate-identifier toast on a refusal.
+  - **`*.guildmgmt.app` is no longer a trusted origin.**
+    - The domain was never registered (NXDOMAIN). The same allowlist is where `auth-discord` returns sign-in tickets, so whoever bought the domain could have collected them through a crafted login link.
+    - The domain remains only as the namespace of synthetic shadow-user e-mails.
+  - **The DEMO accounts have no published password.**
+    - `DemoAdmin` (guild_admin) and `DemoPlayer` had a password written in the repo, rewritten every night by the 03:00 reset.
+    - The reset now creates them without a password and never touches an existing one's.
+    - Their current credentials were cleared, their session epoch bumped and their 3 open GoTrue sessions deleted.
+    - To use them, a super_admin issues a password with Reset password; it survives the nightly reset.
+  - **Verified on production.** Before applying, the migration ran in a rolled-back transaction: a duplicate was refused (also with a different case), a new id was created, and the rewritten reset ran without restoring a password. After applying, the catalogue confirms each end state.
+  - **Tests:** `tests/admin_create_only.test.js`, plus updates to `cors.test.js`, `cors_and_caps.test.js` and `demo_reset.test.js`. Gate: type-check clean, 2382 unit tests, build, 44 e2e.
+
 - **Video OCR, phase 2 of 4: the browser sends the whole recording to the server** (ADR-021 to come). This change is user-facing: every video scan now takes this path.
   - **The in-browser frame extractor is removed:** `extractFramesFromVideo`, the sharpness and scroll-displacement estimators, and their bridge exports. Which frames it kept decided which players were found, and on some recordings that was 3 or 4 out of 40.
   - **A video is checked before upload, then staged.**

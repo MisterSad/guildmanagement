@@ -146,6 +146,63 @@ function generatePassword(length: number): string {
   return result;
 }
 
+type ProvisionResult = { ok: true } | { ok: false; error: string; status: number };
+
+/**
+ * Creates a NEW account and its shadow GoTrue user. It never takes over an
+ * existing one.
+ *
+ * The account row is written first, by `gm_admin_upsert`, which since
+ * 20261003090434 is create-only: it raises 23505 when the id is taken (the
+ * unique index on lower(id) makes that check atomic). Only once the id is ours
+ * is the shadow user touched. The old order -- shadow first, then an upsert
+ * that overwrote role, guild and password on conflict -- let any guild_admin
+ * "create" the super_admin's id and receive a working password for it.
+ */
+async function provisionNewAccount(
+  admin: ReturnType<typeof createClient>,
+  logger: EdgeLogger,
+  account: { id: string; password: string; role: string; guild: string | null },
+): Promise<ProvisionResult> {
+  const { error: uErr } = await admin.rpc("gm_admin_upsert", {
+    p_id: account.id, p_password: account.password, p_role: account.role, p_guild: account.guild,
+  });
+  if (uErr) {
+    if (uErr.code === "23505") return { ok: false, error: "account_exists", status: 200 };
+    logger.error("Failed gm_admin_upsert", uErr, { id: account.id });
+    return { ok: false, error: "server_error", status: 500 };
+  }
+
+  const email = await emailFor(account.id);
+  const secret = randomSecret();
+  const meta = { app_role: account.role, account_id: account.id };
+  const { data: created, error: cuErr } = await admin.auth.admin.createUser({
+    email, password: secret, email_confirm: true, app_metadata: meta,
+  });
+  let uid = created?.user?.id;
+  if (cuErr || !uid) {
+    // A shadow user can outlive its account (an earlier deletion of the same
+    // id). The account row above is new, so re-keying that orphan is safe.
+    const ex = await findUserByEmail(admin, email);
+    if (!ex) {
+      logger.error("Failed to create shadow user for new account", cuErr, { email, id: account.id });
+      // The row was created by this call a moment ago: remove it so the id
+      // can be retried rather than left without a way to sign in.
+      await admin.from("accounts").delete().eq("id", account.id);
+      return { ok: false, error: "provision_failed", status: 500 };
+    }
+    uid = ex.id;
+    await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
+  }
+
+  const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: account.id, p_auth_user_id: uid, p_secret: secret });
+  if (aErr) {
+    logger.error("Failed gm_attach_shadow", aErr, { id: account.id, uid });
+    return { ok: false, error: "server_error", status: 500 };
+  }
+  return { ok: true };
+}
+
 Deno.serve(async (req: Request) => {
   const json = makeJson(req);
   const logger = new EdgeLogger("admin-accounts", req);
@@ -554,36 +611,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const email = await emailFor(id);
-    const secret = randomSecret();
-    const meta = { app_role: accRole, account_id: id };
-    const { data: created, error: cuErr } = await admin.auth.admin.createUser({
-      email, password: secret, email_confirm: true, app_metadata: meta,
-    });
-    let uid = created?.user?.id;
-    if (cuErr || !uid) {
-      const ex = await findUserByEmail(admin, email);
-      if (!ex) {
-        logger.error("Failed to create shadow user for new admin", cuErr, { email, id });
-        return json({ ok: false, error: "provision_failed" }, 500);
+    const provisioned = await provisionNewAccount(admin, logger, { id, password, role: accRole, guild: accGuild });
+    if (!provisioned.ok) {
+      if (provisioned.error === "account_exists") {
+        logger.warn("Account create refused: id already taken", { id, callerRole: info.role });
       }
-      uid = ex.id;
-      await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
-    }
-    const { error: uErr } = await admin.rpc("gm_admin_upsert", { p_id: id, p_password: password, p_role: accRole, p_guild: accGuild });
-    if (uErr) {
-      logger.error("Failed gm_admin_upsert", uErr, { id });
-      return json({ ok: false, error: "server_error" }, 500);
+      return json({ ok: false, error: provisioned.error }, provisioned.status);
     }
 
     if (accServerNum) {
       await admin.from("accounts").update({ server_number: accServerNum }).eq("id", id);
-    }
-
-    const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: id, p_auth_user_id: uid, p_secret: secret });
-    if (aErr) {
-      logger.error("Failed gm_attach_shadow", aErr, { id, uid });
-      return json({ ok: false, error: "server_error" }, 500);
     }
 
     logger.info("Admin created account", { createdId: id, role: accRole, guild: accGuild, serverNumber: accServerNum });
@@ -888,35 +925,14 @@ Deno.serve(async (req: Request) => {
     const newGuildTag = approveRow.guild_tag!;
     const newPassword = generatePassword(12);
 
-    const email = await emailFor(newAdminId);
-    const secret = randomSecret();
-    const meta = { app_role: "guild_admin", account_id: newAdminId };
-    const { data: created, error: cuErr } = await admin.auth.admin.createUser({
-      email, password: secret, email_confirm: true, app_metadata: meta,
+    // gm_approve_guild_request already refused a taken admin_id; the
+    // create-only provisioning below closes the race behind that check.
+    const provisioned = await provisionNewAccount(admin, logger, {
+      id: newAdminId, password: newPassword, role: "guild_admin", guild: newGuildTag,
     });
-    let uid = created?.user?.id;
-    if (cuErr || !uid) {
-      const ex = await findUserByEmail(admin, email);
-      if (!ex) {
-        logger.error("Failed to create shadow user for approved guild request", cuErr, { email, newAdminId });
-        return json({ ok: false, error: "provision_failed" }, 500);
-      }
-      uid = ex.id;
-      await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
-    }
-
-    const { error: uErr } = await admin.rpc("gm_admin_upsert", {
-      p_id: newAdminId, p_password: newPassword, p_role: "guild_admin", p_guild: newGuildTag,
-    });
-    if (uErr) {
-      logger.error("Failed gm_admin_upsert on guild request approval", uErr, { newAdminId, newGuildTag });
-      return json({ ok: false, error: "server_error" }, 500);
-    }
-
-    const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: newAdminId, p_auth_user_id: uid, p_secret: secret });
-    if (aErr) {
-      logger.error("Failed gm_attach_shadow on guild request approval", aErr, { newAdminId, uid });
-      return json({ ok: false, error: "server_error" }, 500);
+    if (!provisioned.ok) {
+      logger.error("Account provisioning failed on guild request approval", null, { newAdminId, newGuildTag, error: provisioned.error });
+      return json({ ok: false, error: provisioned.error === "account_exists" ? "admin_id_taken" : provisioned.error }, provisioned.status);
     }
 
     await admin

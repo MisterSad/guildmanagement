@@ -33,9 +33,9 @@ describe('CORS Origin Matching & Security Caps (GAP 4)', () => {
     // A real-looking hash under someone else's scope.
     expect(isAllowedOrigin('https://guildmanagement-abc123def-attacker-projects.vercel.app')).toBe(false);
 
-    // 3. Exact custom subdomains (anchored https://*.guildmgmt.app)
-    expect(isAllowedOrigin('https://app.guildmgmt.app')).toBe(true);
-    expect(isAllowedOrigin('https://api.guildmgmt.app')).toBe(true);
+    // 3. guildmgmt.app is not owned by the project: never trusted
+    expect(isAllowedOrigin('https://app.guildmgmt.app')).toBe(false);
+    expect(isAllowedOrigin('https://api.guildmgmt.app')).toBe(false);
 
     // 4. Malicious bypass attempts & arbitrary third-party Vercel apps - MUST BE DENIED
     expect(isAllowedOrigin('https://malicious-project.vercel.app')).toBe(false);

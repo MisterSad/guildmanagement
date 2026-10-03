@@ -66,17 +66,32 @@ describe('DEMO Tenant Dynamic Data & Daily Reset Automation', () => {
         expect(buildEventSessionId('Shadowfront Squad 2', testDate)).toBe(`SF2-${dKey}-1`);
     });
 
-    it('verifies DemoAdmin and DemoPlayer accounts are initialized with demo1234 encrypted passwords and DemoPlayer has UID', () => {
+    it('keeps the DemoAdmin and DemoPlayer accounts, and DemoPlayer its UID', () => {
         const migrationContent = fs.readFileSync(migrationPath, 'utf-8');
         expect(migrationContent).toContain("'DemoAdmin'");
         expect(migrationContent).toContain("'DemoPlayer'");
-        expect(migrationContent).toContain("extensions.pgp_sym_encrypt('demo1234'");
         expect(migrationContent).toContain("'90000002'");
 
         const pyContent = fs.readFileSync(pythonScriptPath, 'utf-8');
         expect(pyContent).toContain("'DemoAdmin'");
         expect(pyContent).toContain("'DemoPlayer'");
-        expect(pyContent).toContain("extensions.pgp_sym_encrypt('demo1234'");
         expect(pyContent).toContain("'90000002'");
+    });
+
+    it('never gives the demo accounts a known password, nor overwrites one a super_admin issued', () => {
+        // A guild_admin with a password published in the repo was the first
+        // link of an account-takeover chain (audit SEC-03).
+        const pyContent = fs.readFileSync(pythonScriptPath, 'utf-8');
+        expect(pyContent).not.toContain('demo1234');
+        expect(pyContent).not.toMatch(/password_enc\s*=\s*excluded\.password_enc/i);
+
+        const fix = fs.readFileSync(path.resolve(__dirname,
+            '../supabase/migrations/20261003090434_admin_create_only_and_demo_credentials.sql'), 'utf-8');
+        // The live reset is rewritten, then refused if the password survived.
+        expect(fix).toMatch(/Refusing to re-create gm_reset_demo_tenant_data\(\): the demo password survived/);
+        expect(fix).toMatch(/Refusing to re-create gm_reset_demo_tenant_data\(\): it would still overwrite demo passwords/);
+        // Existing credentials and their sessions are retired, not just future ones.
+        expect(fix).toMatch(/SET password_enc\s*= NULL,\s*password_hash\s*= NULL/);
+        expect(fix).toMatch(/DELETE FROM auth\.sessions/);
     });
 });

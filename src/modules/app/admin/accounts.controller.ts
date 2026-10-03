@@ -339,7 +339,7 @@ async function onCreateAccountSubmit(e: Event): Promise<void> {
       guild: (guildSelected === 'ALL' ? null : guildSelected),
       created_by: g.currentAccountId
     });
-    if (!res.ok || !res.password) throw new Error(res.error || 'create_failed');
+    if (!res.ok || !res.password) throw new Error(createErrorMessage(res.error));
     unshiftAccount({
       id: identifier,
       role: 'guild_admin',
@@ -356,6 +356,13 @@ async function onCreateAccountSubmit(e: Event): Promise<void> {
     if (btn) btn.disabled = false;
     if (span) span.textContent = t('btn_generate');
   }
+}
+
+// The server refuses an id that is already taken (case-insensitively), even
+// when the local list is stale and the check above let it through.
+function createErrorMessage(code: string | undefined): string {
+  if (code === 'account_exists') return t('toast_duplicate_account');
+  return code || 'create_failed';
 }
 
 async function onCreateAdminAccountSubmit(e: Event): Promise<void> {
@@ -384,7 +391,7 @@ async function onCreateAdminAccountSubmit(e: Event): Promise<void> {
   try {
     const g = gm();
     const res = await g.adminAccounts('create', { id: identifier, role: roleSelected, guild: guildSelected });
-    if (!res.ok || !res.password) throw new Error(res.error || 'create_failed');
+    if (!res.ok || !res.password) throw new Error(createErrorMessage(res.error));
     unshiftAccount({ id: identifier, role: roleSelected, guild: guildSelected, created_at: new Date().toISOString() });
     renderAccounts();
     revealAccountPassword(identifier, res.password);

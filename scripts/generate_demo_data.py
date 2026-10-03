@@ -157,16 +157,17 @@ lines.append(
     f"on conflict (id) do update set server_number = excluded.server_number, payments_disabled = true;"
 )
 
-# Accounts
+# Accounts. Created without a password, and an existing password is left
+# alone: a super_admin issues one with admin-accounts reset-password. A
+# published demo password once gave anyone a guild_admin session
+# (20261003090434).
 lines.append(
-    f"insert into public.accounts (id, role, guild, server_number, status, uid, password_enc, created_at) values "
-    f"('DemoAdmin', 'guild_admin', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', null, "
-    f"extensions.pgp_sym_encrypt('demo1234', (select s.decrypted_secret from vault.decrypted_secrets s where s.name = 'gm_accounts_key')), now()), "
-    f"('DemoPlayer', 'member', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', '90000002', "
-    f"extensions.pgp_sym_encrypt('demo1234', (select s.decrypted_secret from vault.decrypted_secrets s where s.name = 'gm_accounts_key')), now()) "
+    f"insert into public.accounts (id, role, guild, server_number, status, uid, created_at) values "
+    f"('DemoAdmin', 'guild_admin', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', null, now()), "
+    f"('DemoPlayer', 'member', {sql_q(GUILD)}, {sql_q(SERVER)}, 'active', '90000002', now()) "
     f"on conflict (id) do update set "
     f"role = excluded.role, guild = excluded.guild, server_number = excluded.server_number, "
-    f"status = 'active', uid = excluded.uid, password_enc = excluded.password_enc;"
+    f"status = 'active', uid = excluded.uid;"
 )
 
 # Guild config

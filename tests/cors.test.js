@@ -59,10 +59,13 @@ describe('Ticket 1.4: CORS Hardening & Vercel Origin Restriction', () => {
       expect(isAllowedOrigin('https://guildmanagement-abc123def-attacker-projects.vercel.app')).toBe(false);
     });
 
-    it('accepts verified guildmgmt.app custom domain subdomains', () => {
-      expect(isAllowedOrigin('https://app.guildmgmt.app')).toBe(true);
-      expect(isAllowedOrigin('https://api.guildmgmt.app')).toBe(true);
-      expect(isAllowedOrigin('https://auth.guildmgmt.app')).toBe(true);
+    it('refuses guildmgmt.app, a domain the project does not own', () => {
+      // The allowlist is also the set of OAuth return origins in auth-discord:
+      // trusting an unregistered domain hands sign-in tickets to its next buyer.
+      expect(isAllowedOrigin('https://app.guildmgmt.app')).toBe(false);
+      expect(isAllowedOrigin('https://api.guildmgmt.app')).toBe(false);
+      expect(isAllowedOrigin('https://auth.guildmgmt.app')).toBe(false);
+      expect(isAllowedOrigin('https://no-reply.guildmgmt.app')).toBe(false);
     });
 
     it('formally rejects arbitrary and malicious third-party Vercel apps', () => {

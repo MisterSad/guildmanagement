@@ -46,13 +46,22 @@ const VERCEL_OFFICIAL_REGEX = new RegExp(
   "i"
 );
 
-const GUILDMGMT_DOMAIN_REGEX = /^https:\/\/[a-z0-9-]+\.guildmgmt\.app$/i;
-
+/**
+ * Every origin trusted here must be one this project controls, because the
+ * list does two jobs: CORS, and the set of places `auth-discord` will send a
+ * one-time sign-in ticket back to. An origin on a domain nobody owns is a
+ * ticket drop box for whoever registers it next.
+ *
+ * `*.guildmgmt.app` used to be trusted for "a future custom domain". That
+ * domain was never registered (NXDOMAIN, 2026-10-03), so anyone could have
+ * bought it and harvested Discord sign-ins with a crafted login link. It
+ * survives only as the namespace of the synthetic shadow-user e-mails
+ * (`shadow-session.ts`), which no browser ever loads.
+ */
 export function isAllowedOrigin(origin: string): boolean {
   if (!origin || typeof origin !== "string") return false;
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-  if (VERCEL_OFFICIAL_REGEX.test(origin)) return true;
-  return GUILDMGMT_DOMAIN_REGEX.test(origin);
+  return VERCEL_OFFICIAL_REGEX.test(origin);
 }
 
 export function getCorsHeaders(req?: Request): Record<string, string> {
