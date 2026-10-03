@@ -7,7 +7,7 @@
  * particular are unbounded, append-only ledgers for a real guild).
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 
 /**
  * Searches for a GoTrue user by email across all pages.

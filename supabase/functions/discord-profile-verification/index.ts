@@ -34,7 +34,7 @@
  * guild_members (roster/stats), never to accounts (no login credentials
  * are ever created from an image).
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkAndRecordDiscordAttempt } from "../_shared/rate-limit.ts";

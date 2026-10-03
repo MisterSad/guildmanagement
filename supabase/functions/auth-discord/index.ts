@@ -38,7 +38,7 @@
  * route authenticates by its own means (single-use state, single-use ticket).
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";

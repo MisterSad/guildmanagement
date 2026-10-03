@@ -6,7 +6,7 @@
  * authoritative role, account id, and guild from the accounts table.
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { isSessionRevoked } from "./session-epoch.ts";
 
 export interface CallerInfo {

@@ -7,7 +7,7 @@
  * Edge Functions (which would also require faking an authenticated
  * context member-portal doesn't otherwise need).
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 
 export interface MemberSnapshot {
   pseudo: string;

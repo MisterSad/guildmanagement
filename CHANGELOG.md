@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+- **Edge Functions: bounded inputs, a limiter that fails closed, reproducible bundles** (short-term plan, phase 3; audit SEC-12, BE-A-12, BE-A-15, SEC-13, INF-05, SEC-19; migration `20261003114333`).
+  - **Discord verification limiter (SEC-12).**
+    - `checkAndRecordDiscordAttempt` read the window, then wrote the bucket, and answered "allowed" on any error. That contradicted AGENTS.md rule 7, on the path that calls a metered vision API.
+    - It now makes one call to the new atomic `gm_check_verification_throttle`, the same shape as the IP limiter, and refuses on error.
+    - Checked on production in a rolled-back transaction: with a limit of 5, attempts 1 to 5 pass and the 6th is refused.
+  - **tickets.**
+    - Zod schemas for `create` and `update-status`. Bounds are generous: title 300 and description 20,000; the database still trims to 120 and 4,000.
+    - Categories and severities are now enumerated.
+    - New IP rate limit on creation (10 per 10 minutes). There was none, and each ticket carries up to 3 screenshots of 2.5 MB.
+  - **player-register:** password at most 128 characters (bcrypt reads 72 bytes), join code at most 64. The 500 response no longer echoes the database message.
+  - **guild-data-export:** new IP rate limit (5 per 10 minutes) and a guild-tag shape check.
+  - **discord-webhook-proxy:** a relayed payload is held to Discord's limits (2,000 characters, 10 embeds, 60 KB) before it uses a quota slot.
+  - **ocr-guild-members:** each image is capped at 8 MiB on top of the existing total, and the MIME type is pattern-checked.
+  - **auth-passkey:** the request envelope is bounded at 32 KB before WebAuthn verification.
+  - **guild-request is unchanged.** It already bounds every field by hand, with error codes the front maps.
+  - **Dependencies (INF-05).**
+    - `@supabase/supabase-js@2` floated in 22 imports, and esm.sh currently serves it as 2.117.2. Every import now names `@2.117.2`, which is what the functions deployed today already run.
+    - All Edge imports now name an exact version, and a test enforces it.
+    - Not done here: the SimpleWebAuthn upgrade (v10 to v14, sign-in critical) and `deno check` in CI (phase 5).
+  - Tests: `tests/edge_robustness.test.js`. Gate: type-check clean, 2452 unit tests, build, 44 e2e. The 23 changed Edge files pass an esbuild syntax check (Deno is not installed locally).
+
 - **Security: tenant isolation and session revocation** (short-term plan, phase 2; audit SEC-05, SEC-07, SEC-08, DB-05, DB-06, DB-07, BE-B-06, BE-B-07, BE-B-21; migration `20261003113839`). This change is user-facing for officers.
   - **A revoked session revokes.**
     - 22 functions resolved their caller inline and never checked `session_version`. Each now does, through a checked rewrite that asserts afterwards that no function or policy resolves its caller without the check.

@@ -1,5 +1,5 @@
 import { z } from "https://esm.sh/zod@3.23.8";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -86,8 +86,9 @@ export const VALID_RANKS_SET = new Set<string>(VALID_RANKS);
 
 export const ImageItemSchema = z
   .object({
-    base64Data: z.string().min(1),
-    mimeType: z.string().optional().default("image/png"),
+    // Per image, on top of the 8 MiB total checked below.
+    base64Data: z.string().min(1).max(8 * 1024 * 1024),
+    mimeType: z.string().regex(/^image\/[a-z0-9.+-]{1,20}$/i).optional().default("image/png"),
   })
   .strict();
 

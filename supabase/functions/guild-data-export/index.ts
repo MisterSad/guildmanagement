@@ -17,7 +17,7 @@
  * forced onto their own guild (never a client-supplied one), server_admin
  * must match the target guild's server_number, super_admin always passes.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import ExcelJS from "npm:exceljs@4.4.0";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -25,6 +25,7 @@ import { validateCallerAuth } from "../_shared/auth.ts";
 import { escapeOrFilterValue } from "../_shared/like.ts";
 import { isGuildInScope } from "../_shared/admin-authz.ts";
 import { fetchAllRows } from "../_shared/pagination.ts";
+import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -105,11 +106,20 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "forbidden" }, 403);
   }
 
+  // An export reads every table of a guild into a workbook: the heaviest
+  // request this API serves, and it had no rate limit (audit SEC-13).
+  const throttle = await checkAndRecordIpAttempt(admin, extractClientIp(req.headers), { limit: 5, windowMs: 10 * 60_000 });
+  if (!throttle.allowed) return json({ ok: false, error: "rate_limited" }, 429);
+
   let body: any = {};
   try {
     body = await req.json();
   } catch {
     // No body is fine for guild_admin (their own guild is implied below).
+  }
+  if (body?.guild !== undefined && body?.guild !== null
+      && (typeof body.guild !== "string" || !/^[A-Za-z0-9_]{2,12}$/.test(body.guild.trim()))) {
+    return json({ ok: false, error: "invalid_guild" }, 400);
   }
 
   let targetGuild: string | null = caller.role === "guild_admin" ? caller.guild : (body?.guild || null);

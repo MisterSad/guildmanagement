@@ -13,7 +13,7 @@
  * is deciding; how that identity was proven (a JWT in the app, a linked Discord
  * account on a button click) is the caller's job.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { canManageAccount, normalizeRole, type CallerCtx, type Role } from "./admin-authz.ts";
 import { findUserByEmail } from "./pagination.ts";
 import { sendDirectMessage } from "./discord-verification.ts";

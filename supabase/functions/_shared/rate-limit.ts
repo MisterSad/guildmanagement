@@ -68,14 +68,15 @@ export function shouldThrottle(options: {
   return totalAttempts >= limit;
 }
 
-// In-isolate throttling cache & DB sync helper
-let lastDiscordPurgeTime = 0;
-
-// Same sliding-window logic as checkAndRecordIpAttempt, but keyed by a
-// Discord user id against discord_verification_throttle instead of an IP
-// against login_throttle -- needed because the profile-verification
-// endpoint is reachable by any Discord user posting in a monitored channel,
-// not gated behind a login, and each attempt calls a metered AI vision API.
+// Per-Discord-user budget for discord-profile-verification, which is
+// reachable by any Discord user posting in a monitored channel and calls a
+// metered vision API on every attempt.
+//
+// Delegated to the atomic public.gm_check_verification_throttle RPC, exactly
+// like checkAndRecordIpAttempt below. It used to read the window and write the
+// bucket in two round trips (concurrent posts both passed) and returned
+// `allowed: true` on any error, against AGENTS.md rule 7 (audit SEC-12).
+// Retention: gm_purge_discord_ephemera drops windows older than a day.
 export async function checkAndRecordDiscordAttempt(
   admin: any,
   discordUserId: string,
@@ -83,61 +84,25 @@ export async function checkAndRecordDiscordAttempt(
 ): Promise<{ allowed: boolean; remaining: number }> {
   const now = Date.now();
   const { limit, windowMs } = options;
-  const windowStartIso = new Date(Math.floor(now / 60000) * 60000).toISOString();
-  const cutoffIso = new Date(now - windowMs).toISOString();
+  const windowStartIso = new Date(Math.floor(now / 60000) * 60000).toISOString(); // 1-minute bucket
 
   try {
-    const { data: rows, error: fetchErr } = await admin
-      .from("discord_verification_throttle")
-      .select("window_start, attempts")
-      .eq("discord_user_id", discordUserId)
-      .gte("window_start", cutoffIso);
-
-    if (fetchErr) {
-      return { allowed: true, remaining: 1 };
-    }
-
-    const records: ThrottleRecord[] = rows || [];
-    const isThrottled = shouldThrottle({ recentWindows: records, limit, windowMs, now });
-    let currentTotal = records.reduce((sum, r) => sum + (Number(r.attempts) || 0), 0);
-
-    if (isThrottled) {
-      return { allowed: false, remaining: 0 };
-    }
-
-    const { data: existingBucket } = await admin
-      .from("discord_verification_throttle")
-      .select("attempts")
-      .eq("discord_user_id", discordUserId)
-      .eq("window_start", windowStartIso)
-      .maybeSingle();
-
-    if (existingBucket) {
-      await admin
-        .from("discord_verification_throttle")
-        .update({ attempts: (existingBucket.attempts || 0) + 1 })
-        .eq("discord_user_id", discordUserId)
-        .eq("window_start", windowStartIso);
-    } else {
-      await admin
-        .from("discord_verification_throttle")
-        .insert({ discord_user_id: discordUserId, window_start: windowStartIso, attempts: 1 });
-    }
-
-    if (now - lastDiscordPurgeTime > 600000) {
-      lastDiscordPurgeTime = now;
-      const purgeCutoff = new Date(now - 86400000).toISOString();
-      admin
-        .from("discord_verification_throttle")
-        .delete()
-        .lt("window_start", purgeCutoff)
-        .then(() => {})
-        .catch(() => {});
-    }
-
-    return { allowed: true, remaining: Math.max(0, limit - (currentTotal + 1)) };
+    const { data, error } = await admin.rpc("gm_check_verification_throttle", {
+      p_discord_user_id: discordUserId,
+      p_limit: limit,
+      p_window_ms: windowMs,
+      p_bucket: windowStartIso,
+    });
+    // FAIL CLOSED: a database that cannot count attempts cannot vouch for them.
+    if (error) return { allowed: false, remaining: 0 };
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return { allowed: false, remaining: 0 };
+    return {
+      allowed: row.allowed !== false,
+      remaining: Math.max(0, Number(row.remaining) || 0),
+    };
   } catch {
-    return { allowed: true, remaining: 1 };
+    return { allowed: false, remaining: 0 };
   }
 }
 

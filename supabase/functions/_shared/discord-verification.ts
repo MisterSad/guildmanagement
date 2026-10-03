@@ -30,7 +30,7 @@
  * Trust model unchanged otherwise: this only ever writes to guild_members
  * (roster/stats), never to accounts.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { logPlayerAction } from "./player-actions.ts";
 
 export const AUDIT_SERVICE = "discord-profile-verification";

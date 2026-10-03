@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -175,6 +175,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!action) return json({ ok: false, error: "missing_action" }, 400);
+    // The WebAuthn responses themselves are checked by SimpleWebAuthn; this
+    // bounds the envelope before any of that work starts (audit BE-A-15).
+    if (action.length > 40 || typeof payload !== "object" || payload === null || Array.isArray(payload)
+        || JSON.stringify(payload).length > 32_000) {
+      return json({ ok: false, error: "bad_request" }, 400);
+    }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 

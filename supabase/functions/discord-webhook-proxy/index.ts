@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -187,6 +187,14 @@ serve(async (req: Request) => {
 
   const hasContent = typeof payload?.content === "string" && payload.content.trim().length > 0;
   const hasEmbeds = Array.isArray(payload?.embeds) && payload.embeds.length > 0;
+
+  // The payload is relayed to Discord as given: bound it to what Discord
+  // itself accepts before spending a quota slot on it (audit SEC-13).
+  if ((typeof payload?.content === "string" && payload.content.length > 2000)
+      || (payload?.embeds !== undefined && (!Array.isArray(payload.embeds) || payload.embeds.length > 10))
+      || JSON.stringify(payload ?? {}).length > 60_000) {
+    return json({ ok: false, error: "payload_too_large" }, 400);
+  }
 
   if (!webhookUrl || (!hasContent && !hasEmbeds)) {
     return json({ ok: false, error: "missing_webhook_url_or_content" }, 400);

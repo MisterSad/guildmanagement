@@ -33,7 +33,7 @@
  * same validated, audited code path member-portal uses, not a
  * reimplementation.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { canManageAccount, isGuildInScope, normalizeRole } from "../_shared/admin-authz.ts";
 import { editChannelMessage, postChannelMessage } from "../_shared/discord-verification.ts";

@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
@@ -66,6 +66,9 @@ Deno.serve(async (req: Request) => {
   }
   if (id.length < 3 || id.length > 32) return json({ ok: false, error: "invalid_identifier" }, 422);
   if (password.length < 8) return json({ ok: false, error: "weak_password" }, 422);
+  // bcrypt reads at most 72 bytes; anything longer only costs hashing time.
+  if (password.length > 128) return json({ ok: false, error: "invalid_password" }, 422);
+  if (code.length > 64) return json({ ok: false, error: "invalid_code" }, 422);
   if (!/^[0-9]{1,20}$/.test(uid)) return json({ ok: false, error: "invalid_uid" }, 422);
 
   logger.setContext({ userId: id });
@@ -80,7 +83,7 @@ Deno.serve(async (req: Request) => {
 
   if (error) {
     logger.error("Error calling gm_register_player", error, { id, uid });
-    return json({ ok: false, error: "server_error", message: error.message }, 500);
+    return json({ ok: false, error: "server_error" }, 500);
   }
 
   const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string; status?: string } | null;

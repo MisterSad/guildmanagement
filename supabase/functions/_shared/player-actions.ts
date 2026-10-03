@@ -15,7 +15,7 @@
  * update-metrics, get-active-sessions, get-badges, ...) -- single source of
  * truth either way, no duplicate copy left behind.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { getPlayer } from "./member-lookup.ts";
 
 export const MAX_ALLOWED_POWER = 5_000_000_000;

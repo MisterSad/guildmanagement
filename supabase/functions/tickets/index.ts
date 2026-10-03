@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -85,6 +87,39 @@ const CATEGORY_LABEL: Record<string, string> = {
   other: "Other",
 };
 
+// Bounded inputs (AGENTS.md rule 3, audit BE-A-15 / SEC-13). The bounds are
+// generous on purpose -- gm_create_ticket still trims the title to 120 and the
+// description to 4,000 -- they exist to refuse abuse, not real reports.
+// Attachments keep their old lenient filter below: an oversized screenshot is
+// dropped, not a reason to lose the whole report.
+const longText = z.string().max(5_000).optional();
+const CreateTicketSchema = z.object({
+  action: z.literal("create"),
+  title: z.string().trim().min(1).max(300),
+  description: z.string().trim().min(1).max(20_000),
+  category: z.enum(["bug", "feature", "other"]).default("bug"),
+  severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  guild: z.string().trim().max(64).optional(),
+  current_behavior: longText,
+  expected_behavior: longText,
+  steps: longText,
+  additional_context: longText,
+  env: z.object({
+    appVersion: z.string().max(100).optional(),
+    os: z.string().max(200).optional(),
+    browser: z.string().max(200).optional(),
+  }).partial().nullish(),
+  attachments: z.array(z.unknown()).max(10).default([]),
+}).strict();
+const UpdateStatusSchema = z.object({
+  action: z.literal("update-status"),
+  id: z.coerce.number().int().positive(),
+  status: z.enum(["waiting", "in_progress", "resolved", "closed", "open"]),
+}).strict();
+
+// One report a minute on average is far above any real use.
+const CREATE_LIMIT = { limit: 10, windowMs: 10 * 60_000 };
+
 serve(async (req: Request) => {
   const json = makeJson(req);
   const logger = new EdgeLogger("tickets", req);
@@ -110,19 +145,24 @@ serve(async (req: Request) => {
   const action = (body?.action ?? "").toString();
 
   if (action === "create") {
-    const title = (body?.title ?? "").toString().trim();
-    const description = (body?.description ?? "").toString().trim();
-    const category = (body?.category ?? "bug").toString();
-    const severity = (body?.severity ?? "medium").toString();
-    const guild = caller.role === "super_admin" && body?.guild
-      ? (body.guild as string).toString().trim()
+    const parsed = CreateTicketSchema.safeParse(body);
+    if (!parsed.success) return json({ ok: false, error: "invalid_input" }, 400);
+    const input = parsed.data;
+
+    // Tickets had no rate limit at all, and each one carries up to 3
+    // screenshots of 2.5 MB into the database and a Discord post.
+    const throttle = await checkAndRecordIpAttempt(admin, extractClientIp(req.headers), CREATE_LIMIT);
+    if (!throttle.allowed) return json({ ok: false, error: "rate_limited" }, 429);
+
+    const title = input.title;
+    const description = input.description;
+    const category = input.category;
+    const severity = input.severity;
+    const guild = caller.role === "super_admin" && input.guild
+      ? input.guild
       : (caller.guild ?? "").trim();
 
-    if (!title || !description) {
-      return json({ ok: false, error: "missing_fields" }, 400);
-    }
-
-    const rawAttachments = Array.isArray(body?.attachments) ? body.attachments : [];
+    const rawAttachments = input.attachments;
     const attachments = rawAttachments
       .filter((a) => typeof a === "string" && a.startsWith("data:image/") && a.length < 2_500_000)
       .slice(0, 3);
@@ -152,11 +192,11 @@ serve(async (req: Request) => {
     const ticketNo = Number(row.ticket_number);
     const sev = SEVERITY_META[severity] || SEVERITY_META.medium;
 
-    const currentBehavior = (body?.current_behavior ?? "").toString().trim();
-    const expectedBehavior = (body?.expected_behavior ?? "").toString().trim();
-    const steps = (body?.steps ?? "").toString().trim();
-    const additionalContext = (body?.additional_context ?? "").toString().trim();
-    const envObj = (body?.env && typeof body.env === "object") ? (body.env as Record<string, string>) : null;
+    const currentBehavior = (input.current_behavior ?? "").trim();
+    const expectedBehavior = (input.expected_behavior ?? "").trim();
+    const steps = (input.steps ?? "").trim();
+    const additionalContext = (input.additional_context ?? "").trim();
+    const envObj = input.env ?? null;
 
     const embedFields: Array<{ name: string; value: string; inline?: boolean }> = [
       { name: "Status", value: "⏳ Waiting for resolution", inline: true },
@@ -277,11 +317,9 @@ serve(async (req: Request) => {
     if (caller.role !== "super_admin") {
       return json({ ok: false, error: "forbidden" }, 403);
     }
-    const id = Number(body?.id);
-    const status = (body?.status ?? "").toString();
-    if (!id || !["waiting", "in_progress", "resolved", "closed", "open"].includes(status)) {
-      return json({ ok: false, error: "invalid_input" }, 400);
-    }
+    const parsed = UpdateStatusSchema.safeParse(body);
+    if (!parsed.success) return json({ ok: false, error: "invalid_input" }, 400);
+    const { id, status } = parsed.data;
     const { data, error } = await admin.rpc("gm_update_ticket_status", { p_id: id, p_status: status });
     if (error) {
       logger.error("gm_update_ticket_status failed", error);
